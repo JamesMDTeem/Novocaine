@@ -1,0 +1,23 @@
+/build
+/bin
+/local-config.properties
+/local-boot.properties
+/build.properties
+/.idea
+*~
+
+# Redistributables and assets, not source. These are the shipped Hurricane
+# payload (~350MB, with Release/ and lib/ holding duplicate copies of the same
+# jars); tracking them would bloat history without making the fork any easier
+# to diff against upstream. Restore them from the Hurricane release zip.
+*.jar
+/Release/
+/lib/
+/res/
+/opt/
+/AlarmSounds/
+/midiFiles/
+/MapIconsPresets/
+/.updater-backup/
+*.db
+steamicon.gif
