@@ -130,16 +130,16 @@ public class AlchemyService {
             String type = elixirType(rcp.getJSONObject("elixir").getString("res"));
             if (type == null)
                 continue;
-            JSONArray inputs = new JSONArray();
-            JSONArray rawInputs = rcp.getJSONArray("inputs");
-            for (int j = 0; j < rawInputs.length(); j++)
-                inputs.put(rawInputs.getJSONObject(j).getString("name"));
+            // Send the tree, not just leaf names. A slot may hold a processed
+            // ingredient (Lye Ablution, Measured Distillate, ...) which contributes
+            // only part of its base ingredient's four properties, so flattening would
+            // assert effects that were never in play.
             // "negatives" is deliberately dropped: it rolls at random whenever the
-            // inputs carried unmatched effects, so it carries no information about
-            // which effects an ingredient holds
+            // inputs carried unmatched effects, so it says nothing about which
+            // effects an ingredient holds.
             experiments.put(new JSONObject()
                     .put("type", type)
-                    .put("ingredients", inputs)
+                    .put("inputs", rcp.getJSONArray("inputs"))
                     .put("effects", rcp.getJSONArray("effects")));
         }
 
