@@ -1,53 +1,55 @@
-# Hurricane Client
+# Novocaine
 
-This is just another custom client you can use to play the wonderful game,
-Haven & Hearth. This client is built on top of the "Vanilla" Client, and
-does not depend on any other custom clients.
-I try to merge all of the code changes that are done to the base client
-by Loftar, and I try to keep it up to date, to avoid crashes.
+A custom Haven & Hearth client: a live pull of
+[Nightdawg/Hurricane](https://github.com/Nightdawg/Hurricane) with our own features
+layered on top. All credit for the base client goes to Nightdawg and the Hurricane
+project (and Loftar's Vanilla client under that).
 
-This client can be played standalone, or through Steam, by subscribing to
-the Steam Workshop item.
+## How this fork works
 
-Important Note:
-- This client does not send any data to any place besides the official Seatribe server, unless you set it to do so.
+The custom work is deliberately kept as a **patch between two tags** rather than a
+long-lived branch:
 
-## Links:
+```
+vendor-baseline .. alchemy
+```
 
-Forum Thread:
-https://www.havenandhearth.com/forum/viewtopic.php?t=76544
+Updating to a new Hurricane release means: check out the upstream release, re-apply
+that patch, rebuild. `update-and-play.ps1` automates the whole cycle:
 
-Discord Server:
-https://discord.gg/7Ct4t6uME6
+```powershell
+.\update-and-play.ps1              # update to latest upstream release, rebuild, launch
+.\update-and-play.ps1 -SkipUpdate  # rebuild + launch what's checked out (after editing the fork)
+.\update-and-play.ps1 -Tag v1.67   # pin a specific upstream release
+```
 
-Steam Workshop:
-https://steamcommunity.com/sharedfiles/filedetails/?id=3423755273
+After committing any change to the fork, re-point the tag or the next update will
+re-apply stale work:
 
-## Downloading/Updating the Hurricane Client (Outside of Steam):
-Use the Hurricane Updater: https://github.com/Nightdawg/Hurricane-Updater/releases/latest
+```powershell
+git tag -f alchemy HEAD
+```
 
-### If the updater doesn't work:
-1. Make sure your installed Java version is between 17 and 21, *21 IS HIGHLY RECOMMENDED*
-2. You might need to add the updater file (HurricaneUpdater.jar) to your anti-virus exceptions list.
+## Custom features
 
-## Launching the Hurricane Client (Outside of Steam):
+- **Alchemy Book mirror** (`src/haven/automated/alchemy/`) — passively reads the
+  in-game Alchemy Book via reflection on login and uploads ingredient discoveries and
+  elixir crafts to the mapper server. One integration hook: a single line in
+  `GameUI.tick`.
+- **Reflective contract tools** (`tools/extract-alchbook.py`,
+  `tools/check-alchbook-contract.sh`) — the alchemy code reflects into classes the
+  game server ships, which the compiler cannot check. If the book ever reports empty
+  after a game update, run these (from WSL) to diagnose drift. Silence, not
+  exceptions, is the failure mode.
 
-Run the Play.bat file inside the client folder, or Play_Linux.sh (for Linux/MacOS)
+## Remotes
 
-The client works with any java version between Java 17 - Java 21, *BUT 21 IS HIGHLY RECOMMENDED*    
-I've also been playing on GraalVM 21 (some different open-source java distribution based on OpenJDK),
-and I seem to get like 15-20 extra FPS out of the client.
+- `origin` — this repo (our fork).
+- `upstream` — `https://github.com/Nightdawg/Hurricane.git` (releases are fetched
+  shallowly, on demand, by the update script).
 
-### If the client doesn't launch:
-1. Make sure your installed Java version is between 17 and 21, *21 IS HIGHLY RECOMMENDED*
-2. You might need to add the launcher file (Play.bat or Play_Linux.sh) to your anti-virus exceptions list.
+## Building & playing
 
-
-## This client also supports Cediner's Web Map server (you set up your own private map server, it's not a public map):
-https://github.com/Cediner/hnh-map-vuetify
-
-## OR you can use dafels' Mapping service (or set up your own private map server):
-https://www.havenandhearth.com/forum/viewtopic.php?f=49&t=79701
-
-## Additionally, the client also supports the cookbook integration (disabled by default).
-You can either use a token from a public cookbook, or host your own (for example, https://github.com/Cediner/hnh-food-book)
+Requires JDK 21 and Apache Ant. `.\update-and-play.ps1` resolves both, builds with
+Ant, and launches via `bin\Play.bat`. See Hurricane's own docs for base-client
+details.
