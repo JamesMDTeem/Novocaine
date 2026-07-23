@@ -104,7 +104,7 @@ if (-not $SkipUpdate) {
     $patch = Join-Path $env:TEMP "hurricane-alchemy-$(Get-Date -Format yyyyMMdd-HHmmss).patch"
     # This script is included deliberately: it is tracked in the fork but absent from
     # upstream, so the checkout below would delete it. The patch puts it back.
-    git diff vendor-baseline..alchemy -- src tools update-and-play.ps1 | Out-File -FilePath $patch -Encoding utf8
+    git diff vendor-baseline..alchemy -- src tools update-and-play.ps1 README.md | Out-File -FilePath $patch -Encoding utf8
     if (-not (Test-Path $patch) -or (Get-Item $patch).Length -eq 0) { Die 'The fork patch came out empty.' }
     Ok "patch = $patch"
 
