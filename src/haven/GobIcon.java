@@ -817,7 +817,7 @@ public class GobIcon extends GAttrib {
 
 	    protected boolean searchmatch(ListIcon icon, String text) {
 		return((icon.name != null) &&
-		       (icon.name.toLowerCase().indexOf(text.toLowerCase()) >= 0));
+		       Fuzzy.fuzzyContains(icon.name.toLowerCase(Locale.ROOT), text.toLowerCase(Locale.ROOT)));
 	    }
 
 		@Override
@@ -1095,15 +1095,16 @@ public class GobIcon extends GAttrib {
 		newPresetName = new TextEntry(UI.scale(120), ""){
 			public boolean keydown(KeyDownEvent e) {
 				if(e.awt.getKeyCode() == KeyEvent.VK_ESCAPE) {
-					setfocus(SettingsWindow.this.cont);
-				}
-				return(buf.key(e.awt));
+					setfocus(SettingsWindow.this.list);
+					return(true);
+				} else
+					return(buf.key(e.awt));
 			}
 		};
 		left.last(new Button(UI.scale(170), "Save New Preset", false).action(() -> {
 			if (newPresetName.text().equals(""))
 				ui.gui.error("Please set a name for the new map icons preset!");
-			else if (newPresetName.text().trim().length() == 0)
+			else if (newPresetName.text().trim().isEmpty())
 				ui.gui.error("Brother don't just use a bunch of spaces as the preset name, that's stupid. Give it a nice name.");
 			else if (mapIconPresets.keySet().stream().anyMatch(newPresetName.text()::equals)) {
 //					ui.gui.error("A preset named " + "\"" + newPresetName.text() + "\"" + " already exists. Please choose a different name, or delete the old one.");
@@ -1153,12 +1154,13 @@ public class GobIcon extends GAttrib {
 				};
 				ui.gui.add(confirmOverwriteWnd, new Coord((ui.gui.sz.x - confirmOverwriteWnd.sz.x) / 2, (ui.gui.sz.y - confirmOverwriteWnd.sz.y*3) / 2));
 				confirmOverwriteWnd.show();
+				setfocus(SettingsWindow.this.list);
 			} else {
 				iconCategoriesList.change(GobIconCategoryList.GobCategory.ALL);
-
 				if (future != null)
 					future.cancel(true);
 				future = executor.scheduleWithFixedDelay(this::savePreset, 200, 300, TimeUnit.MILLISECONDS);
+				setfocus(SettingsWindow.this.list);
 			}
 		}), UI.scale(10));
 
