@@ -82,6 +82,15 @@ build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
       "Configure the LP assistant: discovery markers, harvest overlays, the auto-LP bot's "
       "felling/eating rules and search radius, and the per-character LP-log reset.")
 
+# The Auto-LP bot window (Start/Stop, status).
+build("Bots/FishingBot.res",
+      "NurglingImports/AutoLpBot.res",
+      "customclient/menugrid/NurglingImports", "Auto LP Bot", 0,
+      ["custom", "NurglingImports", "AutoLpBot"],
+      "Walks to whatever nearby thing would yield an LP product this character hasn't "
+      "discovered yet (picks, mines, processes; felling only if enabled), and repeats until "
+      "nothing reachable is left. Configure in the LP Assistant Manager.")
+
 # Quick on/off toggle for the whole LP assistant.
 build("Toggles/HighlightCliffs.res",
       "NurglingImports/LpAssistantToggle.res",

@@ -824,6 +824,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/QuickSwitchFromBelt/Equip_RangersBow");
 
 		// Category: Nurgling Imports
+		makeLocal("customclient/menugrid/NurglingImports/AutoLpBot");
 		makeLocal("customclient/menugrid/NurglingImports/LpAssistantManager");
 		makeLocal("customclient/menugrid/NurglingImports/LpAssistantToggle");
 
@@ -1147,7 +1148,21 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		} else if (ad[1].equals("CombatDecks")) {
 			gui.changeCombatDeck(Integer.parseInt(ad[2])-1);
 		} else if (ad[1].equals("NurglingImports")) { // Category: Nurgling Imports
-			if (ad[2].equals("LpAssistantManager")) {
+			if (ad[2].equals("AutoLpBot")) {
+				if (gui.autoLpBot == null && gui.autoLpThread == null) {
+					gui.autoLpBot = new haven.automated.lp.AutoLpBot(gui);
+					gui.add(gui.autoLpBot, Utils.getprefc("wndc-autoLpBotWindow", new Coord(gui.sz.x/2 - gui.autoLpBot.sz.x/2, gui.sz.y/2 - gui.autoLpBot.sz.y/2 - 200)));
+					gui.autoLpThread = new Thread(gui.autoLpBot, "AutoLpBot");
+					gui.autoLpThread.start();
+				} else {
+					if (gui.autoLpBot != null) {
+						gui.autoLpBot.stop();
+						gui.autoLpBot.reqdestroy();
+						gui.autoLpBot = null;
+						gui.autoLpThread = null;
+					}
+				}
+			} else if (ad[2].equals("LpAssistantManager")) {
 				if (gui.lpAssistantManager == null) {
 					gui.lpAssistantManager = new haven.automated.lp.LpAssistantManagerWindow(gui);
 					gui.add(gui.lpAssistantManager, Utils.getprefc("wndc-lpAssistantManagerWindow", new Coord(gui.sz.x/2 - gui.lpAssistantManager.sz.x/2, gui.sz.y/2 - gui.lpAssistantManager.sz.y/2 - 200)));
