@@ -1,40 +1,49 @@
-# Generates src/haven/automated/lp/LpSpec.java from nurgling2 VSpec.java data.
-# Phase 1 writes the file; phase 2 rechunks the object block at species boundaries
-# so no ArrayList local is split from its object.put() across method borders.
-# Usage: python tools/gen-lpspec.py   (expects the nurgling2 checkout at the path below)
+# Generates src/haven/automated/lp/LpSpec.java from nurgling2's VSpec.java data tables.
+# Phase 1 extracts the object/categories data and writes the file; phase 2 rechunks the
+# object block at species-group boundaries so no ArrayList local is ever split from its
+# object.put() across method borders (each init method stays under the 64KB bytecode limit).
+# Usage: python tools/gen-lpspec.py   (expects the nurgling2 checkout at NURGLING below)
+
 import re, io
 
-src = open(r"C:\Users\james\Desktop\Haven\Clients\nurgling2\src\nurgling\tools\VSpec.java", encoding="utf-8", errors="replace").readlines()
+NURGLING = r"C:\Users\james\Desktop\Haven\Clients\nurgling2\src\nurgling\tools\VSpec.java"
+TARGET = r"C:\Users\james\Desktop\Haven\Clients\Novocaine\src\haven\automated\lp\LpSpec.java"
 
-# --- object block: from first 'static {' to the line before 'static {' of categories ---
-start = next(i for i,l in enumerate(src) if l.strip()=="static {")
-# find matching close: track braces
-depth=0; end=None
+# ---------------- phase 1: extract ----------------
+src = open(NURGLING, encoding="utf-8", errors="replace").readlines()
+
+start = next(i for i, l in enumerate(src) if l.strip() == "static {")
+depth = 0
+end = None
 for i in range(start, len(src)):
     depth += src[i].count("{") - src[i].count("}")
-    if depth==0 and i>start: end=i; break
-obj_lines = src[start+1:end]
-# strip non-ascii comments, keep code
-clean=[]
+    if depth == 0 and i > start:
+        end = i
+        break
+obj_lines = src[start + 1:end]
+
+clean = []
 for l in obj_lines:
     code = l.rstrip("\n")
     if "//" in code:
         code = code.split("//")[0].rstrip()
-        if not code.strip(): continue
-    if code.strip(): clean.append(code)
+        if not code.strip():
+            continue
+    if code.strip():
+        clean.append(code)
 
-# --- categories: extract (name, static) pairs and per-category name lists ---
-pairs=[]; cats={}
-cur=[]; text="".join(src)
+pairs = []
+cats = {}
+text = "".join(src)
 for m in re.finditer(r'(\w+)\.add\(new JSONObject\("(\{.*?\})"\)\);', text):
-    var, js = m.group(1), m.group(2).replace('\\"','"')
+    var, js = m.group(1), m.group(2).replace('\\"', '"')
     nm = re.search(r'"name":"([^"]+)"', js)
     st = re.search(r'"static":"([^"]+)"', js)
     if nm:
         cats.setdefault(var, []).append(nm.group(1))
-        if st: pairs.append((nm.group(1), st.group(1)))
-# map var name -> category key from categories.put("Key", var)
-varkey={}
+        if st:
+            pairs.append((nm.group(1), st.group(1)))
+varkey = {}
 for m in re.finditer(r'categories\.put\("([^"]+)",\s*(\w+)\);', text):
     varkey[m.group(2)] = m.group(1)
 
@@ -62,34 +71,38 @@ public class LpSpec {
     public static final HashMap<String, String> productIcon = new HashMap<>();
     public static final HashMap<String, ArrayList<String>> category = new HashMap<>();
 
-    private static Map1(){}
-""".replace("    private static Map1(){}\n",""))
+""")
 
-# object init, chunked to stay far under the 64KB bytecode-per-method limit
-chunk=250; n=0; funcs=[]
+chunk = 250
+n = 0
+funcs = []
 for i in range(0, len(clean), chunk):
-    n+=1; funcs.append(f"initObject{n}")
+    n += 1
+    funcs.append(f"initObject{n}")
     out.write(f"    private static void initObject{n}() {{\n")
-    for l in clean[i:i+chunk]:
-        out.write("    "+l+"\n")
+    for l in clean[i:i + chunk]:
+        out.write("    " + l + "\n")
     out.write("    }\n\n")
 
 out.write("    private static void initIcons() {\n")
-seen=set()
-for nm,st in pairs:
-    if nm in seen: continue
+seen = set()
+for nm, st in pairs:
+    if nm in seen:
+        continue
     seen.add(nm)
     out.write(f'        productIcon.put("{nm}", "{st}");\n')
 out.write("    }\n\n")
 
 out.write("    private static void initCategories() {\n")
-for var,names in cats.items():
+for var, names in cats.items():
     key = varkey.get(var)
-    if not key: continue
+    if not key:
+        continue
     lst = ", ".join(f'"{x}"' for x in dict.fromkeys(names))
     out.write(f'        category.put("{key}", new ArrayList<>(Arrays.asList({lst})));\n')
 out.write("    }\n\n    static {\n")
-for f in funcs: out.write(f"        {f}();\n")
+for f in funcs:
+    out.write(f"        {f}();\n")
 out.write("        initIcons();\n        initCategories();\n    }\n")
 
 out.write("""
@@ -104,7 +117,71 @@ out.write("""
     }
 }
 """)
-open(r"C:\Users\james\Desktop\Haven\Clients\Novocaine\src\haven\automated\lp\LpSpec.java","w",encoding="utf-8").write(out.getvalue())
-print("object lines:", len(clean), "| icon pairs:", len(seen), "| categories:", len(varkey))
+open(TARGET, "w", encoding="utf-8").write(out.getvalue())
+print("phase 1: object lines:", len(clean), "| icon pairs:", len(seen), "| categories:", len(varkey))
 
-# ---- phase 2: rechunk at species-group boundaries ----
+# ------- phase 2: rechunk object block at species-group boundaries -------
+lines = open(TARGET, encoding="utf-8").read().splitlines()
+body = []
+in_m = False
+for l in lines:
+    if re.match(r'    private static void initObject\d+\(\) \{', l):
+        in_m = True
+        continue
+    if in_m and l == "    }":
+        in_m = False
+        continue
+    if in_m:
+        body.append(l[4:] if l.startswith("    ") else l)
+
+groups = []
+cur = []
+for l in body:
+    if re.match(r'\s*ArrayList<String> \w+ = new ArrayList<>\(\);', l) and cur:
+        groups.append(cur)
+        cur = []
+    cur.append(l)
+if cur:
+    groups.append(cur)
+
+methods = []
+cur = []
+count = 0
+for g in groups:
+    if count + len(g) > 200 and cur:
+        methods.append(cur)
+        cur = []
+        count = 0
+    cur.extend(g)
+    count += len(g)
+if cur:
+    methods.append(cur)
+
+head = []
+tail = []
+state = 0
+for l in lines:
+    if state == 0:
+        if re.match(r'    private static void initObject1\(\) \{', l):
+            state = 1
+            continue
+        head.append(l)
+    elif state == 1:
+        if l == "    private static void initIcons() {":
+            state = 2
+            tail.append(l)
+    else:
+        tail.append(l)
+
+mid = []
+for i, m in enumerate(methods, 1):
+    mid.append(f"    private static void initObject{i}() {{")
+    mid.extend("    " + x for x in m)
+    mid.append("    }")
+    mid.append("")
+
+out2 = "\n".join(head + mid + tail) + "\n"
+out2 = re.sub(r'(    static \{\n)(?:        initObject\d+\(\);\n)+',
+              r'\1' + "".join(f"        initObject{i}();\n" for i in range(1, len(methods) + 1)), out2)
+open(TARGET, "w", encoding="utf-8").write(out2)
+print(f"phase 2: {len(methods)} object-init methods")
