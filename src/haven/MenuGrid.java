@@ -823,6 +823,10 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/QuickSwitchFromBelt/Equip_HuntersBow");
 		makeLocal("customclient/menugrid/QuickSwitchFromBelt/Equip_RangersBow");
 
+		// Category: Nurgling Imports
+		makeLocal("customclient/menugrid/NurglingImports/LpAssistantManager");
+		makeLocal("customclient/menugrid/NurglingImports/LpAssistantToggle");
+
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck2");
@@ -1142,6 +1146,20 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 			new Thread(new EquipFromBelt(gui, ad[2]), "EquipFromBelt").start();
 		} else if (ad[1].equals("CombatDecks")) {
 			gui.changeCombatDeck(Integer.parseInt(ad[2])-1);
+		} else if (ad[1].equals("NurglingImports")) { // Category: Nurgling Imports
+			if (ad[2].equals("LpAssistantManager")) {
+				if (gui.lpAssistantManager == null) {
+					gui.lpAssistantManager = new haven.automated.lp.LpAssistantManagerWindow(gui);
+					gui.add(gui.lpAssistantManager, Utils.getprefc("wndc-lpAssistantManagerWindow", new Coord(gui.sz.x/2 - gui.lpAssistantManager.sz.x/2, gui.sz.y/2 - gui.lpAssistantManager.sz.y/2 - 200)));
+				} else {
+					gui.lpAssistantManager.reqdestroy();
+					gui.lpAssistantManager = null;
+				}
+			} else if (ad[2].equals("LpAssistantToggle")) {
+				boolean on = !haven.automated.lp.LpConfig.on(haven.automated.lp.LpConfig.Key.lpassistent);
+				haven.automated.lp.LpConfig.set(haven.automated.lp.LpConfig.Key.lpassistent, on);
+				gui.msg("LP Assistant is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? java.awt.Color.GREEN : java.awt.Color.RED);
+			}
 		}
 	}
 }

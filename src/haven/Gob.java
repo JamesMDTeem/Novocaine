@@ -84,6 +84,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	GobReadyForHarvestInfo readyForHarvestInfo;
 	GobFoodWaterInfo foodWaterInfo;
 	GobBeeskepHarvestInfo beeskepHarvestInfo;
+	GobLpDiscoveryInfo lpDiscoveryInfo;
 	public boolean isHidden;
 	private final GobCustomSizeAndRotation customSizeAndRotation = new GobCustomSizeAndRotation();
 	public double gobSpeed = 0;
@@ -1302,6 +1303,16 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 			if (res.name.equals("gfx/terobjs/beehive") && beeskepHarvestInfo == null) {
 				beeskepHarvestInfo = new GobBeeskepHarvestInfo(this);
 				setattr(GobBeeskepHarvestInfo.class, beeskepHarvestInfo);
+			}
+			if (lpDiscoveryInfo == null) {
+				// Any gob type the LP-discovery data covers: trees/bushes (including unknown new
+				// species, which the specs flag with a "?"), logs, stones, herbs, kritters.
+				String lpNorm = haven.automated.lp.HarvestState.normalizeBumlingRes(res.name);
+				if (haven.automated.lp.HarvestSpecs.forResource(lpNorm) != null
+						|| haven.automated.lp.LpSpec.object.containsKey(lpNorm)) {
+					lpDiscoveryInfo = new GobLpDiscoveryInfo(this);
+					setattr(GobLpDiscoveryInfo.class, lpDiscoveryInfo);
+				}
 			}
 		}
 		updateCustomIcons();
@@ -2549,6 +2560,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		if (readyForHarvestInfo != null) readyForHarvestInfo.clear();
 		if (foodWaterInfo != null) foodWaterInfo.clear();
 		if (beeskepHarvestInfo != null) beeskepHarvestInfo.clear();
+		if (lpDiscoveryInfo != null) lpDiscoveryInfo.clear();
 		if (barrelContentsGobInfo != null) barrelContentsGobInfo.clear();
 		if (cheeseRackInfo != null) cheeseRackInfo.clear();
 		if (iconSignGobInfo != null) iconSignGobInfo.clear();

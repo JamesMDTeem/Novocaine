@@ -112,7 +112,7 @@ if (-not $SkipUpdate) {
     # upstream, so the checkout below would delete it. The patch puts it back.
     # cmd redirection keeps the patch as the raw bytes git emitted; PowerShell
     # redirection would re-encode it with a BOM, which git apply rejects.
-    cmd /c "git diff vendor-baseline..alchemy -- src tools update-and-play.ps1 README.md > `"$patch`""
+    cmd /c "git diff vendor-baseline..alchemy -- src tools res update-and-play.ps1 README.md > `"$patch`""
     if (-not (Test-Path $patch) -or (Get-Item $patch).Length -eq 0) { Die 'The fork patch came out empty.' }
     Ok "patch = $patch"
 
@@ -176,13 +176,13 @@ if (-not $SkipUpdate) {
         Warn 'The patch did not apply cleanly. Upstream has probably changed a line the fork touches.'
         Warn "Patch kept at: $patch"
         Warn 'Resolve the conflicts, then finish by hand:'
-        Warn '  git add -- src tools update-and-play.ps1 README.md'
+        Warn '  git add -- src tools res update-and-play.ps1 README.md'
         Warn "  git commit -m `"Re-apply Novocaine fork on $Tag`""
         Warn "  git tag -f vendor-baseline $baseline ; git tag -f alchemy HEAD"
         Warn '  git push origin master ; git push -f origin vendor-baseline alchemy'
         Die 'Stopping before build so a half-patched client is never launched.'
     }
-    git add -- src tools update-and-play.ps1 README.md
+    git add -- src tools res update-and-play.ps1 README.md
     git commit -q -m "Re-apply Novocaine fork on $Tag"
     git tag -f vendor-baseline $baseline
     git tag -f alchemy HEAD

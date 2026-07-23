@@ -189,6 +189,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public RoastingSpitBot roastingSpitBot;
 	public Thread roastingSpitThread;
 	public FishingBot fishingBot;
+	public haven.automated.lp.LpAssistantManagerWindow lpAssistantManager;
 	public Thread fishingThread;
 
     public static abstract class BeltSlot {
