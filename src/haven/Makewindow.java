@@ -153,6 +153,37 @@ public class Makewindow extends Widget {
 	this.rcpnm = rcpnm;
     }
 
+    /**
+     * Whether this recipe has never been crafted on this character, and so should be worth
+     * discovery LP. Purely client-side knowledge - see LpLog.addCraftedRecipe - so on a
+     * character that predates the tracking this reads true for everything until each recipe is
+     * made once.
+     */
+    public boolean isUncraftedRecipe() {
+	if(!haven.automated.lp.LpExplorer.isEnabled() || rcpnm == null)
+	    return false;
+	haven.automated.lp.LpLog log = haven.automated.lp.LpContext.log();
+	return (log != null) && !log.isRecipeCrafted(rcpnm);
+    }
+
+    /**
+     * Every craft path - the two buttons and their keybindings - ends in a "make" message from
+     * this widget, so intercepting it here records the recipe once no matter which was used.
+     * Records on the ATTEMPT, not on a confirmed result: a craft that fails for want of
+     * ingredients still marks the recipe. Distinguishing them would mean watching for the output
+     * item to appear and attributing it back to this window, which costs more than it's worth
+     * for a hint that only has to be roughly right.
+     */
+    @Override
+    public void wdgmsg(String msg, Object... args) {
+	if("make".equals(msg)) {
+	    haven.automated.lp.LpLog log = haven.automated.lp.LpContext.log();
+	    if(log != null)
+		log.addCraftedRecipe(rcpnm);
+	}
+	super.wdgmsg(msg, args);
+    }
+
     private Spec parsespec(Object[] desc) {
 	int a = 0;
 	Indir<Resource> res = ui.sess.getresv(desc[a++]);
@@ -215,8 +246,11 @@ public class Makewindow extends Widget {
 		    outputs.add(parsespec(OBJS.of(args[i])));
 	    }
 	    List<SpecWidget> wdgs = new ArrayList<>();
-	    for(Spec spec : outputs)
-		wdgs.add(new SpecWidget(spec));
+	    for(Spec spec : outputs) {
+		SpecWidget sw = new SpecWidget(spec);
+		sw.output = true;
+		wdgs.add(sw);
+	    }
 	    synchronized(ui) {
 		for(Widget w : this.outputs)
 		    w.destroy();
@@ -265,6 +299,7 @@ public class Makewindow extends Widget {
     public static class SpecWidget extends Widget {
 	public final Spec spec;
 	public final boolean opt;
+	public boolean output = false;
 	public Tex num;
 
 	public SpecWidget(Spec spec) {
@@ -302,6 +337,13 @@ public class Makewindow extends Widget {
 	public void draw(GOut g) {
 	    drawbg(g);
 	    drawicon(g);
+	    // Same translucent green the LP overlays use for an undiscovered product, so a
+	    // never-crafted recipe's output reads as the same kind of "there's LP in this" hint.
+	    if(output && (parent instanceof Makewindow) && ((Makewindow)parent).isUncraftedRecipe()) {
+		g.chcolor(haven.automated.lp.LpIcons.LP_UNDISCOVERED_TINT);
+		g.frect(Coord.z, invsq.sz());
+		g.chcolor();
+	    }
 	}
 
 //	private double hoverstart;
