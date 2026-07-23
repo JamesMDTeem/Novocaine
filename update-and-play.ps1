@@ -10,8 +10,9 @@
 
         vendor-baseline .. alchemy
 
-    Updating therefore means: check out the upstream release, re-apply that patch,
-    rebuild. Nothing has to be merged by hand unless upstream edits the same line of
+    Updating therefore means: check out the upstream release, record it as a source
+    baseline commit on master, re-apply that patch, re-tag, push to origin, rebuild.
+    Nothing has to be merged by hand unless upstream edits the same line of
     GameUI.tick, which the script reports rather than guesses at.
 
     Upstream tracks the jars and resources this install also holds as untracked files,
@@ -100,11 +101,18 @@ if (-not $SkipUpdate) {
     }
     Ok "target = $Tag"
 
+    if ((git log -1 --format=%s vendor-baseline) -eq "Hurricane $Tag source baseline") {
+        Step "Already based on $Tag"
+        Ok 'nothing to update; building what is checked out'
+    } else {
+
     Step 'Saving the fork as a patch'
-    $patch = Join-Path $env:TEMP "hurricane-alchemy-$(Get-Date -Format yyyyMMdd-HHmmss).patch"
+    $patch = Join-Path $env:TEMP "novocaine-fork-$(Get-Date -Format yyyyMMdd-HHmmss).patch"
     # This script is included deliberately: it is tracked in the fork but absent from
     # upstream, so the checkout below would delete it. The patch puts it back.
-    git diff vendor-baseline..alchemy -- src tools update-and-play.ps1 README.md | Out-File -FilePath $patch -Encoding utf8
+    # cmd redirection keeps the patch as the raw bytes git emitted; PowerShell
+    # redirection would re-encode it with a BOM, which git apply rejects.
+    cmd /c "git diff vendor-baseline..alchemy -- src tools update-and-play.ps1 README.md > `"$patch`""
     if (-not (Test-Path $patch) -or (Get-Item $patch).Length -eq 0) { Die 'The fork patch came out empty.' }
     Ok "patch = $patch"
 
@@ -113,8 +121,12 @@ if (-not $SkipUpdate) {
     # them with the upstream copies.
     $backup = Join-Path $repo ".pre-update-backup\$(Get-Date -Format yyyyMMdd-HHmmss)"
     New-Item -ItemType Directory -Force -Path $backup | Out-Null
-    foreach ($f in @('hitboxes.db', 'static_data.db')) {
-        if (Test-Path $f) { Copy-Item $f $backup -Force; Ok "backed up $f" }
+    foreach ($f in @('hitboxes.db', 'static_data.db', 'Release\hitboxes.db', 'Release\static_data.db')) {
+        if (Test-Path $f) {
+            $dest = Join-Path $backup $f
+            New-Item -ItemType Directory -Force -Path (Split-Path $dest) | Out-Null
+            Copy-Item $f $dest -Force; Ok "backed up $f"
+        }
     }
 
     Step "Fetching $Tag from upstream"
@@ -134,22 +146,62 @@ if (-not $SkipUpdate) {
     if ($LASTEXITCODE -ne 0) { Die "Checkout of $Tag failed." }
     Ok 'source tree now matches upstream'
 
-    Step 'Re-applying the alchemy changes'
+    Step "Committing the $Tag source baseline on master"
+    # The upstream fetch is shallow, so history built directly on it can never be
+    # pushed to origin. Instead the release is recorded the way the original
+    # "Hurricane 1.65 source baseline" was: a snapshot commit on our own master,
+    # filtered by the fork's .gitignore so the binary payload (jars, res, Release)
+    # stays as untracked working-directory files.
+    git show master:.gitignore | Set-Content -Path .gitignore -Encoding Ascii
+    $payload = Join-Path $env:TEMP 'novocaine-payload.list'
+    cmd /c "git ls-files --cached --ignored --exclude-standard -z > `"$payload`""
+    if ((Get-Item $payload).Length -gt 0) {
+        git rm --cached -q --pathspec-from-file="$payload" --pathspec-file-nul
+    }
+    git add .gitignore
+    $tree = git write-tree
+    $baseline = git commit-tree $tree -p master -m "Hurricane $Tag source baseline"
+    if (-not $baseline) { Die 'Could not create the baseline commit.' }
+    # master is checked out, so it cannot be branch -f'd; point HEAD back at it and
+    # reset. --mixed on purpose: the working tree (full payload) must stay put.
+    git symbolic-ref HEAD refs/heads/master
+    git reset -q $baseline
+    Ok "baseline = $baseline"
+
+    Step 'Re-applying the Novocaine fork'
     # --3way lets git resolve against blob context, so an upstream edit near our hook
     # still applies. A genuine clash stops here rather than producing a broken build.
     git apply --3way --whitespace=nowarn $patch
     if ($LASTEXITCODE -ne 0) {
         Warn 'The patch did not apply cleanly. Upstream has probably changed a line the fork touches.'
         Warn "Patch kept at: $patch"
-        Warn 'Resolve the conflicts, commit, then re-tag with:  git tag -f alchemy HEAD'
+        Warn 'Resolve the conflicts, then finish by hand:'
+        Warn '  git add -- src tools update-and-play.ps1 README.md'
+        Warn "  git commit -m `"Re-apply Novocaine fork on $Tag`""
+        Warn "  git tag -f vendor-baseline $baseline ; git tag -f alchemy HEAD"
+        Warn '  git push origin master ; git push -f origin vendor-baseline alchemy'
         Die 'Stopping before build so a half-patched client is never launched.'
     }
-    Ok 'fork re-applied'
+    git add -- src tools update-and-play.ps1 README.md
+    git commit -q -m "Re-apply Novocaine fork on $Tag"
+    git tag -f vendor-baseline $baseline
+    git tag -f alchemy HEAD
+    Ok 'fork re-applied; vendor-baseline and alchemy tags moved'
+
+    Step 'Pushing to origin'
+    # master only moves forward (each baseline's parent is the previous tip), but
+    # the two workflow tags are rewritten on every update.
+    git push -q origin master
+    if ($LASTEXITCODE -ne 0) { Warn 'Could not push master; run "git push origin master" when back online.' }
+    git push -q -f origin vendor-baseline alchemy
+    if ($LASTEXITCODE -ne 0) { Warn 'Could not push tags; run "git push -f origin vendor-baseline alchemy" when back online.' }
 
     Step 'Restoring local databases'
-    foreach ($f in @('hitboxes.db', 'static_data.db')) {
+    foreach ($f in @('hitboxes.db', 'static_data.db', 'Release\hitboxes.db', 'Release\static_data.db')) {
         $saved = Join-Path $backup $f
         if (Test-Path $saved) { Copy-Item $saved (Join-Path $repo $f) -Force; Ok "restored $f" }
+    }
+
     }
 } else {
     Step 'Skipping update (-SkipUpdate)'
