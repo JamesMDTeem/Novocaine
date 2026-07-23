@@ -382,6 +382,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	this.chrid = chrid;
 	this.plid = plid;
 	this.genus = genus;
+	haven.automated.lp.LpContext.bind(this);
+	haven.automated.lp.NLog.installUncaughtHandler();
 	setcanfocus(true);
 	setfocusctl(true);
 	chat = new ChatUI();
@@ -1589,6 +1591,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public void tick(double dt) {
 	super.tick(dt);
 	haven.automated.alchemy.AlchemyService.poll(ui, dt);
+	haven.automated.lp.LpContext.tick();
 	double now = Utils.rtime();
 	if(now - lastwndsave > 60) {
 	    savewndpos();
