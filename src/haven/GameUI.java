@@ -1588,6 +1588,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private double lastwndsave = 0;
     public void tick(double dt) {
 	super.tick(dt);
+	haven.automated.alchemy.AlchemyService.poll(ui, dt);
 	double now = Utils.rtime();
 	if(now - lastwndsave > 60) {
 	    savewndpos();
