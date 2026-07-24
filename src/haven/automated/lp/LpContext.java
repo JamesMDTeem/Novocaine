@@ -61,10 +61,25 @@ public class LpContext {
         }
     }
 
-    /** Called every frame from GameUI.tick: persists pending discoveries. */
+    // Last observed Yesteryear season state, so a season flip can bump the marker generation
+    // (which drives an immediate marker re-render) instead of every marker polling the season on
+    // a short timer. -1 = not yet sampled.
+    private static int lastYesteryear = -1;
+
+    /** Called every frame from GameUI.tick: persists pending discoveries, watches the season. */
     public static void tick() {
         LpLog l = log;
         if (l != null)
             l.flushIfDirty();
+
+        // A season boundary changes which seasonal fruit variant (normal vs "Yesteryear's ") is
+        // current, so markers must recompute - but it happens a few times a year, far too rarely
+        // to justify a per-marker per-second season check. Sample it once here and nudge the
+        // generation only on an actual flip.
+        int y = HarvestState.isYesteryearSeason() ? 1 : 0;
+        if (y != lastYesteryear) {
+            lastYesteryear = y;
+            LpExplorer.bumpGeneration();
+        }
     }
 }

@@ -118,8 +118,12 @@ public class LpPlanner {
         if (isTree && LpExplorer.hasUndiscoveredBarkProduct(gobResName))
             opts.add("Take bark");
         LpExplorer.UndiscoveredCategories cats = LpExplorer.undiscoveredCategories(gobResName);
-        if (cats.bough)
+        if (cats.bough) {
+            // Most species offer "Take bough"; a few (olive) offer "Take branch" for the same
+            // category. Both are candidates - the executor takes whichever the live menu has.
             opts.add("Take bough");
+            opts.add("Take branch");
+        }
         if (cats.leaf)
             opts.add("Pick leaf");
         if (cats.seed)

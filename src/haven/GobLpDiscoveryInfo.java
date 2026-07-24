@@ -22,18 +22,25 @@ import java.util.List;
  *    all tinted - and nothing at all once everything is found.
  *
  * Discovery state, season, and the live seed/leaf bitmask all change out from under the cached
- * tex. A discovery re-renders immediately (LpExplorer.generation() changes the instant one is
- * recorded, so a picked item's icon clears at once); season and the live bitmask fall back to a
- * short timer, since neither warrants per-frame recomputation.
+ * tex. Re-render is driven by LpExplorer.generation() - bumped the instant a discovery is
+ * recorded, a config toggle happens, or the season flips - so those show up immediately. The
+ * only thing generation doesn't cover is a single tree quietly growing/losing its fruit layer
+ * (the live sdt bitmask), so a slow fallback timer catches that; it's deliberately long AND
+ * staggered per gob (by id) so hundreds of markers never all recompute on the same frame, which
+ * is what made loading many objects hitch. The composed image itself is cached in LpExplorer, so
+ * even a generation bump that clears every marker at once is mostly cache hits, not GPU uploads.
  */
 public class GobLpDiscoveryInfo extends GobInfo {
-    private static final double REFRESH_SECONDS = 1.0;
-    private double sinceRefresh = 0;
+    private static final double REFRESH_SECONDS = 6.0;
+    private double sinceRefresh;
     private int lastGen = -1;
 
     protected GobLpDiscoveryInfo(Gob owner) {
         super(owner);
         up(4);
+        // Stagger the first fallback tick across [0, REFRESH_SECONDS) by gob id, so a screen full
+        // of markers spreads its fallback recomputes over time instead of bunching on one frame.
+        sinceRefresh = -(Math.floorMod(owner.id, 6000) / 1000.0);
     }
 
     @Override

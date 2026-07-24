@@ -98,6 +98,10 @@ public class HarvestState {
         boughs.put("yew", "gfx/invobjs/bough-yew");
         boughs.put("beech", "gfx/invobjs/bough-beech");
         boughs.put("poplar", "gfx/invobjs/bough-poplar");
+        // Olive's bough is the game item "Olive Branch" (menu "Take branch"), with its own
+        // dedicated icon rather than a "bough-<species>" one - so a bough here resolves to the
+        // branch icon instead of the tree's seed (olive) icon.
+        boughs.put("olivetree", "gfx/invobjs/branch-olive");
         BOUGHS_MAP = Collections.unmodifiableMap(boughs);
 
         Map<String, String> barks = new HashMap<>();

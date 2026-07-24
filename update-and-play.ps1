@@ -64,8 +64,14 @@ if (-not $java) {
     Warn 'then close this window and run update-and-play.ps1 again.'
     Die 'java not found on PATH.'
 }
-$javaVersionLine = ((& $java.Source -version) 2>&1 | Select-Object -First 1) -join ' '
-if ($javaVersionLine -notmatch '"(1[7-9]|2[0-1])\.') {
+# `java -version` prints to STDERR. Redirecting that stderr inside PowerShell (2>&1 or
+# 2>file) makes PS 5.1 wrap it in a TERMINATING NativeCommandError under
+# $ErrorActionPreference='Stop', killing the script on a perfectly good JDK (as a friend
+# hit: openjdk 21.0.11 aborted the script). Letting cmd.exe do the merge means PowerShell
+# only ever receives plain stdout text, never an error record - bulletproof regardless of EAP.
+$javaVerRaw = cmd /c "`"$($java.Source)`" -version 2>&1"
+$javaVersionLine = ($javaVerRaw | Select-Object -First 1)
+if ($javaVersionLine -notmatch '"(1[7-9]|2[01])[."]') {
     Warn "Detected Java version doesn't look like 17-21 (found: $javaVersionLine)"
     Warn 'The client is only tested on Java 17-21; a much older or newer JDK may fail to build or run.'
 }

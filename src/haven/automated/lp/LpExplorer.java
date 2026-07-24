@@ -75,6 +75,11 @@ public class LpExplorer {
     // immediately.
     private static final Map<String, TexI> markerIconCache = new ConcurrentHashMap<>();
 
+    // Composed multi-product marker images, keyed by (resource, product set, season) - see
+    // getMarkerIcon(Gob, List). Shared across every marker of the same species/state so a
+    // re-render (bulk load, overlay toggle) is a cheap cache hit, not a fresh GPU upload.
+    private static final Map<String, TexI> composedMarkerCache = new ConcurrentHashMap<>();
+
     // Bumped whenever the set of undiscovered products could have changed (a discovery recorded,
     // a reset, a character switch). The per-gob marker overlay watches this so it can re-render
     // the instant something is found instead of on a fixed timer - which is what made picked
@@ -100,6 +105,7 @@ public class LpExplorer {
         fullyDiscoveredResources.clear();
         fullyDiscoveredCacheSeason = -1;
         markerIconCache.clear();
+        composedMarkerCache.clear();
         generation++;
         LpIcons.clearLabelCache();
     }
@@ -342,7 +348,12 @@ public class LpExplorer {
     }
 
     private static boolean isBoughProduct(String product) {
-        return product.contains("Bough");
+        // Most species name this product "<Species> Bough", but a few (olive) call it
+        // "<Species> Branch" and offer it via a "Take branch" menu option. Both are the same
+        // bough category. Without the Branch case, "Olive Branch" fell through to the seed
+        // branch and got drawn with the tree's seed (olive) icon - so an olive tree showed the
+        // olive icon twice (once for "Olive", once for the mis-typed "Olive Branch").
+        return product.contains("Bough") || product.contains("Branch");
     }
 
     private static List<String> undiscoveredProductsMatching(String gobResName, Predicate<String> category) {
@@ -407,6 +418,17 @@ public class LpExplorer {
         if (products.isEmpty())
             return null;
 
+        // The composed+tinted image depends only on (resource, exact product set, season) - not
+        // on the specific gob instance - so every marker of the same species and discovery state
+        // shares one TexI. Without this, EVERY marker rebuilt and re-uploaded its own texture to
+        // the GPU on every re-render, which is what spiked the frame when many objects loaded at
+        // once or the overlay was toggled (a toggle re-renders every marker on one frame). The
+        // key changes as products are discovered, so a stale composition is never reused.
+        String key = name + '|' + String.join(",", products) + '|' + (HarvestState.isYesteryearSeason() ? 'y' : 'n');
+        TexI cached = composedMarkerCache.get(key);
+        if (cached != null)
+            return cached;
+
         List<HarvestSpec.Part> parts = new ArrayList<>(products.size());
         for (String product : products) {
             BufferedImage img = resolveProductIcon(gob, product);
@@ -418,7 +440,10 @@ public class LpExplorer {
         // Board+Block side by side), so the fallback marker and the overlay read consistently.
         HarvestSpec spec = HarvestSpecs.forResource(name);
         boolean horizontal = spec != null && spec.horizontal();
-        return LpIcons.compose(horizontal, parts);
+        TexI composed = LpIcons.compose(horizontal, parts);
+        if (composed != null)
+            composedMarkerCache.put(key, composed);
+        return composed;
     }
 
     // Whether this exact product is still undiscovered for this gob - package-visible so
