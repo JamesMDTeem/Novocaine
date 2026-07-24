@@ -41,15 +41,15 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repo = Split-Path $PSScriptRoot -Parent
-Set-Location $repo
+$repoRoot = Split-Path $PSScriptRoot -Parent
+Set-Location $repoRoot
 
 function Step($m) { Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "    $m" -ForegroundColor Green }
 function Warn($m) { Write-Host "    $m" -ForegroundColor Yellow }
 function Die($m)  { Write-Host "`n!! $m" -ForegroundColor Red; exit 1 }
 
-$steamSrc = Join-Path $repo 'steam'
+$steamSrc = Join-Path $repoRoot 'steam'
 $propFile = Join-Path $steamSrc 'workshop-client.properties'
 if (-not (Test-Path $propFile)) { Die "Missing $propFile - the Novocaine workshop metadata." }
 
@@ -59,14 +59,14 @@ if ($SkipBuild) {
     if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar missing - cannot skip the build.' }
 } else {
     Step 'Building a clean client'
-    & "$repo\update-and-play.ps1" -SkipUpdate -NoLaunch
+    & "$repoRoot\update-and-play.ps1" -SkipUpdate -NoLaunch
     if ($LASTEXITCODE -ne 0) { Die 'Build failed; item not assembled.' }
 }
 if (-not (Test-Path 'build\hafen.jar')) { Die 'build\hafen.jar not found - the uploader runs from it.' }
 
 # --- stage the item --------------------------------------------------------
 Step 'Assembling the Workshop item'
-$item = Join-Path $repo 'dist\steam-item'
+$item = Join-Path $repoRoot 'dist\steam-item'
 if (Test-Path $item) { Remove-Item $item -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $item | Out-Null
 Copy-Item -Path 'bin\*' -Destination $item -Recurse -Force

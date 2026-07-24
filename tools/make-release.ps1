@@ -51,8 +51,8 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repo = Split-Path $PSScriptRoot -Parent
-Set-Location $repo
+$repoRoot = Split-Path $PSScriptRoot -Parent
+Set-Location $repoRoot
 
 function Step($m) { Write-Host "`n==> $m" -ForegroundColor Cyan }
 function Ok($m)   { Write-Host "    $m" -ForegroundColor Green }
@@ -65,8 +65,15 @@ if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     Warn 'GitHub CLI (gh) not found. Install it from https://cli.github.com/ and run "gh auth login".'
     Die 'gh not found.'
 }
-& gh auth status 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) { Die 'gh is not authenticated. Run "gh auth login" first.' }
+# Native stderr must not be redirected into PowerShell's error stream here: under
+# $ErrorActionPreference='Stop', PS 5.1 wraps redirected native stderr in a terminating
+# ErrorRecord even on success. Relax EAP locally and key off the exit code instead.
+$eapSaved = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
+gh auth status 1>$null 2>$null
+$authed = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $eapSaved
+if (-not $authed) { Die 'gh is not authenticated. Run "gh auth login" first.' }
 Ok 'gh present and authenticated'
 
 $dirty = git status --porcelain --untracked-files=no
@@ -90,14 +97,14 @@ if ($SkipBuild) {
     if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar missing - cannot skip the build.' }
 } else {
     Step 'Building a clean client'
-    & "$repo\update-and-play.ps1" -SkipUpdate -NoLaunch
+    & "$repoRoot\update-and-play.ps1" -SkipUpdate -NoLaunch
     if ($LASTEXITCODE -ne 0) { Die 'Build failed; no release made.' }
 }
 if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar not found after build.' }
 
 # --- package ---------------------------------------------------------------
 Step 'Packaging bin\ into a release zip'
-$dist = Join-Path $repo 'dist'
+$dist = Join-Path $repoRoot 'dist'
 $stage = Join-Path $dist 'Novocaine'
 $zip = Join-Path $dist "Novocaine-$Version.zip"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
@@ -136,9 +143,12 @@ $Notes | Out-File -FilePath $notesFile -Encoding utf8
 
 # --- publish ---------------------------------------------------------------
 Step "Publishing GitHub Release $tag"
-$exists = $false
-& gh release view $tag --repo $Repo 2>&1 | Out-Null
-if ($LASTEXITCODE -eq 0) { $exists = $true }
+# Same native-stderr caveat as the auth check above - relax EAP for the existence probe.
+$eapSaved = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
+gh release view $tag --repo $Repo 1>$null 2>$null
+$exists = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $eapSaved
 
 if ($exists) {
     Warn "Release $tag already exists - updating its notes and replacing the zip asset."
