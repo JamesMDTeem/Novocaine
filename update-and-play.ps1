@@ -56,7 +56,19 @@ function Die($msg)  { Write-Host "`n!! $msg" -ForegroundColor Red; exit 1 }
 Step 'Locating the toolchain'
 
 $java = Get-Command java -ErrorAction SilentlyContinue
-if (-not $java) { Die 'java not found on PATH. Install JDK 21 and retry.' }
+if (-not $java) {
+    Warn 'No Java found on PATH.'
+    Warn 'Install Eclipse Temurin JDK 21 (free, official builds of OpenJDK):'
+    Warn '  https://adoptium.net/temurin/releases/?version=21'
+    Warn 'During setup, tick "Set JAVA_HOME" and "Add to PATH" if the installer offers them,'
+    Warn 'then close this window and run update-and-play.ps1 again.'
+    Die 'java not found on PATH.'
+}
+$javaVersionLine = ((& $java.Source -version) 2>&1 | Select-Object -First 1) -join ' '
+if ($javaVersionLine -notmatch '"(1[7-9]|2[0-1])\.') {
+    Warn "Detected Java version doesn't look like 17-21 (found: $javaVersionLine)"
+    Warn 'The client is only tested on Java 17-21; a much older or newer JDK may fail to build or run.'
+}
 $env:JAVA_HOME = (Get-Item $java.Source).Directory.Parent.FullName
 Ok "JAVA_HOME = $env:JAVA_HOME"
 
@@ -64,7 +76,14 @@ if (-not (Get-Command ant -ErrorAction SilentlyContinue)) {
     $antCandidates = @(Get-ChildItem 'C:\ant' -Directory -ErrorAction SilentlyContinue |
         ForEach-Object { Join-Path $_.FullName 'bin' })
     $antBin = $antCandidates | Where-Object { Test-Path (Join-Path $_ 'ant.bat') } | Select-Object -First 1
-    if (-not $antBin) { Die 'ant not found on PATH or under C:\ant. Install Apache Ant and retry.' }
+    if (-not $antBin) {
+        Warn 'No Apache Ant found on PATH or under C:\ant.'
+        Warn 'Download the "Binary Distributions" zip from the official site:'
+        Warn '  https://ant.apache.org/bindownload.cgi'
+        Warn 'Extract it so ant.bat ends up at  C:\ant\apache-ant-<version>\bin\ant.bat'
+        Warn '(i.e. extract the zip directly into C:\ant), then run update-and-play.ps1 again.'
+        Die 'ant not found on PATH or under C:\ant.'
+    }
     $env:PATH = "$env:PATH;$antBin"
     Ok "ant = $antBin"
 } else {
@@ -101,10 +120,22 @@ if (-not $SkipUpdate) {
     }
     Ok "target = $Tag"
 
-    if ((git log -1 --format=%s vendor-baseline) -eq "Hurricane $Tag source baseline") {
+    # vendor-baseline matching $Tag only proves this REPO's git history is current - on a fresh
+    # clone (a friend, a new machine) the working directory has none of the upstream binary
+    # payload (res/, Release/, lib/*.jar), since the fork's .gitignore deliberately keeps that
+    # ~300MB out of our commits. Trusting the tag alone would skip straight to `ant`, which fails
+    # immediately (lib/jglob.jar doesn't exist to unjar). So the skip is gated on payload actually
+    # being on disk too, not just on the git history already reflecting this release.
+    $payloadMarkers = @('lib\jglob.jar', 'Release\hafen.jar', 'res\gfx')
+    $payloadPresent = -not ($payloadMarkers | Where-Object { -not (Test-Path $_) })
+
+    if ($payloadPresent -and ((git log -1 --format=%s vendor-baseline) -eq "Hurricane $Tag source baseline")) {
         Step "Already based on $Tag"
         Ok 'nothing to update; building what is checked out'
     } else {
+        if (-not $payloadPresent) {
+            Warn 'Game files (res/lib/Release) are missing - first run after a fresh clone. Fetching them now.'
+        }
 
     Step 'Saving the fork as a patch'
     $patch = Join-Path $env:TEMP "novocaine-fork-$(Get-Date -Format yyyyMMdd-HHmmss).patch"
@@ -112,7 +143,7 @@ if (-not $SkipUpdate) {
     # upstream, so the checkout below would delete it. The patch puts it back.
     # cmd redirection keeps the patch as the raw bytes git emitted; PowerShell
     # redirection would re-encode it with a BOM, which git apply rejects.
-    cmd /c "git diff vendor-baseline..alchemy -- src tools res update-and-play.ps1 README.md > `"$patch`""
+    cmd /c "git diff vendor-baseline..alchemy -- src tools res build.xml update-and-play.ps1 README.md > `"$patch`""
     if (-not (Test-Path $patch) -or (Get-Item $patch).Length -eq 0) { Die 'The fork patch came out empty.' }
     Ok "patch = $patch"
 
@@ -176,13 +207,13 @@ if (-not $SkipUpdate) {
         Warn 'The patch did not apply cleanly. Upstream has probably changed a line the fork touches.'
         Warn "Patch kept at: $patch"
         Warn 'Resolve the conflicts, then finish by hand:'
-        Warn '  git add -- src tools res update-and-play.ps1 README.md'
+        Warn '  git add -- src tools res build.xml update-and-play.ps1 README.md'
         Warn "  git commit -m `"Re-apply Novocaine fork on $Tag`""
         Warn "  git tag -f vendor-baseline $baseline ; git tag -f alchemy HEAD"
         Warn '  git push origin master ; git push -f origin vendor-baseline alchemy'
         Die 'Stopping before build so a half-patched client is never launched.'
     }
-    git add -- src tools res update-and-play.ps1 README.md
+    git add -- src tools res build.xml update-and-play.ps1 README.md
     git commit -q -m "Re-apply Novocaine fork on $Tag"
     git tag -f vendor-baseline $baseline
     git tag -f alchemy HEAD
