@@ -1164,6 +1164,11 @@ public class MiniMap extends Widget {
 	drawparty(g);
 	drawbiome(g);
 	drawsprites(g);
+	try {
+	    haven.automated.lp.MinimapDiscoveryRenderer.renderDiscoveryMarkers(this, g);
+	} catch(Loading l) {
+	    // Icons/positions not ready this frame; markers reappear once loaded.
+	}
     }
 
     public void draw(GOut g) {
