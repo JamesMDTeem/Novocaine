@@ -10,6 +10,8 @@ import haven.UI;
 import haven.Window;
 
 import java.awt.Color;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Settings window for the LP assistant, launched from the menu grid (Custom Client Extras ->
@@ -103,15 +105,33 @@ public class LpAssistantManagerWindow extends Window {
         }
     }
 
+    // Each pref checkbox, so tick() can keep its visual state in sync with LpConfig - a change
+    // made elsewhere (the "Toggle LP Assistant" menu-grid button, or the quick toggle writing
+    // the same lpassistent key) is reflected live instead of only when the window is reopened.
+    private final Map<CheckBox, LpConfig.Key> boxes = new HashMap<>();
+
     private CheckBox prefBox(String label, LpConfig.Key key) {
         CheckBox box = new CheckBox(label) {
             @Override
             public void changed(boolean val) {
                 LpConfig.set(key, val);
+                // A discovery-affecting toggle should refresh markers immediately.
+                LpExplorer.bumpGeneration();
             }
         };
         box.a = LpConfig.on(key);
+        boxes.put(box, key);
         return box;
+    }
+
+    @Override
+    public void tick(double dt) {
+        super.tick(dt);
+        for (Map.Entry<CheckBox, LpConfig.Key> e : boxes.entrySet()) {
+            boolean live = LpConfig.on(e.getValue());
+            if (e.getKey().a != live)
+                e.getKey().a = live;
+        }
     }
 
     @Override

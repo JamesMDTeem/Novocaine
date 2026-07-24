@@ -75,6 +75,21 @@ public class LpExplorer {
     // immediately.
     private static final Map<String, TexI> markerIconCache = new ConcurrentHashMap<>();
 
+    // Bumped whenever the set of undiscovered products could have changed (a discovery recorded,
+    // a reset, a character switch). The per-gob marker overlay watches this so it can re-render
+    // the instant something is found instead of on a fixed timer - which is what made picked
+    // items' icons linger. Cheap to read (one volatile int), so it can be polled every ctick.
+    private static volatile int generation = 0;
+
+    public static int generation() {
+        return generation;
+    }
+
+    /** Nudge the overlays to re-render even without a discovery (e.g. a config toggle). */
+    public static void bumpGeneration() {
+        generation++;
+    }
+
     /**
      * Drops every cached discovery-derived value. Discovery state is per-CHARACTER (it lives in
      * LpLog, which is rebuilt per character) while these caches are static, so switching
@@ -85,6 +100,7 @@ public class LpExplorer {
         fullyDiscoveredResources.clear();
         fullyDiscoveredCacheSeason = -1;
         markerIconCache.clear();
+        generation++;
         LpIcons.clearLabelCache();
     }
 
@@ -511,6 +527,10 @@ public class LpExplorer {
         if (!info.IsLpExplorerContains(gobName, name)) {
             info.LpExplorerAdd(gobName, name);
             info.newLpExplorer = true;
+            // A product just became discovered - drop the fully-discovered cache entry for its
+            // resource (it may now be complete) and bump the generation so markers re-render now.
+            fullyDiscoveredResources.remove(gobName);
+            generation++;
         }
     }
 

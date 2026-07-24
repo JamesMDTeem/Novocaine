@@ -1173,6 +1173,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 			} else if (ad[2].equals("LpAssistantToggle")) {
 				boolean on = !haven.automated.lp.LpConfig.on(haven.automated.lp.LpConfig.Key.lpassistent);
 				haven.automated.lp.LpConfig.set(haven.automated.lp.LpConfig.Key.lpassistent, on);
+				haven.automated.lp.LpExplorer.bumpGeneration();
 				gui.msg("LP Assistant is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? java.awt.Color.GREEN : java.awt.Color.RED);
 			}
 		}

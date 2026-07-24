@@ -372,20 +372,36 @@ public class AutoLpBot extends Window implements Runnable {
         }
 
         String chosen = null;
+        boolean matchedButExhausted = false;
         for (String opt : task.options) {
-            String resolved = LpPlanner.SEED_PICK.equals(opt) ? resolveSeedPick(fm, task) : opt;
-            if (resolved != null && !exhausted.contains(task.key(resolved)) && hasOpt(fm, resolved)) {
-                chosen = resolved;
-                break;
+            // For seedpick, resolve ignoring the exhausted set (so we can tell "the menu has a
+            // matching Pick option but we already spent it" apart from "the menu has no matching
+            // option at all") - the exhausted check is applied explicitly right after.
+            String resolved = LpPlanner.SEED_PICK.equals(opt) ? resolveSeedPickAny(fm) : opt;
+            if (resolved == null || !hasOpt(fm, resolved))
+                continue;
+            if (exhausted.contains(task.key(resolved))) {
+                matchedButExhausted = true;
+                continue;
             }
+            chosen = resolved;
+            break;
         }
 
         if (chosen == null) {
-            // Report what the menu really offered before giving up. Several categories - berries
-            // and fruit in particular - have species-specific option strings, so rather than
-            // guess (or worse, fall back to "any available option", which on a tree eventually
-            // means Chop) this surfaces the truth once per resource and moves on.
-            reportUnknownOptions(task, fm);
+            if (matchedButExhausted) {
+                // The menu did offer a Pick option we know - we've just already tried it without
+                // a new discovery (a data gap: the picked item's name doesn't match what LpSpec
+                // expects for this species, or its LP is in a seed that needs eating). Retire the
+                // whole target quietly rather than spamming "no known option"; the exhausted entry
+                // logged the specifics when it was first set.
+                NLog.log(LOG, "all known options exhausted for " + LpExplorer.resname(task.gob)
+                    + " - retiring quietly");
+            } else {
+                // Genuinely no option we recognize. Surface what the menu really offered (once per
+                // resource) - that string is exactly what filling the data gap needs.
+                reportUnknownOptions(task, fm);
+            }
             closeMenu(fm);
             retire(task);
             return false;
@@ -434,12 +450,17 @@ public class AutoLpBot extends Window implements Runnable {
             NLog.log(LOG, "gob consumed by '" + chosen + "'");
         } else {
             List<String> beforeSnap = before;
-            waitUntil(() -> !undiscoveredOf(still).equals(beforeSnap), 40);
+            waitUntil(() -> !undiscoveredOf(still).equals(beforeSnap), 80);
             List<String> after = undiscoveredOf(still);
             if (after.equals(before)) {
                 NLog.log(LOG, "'" + chosen + "' yielded no new discovery (still " + after
                     + ") - exhausting this option");
                 exhausted.add(task.key(chosen));
+                // If this was a seed pick, also spend the sentinel so the multi-collect loop and
+                // the planner stop re-offering the same species (whose picked item name our data
+                // doesn't recognize) - otherwise it re-resolves to the same Pick option forever.
+                if (task.options.contains(LpPlanner.SEED_PICK))
+                    exhausted.add(task.key(LpPlanner.SEED_PICK));
             } else {
                 NLog.log(LOG, "'" + chosen + "' discovered something: " + before + " -> " + after);
             }
@@ -458,8 +479,16 @@ public class AutoLpBot extends Window implements Runnable {
     private void waitForActionComplete(boolean stopAfterFirst) throws InterruptedException {
         final int initialFree = freeSpace();
 
-        // Phase 1: wait for the action to start. Bounded low - some actions are near-instant.
-        waitUntil(() -> !poseContains("idle"), 60);
+        // Phase 1: wait for the action to start (pose leaves idle) OR the first item to already
+        // have landed. Bounded LOW (~0.5s): a quick pick may barely change pose, and the old
+        // 3-second bound spent that whole time dead-waiting for a pose flash that never came -
+        // the single biggest source of the between-action lag. Detecting the item landing here
+        // means an instant pick falls straight through instead of waiting out the bound.
+        waitUntil(() -> {
+            int free = freeSpace();
+            boolean gotItem = (free >= 0 && free < initialFree) || gui.vhand != null;
+            return !poseContains("idle") || gotItem;
+        }, 20);
 
         // Phase 2: wait for it to finish (back to idle), the first item to land (if we mean to
         // stop after one), or the pack to fill. Bounded high - sawing legitimately takes a while.
@@ -475,7 +504,7 @@ public class AutoLpBot extends Window implements Runnable {
         // our own tile is the standard interrupt. Harmless if the action already ended.
         if (stopAfterFirst && !poseContains("idle")) {
             stopAction();
-            waitUntil(() -> poseContains("idle"), 60);
+            waitUntil(() -> poseContains("idle"), 40);
         }
     }
 
@@ -548,6 +577,10 @@ public class AutoLpBot extends Window implements Runnable {
      */
     private void eatForSeed(WItem wi, String name) throws InterruptedException {
         NLog.log(LOG, "eating consumable '" + name + "' for its seed LP");
+        // Snapshot the pack before eating so the seed the eat leaves behind can be told apart from
+        // everything already there, and dropped right away rather than lingering until the next
+        // pick's tidy pass (which is what made eaten seeds appear to "queue up").
+        Set<GItem> beforeEat = snapshotPack();
         wi.item.wdgmsg("iact", wi.c, 0);
         FlowerMenu fm = findFlowerMenu();
         boolean ate = false;
@@ -558,9 +591,49 @@ public class AutoLpBot extends Window implements Runnable {
         if (!ate) {
             NLog.log(LOG, "eat of '" + name + "' didn't take - dropping instead");
             dropToGround(wi);
-        } else {
-            waitUntil(() -> poseContains("idle"), 100);
+            return;
         }
+        waitUntil(() -> poseContains("idle"), 100);
+        // Wait for the seed to actually land in the pack (a new item appears), then a short beat
+        // for its name to resolve and register as a discovery (GItem.tick's possession gate),
+        // before dropping it - dropping too early would throw the seed away before it counts.
+        waitUntil(() -> !newDroppable(beforeEat).isEmpty(), 40);
+        waitUntil(() -> false, 12);  // ~0.3s settle so the discovery registers first
+        for (WItem seed : newDroppable(beforeEat)) {
+            NLog.log(LOG, "dropping eaten-seed product '" + seed.item.getname() + "'");
+            dropToGround(seed);
+        }
+    }
+
+    /** Identity snapshot of everything currently in the pack. */
+    private Set<GItem> snapshotPack() {
+        Set<GItem> s = Collections.newSetFromMap(new IdentityHashMap<>());
+        if (gui.maininv != null) {
+            synchronized (gui.maininv.wmap) {
+                s.addAll(gui.maininv.wmap.keySet());
+            }
+        }
+        return s;
+    }
+
+    /** Pack items that appeared since `before` and are safe to drop (not gear/tools/carcasses). */
+    private List<WItem> newDroppable(Set<GItem> before) {
+        List<WItem> out = new java.util.ArrayList<>();
+        if (gui.maininv == null)
+            return out;
+        List<WItem> items;
+        synchronized (gui.maininv.wmap) {
+            items = new java.util.ArrayList<>(gui.maininv.wmap.values());
+        }
+        for (WItem wi : items) {
+            if (before.contains(wi.item) || preexisting.contains(wi.item))
+                continue;
+            String nm = wi.item.getname();
+            if (nm == null || isKeepable(nm) || LpPlanner.isProcessable(nm))
+                continue;
+            out.add(wi);
+        }
+        return out;
     }
 
     private void dropHeldToGround() throws InterruptedException {
@@ -595,11 +668,10 @@ public class AutoLpBot extends Window implements Runnable {
      * really a DIFFERENT category ("Pick leaf") or unrelated ("Pick up" on a dropped item). Never
      * matches "Chop", "Take bark" or "Take branch", so this can't turn into a felling by accident.
      */
-    private String resolveSeedPick(FlowerMenu fm, LpTask task) {
+    private String resolveSeedPickAny(FlowerMenu fm) {
         for (FlowerMenu.Petal petal : fm.opts) {
             String n = petal.name;
-            if (n != null && n.startsWith("Pick ") && !n.equals("Pick leaf") && !n.equals("Pick up")
-                    && !exhausted.contains(task.key(n)))
+            if (n != null && n.startsWith("Pick ") && !n.equals("Pick leaf") && !n.equals("Pick up"))
                 return n;
         }
         return null;
@@ -631,11 +703,13 @@ public class AutoLpBot extends Window implements Runnable {
 
     /** Polls briefly for a flower menu to open (the rclick lands asynchronously). */
     private FlowerMenu findFlowerMenu() throws InterruptedException {
-        for (int i = 0; i < 30; i++) {
+        for (int i = 0; i < 40; i++) {
+            if (!active || stop)
+                throw new InterruptedException();
             FlowerMenu fm = findFlowerMenuNow();
             if (fm != null)
                 return fm;
-            Thread.sleep(50);
+            Thread.sleep(POLL_MS);
         }
         return null;
     }
@@ -746,14 +820,16 @@ public class AutoLpBot extends Window implements Runnable {
         return false;
     }
 
+    // IMeter.Meter.a is already a 0..1 fraction (cf. CellarDiggingBot's getmeter("stam",0).a < 0.40),
+    // NOT a 0..100 percentage - so it's used directly, not divided.
     private double stamina() {
         haven.IMeter.Meter m = gui.getmeter("stam", 0);
-        return m == null ? 1.0 : m.a / 100.0;
+        return m == null ? 1.0 : m.a;
     }
 
     private double energy() {
         haven.IMeter.Meter m = gui.getmeter("nrj", 0);
-        return m == null ? 1.0 : m.a / 100.0;
+        return m == null ? 1.0 : m.a;
     }
 
     /** Free cells in the pack, or -1 if the inventory isn't ready. */
@@ -799,7 +875,14 @@ public class AutoLpBot extends Window implements Runnable {
         boolean check() throws InterruptedException;
     }
 
-    /** Sleep-polling wait, Hurricane style: ~50ms per tick, bounded by maxTicks. */
+    private static final int POLL_MS = 25;
+
+    /**
+     * Sleep-polling wait: checks the condition first (so an already-true condition returns with no
+     * delay), then sleeps POLL_MS between checks, up to maxTicks. The 25ms granularity keeps the
+     * bot responsive between actions - at 50ms the gaps were visibly laggier than nurgling's
+     * event-driven waits.
+     */
     private void waitUntil(Cond cond, int maxTicks) throws InterruptedException {
         for (int i = 0; i < maxTicks; i++) {
             if (!active || stop)
@@ -810,7 +893,7 @@ public class AutoLpBot extends Window implements Runnable {
             } catch (Loading l) {
                 // keep waiting
             }
-            Thread.sleep(50);
+            Thread.sleep(POLL_MS);
         }
     }
 
