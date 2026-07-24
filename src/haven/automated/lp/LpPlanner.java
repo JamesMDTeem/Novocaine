@@ -230,9 +230,14 @@ public class LpPlanner {
     // Offering every item in the pack would mean activating food, stacks and tools on the off
     // chance they were butcherable. Deliberately conservative: an unlisted critter yields no task
     // rather than a blind activation, and widening it is a matter of adding a category here.
+    // Deliberately excludes "Bug": that category is curiosities (Ladybug, butterflies, beetles,
+    // ...) whose LP comes from STUDYING them at a study desk, not from a carcass-processing menu
+    // option - offering them a Skin/Butcher task just made the bot right-click a Ladybug that only
+    // offers "Study" and log a spurious "no known option". Picking a bug already registers it if
+    // it's a tracked world resource; studying it is a manual, out-of-scope action for this bot.
     private static final String[] PROCESSABLE_CATEGORIES = {
         "Dead Animal Carcass", "Clean Animal Carcass", "Clean Bird Carcass",
-        "Bug", "Snail", "Shellfish", "Fish",
+        "Snail", "Shellfish", "Fish",
     };
 
     private static Set<String> processableNames;

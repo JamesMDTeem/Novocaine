@@ -71,6 +71,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public ExtInventory maininvext;
     public CharWnd chrwdg;
     public MapWnd mapfile;
+    // A second, always-non-compact map window that can be toggled INDEPENDENTLY of `mapfile`, so
+    // the compact map and the big map can be open at the same time (bound via kb_bigmap). Shares
+    // the same MapFile/MapView as mapfile; hidden until its keybind is pressed.
+    public MapWnd bigmap;
     public Widget qqview;
     public BuddyWnd buddies;
     private final Zergwnd zerg;
@@ -1153,6 +1157,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		ui.destroy(mapfile);
 		mapfile = null;
 	    }
+	    if(bigmap != null) {
+		ui.destroy(bigmap);
+		bigmap = null;
+	    }
 	    ResCache mapstore = ResCache.global;
 	    if(MapFile.mapbase.get() != null)
 		mapstore = HashDirCache.get(MapFile.mapbase.get());
@@ -1171,6 +1179,14 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		mapfile = new MapWnd(file, map, Utils.getprefc("smallmapsz", new Coord(300,300)), "Map");
 		mapfile.show(true);
 		add(mapfile, Utils.getprefc("smallmapc", new Coord(0, 150)));
+
+		// Second map window, forced non-compact and hidden by default, toggled by kb_bigmap.
+		// It shares the same MapFile/MapView so it shows the identical map - just a second,
+		// independent view you can keep open alongside the compact one.
+		bigmap = new MapWnd(file, map, Utils.getprefc("bigmapsz", new Coord(980, 550)), "Map");
+		bigmap.compact(false);
+		add(bigmap, Utils.getprefc("bigmapc", new Coord(100, 100)));
+		bigmap.show(false);
 	    }
 		if (trackingToggled) {
 			buffs.addchild(new Buff(Bufflist.bufftrack.indir()));
@@ -1829,6 +1845,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     }
 
     public static final KeyBinding kb_map = KeyBinding.get("map", KeyMatch.forchar('W', KeyMatch.C));
+    // Unbound by default (KeyMatch.nil) - the user assigns it in Options. Toggles the second,
+    // always-non-compact big map independently of the compact map (kb_map).
+    public static final KeyBinding kb_bigmap = KeyBinding.get("bigmap", KeyMatch.nil);
     public static final KeyBinding kb_claim = KeyBinding.get("ol-claim", KeyMatch.forcode(KeyEvent.VK_F9, KeyMatch.C));
     public static final KeyBinding kb_vil = KeyBinding.get("ol-vil", KeyMatch.forcode(KeyEvent.VK_F10, KeyMatch.C));
     public static final KeyBinding kb_rlm = KeyBinding.get("ol-rlm", KeyMatch.forcode(KeyEvent.VK_F11, KeyMatch.C));
@@ -1903,6 +1922,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 //	    return(true);
 	} else if(kb_hide.key().match(ev)) {
 	    toggleui();
+	    return(true);
+	} else if(kb_bigmap.key().match(ev)) {
+	    togglewnd(bigmap);
 	    return(true);
 	} else if(kb_logout.key().match(ev)) {
 	    act("lo");

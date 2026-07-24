@@ -108,9 +108,22 @@ if (-not $SkipUpdate) {
         Die 'You have uncommitted changes. Commit them (and re-tag "alchemy") or stash, then retry.'
     }
 
+    # List tags on stdout rather than probing each with `rev-parse ... 2>&1`, whose stderr on a
+    # missing tag would trip the same EAP=Stop native-stderr trap as the upstream check below.
+    $localTags = git tag --list
     foreach ($t in @('vendor-baseline', 'alchemy')) {
-        git rev-parse -q --verify "refs/tags/$t" > $null 2>&1
-        if ($LASTEXITCODE -ne 0) { Die "Missing tag '$t'. The fork patch is defined as vendor-baseline..alchemy." }
+        if ($localTags -notcontains $t) { Die "Missing tag '$t'. The fork patch is defined as vendor-baseline..alchemy." }
+    }
+
+    # The update flow makes local commits (the source baseline + re-applied fork). git refuses to
+    # commit without an identity, so a friend who has never configured git would hit a hard error
+    # here. Set a harmless repo-local identity if none exists - these commits are local unless the
+    # user is the maintainer pushing to origin. (git config with an unset key exits non-zero and
+    # prints nothing, so this is safe under EAP=Stop.)
+    if (-not (git config user.email)) {
+        git config user.email 'novocaine@localhost'
+        git config user.name 'Novocaine Player'
+        Ok 'set a local git identity (none was configured)'
     }
     Ok 'tags present'
 
@@ -167,8 +180,12 @@ if (-not $SkipUpdate) {
     }
 
     Step "Fetching $Tag from upstream"
-    git remote get-url upstream > $null 2>&1
-    if ($LASTEXITCODE -ne 0) {
+    # A fresh clone has only 'origin' - the upstream Hurricane remote isn't cloned. The old
+    # `git remote get-url upstream 2>&1` probe wrote "No such remote" to stderr, which PS 5.1
+    # wraps in a TERMINATING error under EAP=Stop, killing the script right here on EVERY fresh
+    # clone (it only worked on machines that already had the remote). List remotes on stdout
+    # instead - no stderr, no trap.
+    if ((git remote) -notcontains 'upstream') {
         git remote add upstream https://github.com/Nightdawg/Hurricane.git
     }
     # Shallow: the full history carries every jar and resource ever committed.
@@ -225,13 +242,18 @@ if (-not $SkipUpdate) {
     git tag -f alchemy HEAD
     Ok 'fork re-applied; vendor-baseline and alchemy tags moved'
 
-    Step 'Pushing to origin'
-    # master only moves forward (each baseline's parent is the previous tip), but
-    # the two workflow tags are rewritten on every update.
-    git push -q origin master
-    if ($LASTEXITCODE -ne 0) { Warn 'Could not push master; run "git push origin master" when back online.' }
-    git push -q -f origin vendor-baseline alchemy
-    if ($LASTEXITCODE -ne 0) { Warn 'Could not push tags; run "git push -f origin vendor-baseline alchemy" when back online.' }
+    Step 'Syncing to origin (maintainer only)'
+    # Pushing keeps origin's history current when the MAINTAINER updates. Friends who cloned the
+    # repo have no push access, and that's completely fine - they just build and play. cmd's own
+    # 2>nul swallows git's "permission denied" without tripping PowerShell's native-stderr trap,
+    # so a friend sees a calm one-liner instead of a wall of red git errors.
+    cmd /c "git push -q origin master 2>nul 1>nul"
+    if ($LASTEXITCODE -eq 0) {
+        cmd /c "git push -q -f origin vendor-baseline alchemy 2>nul 1>nul"
+        Ok 'synced master + tags to origin'
+    } else {
+        Ok 'not synced to origin (no push access - normal unless you are the maintainer)'
+    }
 
     Step 'Restoring local databases'
     foreach ($f in @('hitboxes.db', 'static_data.db', 'Release\hitboxes.db', 'Release\static_data.db')) {

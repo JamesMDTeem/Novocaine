@@ -397,6 +397,11 @@ public class AutoLpBot extends Window implements Runnable {
                 // logged the specifics when it was first set.
                 NLog.log(LOG, "all known options exhausted for " + LpExplorer.resname(task.gob)
                     + " - retiring quietly");
+            } else if (hasOpt(fm, "Study")) {
+                // A curiosity (Ladybug, butterfly, etc.): its LP comes from studying it at a study
+                // desk, not from any carcass option - so this isn't an unknown-menu data gap, just
+                // an item this forage bot doesn't handle. Retire it quietly, no chat report.
+                NLog.log(LOG, "study-only curiosity " + task.why + " - retiring quietly (not a bot task)");
             } else {
                 // Genuinely no option we recognize. Surface what the menu really offered (once per
                 // resource) - that string is exactly what filling the data gap needs.

@@ -3129,6 +3129,7 @@ public class OptWnd extends Window {
         y = addbtn(cont, "Belt", GameUI.kb_blt, y);
 	    y = addbtn(cont, "Character sheet", GameUI.kb_chr, y);
 	    y = addbtn(cont, "Map window", GameUI.kb_map, y);
+	    y = addbtn(cont, "Big map (independent of compact map)", GameUI.kb_bigmap, y);
 	    y = addbtn(cont, "Kith & Kin", GameUI.kb_bud, y);
 	    y = addbtn(cont, "Options", GameUI.kb_opt, y);
 	    y = addbtn(cont, "Search actions", GameUI.kb_srch, y);
