@@ -72,6 +72,31 @@ git tag -f alchemy HEAD
   `tools/gen-lpspec.py` / `tools/gen-menugrid-res.py` regenerate the underlying data
   and menu resources — see the comments in each for when to rerun them.
 
+## Releasing to friends (maintainer)
+
+Two distribution channels, each a one-command script:
+
+- **GitHub Release** (easiest for friends — no clone, no build, just a JRE):
+  ```powershell
+  .\tools\make-release.ps1 -Draft        # build, zip bin\, publish a draft release
+  .\tools\make-release.ps1 -Version 0.1.0
+  ```
+  Builds a clean client, zips `bin\` into `dist\Novocaine-<version>.zip`, and creates/updates
+  the GitHub Release with it attached. Friends download the zip, extract, and run
+  `Novocaine\Play.bat`. Needs the [GitHub CLI](https://cli.github.com/) (`gh auth login`).
+
+- **Steam Workshop** (friends-only visibility): see [`steam/README.md`](steam/README.md).
+  ```powershell
+  .\tools\make-steam-item.ps1            # stage the item into dist\steam-item (no upload)
+  .\tools\make-steam-item.ps1 -Upload    # stage + upload (Steam must be running/logged in)
+  ```
+  The upload is yours to run — it needs Steam logged in, beta access to the game, and the
+  Workshop Legal Agreement accepted. Metadata lives in `steam/workshop-client.properties`
+  (kept separate from the repo-root Hurricane one so uploads never touch Nightdawg's item).
+
+Both scripts build from your working tree; commit first if you want the release to match a
+pushed state.
+
 ## Remotes
 
 - `origin` — this repo (our fork).
