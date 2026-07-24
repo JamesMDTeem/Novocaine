@@ -139,7 +139,9 @@ $log
 "@
 }
 $notesFile = Join-Path $env:TEMP "novocaine-relnotes-$Version.md"
-$Notes | Out-File -FilePath $notesFile -Encoding utf8
+# .NET's WriteAllText is UTF-8 WITHOUT a BOM; PS 5.1's `Out-File -Encoding utf8` adds one,
+# which GitHub then renders as a stray char at the top of the release body.
+[System.IO.File]::WriteAllText($notesFile, $Notes)
 
 # --- publish ---------------------------------------------------------------
 Step "Publishing GitHub Release $tag"
