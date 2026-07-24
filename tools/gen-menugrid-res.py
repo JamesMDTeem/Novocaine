@@ -78,7 +78,7 @@ build("Bots.res", "NurglingImports.res",
 build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
       "NurglingImports/LpAssistantManager.res",
       "customclient/menugrid/NurglingImports", "LP Assistant Manager", 0,
-      ["custom", "NurglingImports", "LpAssistantManager"],
+      ["@", "NurglingImports", "LpAssistantManager"],
       "Configure the LP assistant: discovery markers, harvest overlays, the auto-LP bot's "
       "felling/eating rules and search radius, and the per-character LP-log reset.")
 
@@ -86,7 +86,7 @@ build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
 build("Bots/FishingBot.res",
       "NurglingImports/AutoLpBot.res",
       "customclient/menugrid/NurglingImports", "Auto LP Bot", 0,
-      ["custom", "NurglingImports", "AutoLpBot"],
+      ["@", "NurglingImports", "AutoLpBot"],
       "Walks to whatever nearby thing would yield an LP product this character hasn't "
       "discovered yet (picks, mines, processes; felling only if enabled), and repeats until "
       "nothing reachable is left. Configure in the LP Assistant Manager.")
@@ -95,5 +95,5 @@ build("Bots/FishingBot.res",
 build("Toggles/HighlightCliffs.res",
       "NurglingImports/LpAssistantToggle.res",
       "customclient/menugrid/NurglingImports", "Toggle LP Assistant", 0,
-      ["custom", "NurglingImports", "LpAssistantToggle"],
+      ["@", "NurglingImports", "LpAssistantToggle"],
       "Turn the LP assistant (undiscovered-product markers and discovery tracking) on or off.")
