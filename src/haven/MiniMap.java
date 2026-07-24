@@ -1349,6 +1349,16 @@ public class MiniMap extends Widget {
 		return(true);
 	    if((dsmark != null) && clickmarker(dsmark, dsloc, ev.b, true))
 		return(true);
+	    // Right-clicking an LP-discovery marker (which isn't a registered gob icon, so the
+	    // checks above miss it) interacts with its gob, the same walk-and-open-flower-menu a
+	    // real gob icon would - so a green marker on the minimap is clickable like any other.
+	    if((ev.b == 3) && (ui.gui != null) && (ui.gui.map != null)) {
+		Gob lpgob = haven.automated.lp.MinimapDiscoveryRenderer.gobAt(this, ev.c);
+		if(lpgob != null) {
+		    mvclick(ui.gui.map, null, dsloc, lpgob, ev.b);
+		    return(true);
+		}
+	    }
 	    if(clickloc(dsloc, ev.b, true))
 		return(true);
 	} else {

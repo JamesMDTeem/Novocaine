@@ -22,11 +22,14 @@ import java.util.List;
  *    all tinted - and nothing at all once everything is found.
  *
  * Discovery state, season, and the live seed/leaf bitmask all change out from under the cached
- * tex, so it re-renders on a short timer rather than trying to observe every one of those.
+ * tex. A discovery re-renders immediately (LpExplorer.generation() changes the instant one is
+ * recorded, so a picked item's icon clears at once); season and the live bitmask fall back to a
+ * short timer, since neither warrants per-frame recomputation.
  */
 public class GobLpDiscoveryInfo extends GobInfo {
-    private static final double REFRESH_SECONDS = 2.0;
+    private static final double REFRESH_SECONDS = 1.0;
     private double sinceRefresh = 0;
+    private int lastGen = -1;
 
     protected GobLpDiscoveryInfo(Gob owner) {
         super(owner);
@@ -41,7 +44,9 @@ public class GobLpDiscoveryInfo extends GobInfo {
     @Override
     public void ctick(double dt) {
         sinceRefresh += dt;
-        if (sinceRefresh >= REFRESH_SECONDS) {
+        int gen = LpExplorer.generation();
+        if (gen != lastGen || sinceRefresh >= REFRESH_SECONDS) {
+            lastGen = gen;
             sinceRefresh = 0;
             clear();
         }
