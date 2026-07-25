@@ -15,7 +15,16 @@ public class LpAlias {
         this.names = Collections.unmodifiableList(Arrays.asList(names));
     }
 
+    // Case-insensitive: these names are hand-transcribed from the game's own item tooltips, where a
+    // single miscapitalized letter ("Butcher's cleaver" vs "Butcher's Cleaver") silently turns a
+    // tool the player IS holding into one the bot thinks it hasn't got, and retires the task.
     public boolean matches(String itemName) {
-        return itemName != null && names.contains(itemName);
+        if (itemName == null)
+            return false;
+        for (String name : names) {
+            if (name.equalsIgnoreCase(itemName))
+                return true;
+        }
+        return false;
     }
 }

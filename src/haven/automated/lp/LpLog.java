@@ -4,9 +4,11 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -131,7 +133,18 @@ public class LpLog {
                 root.put("crafted", new JSONArray(craftedRecipes));
             }
             Files.createDirectories(file.getParent());
-            Files.write(file, root.toString(2).getBytes(StandardCharsets.UTF_8));
+            // Write-then-rename: this file is rewritten in full on every discovery, so a client
+            // killed mid-write (alt-F4, crash, power loss) would otherwise leave a truncated JSON
+            // that fails to parse on next load - silently costing the character its entire
+            // discovery history. The rename is atomic, so the log is always either the old
+            // complete version or the new one.
+            Path tmp = file.resolveSibling(file.getFileName() + ".tmp");
+            Files.write(tmp, root.toString(2).getBytes(StandardCharsets.UTF_8));
+            try {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, file, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (Exception e) {
             NLog.crash("LpLog.write " + file, e);
         }

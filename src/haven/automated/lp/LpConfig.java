@@ -42,12 +42,29 @@ public class LpConfig {
     public static final String RADIUS_PREF = "lpAutolpRadius";
     public static final int RADIUS_DEFAULT = 400;
 
+    // These are read on genuinely hot paths - the world overlay asks lpassistent for every
+    // LP-capable gob on every tick, and the marker/overlay resolvers ask several more per gob -
+    // while Utils.getprefb builds a "lp_"+name string for each call and bottoms out in a
+    // synchronized java.util.prefs lookup. Since every write goes through set() below, the values
+    // can simply be cached. AtomicIntegerArray rather than a plain array because the readers are
+    // the render and bot threads while the writer is the UI thread.
+    private static final int UNKNOWN = 0, NO = 1, YES = 2;
+    private static final java.util.concurrent.atomic.AtomicIntegerArray cache =
+        new java.util.concurrent.atomic.AtomicIntegerArray(Key.values().length);
+
     public static boolean on(Key key) {
-        return Utils.getprefb("lp_" + key.name(), key.def);
+        int i = key.ordinal();
+        int v = cache.get(i);
+        if (v == UNKNOWN) {
+            v = Utils.getprefb("lp_" + key.name(), key.def) ? YES : NO;
+            cache.set(i, v);
+        }
+        return v == YES;
     }
 
     public static void set(Key key, boolean value) {
         Utils.setprefb("lp_" + key.name(), value);
+        cache.set(key.ordinal(), value ? YES : NO);
     }
 
     public static int radius() {

@@ -66,10 +66,10 @@ public class LpAssistantManagerWindow extends Window {
         y += row;
 
         add(new Label("Search radius (map units):"), x, y + UI.scale(4));
-        TextEntry radiusEntry = new TextEntry(UI.scale(60), String.valueOf(LpConfig.radius())) {
+        radiusEntry = new TextEntry(UI.scale(60), String.valueOf(LpConfig.radius())) {
             @Override
             public void activate(String text) {
-                commitRadius(this);
+                commitRadius(this, true);
             }
         };
         add(radiusEntry, x + UI.scale(170), y);
@@ -91,17 +91,26 @@ public class LpAssistantManagerWindow extends Window {
         pack();
     }
 
-    private void commitRadius(TextEntry entry) {
+    private final TextEntry radiusEntry;
+
+    // `loud` distinguishes the player pressing Enter (confirm it, and say so if it's rejected) from
+    // the implicit commit when the window closes, where an unparseable leftover just means they
+    // typed something and changed their mind - not worth an error message.
+    private void commitRadius(TextEntry entry, boolean loud) {
         try {
             int units = Integer.parseInt(entry.text().trim());
             if (units < 10 || units > 5000) {
-                gui.error("LP search radius must be between 10 and 5000.");
+                if (loud)
+                    gui.error("LP search radius must be between 10 and 5000.");
                 return;
             }
+            if (units == LpConfig.radius())
+                return;
             LpConfig.radius(units);
             gui.msg("LP search radius set to " + units + ".", Color.WHITE);
         } catch (NumberFormatException e) {
-            gui.error("LP search radius must be a number.");
+            if (loud)
+                gui.error("LP search radius must be a number.");
         }
     }
 
@@ -137,6 +146,10 @@ public class LpAssistantManagerWindow extends Window {
     @Override
     public void wdgmsg(haven.Widget sender, String msg, Object... args) {
         if (msg.equals("close")) {
+            // Every checkbox applies the moment it's clicked, so the radius field being the one
+            // setting that needed Enter made it easy to type a number, close the window, and have
+            // it silently discarded.
+            commitRadius(radiusEntry, false);
             hide();
             if (gui != null && gui.lpAssistantManager == this)
                 gui.lpAssistantManager = null;

@@ -75,6 +75,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     // the compact map and the big map can be open at the same time (bound via kb_bigmap). Shares
     // the same MapFile/MapView as mapfile; hidden until its keybind is pressed.
     public MapWnd bigmap;
+    private boolean bigmapvis = false;
     public Widget qqview;
     public BuddyWnd buddies;
     private final Zergwnd zerg;
@@ -692,7 +693,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    });
 	Debug.log = ui.cons.out;
 	opts.c = sz.sub(opts.sz).div(2);
-	mapfile.fixAndSavePos(true);
+	/* The map window is created later, when the server sends the mapview child. */
+	if(mapfile != null)
+	    mapfile.fixAndSavePos(true);
     }
 
     public void dispose() {
@@ -1125,8 +1128,12 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    Utils.setprefc("wndc-chr", chrwdg.c);
 	if(zerg != null)
 	    Utils.setprefc("wndc-zerg", zerg.c);
-	if(mapfile != null) {
+	if(mapfile != null)
 		mapfile.fixAndSavePos(mapfile.compact);
+	if(bigmap != null)
+		bigmap.fixAndSavePos(false);
+	/* ND's brace used to close after chatWnd, so every window below only had its position
+	 * saved when a mapfile existed. */
 	if(quickslots != null)
 		Utils.setprefc("wndc-quickslots", quickslots.c);
 	if(makewnd != null)
@@ -1137,7 +1144,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		Utils.setprefc("wndc-questObjectivesWindow", questObjectivesWindow.c);
 	if (chatWnd != null)
 		Utils.setprefc("wndc-chat", chatWnd.c);
-	}
     }
 
     private final BMap<String, Window> wndids = new HashBMap<String, Window>();
@@ -1180,12 +1186,12 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		mapfile.show(true);
 		add(mapfile, Utils.getprefc("smallmapc", new Coord(0, 150)));
 
-		// Second map window, forced non-compact and hidden by default, toggled by kb_bigmap.
-		// It shares the same MapFile/MapView so it shows the identical map - just a second,
-		// independent view you can keep open alongside the compact one.
-		bigmap = new MapWnd(file, map, Utils.getprefc("bigmapsz", new Coord(980, 550)), "Map");
-		bigmap.compact(false);
-		add(bigmap, Utils.getprefc("bigmapc", new Coord(100, 100)));
+		// Second map window, permanently non-compact and hidden by default, toggled by
+		// kb_bigmap. It shares the same MapFile/MapView so it shows the identical map - just
+		// a second, independent view you can keep open alongside the compact one. Being
+		// alwaysBig it ignores the map keybindings and keeps its own position/size prefs.
+		bigmap = new MapWnd(file, map, Utils.getprefc("bigmapwndsz", new Coord(980, 550)), "Map", true);
+		add(bigmap, Utils.getprefc("bigmapwndc", new Coord(100, 100)));
 		bigmap.show(false);
 	    }
 		if (trackingToggled) {
@@ -1587,7 +1593,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private void mapfiletick() {
 	MapView map = this.map;
 //	MiniMap mmap = this.mmap;
-	if((map == null) /*|| (mmap == null)*/)
+	/* mapfile stays null when there is no map store to save to. */
+	if((map == null) || (mapfile == null) /*|| (mmap == null)*/)
 	    return;
 	Gob pl = ui.sess.glob.oc.getgob(map.plgob);
 	Coord gc;
@@ -1764,6 +1771,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		mapfile.fixAndSavePos(false);
 	    mapfile.hide();
 //	    Utils.setprefb("wndvis-map", false);
+	    return;
+	} else if((sender == bigmap) && (msg == "close")) {
+	    bigmap.fixAndSavePos(false);
+	    bigmap.hide();
 	    return;
 	} else if((sender == srchwnd) && (msg == "close")) {
 	    ui.destroy(srchwnd);
@@ -2206,6 +2217,16 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
         if (ui.gui.chrwdg.quest.quest != null)
 		    questObjectivesWindow.show(!showUI);
 		mapfile.show(!showUI);
+		if(bigmap != null) {
+			// The big map is hidden by default, so don't force it open when the UI comes
+			// back - only restore it if it was actually open when the UI was hidden.
+			if(showUI) {
+				bigmapvis = bigmap.visible();
+				bigmap.hide();
+			} else {
+				bigmap.show(bigmapvis);
+			}
+		}
 		Hidepanel[] panels = {brpanel, ulpanel, umpanel, urpanel, menupanel};
 		for(Hidepanel p : panels)
 			p.mshow(!showUI);

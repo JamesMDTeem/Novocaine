@@ -11,8 +11,8 @@ import haven.TexI;
 import haven.UI;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
-import java.util.function.BiPredicate;
 
 /**
  * Draws the undiscovered product's own icon (green-tinted) on the minimap over any currently
@@ -33,15 +33,15 @@ public class MinimapDiscoveryRenderer {
 
     public static void renderDiscoveryMarkers(MiniMap map, GOut g) {
         Coord fallbackHalf = new Coord(UI.scale(FALLBACK_RADIUS_PX), UI.scale(FALLBACK_RADIUS_PX));
-        forEachDiscoverableGob(map, (gob, product) -> {
-            TexI icon = LpExplorer.getMarkerIcon(gob, product);
-            Coord screenPos = map.p2c(gob.rc);
+        for (Marker m : markers(map)) {
+            TexI icon = LpExplorer.getMarkerIcon(m.gob, m.product);
+            Coord screenPos = map.p2c(m.gob.rc);
             if (screenPos == null)
-                return false;
+                continue;
             Coord half = icon != null ? icon.sz().div(2) : fallbackHalf;
             if (screenPos.x < -half.x || screenPos.x > map.sz.x + half.x ||
                 screenPos.y < -half.y || screenPos.y > map.sz.y + half.y)
-                return false;
+                continue;
 
             if (icon != null) {
                 g.usestate(MARKER_TINT);
@@ -52,43 +52,58 @@ public class MinimapDiscoveryRenderer {
                 g.fellipse(screenPos, half);
                 g.chcolor();
             }
-            return false; // never stop early; draw every marker
-        });
+        }
     }
 
     /** Finds the discoverable gob (if any) whose marker is under the given minimap screen coordinate. */
     public static Gob gobAt(MiniMap map, Coord screenCoord) {
-        Gob[] hit = new Gob[1];
-        forEachDiscoverableGob(map, (gob, product) -> {
-            TexI icon = LpExplorer.getMarkerIcon(gob, product);
+        for (Marker m : markers(map)) {
+            TexI icon = LpExplorer.getMarkerIcon(m.gob, m.product);
             int threshold = icon != null
                 ? Math.max(icon.sz().x, icon.sz().y) / 2 + UI.scale(3)
                 : UI.scale(FALLBACK_RADIUS_PX + 3);
-            Coord sc = map.p2c(gob.rc);
-            if (sc == null || sc.dist(screenCoord) >= threshold)
-                return false;
-            hit[0] = gob;
-            return true; // stop at first match
-        });
-        return hit[0];
+            Coord sc = map.p2c(m.gob.rc);
+            if (sc != null && sc.dist(screenCoord) < threshold)
+                return m.gob;
+        }
+        return null;
     }
 
-    /**
-     * Visits every loaded gob with an undiscovered LP product, along with which product it is
-     * (resolved once here rather than separately by every caller). The visitor returns true to
-     * stop early.
-     */
-    private static void forEachDiscoverableGob(MiniMap map, BiPredicate<Gob, String> visitor) {
-        if (!LpExplorer.isEnabled())
-            return;
-        if (map.ui == null || map.ui.sess == null)
-            return;
+    /** One gob with an undiscovered product, and which product it is. */
+    private static final class Marker {
+        final Gob gob;
+        final String product;
 
-        // Snapshot the gob list under the OCache lock, then run the discovery scan, icon
-        // resolution and drawing outside it. Those steps issue GL calls and can block
-        // (HarvestState.loadIcon bottoms out in Resource.loadwait), and this runs every frame -
-        // holding the monitor the network thread needs for gob updates across all of that stalls
-        // both sides.
+        Marker(Gob gob, String product) {
+            this.gob = gob;
+            this.product = product;
+        }
+    }
+
+    // The scan below walks every loaded gob and, for trees and bushes, decodes each one's live
+    // sprite bitmask - so running it per frame meant tens of thousands of discovery lookups and
+    // sdt clones per second once a few hundred objects were loaded, and it now runs once per map
+    // WINDOW per frame since the standalone big map draws its own minimap. Discovery state changes
+    // only when something is picked (which bumps the generation and invalidates this immediately),
+    // so rescanning a few times a second is plenty. Gob POSITIONS are still read live at draw time,
+    // so markers track moving objects exactly as smoothly as before.
+    private static final long RESCAN_NANOS = 250_000_000L;
+    private static List<Marker> markers = Collections.emptyList();
+    private static long lastScan = 0;
+    private static int lastGen = -1;
+
+    private static List<Marker> markers(MiniMap map) {
+        if (!LpExplorer.isEnabled() || map.ui == null || map.ui.sess == null)
+            return Collections.emptyList();
+        long now = System.nanoTime();
+        int gen = LpExplorer.generation();
+        if ((gen == lastGen) && ((now - lastScan) < RESCAN_NANOS) && (lastScan != 0))
+            return markers;
+
+        // Snapshot the gob list under the OCache lock, then run the discovery scan and icon
+        // resolution outside it. Those steps can block (HarvestState.loadIcon bottoms out in
+        // Resource.loadwait), and holding the monitor the network thread needs for gob updates
+        // across all of that stalls both sides.
         List<Gob> snapshot = new ArrayList<>();
         OCache oc = map.ui.sess.glob.oc;
         synchronized (oc) {
@@ -96,14 +111,19 @@ public class MinimapDiscoveryRenderer {
                 snapshot.add(gob);
         }
 
+        List<Marker> found = new ArrayList<>();
         for (Gob gob : snapshot) {
             try {
                 String product = LpExplorer.firstUndiscoveredProduct(gob);
-                if (product != null && visitor.test(gob, product))
-                    return;
+                if (product != null)
+                    found.add(new Marker(gob, product));
             } catch (Loading l) {
-                // Position or sprite not ready yet this frame, skip.
+                // Position or sprite not ready yet; picked up by the next rescan.
             }
         }
+        markers = found;
+        lastGen = gen;
+        lastScan = now;
+        return found;
     }
 }

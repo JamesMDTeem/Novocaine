@@ -7,7 +7,6 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -355,14 +354,17 @@ public class HarvestState {
         return ui.sess.glob.ast.isYesteryearSeason();
     }
 
-    private static boolean isSpriteKind(Gob gob, String... kind) {
-        List<String> kinds = Arrays.asList(kind);
+    // Called for every tree/bush on every discovery scan, so it takes a single kind rather than
+    // nurgling's varargs - which allocated an array plus an Arrays.asList wrapper per gob per call
+    // for a list that only ever had one entry.
+    private static boolean isSpriteKind(Gob gob, String kind) {
         Drawable d = gob.getattr(Drawable.class);
         if (d instanceof ResDrawable) {
             Sprite spr = ((ResDrawable) d).spr;
             if (spr == null) throw new Loading();
             Class<?> spc = spr.getClass();
-            return kinds.contains(spc.getSimpleName()) || (spc.getSuperclass() != null && kinds.contains(spc.getSuperclass().getSimpleName()));
+            return kind.equals(spc.getSimpleName())
+                || (spc.getSuperclass() != null && kind.equals(spc.getSuperclass().getSimpleName()));
         }
         return false;
     }

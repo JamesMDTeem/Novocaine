@@ -68,8 +68,8 @@ public class AutoLpBot extends Window implements Runnable {
     private final Label status;
     private final Button startButton;
 
-    /** How far out to consider targets, in map units (configurable via the LP Assistant Manager). */
-    private final double radius;
+    /** How far out to consider targets, in map units. Re-read from LpConfig at the start of each run. */
+    private volatile double radius;
     /** Hard stop, so a mis-planned loop can't run forever unattended. */
     private final int maxActions;
 
@@ -162,7 +162,15 @@ public class AutoLpBot extends Window implements Runnable {
 
         exhausted.clear();
         preexisting.clear();
+        // Per-target menu-open failures are only meaningful within a run: left standing, a target
+        // that hit the retry limit in an earlier run (interrupted, walked away from) would be
+        // retired on sight the next time Start is pressed, without a single attempt.
+        menuFails.clear();
         fatalStop = null;
+        // Re-read rather than using the value captured when the window was opened, so changing the
+        // radius in the LP Assistant Manager takes effect on the next run instead of needing the
+        // bot window closed and reopened.
+        radius = LpConfig.radius();
         if (gui.maininv != null) {
             synchronized (gui.maininv.wmap) {
                 preexisting.addAll(gui.maininv.wmap.keySet());
@@ -659,9 +667,12 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     // Tools have to survive the cull - dropping the axe mid-run would strand every felling task.
+    // Matched case-insensitively so a transcription slip in either direction ("cleaver" here vs
+    // the game's "Butcher's Cleaver") can't let a tool through into the auto-drop.
     private boolean isKeepable(String name) {
-        return name.contains(" Axe") || name.contains(" Saw") || name.contains("cleaver")
-            || name.contains("Pickaxe") || name.contains("Shovel");
+        String n = name.toLowerCase();
+        return n.contains(" axe") || n.contains(" saw") || n.contains("cleaver")
+            || n.contains("pickaxe") || n.contains("shovel");
     }
 
     // ------------------------------------------------------------------ menu helpers
