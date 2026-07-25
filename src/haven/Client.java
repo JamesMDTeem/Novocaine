@@ -48,11 +48,34 @@ public class Client implements Console.Directory {
     public static String gameDir = null;
     public static boolean runningThroughSteam = true;
 
+    /* Upstream builds this from user.dir plus its own hardcoded Workshop item id
+     * (3051280/3423755273). That id is Hurricane's, not ours, so under Steam every
+     * gameDir-relative asset - res/, AlarmSounds/, hitboxes.db, static_data.db -
+     * resolved into a different Workshop item and the client died in static init
+     * loading gfx/hud/fonttexUnfocused.
+     *
+     * Locating the jar we were actually loaded from gives the item directory directly.
+     * That is independent of both the item id Steam assigns us and the working
+     * directory the launcher happens to pick, so neither can break it again. */
+    private static String steamClientDir() {
+        try {
+            Path p = Paths.get(Client.class.getProtectionDomain().getCodeSource().getLocation().toURI());
+            if(Files.isRegularFile(p))
+                p = p.getParent();          /* hafen.jar -> the directory holding it */
+            if(p != null)
+                return(p.toAbsolutePath() + File.separator);
+        } catch(Exception e) {
+            /* An absent or opaque code source is not worth crashing the client over;
+             * fall back to cwd-relative, which is what a non-Steam launch uses. */
+        }
+        return("");
+    }
+
     static {
         try {
             if (gameDir == null) {
                 if((SteamStore.steamsvc.get() != null) && (Steam.get() != null)) {
-                    gameDir = System.getProperty("user.dir") + File.separator + ".." + File.separator + ".." + File.separator + "workshop" + File.separator + "content" + File.separator + "3051280" + File.separator + "3423755273" + File.separator;
+                    gameDir = steamClientDir();
                 }
                 else {
                     gameDir = "";

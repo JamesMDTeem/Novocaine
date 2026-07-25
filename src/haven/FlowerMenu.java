@@ -53,7 +53,9 @@ public class FlowerMenu extends Widget {
 	public static final Color ptcStroke = Color.BLACK;
 	private static String nextAutoSel;
 	public final String[] options;
-	private static final String DATABASE = "jdbc:sqlite:static_data.db";
+	/* gameDir-relative - see the note in HitBoxes. A bare filename lands in whatever
+	 * working directory the Steam launcher picks, not the client directory. */
+	private static final String DATABASE = "jdbc:sqlite:" + haven.Client.gameDir + "static_data.db";
 	public static Map<String, Boolean> autoSelectMap = new TreeMap<>();
 
     @RName("sm")

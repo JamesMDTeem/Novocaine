@@ -8,7 +8,11 @@ import java.sql.*;
 import java.util.*;
 
 public class HitBoxes {
-    private static final String DATABASE = "jdbc:sqlite:hitboxes.db";
+    /* gameDir-relative, like every other shipped asset. Bare "hitboxes.db" is resolved
+     * against the working directory, which under the Steam launcher is not the client
+     * directory - the shipped collision-box data was ignored and an empty database was
+     * created wherever the launcher happened to start us. */
+    private static final String DATABASE = "jdbc:sqlite:" + haven.Client.gameDir + "hitboxes.db";
     public static Map<String, CollisionBoxSecondary[]> collisionBoxMap = new HashMap<>();
 
     private static Set<String> passableGobs = new HashSet<>(Arrays.asList(
