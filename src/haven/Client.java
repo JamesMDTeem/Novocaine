@@ -48,34 +48,26 @@ public class Client implements Console.Directory {
     public static String gameDir = null;
     public static boolean runningThroughSteam = true;
 
-    /* Upstream builds this from user.dir plus its own hardcoded Workshop item id
-     * (3051280/3423755273). That id is Hurricane's, not ours, so under Steam every
-     * gameDir-relative asset - res/, AlarmSounds/, hitboxes.db, static_data.db -
-     * resolved into a different Workshop item and the client died in static init
-     * loading gfx/hud/fonttexUnfocused.
+    /* Our Steam Workshop item. Upstream hardcodes Hurricane's own id (3423755273)
+     * here; ours is different, so under Steam every gameDir-relative asset - res/,
+     * AlarmSounds/ - resolved into Hurricane's item directory instead of ours and the
+     * client died in static init loading gfx/hud/fonttexUnfocused.
      *
-     * Locating the jar we were actually loaded from gives the item directory directly.
-     * That is independent of both the item id Steam assigns us and the working
-     * directory the launcher happens to pick, so neither can break it again. */
-    private static String steamClientDir() {
-        try {
-            Path p = Paths.get(Client.class.getProtectionDomain().getCodeSource().getLocation().toURI());
-            if(Files.isRegularFile(p))
-                p = p.getParent();          /* hafen.jar -> the directory holding it */
-            if(p != null)
-                return(p.toAbsolutePath() + File.separator);
-        } catch(Exception e) {
-            /* An absent or opaque code source is not worth crashing the client over;
-             * fall back to cwd-relative, which is what a non-Steam launch uses. */
-        }
-        return("");
-    }
+     * Keep WORKSHOP_ITEM in sync with workshop-id in steam/workshop-client.properties.
+     *
+     * Deriving this from our own jar's location does NOT work, tempting as it looks:
+     * the launcher copies the jars into %LOCALAPPDATA%\Haven Launcher\cache and runs
+     * the client from there, so the jar sits in a directory holding no resources. It
+     * launches us with the game install as the working directory, which is why walking
+     * up from user.dir is the reliable route to the item. */
+    private static final String STEAM_APP_ID = "3051280";
+    private static final String WORKSHOP_ITEM = "3771625385";
 
     static {
         try {
             if (gameDir == null) {
                 if((SteamStore.steamsvc.get() != null) && (Steam.get() != null)) {
-                    gameDir = steamClientDir();
+                    gameDir = System.getProperty("user.dir") + File.separator + ".." + File.separator + ".." + File.separator + "workshop" + File.separator + "content" + File.separator + STEAM_APP_ID + File.separator + WORKSHOP_ITEM + File.separator;
                 }
                 else {
                     gameDir = "";

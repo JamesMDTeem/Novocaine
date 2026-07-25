@@ -31,13 +31,20 @@
 
 .PARAMETER SkipBuild
     Zip/stage whatever is already in bin\ instead of rebuilding first.
+
+.PARAMETER SkipSmoke
+    Skip the pre-upload smoke test. The test launches the staged item the way Steam does
+    and refuses the upload if the client dies on startup - a client can run perfectly from
+    bin\Play.bat and still be dead under the Steam launcher, which is how a broken item got
+    published once. Only use this if the test itself is broken or the game is not installed.
 #>
 
 [CmdletBinding()]
 param(
     [switch]$Upload,
     [string]$Message,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [switch]$SkipSmoke
 )
 
 $ErrorActionPreference = 'Stop'
@@ -98,6 +105,22 @@ if (-not $Upload) {
     Write-Host "  cd bin; java -cp hafen.jar haven.SteamWorkshop upload `"$item`"" -ForegroundColor DarkGray
     Write-Host 'or re-run this script with -Upload (Steam must be running and logged in).' -ForegroundColor DarkGray
     exit 0
+}
+
+# --- smoke test ------------------------------------------------------------
+# Gate the upload on the item actually starting under the Steam launcher. bin\Play.bat
+# exercises a different launch path entirely and will happily pass on a client that is
+# dead on arrival here.
+if ($SkipSmoke) {
+    Warn 'Skipping the pre-upload smoke test (-SkipSmoke).'
+} else {
+    Step 'Smoke-testing the staged item on the Steam launch path'
+    & "$PSScriptRoot\smoke-steam-launch.ps1" -Item $item
+    switch ($LASTEXITCODE) {
+        0 { Ok 'smoke test passed' }
+        2 { Die 'Smoke test could not run (see above). Fix it, or pass -SkipSmoke to upload anyway.' }
+        default { Die 'Smoke test FAILED - refusing to upload a client that crashes on startup.' }
+    }
 }
 
 Step 'Uploading to the Steam Workshop'
