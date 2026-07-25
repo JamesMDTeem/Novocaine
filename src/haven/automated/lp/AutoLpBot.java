@@ -88,6 +88,24 @@ public class AutoLpBot extends Window implements Runnable {
     // there was no water to drink). The run loop checks it and exits rather than plodding on.
     private volatile String fatalStop = null;
 
+    // Set by walkTo when the approach was abandoned because of wildlife rather than because the
+    // target is unreachable. The distinction decides whether the caller RETIRES the target (spent
+    // for the run) or DEFERS it (skipped for a while, then reconsidered) - a bear is temporary,
+    // a tree we simply cannot path to is not.
+    private boolean hazardBlocked = false;
+
+    // Targets set aside because a dangerous beast was in the way, by gob id -> the attempt number
+    // at which they become eligible again. This is what keeps one wandering bear from ending a
+    // whole run: before, every target near it was retired in turn until the plan came back empty
+    // and the bot reported "finished" seconds after starting, having done nothing.
+    private final Map<Long, Integer> deferred = new HashMap<>();
+    private static final int DEFER_ATTEMPTS = 12;
+    /** Total attempts that may be spent waiting for wildlife to clear before a run gives up. */
+    private static final int HAZARD_WAIT_LIMIT = 60;
+
+    /** Attempt counter, shared with the deferral bookkeeping. */
+    private int attempt;
+
     public AutoLpBot(GameUI gui) {
         super(UI.scale(220, 60), "Auto LP");
         this.gui = gui;
@@ -166,6 +184,7 @@ public class AutoLpBot extends Window implements Runnable {
         // that hit the retry limit in an earlier run (interrupted, walked away from) would be
         // retired on sight the next time Start is pressed, without a single attempt.
         menuFails.clear();
+        deferred.clear();
         fatalStop = null;
         // Re-read rather than using the value captured when the window was opened, so changing the
         // radius in the LP Assistant Manager takes effect on the next run instead of needing the
@@ -179,29 +198,70 @@ public class AutoLpBot extends Window implements Runnable {
 
         NLog.log(LOG, "=== run start: radius=" + radius + " maxActions=" + maxActions
             + " (pre-existing pack items: " + preexisting.size() + ") ===");
+
+        // Route around water for the length of the run. The client can swim, so this is opt-in
+        // rather than the pathfinder's default; a bot that swims off after a shoreline mushroom
+        // arrives soaked, slowed and out of reach of everything it was going to do next. Restored
+        // rather than simply cleared, so the setting survives whatever the player had it at.
+        boolean prevBlockWater = haven.automated.pathfinder.Map.BLOCK_WATER;
+        haven.automated.pathfinder.Map.BLOCK_WATER = true;
+        try {
+            runLoop();
+        } finally {
+            haven.automated.pathfinder.Map.BLOCK_WATER = prevBlockWater;
+            haven.automated.pathfinder.Map.keepout(null);
+        }
+    }
+
+    private void runLoop() throws InterruptedException {
         int done = 0;
         // Bounded on ATTEMPTS, not successes: any path that returns without acting (a gob that
         // vanished between planning and arriving) must not be able to spin the loop indefinitely.
         int attempts = 0;
         int maxAttempts = maxActions * 4;
+        int hazardWaits = 0;
 
         while (active && !stop && done < maxActions && attempts < maxAttempts) {
             if (Thread.interrupted())
                 throw new InterruptedException();
-            attempts++;
+            attempt = ++attempts;
 
             List<LpTask> tasks = LpPlanner.plan(gui, radius, exhausted);
-            NLog.log(LOG, "plan #" + attempts + ": " + tasks.size() + " task(s)"
-                + (tasks.isEmpty() ? "" : ", next=" + tasks.get(0)));
+            List<LpTask> ready = new java.util.ArrayList<>(tasks.size());
+            for (LpTask t : tasks) {
+                if (!isDeferred(t))
+                    ready.add(t);
+            }
+            NLog.log(LOG, "plan #" + attempts + ": " + tasks.size() + " task(s), "
+                + ready.size() + " ready" + (ready.isEmpty() ? "" : ", next=" + ready.get(0)));
             setStatus("Actions: " + done + ", targets left: " + tasks.size());
             if (tasks.isEmpty())
                 break;
 
-            LpTask task = tasks.get(0);
+            if (ready.isEmpty()) {
+                // Everything in range is waiting out a beast. Idling here is the whole point of
+                // deferring - the obstruction walks away - but it can't be unbounded, or a bear
+                // that settles down for the night would keep the bot pinned until the attempt cap.
+                if (++hazardWaits > HAZARD_WAIT_LIMIT) {
+                    NLog.log(LOG, "=== giving up: " + tasks.size()
+                        + " target(s) still blocked by wildlife after " + hazardWaits + " waits ===");
+                    gui.msg("Auto-LP stopped: everything nearby is too close to a dangerous animal.",
+                        Color.YELLOW);
+                    setStatus("Stopped: wildlife in the way.");
+                    return;
+                }
+                setStatus("Waiting: " + tasks.size() + " target(s) blocked by wildlife.");
+                waitUntil(() -> false, 40);  // ~1s, then re-plan and see if it has moved
+                continue;
+            }
+
+            LpTask task = ready.get(0);
             boolean acted = execute(task);
             NLog.log(LOG, (acted ? "acted" : "skipped") + ": " + task);
-            if (acted)
+            if (acted) {
                 done++;
+                hazardWaits = 0;  // progress means the wildlife budget starts over
+            }
 
             if (fatalStop != null) {
                 NLog.log(LOG, "=== fatal stop: " + fatalStop + " (after " + done + " action(s)) ===");
@@ -275,8 +335,12 @@ public class AutoLpBot extends Window implements Runnable {
         if (tree == null)
             return false;
         if (!walkTo(tree)) {
-            NLog.log(LOG, "couldn't reach " + task + " to fell it - retiring");
-            retire(task);
+            if (hazardBlocked) {
+                defer(task);
+            } else {
+                NLog.log(LOG, "couldn't reach " + task + " to fell it - retiring");
+                retire(task);
+            }
             return false;
         }
         tree = findGob(task.gob.id);
@@ -363,10 +427,12 @@ public class AutoLpBot extends Window implements Runnable {
             if (findGob(gob.id) == null)
                 return false;  // despawned or already felled since planning
             if (!walkTo(gob)) {
-                // Either it outran us, it despawned, or we broke off because of a nearby beast.
-                // Retire it rather than right-clicking from out of range: the menu wouldn't open,
-                // and that would burn a menu-fail retry on something that isn't a menu problem.
-                if (findGob(gob.id) != null) {
+                // Either it outran us, it despawned, or wildlife got in the way. Don't right-click
+                // from out of range: the menu wouldn't open, and that would burn a menu-fail retry
+                // on something that isn't a menu problem.
+                if (hazardBlocked)
+                    defer(task);          // temporary - the beast moves, the target is still good
+                else if (findGob(gob.id) != null) {
                     NLog.log(LOG, "couldn't reach " + task + " - retiring");
                     retire(task);
                 }
@@ -850,18 +916,39 @@ public class AutoLpBot extends Window implements Runnable {
      * Static targets cost nothing extra: their drift is always zero, so the re-path never fires and
      * this behaves like the single click it replaces.
      *
-     * Two bail-outs, because a fleeing critter can outrun a walking character indefinitely: give up
-     * once the distance has stopped improving (NO_PROGRESS_LIMIT re-paths), and give up immediately
-     * if a dangerous beast comes within its keep-out margin of us - a chase that wanders into a
-     * bear is far worse than a lost silkmoth.
+     * Wildlife is routed AROUND rather than run from. Every re-path publishes the beasts' aggro
+     * rings to the pathfinder as keep-out circles (LpPlanner.keepouts), so A* plans a detour; if one
+     * has already closed to within its ring, the character backs out of it first, because a search
+     * whose own starting cell sits inside a blocked region has no legal move at all. This replaces
+     * an earlier "abandon the approach the moment a beast is near" rule, which read as the bot
+     * quitting: the abandoned target got retired, the next one was equally near the same bear, and
+     * a run could retire every target it had and finish in seconds without acting once.
+     *
+     * Three bail-outs, all of which leave the target DEFERRED rather than spent (see hazardBlocked)
+     * when wildlife was the cause: the target itself ends up inside a keep-out, we can't get clear
+     * of a beast after RETREAT_LIMIT tries, or - for a fleeing critter that can outrun a walking
+     * character indefinitely - the distance stops improving over NO_PROGRESS_LIMIT re-paths.
      *
      * @return true if we ended up within reach of the target.
      */
     private boolean walkTo(Gob gob) throws InterruptedException {
+        hazardBlocked = false;
+        try {
+            return walkToward(gob);
+        } finally {
+            // Never leave a keep-out standing. It's a process-wide setting and the player's own
+            // clicks go through the same pathfinder, so a leftover ring would silently reroute
+            // them long after the bot stopped caring.
+            haven.automated.pathfinder.Map.keepout(null);
+        }
+    }
+
+    private boolean walkToward(Gob gob) throws InterruptedException {
         long id = gob.id;
         haven.Coord2d aimed = null;
         double best = Double.MAX_VALUE;
         int stalled = 0;
+        int retreats = 0;
 
         for (int i = 0; i < 60; i++) {
             Gob target = findGob(id);
@@ -873,13 +960,34 @@ public class AutoLpBot extends Window implements Runnable {
             if (dist <= REACH)
                 return true;
 
-            Gob beast = LpPlanner.hazardNear(gui, me.rc);
-            if (beast != null) {
-                NLog.log(LOG, "abandoning approach to #" + id + ": "
-                    + LpExplorer.resname(beast) + " within "
-                    + (int) me.rc.dist(beast.rc) + "u");
+            // A beast that has wandered onto the target since it was planned. Standing there to
+            // work is what the full keep-out margin exists to prevent, so stop - but defer, since
+            // beasts move and the target will be worth having again shortly.
+            Gob atTarget = LpPlanner.hazardWithin(gui, target.rc, LpTargets.DANGER_KEEPOUT);
+            if (atTarget != null) {
+                NLog.log(LOG, "deferring #" + id + ": " + LpExplorer.resname(atTarget)
+                    + " is within keep-out of it");
+                hazardBlocked = true;
                 cancelWalk();
                 return false;
+            }
+
+            // One that has closed on US. Can't be handed to the pathfinder as a no-go circle while
+            // we're inside it, so step out of it and re-path on the next pass.
+            Gob onUs = LpPlanner.hazardWithin(gui, me.rc, LpTargets.DANGER_PATH_CLEARANCE);
+            if (onUs != null) {
+                if (++retreats > RETREAT_LIMIT) {
+                    NLog.log(LOG, "deferring #" + id + ": still inside "
+                        + LpExplorer.resname(onUs) + "'s ring after " + retreats + " retreats");
+                    hazardBlocked = true;
+                    cancelWalk();
+                    return false;
+                }
+                NLog.log(LOG, "backing away from " + LpExplorer.resname(onUs) + " ("
+                    + (int) me.rc.dist(onUs.rc) + "u) before continuing to #" + id);
+                retreatFrom(onUs);
+                aimed = null;  // we've moved; whatever we aimed at is stale
+                continue;
             }
 
             if (dist < best - 1.0) {
@@ -895,6 +1003,9 @@ public class AutoLpBot extends Window implements Runnable {
                     cancelWalk();
                     return false;
                 }
+                // Refreshed per re-path rather than once per walk: the beasts move too, and a stale
+                // ring would route us around where a bear used to be and through where it now is.
+                haven.automated.pathfinder.Map.keepout(LpPlanner.keepouts(gui, me.rc));
                 // clickb=1 walks without acting on arrival; the right-click is ours to time.
                 gui.map.pfRightClick(target, -1, 1, 0, null);
                 aimed = target.rc;
@@ -934,6 +1045,42 @@ public class AutoLpBot extends Window implements Runnable {
             return true;
         cancelWalk();
         return false;
+    }
+
+    /** How many times one approach may stop to back out of a beast's ring before giving up. */
+    private static final int RETREAT_LIMIT = 3;
+    /** Extra distance past the ring's edge to aim for, so a step or two of drift doesn't re-trip it. */
+    private static final double RETREAT_MARGIN = 30.0;
+
+    /**
+     * Walks directly away from a beast until we're outside the ring the pathfinder needs to treat
+     * as a no-go area.
+     *
+     * Uses pfLeftClick rather than a raw move so the retreat still goes around trees and water, but
+     * it is issued while no keep-out is published - by definition we are standing in the one that
+     * matters, and blocking it would leave the search no route out of where we already are.
+     */
+    private void retreatFrom(Gob beast) throws InterruptedException {
+        Gob me = player();
+        if (me == null || beast == null)
+            return;
+        haven.Coord2d away = me.rc.sub(beast.rc);
+        double d = away.abs();
+        // Dead-centre on the beast has no "away" direction; any heading beats standing still.
+        away = (d < 1.0) ? new haven.Coord2d(1, 0) : away.div(d);
+        haven.Coord2d dest = beast.rc.add(
+            away.mul(LpTargets.DANGER_PATH_CLEARANCE + RETREAT_MARGIN));
+
+        haven.automated.pathfinder.Map.keepout(null);
+        gui.map.pfLeftClick(dest.floor(), null);
+        waitUntil(() -> {
+            Gob p = player();
+            Gob b = findGob(beast.id);
+            if (p == null || b == null)
+                return true;
+            return p.rc.dist(b.rc) > LpTargets.DANGER_PATH_CLEARANCE + RETREAT_MARGIN;
+        }, 200);
+        cancelWalk();
     }
 
     private void rclickGob(Gob gob) {
@@ -1023,6 +1170,27 @@ public class AutoLpBot extends Window implements Runnable {
     private void retire(LpTask task) {
         for (String opt : task.options)
             exhausted.add(task.key(opt));
+    }
+
+    /**
+     * Sets a target aside for a while instead of spending it.
+     *
+     * Keyed by gob rather than by (gob, option) as retire() is: what's blocking it is a beast
+     * standing nearby, which has nothing to do with which flower option we wanted, so every option
+     * on that target waits together.
+     */
+    private void defer(LpTask task) {
+        if (task.isItem())
+            return;  // inventory tasks cost no travel and can't be blocked by anything out there
+        deferred.put(task.gob.id, attempt + DEFER_ATTEMPTS);
+        NLog.log(LOG, "deferred " + task + " until attempt " + (attempt + DEFER_ATTEMPTS));
+    }
+
+    private boolean isDeferred(LpTask task) {
+        if (task.isItem())
+            return false;
+        Integer until = deferred.get(task.gob.id);
+        return until != null && attempt < until;
     }
 
     private interface Cond {

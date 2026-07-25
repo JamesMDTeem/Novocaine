@@ -161,6 +161,13 @@ public class LpPlanner {
                     continue;
                 if (nearHazard(gob, hazards))
                     continue;
+                // Things standing in open water (waterstriders, the odd shore forage that spawned
+                // a tile out) can't be walked to at all. Without this the bot picked one as its
+                // nearest target, the pathfinder returned the closest it could manage - the shore -
+                // and the approach loop then burned its whole attempt budget re-pathing at a gob it
+                // was never going to reach, on repeat, for as long as the critter existed.
+                if (onWater(gui, gob))
+                    continue;
 
                 List<String> undiscovered = LpExplorer.allUndiscoveredProducts(gob);
                 if (!undiscovered.isEmpty()) {
@@ -257,8 +264,13 @@ public class LpPlanner {
 
     /** The nearest dangerous beast inside its keep-out margin of a point, or null. */
     public static Gob hazardNear(GameUI gui, haven.Coord2d c) {
+        return hazardWithin(gui, c, LpTargets.DANGER_KEEPOUT);
+    }
+
+    /** The nearest dangerous beast within `margin` of a point, or null. */
+    public static Gob hazardWithin(GameUI gui, haven.Coord2d c, double margin) {
         Gob nearest = null;
-        double best = LpTargets.DANGER_KEEPOUT;
+        double best = margin;
         OCache oc = gui.ui.sess.glob.oc;
         synchronized (oc) {
             for (Gob gob : oc) {
@@ -273,6 +285,55 @@ public class LpPlanner {
             }
         }
         return nearest;
+    }
+
+    /**
+     * The beasts' aggro rings expressed as pathfinder keep-out circles, so a route can be planned
+     * AROUND them instead of the approach simply being abandoned.
+     *
+     * Any circle the character is already inside is left out: the pathfinder's own starting cell
+     * would be inside a blocked region and no route out of it would exist. Getting clear of one is
+     * the bot's job (AutoLpBot.retreatFrom), and once it has, the ring reappears here.
+     *
+     * The radius used is DANGER_PATH_CLEARANCE, not the bigger DANGER_KEEPOUT that target selection
+     * uses - walking past a bear at range is a different proposition from standing next to one
+     * swinging an axe for half a minute, and pathing with the larger figure walls off far more
+     * ground than the risk warrants.
+     */
+    public static haven.automated.pathfinder.Map.Keepout[] keepouts(GameUI gui, haven.Coord2d from) {
+        List<haven.automated.pathfinder.Map.Keepout> out = new ArrayList<>();
+        OCache oc = gui.ui.sess.glob.oc;
+        synchronized (oc) {
+            for (Gob gob : oc) {
+                String res = LpExplorer.resname(gob);
+                if (res == null || !LpTargets.isDangerous(res) || Boolean.TRUE.equals(gob.knocked))
+                    continue;
+                if (gob.rc.dist(from) <= LpTargets.DANGER_PATH_CLEARANCE)
+                    continue;
+                out.add(new haven.automated.pathfinder.Map.Keepout(
+                    gob.rc, LpTargets.DANGER_PATH_CLEARANCE));
+            }
+        }
+        return out.toArray(new haven.automated.pathfinder.Map.Keepout[0]);
+    }
+
+    /**
+     * Whether a gob is standing on water the character can't walk onto.
+     *
+     * Checked per candidate rather than left to the pathfinder because the two failures are
+     * different: the pathfinder would route to the nearest reachable point and report success,
+     * leaving the bot right-clicking at a critter bobbing about out of reach. Ruling the target out
+     * up front turns that into "pick something else".
+     */
+    private static boolean onWater(GameUI gui, Gob gob) {
+        try {
+            haven.MCache mc = gui.ui.sess.glob.map;
+            haven.Resource res = mc.tilesetr(mc.gettile(gob.rc.floor(haven.MCache.tilesz)));
+            return res != null && haven.automated.pathfinder.Map.isWater(res.name);
+        } catch (Loading l) {
+            // Grid not in yet - judge it on the next plan() rather than rejecting it blind.
+            return false;
+        }
     }
 
     // Item categories whose members are worth trying a carcass-processing option on. Taken from

@@ -77,20 +77,86 @@ public class LpAssistantManagerWindow extends Window {
         add(radiusEntry, x + UI.scale(170), y);
         y += row + UI.scale(6);
 
-        add(new Button(UI.scale(280), "Reset LP log (this character)") {
+        // Side by side, because they are each other's undo and reading them together is the point:
+        // the reset is only safe to press BECAUSE the restore next to it exists.
+        int half = UI.scale(136);
+        add(new Button(half, "Reset LP log...") {
             @Override
             public void click() {
-                LpLog log = LpContext.log();
-                if (log == null) {
-                    gui.error("No character is logged in.");
-                    return;
-                }
-                log.clearLpExplorer();
-                gui.msg("LP-discovery log wiped for this character. Everything counts as undiscovered again.", Color.WHITE);
+                askReset();
             }
         }, x, y);
+        add(new Button(half, "Restore last reset") {
+            @Override
+            public void click() {
+                askRestore();
+            }
+        }, x + half + UI.scale(8), y);
 
         pack();
+    }
+
+    /**
+     * The reset is destructive in a way nothing else in this window is - it throws away discovery
+     * history that can only be rebuilt by re-foraging every species - and it sits directly under a
+     * column of harmless checkboxes, so a mis-aimed click used to wipe it outright. Confirm it, and
+     * say how much is at stake rather than asking an abstract "are you sure".
+     */
+    private void askReset() {
+        LpLog log = LpContext.log();
+        if (log == null) {
+            gui.error("No character is logged in.");
+            return;
+        }
+        int n = log.size();
+        if (n == 0) {
+            gui.msg("This character's LP-discovery log is already empty.", Color.WHITE);
+            return;
+        }
+        // Re-fetched inside the callback rather than closing over `log`: the dialog is not modal,
+        // so a character switch between asking and confirming would otherwise wipe the log of a
+        // character the question was never about.
+        LpConfirm.ask(gui, "Reset LP log?", "Reset", () -> {
+            LpLog live = LpContext.log();
+            if (live == null) {
+                gui.error("No character is logged in.");
+                return;
+            }
+            boolean saved = live.clearLpExplorer();
+            gui.msg("LP-discovery log wiped for this character. Everything counts as undiscovered"
+                + " again." + (saved ? " Use \"Restore last reset\" to undo it." : ""), Color.WHITE);
+        },
+            "Forget all " + n + " recorded discoveries for this character?",
+            "Everything counts as undiscovered again.",
+            "A copy is kept, so this can be undone.");
+    }
+
+    /** Restoring is destructive in its own right - it drops anything found since the reset. */
+    private void askRestore() {
+        LpLog log = LpContext.log();
+        if (log == null) {
+            gui.error("No character is logged in.");
+            return;
+        }
+        if (!log.hasBackup()) {
+            gui.error("Nothing to restore - this character's LP log has not been reset.");
+            return;
+        }
+        LpConfirm.ask(gui, "Restore LP log?", "Restore", () -> {
+            LpLog live = LpContext.log();
+            if (live == null) {
+                gui.error("No character is logged in.");
+                return;
+            }
+            int n = live.restoreBackup();
+            if (n < 0)
+                gui.error("Couldn't read the saved copy (details in logs/crash.log).");
+            else
+                gui.msg("Restored " + n + " discoveries from before the last reset.", Color.WHITE);
+        },
+            "Replace this character's LP log with the copy",
+            "saved by the last reset?",
+            "Anything discovered since that reset is dropped.");
     }
 
     private final TextEntry radiusEntry;

@@ -349,6 +349,18 @@ public class LpTargets {
     public static final double DANGER_KEEPOUT = 2 * DANGER_RADIUS;
 
     /**
+     * How wide a berth the bot's PATHING gives a beast - the aggro circle plus a quarter, rather
+     * than the doubled DANGER_KEEPOUT that target selection uses.
+     *
+     * The two numbers answer different questions. DANGER_KEEPOUT asks "may I stand here for thirty
+     * seconds swinging an axe while that thing wanders?", and doubling the radius is cheap there
+     * because the only cost is skipping a target. This one asks "may I walk past at range?", where
+     * the same doubling would wall off a 480-unit-wide disc of ground - routinely every route to
+     * everything - and turn a detour back into the refusal it replaced.
+     */
+    public static final double DANGER_PATH_CLEARANCE = 1.25 * DANGER_RADIUS;
+
+    /**
      * One of the beasts that will chase and kill you - the same roster the client draws a red radius
      * circle for. Matched by suffix, as Gob.updateDangerousBeastRadii does, so variants resolve the
      * same way there and here.
