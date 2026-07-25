@@ -111,9 +111,12 @@ public class MinimapDiscoveryRenderer {
                 snapshot.add(gob);
         }
 
+        boolean hunt = LpConfig.on(LpConfig.Key.lpHuntTargets);
         List<Marker> found = new ArrayList<>();
         for (Gob gob : snapshot) {
             try {
+                if (!hunt && LpTargets.isHuntOnly(LpExplorer.resname(gob)))
+                    continue;
                 String product = LpExplorer.firstUndiscoveredProduct(gob);
                 if (product != null)
                     found.add(new Marker(gob, product));

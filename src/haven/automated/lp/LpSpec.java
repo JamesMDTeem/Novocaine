@@ -880,19 +880,9 @@ public class LpSpec {
             ArrayList<String> zincsparOp = new ArrayList<>();
             zincsparOp.add("Zincspar");
             object.put("gfx/terobjs/bumlings/zincspar", zincsparOp);
-            ArrayList<String> dandelionOp = new ArrayList<>();
-            dandelionOp.add("Dandelion");
-            object.put("gfx/terobjs/herbs/dandelion", dandelionOp);
-            ArrayList<String> standinggrassOp = new ArrayList<>();
-            standinggrassOp.add("Standing Grass");
-            object.put("gfx/terobjs/herbs/standinggrass", standinggrassOp);
-            ArrayList<String> grasshopperOp = new ArrayList<>();
-            grasshopperOp.add("Grasshopper");
-            object.put("gfx/kritter/grasshopper/grasshopper", grasshopperOp);
-            ArrayList<String> silkmothOp = new ArrayList<>();
-            silkmothOp.add("Silkmoth");
-            silkmothOp.add("Male Silkmoth");
-            object.put("gfx/kritter/silkmoth/silkmoth", silkmothOp);
+            // Forage, critters and animals used to be four hand-added entries here (dandelion,
+            // standing grass, grasshopper, silkmoth). They now live in LpTargets, which owns every
+            // non-plant world target and is installed from the static block below.
     }
 
     private static void initIcons() {
@@ -1236,7 +1226,7 @@ public class LpSpec {
         productIcon.put("Clover", "gfx/invobjs/herbs/clover");
         productIcon.put("Coltsfoot", "gfx/invobjs/herbs/coltsfoot");
         productIcon.put("Dandelion", "gfx/invobjs/herbs/dandelion");
-        productIcon.put("EdelweiР“Сџ", "gfx/invobjs/herbs/edelweiss");
+        productIcon.put("Edelwei\u00df", "gfx/invobjs/herbs/edelweiss");
         productIcon.put("Frog's Crown", "gfx/invobjs/herbs/frogscrown");
         productIcon.put("Heartsease", "gfx/invobjs/herbs/heartsease");
         productIcon.put("Lupine", "gfx/invobjs/herbs/lupine");
@@ -1998,7 +1988,7 @@ public class LpSpec {
         category.put("Tree Bough", new ArrayList<>(Arrays.asList("Alder Bough", "Elm Bough", "Fir Bough", "Gray Alder Bough", "Linden Bough", "Spruce Bough", "Sweetgum Bough", "Yew Bough", "Beech Bough", "Poplar Bough")));
         category.put("Thatching Material", new ArrayList<>(Arrays.asList("Glimmermoss", "Reeds", "Straw", "Tarsticks")));
         category.put("Vegetable Oil", new ArrayList<>(Arrays.asList("Hempseed Oil", "Linseed Oil", "Olive Oil")));
-        category.put("Flower", new ArrayList<>(Arrays.asList("Blood Stern", "Camomile", "Cavebulb", "Chiming Bluebell", "Clover", "Coltsfoot", "Dandelion", "EdelweiР“Сџ", "Frog's Crown", "Heartsease", "Lupine", "Marsh-Mallow", "Poppy Flower", "Stinging Nettle", "Thorny Thistle", "Uncommon Snapdragon", "Wintergreen", "Yarrow", "Tansy", "Wildflower")));
+        category.put("Flower", new ArrayList<>(Arrays.asList("Blood Stern", "Camomile", "Cavebulb", "Chiming Bluebell", "Clover", "Coltsfoot", "Dandelion", "Edelwei\u00df", "Frog's Crown", "Heartsease", "Lupine", "Marsh-Mallow", "Poppy Flower", "Stinging Nettle", "Thorny Thistle", "Uncommon Snapdragon", "Wintergreen", "Yarrow", "Tansy", "Wildflower")));
         category.put("Solid Fat", new ArrayList<>(Arrays.asList("Hvalraf", "Rendered Animal Fat", "Butter")));
         category.put("Cured Tea", new ArrayList<>(Arrays.asList("Green Tea Leaves", "Black Tea Leaves")));
         category.put("Snail", new ArrayList<>(Arrays.asList("Forest Snail", "Lake Snail")));
@@ -2085,6 +2075,10 @@ public class LpSpec {
         initObject5();
         initIcons();
         initCategories();
+        // Last, and after the tables above are populated: LpTargets adds the non-plant world
+        // targets (forage, critters, huntable animals) and then scans the finished map to work out
+        // which product names more than one resource can yield.
+        LpTargets.install();
     }
 
     /** Icon resource path for a product item name, or null (caller falls back to a generic marker). */

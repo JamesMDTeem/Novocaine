@@ -6,6 +6,7 @@ import haven.automated.lp.HarvestState;
 import haven.automated.lp.LpConfig;
 import haven.automated.lp.LpExplorer;
 import haven.automated.lp.LpIcons;
+import haven.automated.lp.LpTargets;
 
 import java.util.List;
 
@@ -56,8 +57,32 @@ public class GobLpDiscoveryInfo extends GobInfo {
             lastGen = gen;
             sinceRefresh = 0;
             clear();
+            updateRing();
         }
         super.ctick(dt);
+    }
+
+    /**
+     * Keeps the ground ring on huntable animals in sync. Driven off the same generation/refresh
+     * beat as the icon rather than its own poll, so a discovery clears the ring on the next frame
+     * and nothing new ticks per-gob.
+     *
+     * Only hunt-only animals get a ring. A floating icon over a moving animal at distance is easy
+     * to miss - which is the whole reason to draw something on the ground - while a ring under every
+     * herb and boulder would bury the map in circles.
+     */
+    private void updateRing() {
+        if (!LpTargets.isHuntOnly(LpExplorer.resname(gob)))
+            return;
+        boolean want = enabled() && LpConfig.on(LpConfig.Key.lpHuntTargets);
+        if (want) {
+            try {
+                want = !LpExplorer.markerProducts(gob).isEmpty();
+            } catch (Loading l) {
+                return;  // undecided this pass; the refresh timer comes back around
+            }
+        }
+        gob.setLpAura(want);
     }
 
     @Override
@@ -65,6 +90,8 @@ public class GobLpDiscoveryInfo extends GobInfo {
         try {
             String name = LpExplorer.resname(gob);
             if (name == null)
+                return null;
+            if (LpTargets.isHuntOnly(name) && !LpConfig.on(LpConfig.Key.lpHuntTargets))
                 return null;
             String norm = HarvestState.normalizeBumlingRes(name);
             HarvestSpec spec = HarvestSpecs.forResource(norm);

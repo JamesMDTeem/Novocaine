@@ -43,6 +43,8 @@ public class Map {
     private final Dbg dbg;
     private final static boolean DEBUG = false;
     public final static boolean DEBUG_TIMINGS = false;
+    /** Treat cliffs/ledges as impassable geography. See cliffAt(). */
+    public static boolean BLOCK_CLIFFS = true;
 
     public Map(Coord plc, Coord endc, MCache mcache) {
         this.plc = plc;
@@ -67,10 +69,13 @@ public class Map {
                     continue;
 
                 String name = res.name;
-                if (!name.equals("gfx/tiles/deep") &&
-                        !name.equals("gfx/tiles/cave") &&
-                        !name.equals("gfx/tiles/nil") &&
-                        !name.startsWith("gfx/tiles/rocks/"))
+                boolean blocked = name.equals("gfx/tiles/deep") ||
+                        name.equals("gfx/tiles/cave") ||
+                        name.equals("gfx/tiles/nil") ||
+                        name.startsWith("gfx/tiles/rocks/");
+                if (!blocked && BLOCK_CLIFFS)
+                    blocked = cliffAt(pltc.sub(x, y));
+                if (!blocked)
                     continue;
 
                 int gcx = origin - (x * 11) - dx;
@@ -132,6 +137,26 @@ public class Map {
             dbg.dot(i, sz - mapborder, Color.CYAN);
             dbg.dot(mapborder, i, Color.CYAN);
             dbg.dot(sz - mapborder, i, Color.CYAN);
+        }
+    }
+
+    /**
+     * A cliff/ledge on this tile, i.e. a height break the character can't walk over.
+     *
+     * Without this, geography was decided purely by TILE TYPE (deep water, cave, nil, rocks), and
+     * elevation was invisible to the search: a ridge between two levels is the same grass tile on
+     * both sides, so A* would happily plan a straight line through a cliff face and the character
+     * would walk into it and stop. Same predicate the client already uses to draw cliffs (see
+     * MapSource's minimap render and Ridges.cliffHighlightMat), so what the pathfinder refuses to
+     * cross is exactly what the player sees as a cliff.
+     */
+    private boolean cliffAt(Coord tc) {
+        try {
+            return haven.resutil.Ridges.brokenp(mcache, tc);
+        } catch (Loading l) {
+            // Grid not loaded yet - treat as open rather than blocking a tile we can't judge. The
+            // path is re-planned on the next click anyway, by which point it'll usually be in.
+            return false;
         }
     }
 

@@ -2013,6 +2013,30 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 	}
 
+	// A ring under an animal that still owes an undiscovered LP product - see LpTargets and
+	// GobLpDiscoveryInfo. Deliberately its OWN overlay field rather than a fifth caller of
+	// setAuraCircleOverlay: that method shares one customAuraOverlay slot between critter auras,
+	// speed buffs and midges, so a fifth user would silently overwrite whichever of them happened
+	// to run first on the same gob (a rabbit gets both a critter aura and, until you've skinned one,
+	// an LP ring).
+	private Overlay lpAuraOverlay;
+	private static final Color LP_AURA_COLOR = new Color(60, 170, 255, 110);
+	private static final float LP_AURA_SIZE = 18f;
+
+	public void setLpAura(boolean enabled) {
+		if (enabled) {
+			if (lpAuraOverlay != null)
+				return;  // already showing - rebuilding it every refresh would re-upload geometry
+			lpAuraOverlay = new Overlay(this, new AuraCircleSprite(this, LP_AURA_COLOR, LP_AURA_SIZE));
+			synchronized (ols) {
+				addol(lpAuraOverlay);
+			}
+		} else if (lpAuraOverlay != null) {
+			removeOl(lpAuraOverlay);
+			lpAuraOverlay = null;
+		}
+	}
+
 	private void setAuraCircleOverlay(boolean enabled, Color col, float size) {
 		if (enabled) {
 			if (customAuraOverlay != null) {

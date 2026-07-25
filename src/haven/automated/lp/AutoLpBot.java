@@ -274,7 +274,11 @@ public class AutoLpBot extends Window implements Runnable {
         Gob tree = findGob(task.gob.id);
         if (tree == null)
             return false;
-        walkTo(tree);
+        if (!walkTo(tree)) {
+            NLog.log(LOG, "couldn't reach " + task + " to fell it - retiring");
+            retire(task);
+            return false;
+        }
         tree = findGob(task.gob.id);
         if (tree == null)
             return false;
@@ -358,9 +362,16 @@ public class AutoLpBot extends Window implements Runnable {
             Gob gob = task.gob;
             if (findGob(gob.id) == null)
                 return false;  // despawned or already felled since planning
-            walkTo(gob);
-            if (findGob(gob.id) == null)
+            if (!walkTo(gob)) {
+                // Either it outran us, it despawned, or we broke off because of a nearby beast.
+                // Retire it rather than right-clicking from out of range: the menu wouldn't open,
+                // and that would burn a menu-fail retry on something that isn't a menu problem.
+                if (findGob(gob.id) != null) {
+                    NLog.log(LOG, "couldn't reach " + task + " - retiring");
+                    retire(task);
+                }
                 return false;
+            }
             rclickGob(gob);
             fm = findFlowerMenu();
         }
@@ -791,11 +802,138 @@ public class AutoLpBot extends Window implements Runnable {
         return gui.ui.sess.glob.oc.getgob(id);
     }
 
-    private void walkTo(Gob gob) throws InterruptedException {
-        // clickb=3 both paths to the gob and right-clicks it on arrival, but we click again
-        // ourselves after arriving (rclickGob) so the flower menu open is under OUR timing.
-        gui.map.pfRightClick(gob, -1, 1, 0, null);
-        AUtils.waitPf(gui);
+    /** Close enough to right-click a gob and have the menu open. Roughly two tiles. */
+    private static final double REACH = 22.0;
+    /** How far a target may drift from where we aimed before the path is worth recomputing. */
+    private static final double DRIFT = 11.0;
+    /** Give up chasing after this many re-paths without getting closer. */
+    private static final int NO_PROGRESS_LIMIT = 10;
+
+    private boolean walking() {
+        Gob me = player();
+        return me != null && ((gui.map.pfthread != null && gui.map.pfthread.isAlive()) || me.getv() > 0);
+    }
+
+    /**
+     * Stops walking for good: kills the pathfinder as well as the current move.
+     *
+     * stopAction() alone isn't enough here - it clicks our own tile, which ends the CURRENT move,
+     * but the Pathfinder thread is still alive and simply issues the next leg of its route, so we'd
+     * keep walking towards whatever we were trying to walk away from. pfRightClick does this
+     * teardown itself before starting a new search, which is why re-pathing needs no equivalent;
+     * only the abandon case does. Same sequence GameUI uses to cancel a path.
+     */
+    private void cancelWalk() {
+        synchronized (haven.automated.pathfinder.Pathfinder.class) {
+            if (gui.map.pf != null) {
+                gui.map.pf.terminate = true;
+                if (gui.map.pfthread != null)
+                    gui.map.pfthread.interrupt();
+            }
+        }
+        stopAction();
+    }
+
+    /**
+     * Walks to a gob, re-pathing as it moves.
+     *
+     * The old version fired one pfRightClick and blocked in AUtils.waitPf until the whole path had
+     * been walked. For a tree that's fine - it's still there when you arrive. For anything that
+     * MOVES it's useless, and produced exactly the reported silkmoth behaviour: click, moth drifts
+     * away, character dutifully finishes walking to where the moth used to be, only then looks
+     * again. With a target that moves continuously that never converges.
+     *
+     * So instead of waiting out the path, this watches the target and re-issues the path whenever it
+     * has drifted more than DRIFT from the point we aimed at - i.e. it intercepts rather than
+     * follows. pfRightClick already terminates the in-flight pathfinder and cancels the current
+     * movement before starting a new search, so re-issuing mid-walk is exactly what it's built for.
+     * Static targets cost nothing extra: their drift is always zero, so the re-path never fires and
+     * this behaves like the single click it replaces.
+     *
+     * Two bail-outs, because a fleeing critter can outrun a walking character indefinitely: give up
+     * once the distance has stopped improving (NO_PROGRESS_LIMIT re-paths), and give up immediately
+     * if a dangerous beast comes within its keep-out margin of us - a chase that wanders into a
+     * bear is far worse than a lost silkmoth.
+     *
+     * @return true if we ended up within reach of the target.
+     */
+    private boolean walkTo(Gob gob) throws InterruptedException {
+        long id = gob.id;
+        haven.Coord2d aimed = null;
+        double best = Double.MAX_VALUE;
+        int stalled = 0;
+
+        for (int i = 0; i < 60; i++) {
+            Gob target = findGob(id);
+            Gob me = player();
+            if (target == null || me == null)
+                return false;
+
+            double dist = me.rc.dist(target.rc);
+            if (dist <= REACH)
+                return true;
+
+            Gob beast = LpPlanner.hazardNear(gui, me.rc);
+            if (beast != null) {
+                NLog.log(LOG, "abandoning approach to #" + id + ": "
+                    + LpExplorer.resname(beast) + " within "
+                    + (int) me.rc.dist(beast.rc) + "u");
+                cancelWalk();
+                return false;
+            }
+
+            if (dist < best - 1.0) {
+                best = dist;
+                stalled = 0;
+            }
+
+            if (aimed == null || aimed.dist(target.rc) > DRIFT) {
+                if (aimed != null && ++stalled > NO_PROGRESS_LIMIT) {
+                    NLog.log(LOG, "giving up chase of #" + id + " ("
+                        + LpExplorer.resname(target) + "): " + stalled
+                        + " re-paths without closing (still " + (int) dist + "u)");
+                    cancelWalk();
+                    return false;
+                }
+                // clickb=1 walks without acting on arrival; the right-click is ours to time.
+                gui.map.pfRightClick(target, -1, 1, 0, null);
+                aimed = target.rc;
+            }
+
+            // Let a freshly-issued path actually get going first. Without this grace the check
+            // below reads the gap between the click and the pathfinder thread starting as "we've
+            // stopped walking, so we must have arrived", and the loop spins at poll speed instead
+            // of walking anywhere. (AUtils.waitPf opens with the same fixed sleep, for the same
+            // reason.) It doubles as the loop's tick rate when no re-path was needed.
+            waitUntil(() -> false, 10);
+
+            // Then wait a slice rather than the whole path, so a target that moves is noticed while
+            // we're still walking - and end the slice early once we're in reach or the walk is over.
+            waitUntil(() -> {
+                Gob g = findGob(id);
+                Gob p = player();
+                if (g == null || p == null)
+                    return true;
+                if (p.rc.dist(g.rc) <= REACH)
+                    return true;
+                return !walking();
+            }, 12);
+
+            // The walk finished and the target is still where we aimed: this is as close as pathing
+            // is going to get us, so treat it as arrival even if we're further away than REACH.
+            // Distance alone can't decide this - pfRightClick paths to the edge of the gob's HITBOX,
+            // and a big tree's trunk is wider than two tiles, so demanding REACH would have left
+            // the bot circling every large tree until it gave up.
+            Gob now = findGob(id);
+            if (!walking() && now != null && aimed != null && aimed.dist(now.rc) <= DRIFT)
+                return true;
+        }
+        NLog.log(LOG, "walk to #" + id + " ran out of attempts");
+        Gob me = player(), target = findGob(id);
+        if (me != null && target != null && me.rc.dist(target.rc) <= REACH)
+            return true;
+        cancelWalk();
+        return false;
     }
 
     private void rclickGob(Gob gob) {

@@ -5,7 +5,6 @@ import haven.Gob;
 import haven.Loading;
 import haven.OCache;
 import haven.WItem;
-import haven.automated.AUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -135,11 +134,6 @@ public class LpPlanner {
             throws InterruptedException {
         haven.Coord2d me = gui.map.player().rc;
         long playerId = gui.map.plgob;
-        // The bot must never walk up to something that fights back, whatever it might yield.
-        // Hurricane already curates exactly this list (AUtils.potentialAggroTargets, full nested
-        // resnames) - a safety net beyond just curating LpSpec.object, in case a target added
-        // there later turns out to share a resource with something aggressive.
-        Set<String> aggressive = AUtils.potentialAggroTargets;
 
         // Snapshot under the lock, evaluate outside it - the discovery scan below can block on
         // icon/sprite loads.
@@ -150,6 +144,10 @@ public class LpPlanner {
                 snapshot.add(gob);
         }
 
+        // Where the dangerous beasts are, so targets near one can be left alone entirely. Computed
+        // once for the whole scan rather than per candidate.
+        List<Gob> hazards = hazards(snapshot);
+
         for (Gob gob : snapshot) {
             if (gob.id == playerId)
                 continue;
@@ -157,7 +155,11 @@ public class LpPlanner {
                 continue;
             try {
                 String res = LpExplorer.resname(gob);
-                if (res == null || aggressive.contains(res))
+                // The bot must never walk up to something that fights back, or to something whose
+                // products need it dead - whatever LP it might be holding. See LpTargets.
+                if (res == null || LpTargets.isNeverTarget(res))
+                    continue;
+                if (nearHazard(gob, hazards))
                     continue;
 
                 List<String> undiscovered = LpExplorer.allUndiscoveredProducts(gob);
@@ -218,6 +220,59 @@ public class LpPlanner {
                 // Sprite not ready this pass; it'll be reconsidered on the next plan().
             }
         }
+    }
+
+    /**
+     * The dangerous beasts currently loaded - bears, wolves, trolls and the rest of the roster the
+     * client draws a red aggro circle around. Knocked/dead ones are skipped, matching the client's
+     * own behaviour of dropping the circle once a beast is down.
+     */
+    public static List<Gob> hazards(List<Gob> gobs) {
+        List<Gob> out = new ArrayList<>();
+        for (Gob gob : gobs) {
+            String res = LpExplorer.resname(gob);
+            if (res == null || !LpTargets.isDangerous(res))
+                continue;
+            if (Boolean.TRUE.equals(gob.knocked))
+                continue;
+            out.add(gob);
+        }
+        return out;
+    }
+
+    /**
+     * Whether a candidate target sits close enough to a dangerous beast that going for it isn't
+     * worth it. The margin is the full DIAMETER of the beast's aggro circle rather than its radius:
+     * an LP action isn't instantaneous - the character stands there picking or chopping, and the
+     * beast is free to wander - so stopping at the edge of the ring is stopping too close. See
+     * LpTargets.DANGER_KEEPOUT.
+     */
+    public static boolean nearHazard(Gob target, List<Gob> hazards) {
+        for (Gob beast : hazards) {
+            if (target.rc.dist(beast.rc) < LpTargets.DANGER_KEEPOUT)
+                return true;
+        }
+        return false;
+    }
+
+    /** The nearest dangerous beast inside its keep-out margin of a point, or null. */
+    public static Gob hazardNear(GameUI gui, haven.Coord2d c) {
+        Gob nearest = null;
+        double best = LpTargets.DANGER_KEEPOUT;
+        OCache oc = gui.ui.sess.glob.oc;
+        synchronized (oc) {
+            for (Gob gob : oc) {
+                String res = LpExplorer.resname(gob);
+                if (res == null || !LpTargets.isDangerous(res) || Boolean.TRUE.equals(gob.knocked))
+                    continue;
+                double d = gob.rc.dist(c);
+                if (d < best) {
+                    best = d;
+                    nearest = gob;
+                }
+            }
+        }
+        return nearest;
     }
 
     // Item categories whose members are worth trying a carcass-processing option on. Taken from

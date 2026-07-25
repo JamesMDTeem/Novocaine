@@ -129,7 +129,7 @@ public class LpExplorer {
         List<String> products = LpSpec.object.get(gobResName);
         if (products != null) {
             for (String product : products) {
-                if (isCurrentSeasonProduct(gobResName, product) && !info.IsLpExplorerContains(gobResName, product))
+                if (isCurrentSeasonProduct(gobResName, product) && !discovered(info, gobResName, product))
                     return false;
             }
         }
@@ -318,7 +318,7 @@ public class LpExplorer {
 
         boolean seed = false, leaf = false, bough = false;
         for (String product : LpSpec.object.get(gobResName)) {
-            if (!isCurrentSeasonProduct(gobResName, product) || info.IsLpExplorerContains(gobResName, product))
+            if (!isCurrentSeasonProduct(gobResName, product) || discovered(info, gobResName, product))
                 continue;
             if (isLeafProduct(product)) leaf = true;
             else if (isBoughProduct(product)) bough = true;
@@ -341,6 +341,24 @@ public class LpExplorer {
         // one species' tree also satisfies it for every other species sharing that name, so check
         // discovery globally rather than against just this one resource.
         return !info.IsLpExplorerContainsAnywhere(barkProduct);
+    }
+
+    /**
+     * Whether this product counts as already discovered for this resource.
+     *
+     * Normally that's a per-resource fact: a species' seed/fruit/bough name is unique to it, so
+     * finding it says nothing about any other resource. But some products are reachable from more
+     * than one resource - a Mallard Feather comes off both the drake and the hen, Cleaned Chicken
+     * off any of the chicken gobs - and for those the discovery has to be checked GLOBALLY, or
+     * every sibling resource would keep its marker forever after the first pickup (and the LP is
+     * only ever awarded once anyway, so a per-resource check would also be claiming there's
+     * something left to gain when there isn't). Bark already needed exactly this; LpTargets
+     * generalises it by deriving the shared set from the data instead of hand-listing it.
+     */
+    private static boolean discovered(LpLog info, String gobResName, String product) {
+        if (LpTargets.isSharedProduct(product))
+            return info.IsLpExplorerContainsAnywhere(product);
+        return info.IsLpExplorerContains(gobResName, product);
     }
 
     private static boolean isLeafProduct(String product) {
@@ -367,7 +385,7 @@ public class LpExplorer {
         for (String product : LpSpec.object.get(gobResName)) {
             if (!category.test(product) || !isCurrentSeasonProduct(gobResName, product))
                 continue;
-            if (!info.IsLpExplorerContains(gobResName, product))
+            if (!discovered(info, gobResName, product))
                 result.add(product);
         }
         return result;
@@ -453,7 +471,7 @@ public class LpExplorer {
         LpLog info = charLog();
         if (info == null || gobResName == null || product == null)
             return false;
-        return isCurrentSeasonProduct(gobResName, product) && !info.IsLpExplorerContains(gobResName, product);
+        return isCurrentSeasonProduct(gobResName, product) && !discovered(info, gobResName, product);
     }
 
     // Resolves one product's own icon: the matching harvest-category icon (seed/leaf/bough) for
@@ -486,11 +504,16 @@ public class LpExplorer {
         return HarvestState.loadIcon(LpSpec.getIconPath(product));
     }
 
-    // Reverse index: product name -> the one resource that tracks it in LpSpec.object. Built
-    // lazily (LpSpec's own static data is populated by class-init order this class shouldn't
-    // assume has already run) and cached. Confirmed exactly one resource per product name across
-    // the whole of the data (no two species share a seed/leaf/bough/board/block/ore name) except
-    // bark, which is handled separately below since it isn't an LpSpec.object entry at all.
+    // Reverse index: product name -> A resource that tracks it in LpSpec.object. Built lazily
+    // (LpSpec's own static data is populated by class-init order this class shouldn't assume has
+    // already run) and cached.
+    //
+    // For plants and stones this is one-to-one - no two species share a seed/leaf/bough/board/
+    // block/ore name - but it isn't in general: bark item names are shared across species, and so
+    // are some animal products (a Mallard Feather from either sex, Cleaned Chicken from any chicken
+    // gob). Which of the siblings a discovery gets FILED under doesn't matter, because lookups for
+    // a shared name go through discovered(), which checks globally - the same argument bark's own
+    // synthetic storage key already rests on. So putIfAbsent picking an arbitrary one is fine.
     private static Map<String, String> productToResource;
 
     private static synchronized Map<String, String> productToResource() {

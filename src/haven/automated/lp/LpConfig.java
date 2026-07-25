@@ -29,7 +29,13 @@ public class LpConfig {
         /** Auto-LP bot may fell trees (gated on ownProductsAllDiscovered even when on). */
         autolpCutTrees(false),
         /** Auto-LP bot may eat a collected consumable to register its seed's discovery. */
-        autolpEatConsumables(false);
+        autolpEatConsumables(false),
+        /**
+         * Mark huntable animals that still owe an undiscovered product (hide, antler, feather...)
+         * with a floating icon and a ground ring. Information only - the bot never targets them,
+         * whatever this is set to (see LpTargets.HUNT_ONLY).
+         */
+        lpHuntTargets(true);
 
         public final boolean def;
 

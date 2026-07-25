@@ -24,7 +24,7 @@ public class LpAssistantManagerWindow extends Window {
     private final GameUI gui;
 
     public LpAssistantManagerWindow(GameUI gui) {
-        super(UI.scale(300, 372), "LP Assistant Manager");
+        super(UI.scale(300, 396), "LP Assistant Manager");
         this.gui = gui;
 
         int x = UI.scale(10);
@@ -34,6 +34,8 @@ public class LpAssistantManagerWindow extends Window {
         add(prefBox("Enable LP Assistant (markers & tracking)", LpConfig.Key.lpassistent), x, y);
         y += row;
         add(prefBox("Show chop hint on trees with undiscovered wood", LpConfig.Key.treeHarvestWood), x, y);
+        y += row;
+        add(prefBox("Ring animals that still owe a hide/bone/feather", LpConfig.Key.lpHuntTargets), x, y);
         y += row;
 
         add(new Label("Always-on harvest overlays:") {{ setcolor(new Color(218, 163, 0)); }}, x, y + UI.scale(4));
