@@ -27,10 +27,12 @@ into `dist\steam-item\` and overlaying this `workshop-client.properties` on top,
 .\tools\make-steam-item.ps1 -Upload
 ```
 
-On the **first** successful upload, the tool prints a line like `workshop-id=1234567890`.
-Paste that number into the `workshop-id=` line of this file (add the line if it's absent),
-commit it, and every future `-Upload` **updates the same item** instead of creating a new
-one.
+The item now exists (`workshop-id=3771625385`, recorded in `workshop-client.properties`),
+so every `-Upload` **updates it** rather than creating a new one:
+https://steamcommunity.com/sharedfiles/filedetails/?id=3771625385
+
+If that line is ever lost, the next upload silently creates a *second* item — the tool
+prints the new `workshop-id=` to stderr, so capture the full output, not just the tail.
 
 ## Visibility
 

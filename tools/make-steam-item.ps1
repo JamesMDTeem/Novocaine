@@ -62,7 +62,11 @@ if ($SkipBuild) {
     & "$repoRoot\update-and-play.ps1" -SkipUpdate -NoLaunch
     if ($LASTEXITCODE -ne 0) { Die 'Build failed; item not assembled.' }
 }
-if (-not (Test-Path 'build\hafen.jar')) { Die 'build\hafen.jar not found - the uploader runs from it.' }
+# The uploader must run from bin\, not build\. haven.SteamWorkshop pulls in haven.Client,
+# whose static init loads HUD resources - and only bin\hafen.jar's manifest Class-Path
+# chains in builtin-res.jar/hafen-res.jar. Running it against build\hafen.jar dies with
+# NoSuchResourceException on gfx/hud/wnd/lg/rm before it ever talks to Steam.
+if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar not found - the uploader runs from it.' }
 
 # --- stage the item --------------------------------------------------------
 Step 'Assembling the Workshop item'
@@ -91,7 +95,7 @@ if (-not $Upload) {
     Write-Host ''
     Write-Host 'Inspect the item, then upload it yourself with:' -ForegroundColor DarkGray
     Write-Host "  `$env:SteamAppID = '3051280'" -ForegroundColor DarkGray
-    Write-Host "  java -cp build/hafen.jar haven.SteamWorkshop upload `"$item`"" -ForegroundColor DarkGray
+    Write-Host "  cd bin; java -cp hafen.jar haven.SteamWorkshop upload `"$item`"" -ForegroundColor DarkGray
     Write-Host 'or re-run this script with -Upload (Steam must be running and logged in).' -ForegroundColor DarkGray
     exit 0
 }
@@ -100,9 +104,11 @@ Step 'Uploading to the Steam Workshop'
 Warn 'This needs Steam running + logged in, beta access to the game, and the Workshop Legal'
 Warn 'Agreement accepted. See steam\README.md if the upload is refused.'
 $env:SteamAppID = '3051280'
-$javaArgs = @('-cp', 'build/hafen.jar', 'haven.SteamWorkshop', 'upload', $item)
+$javaArgs = @('-cp', 'hafen.jar', 'haven.SteamWorkshop', 'upload', $item)
 if ($Message) { $javaArgs += $Message }
-& java @javaArgs
+# $item is absolute, so running from bin\ does not change what gets uploaded.
+Push-Location (Join-Path $repoRoot 'bin')
+try { & java @javaArgs } finally { Pop-Location }
 if ($LASTEXITCODE -ne 0) { Die 'Upload failed (see the messages above).' }
 
 Ok 'Upload finished.'
