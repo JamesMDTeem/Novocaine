@@ -3129,7 +3129,6 @@ public class OptWnd extends Window {
         y = addbtn(cont, "Belt", GameUI.kb_blt, y);
 	    y = addbtn(cont, "Character sheet", GameUI.kb_chr, y);
 	    y = addbtn(cont, "Map window", GameUI.kb_map, y);
-	    y = addbtn(cont, "Big map (independent of compact map)", GameUI.kb_bigmap, y);
 	    y = addbtn(cont, "Kith & Kin", GameUI.kb_bud, y);
 	    y = addbtn(cont, "Options", GameUI.kb_opt, y);
 	    y = addbtn(cont, "Search actions", GameUI.kb_srch, y);
@@ -3143,6 +3142,7 @@ public class OptWnd extends Window {
 	    y = addbtn(cont, "Switch character", GameUI.kb_switchchr, y);
 
 	    y = cont.adda(new Label("Map buttons"), cont.sz.x / 2, y + UI.scale(10), 0.5, 0.0).pos("bl").adds(0, 5).y;
+		y = addbtn(cont, "Big map (independent of compact map)", GameUI.kb_bigmap, y);
 		y = addbtn(cont, "Reset view", MapWnd.kb_home, y);
 		y = addbtn(cont, "Compact mode", MapWnd.kb_compact, y);
 		y = addbtn(cont, "Hide markers", MapWnd.kb_hmark, y);
