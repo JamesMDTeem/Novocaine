@@ -26,10 +26,13 @@ import java.util.Objects;
 /**
  * Defining and tagging the places bots use.
  *
- * The area itself is drawn on the MAP, not typed in here: Hurricane already has drag-to-select
- * ({@link haven.MapView#registerAreaSelect}, which the roasting-spit bot uses), so "Draw on map"
- * hands control over to that and takes the rectangle back. That is both less to build and the
- * gesture a player already knows.
+ * The area itself is drawn on the MAP, not typed in here: Hurricane carries a drag-to-select
+ * rectangle ({@link haven.MapView#registerAreaSelect}), so "Draw on map" hands control over to
+ * that and takes the rectangle back rather than asking anyone to type coordinates.
+ *
+ * That API had never actually been driven - nothing in the client set MapView.areaSelect, so
+ * registering a callback alone armed nothing, and unregistering without a live selector threw.
+ * Both are handled here and in the two-line guard in MapView.unregisterAreaSelect.
  *
  * What a place is FOR is a set of role checkboxes plus two free-text item rules. Roles are plain
  * strings, so the list shown is the well-known ones plus anything already in use - a bot added
@@ -42,6 +45,9 @@ public class PlacesWindow extends Window {
 
     /** The rectangle most recently drawn, waiting for a name. */
     private Coord pendingA, pendingB;
+
+    /** Whether a drag we armed is still outstanding. */
+    private boolean drawing;
 
     public PlacesWindow(GameUI gui) {
         super(UI.scale(360, 400), "Bot Places");
@@ -86,12 +92,25 @@ public class PlacesWindow extends Window {
      * {@link WorldAnchor} that survives the area not being rendered.
      */
     private void startDraw() {
+        if (gui.map == null)
+            return;
         hint.settext("Drag a rectangle on the map...");
         hint.setcolor(Color.YELLOW);
+        /* Clears any selector left over from a previous draw before arming a new one: MapView
+         * treats a click with one still around as "cancel", so without this the second draw
+         * would silently eat its first click. */
+        gui.map.unregisterAreaSelect();
         gui.map.registerAreaSelect(new AreaSelectCallback() {
             @Override
             public void areaselect(Coord a, Coord b) {
-                gui.map.unregisterAreaSelect();
+                if (!drawing)
+                    return;
+                /* Only disarm. This runs inside MapView's own mouse-up, under its monitor and
+                 * with the selector still mid-teardown, so destroying the selector from here
+                 * would double-remove its overlay and drop the mouse grab early. The window's
+                 * close path does the real cleanup. */
+                drawing = false;
+                gui.map.areaSelect = false;
                 pendingA = new Coord(Math.min(a.x, b.x), Math.min(a.y, b.y));
                 pendingB = new Coord(Math.max(a.x, b.x), Math.max(a.y, b.y));
                 hint.settext("Drawn " + (pendingB.x - pendingA.x + 1) + "x"
@@ -99,6 +118,11 @@ public class PlacesWindow extends Window {
                 hint.setcolor(Color.WHITE);
             }
         });
+        /* Arming the drag is a separate flag from the callback, and registering without setting
+         * it is why "Draw on map" did nothing: MapView.mousedown only builds a selector while
+         * areaSelect is true, and nothing in the client had ever set it. */
+        gui.map.areaSelect = true;
+        drawing = true;
     }
 
     private void addPending() {
@@ -206,7 +230,9 @@ public class PlacesWindow extends Window {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && Objects.equals(msg, "close")) {
-            gui.map.unregisterAreaSelect();
+            drawing = false;
+            if (gui.map != null)
+                gui.map.unregisterAreaSelect();
             if (gui.nbotPlaces == this)
                 gui.nbotPlaces = null;
             reqdestroy();

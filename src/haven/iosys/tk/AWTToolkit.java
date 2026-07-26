@@ -746,7 +746,7 @@ public abstract class AWTToolkit implements Toolkit {
 	    excl = true;
 	}
 
-	/* Undecorated, covering exactly the monitor the window is already on, and that is all:
+	/* Undecorated, covering the monitor the window is already on, and that is all:
 	 * no GraphicsDevice.setFullScreenWindow, so the display mode is never changed and the
 	 * window manager never hands us exclusive control of the device. That is deliberately
 	 * the entire difference from setfs() above, and it is where exclusive fullscreen's
@@ -769,6 +769,13 @@ public abstract class AWTToolkit implements Toolkit {
 		GraphicsConfiguration gc = frame.getGraphicsConfiguration();
 		java.awt.Rectangle b = (gc != null) ? gc.getBounds() :
 		    new java.awt.Rectangle(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+		/* One row taller than the monitor, on purpose. An undecorated window whose bounds
+		 * match a monitor exactly is what Windows' DWM looks for before promoting it to an
+		 * optimised flip presentation; every focus change then has to transition back to
+		 * composited, and that transition draws as a black frame. Missing the match by a
+		 * pixel keeps the window composited, so alt-tab is only a focus change. The extra
+		 * row falls off the bottom edge. */
+		b = new java.awt.Rectangle(b.x, b.y, b.width, b.height + 1);
 		wndbounds = frame.getBounds();
 		frame.setVisible(false);
 		frame.dispose();
