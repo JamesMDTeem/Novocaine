@@ -45,7 +45,19 @@ public class NBotConfig {
         /** Route around water rather than swimming through it while a bot is running. */
         avoidWater(true),
         /** Treat other characters as small obstacles so bots don't pile onto the same spot. */
-        avoidOthers(true);
+        avoidOthers(true),
+        /**
+         * Open a gateway and walk through it rather than treating the wall as a dead end.
+         *
+         * Worth being a toggle rather than always-on: opening a gate is a visible act on someone's
+         * base, and a player running bots on a village they are a guest in may reasonably want
+         * their bots to stay on the side of the wall they were left on.
+         */
+        useGates(true),
+        /** Shut a gateway the bot opened once it is through. Never touches one already open. */
+        closeGates(true),
+        /** Draw the places tagged "show" on the ground, so you can see what a bot is aiming at. */
+        showAreas(false);
 
         public final boolean def;
 

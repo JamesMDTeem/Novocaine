@@ -5,10 +5,10 @@ import haven.FlowerMenu;
 import haven.Gob;
 import haven.Loading;
 import haven.Resource;
-import haven.Widget;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
+import haven.automated.nbots.core.Widgets;
 
 import static haven.OCache.posres;
 
@@ -221,18 +221,7 @@ public class WorkGob implements Task {
     }
 
     private static FlowerMenu liveMenu(BotCtx ctx) {
-        return findChild(ctx.gui.ui.root, FlowerMenu.class);
-    }
-
-    private static <T extends Widget> T findChild(Widget root, Class<T> cls) {
-        for (Widget w = root.child; w != null; w = w.next) {
-            if (cls.isInstance(w))
-                return cls.cast(w);
-            T deep = findChild(w, cls);
-            if (deep != null)
-                return deep;
-        }
-        return null;
+        return Widgets.find(ctx.gui.ui.root, FlowerMenu.class);
     }
 
     private static String petals(FlowerMenu fm) {
