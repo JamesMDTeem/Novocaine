@@ -18,6 +18,7 @@ import haven.automated.nbots.core.Task;
 import haven.automated.nbots.world.Place;
 import haven.automated.nbots.world.PlaceRoles;
 import haven.automated.nbots.world.Places;
+import haven.automated.nbots.world.Reach;
 import haven.resutil.WaterTile;
 
 import java.util.Optional;
@@ -44,8 +45,6 @@ public class FillWater implements Task {
         "gfx/tiles/water", "gfx/tiles/deep");
     private static final Alias BARREL = new Alias("barrel", "gfx/terobjs/barrel");
 
-    private static final double BARREL_REACH = 11 * 1.0;
-
     @Override
     public Outcome run(BotCtx ctx) throws InterruptedException {
         Place place = Places.nearest(ctx.gui, PlaceRoles.WATER);
@@ -67,12 +66,20 @@ public class FillWater implements Task {
     private Outcome fillHere(BotCtx ctx, Place place) throws InterruptedException {
         Gob barrel = waterBarrelIn(ctx, place);
         if (barrel != null) {
+            // Asked of the barrel rather than assumed: a flat eleven units is inside the barrel's
+            // own collision box, so the approach could never satisfy it and every fill afterwards
+            // was a use-attempt from just out of range. See Reach.
+            double reach = Reach.toActOn(barrel);
             Gob me = ctx.player();
-            if (me != null && me.rc.dist(barrel.rc) > BARREL_REACH) {
-                Outcome a = new Approach(barrel, BARREL_REACH).run(ctx);
+            if (me != null && me.rc.dist(barrel.rc) > reach) {
+                Outcome a = new Approach(barrel, reach).run(ctx);
                 if (!a.isOk())
                     return a;
             }
+            me = ctx.player();
+            ctx.log("filling from barrel #" + barrel.id + " at "
+                + (int) ((me == null) ? -1 : me.rc.dist(barrel.rc)) + "u (reach " + (int) reach
+                + "u, box " + (int) Reach.radius(barrel) + "u)");
             fill(ctx, null, barrel);
             return Outcome.ok();
         }
@@ -187,6 +194,11 @@ public class FillWater implements Task {
                 barrel.rc.floor(posres), 0, -1);
 
         ctx.nav.pause(3);
+        /* If the game decided we were too far and walked us in, let that finish before the next
+         * container goes in. Without this, every container in the belt issues its own step and they
+         * queue up on each other - which is the stutter, seen from the outside. Bounded, because a
+         * character who is already close enough never moves at all and must not wait for it. */
+        ctx.nav.waitUntil(() -> !ctx.nav.walking(), 40);
         putBack.run();
         ctx.nav.waitUntil(() -> ctx.gui.vhand == null, 20);
         return true;

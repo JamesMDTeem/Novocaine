@@ -63,11 +63,25 @@ public class BotNav {
     private static final double RETREAT_MARGIN = 30.0;
 
     /**
-     * How far one travel hop aims. Comfortably inside MapView's 40-tile clamp so the hop lands
-     * where we asked rather than at a clamped point, and inside the region the client will have
-     * streamed in, so the terrain the search plans against is real.
+     * How far one travel hop aims when there is nothing better to go on.
+     *
+     * Also the figure used for the coarse "is this within one hop" tests, which want a fixed answer
+     * rather than one that changes with what happens to be loaded.
      */
     private static final double HOP = 11 * 25.0;
+    /**
+     * The furthest a hop may ever aim.
+     *
+     * MapView clamps any pathfinder click beyond forty tiles back to the edge of that circle
+     * ({@code MAX_TILE_RANGE}), so asking for more does not fail - it silently lands somewhere
+     * else, which is worse. Four tiles of margin keeps the hop honestly inside the clamp.
+     */
+    private static final double HOP_MAX = 11 * 36.0;
+    /**
+     * The shortest a hop may aim. Below this the re-planning overhead per hop outweighs the
+     * accuracy, and a bot in an empty field would inch along a tile at a time.
+     */
+    private static final double HOP_MIN = 11 * 12.0;
     /**
      * How near a waypoint counts as reached.
      *
@@ -378,6 +392,8 @@ public class BotNav {
         Barriers.learn(gui);
 
         List<Coord2d> legs = plan(dest);
+        NLog.log(log, "travel to " + Gates.fmt(dest) + ": "
+            + ((legs == null) ? "no route, walking straight" : (legs.size() + " waypoint(s)")));
         if (legs == null)
             return walkStraight(dest, tol);
         int replans = 0;
@@ -385,12 +401,24 @@ public class BotNav {
             if (!abort.running())
                 return false;
             if (!walkStraight(legs.get(i), LEG_TOL)) {
+                /* A leg that stops short in front of a wall is nearly always a shut gateway: the
+                 * route was planned through the gap, correctly, and the gap happens to have a gate
+                 * in it that is solid until somebody opens it. Try that before deciding the route
+                 * was wrong, because re-planning cannot help - the router already thinks this is
+                 * the way, and it is right. */
+                if (Gates.pass(this, gui, dest, log)) {
+                    Barriers.learn(gui);
+                    List<Coord2d> after = plan(dest);
+                    legs = (after == null) ? legs : after;
+                    i = -1;
+                    continue;
+                }
                 /* Re-planning from the same spot tends to produce the same route, so an unbounded
                  * retry is not a retry - it is a bot walking the same failing leg for ever, which
                  * from outside looks like pacing back and forth near the destination. Give up on
                  * routing after a few and let the straight walk have its go. */
                 if (++replans > MAX_REPLANS) {
-                    NLog.log(log, "route to " + dest + " failed " + replans
+                    NLog.log(log, "route to " + Gates.fmt(dest) + " failed " + replans
                         + " times; finishing on a straight walk");
                     return walkStraight(dest, tol);
                 }
@@ -402,6 +430,7 @@ public class BotNav {
                 List<Coord2d> again = plan(dest);
                 if ((again == null) || again.isEmpty())
                     return walkStraight(dest, tol);
+                NLog.log(log, "re-planned after a failed leg: " + again.size() + " waypoint(s)");
                 legs = again;
                 i = -1;
             }
@@ -450,6 +479,39 @@ public class BotNav {
     }
 
     /**
+     * How far a single hop should aim right now, from how much of the world the client actually has.
+     *
+     * The point is that a hop is only as good as the terrain it was planned against. The local
+     * pathfinder builds its grid from LOADED objects, so aiming thirty tiles into ground that has
+     * not streamed in yet plans a route around obstacles it cannot see, walks into them, and calls
+     * that a stall. Aiming ten tiles when the whole valley is loaded is the opposite waste - a
+     * pathfinder run per ten tiles, each one re-deriving what the last already knew.
+     *
+     * The furthest loaded object is the honest measure of both: it is set by the same view distance
+     * that decides how much terrain the client asked the server for. Clamped at both ends, because
+     * the measure degrades in the two obvious ways - an empty plain has no distant objects to
+     * measure and would collapse the hop to nothing, and a very long view would ask for more than
+     * MapView will actually click at.
+     */
+    private double hop() {
+        Gob me = player();
+        if (me == null)
+            return HOP;
+        double far = 0;
+        try {
+            synchronized (gui.ui.sess.glob.oc) {
+                for (Gob g : gui.ui.sess.glob.oc)
+                    far = Math.max(far, me.rc.dist(g.rc));
+            }
+        } catch (RuntimeException e) {
+            return HOP;
+        }
+        if (far <= 0)
+            return HOP;
+        return Math.max(HOP_MIN, Math.min(HOP_MAX, far));
+    }
+
+    /**
      * The old greedy walk, now used only between waypoints and as the fallback.
      *
      * Its blind sideways swings are still here on purpose: over the short, mostly-clear stretch
@@ -477,7 +539,7 @@ public class BotNav {
                 stalled = 0;
                 detour = 0;
             } else if (++stalled > TRAVEL_STALL_LIMIT) {
-                NLog.log(log, "travel gave up " + (int) dist + "u short of " + dest
+                NLog.log(log, "walk gave up " + (int) dist + "u short of " + Gates.fmt(dest)
                     + " after " + stalled + " hops without progress");
                 cancelWalk();
                 return false;
@@ -497,7 +559,10 @@ public class BotNav {
                 dir = new Coord2d(dir.x * cos - dir.y * sin, dir.x * sin + dir.y * cos);
             }
 
-            Coord2d aim = me.rc.add(dir.mul(Math.min(HOP, Math.max(len, HOP / 2))));
+            // Re-measured per hop rather than per walk: what is loaded changes as we move, and a
+            // hop planned against a view that has since opened up is leaving distance on the table.
+            double reach = hop();
+            Coord2d aim = me.rc.add(dir.mul(Math.min(reach, Math.max(len, reach / 2))));
             stepTo(aim, 11 * 2.0);
         }
         cancelWalk();
