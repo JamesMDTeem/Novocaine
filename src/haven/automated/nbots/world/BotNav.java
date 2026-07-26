@@ -92,6 +92,8 @@ public class BotNav {
     private static final double LEG_TOL = 11 * 3.0;
     /** How many times a failed leg is worth re-routing before falling back to walking at it. */
     private static final int MAX_REPLANS = 3;
+    /** How many gateways one journey may go through before that stops being plausible. */
+    private static final int MAX_GATES = 4;
     /** Travel gives up after this many hops that don't get closer. */
     private static final int TRAVEL_STALL_LIMIT = 6;
 
@@ -397,6 +399,7 @@ public class BotNav {
         if (legs == null)
             return walkStraight(dest, tol);
         int replans = 0;
+        int gates = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
                 return false;
@@ -405,8 +408,13 @@ public class BotNav {
                  * route was planned through the gap, correctly, and the gap happens to have a gate
                  * in it that is solid until somebody opens it. Try that before deciding the route
                  * was wrong, because re-planning cannot help - the router already thinks this is
-                 * the way, and it is right. */
-                if (Gates.pass(this, gui, dest, log)) {
+                 * the way, and it is right.
+                 *
+                 * Budgeted, because "went through a gate" is reported by getting to the far side
+                 * and not by making progress: a bot pushed back through, or one whose route keeps
+                 * choosing the same gateway, would otherwise walk through it for ever. Four is
+                 * more gates than any real journey between a work site and a barrel crosses. */
+                if ((gates++ < MAX_GATES) && Gates.pass(this, gui, dest, log)) {
                     Barriers.learn(gui);
                     List<Coord2d> after = plan(dest);
                     legs = (after == null) ? legs : after;
