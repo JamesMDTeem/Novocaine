@@ -255,36 +255,17 @@ public class LpPlanner {
      * LpTargets.DANGER_KEEPOUT.
      */
     public static boolean nearHazard(Gob target, List<Gob> hazards) {
-        for (Gob beast : hazards) {
-            if (target.rc.dist(beast.rc) < LpTargets.DANGER_KEEPOUT)
-                return true;
-        }
-        return false;
+        return haven.automated.nbots.world.Hazards.nearAny(target, hazards);
     }
 
     /** The nearest dangerous beast inside its keep-out margin of a point, or null. */
     public static Gob hazardNear(GameUI gui, haven.Coord2d c) {
-        return hazardWithin(gui, c, LpTargets.DANGER_KEEPOUT);
+        return haven.automated.nbots.world.Hazards.near(gui, c);
     }
 
     /** The nearest dangerous beast within `margin` of a point, or null. */
     public static Gob hazardWithin(GameUI gui, haven.Coord2d c, double margin) {
-        Gob nearest = null;
-        double best = margin;
-        OCache oc = gui.ui.sess.glob.oc;
-        synchronized (oc) {
-            for (Gob gob : oc) {
-                String res = LpExplorer.resname(gob);
-                if (res == null || !LpTargets.isDangerous(res) || Boolean.TRUE.equals(gob.knocked))
-                    continue;
-                double d = gob.rc.dist(c);
-                if (d < best) {
-                    best = d;
-                    nearest = gob;
-                }
-            }
-        }
-        return nearest;
+        return haven.automated.nbots.world.Hazards.within(gui, c, margin);
     }
 
     /**
@@ -301,20 +282,7 @@ public class LpPlanner {
      * ground than the risk warrants.
      */
     public static haven.automated.pathfinder.Map.Keepout[] keepouts(GameUI gui, haven.Coord2d from) {
-        List<haven.automated.pathfinder.Map.Keepout> out = new ArrayList<>();
-        OCache oc = gui.ui.sess.glob.oc;
-        synchronized (oc) {
-            for (Gob gob : oc) {
-                String res = LpExplorer.resname(gob);
-                if (res == null || !LpTargets.isDangerous(res) || Boolean.TRUE.equals(gob.knocked))
-                    continue;
-                if (gob.rc.dist(from) <= LpTargets.DANGER_PATH_CLEARANCE)
-                    continue;
-                out.add(new haven.automated.pathfinder.Map.Keepout(
-                    gob.rc, LpTargets.DANGER_PATH_CLEARANCE));
-            }
-        }
-        return out.toArray(new haven.automated.pathfinder.Map.Keepout[0]);
+        return haven.automated.nbots.world.Hazards.keepouts(gui, from);
     }
 
     /**

@@ -2,6 +2,7 @@ package haven.automated.lp;
 
 import haven.Config;
 import haven.automated.AUtils;
+import haven.automated.nbots.world.Hazards;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -332,51 +333,20 @@ public class LpTargets {
         return res != null && huntOnly.contains(res);
     }
 
-    /**
-     * How far a dangerous beast's aggro reaches, in map units. Mirrors the 120f circle the client
-     * already draws around them (Gob.updateDangerousBeastRadii), so the number the bot avoids and
-     * the circle the player sees are the same thing.
+    /*
+     * The beast roster and its margins moved to haven.automated.nbots.world.Hazards once the bot
+     * framework needed them too - every bot that walks anywhere has to not walk into a bear, and
+     * having the bot package import this one to find that out inverts the dependency. These are
+     * kept as aliases rather than being replaced at ~40 call sites: the LP code reads better
+     * saying DANGER_KEEPOUT than Hazards.KEEPOUT, and there is still only one definition.
      */
-    public static final double DANGER_RADIUS = 120.0;
+    public static final double DANGER_RADIUS = Hazards.RADIUS;
+    public static final double DANGER_KEEPOUT = Hazards.KEEPOUT;
+    public static final double DANGER_PATH_CLEARANCE = Hazards.PATH_CLEARANCE;
 
-    /**
-     * How much clearance the bot keeps from a dangerous beast: the full DIAMETER of that circle, so
-     * a target sitting just outside the ring still isn't approached. Walking to the edge of a bear's
-     * aggro range and then swinging an axe for thirty seconds is how you get killed by a bear -
-     * treating the radius as if it were twice as big is cheap insurance, and the only cost is
-     * skipping targets that happen to sit near one.
-     */
-    public static final double DANGER_KEEPOUT = 2 * DANGER_RADIUS;
-
-    /**
-     * How wide a berth the bot's PATHING gives a beast - the aggro circle plus a quarter, rather
-     * than the doubled DANGER_KEEPOUT that target selection uses.
-     *
-     * The two numbers answer different questions. DANGER_KEEPOUT asks "may I stand here for thirty
-     * seconds swinging an axe while that thing wanders?", and doubling the radius is cheap there
-     * because the only cost is skipping a target. This one asks "may I walk past at range?", where
-     * the same doubling would wall off a 480-unit-wide disc of ground - routinely every route to
-     * everything - and turn a detour back into the refusal it replaced.
-     */
-    public static final double DANGER_PATH_CLEARANCE = 1.25 * DANGER_RADIUS;
-
-    /**
-     * One of the beasts that will chase and kill you - the same roster the client draws a red radius
-     * circle for. Matched by suffix, as Gob.updateDangerousBeastRadii does, so variants resolve the
-     * same way there and here.
-     */
+    /** @see Hazards#isDangerous */
     public static boolean isDangerous(String res) {
-        // Every beast on the roster lives under gfx/kritter, so this one comparison rejects the
-        // trees, bushes and boulders that make up nearly every gob on screen before the 25-entry
-        // suffix scan below - which runs for every loaded gob, a couple of times a second, while
-        // the bot is approaching something.
-        if (res == null || !res.startsWith("gfx/kritter/"))
-            return false;
-        for (String beast : Config.beastResPaths) {
-            if (res.endsWith(beast))
-                return true;
-        }
-        return false;
+        return Hazards.isDangerous(res);
     }
 
     /**
