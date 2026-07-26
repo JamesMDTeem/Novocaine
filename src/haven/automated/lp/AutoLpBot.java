@@ -16,6 +16,8 @@ import haven.Widget;
 import haven.Window;
 import haven.automated.AUtils;
 import haven.resutil.FoodInfo;
+import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.core.UiWatchdog;
 
 import java.awt.Color;
 import java.util.Collections;

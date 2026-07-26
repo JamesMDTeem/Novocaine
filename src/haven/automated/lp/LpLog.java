@@ -1,5 +1,6 @@
 package haven.automated.lp;
 
+import haven.automated.nbots.core.NLog;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
