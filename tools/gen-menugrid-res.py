@@ -107,10 +107,11 @@ build("Toggles/HighlightCliffs.res",
 # Shared behaviour toggles for the crew bots below.
 build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
       "NurglingImports/NBotsSettings.res",
-      "customclient/menugrid/NurglingImports", "Nurgling Bot Settings", 0,
+      "customclient/menugrid/NurglingImports", "Custom Settings", 0,
       ["@", "NurglingImports", "NBotsSettings"],
-      "Behaviour shared by the crew bots: whether they reserve work spots from each other, keep "
-      "out of each other's way, swap tools by themselves, refill water and eat.")
+      "Behaviour shared by the crew bots, grouped by what it answers: working together, looking "
+      "after themselves, getting around (water, gates, remembered walls), and what you can see of "
+      "what they are doing.")
 
 # Where the bots go for water, food, tools and storage.
 build("OtherScriptsAndTools/AutoDropManager.res",
