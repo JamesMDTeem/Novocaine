@@ -231,7 +231,16 @@ public class OptWnd extends Window {
 		 * from. This just makes the window undecorated and exactly monitor-sized - it
 		 * looks the same and alt-tabs like any other window. See Windeye.State.BORDERLESS. */
 		prev = add(new CheckBox("Borderless fullscreen") {
-			{a = ui.wnd.state() == haven.iosys.tk.Windeye.State.BORDERLESS;}
+			/* The pref rather than the window, because this runs at construction and
+			 * CPanel builds its children before it is itself added - so ui is still
+			 * null here. It is the same value Client reads at startup, and attached()
+			 * below re-syncs from the real window once there is one. */
+			{a = Utils.getprefb("mainwnd/borderless", false);}
+
+			protected void attached() {
+			    super.attached();
+			    a = ui.wnd.state() == haven.iosys.tk.Windeye.State.BORDERLESS;
+			}
 
 			public void set(boolean val) {
 			    ui.wnd.state(val ? haven.iosys.tk.Windeye.State.BORDERLESS
