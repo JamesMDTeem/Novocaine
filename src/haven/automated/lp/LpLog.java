@@ -201,11 +201,14 @@ public class LpLog {
             JSONObject lp = new JSONObject();
             synchronized (lpExplorer) {
                 for (HashMap.Entry<String, ArrayList<String>> e : lpExplorer.entrySet())
-                    lp.put(e.getKey(), new JSONArray(e.getValue()));
+                    // toArray() is required, not stylistic - see the note in Place.toJson. Passing
+                    // the collection compiles and then throws, which is why this file had never
+                    // once written itself successfully.
+                    lp.put(e.getKey(), new JSONArray(e.getValue().toArray()));
             }
             root.put("lp", lp);
             synchronized (craftedRecipes) {
-                root.put("crafted", new JSONArray(craftedRecipes));
+                root.put("crafted", new JSONArray(craftedRecipes.toArray()));
             }
             Files.createDirectories(target.getParent());
             // Write-then-rename: this file is rewritten in full on every discovery, so a client

@@ -131,7 +131,12 @@ public class Place {
         o.put("anchor", (anchor == null) ? "" : anchor.store());
         o.put("w", w);
         o.put("h", h);
-        o.put("roles", new JSONArray(roles));
+        /* toArray() rather than passing the set: the bundled org.json declares its collection
+         * constructor as JSONArray(Collection<Object>), and generics are invariant, so a
+         * Set<String> does not match it. Overload resolution silently falls through to
+         * JSONArray(Object), which accepts anything and then throws at runtime because a Set is
+         * not an array. The array constructor is the one that works for every element type. */
+        o.put("roles", new JSONArray(roles.toArray()));
         o.put("accepts", accepts.store());
         o.put("provides", provides.store());
         return o;

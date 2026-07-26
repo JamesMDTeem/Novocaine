@@ -78,12 +78,16 @@ public class Places {
         synchronized (LOCK) {
             if (cache == null)
                 return;
-            JSONArray arr = new JSONArray();
-            for (Place p : cache)
-                arr.put(p.toJson());
-            Path dst = file();
-            Path tmp = dst.resolveSibling(dst.getFileName() + ".tmp");
+            /* Serialising is inside the try, and RuntimeException is caught alongside IOException,
+             * to match load() above. Both matter more here than they look: this runs on the UI
+             * thread from a button press, and an exception that escapes it kills that thread and
+             * takes the whole client with it - a bad place to learn a value would not serialise. */
             try {
+                JSONArray arr = new JSONArray();
+                for (Place p : cache)
+                    arr.put(p.toJson());
+                Path dst = file();
+                Path tmp = dst.resolveSibling(dst.getFileName() + ".tmp");
                 Files.write(tmp, arr.toString(2).getBytes(StandardCharsets.UTF_8));
                 try {
                     Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
@@ -91,7 +95,7 @@ public class Places {
                 } catch (java.nio.file.AtomicMoveNotSupportedException e) {
                     Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
                 }
-            } catch (IOException e) {
+            } catch (IOException | RuntimeException e) {
                 NLog.crash("saving " + FILE, e);
             }
         }
