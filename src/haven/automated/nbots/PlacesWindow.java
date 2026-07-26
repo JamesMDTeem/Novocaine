@@ -20,6 +20,7 @@ import haven.automated.nbots.world.Places;
 import haven.automated.nbots.world.WorldAnchor;
 
 import java.awt.Color;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -50,11 +51,17 @@ public class PlacesWindow extends Window {
     private boolean drawing;
 
     public PlacesWindow(GameUI gui) {
-        super(UI.scale(360, 400), "Bot Places");
+        super(UI.scale(470, 470), "Bot Places");
         this.gui = gui;
 
         int y = 4;
         add(new Label("Where the bots go for water, food, tools and storage."), UI.scale(10, y));
+        y += 18;
+        /* Spelled out because the two are easy to confuse: a role is the whole answer for water,
+         * food and tools, and the item rules only matter for places bots put things into or take
+         * things out of. */
+        add(new Label("Ticking a role is enough. Item rules are only for storage places."),
+            UI.scale(10, y));
         y += 20;
 
         hint = add(new Label(""), UI.scale(10, y));
@@ -75,7 +82,7 @@ public class PlacesWindow extends Window {
         }, UI.scale(280, y));
         y += 30;
 
-        list = add(new Scrollport(UI.scale(340, 250)), UI.scale(10, y));
+        list = add(new Scrollport(UI.scale(450, 320)), UI.scale(10, y));
         refresh();
         pack();
     }
@@ -168,23 +175,40 @@ public class PlacesWindow extends Window {
         }
     }
 
+    /**
+     * One place's block of controls.
+     *
+     * Everything is laid out against the scroll content's own width rather than the constants the
+     * window was built with. Hard-coded columns were how the item rules ended up running off the
+     * right edge, and they would do it again the moment the window is resized or the UI scale
+     * changes - which is exactly what a settings window should survive.
+     */
     private int row(Place place, int y) {
+        int cw = list.cont.sz.x;
+
         String extent = (place.w <= 1 && place.h <= 1) ? "point" : (place.w + "x" + place.h);
         Label title = new Label(place.name + "  (" + extent + ")");
         title.setcolor(place.reachable(gui) ? Color.WHITE : Color.GRAY);
         list.cont.add(title, new Coord(0, y));
-        list.cont.add(new Button(UI.scale(50), "Delete") {
+        /* Same baseline as the title. It used to sit three pixels higher, which put the first
+         * row's button at a negative y - outside the scroll content, drawn over the window frame
+         * and unclickable where it overlapped. */
+        int delw = UI.scale(52);
+        list.cont.add(new Button(delw, "Delete") {
             @Override
             public void click() {
                 Places.remove(place.name);
                 refresh();
             }
-        }, new Coord(UI.scale(260), y - UI.scale(3)));
-        y += UI.scale(20);
+        }, new Coord(Math.max(0, cw - delw), y));
+        y += UI.scale(22);
 
-        int x = 0;
-        for (String role : Places.knownRoles()) {
-            list.cont.add(new CheckBox(role) {
+        List<String> roles = new ArrayList<>(Places.knownRoles());
+        int colw = UI.scale(96);
+        int cols = Math.max(1, cw / colw);
+        for (int i = 0; i < roles.size(); i++) {
+            String role = roles.get(i);
+            list.cont.add(new CheckBox(display(role)) {
                 {
                     a = place.hasRole(role);
                 }
@@ -197,32 +221,43 @@ public class PlacesWindow extends Window {
                     Places.add(place);
                     a = val;
                 }
-            }, new Coord(UI.scale(x), y));
-            x += 80;
-            if (x > 240) {
-                x = 0;
-                y += UI.scale(18);
-            }
+            }, new Coord((i % cols) * colw, y + (i / cols) * UI.scale(18)));
         }
-        y += UI.scale(22);
+        y += ((roles.size() + cols - 1) / cols) * UI.scale(18) + UI.scale(6);
 
-        list.cont.add(new Label("takes in:"), new Coord(0, y + UI.scale(3)));
-        list.cont.add(new TextEntry(UI.scale(110), place.accepts.store()) {
+        /* One rule per line. Side by side never left either field enough room to show what was
+         * typed in it, and these hold comma-separated lists. */
+        int lblw = UI.scale(72);
+        int entw = Math.max(UI.scale(80), cw - lblw);
+        list.cont.add(new Label("Takes in:"), new Coord(0, y + UI.scale(3)));
+        list.cont.add(new TextEntry(entw, place.accepts.store()) {
             @Override
             public void changed() {
                 place.accepts = Alias.parse("accepts", text());
                 Places.add(place);
             }
-        }, new Coord(UI.scale(60), y));
-        list.cont.add(new Label("gives out:"), new Coord(UI.scale(180), y + UI.scale(3)));
-        list.cont.add(new TextEntry(UI.scale(100), place.provides.store()) {
+        }, new Coord(lblw, y));
+        y += UI.scale(24);
+        list.cont.add(new Label("Gives out:"), new Coord(0, y + UI.scale(3)));
+        list.cont.add(new TextEntry(entw, place.provides.store()) {
             @Override
             public void changed() {
                 place.provides = Alias.parse("provides", text());
                 Places.add(place);
             }
-        }, new Coord(UI.scale(245), y));
-        return y + UI.scale(30);
+        }, new Coord(lblw, y));
+        return y + UI.scale(34);
+    }
+
+    /**
+     * A role as the player should read it. Roles are stored lower-case because they are matched
+     * and persisted as plain strings, so the capital belongs at the point of display rather than
+     * in the data - otherwise "Water" and "water" become two different roles.
+     */
+    private static String display(String role) {
+        if (role == null || role.isEmpty())
+            return role;
+        return Character.toUpperCase(role.charAt(0)) + role.substring(1);
     }
 
     // ------------------------------------------------------------------ lifecycle
