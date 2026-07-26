@@ -225,6 +225,24 @@ public class OptWnd extends Window {
 			    a = val;
 			}
 		    }, prev.pos("bl").adds(0, 5));
+		/* Borderless rather than a toggle for the existing exclusive fullscreen: exclusive
+		 * mode takes the display device over and has to hand it back on every alt-tab,
+		 * with a GL context bound to it the whole time, which is where its crashes come
+		 * from. This just makes the window undecorated and exactly monitor-sized - it
+		 * looks the same and alt-tabs like any other window. See Windeye.State.BORDERLESS. */
+		prev = add(new CheckBox("Borderless fullscreen") {
+			{a = ui.wnd.state() == haven.iosys.tk.Windeye.State.BORDERLESS;}
+
+			public void set(boolean val) {
+			    ui.wnd.state(val ? haven.iosys.tk.Windeye.State.BORDERLESS
+					     : haven.iosys.tk.Windeye.State.NORMAL);
+			    Utils.setprefb("mainwnd/borderless", val);
+			    a = val;
+			}
+		    }, prev.pos("bl").adds(0, 5));
+		prev.settip("Fills the monitor with an undecorated window. Unlike the -f exclusive " +
+			    "fullscreen it never changes the display mode, so alt-tabbing in and out " +
+			    "of it is safe.");
 		prev = add(new Label("Framerate limit (active window)"), prev.pos("bl").adds(0, 5));
 		{
 		    Label dpy = new Label("");

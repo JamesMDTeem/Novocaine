@@ -91,8 +91,13 @@ public class Client implements Console.Directory {
 	    wnd.sizing(new Windeye.Sizing().minsize(new Coord(1167, 700)).normsize(Utils.getprefc("mainwnd/size", new Coord(1167, 700))));
 	else
 	    wnd.sizing(new Windeye.Sizing().fixsize(fsz));
+	/* -f / haven.fullscreen keeps meaning EXCLUSIVE, so an existing shortcut or script
+	 * behaves as it always has. The borderless mode is opted into from the display options
+	 * instead, and is remembered here. */
 	if(initfullscreen.get())
 	    wnd.state(Windeye.State.EXCLUSIVE);
+	else if(Utils.getprefb("mainwnd/borderless", false))
+	    wnd.state(Windeye.State.BORDERLESS);
 	else if(Utils.getprefb("mainwnd/max", false))
 	    wnd.state(Windeye.State.MAXIMIZED);
 	try(InputStream icon = Client.class.getResourceAsStream("icon.png")) {
@@ -244,10 +249,18 @@ public class Client implements Console.Directory {
 	switch(wnd.state()) {
 	case MAXIMIZED:
 	    Utils.setprefb("mainwnd/max", true);
+	    Utils.setprefb("mainwnd/borderless", false);
+	    break;
+	case BORDERLESS:
+	    /* Deliberately does NOT touch mainwnd/size: a borderless window's size is the
+	     * monitor's, and recording that as the windowed size would leave a screen-sized
+	     * window behind the next time borderless is turned off. */
+	    Utils.setprefb("mainwnd/borderless", true);
 	    break;
 	case NORMAL:
 	    Utils.setprefc("mainwnd/size", wnd.size());
 	    Utils.setprefb("mainwnd/max", false);
+	    Utils.setprefb("mainwnd/borderless", false);
 	    break;
 	}
     }
@@ -278,6 +291,14 @@ public class Client implements Console.Directory {
     }
 
     private Windeye.State prevfsstate = Windeye.State.NORMAL;
+
+    /* What to go back to when fullscreen is turned off. Only ever a genuinely windowed state:
+     * capturing the current one blindly would, when switching straight from one fullscreen mode
+     * to the other, record a fullscreen state as the thing to "return" to. */
+    private Windeye.State fsreturn() {
+	Windeye.State cur = wnd.state();
+	return((cur == Windeye.State.EXCLUSIVE) || (cur == Windeye.State.BORDERLESS) ? prevfsstate : cur);
+    }
     private Map<String, Console.Command> cmdmap = new TreeMap<String, Console.Command>();
     {
 	cmdmap.put("q", new Console.Command() {
@@ -288,9 +309,16 @@ public class Client implements Console.Directory {
 	cmdmap.put("fs", new Console.Command() {
 		public void run(Console cons, String[] args) {
 		    if(args.length >= 2) {
-			if(Utils.parsebool(args[1])) {
+			/* "fs borderless" for the windowed-fullscreen mode; "fs on/off" keeps
+			 * meaning exclusive, as it always did. */
+			if(args[1].equalsIgnoreCase("borderless")) {
+			    if(wnd.state() != Windeye.State.BORDERLESS) {
+				prevfsstate = fsreturn();
+				wnd.state(Windeye.State.BORDERLESS);
+			    }
+			} else if(Utils.parsebool(args[1])) {
 			    if(wnd.state() != Windeye.State.EXCLUSIVE) {
-				prevfsstate = wnd.state();
+				prevfsstate = fsreturn();
 				wnd.state(Windeye.State.EXCLUSIVE);
 			    }
 			} else {

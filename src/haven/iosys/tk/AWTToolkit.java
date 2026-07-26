@@ -43,6 +43,7 @@ import java.awt.Component;
 import java.awt.Desktop;
 import java.awt.DisplayMode;
 import java.awt.EventQueue;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
@@ -438,6 +439,10 @@ public abstract class AWTToolkit implements Toolkit {
 	private final AWTEventListener keyfilter;
 	private final Collection<EventListener> callbacks = new java.util.concurrent.CopyOnWriteArrayList<>();
 	private boolean excl = false;
+	private boolean borderless = false;
+	/* Where the window was before it was made borderless, so leaving borderless puts it back
+	 * rather than leaving a screen-sized decorated window behind. */
+	private java.awt.Rectangle wndbounds = null;
 	private boolean focused;
 	private DropHandler drop = null;
 	private Sizing sizing = null;
@@ -699,6 +704,14 @@ public abstract class AWTToolkit implements Toolkit {
 	}
 
 	public AWTWindow sizing(Sizing info) {
+	    /* While the window is covering a whole monitor, its size is not the caller's to
+	     * decide - applying one here would leave a borderless window that no longer matches
+	     * the screen, or yank an exclusive one out of its display mode. Remembered instead,
+	     * and applied by setwnd() when the window goes back to being a window. */
+	    if(excl || borderless) {
+		sizing = info;
+		return(this);
+	    }
 	    awtrun(() -> {
 		if(info.fixsize == null) {
 		    frame.setResizable(true);
@@ -720,6 +733,7 @@ public abstract class AWTToolkit implements Toolkit {
 	private void setfs() {
 	    if(excl)
 		return;
+	    setwnd();
 	    awtrun(() -> {
 		GraphicsDevice dev = frame.getGraphicsConfiguration().getDevice();
 		frame.setVisible(false);
@@ -732,27 +746,80 @@ public abstract class AWTToolkit implements Toolkit {
 	    excl = true;
 	}
 
-	private void setwnd() {
-	    if(!excl)
+	/* Undecorated, covering exactly the monitor the window is already on, and that is all:
+	 * no GraphicsDevice.setFullScreenWindow, so the display mode is never changed and the
+	 * window manager never hands us exclusive control of the device. That is deliberately
+	 * the entire difference from setfs() above, and it is where exclusive fullscreen's
+	 * instability lives - a device whose mode was switched has to be restored on every
+	 * alt-tab, minimise and monitor change, with a GL context bound to it throughout.
+	 *
+	 * The frame still has to be disposed and rebuilt, because AWT refuses setUndecorated on
+	 * a displayable frame. That part is unavoidable here and is what setfs() already does;
+	 * what isn't repeated is the pack() afterwards, which asks a window that is supposed to
+	 * be exactly monitor-sized to resize itself to its preferred size instead.
+	 *
+	 * getGraphicsConfiguration().getBounds() is in virtual-desktop coordinates, so this
+	 * covers whichever monitor the window is currently on rather than always the primary. */
+	private void setborderless() {
+	    if(borderless)
 		return;
+	    if(excl)
+		setwnd();
+	    awtrun(() -> {
+		GraphicsConfiguration gc = frame.getGraphicsConfiguration();
+		java.awt.Rectangle b = (gc != null) ? gc.getBounds() :
+		    new java.awt.Rectangle(java.awt.Toolkit.getDefaultToolkit().getScreenSize());
+		wndbounds = frame.getBounds();
+		frame.setVisible(false);
+		frame.dispose();
+		frame.setUndecorated(true);
+		frame.setResizable(false);
+		frame.setExtendedState(java.awt.Frame.NORMAL);
+		frame.setBounds(b);
+		frame.setVisible(true);
+		frame.toFront();
+		frame.requestFocus();
+	    });
+	    borderless = true;
+	}
+
+	private void setwnd() {
+	    if(!excl && !borderless)
+		return;
+	    final boolean wasborderless = borderless;
 	    awtrun(() -> {
 		GraphicsDevice dev = frame.getGraphicsConfiguration().getDevice();
-		dev.setFullScreenWindow(null);
+		if(dev.getFullScreenWindow() == frame)
+		    dev.setFullScreenWindow(null);
 		frame.setVisible(false);
 		frame.dispose();
 		frame.setUndecorated(false);
+		frame.setResizable(true);
 		frame.setVisible(true);
-		if(sizing != null)
-		    sizing(sizing);
-		frame.pack();
+		/* Restore where the window was before it went borderless. Without this it keeps
+		 * the monitor-sized bounds it was given, so leaving borderless leaves you with a
+		 * decorated window the size of the screen rather than the one you started with. */
+		if(wasborderless && (wndbounds != null))
+		    frame.setBounds(wndbounds);
+		if(sizing != null) {
+		    Sizing s = sizing;
+		    sizing = null;      // so sizing() doesn't take the excl/borderless shortcut
+		    sizing(s);
+		}
+		if(!wasborderless)
+		    frame.pack();
 	    });
 	    excl = false;
+	    borderless = false;
 	}
 
 	public AWTWindow state(State st) {
 	    switch(st) {
 	    case EXCLUSIVE:
 		setfs();
+		break;
+	    case BORDERLESS:
+		setborderless();
 		break;
 	    case MINIMIZED:
 		setwnd();
@@ -778,6 +845,8 @@ public abstract class AWTToolkit implements Toolkit {
 	public State state() {
 	    if(excl)
 		return(State.EXCLUSIVE);
+	    if(borderless)
+		return(State.BORDERLESS);
 	    if((frame.getExtendedState() & java.awt.Frame.ICONIFIED) != 0)
 		return(State.MINIMIZED);
 	    if((frame.getExtendedState() & java.awt.Frame.MAXIMIZED_BOTH) != 0)
