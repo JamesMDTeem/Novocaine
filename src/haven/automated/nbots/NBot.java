@@ -15,6 +15,7 @@ import haven.automated.nbots.core.NBotConfig;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.UiWatchdog;
+import haven.automated.nbots.task.FillWater;
 import haven.automated.nbots.task.ToolSwap;
 import haven.automated.nbots.task.Upkeep;
 import haven.automated.nbots.world.BotNav;
@@ -101,6 +102,7 @@ public abstract class NBot extends Window implements Runnable {
                 if (active) {
                     try {
                         beginShift();
+                        stock();
                         Outcome o = work();
                         if (o != null && !o.isOk())
                             fatalStop = o.reason;
@@ -184,6 +186,27 @@ public abstract class NBot extends Window implements Runnable {
 
     protected void report(String msg) {
         gui.msg(title() + ": " + msg, Color.WHITE);
+    }
+
+    /**
+     * Tops the water up before setting out, if anything carried has room in it.
+     *
+     * Starting a shift half-full only buys a shorter first stint - the bot walks out to the work,
+     * runs dry sooner than it needed to, and walks all the way back. Doing it here costs the same
+     * trip at a point where nothing has been started yet, and costs nothing at all when the
+     * containers are already full.
+     *
+     * Failure is not fatal on purpose: no water place defined yet is a perfectly ordinary state
+     * for a bot being tried out for the first time, and refusing to work over it would be a worse
+     * answer than working until thirsty.
+     */
+    private void stock() throws InterruptedException {
+        if (!NBotConfig.on(NBotConfig.Key.autoRefillWater) || !FillWater.thirsty(ctx))
+            return;
+        report("topping up water before starting");
+        Outcome o = new FillWater().run(ctx);
+        if (!o.isOk())
+            NLog.log(log, "couldn't top up before starting: " + o.reason);
     }
 
     /**

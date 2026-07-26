@@ -104,6 +104,15 @@ public class WorkGob implements Task {
                 return o;
         }
 
+        /* Asking while too tired just gets refused - "You are too tired to chop" - and a refusal
+         * looks exactly like a stall, so the old code sat through the full stall count three times
+         * over before anything noticed it needed a drink. Checking first turns three wasted
+         * attempts into an immediate hand-off. Deliberately the SAME threshold Upkeep drinks at:
+         * a stricter one here would report blocked and then have upkeep decide there was nothing
+         * to do, which is a bot that stops and never recovers. */
+        if (ctx.stamina() < Upkeep.DRINK_BELOW)
+            return Outcome.blocked("too tired to work");
+
         clearHand(ctx);
         Outcome started = start(ctx);
         if (!started.isOk())
@@ -112,6 +121,8 @@ public class WorkGob implements Task {
         int stalled = 0;
         int reissues = 0;
         while (ctx.running() && ctx.gob(id) != null) {
+            if (ctx.stamina() < Upkeep.DRINK_BELOW)
+                return Outcome.blocked("too tired to carry on");
             if (slot != null)
                 slot.renew();
             if (perTick != null)

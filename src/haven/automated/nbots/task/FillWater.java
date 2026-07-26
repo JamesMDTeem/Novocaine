@@ -112,6 +112,25 @@ public class FillWater implements Task {
     }
 
     /**
+     * True if anything we are carrying has room for more water.
+     *
+     * The three scans only ever report vessels that are NOT full - that is what the original loops
+     * until - so a non-empty result is exactly "there is water to be fetched". Used at the start of
+     * a shift, where setting out half-full only means breaking off sooner.
+     */
+    public static boolean thirsty(BotCtx ctx) {
+        try {
+            RefillWaterContainers scan = new RefillWaterContainers(ctx.gui);
+            return !scan.getInventoryContainers().isEmpty()
+                || !scan.getBeltContainers().isEmpty()
+                || !scan.getEquiporyPouchContainers().isEmpty();
+        } catch (RuntimeException e) {
+            // Includes Loading. Not knowing is not a reason to make the trip.
+            return false;
+        }
+    }
+
+    /**
      * Empties every carried container into the source and puts each one back where it came from.
      *
      * Bounded on passes rather than looping until everything reads full: a container that for any
