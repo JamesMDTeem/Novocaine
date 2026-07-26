@@ -1626,6 +1626,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	super.tick(dt);
 	haven.automated.alchemy.AlchemyService.poll(ui, dt);
 	haven.automated.lp.LpContext.tick();
+	haven.automated.nbots.world.PlaceOverlay.tick(this);
 	double now = Utils.rtime();
 	if(now - lastwndsave > 60) {
 	    savewndpos();

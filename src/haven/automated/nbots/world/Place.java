@@ -51,6 +51,11 @@ public class Place {
     public Alias accepts = new Alias("accepts");
     /** Item-name patterns this place gives OUT (a food store, a seed store). */
     public Alias provides = new Alias("provides");
+    /**
+     * Draw this one on the ground. Persisted rather than kept per-session, because the reason to
+     * tick it is usually "I don't trust this rectangle yet", and that outlives one login.
+     */
+    public boolean show = false;
 
     public Place(String name, WorldAnchor anchor, int w, int h) {
         this.name = name;
@@ -139,6 +144,7 @@ public class Place {
         o.put("roles", new JSONArray(roles.toArray()));
         o.put("accepts", accepts.store());
         o.put("provides", provides.store());
+        o.put("show", show);
         return o;
     }
 
@@ -154,7 +160,55 @@ public class Place {
         }
         p.accepts = Alias.parse("accepts", o.optString("accepts", ""));
         p.provides = Alias.parse("provides", o.optString("provides", ""));
+        p.show = o.optBoolean("show", false);
         return p;
+    }
+
+    /**
+     * What is standing inside this place, counted by kind - "barrel x3, cupboard x1".
+     *
+     * For the manager window, and the reason it is worth having: the commonest mistake when drawing
+     * a place is a rectangle that looks right and is a tile short of the thing it was drawn around.
+     * A count that says "nothing" while you are looking straight at the barrels tells you that in
+     * one glance, where the alternative is running a bot and interpreting why it failed.
+     *
+     * Only counts what is RENDERED, so it is blank from across the map. That is honest rather than
+     * limiting - gobs are not in the map file, so there is nothing to report from afar.
+     */
+    public java.util.Map<String, Integer> contents(GameUI gui) {
+        java.util.Map<String, Integer> out = new java.util.TreeMap<>();
+        for (Gob g : gobsWithin(gui)) {
+            String kind = kindOf(g);
+            if (kind != null)
+                out.merge(kind, 1, Integer::sum);
+        }
+        return out;
+    }
+
+    /**
+     * A gob's resource name reduced to something a player would recognise.
+     *
+     * The last path element with its material and variant suffixes taken off, so
+     * "gfx/terobjs/cupboard" reads as "cupboard" and the four granite variants under
+     * gfx/terobjs/bumlings collapse into one line rather than four. Characters and the player's own
+     * body are dropped - every place contains the person standing in it, which is not information.
+     */
+    private static String kindOf(Gob g) {
+        try {
+            Resource res = g.getres();
+            if (res == null)
+                return null;
+            String n = res.name;
+            if (n.startsWith("gfx/borka/") || n.contains("/body"))
+                return null;
+            String tail = n.substring(n.lastIndexOf('/') + 1);
+            // Trailing digits are variant numbers ("granite3"), and -m/-f are material suffixes.
+            tail = tail.replaceAll("[0-9]+$", "");
+            tail = tail.replaceAll("-[a-z]$", "");
+            return tail.isEmpty() ? null : tail;
+        } catch (Loading | NullPointerException e) {
+            return null;
+        }
     }
 
     public String toString() {
