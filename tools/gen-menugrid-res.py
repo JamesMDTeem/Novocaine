@@ -104,13 +104,22 @@ build("Toggles/HighlightCliffs.res",
       ["@", "NurglingImports", "LpAssistantToggle"],
       "Turn the LP assistant (undiscovered-product markers and discovery tracking) on or off.")
 
-# Shared settings for the crew bots below: coordination, tool swapping, and the water source.
+# Shared behaviour toggles for the crew bots below.
 build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
       "NurglingImports/NBotsSettings.res",
       "customclient/menugrid/NurglingImports", "Nurgling Bot Settings", 0,
       ["@", "NurglingImports", "NBotsSettings"],
-      "Settings shared by the crew bots: whether they reserve work spots from each other, keep "
-      "out of each other's way, swap tools by themselves, and where they go to refill water.")
+      "Behaviour shared by the crew bots: whether they reserve work spots from each other, keep "
+      "out of each other's way, swap tools by themselves, refill water and eat.")
+
+# Where the bots go for water, food, tools and storage.
+build("OtherScriptsAndTools/AutoDropManager.res",
+      "NurglingImports/NBotPlaces.res",
+      "customclient/menugrid/NurglingImports", "Bot Places", 0,
+      ["@", "NurglingImports", "NBotPlaces"],
+      "Name regions of the map and tag what they are for - water, food, tools, somewhere to dump "
+      "output. Bots ask for a place by role rather than being told coordinates, so one definition "
+      "serves every bot and every client launched from this install.")
 
 # The three crew bots. Each is a separate class from the stock Bots-tab version, which is left
 # exactly as it is - see haven.automated.nbots.NBot for why.

@@ -11,7 +11,10 @@ import haven.MCache;
 import haven.RadioGroup;
 import haven.Resource;
 import haven.UI;
-import haven.automated.lp.NLog;
+import haven.automated.nbots.core.NBotConfig;
+import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.core.Outcome;
+import haven.automated.nbots.world.Crowd;
 import haven.automated.pathfinder.Pathfinder;
 
 import java.util.ArrayList;
@@ -117,7 +120,7 @@ public class NWaterScoutBot extends NBot {
     private List<Gob> others = new ArrayList<>();
 
     public NWaterScoutBot(GameUI gui) {
-        super(gui, "Water Scout (crew)", "nWaterScoutBotWindow", LOG, UI.scale(280, 148));
+        super(gui, "NWaterScoutBot", "Water Scout (crew)", LOG, UI.scale(280, 148));
         this.mcache = gui.map.glob.map;
 
         add(new Label("Follow the edge of:"), UI.scale(10, 22));
@@ -152,29 +155,19 @@ public class NWaterScoutBot extends NBot {
         return "Water Scout";
     }
 
-    @Override
-    protected void onClosed() {
-        if (gui.nWaterScoutBot == this) {
-            gui.nWaterScoutBot = null;
-            gui.nWaterScoutThread = null;
-        }
-    }
-
     // ------------------------------------------------------------------ the patrol
 
     @Override
-    protected void runOnce() throws InterruptedException {
-        if (!navigable(playerPos())) {
-            fatalStop = "not on " + (mode == Mode.OCEAN ? "deep ocean" : "fresh") + " water - "
-                + "get the boat onto the water you want scouted first.";
-            return;
-        }
+    protected Outcome work() throws InterruptedException {
+        if (!navigable(playerPos()))
+            return Outcome.failed("not on " + (mode == Mode.OCEAN ? "deep ocean" : "fresh")
+                + " water - get the boat onto the water you want scouted first");
         NLog.log(LOG, "scouting in " + mode + " mode, turning " + (turn == 1 ? "clockwise" : "anticlockwise"));
 
         long steered = 0;
         while (running()) {
-            if (!checkVitals())
-                return;
+            if (!upkeep())
+                return Outcome.failed(fatalStop);
             scan();
 
             // Too many dead ends in a row means we've worked into a corner - a bay, or the head of
@@ -211,6 +204,7 @@ public class NWaterScoutBot extends NBot {
             }
             nav.pause(8);
         }
+        return Outcome.ok();
     }
 
     /**
@@ -388,6 +382,16 @@ public class NWaterScoutBot extends NBot {
         solids = solid;
         hazards = haz;
         others = NBotConfig.on(NBotConfig.Key.avoidOthers) ? Crowd.others(gui) : new ArrayList<>();
+    }
+
+    /** Was inherited from NBot; the base class is now bare, so the scout keeps its own. */
+    private static String resname(Gob g) {
+        try {
+            Resource res = g.getres();
+            return (res == null) ? null : res.name;
+        } catch (Loading | NullPointerException e) {
+            return null;
+        }
     }
 
     private static String shortname(Gob g) {

@@ -201,13 +201,11 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 
 	// Nurgling-tab bots. Separate from the stock Bots-tab ones above, which they deliberately
 	// leave alone - see haven.automated.nbots.NBot.
+	/* One registry rather than a field pair per bot: adding a bot is a line in BotRegistry and
+	 * nothing here. See haven.automated.nbots.BotDef. */
+	public final haven.automated.nbots.BotRegistry nbots = new haven.automated.nbots.BotRegistry();
 	public haven.automated.nbots.NBotsSettingsWindow nBotsSettings;
-	public haven.automated.nbots.NCellarDiggerBot nCellarDiggerBot;
-	public Thread nCellarDiggerThread;
-	public haven.automated.nbots.NCleanupBot nCleanupBot;
-	public Thread nCleanupThread;
-	public haven.automated.nbots.NWaterScoutBot nWaterScoutBot;
-	public Thread nWaterScoutThread;
+	public haven.automated.nbots.PlacesWindow nbotPlaces;
 
     public static abstract class BeltSlot {
 	public final int idx;
@@ -401,7 +399,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	this.plid = plid;
 	this.genus = genus;
 	haven.automated.lp.LpContext.bind(this);
-	haven.automated.lp.NLog.installUncaughtHandler();
+	haven.automated.nbots.core.NLog.installUncaughtHandler();
 	setcanfocus(true);
 	setfocusctl(true);
 	chat = new ChatUI();
