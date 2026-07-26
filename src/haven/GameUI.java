@@ -199,6 +199,16 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public Thread autoLpThread;
 	public Thread fishingThread;
 
+	// Nurgling-tab bots. Separate from the stock Bots-tab ones above, which they deliberately
+	// leave alone - see haven.automated.nbots.NBot.
+	public haven.automated.nbots.NBotsSettingsWindow nBotsSettings;
+	public haven.automated.nbots.NCellarDiggerBot nCellarDiggerBot;
+	public Thread nCellarDiggerThread;
+	public haven.automated.nbots.NCleanupBot nCleanupBot;
+	public Thread nCleanupThread;
+	public haven.automated.nbots.NWaterScoutBot nWaterScoutBot;
+	public Thread nWaterScoutThread;
+
     public static abstract class BeltSlot {
 	public final int idx;
 

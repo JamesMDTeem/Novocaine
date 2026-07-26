@@ -827,6 +827,10 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/NurglingImports/AutoLpBot");
 		makeLocal("customclient/menugrid/NurglingImports/LpAssistantManager");
 		makeLocal("customclient/menugrid/NurglingImports/LpAssistantToggle");
+		makeLocal("customclient/menugrid/NurglingImports/NBotsSettings");
+		makeLocal("customclient/menugrid/NurglingImports/NCellarDiggerBot");
+		makeLocal("customclient/menugrid/NurglingImports/NCleanupBot");
+		makeLocal("customclient/menugrid/NurglingImports/NWaterScoutBot");
 
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");
@@ -1175,6 +1179,50 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 				haven.automated.lp.LpConfig.set(haven.automated.lp.LpConfig.Key.lpassistent, on);
 				haven.automated.lp.LpExplorer.bumpGeneration();
 				gui.msg("LP Assistant is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? java.awt.Color.GREEN : java.awt.Color.RED);
+			} else if (ad[2].equals("NBotsSettings")) {
+				if (gui.nBotsSettings == null) {
+					gui.nBotsSettings = new haven.automated.nbots.NBotsSettingsWindow(gui);
+					gui.add(gui.nBotsSettings, Utils.getprefc("wndc-nBotsSettingsWindow", new Coord(gui.sz.x/2 - gui.nBotsSettings.sz.x/2, gui.sz.y/2 - gui.nBotsSettings.sz.y/2 - 200)));
+				} else {
+					gui.nBotsSettings.reqdestroy();
+					gui.nBotsSettings = null;
+				}
+			} else if (ad[2].equals("NCellarDiggerBot")) {
+				if (gui.nCellarDiggerBot == null && gui.nCellarDiggerThread == null) {
+					gui.nCellarDiggerBot = new haven.automated.nbots.NCellarDiggerBot(gui);
+					gui.add(gui.nCellarDiggerBot, Utils.getprefc("wndc-nCellarDiggerBotWindow", new Coord(gui.sz.x/2 - gui.nCellarDiggerBot.sz.x/2, gui.sz.y/2 - gui.nCellarDiggerBot.sz.y/2 - 200)));
+					gui.nCellarDiggerThread = new Thread(gui.nCellarDiggerBot, "NCellarDiggerBot");
+					gui.nCellarDiggerThread.start();
+				} else if (gui.nCellarDiggerBot != null) {
+					gui.nCellarDiggerBot.stop();
+					gui.nCellarDiggerBot.reqdestroy();
+					gui.nCellarDiggerBot = null;
+					gui.nCellarDiggerThread = null;
+				}
+			} else if (ad[2].equals("NCleanupBot")) {
+				if (gui.nCleanupBot == null && gui.nCleanupThread == null) {
+					gui.nCleanupBot = new haven.automated.nbots.NCleanupBot(gui);
+					gui.add(gui.nCleanupBot, Utils.getprefc("wndc-nCleanupBotWindow", new Coord(gui.sz.x/2 - gui.nCleanupBot.sz.x/2, gui.sz.y/2 - gui.nCleanupBot.sz.y/2 - 200)));
+					gui.nCleanupThread = new Thread(gui.nCleanupBot, "NCleanupBot");
+					gui.nCleanupThread.start();
+				} else if (gui.nCleanupBot != null) {
+					gui.nCleanupBot.stop();
+					gui.nCleanupBot.reqdestroy();
+					gui.nCleanupBot = null;
+					gui.nCleanupThread = null;
+				}
+			} else if (ad[2].equals("NWaterScoutBot")) {
+				if (gui.nWaterScoutBot == null && gui.nWaterScoutThread == null) {
+					gui.nWaterScoutBot = new haven.automated.nbots.NWaterScoutBot(gui);
+					gui.add(gui.nWaterScoutBot, Utils.getprefc("wndc-nWaterScoutBotWindow", new Coord(gui.sz.x/2 - gui.nWaterScoutBot.sz.x/2, gui.sz.y/2 - gui.nWaterScoutBot.sz.y/2 - 200)));
+					gui.nWaterScoutThread = new Thread(gui.nWaterScoutBot, "NWaterScoutBot");
+					gui.nWaterScoutThread.start();
+				} else if (gui.nWaterScoutBot != null) {
+					gui.nWaterScoutBot.stop();
+					gui.nWaterScoutBot.reqdestroy();
+					gui.nWaterScoutBot = null;
+					gui.nWaterScoutThread = null;
+				}
 			}
 		}
 	}

@@ -11,6 +11,12 @@
 #   tooltip payload = utf-8 text (no terminator)
 #
 # Usage: python tools/gen-menugrid-res.py   (from the repo root)
+#
+# The TEMPLATES this reads (Bots.res, Bots/*.res, Toggles/*.res, ...) are upstream payload and are
+# gitignored - only our own NurglingImports output is tracked. A fresh clone (or a worktree) has
+# only the outputs, so copy the templates in from a full install's res/customclient/menugrid/
+# before re-running this, and remove them again afterwards so an `ant bin` can't overwrite the
+# install's res tree with a partial one.
 
 import os
 import struct
@@ -97,3 +103,36 @@ build("Toggles/HighlightCliffs.res",
       "customclient/menugrid/NurglingImports", "Toggle LP Assistant", 0,
       ["@", "NurglingImports", "LpAssistantToggle"],
       "Turn the LP assistant (undiscovered-product markers and discovery tracking) on or off.")
+
+# Shared settings for the crew bots below: coordination, tool swapping, and the water source.
+build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
+      "NurglingImports/NBotsSettings.res",
+      "customclient/menugrid/NurglingImports", "Nurgling Bot Settings", 0,
+      ["@", "NurglingImports", "NBotsSettings"],
+      "Settings shared by the crew bots: whether they reserve work spots from each other, keep "
+      "out of each other's way, swap tools by themselves, and where they go to refill water.")
+
+# The three crew bots. Each is a separate class from the stock Bots-tab version, which is left
+# exactly as it is - see haven.automated.nbots.NBot for why.
+build("Bots/CellarDiggingBot.res",
+      "NurglingImports/NCellarDiggerBot.res",
+      "customclient/menugrid/NurglingImports", "Cellar Digger (crew)", 0,
+      ["@", "NurglingImports", "NCellarDiggerBot"],
+      "Digs a cellar with several characters at once: boulders are worked by standing position "
+      "rather than claimed whole, the dig itself is taken one character at a time, the pickaxe is "
+      "fetched if it isn't in hand, and running out of water is a trip to refill rather than the "
+      "end of the shift.")
+
+build("Bots/CleanupBot.res",
+      "NurglingImports/NCleanupBot.res",
+      "customclient/menugrid/NurglingImports", "Cleanup (crew)", 0,
+      ["@", "NurglingImports", "NCleanupBot"],
+      "Clears trees, bushes, boulders, stumps and soil piles, swapping between axe, pickaxe and "
+      "shovel by itself. Several can work one site without converging on the same trunk.")
+
+build("Bots/OceanScoutBot.res",
+      "NurglingImports/NWaterScoutBot.res",
+      "customclient/menugrid/NurglingImports", "Water Scout (crew)", 0,
+      ["@", "NurglingImports", "NWaterScoutBot"],
+      "Follows a coastline or a river bank by boat, revealing map as it goes. Pick ocean or "
+      "fresh water and which side to keep the deep water on.")
