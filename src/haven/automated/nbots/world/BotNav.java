@@ -5,10 +5,14 @@ import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.Loading;
+import haven.MCache;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.NBotConfig;
 import haven.automated.pathfinder.Map;
 import haven.automated.pathfinder.Pathfinder;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static haven.OCache.posres;
 
@@ -64,6 +68,14 @@ public class BotNav {
      * streamed in, so the terrain the search plans against is real.
      */
     private static final double HOP = 11 * 25.0;
+    /**
+     * How near a waypoint counts as reached.
+     *
+     * Router waypoints are the middle of a block of tiles, not a place anything needs to be stood
+     * on, so insisting on arriving exactly would spend a pathfinder run per waypoint correcting a
+     * few units that the next leg is about to undo anyway.
+     */
+    private static final double LEG_TOL = 11 * 3.0;
     /** Travel gives up after this many hops that don't get closer. */
     private static final int TRAVEL_STALL_LIMIT = 6;
 
@@ -357,6 +369,70 @@ public class BotNav {
      * @return true if we ended within {@code tol} of the destination.
      */
     public boolean travelTo(Coord2d dest, double tol) throws InterruptedException {
+        if (dest == null)
+            return false;
+        /* Record whatever walls are in sight before planning, so the route about to be chosen
+         * benefits from this trip rather than only the next one. */
+        Barriers.learn(gui);
+
+        List<Coord2d> legs = plan(dest);
+        if (legs == null)
+            return walkStraight(dest, tol);
+        for (int i = 0; i < legs.size(); i++) {
+            if (!abort.running())
+                return false;
+            if (!walkStraight(legs.get(i), LEG_TOL)) {
+                /* The route was wrong about something - almost always a wall learned since, or
+                 * one that was never in view when the map file recorded the tiles. Re-plan once
+                 * from where we actually are; if that fails too, finish the old way rather than
+                 * standing still. */
+                Barriers.learn(gui);
+                List<Coord2d> again = plan(dest);
+                if ((again == null) || again.isEmpty())
+                    return walkStraight(dest, tol);
+                legs = again;
+                i = -1;
+            }
+        }
+        return walkStraight(dest, tol);
+    }
+
+    /**
+     * Turns a destination into waypoints, or null if there is no useful route to plan.
+     *
+     * Null covers three cases that all want the same answer: the map file cannot place us yet, the
+     * destination is in another segment, or the router found nothing. In each the caller should
+     * simply walk at the target - which is what it did before any of this existed.
+     */
+    private List<Coord2d> plan(Coord2d dest) {
+        Gob me = player();
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        WorldAnchor there = WorldAnchor.capture(gui, dest);
+        if ((me == null) || (here == null) || (there == null) || (here.seg != there.seg))
+            return null;
+        List<Coord> nodes = Router.route(gui, here.seg,
+            here.sc.floor(MCache.tilesz), there.sc.floor(MCache.tilesz));
+        if (nodes == null)
+            return null;
+        /* Segment coordinates back into live world ones. The player is in both spaces at once, so
+         * the difference between the two readings of where WE are is the offset for everything
+         * else - no second map-file lookup per waypoint. */
+        Coord2d origin = me.rc.sub(here.sc);
+        List<Coord2d> out = new ArrayList<>();
+        for (Coord t : nodes)
+            out.add(origin.add(t.mul(MCache.tilesz)).add(MCache.tilesz.div(2)));
+        return out;
+    }
+
+    /**
+     * The old greedy walk, now used only between waypoints and as the fallback.
+     *
+     * Its blind sideways swings are still here on purpose: over the short, mostly-clear stretch
+     * between two waypoints they handle the boulder or cart the router is too coarse to see, and
+     * that is the job they were always suited to. What they could never do is choose which side of
+     * a palisade to be on, which is why {@link #travelTo} no longer asks them to.
+     */
+    private boolean walkStraight(Coord2d dest, double tol) throws InterruptedException {
         if (dest == null)
             return false;
         double best = Double.MAX_VALUE;

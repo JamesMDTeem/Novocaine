@@ -142,7 +142,7 @@ public class WorldAnchor {
         return null;
     }
 
-    private static MapFile mapfile(GameUI gui) {
+    static MapFile mapfile(GameUI gui) {
         if (gui == null)
             return null;
         MapWnd wnd = gui.mapfile;
