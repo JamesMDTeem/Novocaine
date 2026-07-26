@@ -129,7 +129,7 @@ public abstract class NBot extends Window implements Runnable {
         } catch (InterruptedException ignored) {
         } finally {
             UiWatchdog.idle();
-            WorkClaims.releaseAll();
+            releaseSlot();
         }
     }
 
@@ -161,7 +161,9 @@ public abstract class NBot extends Window implements Runnable {
     private void endRun() {
         Map.BLOCK_WATER = prevBlockWater;
         Map.keepout(null);
-        WorkClaims.releaseAll();
+        // Only OUR slot, not every claim the process holds: a client with two bot windows open
+        // would otherwise have one of them free the other's reservation on stopping.
+        releaseSlot();
         NLog.log(log, "=== " + title() + " run end ===");
     }
 
@@ -489,7 +491,7 @@ public abstract class NBot extends Window implements Runnable {
         active = false;
         stopped = true;
         UiWatchdog.idle();
-        WorkClaims.releaseAll();
+        releaseSlot();
         try {
             nav.cancelWalk();
         } catch (Exception ignored) {
