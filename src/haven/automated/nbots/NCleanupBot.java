@@ -11,6 +11,7 @@ import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.task.Deposit;
 import haven.automated.nbots.task.TakeWorkSlot;
 import haven.automated.nbots.task.ToolSwap;
+import haven.automated.nbots.task.TravelTo;
 import haven.automated.nbots.task.WorkGob;
 import haven.automated.nbots.world.Crowd;
 import haven.automated.nbots.world.Place;
@@ -72,6 +73,19 @@ public class NCleanupBot extends NBot {
     /** What the bot throws away rather than carries home. */
     private static final Alias SPOIL = new Alias("spoil", "Stone", "Boulder");
 
+    /**
+     * How the bot decides what counts as its patch.
+     *
+     * The two answers are genuinely different jobs rather than two tunings of one. Nearest-first is
+     * "clear around me", which is what you want when you have walked somewhere and started a bot;
+     * it is bounded by a radius from where the shift began so that a run cannot creep across the
+     * map one tree at a time, each new target legitimising the next. Area mode is "clear THAT", and
+     * it finishes: the bot walks to the area first and stops when nothing inside it is left, which
+     * is both how a crew splits a site between them and how you get a bot that ends by itself.
+     */
+    private static final String[] MODES = {"Nearest first", "Inside a work area"};
+    private static final int MODE_NEAREST = 0, MODE_AREA = 1;
+
     /** Where the shift started, when no work place is defined. */
     private Coord2d origin;
     private Place workPlace;
@@ -82,7 +96,7 @@ public class NCleanupBot extends NBot {
     private final Set<ToolSwap.Kind> missingTools = new HashSet<>();
 
     public NCleanupBot(GameUI gui) {
-        super(gui, "NCleanupBot", "Cleanup (crew)", LOG, UI.scale(240, 152));
+        super(gui, "NCleanupBot", "Cleanup (crew)", LOG, UI.scale(300, 200));
         settings.flag("trees", "Trees", false);
         settings.flag("bushes", "Bushes", false);
         settings.flag("rocks", "Rocks", false);
@@ -90,7 +104,8 @@ public class NCleanupBot extends NBot {
         settings.flag("soil", "Soil piles", false);
         settings.flag("dropspoil", "Get rid of stone", true);
         settings.number("radius", "Radius", 300);
-        settings.layout(this, UI.scale(10, 22), 2, UI.scale(115));
+        settings.choice("mode", "Where to work", MODE_NEAREST, MODES);
+        settings.layout(this, UI.scale(10, 22), 2, UI.scale(140));
         pack();
     }
 
@@ -109,12 +124,32 @@ public class NCleanupBot extends NBot {
         if (me == null)
             return Outcome.blocked("no character");
 
-        // A work place beats a radius: it is what lets a crew split a site between them, and it
-        // survives the bot being restarted somewhere slightly different.
-        workPlace = Places.containing(gui, PlaceRoles.WORK);
         origin = me.rc;
         retired.clear();
         missingTools.clear();
+
+        workPlace = null;
+        if (settings.picked("mode", MODE_AREA)) {
+            /* The one we are standing in first, so a crew can be posted to adjacent areas and each
+             * bot takes the one it was left in; otherwise the nearest, and walk to it. Failing
+             * outright when none is defined is right here in a way it would not be for water: the
+             * player explicitly asked for area mode, so silently clearing a radius instead would be
+             * doing a different job from the one they chose. */
+            workPlace = Places.containing(gui, PlaceRoles.WORK);
+            if (workPlace == null)
+                workPlace = Places.nearest(gui, PlaceRoles.WORK);
+            if (workPlace == null)
+                return Outcome.failed("no place is tagged for work - draw one in Bot Places, "
+                    + "or switch this bot back to Nearest first");
+            ctx.log("area mode: working \"" + workPlace.name + "\" ("
+                + workPlace.w + "x" + workPlace.h + " tiles)");
+            Outcome t = new TravelTo(workPlace).run(ctx);
+            if (!t.isOk())
+                return t;
+        } else {
+            ctx.log("nearest-first mode: radius " + settings.num("radius")
+                + "u from where the shift started");
+        }
 
         int done = 0;
         // Bounded on ATTEMPTS, not successes: a target that vanishes between planning and arriving
@@ -129,8 +164,21 @@ public class NCleanupBot extends NBot {
                 new Deposit(SPOIL, true).run(ctx);
 
             Target t = takeTarget();
-            if (t == null)
+            if (t == null) {
+                /* "Nothing left" and "we are not there any more" look identical from here, because
+                 * the scan only sees LOADED gobs and upkeep may just have walked us to a barrel
+                 * three hundred tiles away. In area mode that is the difference between a bot that
+                 * finishes its patch and one that declares victory after its first drink, so go
+                 * back and look again before believing it. Terminates because the trip ends inside
+                 * the area, and the second pass takes this branch no further. */
+                Gob here = ctx.player();
+                if (workPlace != null && here != null && !workPlace.contains(gui, here.rc)) {
+                    ctx.log("no targets in sight; heading back to \"" + workPlace.name + "\"");
+                    if (new TravelTo(workPlace).run(ctx).isOk())
+                        continue;
+                }
                 break;
+            }
 
             setStatus("Cleared " + done + " (" + t.job.name().toLowerCase() + ")");
             try {
@@ -234,9 +282,11 @@ public class NCleanupBot extends NBot {
     /**
      * Whether a target is inside the patch this bot was sent to.
      *
-     * A tagged work place wins; otherwise it's a radius measured from where the shift STARTED, not
-     * from where the character currently is - or a run would creep across the map one tree at a
-     * time, each new target legitimising the next.
+     * Which of the two answers applies is decided once, at the top of the shift, by the mode - so
+     * a work place lying around from another bot cannot quietly shrink a nearest-first run, and a
+     * radius cannot quietly widen an area run. The radius is measured from where the shift STARTED
+     * rather than from where the character currently is, or a run would creep across the map one
+     * tree at a time, each new target legitimising the next.
      */
     private boolean inBounds(Gob g) {
         if (workPlace != null)

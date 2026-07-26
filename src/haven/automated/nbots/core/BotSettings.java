@@ -2,7 +2,10 @@ package haven.automated.nbots.core;
 
 import haven.CheckBox;
 import haven.Coord;
+import haven.GOut;
 import haven.Label;
+import haven.OldDropBox;
+import haven.Text;
 import haven.TextEntry;
 import haven.UI;
 import haven.Utils;
@@ -110,6 +113,58 @@ public class BotSettings {
         }
     }
 
+    /**
+     * One of several named alternatives, persisted by INDEX.
+     *
+     * By index rather than by label so that renaming an option in the source - "Work an area" to
+     * "Inside an area", say - doesn't silently reset every player's setting to the default, which
+     * storing the string would. The cost is that reordering the options does exactly that instead,
+     * and reordering is a rarer edit than rewording.
+     */
+    private static class Choice extends Entry {
+        final String[] options;
+        final int def;
+
+        Choice(String key, String label, int def, String[] options) {
+            super(key, label);
+            this.options = options;
+            this.def = def;
+        }
+
+        Widget widget(BotSettings owner) {
+            return new OldDropBox<String>(UI.scale(132), options.length, UI.scale(17)) {
+                {
+                    super.change(options[owner.pick(key)]);
+                }
+
+                protected String listitem(int i) {
+                    return options[i];
+                }
+
+                protected int listitems() {
+                    return options.length;
+                }
+
+                protected void drawitem(GOut g, String item, int i) {
+                    g.aimage(Text.renderstroked(item).tex(),
+                        Coord.of(UI.scale(3), g.sz().y / 2), 0.0, 0.5);
+                }
+
+                public void change(String item) {
+                    super.change(item);
+                    for (int i = 0; i < options.length; i++) {
+                        if (options[i].equals(item))
+                            owner.set(key, i);
+                    }
+                }
+            };
+        }
+
+        int height() {
+            return UI.scale(38);
+        }
+    }
+
     public BotSettings flag(String key, String label, boolean def) {
         entries.add(new Flag(key, label, def));
         return this;
@@ -117,6 +172,11 @@ public class BotSettings {
 
     public BotSettings number(String key, String label, int def) {
         entries.add(new Number(key, label, def));
+        return this;
+    }
+
+    public BotSettings choice(String key, String label, int def, String... options) {
+        entries.add(new Choice(key, label, def, options));
         return this;
     }
 
@@ -140,6 +200,29 @@ public class BotSettings {
                 return Utils.getprefi(prefkey(key), ((Number) e).def);
         }
         return 0;
+    }
+
+    /**
+     * The index currently selected for a choice.
+     *
+     * Clamped on read rather than trusted: the stored value is an index into a list that a later
+     * version of the bot may have shortened, and an out-of-range read here would throw inside a
+     * widget constructor - which in this client means taking the UI thread down with it.
+     */
+    public int pick(String key) {
+        for (Entry e : entries) {
+            if (e.key.equals(key) && e instanceof Choice) {
+                Choice c = (Choice) e;
+                int v = Utils.getprefi(prefkey(key), c.def);
+                return (v < 0 || v >= c.options.length) ? c.def : v;
+            }
+        }
+        return 0;
+    }
+
+    /** True if a choice is currently on the given option index. Reads better at the call site. */
+    public boolean picked(String key, int option) {
+        return pick(key) == option;
     }
 
     public void set(String key, boolean value) {
@@ -169,20 +252,31 @@ public class BotSettings {
     public int layout(Widget parent, Coord at, int columns, int colwidth) {
         int perColumn = (entries.size() + columns - 1) / columns;
         int maxy = at.y;
+        /* Accumulated rather than row-index times height. Multiplying only ever worked because
+         * every setting was a checkbox and so the same height as every other; the first entry of a
+         * different size - a dropdown, say - would have had every row below it computed from ITS
+         * height, stacking widgets on top of each other. */
+        int y = at.y;
         for (int i = 0; i < entries.size(); i++) {
+            if ((i % perColumn) == 0)
+                y = at.y;
             Entry e = entries.get(i);
             int col = i / perColumn;
-            int row = i % perColumn;
             int x = at.x + col * colwidth;
-            int y = at.y + row * e.height();
             if (e instanceof Number) {
                 // A number needs its own label, since a text field has nowhere to put one.
                 parent.add(new Label(e.label), new Coord(x, y + UI.scale(3)));
                 parent.add(e.widget(this), new Coord(x + labelWidth(e.label), y));
+            } else if (e instanceof Choice) {
+                // A dropbox is as wide as its widest option, so its label goes ABOVE it rather
+                // than beside it - side by side, a long option name pushes the box off the window.
+                parent.add(new Label(e.label), new Coord(x, y));
+                parent.add(e.widget(this), new Coord(x, y + UI.scale(16)));
             } else {
                 parent.add(e.widget(this), new Coord(x, y));
             }
-            maxy = Math.max(maxy, y + e.height());
+            y += e.height();
+            maxy = Math.max(maxy, y);
         }
         return maxy;
     }
