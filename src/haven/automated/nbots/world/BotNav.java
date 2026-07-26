@@ -76,6 +76,8 @@ public class BotNav {
      * few units that the next leg is about to undo anyway.
      */
     private static final double LEG_TOL = 11 * 3.0;
+    /** How many times a failed leg is worth re-routing before falling back to walking at it. */
+    private static final int MAX_REPLANS = 3;
     /** Travel gives up after this many hops that don't get closer. */
     private static final int TRAVEL_STALL_LIMIT = 6;
 
@@ -378,10 +380,20 @@ public class BotNav {
         List<Coord2d> legs = plan(dest);
         if (legs == null)
             return walkStraight(dest, tol);
+        int replans = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
                 return false;
             if (!walkStraight(legs.get(i), LEG_TOL)) {
+                /* Re-planning from the same spot tends to produce the same route, so an unbounded
+                 * retry is not a retry - it is a bot walking the same failing leg for ever, which
+                 * from outside looks like pacing back and forth near the destination. Give up on
+                 * routing after a few and let the straight walk have its go. */
+                if (++replans > MAX_REPLANS) {
+                    NLog.log(log, "route to " + dest + " failed " + replans
+                        + " times; finishing on a straight walk");
+                    return walkStraight(dest, tol);
+                }
                 /* The route was wrong about something - almost always a wall learned since, or
                  * one that was never in view when the map file recorded the tiles. Re-plan once
                  * from where we actually are; if that fails too, finish the old way rather than
@@ -421,6 +433,19 @@ public class BotNav {
         List<Coord2d> out = new ArrayList<>();
         for (Coord t : nodes)
             out.add(origin.add(t.mul(MCache.tilesz)).add(MCache.tilesz.div(2)));
+
+        /* Waypoints are block CENTRES, and the block we are standing in has its centre in
+         * whichever direction we happened to walk in from - so the first waypoint is frequently
+         * BEHIND us. Setting off towards it is the "walks away towards the middle of the square
+         * before coming back" behaviour. Drop any leading waypoint that does not actually get us
+         * closer to where we are going. */
+        double mine = me.rc.dist(dest);
+        while (!out.isEmpty() && (out.get(0).dist(dest) >= mine))
+            out.remove(0);
+        /* Likewise the last one: travelTo finishes on the destination itself, so a waypoint
+         * already inside the final approach only costs an extra pathfinder run. */
+        while (!out.isEmpty() && (out.get(out.size() - 1).dist(dest) <= LEG_TOL))
+            out.remove(out.size() - 1);
         return out;
     }
 

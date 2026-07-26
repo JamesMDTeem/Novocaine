@@ -6,6 +6,7 @@ import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
 import haven.Resource;
+import haven.automated.helpers.HitBoxes;
 import haven.automated.nbots.core.NLog;
 
 import org.json.JSONArray;
@@ -20,6 +21,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,6 +55,9 @@ public class Barriers {
 
     /** Wall words. Only consulted for resources under an arch/ path - see {@link #kind}. */
     private static final String[] WALLWORDS = {"palisade", "wall", "fence", "pole"};
+
+    /** Tiles across. A barrier piece is a few; a bigger box is bad data, not a longer wall. */
+    private static final int MAX_SPAN = 8;
 
     /** segment -> segment tiles a wall stands on. */
     private static Map<Long, Set<Coord>> walls;
@@ -122,34 +127,41 @@ public class Barriers {
         } catch (RuntimeException e) {
             return;
         }
-        boolean added = false;
+        Map<Gob, Kind> kinds = new LinkedHashMap<>();
+        for (Gob g : gobs) {
+            try {
+                Resource res = g.getres();
+                Kind k = (res == null) ? null : kind(res.name);
+                if (k != null)
+                    kinds.put(g, k);
+            } catch (RuntimeException e) {
+                // Includes Loading: a gob whose resource hasn't arrived is picked up next sweep.
+            }
+        }
+
+        /* Every gateway first, then walls with the gateway tiles held out. A wall segment's
+         * footprint overlaps its own gate's, so in a single pass the result depended on the order
+         * the object cache happened to hand the gobs over - and half the time that walls a gate
+         * shut with its own posts. */
+        Set<Coord> gateTiles = new HashSet<>();
+        for (Map.Entry<Gob, Kind> e : kinds.entrySet()) {
+            if (e.getValue() == Kind.GATE)
+                gateTiles.addAll(footprint(gui, here, e.getKey()));
+        }
+
+        boolean added;
         synchronized (LOCK) {
             load();
-            for (Gob g : gobs) {
-                Kind k;
-                try {
-                    Resource res = g.getres();
-                    k = (res == null) ? null : kind(res.name);
-                } catch (RuntimeException e) {
-                    // Includes Loading: a gob whose resource hasn't arrived yet is skipped and
-                    // picked up on the next sweep.
+            Set<Coord> gs = gates.computeIfAbsent(here.seg, x -> new HashSet<>());
+            Set<Coord> ws = walls.computeIfAbsent(here.seg, x -> new HashSet<>());
+            added = gs.addAll(gateTiles);
+            added |= ws.removeAll(gateTiles);
+            for (Map.Entry<Gob, Kind> e : kinds.entrySet()) {
+                if (e.getValue() != Kind.WALL)
                     continue;
-                }
-                if (k == null)
-                    continue;
-                Coord t = segTile(gui, here, g.rc);
-                if (t == null)
-                    continue;
-                Map<Long, Set<Coord>> into = (k == Kind.GATE) ? gates : walls;
-                if (into.computeIfAbsent(here.seg, x -> new HashSet<>()).add(t))
-                    added = true;
-                /* A tile recorded as a gateway is never also a wall. Wall segments and their gate
-                 * share a tile often enough that without this the gate would be sealed by its own
-                 * neighbours the first time they were seen in the other order. */
-                if (k == Kind.GATE) {
-                    Set<Coord> w = walls.get(here.seg);
-                    if (w != null)
-                        w.remove(t);
+                for (Coord t : footprint(gui, here, e.getKey())) {
+                    if (!gateTiles.contains(t))
+                        added |= ws.add(t);
                 }
             }
             if (added)
@@ -157,6 +169,59 @@ public class Barriers {
         }
         if (added)
             save();
+    }
+
+    /**
+     * Every segment tile a barrier gob stands on.
+     *
+     * Recording only the gob's own tile defeated the point of the class. A palisade SEGMENT is one
+     * gob several tiles long, so a wall came out as a dotted line with multi-tile holes in it, and
+     * the router quite reasonably planned straight through the holes - which is the "walks at the
+     * wall as though it isn't there" behaviour, with the wall genuinely half-recorded rather than
+     * missing. The collision box used here is the same data the local pathfinder blocks on, so a
+     * wall now stops a route exactly where it stops a footstep.
+     */
+    private static Set<Coord> footprint(GameUI gui, WorldAnchor here, Gob g) {
+        Set<Coord> out = new HashSet<>();
+        Coord base = segTile(gui, here, g.rc);
+        if (base == null)
+            return out;
+        out.add(base);
+        HitBoxes.CollisionBoxSecondary[] boxes;
+        try {
+            Resource res = g.getres();
+            boxes = (res == null) ? null : HitBoxes.collisionBoxMap.get(res.name);
+        } catch (RuntimeException e) {
+            return out;
+        }
+        if (boxes == null)
+            return out;
+        double cos = Math.cos(g.a), sin = Math.sin(g.a);
+        for (HitBoxes.CollisionBoxSecondary box : boxes) {
+            if ((box == null) || (box.coords == null) || (box.coords.length == 0))
+                continue;
+            double minx = Double.MAX_VALUE, miny = Double.MAX_VALUE;
+            double maxx = -Double.MAX_VALUE, maxy = -Double.MAX_VALUE;
+            for (Coord2d c : box.coords) {
+                // The box is stored unrotated, in the gob's own frame.
+                double rx = (c.x * cos) - (c.y * sin);
+                double ry = (c.x * sin) + (c.y * cos);
+                minx = Math.min(minx, rx);
+                maxx = Math.max(maxx, rx);
+                miny = Math.min(miny, ry);
+                maxy = Math.max(maxy, ry);
+            }
+            Coord lo = new Coord2d(minx, miny).floor(MCache.tilesz);
+            Coord hi = new Coord2d(maxx, maxy).floor(MCache.tilesz);
+            // A barrier piece is a few tiles at most; anything larger is a bad box, not a wall.
+            if (((hi.x - lo.x) > MAX_SPAN) || ((hi.y - lo.y) > MAX_SPAN))
+                continue;
+            for (int y = lo.y; y <= hi.y; y++) {
+                for (int x = lo.x; x <= hi.x; x++)
+                    out.add(base.add(x, y));
+            }
+        }
+        return out;
     }
 
     /**
