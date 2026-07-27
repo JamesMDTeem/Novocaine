@@ -25,7 +25,7 @@ JDK 21), plus a ported LP-assistant feature set. Published as
 
 JDK 21. Ant is at `C:\ant\apache-ant-1.10.17\bin\ant.bat`, **not on PATH**, and must be
 run **from PowerShell** — the Bash `ant` wrapper fails here (POSIX classpath handed to a
-Windows JVM). Useful targets from `build.xml`: `jars`, `bin`, `deftgt`, `run`.
+Windows JVM).
 
 The normal path is not a bare `ant` call but `update-and-play.ps1`, which does its own Ant
 and JDK discovery:

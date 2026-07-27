@@ -37,12 +37,3 @@ Match what's already in `haven/automated/lp/`:
 - Inline comments that record the reasoning behind a non-obvious rule (e.g. why a task
   with an unequippable tool is skipped rather than attempted).
 - `LpAlias`-style named constants for item-name lists rather than inline string arrays.
-
-## Build
-
-JDK 21. Ant is at `C:\ant\apache-ant-1.10.17\bin\ant.bat` — not on PATH, and it only works
-**from PowerShell**; the Bash `ant` wrapper is broken here. Targets: `jars`, `bin`,
-`deftgt`, `run`.
-
-`build/classes/` and `build/classes-lib/` are compile output and are read-denied.
-`bin/` is the live install, not build output — see the root `CLAUDE.md`.
