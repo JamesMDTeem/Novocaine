@@ -100,7 +100,22 @@ public class Router {
         Coord from = here.sc.floor(MCache.tilesz), to = there.sc.floor(MCache.tilesz);
         Coord lo = node(new Coord(Math.min(from.x, to.x), Math.min(from.y, to.y))).sub(margin, margin);
         Coord hi = node(new Coord(Math.max(from.x, to.x), Math.max(from.y, to.y))).add(margin, margin);
-        return route(gui, here.seg, from, to, MAX_NODES, lo, hi) != null;
+        /* OVER GROUND WE HAVE ACTUALLY SEEN, which is the difference between this question and
+         * every other one the router is asked.
+         *
+         * Unexplored ground counts as walkable everywhere else, and rightly: a route is a plan the
+         * local pathfinder still gets to veto tile by tile when the bot arrives, so optimism there
+         * costs a detour at worst. Here there is no second opinion coming. The answer IS the
+         * decision, and optimism makes the whole test vacuous - past the edge of what has been
+         * explored there is nothing left to say no, so a search that wanders far enough always
+         * finds a way round, through country nobody has ever looked at.
+         *
+         * That is not a subtle failure. A bot was told an apple tree across a river was reachable,
+         * every single pass, because forty tiles up the bank the map file simply stops and beyond
+         * that line everything is passable by assumption. There was no way round; there was only
+         * no evidence. The player put it plainly: if there is no visible path, we should not be
+         * seeing one. */
+        return route(gui, here.seg, from, to, MAX_NODES, lo, hi, true) != null;
     }
 
     /**
@@ -111,12 +126,17 @@ public class Router {
      * counts as walkable (see {@link Terrain}), so null really does mean "known to be enclosed".
      */
     public static List<Coord> route(GameUI gui, long seg, Coord fromTile, Coord toTile) {
-        return route(gui, seg, fromTile, toTile, MAX_NODES, null, null);
+        return route(gui, seg, fromTile, toTile, MAX_NODES, null, null, false);
     }
 
-    /** As above, confined to nodes within [lo, hi] when those are given. */
+    /**
+     * As above, confined to nodes within [lo, hi] when those are given.
+     *
+     * @param seenOnly refuse ground the map file has never recorded, instead of assuming it is
+     *                 walkable. For callers whose answer is final - see {@link #reachable}.
+     */
     public static List<Coord> route(GameUI gui, long seg, Coord fromTile, Coord toTile,
-                                    int budget, Coord lo, Coord hi) {
+                                    int budget, Coord lo, Coord hi, boolean seenOnly) {
         Coord start = node(fromTile);
         Coord goal = node(toTile);
         if (start.equals(goal))
@@ -144,7 +164,7 @@ public class Router {
         while (!open.isEmpty() && (seen++ < budget)) {
             Coord cur = open.poll();
             if (cur.equals(goal))
-                return simplify(rebuild(from, cur), gui, seg);
+                return simplify(rebuild(from, cur), gui, seg, seenOnly);
             if (!done.add(cur))
                 continue;
             int cg = g.getOrDefault(cur, Integer.MAX_VALUE);
@@ -182,7 +202,7 @@ public class Router {
                          * anything the four-tile grid can say about a one-tile wall. */
                         if (!approach.isEmpty() && !approach.contains(cur))
                             continue;
-                    } else if (!open(gui, seg, nb)) {
+                    } else if (!open(gui, seg, nb, seenOnly)) {
                         continue;
                     }
                     /* Diagonals cost about sqrt(2), scaled up so the whole search stays in
@@ -286,7 +306,11 @@ public class Router {
      * {@link Barriers#classify}: a base is a castle, and a bot that has learned two sides of one
      * has learned enough to stop walking round the other two looking for a way in.
      */
-    private static boolean open(GameUI gui, long seg, Coord node) {
+    private static boolean open(GameUI gui, long seg, Coord node, boolean seenOnly) {
+        /* Ground nobody has looked at is not evidence of a way through. Only asked for by callers
+         * whose answer is final; see {@link #reachable} for why the distinction has to exist. */
+        if (seenOnly && !Terrain.known(gui, seg, centre(node)))
+            return false;
         /* GROUND only, deliberately not Terrain.walkable: that folds the wall test into the same
          * answer and does it for the centre tile alone, so a gateway whose node happens to have a
          * wall tile at its middle was sealed before the gate below could be looked at. Which tile
@@ -387,13 +411,13 @@ public class Router {
      * fresh pathfinder run - so a waypoint is kept only where the route actually turns, or where
      * the straight line between the kept neighbours would cross something unwalkable.
      */
-    private static List<Coord> simplify(List<Coord> nodes, GameUI gui, long seg) {
+    private static List<Coord> simplify(List<Coord> nodes, GameUI gui, long seg, boolean seenOnly) {
         List<Coord> out = new ArrayList<>();
         if (nodes.isEmpty())
             return out;
         int anchor = 0;
         for (int i = 2; i < nodes.size(); i++) {
-            if (!clear(gui, seg, nodes.get(anchor), nodes.get(i))) {
+            if (!clear(gui, seg, nodes.get(anchor), nodes.get(i), seenOnly)) {
                 out.add(centre(nodes.get(i - 1)));
                 anchor = i - 1;
             }
@@ -403,12 +427,12 @@ public class Router {
     }
 
     /** Whether every node on the straight line between two nodes is open. */
-    private static boolean clear(GameUI gui, long seg, Coord a, Coord b) {
+    private static boolean clear(GameUI gui, long seg, Coord a, Coord b, boolean seenOnly) {
         int steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
         for (int i = 1; i < steps; i++) {
             int x = a.x + (((b.x - a.x) * i) / steps);
             int y = a.y + (((b.y - a.y) * i) / steps);
-            if (!open(gui, seg, new Coord(x, y)))
+            if (!open(gui, seg, new Coord(x, y), seenOnly))
                 return false;
         }
         return true;
