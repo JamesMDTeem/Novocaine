@@ -159,14 +159,21 @@ public class Eat implements Task {
         for (Gob c : containers) {
             if (!ctx.running())
                 throw new InterruptedException();
-            if (!new Approach(c).run(ctx).isOk())
-                continue;
-            if (!open(ctx, c))
-                continue;
-            boolean took = takeFoodFromOpenContainers(ctx);
-            close(ctx);
-            if (took)
-                return true;
+            // A reserved side, as with any other container a crew converges on - see Deposit. A
+            // meal break is exactly when several bots arrive at one cupboard together.
+            TakeWorkSlot spot = new TakeWorkSlot(c);
+            try {
+                if (!spot.run(ctx).isOk())
+                    continue;
+                if (!open(ctx, c))
+                    continue;
+                boolean took = takeFoodFromOpenContainers(ctx);
+                close(ctx);
+                if (took)
+                    return true;
+            } finally {
+                spot.release();
+            }
         }
         return false;
     }
