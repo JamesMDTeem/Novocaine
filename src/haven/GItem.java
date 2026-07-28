@@ -51,6 +51,7 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
     public int infoseq;
     private Widget hovering;
     private boolean hoverset;
+    private boolean lpChecked = false;
     private GSprite spr;
 	private ItemInfo.Raw rawinfo = ItemInfo.Raw.nil;;
     public List<ItemInfo> info = Collections.emptyList();
@@ -224,6 +225,25 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 	GSprite spr = spr();
 	if(spr != null) {
 		spr.tick(dt);
+	}
+	// LP-discovery gate: record this item's name once it resolves, but only if the item sits in
+	// the player's own pack (checked inside; possession is the discovery signal - see
+	// LpExplorer.checkLpExplorer). Loading just retries next tick; any other failure stops the
+	// attempts for this item.
+	// The parent test comes FIRST, and the latch is only set once it has passed. An item
+	// resolves its name wherever it happens to be - in the hand on the way to the pack, in
+	// somebody else's cupboard - and latching on that first look meant a berry picked into the
+	// hand was written off before it ever reached the inventory, never to be looked at again.
+	if(!lpChecked && (ui.gui != null) && (parent == ui.gui.maininv)
+	   && haven.automated.lp.LpExplorer.isEnabled()) {
+	    try {
+		String nm = ItemInfo.find(ItemInfo.Name.class, info()).str.text;
+		lpChecked = true;
+		haven.automated.lp.LpExplorer.checkLpExplorer(nm, this);
+	    } catch(Loading l) {
+	    } catch(Exception e) {
+		lpChecked = true;
+	    }
 	}
 	updcontinfo();
 	if(!hoverset)

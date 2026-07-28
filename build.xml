@@ -2,7 +2,7 @@
 
 <project name="hafen" default="deftgt" xmlns:if="ant:if">
   <property file="build.properties" />
-  <property name="ext-lib-base" value="http://www.havenandhearth.com/java" />
+  <property name="ext-lib-base" value="https://www.havenandhearth.com/java" />
 
   <target name="build-env">
     <mkdir dir="build" />

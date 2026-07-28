@@ -3274,8 +3274,10 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	public void unregisterAreaSelect() {
 		this.areaSelectCallback = null;
 		areaSelect = false;
-		selection.destroy();
-		selection = null;
+		if(selection != null) {
+			selection.destroy();
+			selection = null;
+		}
 	}
 
 	@Override
