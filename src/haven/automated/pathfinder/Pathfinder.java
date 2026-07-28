@@ -30,6 +30,18 @@ public class Pathfinder implements Runnable {
     private long avgOverrun = 0;
     public List<Coord2d> pathWaypoints = new ArrayList<>();
 
+    /**
+     * Why this search issued no movement, or null if it issued some.
+     *
+     * There are four quite different ways to end up having moved nothing, and from outside they
+     * were indistinguishable: the character never moved and nothing was written down. Callers were
+     * left inferring the cause from distances in later failure messages, which cost several rounds
+     * of chasing the wrong layer - a bot that had not moved because it was standing inside a
+     * collision box looks exactly like a bot that walked into a shut gate, and the two want
+     * opposite things done about them.
+     */
+    public volatile String refusal = null;
+
     public Pathfinder(MapView mv, Coord dest, String action) {
         this.dest = dest;
         this.action = action;
@@ -67,10 +79,21 @@ public class Pathfinder implements Runnable {
 
     @Override
     public void run() {
-        do {
-            moveinterupted = false;
-            pathfind(mv.player().rc.floor());
-        } while (moveinterupted && !terminate);
+        /* initGeography reads MCache tile by tile over the whole 88-tile window, and MCache throws
+         * Loading for any grid it does not have - so one grid still coming in from the server used
+         * to end this thread where it stood, with no path, no movement and no trace. That is a
+         * routine condition near the edge of what is loaded, not an error, and a caller that knows
+         * it happened can simply ask again in a moment. */
+        try {
+            do {
+                moveinterupted = false;
+                pathfind(mv.player().rc.floor());
+            } while (moveinterupted && !terminate);
+        } catch (Loading l) {
+            refusal = "part of the map is still loading";
+        } catch (RuntimeException e) {
+            refusal = "the search failed: " + e;
+        }
         notifyListeners();
     }
 
@@ -113,6 +136,13 @@ public class Pathfinder implements Runnable {
         if (m.isOriginBlocked()) {
             Pair<Integer, Integer> freeloc = m.getFreeLocation();
             if (freeloc == null) {
+                /* Standing inside a collision box with no way out that this can see - and it
+                 * cannot see much, since getFreeLocation probes four points three units away
+                 * against boxes that are eight or more units thick, and a shut gate is blocked as
+                 * a slab thirty-two units long. This is the deadlock: every path from here is
+                 * refused, including the one that would take us back out. Callers have to step
+                 * clear by some other means; see haven.automated.nbots.world.Walk. */
+                refusal = "we are standing inside something and it cannot find a way out";
                 terminate = true;
                 m.dbgdump();
                 return;
@@ -166,6 +196,12 @@ public class Pathfinder implements Runnable {
         }
 
         Iterator<Edge> it = path.iterator();
+        /* An empty path is the search having found nothing, not a journey of length zero. The
+         * loop below simply never runs, so no click is sent and the thread ends having done
+         * nothing - which is why "the destination is inside a barrel" and "there is a river in
+         * the way" both used to surface as an unexplained failure to set off. */
+        if (!it.hasNext())
+            refusal = "no way from here to there";
         while (it.hasNext() && !moveinterupted && !terminate) {
             Edge e = it.next();
             mc = new Coord2d(src.x + e.dest.x - Map.origin, src.y + e.dest.y - Map.origin).floor(posres);

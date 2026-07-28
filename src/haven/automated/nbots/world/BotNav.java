@@ -134,6 +134,14 @@ public class BotNav {
     private static final double CLEAR_MAX = 11 * 3.0;
     /** How many refused clicks in a row mean the destination is not somewhere we can be. */
     private static final int REFUSE_LIMIT = 3;
+    /**
+     * How many times one walk may step clear of being wedged before that stops being the problem.
+     *
+     * Two. Once is the ordinary case - backed up against a gate, a barrel, a cart - and a second
+     * covers stepping out of one thing into another. A third would be a bot shuffling around a
+     * yard rather than one recovering from a corner.
+     */
+    private static final int UNSTICK_LIMIT = 2;
 
     private final GameUI gui;
     private final Abort abort;
@@ -215,10 +223,18 @@ public class BotNav {
         return gui.ui.sess.glob.oc.getgob(id);
     }
 
+    /**
+     * Whether the character is going anywhere.
+     *
+     * The server's own answer first - see {@link Walk#moving} - because it is the only one that is
+     * not an inference. {@code getv() > 0} asked the same attribute for its speed, which reads a
+     * standing character and a character the server has stopped identically to one whose velocity
+     * has not been filled in yet. The pathfinder thread still counts: while it is alive there are
+     * more legs of its route to come, so the character is between moves rather than finished.
+     */
     public boolean walking() {
-        Gob me = player();
-        return me != null
-            && ((gui.map.pfthread != null && gui.map.pfthread.isAlive()) || me.getv() > 0);
+        return Walk.moving(gui)
+            || ((gui.map != null) && (gui.map.pfthread != null) && gui.map.pfthread.isAlive());
     }
 
     /** Move-to-self: the standard way to interrupt a repeating in-place action. */
@@ -326,6 +342,7 @@ public class BotNav {
         double best = Double.MAX_VALUE;
         int stalled = 0;
         int retreats = 0;
+        int unsticks = 0;
         // The search behind the last path issued, so arrival can be told from never having set off.
         Pathfinder walk = null;
 
@@ -381,6 +398,19 @@ public class BotNav {
                 gui.map.pfRightClick(target, -1, 1, 0, null);
                 walk = gui.map.pf;
                 aimed = target.rc;
+                /* Refused outright, and from here it will go on being refused: the commonest
+                 * reason is that we are standing inside a collision box, which is exactly where
+                 * walking up to something leaves us. Step clear and re-path rather than spending
+                 * the whole attempt budget re-issuing a click nothing will act on. A gate is the
+                 * case that matters - a bot wedged against one cannot approach it to open it, and
+                 * cannot walk away from it either. */
+                if ((walk != null) && (walk.refusal != null) && (++unsticks <= UNSTICK_LIMIT)) {
+                    NLog.log(log, "cannot path to #" + id + " (" + walk.refusal
+                        + ") - stepping clear and trying again");
+                    Walk.unstick(this, gui, target.rc);
+                    aimed = null;
+                    continue;
+                }
             }
 
             // Let a freshly-issued path get going before judging whether we're still walking -
@@ -490,6 +520,7 @@ public class BotNav {
         Gob me = player();
         if (me == null)
             return false;
+        String why = "the click was thrown away before a search started";
         try {
             Coord2d aim = standable(me.rc, dest);
             publishKeepouts(me.rc);
@@ -504,18 +535,42 @@ public class BotNav {
             Thread pft = gui.map.pfthread;
             if ((pft == null) || (pft == was) || (walk == null)) {
                 stepRefused = true;
-                return false;
+            } else {
+                waitUntil(() -> {
+                    Gob p = player();
+                    return p == null || p.rc.dist(dest) <= tol || !pft.isAlive();
+                }, 400);
+                /* mc is set from the first edge the path yields, so a null one after the walk has
+                 * finished means the search produced no edges at all - the destination was
+                 * unreachable from the start rather than merely far off. */
+                stepRefused = (walk.mc == null);
+                if (walk.refusal != null)
+                    why = walk.refusal;
             }
-            waitUntil(() -> {
-                Gob p = player();
-                return p == null || p.rc.dist(dest) <= tol || !pft.isAlive();
-            }, 400);
-            /* mc is set from the first edge the path yields, so a null one after the walk has
-             * finished means the search produced no edges at all - the destination was unreachable
-             * from the start rather than merely far off. */
-            stepRefused = (walk.mc == null);
         } finally {
             clearKeepouts();
+        }
+        /* The pathfinder declined, so ask the SERVER, which does not decline. See {@link Walk}:
+         * every way the client pathfinder can refuse ends in the character not moving and nothing
+         * being logged, and one of them - our own position being inside a collision box - is a
+         * deadlock, because the move that would take us back out is refused along with the rest.
+         * That is what a bot standing against a shut gate is in, and it is why "runs face-first
+         * into the wall" is a fair description of what it looks like.
+         *
+         * The line has to be proved first, since server movement is linear and the server will
+         * swim. Keep-outs are dropped before this runs, deliberately: they exist to shape the
+         * pathfinder's search, whereas {@link Walk#lineClear} checks hazards along the line
+         * itself, and a bot standing inside a ring must still be able to walk out of it. */
+        if (stepRefused) {
+            if (Walk.lineClear(gui, me.rc, dest)) {
+                NLog.log(log, "pathfinder refused " + Gates.fmt(dest) + " (" + why
+                    + ") - walking there directly, the line is clear");
+                Walk.straightTo(this, gui, dest, tol);
+                stepRefused = false;
+            } else {
+                NLog.log(log, "pathfinder refused " + Gates.fmt(dest) + " (" + why
+                    + ") and the straight line is not clear either");
+            }
         }
         Gob now = player();
         return now != null && now.rc.dist(dest) <= tol;
@@ -854,6 +909,7 @@ public class BotNav {
         int stalled = 0;
         int detour = 0;
         int refused = 0;
+        int unsticks = 0;
         boolean wasRefused = false;
 
         for (int hop = 0; hop < 120; hop++) {
@@ -961,6 +1017,22 @@ public class BotNav {
              * of swinging sideways from the same spot will change that. Say so rather than burning
              * the hop budget wandering, which is the shape this failure used to take. */
             if (wasRefused && (++refused > REFUSE_LIMIT)) {
+                /* WEDGED, not blocked, and the difference decides what to do about it. Nothing
+                 * will be walkable from here for as long as we are standing where we are - the
+                 * commonest cause is our own position being inside a collision box, which refuses
+                 * every path including the one back out - so the answer is to move first and judge
+                 * afterwards. Bounded, because if stepping clear does not help twice over then it
+                 * is not what was wrong. */
+                if ((++unsticks <= UNSTICK_LIMIT) && Walk.unstick(this, gui, dest)) {
+                    NLog.log(log, "wedged " + (int) dist + "u short of " + Gates.fmt(dest)
+                        + " with every click refused - stepped clear and carrying on");
+                    refused = 0;
+                    best = Double.MAX_VALUE;
+                    stalled = 0;
+                    detour = 0;
+                    wasRefused = false;
+                    continue;
+                }
                 NLog.log(log, "nothing walkable at " + Gates.fmt(aim) + " on the way to "
                     + Gates.fmt(dest) + " - " + refused + " clicks refused, "
                     + (int) dist + "u short");
