@@ -823,16 +823,6 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/QuickSwitchFromBelt/Equip_HuntersBow");
 		makeLocal("customclient/menugrid/QuickSwitchFromBelt/Equip_RangersBow");
 
-		// Category: Nurgling Imports
-		makeLocal("customclient/menugrid/NurglingImports/AutoLpBot");
-		makeLocal("customclient/menugrid/NurglingImports/LpAssistantManager");
-		makeLocal("customclient/menugrid/NurglingImports/LpAssistantToggle");
-		makeLocal("customclient/menugrid/NurglingImports/NBotsSettings");
-		makeLocal("customclient/menugrid/NurglingImports/NBotPlaces");
-		makeLocal("customclient/menugrid/NurglingImports/NCellarDiggerBot");
-		makeLocal("customclient/menugrid/NurglingImports/NCleanupBot");
-		makeLocal("customclient/menugrid/NurglingImports/NWaterScoutBot");
-
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck2");
@@ -1152,55 +1142,6 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 			new Thread(new EquipFromBelt(gui, ad[2]), "EquipFromBelt").start();
 		} else if (ad[1].equals("CombatDecks")) {
 			gui.changeCombatDeck(Integer.parseInt(ad[2])-1);
-		} else if (ad[1].equals("NurglingImports")) { // Category: Nurgling Imports
-			if (ad[2].equals("AutoLpBot")) {
-				if (gui.autoLpBot == null && gui.autoLpThread == null) {
-					gui.autoLpBot = new haven.automated.lp.AutoLpBot(gui);
-					gui.add(gui.autoLpBot, Utils.getprefc("wndc-autoLpBotWindow", new Coord(gui.sz.x/2 - gui.autoLpBot.sz.x/2, gui.sz.y/2 - gui.autoLpBot.sz.y/2 - 200)));
-					gui.autoLpThread = new Thread(gui.autoLpBot, "AutoLpBot");
-					gui.autoLpThread.start();
-				} else {
-					if (gui.autoLpBot != null) {
-						gui.autoLpBot.stop();
-						gui.autoLpBot.reqdestroy();
-						gui.autoLpBot = null;
-						gui.autoLpThread = null;
-					}
-				}
-			} else if (ad[2].equals("LpAssistantManager")) {
-				if (gui.lpAssistantManager == null) {
-					gui.lpAssistantManager = new haven.automated.lp.LpAssistantManagerWindow(gui);
-					gui.add(gui.lpAssistantManager, Utils.getprefc("wndc-lpAssistantManagerWindow", new Coord(gui.sz.x/2 - gui.lpAssistantManager.sz.x/2, gui.sz.y/2 - gui.lpAssistantManager.sz.y/2 - 200)));
-				} else {
-					gui.lpAssistantManager.reqdestroy();
-					gui.lpAssistantManager = null;
-				}
-			} else if (ad[2].equals("LpAssistantToggle")) {
-				boolean on = !haven.automated.lp.LpConfig.on(haven.automated.lp.LpConfig.Key.lpassistent);
-				haven.automated.lp.LpConfig.set(haven.automated.lp.LpConfig.Key.lpassistent, on);
-				haven.automated.lp.LpExplorer.bumpGeneration();
-				gui.msg("LP Assistant is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? java.awt.Color.GREEN : java.awt.Color.RED);
-			} else if (ad[2].equals("NBotsSettings")) {
-				if (gui.nBotsSettings == null) {
-					gui.nBotsSettings = new haven.automated.nbots.NBotsSettingsWindow(gui);
-					gui.add(gui.nBotsSettings, Utils.getprefc("wndc-nBotsSettingsWindow", new Coord(gui.sz.x/2 - gui.nBotsSettings.sz.x/2, gui.sz.y/2 - gui.nBotsSettings.sz.y/2 - 200)));
-				} else {
-					gui.nBotsSettings.reqdestroy();
-					gui.nBotsSettings = null;
-				}
-			} else if (ad[2].equals("NBotPlaces")) {
-				if (gui.nbotPlaces == null) {
-					gui.nbotPlaces = new haven.automated.nbots.PlacesWindow(gui);
-					gui.add(gui.nbotPlaces, Utils.getprefc("wndc-nbotPlacesWindow", new Coord(gui.sz.x/2 - gui.nbotPlaces.sz.x/2, gui.sz.y/2 - gui.nbotPlaces.sz.y/2 - 200)));
-				} else {
-					gui.nbotPlaces.reqdestroy();
-					gui.nbotPlaces = null;
-				}
-			} else {
-				/* Every crew bot goes through one lookup rather than a branch apiece - see
-				 * haven.automated.nbots.BotRegistry. Adding a bot touches no upstream file. */
-				gui.nbots.toggle(gui, ad[2]);
-			}
 		}
 	}
 }

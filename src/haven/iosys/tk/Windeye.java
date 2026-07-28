@@ -58,12 +58,7 @@ public interface Windeye {
     public default void stats(Collection<String> buf) {}
 
     public static enum State {
-	MINIMIZED, NORMAL, MAXIMIZED,
-	/* An undecorated window covering exactly one monitor. Looks like fullscreen, but the
-	 * window manager still owns the display: no exclusive capture and no display-mode
-	 * change, which is what makes alt-tabbing out of it uneventful. */
-	BORDERLESS,
-	EXCLUSIVE
+	MINIMIZED, NORMAL, MAXIMIZED, EXCLUSIVE
     }
 
     public static enum Visibility {

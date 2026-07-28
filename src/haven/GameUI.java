@@ -71,11 +71,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public ExtInventory maininvext;
     public CharWnd chrwdg;
     public MapWnd mapfile;
-    // A second, always-non-compact map window that can be toggled INDEPENDENTLY of `mapfile`, so
-    // the compact map and the big map can be open at the same time (bound via kb_bigmap). Shares
-    // the same MapFile/MapView as mapfile; hidden until its keybind is pressed.
-    public MapWnd bigmap;
-    private boolean bigmapvis = false;
     public Widget qqview;
     public BuddyWnd buddies;
     private final Zergwnd zerg;
@@ -194,18 +189,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public RoastingSpitBot roastingSpitBot;
 	public Thread roastingSpitThread;
 	public FishingBot fishingBot;
-	public haven.automated.lp.LpAssistantManagerWindow lpAssistantManager;
-	public haven.automated.lp.AutoLpBot autoLpBot;
-	public Thread autoLpThread;
 	public Thread fishingThread;
-
-	// Nurgling-tab bots. Separate from the stock Bots-tab ones above, which they deliberately
-	// leave alone - see haven.automated.nbots.NBot.
-	/* One registry rather than a field pair per bot: adding a bot is a line in BotRegistry and
-	 * nothing here. See haven.automated.nbots.BotDef. */
-	public final haven.automated.nbots.BotRegistry nbots = new haven.automated.nbots.BotRegistry();
-	public haven.automated.nbots.NBotsSettingsWindow nBotsSettings;
-	public haven.automated.nbots.PlacesWindow nbotPlaces;
 
     public static abstract class BeltSlot {
 	public final int idx;
@@ -398,8 +382,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	this.chrid = chrid;
 	this.plid = plid;
 	this.genus = genus;
-	haven.automated.lp.LpContext.bind(this);
-	haven.automated.nbots.core.NLog.installUncaughtHandler();
 	setcanfocus(true);
 	setfocusctl(true);
 	chat = new ChatUI();
@@ -701,9 +683,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    });
 	Debug.log = ui.cons.out;
 	opts.c = sz.sub(opts.sz).div(2);
-	/* The map window is created later, when the server sends the mapview child. */
-	if(mapfile != null)
-	    mapfile.fixAndSavePos(true);
+	mapfile.fixAndSavePos(true);
     }
 
     public void dispose() {
@@ -1136,12 +1116,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    Utils.setprefc("wndc-chr", chrwdg.c);
 	if(zerg != null)
 	    Utils.setprefc("wndc-zerg", zerg.c);
-	if(mapfile != null)
+	if(mapfile != null) {
 		mapfile.fixAndSavePos(mapfile.compact);
-	if(bigmap != null)
-		bigmap.fixAndSavePos(false);
-	/* ND's brace used to close after chatWnd, so every window below only had its position
-	 * saved when a mapfile existed. */
 	if(quickslots != null)
 		Utils.setprefc("wndc-quickslots", quickslots.c);
 	if(makewnd != null)
@@ -1152,6 +1128,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		Utils.setprefc("wndc-questObjectivesWindow", questObjectivesWindow.c);
 	if (chatWnd != null)
 		Utils.setprefc("wndc-chat", chatWnd.c);
+	}
     }
 
     private final BMap<String, Window> wndids = new HashBMap<String, Window>();
@@ -1171,10 +1148,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		ui.destroy(mapfile);
 		mapfile = null;
 	    }
-	    if(bigmap != null) {
-		ui.destroy(bigmap);
-		bigmap = null;
-	    }
 	    ResCache mapstore = ResCache.global;
 	    if(MapFile.mapbase.get() != null)
 		mapstore = HashDirCache.get(MapFile.mapbase.get());
@@ -1193,14 +1166,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		mapfile = new MapWnd(file, map, Utils.getprefc("smallmapsz", new Coord(300,300)), "Map");
 		mapfile.show(true);
 		add(mapfile, Utils.getprefc("smallmapc", new Coord(0, 150)));
-
-		// Second map window, permanently non-compact and hidden by default, toggled by
-		// kb_bigmap. It shares the same MapFile/MapView so it shows the identical map - just
-		// a second, independent view you can keep open alongside the compact one. Being
-		// alwaysBig it ignores the map keybindings and keeps its own position/size prefs.
-		bigmap = new MapWnd(file, map, Utils.getprefc("bigmapwndsz", new Coord(980, 550)), "Map", true);
-		add(bigmap, Utils.getprefc("bigmapwndc", new Coord(100, 100)));
-		bigmap.show(false);
 	    }
 		if (trackingToggled) {
 			buffs.addchild(new Buff(Bufflist.bufftrack.indir()));
@@ -1601,8 +1566,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private void mapfiletick() {
 	MapView map = this.map;
 //	MiniMap mmap = this.mmap;
-	/* mapfile stays null when there is no map store to save to. */
-	if((map == null) || (mapfile == null) /*|| (mmap == null)*/)
+	if((map == null) /*|| (mmap == null)*/)
 	    return;
 	Gob pl = ui.sess.glob.oc.getgob(map.plgob);
 	Coord gc;
@@ -1624,9 +1588,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private double lastwndsave = 0;
     public void tick(double dt) {
 	super.tick(dt);
-	haven.automated.alchemy.AlchemyService.poll(ui, dt);
-	haven.automated.lp.LpContext.tick();
-	haven.automated.nbots.world.PlaceOverlay.tick(this);
 	double now = Utils.rtime();
 	if(now - lastwndsave > 60) {
 	    savewndpos();
@@ -1781,10 +1742,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    mapfile.hide();
 //	    Utils.setprefb("wndvis-map", false);
 	    return;
-	} else if((sender == bigmap) && (msg == "close")) {
-	    bigmap.fixAndSavePos(false);
-	    bigmap.hide();
-	    return;
 	} else if((sender == srchwnd) && (msg == "close")) {
 	    ui.destroy(srchwnd);
 	    srchwnd = null;
@@ -1865,9 +1822,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     }
 
     public static final KeyBinding kb_map = KeyBinding.get("map", KeyMatch.forchar('W', KeyMatch.C));
-    // Unbound by default (KeyMatch.nil) - the user assigns it in Options. Toggles the second,
-    // always-non-compact big map independently of the compact map (kb_map).
-    public static final KeyBinding kb_bigmap = KeyBinding.get("bigmap", KeyMatch.nil);
     public static final KeyBinding kb_claim = KeyBinding.get("ol-claim", KeyMatch.forcode(KeyEvent.VK_F9, KeyMatch.C));
     public static final KeyBinding kb_vil = KeyBinding.get("ol-vil", KeyMatch.forcode(KeyEvent.VK_F10, KeyMatch.C));
     public static final KeyBinding kb_rlm = KeyBinding.get("ol-rlm", KeyMatch.forcode(KeyEvent.VK_F11, KeyMatch.C));
@@ -1942,9 +1896,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 //	    return(true);
 	} else if(kb_hide.key().match(ev)) {
 	    toggleui();
-	    return(true);
-	} else if(kb_bigmap.key().match(ev)) {
-	    togglewnd(bigmap);
 	    return(true);
 	} else if(kb_logout.key().match(ev)) {
 	    act("lo");
@@ -2226,16 +2177,6 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
         if (ui.gui.chrwdg.quest.quest != null)
 		    questObjectivesWindow.show(!showUI);
 		mapfile.show(!showUI);
-		if(bigmap != null) {
-			// The big map is hidden by default, so don't force it open when the UI comes
-			// back - only restore it if it was actually open when the UI was hidden.
-			if(showUI) {
-				bigmapvis = bigmap.visible();
-				bigmap.hide();
-			} else {
-				bigmap.show(bigmapvis);
-			}
-		}
 		Hidepanel[] panels = {brpanel, ulpanel, umpanel, urpanel, menupanel};
 		for(Hidepanel p : panels)
 			p.mshow(!showUI);

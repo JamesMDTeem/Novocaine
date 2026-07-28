@@ -172,7 +172,6 @@ public class HitBoxes {
     }
 
     public static void loadCollisionBoxMap() {
-        List<String> stale = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(DATABASE)) {
             if (conn != null) {
                 String sql = "SELECT key, value FROM collision_box_map;";
@@ -184,49 +183,14 @@ public class HitBoxes {
                         CollisionBoxSecondary[] collisionBoxSecondaries = deserialize(serialized);
                         if (collisionBoxSecondaries != null) {
                             collisionBoxMap.put(key, collisionBoxSecondaries);
-                        } else {
-                            stale.add(key);
                         }
                     }
                 } catch (SQLException e) {
                     System.err.println("Error while executing SQL statement: " + e.getMessage());
                 }
-                if (!stale.isEmpty())
-                    dropStaleEntries(conn, stale);
             }
         } catch (SQLException e) {
             System.err.println("Error while connecting to database: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Discards rows this build can no longer read, so they get re-extracted from the resources.
-     *
-     * Each value is a Java-serialized CollisionBoxSecondary[], which embeds Coord2d - and Coord2d
-     * declares no serialVersionUID, so the JVM derives one from the class shape. Any upstream
-     * change to Coord2d therefore invalidates every row ever written, and the reader used to fail
-     * one row at a time: a stderr line each, null returned, and that gob left with NO hitbox at
-     * all - which the pathfinder reads as "nothing in the way". That is how a database written by
-     * an older client silently turned collision avoidance off, which is what the Steam install hit
-     * (its hitboxes.db predates this build and every entry failed).
-     *
-     * The table is only a cache of what extractCollisionBoxesFromResource() recomputes anyway, so
-     * the repair is simply to delete what can't be read; the boxes are rebuilt and re-saved the
-     * next time each gob comes into view.
-     */
-    private static void dropStaleEntries(Connection conn, List<String> keys) {
-        String sql = "DELETE FROM collision_box_map WHERE key = ?;";
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            for (String key : keys) {
-                pstmt.setString(1, key);
-                pstmt.addBatch();
-            }
-            pstmt.executeBatch();
-            System.out.println("hitboxes.db: dropped " + keys.size() + " unreadable entr"
-                    + (keys.size() == 1 ? "y" : "ies") + " (written by a different client build);"
-                    + " they will be re-extracted from the resources.");
-        } catch (SQLException e) {
-            System.err.println("Error while dropping stale collision boxes: " + e.getMessage());
         }
     }
 
@@ -234,11 +198,7 @@ public class HitBoxes {
         try (ByteArrayInputStream bais = new ByteArrayInputStream(Base64.getDecoder().decode(s));
              ObjectInputStream ois = new ObjectInputStream(bais)) {
             return (CollisionBoxSecondary[]) ois.readObject();
-        } catch (InvalidClassException | ClassNotFoundException e) {
-            // Written by a build whose class shapes differ from ours. Not worth a line per row -
-            // loadCollisionBoxMap counts these, drops them, and reports the total once.
-            return null;
-        } catch (IOException e) {
+        } catch (IOException | ClassNotFoundException e) {
             System.err.println("Error while deserializing CollisionBox[]: " + e.getMessage());
             return null;
         }

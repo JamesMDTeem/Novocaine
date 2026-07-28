@@ -71,14 +71,11 @@ public class MapWnd extends Window implements Console.Directory {
     private Marker mrefocus = null;
     private int olalpha = 64;
     private final Collection<Runnable> deferred = new LinkedList<>();
-	private Coord bigmapc, smallmapc, bigmapsz, smallmapsz;
+	private Coord bigmapc = Utils.getprefc("bigmapc", new Coord(0,0));
+	private Coord smallmapc = Utils.getprefc("smallmapc", new Coord(0,150));
+	private Coord bigmapsz = Utils.getprefc("bigmapsz", new Coord(980,550));
+	private Coord smallmapsz = Utils.getprefc("smallmapsz", new Coord(300,300));
 	public boolean compact = true;
-	/* True for the standalone big map (GameUI.bigmap), which exists alongside the primary map
-	 * window (GameUI.mapfile) and can be open at the same time. Such a window can never be made
-	 * compact, answers none of the map keybindings (they belong to the primary window, or they
-	 * would fire on both windows at once), keeps its geometry in its own prefs, and does not
-	 * duplicate the primary window's world-side marker objects. */
-	public final boolean alwaysBig;
 
     private final static Predicate<Marker> pmarkers = (m -> m instanceof PMarker);
     private final static Predicate<Marker> smarkers = (m -> m instanceof SMarker);
@@ -93,18 +90,7 @@ public class MapWnd extends Window implements Console.Directory {
 	public static final KeyBinding kb_vil = KeyBinding.get("mapwnd/vclaim", KeyMatch.forcode(KeyEvent.VK_F10, KeyMatch.C | KeyMatch.S));
     public static final KeyBinding kb_prov = KeyBinding.get("mapwnd/prov", KeyMatch.forcode(KeyEvent.VK_F11, KeyMatch.C | KeyMatch.S));
     public MapWnd(MapFile file, MapView mv, Coord sz, String title) {
-	this(file, mv, sz, title, false);
-    }
-
-    public MapWnd(MapFile file, MapView mv, Coord sz, String title, boolean alwaysBig) {
 	super(sz, title, true);
-	this.alwaysBig = alwaysBig;
-	/* The standalone big map stores its geometry separately, so moving/resizing it does not
-	 * overwrite where the primary window goes when *it* is switched to big mode. */
-	bigmapc = Utils.getprefc(alwaysBig ? "bigmapwndc" : "bigmapc", alwaysBig ? new Coord(100,100) : new Coord(0,0));
-	bigmapsz = Utils.getprefc(alwaysBig ? "bigmapwndsz" : "bigmapsz", new Coord(980,550));
-	smallmapc = Utils.getprefc("smallmapc", new Coord(0,150));
-	smallmapsz = Utils.getprefc("smallmapsz", new Coord(300,300));
 	this.file = file;
 	this.mv = mv;
 	this.player = new MapLocator(mv);
@@ -208,8 +194,6 @@ public class MapWnd extends Window implements Console.Directory {
 			}
 		})
 		.settip("Show Village Claims on Map").setgkey(kb_vil);
-	/* No compact toggle on the standalone big map - being big is the whole point of it. */
-	if(!alwaysBig) {
 	toolbar.add(new ICheckBox("gfx/hud/mmap/wnd", "", "-d", "-h", "-dh"))
 	    .state(this::compact).set(a -> {
 		    fixAndSavePos(!a);
@@ -226,7 +210,6 @@ public class MapWnd extends Window implements Console.Directory {
 			}
 		})
 	    .settip("Compact mode").setgkey(kb_compact);
-	}
 	if(Utils.getprefb("prov-claimMapState", false)) overlays.add("realm");
 	toolbar.add(new ICheckBox("gfx/hud/mmap/prov", "", "-d", "-h", "-dh"))
 		.state(() -> visol("realm"))
@@ -242,37 +225,18 @@ public class MapWnd extends Window implements Console.Directory {
 		.settip("Show Realm Provinces on Map").setgkey(kb_prov);
 	toolbar.pack();
 	tool = add(new Toolbox());
-	if(alwaysBig)
-	    dropgkeys(this);
 	compact(true);
 	resize(sz);
     }
 
-    /* An alwaysBig window is a second copy of the primary map's widget tree, so its buttons would
-     * answer the very same global keybindings - every bound map key would fire twice (toggling an
-     * overlay straight back off) and Alt+W would try to make this window compact. Strip the
-     * bindings from the whole subtree; this window is mouse-driven only. Done by traversal rather
-     * than at each setgkey() call site so it keeps working if upstream adds more map buttons. */
-    private static void dropgkeys(Widget root) {
-	for(Widget ch = root.child; ch != null; ch = ch.next) {
-	    ch.kb_gkey = null;
-	    ch.gkey = null;
-	    dropgkeys(ch);
-	}
-    }
-
     protected void added() {
 	super.added();
-	/* Both windows share one MapView, so only the primary one contributes the world-side
-	 * marker objects - otherwise every on-map marker would be built and drawn twice. */
-	if(!alwaysBig)
-	    mv.basic.add(mvmarks);
+	mv.basic.add(mvmarks);
     }
 
     public void remove() {
 	super.remove();
-	if(!alwaysBig)
-	    mvmarks.remove();
+	mvmarks.remove();
     }
 
     public void toggleol(String tag, boolean a) {
@@ -964,8 +928,6 @@ public class MapWnd extends Window implements Console.Directory {
     }
 
     public void compact(boolean a) {
-	if(alwaysBig)
-	    a = false;
 	tool.show(!a);
 	if(a)
 	    delfocusable(tool);
@@ -1014,8 +976,8 @@ public class MapWnd extends Window implements Console.Directory {
             if (this.c.y > (guiSize.y - windowsz.y + windowBottomRightCornerDiff.y)) this.c.y = guiSize.y - windowsz.y + windowBottomRightCornerDiff.y;
 			bigmapc = this.c;
 			bigmapsz = this.csz();
-			Utils.setprefc(alwaysBig ? "bigmapwndc" : "bigmapc", bigmapc);
-			Utils.setprefc(alwaysBig ? "bigmapwndsz" : "bigmapsz", bigmapsz);
+			Utils.setprefc("bigmapc", bigmapc);
+			Utils.setprefc("bigmapsz", bigmapsz);
 		}
 	}
 

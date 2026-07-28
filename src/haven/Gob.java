@@ -84,7 +84,6 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	GobReadyForHarvestInfo readyForHarvestInfo;
 	GobFoodWaterInfo foodWaterInfo;
 	GobBeeskepHarvestInfo beeskepHarvestInfo;
-	GobLpDiscoveryInfo lpDiscoveryInfo;
 	public boolean isHidden;
 	private final GobCustomSizeAndRotation customSizeAndRotation = new GobCustomSizeAndRotation();
 	public double gobSpeed = 0;
@@ -1304,16 +1303,6 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 				beeskepHarvestInfo = new GobBeeskepHarvestInfo(this);
 				setattr(GobBeeskepHarvestInfo.class, beeskepHarvestInfo);
 			}
-			if (lpDiscoveryInfo == null) {
-				// Any gob type the LP-discovery data covers: trees/bushes (including unknown new
-				// species, which the specs flag with a "?"), logs, stones, herbs, kritters.
-				String lpNorm = haven.automated.lp.HarvestState.normalizeBumlingRes(res.name);
-				if (haven.automated.lp.HarvestSpecs.forResource(lpNorm) != null
-						|| haven.automated.lp.LpSpec.object.containsKey(lpNorm)) {
-					lpDiscoveryInfo = new GobLpDiscoveryInfo(this);
-					setattr(GobLpDiscoveryInfo.class, lpDiscoveryInfo);
-				}
-			}
 		}
 		updateCustomIcons();
 		updateCritterAuras();
@@ -2013,30 +2002,6 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 	}
 
-	// A ring under an animal that still owes an undiscovered LP product - see LpTargets and
-	// GobLpDiscoveryInfo. Deliberately its OWN overlay field rather than a fifth caller of
-	// setAuraCircleOverlay: that method shares one customAuraOverlay slot between critter auras,
-	// speed buffs and midges, so a fifth user would silently overwrite whichever of them happened
-	// to run first on the same gob (a rabbit gets both a critter aura and, until you've skinned one,
-	// an LP ring).
-	private Overlay lpAuraOverlay;
-	private static final Color LP_AURA_COLOR = new Color(60, 170, 255, 110);
-	private static final float LP_AURA_SIZE = 18f;
-
-	public void setLpAura(boolean enabled) {
-		if (enabled) {
-			if (lpAuraOverlay != null)
-				return;  // already showing - rebuilding it every refresh would re-upload geometry
-			lpAuraOverlay = new Overlay(this, new AuraCircleSprite(this, LP_AURA_COLOR, LP_AURA_SIZE));
-			synchronized (ols) {
-				addol(lpAuraOverlay);
-			}
-		} else if (lpAuraOverlay != null) {
-			removeOl(lpAuraOverlay);
-			lpAuraOverlay = null;
-		}
-	}
-
 	private void setAuraCircleOverlay(boolean enabled, Color col, float size) {
 		if (enabled) {
 			if (customAuraOverlay != null) {
@@ -2584,7 +2549,6 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		if (readyForHarvestInfo != null) readyForHarvestInfo.clear();
 		if (foodWaterInfo != null) foodWaterInfo.clear();
 		if (beeskepHarvestInfo != null) beeskepHarvestInfo.clear();
-		if (lpDiscoveryInfo != null) lpDiscoveryInfo.clear();
 		if (barrelContentsGobInfo != null) barrelContentsGobInfo.clear();
 		if (cheeseRackInfo != null) cheeseRackInfo.clear();
 		if (iconSignGobInfo != null) iconSignGobInfo.clear();

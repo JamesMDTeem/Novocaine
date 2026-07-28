@@ -51,7 +51,6 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
     public int infoseq;
     private Widget hovering;
     private boolean hoverset;
-    private boolean lpChecked = false;
     private GSprite spr;
 	private ItemInfo.Raw rawinfo = ItemInfo.Raw.nil;;
     public List<ItemInfo> info = Collections.emptyList();
@@ -225,20 +224,6 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 	GSprite spr = spr();
 	if(spr != null) {
 		spr.tick(dt);
-	}
-	// LP-discovery gate: record this item's name once it resolves, but only if the item sits in
-	// the player's own pack (checked inside; possession is the discovery signal - see
-	// LpExplorer.checkLpExplorer). Loading just retries next tick; any other failure stops the
-	// attempts for this item.
-	if(!lpChecked && haven.automated.lp.LpExplorer.isEnabled()) {
-	    try {
-		String nm = ItemInfo.find(ItemInfo.Name.class, info()).str.text;
-		lpChecked = true;
-		haven.automated.lp.LpExplorer.checkLpExplorer(nm, this);
-	    } catch(Loading l) {
-	    } catch(Exception e) {
-		lpChecked = true;
-	    }
 	}
 	updcontinfo();
 	if(!hoverset)

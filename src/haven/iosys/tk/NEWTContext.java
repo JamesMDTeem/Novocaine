@@ -359,8 +359,6 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	    public State state() {
 		if(bk.isFullscreen())
 		    return(State.EXCLUSIVE);
-		if(bk.isUndecorated())
-		    return(State.BORDERLESS);
 		if(bk.isMaximizedVert() || bk.isMaximizedHorz())
 		    return(State.MAXIMIZED);
 		return(State.NORMAL);
@@ -389,33 +387,13 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 		case MINIMIZED: break;
 		case NORMAL:
 		    bk.setFullscreen(false);
-		    bk.setUndecorated(false);
 		    bk.setMaximized(false, false);
 		    break;
 		case MAXIMIZED:
 		    bk.setFullscreen(false);
-		    bk.setUndecorated(false);
 		    bk.setMaximized(true, true);
 		    break;
-		case BORDERLESS: {
-		    /* Undecorated and sized to the monitor's viewport, but NOT setFullscreen -
-		     * that is the call that takes the display over and has to give it back on
-		     * every focus change. Positioned explicitly because the viewport is in
-		     * virtual-desktop coordinates, so this covers whichever monitor the window
-		     * is on rather than always the primary one. */
-		    bk.setFullscreen(false);
-		    bk.setMaximized(false, false);
-		    bk.setUndecorated(true);
-		    com.jogamp.newt.MonitorDevice mon = bk.getMainMonitor();
-		    if(mon != null) {
-			com.jogamp.nativewindow.util.RectangleImmutable vp = mon.getViewport();
-			bk.setPosition(vp.getX(), vp.getY());
-			bk.setSize(vp.getWidth(), vp.getHeight());
-		    }
-		    break;
-		}
 		case EXCLUSIVE:
-		    bk.setUndecorated(false);
 		    bk.setFullscreen(true);
 		    break;
 		}

@@ -43,62 +43,6 @@ public class Map {
     private final Dbg dbg;
     private final static boolean DEBUG = false;
     public final static boolean DEBUG_TIMINGS = false;
-    /** Treat cliffs/ledges as impassable geography. See cliffAt(). */
-    public static boolean BLOCK_CLIFFS = true;
-
-    /**
-     * Water a character can enter but a bot has no business entering. Deliberately NOT the same as
-     * "is a water tile": bog, fen and swamp water are walkable ground with a wet texture, and
-     * blocking them would wall off whole regions.
-     *
-     * gfx/tiles/deep is in the unconditional block list above as well - it is impassable on foot
-     * whoever is walking. The rest is swimmable, which is why this is opt-in rather than always on:
-     * a player shift-clicking across a ford should still get a route through it.
-     */
-    private final static Set<String> WATER = new HashSet<>(Arrays.asList(
-            "gfx/tiles/water", "gfx/tiles/deep",
-            "gfx/tiles/owater", "gfx/tiles/odeep", "gfx/tiles/odeeper"));
-
-    public static boolean isWater(String tilesetName) {
-        return tilesetName != null && WATER.contains(tilesetName);
-    }
-
-    /**
-     * Route around water instead of swimming through it. Off by default - see WATER.
-     *
-     * Global rather than per-search because a Pathfinder is constructed inside MapView, which this
-     * fork deliberately doesn't touch; the LP bot sets it for the length of its run and restores it
-     * afterwards. The cost of that shortcut is that a manual click issued while the bot is running
-     * also avoids water, which is harmless.
-     */
-    public static volatile boolean BLOCK_WATER = false;
-
-    /** A circle in world coordinates that a path must stay out of. */
-    public static final class Keepout {
-        public final Coord2d c;
-        public final double r;
-
-        public Keepout(Coord2d c, double r) {
-            this.c = c;
-            this.r = r;
-        }
-    }
-
-    private final static Keepout[] NO_KEEPOUTS = new Keepout[0];
-    private static volatile Keepout[] keepouts = NO_KEEPOUTS;
-
-    /**
-     * Marks circles the next searches must route around - the LP bot uses this for the aggro rings
-     * of dangerous beasts, so a bear standing between the character and a berry bush produces a
-     * detour rather than a refusal.
-     *
-     * Same global-static caveat as BLOCK_WATER. Pass null (or an empty array) to clear. Never
-     * include a circle the character is currently STANDING IN: every route out of it would be
-     * blocked and the search would simply fail. Backing out of one is the caller's job.
-     */
-    public static void keepout(Keepout[] zones) {
-        keepouts = (zones == null) ? NO_KEEPOUTS : zones;
-    }
 
     public Map(Coord plc, Coord endc, MCache mcache) {
         this.plc = plc;
@@ -115,32 +59,18 @@ public class Map {
         int dx = (int) (plc.x / 11.0d * 11.0d - pltc.x * 11) - 5;
         int dy = (int) (plc.y / 11.0d * 11.0d - pltc.y * 11) - 5;
 
-        // Sampled once: the setter can be called from another thread mid-scan, and half a scan
-        // done against one set of zones and half against another would produce a map that is
-        // neither.
-        final boolean blockWater = BLOCK_WATER;
-        final Keepout[] zones = keepouts;
-
         for (int x = -origintile; x < origintile; x++) {
             for (int y = -origintile; y < origintile; y++) {
-                Coord tc = pltc.sub(x, y);
-                int t = mcache.gettile(tc);
+                int t = mcache.gettile(pltc.sub(x, y));
                 Resource res = mcache.tilesetr(t);
                 if (res == null)
                     continue;
 
                 String name = res.name;
-                boolean blocked = name.equals("gfx/tiles/deep") ||
-                        name.equals("gfx/tiles/cave") ||
-                        name.equals("gfx/tiles/nil") ||
-                        name.startsWith("gfx/tiles/rocks/");
-                if (!blocked && blockWater)
-                    blocked = WATER.contains(name);
-                if (!blocked && BLOCK_CLIFFS)
-                    blocked = cliffAt(tc);
-                if (!blocked && zones.length > 0)
-                    blocked = inKeepout(zones, tc);
-                if (!blocked)
+                if (!name.equals("gfx/tiles/deep") &&
+                        !name.equals("gfx/tiles/cave") &&
+                        !name.equals("gfx/tiles/nil") &&
+                        !name.startsWith("gfx/tiles/rocks/"))
                     continue;
 
                 int gcx = origin - (x * 11) - dx;
@@ -203,51 +133,6 @@ public class Map {
             dbg.dot(mapborder, i, Color.CYAN);
             dbg.dot(sz - mapborder, i, Color.CYAN);
         }
-    }
-
-    /**
-     * A cliff/ledge on this tile, i.e. a height break the character can't walk over.
-     *
-     * Without this, geography was decided purely by TILE TYPE (deep water, cave, nil, rocks), and
-     * elevation was invisible to the search: a ridge between two levels is the same grass tile on
-     * both sides, so A* would happily plan a straight line through a cliff face and the character
-     * would walk into it and stop. Same predicate the client already uses to draw cliffs (see
-     * MapSource's minimap render and Ridges.cliffHighlightMat), so what the pathfinder refuses to
-     * cross is exactly what the player sees as a cliff.
-     */
-    private boolean cliffAt(Coord tc) {
-        try {
-            return haven.resutil.Ridges.brokenp(mcache, tc);
-        } catch (Loading l) {
-            // Grid not loaded yet - treat as open rather than blocking a tile we can't judge. The
-            // path is re-planned on the next click anyway, by which point it'll usually be in.
-            return false;
-        }
-    }
-
-    /**
-     * Whether this tile falls inside one of the caller's keep-out circles.
-     *
-     * The tiles immediately around the character are never blocked, however deep inside a circle
-     * they are. Blocking them would make the search's own starting cell impassable, and Pathfinder
-     * reacts to that by nudging the character a few pixels and retrying - so a beast that strayed
-     * next to us would produce a twitch-in-place loop instead of a detour. Callers are expected not
-     * to hand us a circle we are standing in at all (see keepout()); this is the backstop for the
-     * case where one wanders onto us between the call and the search.
-     */
-    private boolean inKeepout(Keepout[] zones, Coord tc) {
-        // Tile coords are 11 world units across, so this is the tile's centre in world space.
-        double wx = tc.x * 11.0 + 5.5, wy = tc.y * 11.0 + 5.5;
-        double px = plc.x, py = plc.y;
-        double ddx = wx - px, ddy = wy - py;
-        if ((ddx * ddx) + (ddy * ddy) < (3 * 11.0) * (3 * 11.0))
-            return false;
-        for (Keepout k : zones) {
-            double kx = wx - k.c.x, ky = wy - k.c.y;
-            if ((kx * kx) + (ky * ky) < k.r * k.r)
-                return true;
-        }
-        return false;
     }
 
     public void analyzeGobHitBoxes(Gob gob) {

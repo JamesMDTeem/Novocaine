@@ -1,110 +1,53 @@
-# Novocaine
+# Hurricane Client
 
-A custom Haven & Hearth client: a live pull of
-[Nightdawg/Hurricane](https://github.com/Nightdawg/Hurricane) with our own features
-layered on top. All credit for the base client goes to Nightdawg and the Hurricane
-project (and Loftar's Vanilla client under that).
+This is just another custom client you can use to play the wonderful game,
+Haven & Hearth. This client is built on top of the "Vanilla" Client, and
+does not depend on any other custom clients.
+I try to merge all of the code changes that are done to the base client
+by Loftar, and I try to keep it up to date, to avoid crashes.
 
-## Getting started (new install)
+This client can be played standalone, or through Steam, by subscribing to
+the Steam Workshop item.
 
-1. **Install a JDK.** [Eclipse Temurin 21](https://adoptium.net/temurin/releases/?version=21)
-   (free, official OpenJDK builds) — during setup, tick "Set JAVA_HOME" and "Add to
-   PATH" if the installer offers them. Any JDK 17–21 works.
-2. **Install Apache Ant.** Grab the "Binary Distributions" zip from the
-   [official site](https://ant.apache.org/bindownload.cgi) and extract it so
-   `ant.bat` ends up at `C:\ant\apache-ant-<version>\bin\ant.bat` (i.e. extract the
-   zip directly into `C:\ant`).
-3. **Get this repo** — `git clone` it, or download it as a zip from GitHub and
-   extract it.
-4. **Run the launcher** from the repo folder in PowerShell:
-   ```powershell
-   .\update-and-play.ps1
-   ```
-   The first run fetches the full Hurricane release (source, resources, jars — a few
-   hundred MB) from upstream, builds, and launches. That first run takes a few
-   minutes; every run after is much faster.
+Important Note:
+- This client does not send any data to any place besides the official Seatribe server, unless you set it to do so.
 
-If either tool is missing, the script tells you exactly what to install and where to
-put it, then stops cleanly — just rerun it once you have both.
+## Links:
 
-## How this fork works
+Forum Thread:
+https://www.havenandhearth.com/forum/viewtopic.php?t=76544
 
-The custom work is deliberately kept as a **patch between two tags** rather than a
-long-lived branch:
+Discord Server:
+https://discord.gg/7Ct4t6uME6
 
-```
-vendor-baseline .. alchemy
-```
+Steam Workshop:
+https://steamcommunity.com/sharedfiles/filedetails/?id=3423755273
 
-Updating to a new Hurricane release means: check out the upstream release, re-apply
-that patch, rebuild. `update-and-play.ps1` automates the whole cycle:
+## Downloading/Updating the Hurricane Client (Outside of Steam):
+Use the Hurricane Updater: https://github.com/Nightdawg/Hurricane-Updater/releases/latest
 
-```powershell
-.\update-and-play.ps1              # update to latest upstream release, rebuild, launch
-.\update-and-play.ps1 -SkipUpdate  # rebuild + launch what's checked out (after editing the fork)
-.\update-and-play.ps1 -Tag v1.67   # pin a specific upstream release
-```
+### If the updater doesn't work:
+1. Make sure your installed Java version is between 17 and 21, *21 IS HIGHLY RECOMMENDED*
+2. You might need to add the updater file (HurricaneUpdater.jar) to your anti-virus exceptions list.
 
-After committing any change to the fork, re-point the tag or the next update will
-re-apply stale work:
+## Launching the Hurricane Client (Outside of Steam):
 
-```powershell
-git tag -f alchemy HEAD
-```
+Run the Play.bat file inside the client folder, or Play_Linux.sh (for Linux/MacOS)
 
-## Custom features
+The client works with any java version between Java 17 - Java 21, *BUT 21 IS HIGHLY RECOMMENDED*    
+I've also been playing on GraalVM 21 (some different open-source java distribution based on OpenJDK),
+and I seem to get like 15-20 extra FPS out of the client.
 
-- **Alchemy Book mirror** (`src/haven/automated/alchemy/`) — passively reads the
-  in-game Alchemy Book via reflection on login and uploads ingredient discoveries and
-  elixir crafts to the mapper server. One integration hook: a single line in
-  `GameUI.tick`.
-- **Reflective contract tools** (`tools/extract-alchbook.py`,
-  `tools/check-alchbook-contract.sh`) — the alchemy code reflects into classes the
-  game server ships, which the compiler cannot check. If the book ever reports empty
-  after a game update, run these (from WSL) to diagnose drift. Silence, not
-  exceptions, is the failure mode.
-- **Nurgling Imports** (`src/haven/automated/lp/`, menu grid: Custom Client Extras →
-  Nurgling Imports) — the LP-assistant feature set ported from nurgling2: discovery
-  markers (world + minimap, right-clickable) for undiscovered LP products, always-on
-  harvest overlays, a never-crafted highlight in the crafting menu, and an Auto-LP bot
-  that walks to and collects nearby undiscovered products. Configure via the "LP
-  Assistant Manager" button; toggle quickly via "Toggle LP Assistant".
-  `tools/gen-lpspec.py` / `tools/gen-menugrid-res.py` regenerate the underlying data
-  and menu resources — see the comments in each for when to rerun them.
+### If the client doesn't launch:
+1. Make sure your installed Java version is between 17 and 21, *21 IS HIGHLY RECOMMENDED*
+2. You might need to add the launcher file (Play.bat or Play_Linux.sh) to your anti-virus exceptions list.
 
-## Releasing to friends (maintainer)
 
-Two distribution channels, each a one-command script:
+## This client also supports Cediner's Web Map server (you set up your own private map server, it's not a public map):
+https://github.com/Cediner/hnh-map-vuetify
 
-- **GitHub Release** (easiest for friends — no clone, no build, just a JRE):
-  ```powershell
-  .\tools\make-release.ps1 -Draft        # build, zip bin\, publish a draft release
-  .\tools\make-release.ps1 -Version 0.1.0
-  ```
-  Builds a clean client, zips `bin\` into `dist\Novocaine-<version>.zip`, and creates/updates
-  the GitHub Release with it attached. Friends download the zip, extract, and run
-  `Novocaine\Play.bat`. Needs the [GitHub CLI](https://cli.github.com/) (`gh auth login`).
+## OR you can use dafels' Mapping service (or set up your own private map server):
+https://www.havenandhearth.com/forum/viewtopic.php?f=49&t=79701
 
-- **Steam Workshop** (friends-only visibility): see [`steam/README.md`](steam/README.md).
-  ```powershell
-  .\tools\make-steam-item.ps1            # stage the item into dist\steam-item (no upload)
-  .\tools\make-steam-item.ps1 -Upload    # stage + upload (Steam must be running/logged in)
-  ```
-  The upload is yours to run — it needs Steam logged in, beta access to the game, and the
-  Workshop Legal Agreement accepted. Metadata lives in `steam/workshop-client.properties`
-  (kept separate from the repo-root Hurricane one so uploads never touch Nightdawg's item).
-
-Both scripts build from your working tree; commit first if you want the release to match a
-pushed state.
-
-## Remotes
-
-- `origin` — this repo (our fork).
-- `upstream` — `https://github.com/Nightdawg/Hurricane.git` (releases are fetched
-  shallowly, on demand, by the update script).
-
-## Building & playing
-
-Requires JDK 17–21 and Apache Ant (see "Getting started" above). `.\update-and-play.ps1`
-resolves both, builds with Ant, and launches via `bin\Play.bat`. See Hurricane's own
-docs for base-client details.
+## Additionally, the client also supports the cookbook integration (disabled by default).
+You can either use a token from a public cookbook, or host your own (for example, https://github.com/Cediner/hnh-food-book)
