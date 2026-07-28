@@ -110,25 +110,6 @@ public class BotNav {
      * twenty-two, and two tiles of slop would still have called that an arrival.
      */
     private static final double STOP_SLACK = 11 * 1.0;
-    /**
-     * The least a sideways detour hop may aim, so a target almost underfoot still gets a real
-     * sidestep rather than a nudge. Deliberately small: a detour is bounded by how far the target
-     * is, and this is only the floor under that.
-     */
-    private static final double DETOUR_MIN = 11 * 2.0;
-    /**
-     * The most a sideways detour hop may aim, whatever the distance remaining.
-     *
-     * An absolute cap, and it has to be absolute. Bounding a detour by "the distance to the target"
-     * looks equivalent and is a runaway: a detour that drifts makes the target FURTHER away, which
-     * raises the bound, which makes the next drift longer. Seven hops of that took a bot a hundred
-     * and thirty-two tiles from a waypoint eleven tiles away.
-     *
-     * Four tiles, which is what these swings are actually for - stepping round the boulder or the
-     * cart the router is too coarse to have seen. Anything bigger than that is a wall, and walls
-     * are the router's job.
-     */
-    private static final double DETOUR_MAX = 11 * 4.0;
     /** How far back off an occupied spot to look for standable ground, and in what steps. */
     private static final double CLEAR_STEP = 11 * 0.5;
     private static final double CLEAR_MAX = 11 * 3.0;
@@ -843,12 +824,7 @@ public class BotNav {
         for (Coord t : nodes)
             out.add(origin.add(t.mul(MCache.tilesz)).add(MCache.tilesz.div(2)));
 
-        /* Waypoints are block CENTRES, and the block we are standing in has its centre in
-         * whichever direction we happened to walk in from - so the first waypoint is frequently
-         * BEHIND us. Setting off towards it is the "walks away towards the middle of the square
-         * before coming back" behaviour. Drop any leading waypoint we are effectively already
-         * standing on; our own block's centre is at most three tiles away, so LEG_TOL catches
-         * exactly that and nothing else.
+        /* Drop any leading waypoint we are effectively already standing on.
          *
          * It used to drop every leading waypoint that was not CLOSER TO THE DESTINATION than we
          * are, which quietly threw away the whole point of routing. Going around a wall means
@@ -913,7 +889,6 @@ public class BotNav {
             return false;
         double best = Double.MAX_VALUE;
         int stalled = 0;
-        int detour = 0;
         int refused = 0;
         int unsticks = 0;
         /* The two refusals that matter here, kept apart because they want opposite things done.
@@ -934,7 +909,6 @@ public class BotNav {
             if (dist < best - 5.0) {
                 best = dist;
                 stalled = 0;
-                detour = 0;
                 refused = 0;
             } else if (++stalled > TRAVEL_STALL_LIMIT) {
                 NLog.log(log, "walk gave up " + (int) dist + "u short of " + Gates.fmt(dest)
@@ -988,18 +962,10 @@ public class BotNav {
                 return true;
             dir = dir.div(len);
 
-            // Alternate sides on successive stalls, and swing wider each time.
-            if (stalled > 0) {
-                double angle = ((detour % 2 == 0) ? 1 : -1) * (Math.PI / 4) * (1 + detour / 2);
-                detour++;
-                double cos = Math.cos(angle), sin = Math.sin(angle);
-                dir = new Coord2d(dir.x * cos - dir.y * sin, dir.x * sin + dir.y * cos);
-            }
-
             // Re-measured per hop rather than per walk: what is loaded changes as we move, and a
             // hop planned against a view that has since opened up is leaving distance on the table.
             double reach = hop();
-            /* Never aim past the destination, and that goes for a DETOUR too.
+            /* Never aim past the destination.
              *
              * A hop of at least half the reach was once forced here on the reasoning that tiny
              * hops are wasteful. That overshot marked areas, so it was cut back to the distance
@@ -1020,12 +986,15 @@ public class BotNav {
              * hundred and seventeen units off, then hops of 117, 215, 395, and four more at the
              * full reach, ending a hundred and thirty-two tiles away and "1521u short".
              *
-             * So the cap is absolute, at what these swings are actually for: stepping round the
-             * boulder or the cart the router was too coarse to see. Anything wider than that is a
-             * wall, and walls belong to the router. */
+             * The swings themselves are gone now, which is the proper end of that story. They were
+             * a blind wall-follow standing in for a router that could not see anything smaller
+             * than four tiles; the router works at tile resolution over everything the character
+             * has seen, so going around things is its job and it is equipped for it. A hop that
+             * gets nowhere now fails its leg, and travel re-plans - against a world model that the
+             * tick has been updating all along, so the thing that stopped us has been recorded by
+             * the time the new route is drawn. Re-planning finally produces a different answer,
+             * which is what makes giving up on the swings possible. */
             double span = Math.min(len, reach);
-            if (stalled > 0)
-                span = Math.max(Math.min(span, DETOUR_MAX), DETOUR_MIN);
             Coord2d aim = me.rc.add(dir.mul(span));
             stepTo(aim, 11 * 2.0);
             wasBlocked = stepRefused && (stepRefusal == Pathfinder.Refusal.NO_ROUTE);
@@ -1050,7 +1019,6 @@ public class BotNav {
                     refused = 0;
                     best = Double.MAX_VALUE;
                     stalled = 0;
-                    detour = 0;
                     wasStuck = false;
                     continue;
                 }

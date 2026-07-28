@@ -121,6 +121,17 @@ public class Terrain {
         return new Coord(Math.floorDiv(c.x, d.x), Math.floorDiv(c.y, d.y));
     }
 
+    /**
+     * One grid's per-tile water classes, or null if the map file cannot answer for it yet.
+     *
+     * For a search that is about to ask about tens of thousands of tiles: going through
+     * {@link #ground} per tile takes a lock and divides down to a grid every time, which turns a
+     * few milliseconds of arithmetic into a second of lock traffic.
+     */
+    public static byte[] classes(GameUI gui, long seg, Coord gc) {
+        return grid(gui, seg, gc);
+    }
+
     private static byte[] grid(GameUI gui, long seg, Coord gc) {
         synchronized (LOCK) {
             Map<Coord, byte[]> byseg = cache.get(seg);
