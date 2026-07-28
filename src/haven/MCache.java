@@ -979,6 +979,14 @@ public class MCache implements MapSource {
 	}
     }
 
+    /* Whether a grid is already here, WITHOUT asking the server for it if it isn't. getgrid
+     * requests what it can't find, so it cannot be used to survey what is loaded. */
+    public boolean gridloaded(Coord gc) {
+	synchronized(grids) {
+	    return(grids.containsKey(gc));
+	}
+    }
+
     public Grid getgridt(Coord tc) {
 	return(getgrid(tc.div(cmaps)));
     }

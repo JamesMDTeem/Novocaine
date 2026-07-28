@@ -121,19 +121,30 @@ public class FillWater implements Task {
             // own collision box, so the approach could never satisfy it and every fill afterwards
             // was a use-attempt from just out of range. See Reach.
             double reach = Reach.toActOn(live);
-            Gob me = ctx.player();
-            if (me != null && me.rc.dist(live.rc) > reach) {
-                Outcome a = new Approach(live, reach).run(ctx);
+            /* A SIDE of the barrel, reserved, rather than "walk at the barrel". Two bots sent for
+             * water at the same moment otherwise aim at the same point, and the second arrives
+             * behind the first and wedges it against the barrel: neither can then path anywhere,
+             * because our own pathfinder blocks on every collision box including a character's, and
+             * the one that is stuck is the one that was going to finish and leave. Which side each
+             * takes is settled before either sets off - it cannot be settled by watching, since two
+             * bots deciding are both idle and both far away. */
+            TakeWorkSlot spot = new TakeWorkSlot(live, reach);
+            try {
+                Outcome a = spot.run(ctx);
                 if (!a.isOk()) {
                     ctx.log("barrel #" + live.id + ": " + a.reason + " - trying the next one");
                     continue;
                 }
+                Gob me = ctx.player();
+                ctx.log("filling from barrel #" + live.id + " at "
+                    + (int) ((me == null) ? -1 : me.rc.dist(live.rc)) + "u (reach " + (int) reach
+                    + "u, box " + (int) Reach.radius(live) + "u)");
+                fill(ctx, null, live, spot);
+            } finally {
+                // Held for the whole fill, not just the walk - the point of the reservation is that
+                // nobody else stands here WHILE we work, and a fill is the long part.
+                spot.release();
             }
-            me = ctx.player();
-            ctx.log("filling from barrel #" + live.id + " at "
-                + (int) ((me == null) ? -1 : me.rc.dist(live.rc)) + "u (reach " + (int) reach
-                + "u, box " + (int) Reach.radius(live) + "u)");
-            fill(ctx, null, live);
         }
         if (!thirsty(ctx))
             return Outcome.ok();
@@ -171,7 +182,9 @@ public class FillWater implements Task {
             if (me == null || !onFreshWater(ctx, me.rc))
                 return Outcome.blocked("didn't end up standing in the water");
         }
-        fill(ctx, ctx.player().rc, null);
+        // Nothing to reserve at a lakeside: the shore is as long as the place is wide, so bots
+        // spread along it by arriving at different points rather than by agreeing on one.
+        fill(ctx, ctx.player().rc, null, null);
         return Outcome.ok();
     }
 
@@ -210,13 +223,18 @@ public class FillWater implements Task {
      * unattended. Three passes covers a full belt, and stopping early only means the bot fills up
      * again next time it runs dry.
      */
-    private void fill(BotCtx ctx, Coord2d tile, Gob barrel) throws InterruptedException {
+    private void fill(BotCtx ctx, Coord2d tile, Gob barrel, TakeWorkSlot spot)
+            throws InterruptedException {
         RefillWaterContainers scan = containers(ctx);
         Inventory belt = scan.returnBelt();
         Equipory equipory = ctx.gui.getequipory();
 
         for (int pass = 0; pass < 3; pass++) {
             boolean any = false;
+            // A full belt takes longer than a reservation stands, so say we still want it. Cheap
+            // enough to call every pass; it does nothing until the renewal interval is up.
+            if (spot != null)
+                spot.renew();
 
             for (java.util.Map.Entry<WItem, Coord> e : scan.getInventoryContainers().entrySet()) {
                 any |= fillOne(ctx, e.getKey(), tile, barrel,

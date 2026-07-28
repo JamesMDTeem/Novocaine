@@ -31,6 +31,10 @@ import java.util.List;
  */
 public class TakeWorkSlot implements Task {
     private final Gob target;
+    /** Close enough to count as having arrived. */
+    private final double near;
+    /** What to ask the nav layer for if the exact slot can't be walked into. */
+    private final double walk;
 
     private WorkSlots slots;
     private int slot = -1;
@@ -38,7 +42,21 @@ public class TakeWorkSlot implements Task {
     private long lastRenew;
 
     public TakeWorkSlot(Gob target) {
+        this(target, Approach.WORK_RANGE, BotNav.REACH);
+    }
+
+    /**
+     * For targets that have to be acted on from a distance the object itself decides - a barrel is
+     * wide enough that a flat range is inside it. See {@link haven.automated.nbots.world.Reach}.
+     */
+    public TakeWorkSlot(Gob target, double reach) {
+        this(target, reach, reach);
+    }
+
+    private TakeWorkSlot(Gob target, double near, double walk) {
         this.target = target;
+        this.near = near;
+        this.walk = walk;
     }
 
     @Override
@@ -91,11 +109,32 @@ public class TakeWorkSlot implements Task {
      * perfectly good target because one square was awkward.
      */
     private boolean walkInto(BotCtx ctx, WorkSlots ring, int i) throws InterruptedException {
-        if (ctx.nav.stepTo(ring.at(i), 11 * 1.5) && Approach.inRange(ctx, target))
+        /* Already somewhere that works, with room to stand: stay. A reservation is about where
+         * nobody ELSE ends up, so holding one is no reason to shuffle across to its exact centre -
+         * and the shuffle is not free, since a walk to where we are already standing is a search
+         * that returns no edges, which reads as a refusal and sends the step down the recovery
+         * path. The slot is still claimed, and run() will not hand anyone a slot we are visibly
+         * standing on, so the two cover each other. */
+        if (near(ctx) && !crowded(ctx))
             return true;
-        if (ctx.nav.approach(target, BotNav.REACH))
+        if (ctx.nav.stepTo(ring.at(i), 11 * 1.5) && near(ctx))
             return true;
-        return Approach.inRange(ctx, target);
+        if (ctx.nav.approach(target, walk))
+            return true;
+        return near(ctx);
+    }
+
+    /** Close enough to act on the target, re-read from the live gob in case it moved. */
+    private boolean near(BotCtx ctx) {
+        Gob me = ctx.player();
+        Gob now = (target == null) ? null : ctx.gob(target.id);
+        return (me != null) && (now != null) && (me.rc.dist(now.rc) <= near);
+    }
+
+    /** Somebody else is close enough that staying put would have us shoving each other. */
+    private static boolean crowded(BotCtx ctx) {
+        Gob me = ctx.player();
+        return (me != null) && Crowd.occupied(ctx.gui, me.rc, Crowd.PERSONAL_SPACE);
     }
 
     /** Keeps the reservation alive while a long job runs. Cheap enough to call every poll. */

@@ -77,12 +77,24 @@ public class Deposit implements Task {
                 throw new InterruptedException();
             if (matching(ctx).isEmpty())
                 return Outcome.ok();
-            if (!new Approach(c).run(ctx).isOk())
-                continue;
-            if (!open(ctx, c))
-                continue;
-            transferInto(ctx);
-            close(ctx);
+            /* A reserved side of the container rather than a walk at it, for the same reason as
+             * filling from a barrel: a crew all told to file the same kind of thing arrives at the
+             * same cupboard within a second of each other, and whoever gets there second parks
+             * against whoever got there first. Taking different sides is only possible if it is
+             * agreed BEFORE the walk. Held across the transfer, since that is when standing there
+             * matters. */
+            TakeWorkSlot spot = new TakeWorkSlot(c);
+            try {
+                if (!spot.run(ctx).isOk())
+                    continue;
+                if (!open(ctx, c))
+                    continue;
+                transferInto(ctx);
+                spot.renew();
+                close(ctx);
+            } finally {
+                spot.release();
+            }
         }
 
         List<WItem> left = matching(ctx);

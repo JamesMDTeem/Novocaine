@@ -57,10 +57,19 @@ public class Crowd {
     /**
      * Radius the pathfinder should treat another character as an obstacle within.
      *
-     * Characters are NOT solid in this game - you can walk through one - so nothing forces this;
-     * it exists so bots don't converge into the same pixel and end up shoving each other around a
-     * work site. Kept small (about one tile) so it produces a slight detour rather than a refusal
-     * on a crowded site.
+     * A character IS solid as far as this client is concerned, which is worth being exact about
+     * because it was written here as the opposite. {@link haven.automated.pathfinder.Pathfinder}
+     * blocks on every gob that has a collision box, skipping only our own and the one we are
+     * walking to, and {@code gfx/borka/body} has one - three units, the same figure
+     * {@code Map.plbbox} uses for us. So another character is a hole in the map to every search we
+     * run, whatever the server would allow if we simply walked at it.
+     *
+     * That is what makes crowding a trap rather than a nuisance: a bot parked between a barrel and
+     * a crewmate has a box on both sides, its search starts inside one, and the only recovery is
+     * {@link haven.automated.nbots.world.Walk#unstick}. Standing somewhere else in the first place
+     * is a great deal cheaper, which is what the ring in {@link WorkSlots} is for.
+     *
+     * Kept to about a tile so it produces a slight detour rather than a refusal on a crowded site.
      */
     public static final double PERSONAL_SPACE = 11 * 1.2;
 

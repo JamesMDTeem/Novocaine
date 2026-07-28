@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -112,8 +113,16 @@ public class Observed {
 
     /** segment -> segment grid coord -> one byte per tile, row-major. */
     private static Map<Long, Map<Coord, byte[]>> map;
+    /**
+     * The same shape, one bit per tile, set where THIS RUN has looked.
+     *
+     * The difference between what we know and what we have seen for ourselves, which is what makes
+     * a crew's shared file safe to write to. See {@link #sync}.
+     */
+    private static Map<Long, Map<Coord, BitSet>> looked = new HashMap<>();
     private static boolean dirty = false;
     private static long swept = 0;
+    private static long fileAt = -1;
     private static Thread saver = null;
 
     private Observed() {}
@@ -214,6 +223,9 @@ public class Observed {
         swept = now;
         try {
             observe(gui);
+            // Shares this cadence rather than keeping a timer of its own; it wants the same rate
+            // and the same "there is a world to look at" checks.
+            Sight.tick(gui);
         } catch (RuntimeException e) {
             // Never let one bad gob take the client's tick down with it.
         }
@@ -282,10 +294,8 @@ public class Observed {
         Coord2d off = here.sc.sub(me.rc);
         for (Gob g : gobs) {
             try {
-                if (g.isPlgob(gui))
-                    continue;      // characters move; they are not part of the map
                 Resource res = g.getres();
-                if (res == null)
+                if ((res == null) || mobile(res.name))
                     continue;
                 HitBoxes.CollisionBoxSecondary[] boxes = HitBoxes.collisionBoxMap.get(res.name);
                 if (boxes == null)
@@ -316,6 +326,36 @@ public class Observed {
             for (Coord t : gates)
                 set(here.seg, t, GATE);
         }
+    }
+
+    /**
+     * Things that walk about, and are therefore not the map.
+     *
+     * This is the one exception to "anything with a collision box is solid", and it has to be, in a
+     * way the old name test hid: the check it replaced skipped only OUR OWN character, because
+     * {@code isPlgob} means "is the gob the camera follows". Every other character, and every
+     * animal, has a collision box - one of the two hundred and thirty-one this install knows is
+     * {@code gfx/borka/body} and fourteen more are wildlife - so all of them were being written into
+     * a PERSISTENT, SHARED record of where the walls are.
+     *
+     * That is worse than it sounds, and specifically worse for a crew. Inside sight the next sweep
+     * wipes the mistake, so it looks harmless while you watch it; but the wipe only reaches
+     * {@link #SEES}, so whatever a bot happened to be beside as it walked out of range froze there
+     * for good, and got saved, and got shared. A crewmate standing at a barrel became a wall in
+     * everybody's map. Hours of walking would silt the file up with ghosts of each other.
+     *
+     * Losing them costs nothing, because nothing wanted them here: wildlife is routed around by
+     * {@link Hazards} at path time from live positions, and other characters by {@link Crowd},
+     * both of which read the world as it is now rather than as it was remembered.
+     *
+     * Two kritter resources are placed objects rather than creatures, and those stay.
+     */
+    private static boolean mobile(String res) {
+        if (res.startsWith("gfx/borka/"))
+            return true;
+        if (!res.startsWith("gfx/kritter/"))
+            return false;
+        return !(res.endsWith("/anthill") || res.endsWith("/wildbeehive"));
     }
 
     /**
@@ -368,10 +408,19 @@ public class Observed {
         byte[] g = grid(seg, gc, true);
         Coord in = segTile.sub(gc.mul(MCache.cmaps));
         int i = (in.y * MCache.cmaps.x) + in.x;
+        // Marked whether or not the value changed: having looked and found what we expected is
+        // still having looked, and it is the looking that entitles us to overrule the file.
+        mask(seg, gc).set(i);
         if (g[i] != v) {
             g[i] = v;
             dirty = true;
         }
+    }
+
+    /** Caller holds {@link #LOCK}. */
+    private static BitSet mask(long seg, Coord gc) {
+        return looked.computeIfAbsent(seg, k -> new HashMap<>())
+            .computeIfAbsent(gc, k -> new BitSet(GRID));
     }
 
     /** Caller holds {@link #LOCK}. */
@@ -444,38 +493,64 @@ public class Observed {
     }
 
     /**
-     * Writes the record, MERGED with whatever is on disk rather than over the top of it.
+     * Reconciles with the file: takes the crew's word for everything we have not looked at
+     * ourselves, then writes back if we have anything of our own to add.
      *
-     * A crew is several clients, each of which loads once at startup and then owns its own copy
-     * for the session, so a plain rewrite means the last to save wins and everything the others
-     * saw is lost. Merging per tile costs nothing and needs no coordination.
+     * A crew is several clients, and the naive shape - load once at startup, own a copy, write it
+     * out - is wrong in both directions at once. Outwards, a plain rewrite means the last to save
+     * wins and everything the others saw is lost. Inwards, nobody ever learns anything after
+     * startup, so two bots working the same base spend the session with two divergent maps of it.
      *
-     * The merge is "anything beats UNSEEN, and the newer observation wins otherwise" - which for
-     * two clients looking at the same ground means the one that looked at all is believed, and for
-     * ground only one has visited it is simply added.
+     * Merging on the value alone does not fix it, and the version that did ("anything beats
+     * UNSEEN") had a failure mode worth naming, because it is the one that bites a crew hardest. A
+     * client writes back every tile it holds, including the thousands it loaded at startup and has
+     * not been near since. So when one bot walks past a wall that has come down and records the
+     * ground as open, the next save by any OTHER client - which still holds the old wall, untouched,
+     * from its own startup read - puts it straight back. The correction and the stale copy trade
+     * places for as long as both clients run, and which one a route sees is down to who saved last.
+     *
+     * So the unit of authority is not the value, it is HAVING LOOKED. A client asserts only the
+     * tiles it has observed this run; everything else it holds is a cache of the file and is
+     * replaced by it. Two clients can only disagree about ground they have both looked at, and then
+     * they are both current and either answer is right.
+     *
+     * Sharing falls out of the same move: adopting the file on every pass means one bot's discovery
+     * is in every crewmate's router within a few seconds, without a protocol, a server, or anything
+     * to keep in sync.
      */
     private static void save() {
         synchronized (LOCK) {
-            if (!dirty || (map == null))
+            if (map == null)
                 return;
+            /* Re-reading a file nobody has touched, to merge in what it already told us, is the
+             * one thing here that could cost real time - it happens every few seconds for the
+             * length of a session. The modification time settles it for nothing. */
+            long stamp = stamp();
+            if (!dirty && (stamp != UNKNOWN) && (stamp == fileAt))
+                return;
+
             Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
             if (!read(disk))
                 return;    // cannot see what we would be overwriting, so do not. Still dirty.
+            fileAt = stamp;
             for (Map.Entry<Long, Map<Coord, byte[]>> se : disk.entrySet()) {
                 Map<Coord, byte[]> ours = map.computeIfAbsent(se.getKey(), k -> new HashMap<>());
                 for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
+                    byte[] theirs = ge.getValue();
                     byte[] mine = ours.get(ge.getKey());
                     if (mine == null) {
-                        ours.put(ge.getKey(), ge.getValue());
+                        ours.put(ge.getKey(), theirs);
                         continue;
                     }
-                    byte[] theirs = ge.getValue();
+                    BitSet seen = mask(se.getKey(), ge.getKey());
                     for (int i = 0; i < mine.length; i++) {
-                        if (mine[i] == UNSEEN)
+                        if (!seen.get(i))
                             mine[i] = theirs[i];
                     }
                 }
             }
+            if (!dirty)
+                return;    // we came to listen; there was nothing of ours to say
             try {
                 JSONArray segs = new JSONArray();
                 for (Map.Entry<Long, Map<Coord, byte[]>> se : map.entrySet()) {
@@ -504,9 +579,24 @@ public class Observed {
                     Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
                 }
                 dirty = false;
+                // Our own write moved it on; without this every pass would re-read what we wrote.
+                fileAt = stamp();
             } catch (IOException | RuntimeException e) {
                 NLog.crash("saving " + FILE, e);
             }
+        }
+    }
+
+    /** A modification time that can't be asked for. Never equal to the last one, so never skipped. */
+    private static final long UNKNOWN = Long.MIN_VALUE;
+
+    /** When the file last changed, -1 if there isn't one, {@link #UNKNOWN} if it can't be told. */
+    private static long stamp() {
+        try {
+            Path f = file();
+            return Files.exists(f) ? Files.getLastModifiedTime(f).toMillis() : -1;
+        } catch (IOException | RuntimeException e) {
+            return UNKNOWN;
         }
     }
 
@@ -542,10 +632,19 @@ public class Observed {
         return g;
     }
 
-    /** Forgets everything seen. For when a base has been torn down and rebuilt. */
+    /**
+     * Forgets everything seen. For when a base has been torn down and rebuilt.
+     *
+     * Clears what we have looked at as well, and it has to: keeping the mask would leave us
+     * asserting a blank map over ground we no longer hold any observation of, which would wipe the
+     * file for every other client too. Dropping both means the next pass adopts whatever the crew
+     * has and we start over from what we can actually see.
+     */
     public static void reset() {
         synchronized (LOCK) {
             map = new HashMap<>();
+            looked = new HashMap<>();
+            fileAt = UNKNOWN;
             dirty = true;
         }
         save();
