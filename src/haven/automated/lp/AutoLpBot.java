@@ -1206,10 +1206,16 @@ public class AutoLpBot extends Window implements Runnable {
 
     /**
      * How far outside the box holding us and the target the reachability search may wander, in
-     * routing nodes. Twelve is about fifty tiles: room for a proper way round a pond or a wall, and
-     * not room for a detour the chase could never hold on to anyway.
+     * TILES. Fifty: room for a proper way round a pond or a wall, and not room for a detour the
+     * chase could never hold on to anyway.
+     *
+     * In tiles because the router works in tiles. It used to be twelve, in four-tile routing
+     * nodes, which was the same fifty - so when the router moved to tile resolution this number
+     * silently became twelve TILES, a box so tight that anything needing more than a token detour
+     * would have come back unreachable. A unit changing under a constant is not a compile error
+     * and would not have shown up as one.
      */
-    private static final int REACH_MARGIN = 12;
+    private static final int REACH_MARGIN = 50;
 
     /**
      * Whether there is a way to this target on foot.
