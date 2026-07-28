@@ -512,23 +512,45 @@ public class Barriers {
             return;
         walls = new HashMap<>();
         gates = new HashMap<>();
+        readFile(walls, gates);
+    }
+
+    /**
+     * Reads the file into the two maps given.
+     *
+     * @return READABLE if the file was read or is simply absent, JUNK if it is there but cannot be
+     *         understood, UNAVAILABLE if reading it failed for a reason that may not last.
+     */
+    private static Read readFile(Map<Long, Set<Coord>> w, Map<Long, Set<Coord>> g) {
+        Path f = file();
+        String text;
         try {
-            Path f = file();
             if (!Files.exists(f))
-                return;
-            JSONObject root = new JSONObject(new String(Files.readAllBytes(f), StandardCharsets.UTF_8));
+                return Read.READABLE;
+            text = new String(Files.readAllBytes(f), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            // Locked by another client mid-write, or a disk hiccup. Not the file's fault, and not
+            // grounds for treating what is in it as gone.
+            NLog.crash("reading " + FILE, e);
+            return Read.UNAVAILABLE;
+        }
+        try {
+            JSONObject root = new JSONObject(text);
             if (root.optInt("v", 1) != VERSION) {
                 NLog.log("nbot.log", "barriers: dropping a v" + root.optInt("v", 1)
                     + " wall record - its footprints were worked out wrongly, re-learning");
-                dirty = true;
-                return;
+                return Read.JUNK;
             }
-            read(root.optJSONArray("walls"), walls);
-            read(root.optJSONArray("gates"), gates);
-        } catch (IOException | RuntimeException e) {
-            NLog.crash("loading " + FILE, e);
+            read(root.optJSONArray("walls"), w);
+            read(root.optJSONArray("gates"), g);
+            return Read.READABLE;
+        } catch (RuntimeException e) {
+            NLog.crash("parsing " + FILE, e);
+            return Read.JUNK;
         }
     }
+
+    private enum Read {READABLE, JUNK, UNAVAILABLE}
 
     private static void read(JSONArray arr, Map<Long, Set<Coord>> into) {
         if (arr == null)
@@ -547,10 +569,38 @@ public class Barriers {
         }
     }
 
+    /**
+     * Writes what we know, MERGED with whatever is on disk rather than over the top of it.
+     *
+     * The old version rewrote the whole file from memory, which is only safe if one client is ever
+     * running. Several are - that is what a crew is - and each loads once at startup and then owns
+     * its own copy for the rest of the session, so the last one to save wins and everything the
+     * others learned in the meantime is gone. This character's record went from four hundred and
+     * ninety-eight wall tiles to ninety-eight in a single evening, which is not a bot that stopped
+     * learning; it is a bot whose learning kept being overwritten by a client that knew less.
+     *
+     * A union is the right merge and needs no coordination: walls do not move, so two clients can
+     * only ever disagree by one of them not having seen something yet. Gates win over walls on the
+     * same tile, exactly as they do in {@link #learn} - a gateway recorded as solid seals a base.
+     */
     private static void save() {
         synchronized (LOCK) {
             if (!dirty)
                 return;
+            Map<Long, Set<Coord>> dw = new HashMap<>(), dg = new HashMap<>();
+            Read state = readFile(dw, dg);
+            if (state == Read.UNAVAILABLE)
+                // Cannot see what we would be overwriting, so do not. Still dirty; try next time.
+                return;
+            if (state == Read.READABLE) {
+                merge(walls, dw);
+                merge(gates, dg);
+                for (Map.Entry<Long, Set<Coord>> e : gates.entrySet()) {
+                    Set<Coord> w = walls.get(e.getKey());
+                    if (w != null)
+                        w.removeAll(e.getValue());
+                }
+            }
             try {
                 JSONObject root = new JSONObject();
                 root.put("v", VERSION);
@@ -570,6 +620,12 @@ public class Barriers {
                 NLog.crash("saving " + FILE, e);
             }
         }
+    }
+
+    /** Unions {@code from} into {@code into}, per segment. */
+    private static void merge(Map<Long, Set<Coord>> into, Map<Long, Set<Coord>> from) {
+        for (Map.Entry<Long, Set<Coord>> e : from.entrySet())
+            into.computeIfAbsent(e.getKey(), k -> new HashSet<>()).addAll(e.getValue());
     }
 
     private static JSONArray write(Map<Long, Set<Coord>> from) {

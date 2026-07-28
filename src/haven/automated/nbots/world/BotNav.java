@@ -174,6 +174,9 @@ public class BotNav {
      */
     private boolean stepRefused = false;
 
+    /** Which way the last {@link #stepTo} was refused, or null if it was not. */
+    private Pathfinder.Refusal stepRefusal = null;
+
     /**
      * Set when an approach was abandoned because of wildlife rather than because the target can't
      * be reached. Callers use the distinction to decide whether to give up on a target for good or
@@ -404,8 +407,9 @@ public class BotNav {
                  * the whole attempt budget re-issuing a click nothing will act on. A gate is the
                  * case that matters - a bot wedged against one cannot approach it to open it, and
                  * cannot walk away from it either. */
-                if ((walk != null) && (walk.refusal != null) && (++unsticks <= UNSTICK_LIMIT)) {
-                    NLog.log(log, "cannot path to #" + id + " (" + walk.refusal
+                if ((walk != null) && (walk.refusal == Pathfinder.Refusal.STUCK)
+                    && (++unsticks <= UNSTICK_LIMIT)) {
+                    NLog.log(log, "cannot path to #" + id + " (" + walk.why()
                         + ") - stepping clear and trying again");
                     Walk.unstick(this, gui, target.rc);
                     aimed = null;
@@ -515,6 +519,7 @@ public class BotNav {
      */
     public boolean stepTo(Coord2d dest, double tol) throws InterruptedException {
         stepRefused = false;
+        stepRefusal = null;
         if (dest == null)
             return false;
         Gob me = player();
@@ -544,8 +549,9 @@ public class BotNav {
                  * finished means the search produced no edges at all - the destination was
                  * unreachable from the start rather than merely far off. */
                 stepRefused = (walk.mc == null);
-                if (walk.refusal != null)
-                    why = walk.refusal;
+                stepRefusal = walk.refusal;
+                if (walk.why() != null)
+                    why = walk.why();
             }
         } finally {
             clearKeepouts();
@@ -910,7 +916,12 @@ public class BotNav {
         int detour = 0;
         int refused = 0;
         int unsticks = 0;
-        boolean wasRefused = false;
+        /* The two refusals that matter here, kept apart because they want opposite things done.
+         * Lumping them together as "refused" is what stopped gates being opened at all: the
+         * pathfinder saying "no way from here to there" is the strongest evidence available that
+         * something is in the way, and it was being read as a reason NOT to look for a gate. */
+        boolean wasStuck = false;
+        boolean wasBlocked = false;
 
         for (int hop = 0; hop < 120; hop++) {
             Gob me = player();
@@ -949,13 +960,18 @@ public class BotNav {
              *
              * One stalled hop is enough. The old budget of seven was spent wandering, and the
              * wandering carried the bot out of range of the very gate it needed. */
-            /* A refused click is not evidence of anything being in the way, so it must not reach
-             * the gate check. Standing still because the pathfinder would not take the click looks
-             * exactly like standing still because a gate is shut, and the two want opposite things
-             * done - which is how a bot inside its own base, twelve tiles from the water, came to
-             * open the air lock's inner gate and step out into the chamber, three runs in a row.
-             * The click had never become a walk; there was nothing in the way at all. */
-            if ((stalled > 0) && !wasRefused) {
+            /* Asked as soon as the search says there is no way, rather than only after a walk has
+             * stalled. "No way from here to there" is the pathfinder having looked at the
+             * eighty-eight tiles around us and found nothing - which, between a bot and somewhere
+             * it has routed to, is nearly always a shut gate. Waiting for a stall instead spent
+             * seven hops wandering first, and the wandering carried the bot out of range of the
+             * gateway it needed.
+             *
+             * Still never when we are WEDGED, which is the distinction that matters: being unable
+             * to move because of where we are standing says nothing whatever about what is between
+             * us and the destination, and acting on it sends a bot off to open a gate it was
+             * already on the right side of. */
+            if (((stalled > 0) || wasBlocked) && !wasStuck) {
                 Gob shut = Gates.blocking(gui, dest, refusedGates);
                 if (shut != null) {
                     NLog.log(log, "no headway towards " + Gates.fmt(dest) + " and shut gateway #"
@@ -1012,11 +1028,16 @@ public class BotNav {
                 span = Math.max(Math.min(span, DETOUR_MAX), DETOUR_MIN);
             Coord2d aim = me.rc.add(dir.mul(span));
             stepTo(aim, 11 * 2.0);
-            wasRefused = stepRefused;
+            wasBlocked = stepRefused && (stepRefusal == Pathfinder.Refusal.NO_ROUTE);
+            /* Anything that is not the search having looked and found nothing is treated as being
+             * wedged, including a click that never reached a search at all - because the recovery
+             * for all of those is the same, and because being wrong in this direction costs one
+             * sidestep while being wrong in the other costs an unwanted trip to a gate. */
+            wasStuck = stepRefused && !wasBlocked;
             /* Refused over and over means the aim really is somewhere we cannot be, and no amount
              * of swinging sideways from the same spot will change that. Say so rather than burning
              * the hop budget wandering, which is the shape this failure used to take. */
-            if (wasRefused && (++refused > REFUSE_LIMIT)) {
+            if (wasStuck && (++refused > REFUSE_LIMIT)) {
                 /* WEDGED, not blocked, and the difference decides what to do about it. Nothing
                  * will be walkable from here for as long as we are standing where we are - the
                  * commonest cause is our own position being inside a collision box, which refuses
@@ -1030,7 +1051,7 @@ public class BotNav {
                     best = Double.MAX_VALUE;
                     stalled = 0;
                     detour = 0;
-                    wasRefused = false;
+                    wasStuck = false;
                     continue;
                 }
                 NLog.log(log, "nothing walkable at " + Gates.fmt(aim) + " on the way to "

@@ -31,16 +31,53 @@ public class Pathfinder implements Runnable {
     public List<Coord2d> pathWaypoints = new ArrayList<>();
 
     /**
-     * Why this search issued no movement, or null if it issued some.
+     * Why a search issued no movement.
      *
-     * There are four quite different ways to end up having moved nothing, and from outside they
-     * were indistinguishable: the character never moved and nothing was written down. Callers were
-     * left inferring the cause from distances in later failure messages, which cost several rounds
-     * of chasing the wrong layer - a bot that had not moved because it was standing inside a
-     * collision box looks exactly like a bot that walked into a shut gate, and the two want
-     * opposite things done about them.
+     * The four are genuinely different and want opposite things done about them, which is the
+     * whole reason this is an enum and not a flag. Reading them as one thing has cost real rounds:
+     * treating NO_ROUTE as "something odd happened" means never opening the gate that is causing
+     * it, and treating STUCK as "there is a wall here" means walking off to open a gate when the
+     * only thing wrong is where we are standing.
      */
-    public volatile String refusal = null;
+    public enum Refusal {
+        /**
+         * We are inside a collision box and {@code Map.getFreeLocation} found nowhere to step.
+         * Says nothing whatever about the route - the search never got as far as looking. The
+         * caller has to move, by some means other than this, before anything else can work.
+         */
+        STUCK("we are standing inside something and it cannot find a way out"),
+        /**
+         * The search ran and found nothing. This IS evidence about the world: within the
+         * eighty-eight tile window there is no way from here to there, and by far the commonest
+         * reason is a shut gate or a wall between the two. A caller with gate handling should use
+         * it - it is a better trigger than waiting for a walk to stall, because it is available
+         * before the wasted hops rather than after them.
+         */
+        NO_ROUTE("no way from here to there"),
+        /** A grid in the window had not arrived. Nothing is wrong; ask again in a moment. */
+        LOADING("part of the map is still loading"),
+        /** Something threw. Recorded rather than swallowed so it cannot masquerade as the others. */
+        FAILED("the search failed");
+
+        public final String why;
+
+        Refusal(String why) {
+            this.why = why;
+        }
+    }
+
+    /** Why this search issued no movement, or null if it issued some. */
+    public volatile Refusal refusal = null;
+    /** The detail behind {@link #refusal} when there is any, for the log. */
+    public volatile String refusalDetail = null;
+
+    /** What went wrong, phrased for a log line, or null if nothing did. */
+    public String why() {
+        Refusal r = refusal;
+        if (r == null)
+            return null;
+        return (refusalDetail == null) ? r.why : (r.why + ": " + refusalDetail);
+    }
 
     public Pathfinder(MapView mv, Coord dest, String action) {
         this.dest = dest;
@@ -90,9 +127,10 @@ public class Pathfinder implements Runnable {
                 pathfind(mv.player().rc.floor());
             } while (moveinterupted && !terminate);
         } catch (Loading l) {
-            refusal = "part of the map is still loading";
+            refusal = Refusal.LOADING;
         } catch (RuntimeException e) {
-            refusal = "the search failed: " + e;
+            refusal = Refusal.FAILED;
+            refusalDetail = String.valueOf(e);
         }
         notifyListeners();
     }
@@ -142,7 +180,7 @@ public class Pathfinder implements Runnable {
                  * a slab thirty-two units long. This is the deadlock: every path from here is
                  * refused, including the one that would take us back out. Callers have to step
                  * clear by some other means; see haven.automated.nbots.world.Walk. */
-                refusal = "we are standing inside something and it cannot find a way out";
+                refusal = Refusal.STUCK;
                 terminate = true;
                 m.dbgdump();
                 return;
@@ -201,7 +239,7 @@ public class Pathfinder implements Runnable {
          * nothing - which is why "the destination is inside a barrel" and "there is a river in
          * the way" both used to surface as an unexplained failure to set off. */
         if (!it.hasNext())
-            refusal = "no way from here to there";
+            refusal = Refusal.NO_ROUTE;
         while (it.hasNext() && !moveinterupted && !terminate) {
             Edge e = it.next();
             mc = new Coord2d(src.x + e.dest.x - Map.origin, src.y + e.dest.y - Map.origin).floor(posres);
