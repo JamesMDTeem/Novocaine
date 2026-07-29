@@ -310,8 +310,14 @@ public class Gates {
              * ending at row 1152 or 1153, the inner gate wins on 11 units against the outer gate's
              * 44 - so the bot turns round, opens the gate back into the base, and never reaches the
              * outer one. A leg ending on the outer gate tile, on the last chamber row, or anywhere
-             * outside is judged correctly; it is only the mid-chamber ones that invert. */
-            if (itIsTheGate && behind(me.rc, dest, g.rc))
+             * outside is judged correctly; it is only the mid-chamber ones that invert.
+             *
+             * Confirmed in the log at 13:58:06, on a leg that was nowhere near an air lock: the bot
+             * at tile (1045,1149) stalled two tiles short of (1043,1149) - both INSIDE the base -
+             * and the inner gate at (1042,1150) scored `onwards` 15.6u, took this branch, and was
+             * opened. `between` would have thrown it out on its own (it projects to 1.57 along the
+             * leg, past the end), which is why the exemption and not the tests is the fault. */
+            if (itIsTheGate && ourSide(g, me.rc, dest))
                 continue;
             if (!itIsTheGate) {
                 /* Going through it has to actually get us closer, or it is a gate in the wrong
@@ -467,12 +473,27 @@ public class Gates {
         boolean crossed = nav.stepTo(through, 11 * 2.5);
         Gob now = nav.player();
         boolean past = (now != null) && passed(use, from, now.rc);
-        /* Both facts, because "ok" for a step that arrived on our OWN side is what hid the
-         * wrong-side bug for three rounds: the line read ok, the coordinate printed beside it was
-         * behind the wall, and nothing said the two disagreed. */
-        NLog.log(log, "gate: step through to " + fmt(through)
-            + (past ? (crossed ? " ok" : " short, but we are through")
-                    : (crossed ? " reached the aim BUT WE ARE STILL ON THIS SIDE" : " FAILED")));
+        /* The numbers, not just a verdict, because "ok" for a step that arrived on our OWN side is
+         * what hid the wrong-side bug for three rounds: the line read ok, the coordinate printed
+         * beside it was behind the wall, and nothing said the two disagreed.
+         *
+         * A verdict alone cannot be trusted here either way round. `crossed` only means the aim was
+         * reached within two and a half tiles of a point three tiles out, so it is satisfied from
+         * half a tile past the opening, while `passed` wants a full tile clear - so `crossed`
+         * without `past` covers both "never left our own side" and "through, but only just". Those
+         * want opposite things done and printing one message for both would send the next round of
+         * work back at `beyond` for no reason. */
+        double wasAcross = sideOf(use, from);
+        double nowAcross = (now == null) ? Double.NaN : sideOf(use, now.rc);
+        String verdict;
+        if (past)
+            verdict = crossed ? " ok" : " short, but we are through";
+        else if ((wasAcross * nowAcross) < 0)
+            verdict = " through, but not yet a tile clear - leaving it open";
+        else
+            verdict = crossed ? " reached the aim BUT WE ARE STILL ON THIS SIDE" : " FAILED";
+        NLog.log(log, "gate: step through to " + fmt(through) + verdict
+            + String.format(" (across the wall: was %+.0fu, now %+.0fu)", wasAcross, nowAcross));
 
         /* Only shut what we opened. A gate the player left standing open is theirs, and a bot that
          * tidies it away has changed the base rather than passed through it.
@@ -552,20 +573,29 @@ public class Gates {
     }
 
     /**
-     * True if the gateway lies back the way we came rather than anywhere along the leg.
+     * True if the leg's destination is on the SAME side of this gateway as we are.
      *
-     * The first half of {@link #between}, without the corridor: how far along the leg the gateway
-     * projects, and nothing about how far to the side. Split out because the AT_DEST branch in
-     * {@link #pick} needs the direction test on its own - it has a good reason to skip the corridor
-     * and the closer test, and no reason at all to skip this.
+     * The question the AT_DEST branch in {@link #pick} has to ask, and asked with the same
+     * predicate {@link #beyond} steps by, so the two cannot drift apart: project both ends onto the
+     * wall's normal and compare signs. Same sign means the gateway is not on the way to anywhere -
+     * we and the place we are going are already on one side of it.
+     *
+     * Distance cannot answer this. AT_DEST measures how NEAR the gateway is to the leg's end, so it
+     * accepts a gateway three tiles beyond that end and a gateway three tiles behind it equally,
+     * and one of those is a wall to walk through while the other is a wall to ignore.
+     *
+     * A destination IN the opening has no side, and that is exactly the case AT_DEST exists to
+     * rescue - the router aims at gate tiles - so it must not be rejected here.
      */
-    private static boolean behind(Coord2d me, Coord2d dest, Coord2d gate) {
-        Coord2d v = dest.sub(me);
-        double len = v.abs();
-        if (len < 1.0)
-            return false;   // nowhere to be behind; the leg has no direction
-        Coord2d w = gate.sub(me);
-        return (((w.x * v.x) + (w.y * v.y)) / (len * len)) <= 0.0;
+    private static boolean ourSide(Gob gate, Coord2d me, Coord2d dest) {
+        Coord2d n = across(gate);
+        if ((n == null) || (me == null) || (dest == null))
+            return false;   // no axis to judge by; leave the old behaviour alone
+        double sMe = (n.x * (me.x - gate.rc.x)) + (n.y * (me.y - gate.rc.y));
+        double sDest = (n.x * (dest.x - gate.rc.x)) + (n.y * (dest.y - gate.rc.y));
+        if (Math.abs(sDest) < (MCache.tilesz.x / 2))
+            return false;   // the destination IS the gateway
+        return (sMe * sDest) > 0;
     }
 
     private static boolean between(Coord2d me, Coord2d dest, Coord2d gate, double corridor) {
@@ -610,9 +640,12 @@ public class Gates {
      * box, rotated by the gob's own facing, is the way through, and the long axis is the direction
      * that would hit a post.
      *
-     * Signed towards the destination rather than away from where we came from. Coming in along the
-     * wall makes "away from where we came from" almost perpendicular to the answer, so it decides
-     * the side on rounding error; where we are trying to get to does not have that problem.
+     * Signed AWAY FROM THE SIDE WE ARE ON, because that is what "through" means. The earlier form
+     * signed by the destination on the reasoning that arriving along a wall makes our own side
+     * nearly perpendicular to the answer and so decides it on rounding error. That reasoning is
+     * answered by refusing to guess inside half a tile of the opening rather than by asking a
+     * different question: the destination's side is only the far side when the gateway lies between
+     * the two, and two of the three pickers do not guarantee that.
      */
     /**
      * True if {@code now} is on the opposite side of the gateway from {@code from}.
@@ -643,6 +676,10 @@ public class Gates {
             else if (toGate > SEARCH)
                 why = String.format("%.0ft away, past the %.0ft search radius",
                     toGate / MCache.tilesz.x, SEARCH / MCache.tilesz.x);
+            else if ((onwards <= AT_DEST) && ourSide(g, me.rc, dest))
+                why = String.format("near the destination but on OUR side of it"
+                    + " (we are %+.0fu across the wall, the target %+.0fu) - not on the way",
+                    sideOf(g, me.rc), sideOf(g, dest));
             else if (onwards <= AT_DEST)
                 why = "AT the destination - should have been taken";
             else if ((onwards >= direct) && !blocked(gui, me.rc, dest))
@@ -670,9 +707,26 @@ public class Gates {
         if ((n == null) || (from == null))
             return null;
         double side = (n.x * (from.x - gate.rc.x)) + (n.y * (from.y - gate.rc.y));
-        if (Math.abs(side) < 1.0)
+        // Half a tile, the same width `beyond` uses for the same judgement. It was 1.0 WORLD UNIT,
+        // a twelfth of a tile, which never fired - so this never once declined to guess.
+        if (Math.abs(side) < (MCache.tilesz.x / 2))
             return null;   // already in the opening; lining up would mean backing out of it
         return gate.rc.add(n.mul((side > 0) ? THROUGH : -THROUGH));
+    }
+
+    /**
+     * Signed distance from the gateway's own centre line, measured ACROSS the wall.
+     *
+     * Which sign means which side is arbitrary - it follows the gob's facing - but it is consistent
+     * for one gate, and that is all any caller here needs: same sign is the same side. NaN when the
+     * gate has no readable axis. Every side judgement in this class goes through this, so none of
+     * them can disagree about where the wall is.
+     */
+    private static double sideOf(Gob gate, Coord2d p) {
+        Coord2d n = across(gate);
+        if ((n == null) || (p == null))
+            return Double.NaN;
+        return (n.x * (p.x - gate.rc.x)) + (n.y * (p.y - gate.rc.y));
     }
 
     private static boolean passed(Gob gate, Coord2d from, Coord2d now) {
