@@ -303,7 +303,20 @@ public class Router {
 
         boolean passable(Coord t) {
             byte s = state(t);
-            if (s == Observed.SOLID)
+            /* BOTH of them. Observed keeps walls apart from other solids so that the enclosure
+             * inference can reason about walls alone - see Observed.WALL - and routing must not
+             * inherit that distinction, because to a character they stop it identically.
+             *
+             * Testing only SOLID here made every palisade in the world invisible to the router
+             * while looking entirely correct: walls were being recorded, the file had them, every
+             * other consumer read them through Observed.solid which covers both. Only this one
+             * inlined the test and dropped a case. What it produced was a route straight through
+             * the south wall with its first waypoint ON a wall tile, which the local pathfinder
+             * then refused - correctly - on every hop, which travel read as "a wall is in the way",
+             * which sent the gate check off to open an air lock the route never needed. Opening
+             * gates, walking into the chamber, shutting itself in, failing to reach water twelve
+             * tiles away: all of it downstream of this line. */
+            if ((s == Observed.SOLID) || (s == Observed.WALL))
                 return false;
             /* A gateway settles it before the ground is looked at, since a gate is the one place a
              * wall is meant to be walked through. Whether it is open right now is the task layer's
@@ -317,12 +330,20 @@ public class Router {
                 return false;
             if ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER)
                 return false;
-            /* Unseen ground touching water we HAVE seen is taken to be more of the same. Water is
-             * contiguous and a river does not end where a character stopped looking, so a bot that
-             * walks down one bank until the record runs out and then turns across it is not
-             * finding a crossing - it is finding the edge of its own knowledge. One tile of
-             * dilation, no more: enough to close that edge, not enough to invent a lake. */
-            if ((w < 0) && (s == Observed.UNSEEN)) {
+            /* Ground the map file cannot answer for, touching water it can, is taken to be more of
+             * the same. Water is contiguous and a river does not end where a character stopped
+             * looking, so a bot that walks down one bank until the record runs out and then turns
+             * across it is not finding a crossing - it is finding the edge of its own knowledge.
+             * One tile of dilation, no more: enough to close that edge, not enough to invent a lake.
+             *
+             * Keyed on the WATER record being missing, not on the tile being unseen. Those came
+             * apart the moment observation became dense: Observed marks everything within sight as
+             * open, water included, since it records what stands on the ground rather than what the
+             * ground is. So a river in plain view is "seen", and if the map file has not been
+             * written for that grid yet - it is written behind the client, so the newest ground is
+             * exactly the ground it lacks - the dilation was skipped on the very tiles it existed
+             * for, and the crossing came back passable. */
+            if (w < 0) {
                 for (int i = 0; i < 8; i++) {
                     if (wet(t.add(DX[i], DY[i])) == Terrain.DEEP)
                         return false;

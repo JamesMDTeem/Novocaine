@@ -141,24 +141,24 @@ public abstract class NBot extends Window implements Runnable {
     /** The window's own name, for chat messages. */
     protected abstract String title();
 
-    private boolean prevBlockWater;
-
     private void beginShift() {
         UiWatchdog.ensureStarted();
         WorkClaims.identify(gui);
         fatalStop = null;
-        // Route around water for the length of the shift. The client can swim, so this is opt-in
-        // rather than the pathfinder's default; a bot that swims off after a shoreline stump
-        // arrives soaked, slowed, and out of reach of everything it meant to do next. Saved and
-        // restored rather than simply cleared, so whatever the player had it at survives.
-        prevBlockWater = Map.BLOCK_WATER;
-        if (NBotConfig.on(NBotConfig.Key.avoidWater))
-            Map.BLOCK_WATER = true;
+        /* Route around water for the length of the shift. The client can swim, so this is opt-in
+         * rather than the pathfinder's default; a bot that swims off after a shoreline stump
+         * arrives soaked, slowed, and out of reach of everything it meant to do next.
+         *
+         * Registered as an interest rather than saved and restored. A shift is seconds long and
+         * there may be an LP run going on around it, so writing back the value from before the
+         * shift began means writing back a value from before the LP bot existed - which switched
+         * its water avoidance off under it, and is why it went swimming after an apple. */
+        Map.avoidWater(this, NBotConfig.on(NBotConfig.Key.avoidWater));
         NLog.log(log, "=== " + title() + " shift start ===");
     }
 
     private void endShift() {
-        Map.BLOCK_WATER = prevBlockWater;
+        Map.avoidWater(this, false);
         Map.keepout(null);
         WorkClaims.releaseAll();
         NLog.log(log, "=== " + title() + " shift end ===");

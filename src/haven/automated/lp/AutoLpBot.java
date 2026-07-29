@@ -205,12 +205,11 @@ public class AutoLpBot extends Window implements Runnable {
         // rather than the pathfinder's default; a bot that swims off after a shoreline mushroom
         // arrives soaked, slowed and out of reach of everything it was going to do next. Restored
         // rather than simply cleared, so the setting survives whatever the player had it at.
-        boolean prevBlockWater = haven.automated.pathfinder.Map.BLOCK_WATER;
-        haven.automated.pathfinder.Map.BLOCK_WATER = true;
+        haven.automated.pathfinder.Map.avoidWater(this, true);
         try {
             runLoop();
         } finally {
-            haven.automated.pathfinder.Map.BLOCK_WATER = prevBlockWater;
+            haven.automated.pathfinder.Map.avoidWater(this, false);
             haven.automated.pathfinder.Map.keepout(null);
         }
     }

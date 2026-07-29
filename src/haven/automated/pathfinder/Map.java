@@ -89,11 +89,57 @@ public class Map {
      * Route around water instead of swimming through it. Off by default - see WATER.
      *
      * Global rather than per-search because a Pathfinder is constructed inside MapView, which this
-     * fork deliberately doesn't touch; the LP bot sets it for the length of its run and restores it
-     * afterwards. The cost of that shortcut is that a manual click issued while the bot is running
-     * also avoids water, which is harmless.
+     * fork deliberately doesn't touch. The cost of that shortcut is that a manual click issued while
+     * a bot is running also avoids water, which is harmless.
+     *
+     * Read this; do not assign to it. Set it through {@link #avoidWater} and {@link #wade}.
      */
     public static volatile boolean BLOCK_WATER = false;
+
+    /** Everything that currently wants water routed around, and everything that wants to wade. */
+    private static final Set<Object> avoiders = new HashSet<>(), waders = new HashSet<>();
+
+    /**
+     * Registers or withdraws an interest in avoiding water.
+     *
+     * OWNERSHIP, not save-and-restore, and the difference is a bug this actually had. Each bot used
+     * to record the flag's previous value on starting and write it back on stopping, which is
+     * correct for one bot and wrong the moment two overlap: a crew bot begins a shift while the
+     * value is false, the LP assistant then starts its run and sets it true, and the crew bot's next
+     * shift end - a few seconds later, since shifts are short - restores the false it captured
+     * before the LP bot existed. The LP bot goes on running with water avoidance silently off and
+     * swims across the river after a shoreline apple. Nothing in its own log says anything changed,
+     * because from its point of view nothing did.
+     *
+     * With a set of owners there is no previous value to restore and no ordering to get wrong: water
+     * is avoided while anybody wants it avoided, and each owner speaks only for itself.
+     *
+     * @param owner any object that identifies the caller for as long as it cares - a bot instance.
+     */
+    public static void avoidWater(Object owner, boolean want) {
+        set(avoiders, owner, want);
+    }
+
+    /**
+     * Suspends water avoidance while somebody has to stand IN water - filling from a lake.
+     *
+     * Separate from clearing the flag so it composes: whoever is wading says so and says when they
+     * have finished, and the avoiders they interrupted are still on record and get their answer back
+     * without having to have kept a copy of it.
+     */
+    public static void wade(Object owner, boolean want) {
+        set(waders, owner, want);
+    }
+
+    private static void set(Set<Object> which, Object owner, boolean want) {
+        synchronized (avoiders) {
+            if (want)
+                which.add(owner);
+            else
+                which.remove(owner);
+            BLOCK_WATER = !avoiders.isEmpty() && waders.isEmpty();
+        }
+    }
 
     /** A circle in world coordinates that a path must stay out of. */
     public static final class Keepout {

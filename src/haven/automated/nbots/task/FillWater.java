@@ -170,13 +170,12 @@ public class FillWater implements Task {
             // The run-wide water avoidance is exactly wrong for the last few steps: filling from a
             // lake means standing IN it. Lifted just for the approach and put straight back, so the
             // journey home still routes around water like the rest of the run.
-            boolean prev = haven.automated.pathfinder.Map.BLOCK_WATER;
-            haven.automated.pathfinder.Map.BLOCK_WATER = false;
+            haven.automated.pathfinder.Map.wade(this, true);
             try {
                 if (!ctx.nav.stepTo(wet, 11 * 1.5))
                     return Outcome.blocked("couldn't wade in to the water");
             } finally {
-                haven.automated.pathfinder.Map.BLOCK_WATER = prev;
+                haven.automated.pathfinder.Map.wade(this, false);
             }
             me = ctx.player();
             if (me == null || !onFreshWater(ctx, me.rc))
