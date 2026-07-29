@@ -17,6 +17,9 @@ import haven.automated.nbots.core.Task;
  * observing that the stamina bar didn't move.
  */
 public class Drink implements Task {
+    /** A bound on repeated sips, so a vessel that never registers as drunk cannot spin here. */
+    private static final int MAX_SIPS = 30;
+
     private final double target;
 
     public Drink() {
@@ -32,20 +35,9 @@ public class Drink implements Task {
         if (ctx.stamina() >= target)
             return Outcome.ok();
 
-        AUtils.drinkTillFull(ctx.gui, target, target);
-        ctx.nav.waitUntil(() -> ctx.stamina() >= target, 60);
+        sip(ctx);
         if (ctx.stamina() >= target)
             return Outcome.ok();
-
-        /* Second go, over everything the character is carrying rather than only where the client's
-         * own drink looks - open inventory windows, and two equipment slots checked for a bucket.
-         * A waterskin worn anywhere else is invisible to that, and invisible reads exactly like
-         * absent. See Carried. */
-        if (Carried.drink(ctx)) {
-            ctx.nav.waitUntil(() -> ctx.stamina() >= target, 120);
-            if (ctx.stamina() >= target)
-                return Outcome.ok();
-        }
 
         /* Carrying water and still not drinking is not thirst, and a barrel cannot cure it: the
          * trip ends by filling a vessel that was already full and coming back no better off, which
@@ -64,9 +56,19 @@ public class Drink implements Task {
         if (!fill.isOk())
             return fill;
 
+        /* The SAME drinking as before the trip, and that is the whole of this fix.
+         *
+         * This used to call the client's own drink and nothing else - the one that searches open
+         * inventory windows and two equipment slots. But the character is standing here precisely
+         * BECAUSE that call did nothing a minute ago: a waterskin worn anywhere else is invisible
+         * to it, and invisible reads exactly like empty, which is what sent us to the barrel. So
+         * the vessel was filled, the same blind call was made again, it found nothing again, and
+         * the trip ended with "drinking moved nothing" over a full waterskin.
+         *
+         * Reaching for a weaker tool after the errand than before it is the kind of asymmetry that
+         * only shows up on the path where the strong one was needed. Both go through sip(). */
         double before = ctx.stamina();
-        AUtils.drinkTillFull(ctx.gui, target, target);
-        ctx.nav.waitUntil(() -> ctx.stamina() >= target, 60);
+        sip(ctx);
         /* Judged on whether drinking WORKED, not on reaching the target inside the wait.
          *
          * The target is nine tenths, and a trip for water starts at whatever is left - a third, on
@@ -82,6 +84,38 @@ public class Drink implements Task {
             return Outcome.ok();
         return Outcome.failed("refilled but drinking moved nothing"
             + " - is that source actually water?");
+    }
+
+    /**
+     * Drinks by every means available until stamina stops improving or the target is reached.
+     *
+     * Two means, in order of cheapness. The client's own drink goes first because it loops
+     * internally and handles the ordinary case in one call; {@link Carried#drink} follows because
+     * it searches the whole equipory rather than two slots, and is therefore the only one that
+     * works for a waterskin worn somewhere unusual.
+     *
+     * The second is ONE SIP per call, so it has to be repeated - a mouthful does not take a
+     * character from a sixth of stamina to nine tenths. Bounded, and stopped the moment a sip
+     * moves nothing, which is what an empty vessel or a skin full of tea looks like from here.
+     *
+     * @return true if stamina rose at all.
+     */
+    private boolean sip(BotCtx ctx) throws InterruptedException {
+        double start = ctx.stamina();
+        AUtils.drinkTillFull(ctx.gui, target, target);
+        ctx.nav.waitUntil(() -> ctx.stamina() >= target, 40);
+        for (int i = 0; (i < MAX_SIPS) && (ctx.stamina() < target); i++) {
+            double was = ctx.stamina();
+            if (!Carried.drink(ctx))
+                break;
+            // Waits for the METER to move, not for the target, which is several sips away - the
+            // difference between a wait that ends when something happened and one that always
+            // costs its whole ceiling.
+            ctx.nav.waitUntil(() -> ctx.stamina() > was, 40);
+            if (ctx.stamina() <= was)
+                break;
+        }
+        return ctx.stamina() > start;
     }
 
     @Override

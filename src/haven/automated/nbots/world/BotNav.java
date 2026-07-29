@@ -707,7 +707,26 @@ public class BotNav {
              * properly; the rest are waypoints to pass near. */
             boolean last = (i == (legs.size() - 1));
             blockingGate = 0;
-            if (walkStraight(legs.get(i), last ? tol : LEG_TOL))
+            /* Every leg, whether it works or not.
+             *
+             * The failure paths have all been well logged for some time and the SUCCESS path has
+             * not, which turns out to be the wrong way round for the one symptom left: a bot that
+             * paces about near a wall is not failing legs, it is walking them. The local pathfinder
+             * goes round whatever is in front of it and reports honest progress, so a route being
+             * walked badly - a leg that ends four tiles from where it aimed, then another, then a
+             * re-plan back to the first - produced no line at all. Where a leg started, where it
+             * aimed, and where it actually stopped is the whole of that picture, and it is one line
+             * per waypoint rather than one per hop. */
+            Coord2d began = me();
+            boolean got = walkStraight(legs.get(i), last ? tol : LEG_TOL);
+            Coord2d ended = me();
+            NLog.log(log, String.format("  leg %d/%d %s -> %s: %s at %s (%dt of %dt)",
+                i + 1, legs.size(), Gates.fmt(began), Gates.fmt(legs.get(i)),
+                got ? "arrived" : "stopped", Gates.fmt(ended),
+                (int) ((began == null || ended == null) ? -1
+                    : began.dist(ended) / MCache.tilesz.x),
+                (int) ((began == null) ? -1 : began.dist(legs.get(i)) / MCache.tilesz.x)));
+            if (got)
                 continue;
 
             /* A leg that stops short in front of a wall is nearly always a shut gateway: the
