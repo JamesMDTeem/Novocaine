@@ -449,8 +449,12 @@ public class Gates {
         boolean crossed = nav.stepTo(through, 11 * 2.5);
         Gob now = nav.player();
         boolean past = (now != null) && passed(use, from, now.rc);
+        /* Both facts, because "ok" for a step that arrived on our OWN side is what hid the
+         * wrong-side bug for three rounds: the line read ok, the coordinate printed beside it was
+         * behind the wall, and nothing said the two disagreed. */
         NLog.log(log, "gate: step through to " + fmt(through)
-            + (crossed ? " ok" : (past ? " short, but we are through" : " FAILED")));
+            + (past ? (crossed ? " ok" : " short, but we are through")
+                    : (crossed ? " reached the aim BUT WE ARE STILL ON THIS SIDE" : " FAILED")));
 
         /* Only shut what we opened. A gate the player left standing open is theirs, and a bot that
          * tidies it away has changed the base rather than passed through it.
@@ -459,8 +463,22 @@ public class Gates {
          * where it aimed. The step is a guess at where the far side is and misses often - the gate
          * is still swinging when it is issued - and gating the close on it meant a bot that walked
          * out of its own gate perfectly well left it standing open behind it, because the aim was
-         * three tiles further on than it got. Which side of a line we are on is not a guess. */
-        if ((crossed || past) && NBotConfig.on(NBotConfig.Key.closeGates)) {
+         * three tiles further on than it got. Which side of a line we are on is not a guess.
+         *
+         * That is what this says and it was not what it did: the condition was widened to
+         * `crossed || past` rather than replaced, so arriving where we aimed still shut the gate on
+         * its own. With a step-through aimed at our own side that is a gate shut by a bot that
+         * never went through it, restoring the exact state it started from - which is why the
+         * report was open, turn back, close, reopen, four times over. Leaving it OPEN instead is
+         * self-healing: `onRoute` only ever returns gates that are shut, so the re-plan below walks
+         * straight through the standing-open gateway.
+         *
+         * `crossed` survives for one case only, where it is the sole evidence available: a gate
+         * whose collision box we cannot read has no axis, so `passed` is false forever and such a
+         * gate would otherwise never be closed again. Neither gate resource in this install is in
+         * that state - this is for an unknown future one. */
+        if ((past || ((across(use) == null) && crossed))
+                && NBotConfig.on(NBotConfig.Key.closeGates)) {
             if (!toggle(nav, gui, id, false, log))
                 NLog.log(log, "gate: couldn't close #" + id + " behind us");
         }
@@ -640,11 +658,27 @@ public class Gates {
             double len = dir.abs();
             return (len < 1.0) ? gate.rc : gate.rc.add(dir.div(len).mul(THROUGH));
         }
-        double side = (n.x * (dest.x - gate.rc.x)) + (n.y * (dest.y - gate.rc.y));
-        // Square-on to the destination too (a gateway in a wall we are running along): fall back to
-        // the side we are NOT on, which is the one thing we always know.
-        if (Math.abs(side) < 1.0)
-            side = (n.x * (gate.rc.x - from.x)) + (n.y * (gate.rc.y - from.y));
+        /* Signed AWAY from the side we are standing on, because that is what "through" means.
+         *
+         * This was signed by the DESTINATION, which is a different question with a different
+         * answer: it asks which side the place we are going is on, and that is only the far side
+         * when the gateway actually lies between the two. Two pickers routinely hand over a leg
+         * whose end is on OUR side - `pick`'s AT_DEST branch takes any gate within three tiles of
+         * the leg's end with no betweenness test at all, and `blocking` takes one that merely
+         * projects onto a leg run along the inside of its own wall. In both cases the
+         * destination's answer is our own side, so the step-through resolved to the very point
+         * `square` had just squared up on, three tiles back the way we came. The gate was opened,
+         * the bot turned round, and the close below shut it again behind nobody.
+         *
+         * Which side we are on cannot be the wrong side by construction, and it is not a guess.
+         * The destination is consulted only when we are stood in the opening and so have no side
+         * of our own to be opposite to - the case `square` declines to guess at. The old guard for
+         * that was 1.0 world unit against an eleven-unit tile, which is a twelfth of a tile and
+         * never fired; half a tile is the honest width of "in the gateway". */
+        double s = (n.x * (from.x - gate.rc.x)) + (n.y * (from.y - gate.rc.y));
+        double side = -s;
+        if (Math.abs(s) < (MCache.tilesz.x / 2))
+            side = (n.x * (dest.x - gate.rc.x)) + (n.y * (dest.y - gate.rc.y));
         if (side < 0)
             n = new Coord2d(-n.x, -n.y);
         return gate.rc.add(n.mul(THROUGH));
