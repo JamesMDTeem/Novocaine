@@ -153,6 +153,9 @@ public class BotNav {
      * is evidence about the click. Reading the second as the first is what sent a bot standing
      * inside its own base out through a gateway to reach a barrel twelve tiles away.
      */
+    /** The last point we printed the full evidence for, so a re-plan doesn't print it again. */
+    private Coord2d whined = null;
+
     private boolean stepRefused = false;
 
     /** Which way the last {@link #stepTo} was refused, or null if it was not. */
@@ -555,8 +558,22 @@ public class BotNav {
                 Walk.straightTo(this, gui, dest, tol);
                 stepRefused = false;
             } else {
+                /* The evidence, not just the verdict - and ONCE per destination, because the hop
+                 * loop re-issues this seven times a leg and travel re-plans four times, so the same
+                 * refusal used to fill eight hundred lines with the one fact already known. What is
+                 * wanted is the other four records' opinion of the same point, which is what
+                 * actually differs between "the destination is on a barrel", "it is in a lake" and
+                 * "there is a wall in front of it". */
+                boolean fresh = (whined == null) || (whined.dist(dest) > MCache.tilesz.x);
                 NLog.log(log, "pathfinder refused " + Gates.fmt(dest) + " (" + why
-                    + ") and the straight line is not clear either");
+                    + ") and the straight line is not clear either"
+                    + (fresh ? "" : " [same point]"));
+                if (fresh) {
+                    whined = dest;
+                    NLog.log(log, "  destination: " + Probe.explain(gui, dest));
+                    NLog.log(log, "  the way there: " + Probe.line(gui, me.rc, dest));
+                    NLog.log(log, Probe.map(gui, dest, 12));
+                }
             }
         }
         Gob now = player();
@@ -812,10 +829,16 @@ public class BotNav {
                 + ": it is in map segment " + there.seg + " and we are in " + here.seg);
             return null;
         }
-        List<Coord> nodes = Router.route(gui, here.seg,
-            here.sc.floor(MCache.tilesz), there.sc.floor(MCache.tilesz));
+        Coord fromTile = here.sc.floor(MCache.tilesz), toTile = there.sc.floor(MCache.tilesz);
+        List<Coord> nodes = Router.route(gui, here.seg, fromTile, toTile);
         if (nodes == null)
             return null;
+        /* What the route is made of, not just where it goes. The interesting number is how much of
+         * it crosses ground nobody has looked at and how far out that starts, because a route
+         * through the unknown is a guess - and the reports of walking through palisades and across
+         * rivers all describe it happening just past the edge of what was on screen, which is
+         * exactly where the record stops and the guessing begins. */
+        NLog.log(log, "  route " + Router.describe(gui, here.seg, fromTile, toTile, nodes));
         /* Segment coordinates back into live world ones. The player is in both spaces at once, so
          * the difference between the two readings of where WE are is the offset for everything
          * else - no second map-file lookup per waypoint. */

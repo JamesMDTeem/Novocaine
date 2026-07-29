@@ -105,6 +105,7 @@ public class FillWater implements Task {
         }
 
         int tried = 0;
+        boolean filled = false;
         for (Gob barrel : barrels) {
             if (!thirsty(ctx))
                 return Outcome.ok();
@@ -139,7 +140,7 @@ public class FillWater implements Task {
                 ctx.log("filling from barrel #" + live.id + " at "
                     + (int) ((me == null) ? -1 : me.rc.dist(live.rc)) + "u (reach " + (int) reach
                     + "u, box " + (int) Reach.radius(live) + "u)");
-                fill(ctx, null, live, spot);
+                filled |= fill(ctx, null, live, spot);
             } finally {
                 // Held for the whole fill, not just the walk - the point of the reservation is that
                 // nobody else stands here WHILE we work, and a fill is the long part.
@@ -148,9 +149,20 @@ public class FillWater implements Task {
         }
         if (!thirsty(ctx))
             return Outcome.ok();
-        /* Still short. Falling through to the water rather than reporting the barrels is on
-         * purpose: a place with a barrel AND a lake in it has two sources and the player marked
-         * both, so having drained the barrels is a reason to wade in, not a reason to give up. */
+        /* Water came out of a barrel, so the trip did what it was for. Anything left unfilled is a
+         * second vessel or a top-up, and neither is a reason to report failure to a caller whose
+         * next act is to drink.
+         *
+         * This is the whole of "it fetched water and then said it could not", which is a worse bug
+         * than it sounds: the caller takes a blocked outcome as a reason to defer the work the
+         * water was for. `thirsty` asks whether every carried vessel is FULL, which is the right
+         * question for deciding to set out and the wrong one for deciding whether the errand
+         * succeeded - a belt with a second waterskin on it never answers no. */
+        if (filled)
+            return Outcome.ok();
+        /* Nothing came out of any barrel. Falling through to the water rather than reporting the
+         * barrels is on purpose: a place with a barrel AND a lake in it has two sources and the
+         * player marked both, so having drained the barrels is a reason to wade in, not to give up. */
 
         boolean hadBarrels = !barrels.isEmpty();
         Gob me = ctx.player();
@@ -222,8 +234,9 @@ public class FillWater implements Task {
      * unattended. Three passes covers a full belt, and stopping early only means the bot fills up
      * again next time it runs dry.
      */
-    private void fill(BotCtx ctx, Coord2d tile, Gob barrel, TakeWorkSlot spot)
+    private boolean fill(BotCtx ctx, Coord2d tile, Gob barrel, TakeWorkSlot spot)
             throws InterruptedException {
+        boolean moved = false;
         RefillWaterContainers scan = containers(ctx);
         Inventory belt = scan.returnBelt();
         Equipory equipory = ctx.gui.getequipory();
@@ -253,11 +266,13 @@ public class FillWater implements Task {
             }
 
             if (!any)
-                return;
+                return moved;
+            moved = true;
             // Let the server catch up before re-reading how full everything is, or the next pass
             // re-fills containers that are already done.
             ctx.nav.pause(12);
         }
+        return moved;
     }
 
     private boolean fillOne(BotCtx ctx, WItem item, Coord2d tile, Gob barrel, Runnable putBack)

@@ -168,6 +168,11 @@ public class Map {
         keepouts = (zones == null) ? NO_KEEPOUTS : zones;
     }
 
+    /** What is currently standing, so a diagnostic can say whether one of these was the objection. */
+    public static Keepout[] keepouts() {
+        return keepouts;
+    }
+
     public Map(Coord plc, Coord endc, MCache mcache) {
         this.plc = plc;
         this.endc = endc;

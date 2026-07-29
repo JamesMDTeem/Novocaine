@@ -87,17 +87,32 @@ public class Observed {
     /**
      * How far out the character is taken to be able to SEE, in tiles.
      *
-     * Measured in game rather than reasoned about: standing still with hitboxes drawn, gobs render
-     * out to about thirty-nine or forty tiles in every direction. Held one tile inside that, since
-     * the cost of being short is a tile re-observed a moment later and the cost of being long is
-     * ground recorded as empty because whatever stands on it had not arrived yet.
+     * MEASURED, by {@link Sight}, from the distance at which objects are added to and removed from
+     * the object cache - the transitions, so the radius itself rather than a sample of what happens
+     * to be loaded. Over ten thousand of them: the furthest an object appears is 62.1 tiles, and
+     * the furthest along either axis ALONE is 45.3 by 45.4. Those two numbers together say the
+     * shape: 45 times root two is 64, so the region is a SQUARE of about forty-five tiles, and 62
+     * is its corner rather than any radius.
      *
-     * Worth writing down because it is easy to get from the wrong place. nurgling2's equivalent
-     * uses twenty-five tiles, and the client's own pathfinder window is forty-four; the first is
-     * conservative and the second is the TILE streaming range, which runs further out than the gob
-     * range. Neither is this number.
+     * Which is why this is a square too, and why it may be as wide as forty-four. Being short is
+     * not free, and this was short: at thirty-eight, the ring of ground between thirty-eight and
+     * forty-five tiles was fully loaded - every object in it known, every wall, every barrel - and
+     * recorded as never looked at, because the sweep did not reach that far. Unseen ground is
+     * passable to the router by design, so routes went through it, and what the player saw was a
+     * bot walking through a palisade a tile or two beyond the edge of the screen. The record was
+     * not wrong about that ground; it had simply never been asked.
+     *
+     * Held one tile inside the measurement, because the cost of being short is a tile re-observed a
+     * moment later and the cost of being long is ground recorded as empty because whatever stands
+     * on it had not arrived yet.
+     *
+     * Worth writing down because it is easy to get from the wrong place, and every plausible source
+     * is wrong. nurgling2's equivalent uses twenty-five tiles. The client's own pathfinder window is
+     * forty-four, which is the TILE streaming range - terrain reaches a hundred and forty tiles, so
+     * that is not it either. And what a player sees on screen is about forty, which is the RENDER
+     * distance: the object cache holds a good deal more than is drawn.
      */
-    private static final int SEES = 38;
+    private static final int SEES = 44;
 
     /** How often the sweep actually looks, in milliseconds. */
     private static final long SWEEP_MS = 1000;
@@ -108,6 +123,25 @@ public class Observed {
     private static final double EDGE = 0.001;
     /** Tiles across. A collision box bigger than this is bad data, not a bigger object. */
     private static final int MAX_SPAN = 12;
+
+    /**
+     * How much of a tile an ordinary object must cover before the tile counts as blocked.
+     *
+     * Only walls and gateways are built on the tile grid. Everything a player puts down - a
+     * stockpile, a barrel, a cupboard - lands wherever it was dropped, so a small object routinely
+     * straddles an edge and clips a sliver off two or four tiles at once. Blocking all of them
+     * makes an object two or four times its real size, and a one-tile gap between two of them, which
+     * a character walks through without noticing, reads as sealed.
+     *
+     * A third of a tile, and only for those objects. A wall keeps every tile it touches, because it
+     * IS tile-aligned - a partial rule there would be a licence to route through a palisade built a
+     * few units off true, which is the one mistake this whole layer exists to prevent.
+     *
+     * Under-blocking is the safe direction and this is the layer to do it in: the local pathfinder
+     * does exact geometry against the same boxes when the bot arrives, so a sliver missed here costs
+     * a step around it. Over-blocking has no such second opinion - it deletes the route.
+     */
+    private static final double CLIPS = 1.0 / 3.0;
 
     private static final int GRID = MCache.cmaps.x * MCache.cmaps.y;
 
@@ -303,7 +337,8 @@ public class Observed {
                 Barriers.Kind k = Barriers.kind(res.name);
                 Set<Coord> into = (k == Barriers.Kind.GATE) ? gates
                     : (k == Barriers.Kind.WALL) ? walls : solids;
-                into.addAll(footprint(g, off, boxes));
+                // kind() is null for anything that is not part of a barrier - see CLIPS.
+                into.addAll(footprint(g, off, boxes, k == null));
             } catch (RuntimeException e) {
                 // Includes Loading: a gob whose resource has not arrived is picked up next sweep.
             }
@@ -371,10 +406,12 @@ public class Observed {
      * The far edge is exclusive. A box spanning exactly one tile ends on a tile boundary, and a
      * boundary belongs to the next tile along.
      */
-    private static Set<Coord> footprint(Gob g, Coord2d off, HitBoxes.CollisionBoxSecondary[] boxes) {
+    private static Set<Coord> footprint(Gob g, Coord2d off, HitBoxes.CollisionBoxSecondary[] boxes,
+                                        boolean partial) {
         Set<Coord> out = new HashSet<>();
         Coord2d pos = g.rc.add(off);
-        out.add(pos.floor(MCache.tilesz));
+        if (!partial)
+            out.add(pos.floor(MCache.tilesz));
         double cos = Math.cos(g.a), sin = Math.sin(g.a);
         for (HitBoxes.CollisionBoxSecondary box : boxes) {
             if ((box == null) || (box.coords == null) || (box.coords.length == 0))
@@ -395,11 +432,24 @@ public class Observed {
             if (((hi.x - lo.x) > MAX_SPAN) || ((hi.y - lo.y) > MAX_SPAN))
                 continue;
             for (int y = lo.y; y <= hi.y; y++) {
-                for (int x = lo.x; x <= hi.x; x++)
+                for (int x = lo.x; x <= hi.x; x++) {
+                    if (partial && (cover(pos.add(minx, miny), pos.add(maxx, maxy), x, y) < CLIPS))
+                        continue;
                     out.add(new Coord(x, y));
+                }
             }
         }
         return out;
+    }
+
+    /** What fraction of one tile an axis-aligned box covers. See {@link #CLIPS}. */
+    private static double cover(Coord2d lo, Coord2d hi, int tx, int ty) {
+        double x0 = tx * MCache.tilesz.x, y0 = ty * MCache.tilesz.y;
+        double w = Math.min(hi.x, x0 + MCache.tilesz.x) - Math.max(lo.x, x0);
+        double h = Math.min(hi.y, y0 + MCache.tilesz.y) - Math.max(lo.y, y0);
+        if ((w <= 0) || (h <= 0))
+            return 0;
+        return (w * h) / (MCache.tilesz.x * MCache.tilesz.y);
     }
 
     /** Caller holds {@link #LOCK}. */

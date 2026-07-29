@@ -1,9 +1,11 @@
 package haven.automated.nbots.world;
 
+import haven.Coord;
 import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.Loading;
+import haven.MCache;
 import haven.Resource;
 import haven.automated.nbots.core.Alias;
 import org.json.JSONArray;
@@ -78,6 +80,61 @@ public class Place {
         if (nw == null)
             return null;
         return nw.add((w * haven.MCache.tilesz.x) / 2.0, (h * haven.MCache.tilesz.y) / 2.0);
+    }
+
+    /**
+     * Somewhere inside the place actually worth walking to, in live world coordinates.
+     *
+     * The centre is the wrong answer and was being used anyway, for two separate reasons that
+     * happen to point the same way.
+     *
+     * It is the likeliest tile in the rectangle to be OCCUPIED, because players draw an area AROUND
+     * the things in it - so "walk to the water place" meant "walk onto a barrel", which the local
+     * pathfinder answers by refusing to move at all.
+     *
+     * And arriving at it was judged by DISTANCE, with a tolerance stretched to cover the whole
+     * rectangle so a big storage area would register as reached. A four-tile tolerance around a
+     * point two tiles inside a palisade includes ground on the far side of that palisade: the bot
+     * is then entitled to satisfy the journey by standing outside the wall, and a router asked to
+     * get it there will oblige. The tolerance was quietly redefining the destination as a disc that
+     * did not fit inside the place.
+     *
+     * So the destination is a TILE, chosen inside the rectangle, on ground the records say a
+     * character can stand on, nearest to whoever is asking. Then the tolerance can be small, and
+     * "arrived" can mean what {@link #contains} means.
+     *
+     * Falls back to the centre when nothing in the rectangle qualifies - a place drawn entirely on
+     * water is the player's to fix, and refusing to walk anywhere near it does not help them see
+     * that.
+     */
+    public Coord2d destination(GameUI gui, Coord2d from) {
+        Coord2d nw = (anchor == null) ? null : anchor.resolve(gui);
+        if (nw == null)
+            return null;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = (gui.map == null) ? null : gui.map.player();
+        Coord2d mid = centre(gui);
+        if ((here == null) || (me == null))
+            return mid;
+        Coord2d off = here.sc.sub(me.rc);
+        Coord2d want = (from == null) ? mid : from;
+        Coord2d best = null;
+        double bestd = Double.MAX_VALUE;
+        for (int ty = 0; ty < Math.max(h, 1); ty++) {
+            for (int tx = 0; tx < Math.max(w, 1); tx++) {
+                // The middle of the tile, so the aim is never on a boundary between two of them.
+                Coord2d at = nw.add((tx + 0.5) * MCache.tilesz.x, (ty + 0.5) * MCache.tilesz.y);
+                Coord tile = at.add(off).floor(MCache.tilesz);
+                if (Observed.solid(here.seg, tile) || !Terrain.ground(gui, here.seg, tile))
+                    continue;
+                double d = want.dist(at);
+                if (d < bestd) {
+                    bestd = d;
+                    best = at;
+                }
+            }
+        }
+        return (best == null) ? mid : best;
     }
 
     /** True if a live world position falls inside this place. */

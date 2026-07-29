@@ -125,6 +125,64 @@ public class Router {
         return search(new World(gui, seg, false), fromTile, toTile, null, null);
     }
 
+    /**
+     * What a planned route is made of, for the log.
+     *
+     * Re-walks the simplified route rather than the raw tile path, because the simplified one is
+     * what travel will actually be told to walk: a leg is a straight line between waypoints, so a
+     * tile the raw path avoided but the straight line crosses is a tile the character will meet.
+     *
+     * The number that matters is UNSEEN, and how far out it starts. Every report of walking through
+     * a palisade or across a river has described it happening just beyond the edge of the screen,
+     * and that is precisely where the record stops: unseen ground is passable here on purpose,
+     * because the local pathfinder re-checks it on arrival, so a route is entitled to go through it
+     * - but a route that is mostly unknown is a guess wearing a plan's clothes, and until now
+     * nothing said which one had been produced.
+     */
+    public static String describe(GameUI gui, long seg, Coord from, Coord to, List<Coord> route) {
+        World w = new World(gui, seg, false);
+        List<Coord> line = new ArrayList<>();
+        Coord at = from;
+        for (Coord next : route) {
+            trace(line, at, next);
+            at = next;
+        }
+        trace(line, at, to);
+        int unseen = 0, unmapped = 0, wet = 0, blocked = 0, firstUnseen = -1;
+        for (int i = 0; i < line.size(); i++) {
+            Coord t = line.get(i);
+            if (w.state(t) == Observed.UNSEEN) {
+                unseen++;
+                if (firstUnseen < 0)
+                    firstUnseen = (int) from.dist(t);
+            }
+            int c = w.wet(t);
+            if (c < 0)
+                unmapped++;
+            else if ((c == Terrain.DEEP) || ((c == Terrain.SHALLOW)
+                && haven.automated.pathfinder.Map.BLOCK_WATER))
+                wet++;
+            if (!w.passable(t))
+                blocked++;
+        }
+        return String.format("%d tiles, %d waypoint(s): %d never looked at%s, %d with no map file,"
+            + " %d water, %d impassable", line.size(), route.size(), unseen,
+            (firstUnseen < 0) ? "" : (" (first " + firstUnseen + "t out)"),
+            unmapped, wet, blocked);
+    }
+
+    /** Every tile a straight line between two tiles crosses, appended in order. */
+    private static void trace(List<Coord> into, Coord a, Coord b) {
+        int steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
+        for (int i = 0; i <= steps; i++) {
+            int x = a.x + (((b.x - a.x) * i) / Math.max(1, steps));
+            int y = a.y + (((b.y - a.y) * i) / Math.max(1, steps));
+            Coord t = new Coord(x, y);
+            if (into.isEmpty() || !into.get(into.size() - 1).equals(t))
+                into.add(t);
+        }
+    }
+
     // ------------------------------------------------------------------ the search
 
     private static List<Coord> search(World w, Coord from, Coord to, Coord lo, Coord hi) {
