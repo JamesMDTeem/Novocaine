@@ -812,8 +812,18 @@ public class BotNav {
              * waypoint on" answered north. The step-through took the destination's answer, walked
              * the bot back into the chamber, and the whole thing began again. */
             Coord2d leg = legs.get(i);
-            if ((gates++ < MAX_GATES)
+            /* Count gateways PASSED, which is what the budget is for, not legs that failed.
+             *
+             * `gates++` in the left operand ran on every failed leg - whether a gateway was even
+             * looked at, and whether using it worked - so a journey spent its whole gate budget on
+             * failures and then walked the rest of the way with gate handling silently switched
+             * off. In the logged run the budget was gone by the third gate operation, and the two
+             * legs after it have no `gate:` line of any kind before the journey gives up. Failed
+             * legs already have their own bound in MAX_REPLANS just below; this one exists to stop
+             * a bot being pushed back and forth through the same gateway for ever. */
+            if ((gates < MAX_GATES)
                 && Gates.pass(this, gui, leg, blockingGate, refusedGates, log)) {
+                gates++;
                 Barriers.learn(gui);
                 List<Coord2d> after = plan(dest);
                 /* Logged like every other re-plan. This one used to be silent, and its silence is
@@ -1187,7 +1197,25 @@ public class BotNav {
              * which is what makes giving up on the swings possible. */
             double span = Math.min(len, reach);
             Coord2d aim = me.rc.add(dir.mul(span));
-            stepTo(aim, 11 * 2.0);
+            /* A hop that IS the whole leg cannot be allowed a looser standard than the leg.
+             *
+             * `stepTo` stops waiting at two tiles. The loop above accepts the leg at `tol`, which
+             * for an intermediate leg is LEG_SLACK - one tile. So when the aim is the leg's own
+             * destination, the hop reports itself arrived at two tiles, the loop re-measures
+             * against one, and hops again from where it already stands: seven hops in twenty
+             * milliseconds, no movement, leg failed. Anything left between one and two tiles is
+             * unreachable by construction.
+             *
+             * The log carries the fingerprint either side of the change that made LEG_SLACK the
+             * intermediate tolerance. Before it, with a three-tile leg tolerance, 155 give-ups and
+             * NOT ONE between one and two tiles - three tiles is looser than the hop's two, so the
+             * band did not exist. After it, 57 give-ups and 78% of them inside that band, the
+             * smallest exactly eleven units. That is not a stall, a wall, or a refused click, and
+             * chasing it as any of those is what cost the last three rounds.
+             *
+             * A partial hop keeps the two tiles: its aim is a point along the way, not the leg's
+             * end, so arriving near it is all that is being asked. */
+            stepTo(aim, (span < len) ? (11 * 2.0) : Math.min(11 * 2.0, tol));
             wasBlocked = stepRefused && (stepRefusal == Pathfinder.Refusal.NO_ROUTE);
             /* Anything that is not the search having looked and found nothing is treated as being
              * wedged, including a click that never reached a search at all - because the recovery
