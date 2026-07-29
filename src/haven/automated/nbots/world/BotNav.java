@@ -96,6 +96,23 @@ public class BotNav {
     private static final double LEG_TOL = 11 * 3.0;
     /** How many times a failed leg is worth re-routing before falling back to walking at it. */
     private static final int MAX_REPLANS = 3;
+
+    /**
+     * How far off a waypoint a leg may finish before the rest of the route stops being trustworthy.
+     *
+     * One tile. {@link #LEG_TOL} is deliberately looser - a waypoint is a corner to pass, not a
+     * place to stand - but the router only ever checked the lines between the waypoints themselves,
+     * so anything further off than this and the next leg is a line nobody has examined.
+     */
+    private static final double LEG_SLACK = 11 * 1.0;
+    /**
+     * How many times one journey will re-plan for drift.
+     *
+     * Separate from {@link #MAX_REPLANS}, which counts legs that FAILED, because these are legs
+     * that succeeded and each one has made ground. Bounded only so that a drift which never closes
+     * cannot re-plan for ever.
+     */
+    private static final int MAX_DRIFTS = 6;
     /** How many gateways one journey may go through before that stops being plausible. */
     private static final int MAX_GATES = 4;
     /** Travel gives up after this many hops that don't get closer. */
@@ -700,6 +717,7 @@ public class BotNav {
         List<Coord2d> legs = itinerary(route, dest);
         int replans = 0;
         int gates = 0;
+        int drifts = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
                 return false;
@@ -726,8 +744,37 @@ public class BotNav {
                 (int) ((began == null || ended == null) ? -1
                     : began.dist(ended) / MCache.tilesz.x),
                 (int) ((began == null) ? -1 : began.dist(legs.get(i)) / MCache.tilesz.x)));
-            if (got)
+            if (got) {
+                /* Arrived NEAR the waypoint is not arrived AT it, and the difference is the whole
+                 * of the route's guarantee.
+                 *
+                 * What the router promises is that the straight line between consecutive WAYPOINTS
+                 * is clear - it checked exactly those lines. A leg counts as done within three
+                 * tiles, because waypoints are corners to pass rather than places to stand, so the
+                 * next leg is then walked from wherever we actually stopped, along a line nobody
+                 * has ever looked at. Usually that is harmless. Beside a gateway it is not: two
+                 * tiles off the corner is the difference between the gap and the post, and the leg
+                 * that should have gone down through the air lock instead aims at the wall stub
+                 * next to it. The pathfinder then spends the full hop budget going round and round
+                 * whatever is in front of it, reporting progress the whole time, which is the
+                 * pacing - forty-four seconds of it in the log, from one leg, in silence.
+                 *
+                 * Re-planning from where we are restores the guarantee, and costs a couple of
+                 * milliseconds. Bounded, since a drift that never closes would otherwise re-plan
+                 * for ever. */
+                if (!last && (ended != null) && (ended.dist(legs.get(i)) > LEG_SLACK)
+                        && (drifts++ < MAX_DRIFTS)) {
+                    List<Coord2d> fresh = plan(dest);
+                    NLog.log(log, "  ...that is "
+                        + (int) (ended.dist(legs.get(i)) / MCache.tilesz.x)
+                        + "t off the waypoint, so the next leg was never checked - re-planning: "
+                        + ((fresh == null) ? "no route"
+                            : (fresh.size() + " waypoint(s) " + fmt(fresh))));
+                    legs = itinerary(fresh, dest);
+                    i = -1;
+                }
                 continue;
+            }
 
             /* A leg that stops short in front of a wall is nearly always a shut gateway: the
              * route was planned through the gap, correctly, and the gap happens to have a gate
