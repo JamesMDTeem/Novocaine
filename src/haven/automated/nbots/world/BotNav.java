@@ -618,7 +618,20 @@ public class BotNav {
         return (wc != null) && inside(solids(gui), wc);
     }
 
-    /** Everything loaded that is not us. Snapshotted, so a probe of several points locks once. */
+    /**
+     * Everything loaded that is not us and is not an OPEN gateway. Snapshotted, so a probe of
+     * several points locks once.
+     *
+     * The gateway exception matters more than it looks. A gate's collision box is stored per
+     * resource and does not change when the gate swings, so this test - which is exactly the local
+     * pathfinder's isInsideBoundBox - calls an open gateway solid across the full three tiles of
+     * its opening. The pathfinder itself does not: it reads the gate's state and only adds the
+     * blocking slab when it is shut.
+     *
+     * So every aim into an open gateway was being nudged sideways by `standable`, off the centre
+     * line and towards a post, and every straight line through one was refused by lineClear. That
+     * is stepping through a gate you have just opened and clipping the corner post beside it.
+     */
     private static List<Gob> solids(GameUI gui) {
         List<Gob> out = new ArrayList<>();
         if (gui == null || gui.map == null)
@@ -626,8 +639,11 @@ public class BotNav {
         try {
             synchronized (gui.ui.sess.glob.oc) {
                 for (Gob g : gui.ui.sess.glob.oc) {
-                    if (!g.isPlgob(gui))
-                        out.add(g);
+                    if (g.isPlgob(gui))
+                        continue;
+                    if (Gates.isGate(g) && Gates.isOpen(g))
+                        continue;
+                    out.add(g);
                 }
             }
         } catch (RuntimeException e) {

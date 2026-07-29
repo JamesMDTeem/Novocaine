@@ -5,6 +5,7 @@ import haven.Coord2d;
 import haven.FlowerMenu;
 import haven.GameUI;
 import haven.Gob;
+import haven.MCache;
 import haven.ResDrawable;
 import haven.Resource;
 import haven.automated.helpers.HitBoxes;
@@ -301,6 +302,11 @@ public class Gates {
                 remembered = Barriers.gatesIn(here.seg).size();
             NLog.log(log, "gate: nothing usable between here and " + fmt(dest)
                 + " (" + near.size() + " loaded, " + remembered + " gate tiles remembered)");
+            // Why EACH one was turned down. The count alone says a gateway was considered and
+            // rejected without saying which test threw it out, and the three tests want completely
+            // different things done about them.
+            for (String s : rejections(gui, dest, skip))
+                NLog.log(log, "    " + s);
             return false;
         }
         long id = gate.id;
@@ -348,13 +354,31 @@ public class Gates {
         }
 
         Gob live = nav.gob(id);
-        Coord2d through = beyond((live == null) ? gate : live, from, dest);
+        Gob use = (live == null) ? gate : live;
+        /* Into the middle of the opening first, then out the far side. One step from wherever the
+         * approach happened to stop is a diagonal across the gateway, and a gateway is three tiles
+         * wide with a post at each end - so the diagonal clips a post, which is where a bot walking
+         * out of its own gate gets wedged. Two steps down the gate's own centre line is what a
+         * player does, and now that an open gateway is not treated as solid (see BotNav.solids) the
+         * first of them can aim at the gate itself. */
+        Coord2d mid = use.rc;
+        Coord2d through = beyond(use, from, dest);
+        nav.stepTo(mid, 11 * 1.5);
         boolean crossed = nav.stepTo(through, 11 * 2.5);
-        NLog.log(log, "gate: step through to " + fmt(through) + (crossed ? " ok" : " FAILED"));
+        Gob now = nav.player();
+        boolean past = (now != null) && passed(use, from, now.rc);
+        NLog.log(log, "gate: step through to " + fmt(through)
+            + (crossed ? " ok" : (past ? " short, but we are through" : " FAILED")));
 
         /* Only shut what we opened. A gate the player left standing open is theirs, and a bot that
-         * tidies it away has changed the base rather than passed through it. */
-        if (crossed && NBotConfig.on(NBotConfig.Key.closeGates)) {
+         * tidies it away has changed the base rather than passed through it.
+         *
+         * Judged on which SIDE of the gateway we ended up, not on whether the blind step landed
+         * where it aimed. The step is a guess at where the far side is and misses often - the gate
+         * is still swinging when it is issued - and gating the close on it meant a bot that walked
+         * out of its own gate perfectly well left it standing open behind it, because the aim was
+         * three tiles further on than it got. Which side of a line we are on is not a guess. */
+        if ((crossed || past) && NBotConfig.on(NBotConfig.Key.closeGates)) {
             if (!toggle(nav, gui, id, false, log))
                 NLog.log(log, "gate: couldn't close #" + id + " behind us");
         }
@@ -439,6 +463,62 @@ public class Gates {
      * wall makes "away from where we came from" almost perpendicular to the answer, so it decides
      * the side on rounding error; where we are trying to get to does not have that problem.
      */
+    /**
+     * True if {@code now} is on the opposite side of the gateway from {@code from}.
+     *
+     * The honest form of "did we get through", against which the step-through's own arrival test is
+     * only a proxy. Projected onto the gate's short axis - the way through - so it does not care
+     * how far past we got, only that the sign changed and we are clear of the swing.
+     */
+    /**
+     * One line per loaded gateway saying which test turned it down.
+     *
+     * Mirrors {@link #pick}'s conditions rather than sharing code with it, which is a duplication
+     * worth having: the alternative is threading a reason out of a loop that runs on every hop of
+     * every journey, and this runs once, only when the answer was already "nothing".
+     */
+    private static List<String> rejections(GameUI gui, Coord2d dest, Set<Long> skip) {
+        List<String> out = new ArrayList<>();
+        Gob me = (gui == null || gui.map == null) ? null : gui.map.player();
+        if ((me == null) || (dest == null))
+            return out;
+        double direct = me.rc.dist(dest);
+        for (Gob g : loaded(gui)) {
+            double toGate = me.rc.dist(g.rc);
+            double onwards = g.rc.dist(dest);
+            String why;
+            if ((skip != null) && skip.contains(g.id))
+                why = "given up on earlier this journey";
+            else if (toGate > SEARCH)
+                why = String.format("%.0ft away, past the %.0ft search radius",
+                    toGate / MCache.tilesz.x, SEARCH / MCache.tilesz.x);
+            else if (onwards <= AT_DEST)
+                why = "AT the destination - should have been taken";
+            else if (onwards >= direct)
+                why = String.format("going through it leaves us %.0ft from the target,"
+                    + " no better than the %.0ft we are at now",
+                    onwards / MCache.tilesz.x, direct / MCache.tilesz.x);
+            else if (!between(me.rc, dest, g.rc, WIDE_CORRIDOR))
+                why = "off to the side of the line, or past the far end of it";
+            else
+                why = "usable - and something else rejected it";
+            out.add("gate #" + g.id + " at " + fmt(g.rc) + " (" + (isOpen(g) ? "open" : "shut")
+                + ", " + (int) (toGate / MCache.tilesz.x) + "t away): " + why);
+        }
+        return out;
+    }
+
+    private static boolean passed(Gob gate, Coord2d from, Coord2d now) {
+        Coord2d n = across(gate);
+        if ((n == null) || (from == null) || (now == null))
+            return false;
+        double was = (n.x * (from.x - gate.rc.x)) + (n.y * (from.y - gate.rc.y));
+        double is = (n.x * (now.x - gate.rc.x)) + (n.y * (now.y - gate.rc.y));
+        // A tile clear of the gateway itself, so a character standing in the opening does not read
+        // as through and get the gate shut on it.
+        return ((was * is) < 0) && (Math.abs(is) >= MCache.tilesz.x);
+    }
+
     private static Coord2d beyond(Gob gate, Coord2d from, Coord2d dest) {
         Coord2d n = across(gate);
         if (n == null) {
