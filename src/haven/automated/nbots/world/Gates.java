@@ -295,6 +295,24 @@ public class Gates {
              * That is the whole of "gates never open". The bot walks at the gap, is refused,
              * reports no headway, asks about gateways, is told there are none, and paces. */
             boolean itIsTheGate = onwards <= AT_DEST;
+            /* Being AT the leg's end excuses a gateway from the two tests below, but being at its
+             * START must not. Both tests are skipped because a gate at the destination projects
+             * onto the very end of the line - `along` near 1, which `between` refuses - and that is
+             * the case worth rescuing. A gate BEHIND us has `along` at or below 0, which `between`
+             * refuses for an entirely different and perfectly good reason, and `onwards <= AT_DEST`
+             * cannot tell the two apart because it measures distance and not direction.
+             *
+             * Inside an AIR LOCK that is the difference between working and not. The chamber is
+             * four rows and the two gates stand five apart, so a leg ending mid-chamber is within
+             * three tiles of BOTH of them: both take this branch, both skip `between`, and
+             * nearest-first then picks the gate the bot has just come through and shut behind
+             * itself. Modelled on this base's south air lock, with the bot at row 1151 and the leg
+             * ending at row 1152 or 1153, the inner gate wins on 11 units against the outer gate's
+             * 44 - so the bot turns round, opens the gate back into the base, and never reaches the
+             * outer one. A leg ending on the outer gate tile, on the last chamber row, or anywhere
+             * outside is judged correctly; it is only the mid-chamber ones that invert. */
+            if (itIsTheGate && behind(me.rc, dest, g.rc))
+                continue;
             if (!itIsTheGate) {
                 /* Going through it has to actually get us closer, or it is a gate in the wrong
                  * wall - but only where "closer" means anything, and across a wall it does not.
@@ -531,6 +549,23 @@ public class Gates {
                 return true;
         }
         return false;
+    }
+
+    /**
+     * True if the gateway lies back the way we came rather than anywhere along the leg.
+     *
+     * The first half of {@link #between}, without the corridor: how far along the leg the gateway
+     * projects, and nothing about how far to the side. Split out because the AT_DEST branch in
+     * {@link #pick} needs the direction test on its own - it has a good reason to skip the corridor
+     * and the closer test, and no reason at all to skip this.
+     */
+    private static boolean behind(Coord2d me, Coord2d dest, Coord2d gate) {
+        Coord2d v = dest.sub(me);
+        double len = v.abs();
+        if (len < 1.0)
+            return false;   // nowhere to be behind; the leg has no direction
+        Coord2d w = gate.sub(me);
+        return (((w.x * v.x) + (w.y * v.y)) / (len * len)) <= 0.0;
     }
 
     private static boolean between(Coord2d me, Coord2d dest, Coord2d gate, double corridor) {
