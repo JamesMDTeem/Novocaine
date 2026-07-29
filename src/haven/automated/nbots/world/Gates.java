@@ -296,8 +296,17 @@ public class Gates {
              * reports no headway, asks about gateways, is told there are none, and paces. */
             boolean itIsTheGate = onwards <= AT_DEST;
             if (!itIsTheGate) {
-                // Going through it has to actually get us closer, or it is a gate in the wrong wall.
-                if (onwards >= direct)
+                /* Going through it has to actually get us closer, or it is a gate in the wrong
+                 * wall - but only where "closer" means anything, and across a wall it does not.
+                 *
+                 * Straight-line distance to a destination on the other side of a palisade measures
+                 * a line nobody can walk, so comparing it against the line out through a gateway
+                 * rejects the gateway for being further away in a direction that is not available.
+                 * That is how a bot standing beside a perfectly good gate, twelve tiles from it,
+                 * was told that going through it would leave it further from the target than it
+                 * already was, and turned round. When the direct line is blocked, being further
+                 * along it is not evidence of anything. */
+                if ((onwards >= direct) && !blocked(gui, me.rc, dest))
                     continue;
                 if (!between(me.rc, dest, g.rc, strict ? CORRIDOR : WIDE_CORRIDOR))
                     continue;
@@ -490,6 +499,22 @@ public class Gates {
      * the destination, the second gateways off along the wall - and neither is expressible as a
      * distance, which is why the ratio this replaces could not say it.
      */
+    /** True if the straight line between two live points crosses something we know is solid. */
+    private static boolean blocked(GameUI gui, Coord2d from, Coord2d to) {
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
+        if ((here == null) || (me == null) || (from == null) || (to == null))
+            return false;
+        Coord2d off = here.sc.sub(me.rc);
+        int steps = Math.max(1, (int) Math.ceil((from.dist(to) / MCache.tilesz.x) * 2));
+        for (int i = 0; i <= steps; i++) {
+            Coord2d at = from.add(to.sub(from).mul((double) i / steps));
+            if (Observed.solid(here.seg, at.add(off).floor(MCache.tilesz)))
+                return true;
+        }
+        return false;
+    }
+
     private static boolean between(Coord2d me, Coord2d dest, Coord2d gate, double corridor) {
         Coord2d v = dest.sub(me);
         double len = v.abs();
@@ -567,9 +592,9 @@ public class Gates {
                     toGate / MCache.tilesz.x, SEARCH / MCache.tilesz.x);
             else if (onwards <= AT_DEST)
                 why = "AT the destination - should have been taken";
-            else if (onwards >= direct)
+            else if ((onwards >= direct) && !blocked(gui, me.rc, dest))
                 why = String.format("going through it leaves us %.0ft from the target,"
-                    + " no better than the %.0ft we are at now",
+                    + " no better than the %.0ft we are at now, and the direct line is open",
                     onwards / MCache.tilesz.x, direct / MCache.tilesz.x);
             else if (!between(me.rc, dest, g.rc, WIDE_CORRIDOR))
                 why = "off to the side of the line, or past the far end of it";

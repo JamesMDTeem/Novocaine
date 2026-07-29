@@ -113,6 +113,16 @@ public class BotNav {
      * cannot re-plan for ever.
      */
     private static final int MAX_DRIFTS = 6;
+
+    /**
+     * How far from a leg's starting point the walk may get, as a multiple of the leg's own length,
+     * before it is a detour rather than a leg.
+     *
+     * One and a half, plus a few tiles of slack so that short legs - where going round a single
+     * cart is a large fraction of the distance - are not tripped by ordinary weaving.
+     */
+    private static final double WANDER = 1.5;
+    private static final double WANDER_SLACK = 11 * 6.0;
     /** How many gateways one journey may go through before that stops being plausible. */
     private static final int MAX_GATES = 4;
     /** Travel gives up after this many hops that don't get closer. */
@@ -937,7 +947,22 @@ public class BotNav {
          * test and was deleted - leaving a route that starts on the far side of the obstacle,
          * which the bot then walked straight at. That is the pacing back and forth in front of a
          * palisade: the router had found the way round and travel had just deleted it. */
-        while (!out.isEmpty() && (out.get(0).dist(me.rc) <= LEG_TOL))
+        /* Only the one we are STANDING on, and this bound is load-bearing.
+         *
+         * It used to drop every leading waypoint within LEG_TOL - three tiles - which sounds like
+         * the same thing and is not. The router emits a waypoint wherever the straight line stops
+         * being clear, so waypoints are far apart in the open and packed tightly exactly where the
+         * geometry is fiddly: threading an air lock produces three or four of them a tile apart.
+         * All of those are within three tiles, so all of them were deleted, and a route that said
+         * "west one tile, then south through the gap, then on" arrived at travel as one leg aimed
+         * at a point on the far side of the wall.
+         *
+         * Which is then handed to the local pathfinder, whose job is to get to a point and which
+         * will go round a palisade to do it. That is the forty-six tile detour on a seven tile leg
+         * in the log, and the whole of "it goes the other way instead of through the gate beside
+         * it": nothing had asked it to go through the gate, because the waypoint that would have
+         * taken it there had been trimmed. */
+        while (!out.isEmpty() && (out.get(0).dist(me.rc) <= LEG_SLACK))
             out.remove(0);
         /* Likewise the last one: {@link #itinerary} puts the destination itself on the end of
          * every route, so a waypoint already inside the final approach is that same walk done
@@ -1003,6 +1028,9 @@ public class BotNav {
         boolean wasStuck = false;
         boolean wasBlocked = false;
 
+        Coord2d began = me();
+        double leg = (began == null) ? 0 : began.dist(dest);
+
         for (int hop = 0; hop < 120; hop++) {
             Gob me = player();
             if (me == null)
@@ -1010,6 +1038,28 @@ public class BotNav {
             double dist = me.rc.dist(dest);
             if (dist <= tol)
                 return true;
+
+            /* A leg that has taken us further from where it started than the leg is LONG is not a
+             * leg being walked, it is a detour being taken, and it is not ours to take.
+             *
+             * The stall test above cannot catch this, because a detour is not a stall: every hop
+             * genuinely closes on the target for a while. The local pathfinder is doing its job -
+             * it was given a point on the far side of a wall and it goes round the wall, which is
+             * what it is for. The log has it walking forty-six tiles west on a seven tile leg,
+             * quietly, for thirty seconds.
+             *
+             * But a leg is supposed to be a short straight run the ROUTER has certified, so a
+             * detour of that size means the leg is wrong and the route needs re-planning from
+             * wherever we now are - which is a decision for travel, one layer up, and one it can
+             * only make if this stops and says so. Judged from the start of the leg rather than by
+             * distance travelled, so ordinary weaving around a tree does not trip it. */
+            if ((began != null) && (began.dist(me.rc) > (leg * WANDER) + WANDER_SLACK)) {
+                NLog.log(log, "walk wandered " + (int) (began.dist(me.rc) / MCache.tilesz.x)
+                    + "t from the start of a " + (int) (leg / MCache.tilesz.x)
+                    + "t leg to " + Gates.fmt(dest) + " - that is a detour, not a leg");
+                cancelWalk();
+                return false;
+            }
 
             if (dist < best - 5.0) {
                 best = dist;
