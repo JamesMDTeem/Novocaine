@@ -166,10 +166,14 @@ public class Router {
             if (!w.passable(t))
                 blocked++;
         }
+        int learned = Refused.count(seg);
         return String.format("%d tiles, %d waypoint(s): %d never looked at%s, %d with no map file,"
-            + " %d water, %d impassable", line.size(), route.size(), unseen,
+            + " %d water, %d impassable%s", line.size(), route.size(), unseen,
             (firstUnseen < 0) ? "" : (" (first " + firstUnseen + "t out)"),
-            unmapped, wet, blocked);
+            unmapped, wet, blocked,
+            // Named separately from "impassable" because it is the client's opinion rather than
+            // anything observed, and a route that changed for this reason should say so.
+            (learned == 0) ? "" : (", avoiding " + learned + " tile(s) the client refused"));
     }
 
     /** Every tile a straight line between two tiles crosses, appended in order. */
@@ -381,12 +385,15 @@ public class Router {
         private final boolean strict;
         private final Map<Coord, byte[]> obs = new HashMap<>();
         private final Map<Coord, Object> water = new HashMap<>();
+        /** Snapshotted once per search - see {@link Refused#snapshot}. Usually empty. */
+        private final java.util.Set<Coord> refused;
         private static final Object NONE = new Object();
 
         World(GameUI gui, long seg, boolean strict) {
             this.gui = gui;
             this.seg = seg;
             this.strict = strict;
+            this.refused = Refused.snapshot(seg);
         }
 
         private byte state(Coord t) {
@@ -438,6 +445,19 @@ public class Router {
              * problem, not the route's. */
             if (s == Observed.GATE)
                 return true;
+            /* Below the gate test on purpose, so a refusal can never make the router plan around a
+             * gateway. A shut gate refuses the local pathfinder exactly as an unrecorded stockpile
+             * does, and telling the two apart is {@link Refused}'s caller's job - but if one ever
+             * slips through, a gate tile is still passable here and gate handling still runs.
+             *
+             * Otherwise: the client would not walk to this tile when our own record said it was
+             * clear, so something stands on it that Observed.CLIPS declined to record. The point of
+             * consulting it here rather than mending the record is that A* is the thing that has to
+             * change its mind - without this the re-plan after a failed leg returns the identical
+             * route, which is the four-identical-routes-then-give-up shape in the log. The goal tile
+             * is exempt by construction: `route` tests `!nb.equals(to)` before asking. */
+            if (refused.contains(t))
+                return false;
             if (strict && (s == Observed.UNSEEN))
                 return false;
             int w = wet(t);

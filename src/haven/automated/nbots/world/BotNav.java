@@ -593,10 +593,62 @@ public class BotNav {
                     NLog.log(log, "  the way there: " + Probe.line(gui, me.rc, dest));
                     NLog.log(log, Probe.map(gui, dest, 12));
                 }
+                learnRefusal(me.rc, dest, fresh);
             }
         }
         Gob now = player();
         return now != null && now.rc.dist(dest) <= tol;
+    }
+
+    /**
+     * Believes the client over our own record, once the two have been shown to disagree.
+     *
+     * The whole value is in the CONDITION, not the recording. A refusal on its own says almost
+     * nothing - the commonest cause by far is a shut gateway, and noting one of those would teach
+     * the router to plan around the only place a wall is meant to be crossed. What is worth
+     * learning from is the CONTRADICTION: the search ran and found nothing, and our own record says
+     * the destination tile is neither solid nor a gateway and the whole line to it is walkable. Then
+     * the only remaining explanation is something standing there that {@link Observed} declined to
+     * record, which is exactly what {@code Observed.CLIPS} does to stockpiles and barrels.
+     *
+     * STUCK is not evidence and is excluded by the caller passing only the NO_ROUTE case: being
+     * unable to leave where we stand says nothing whatever about where we were going.
+     *
+     * Without this the re-plan after the failed leg reads the same unchanged record and returns the
+     * same route - four times, then the journey gives up, which is the shape the log kept showing at
+     * one particular tile with a stockpile on it.
+     */
+    private void learnRefusal(Coord2d from, Coord2d dest, boolean fresh) {
+        if (stepRefusal != Pathfinder.Refusal.NO_ROUTE)
+            return;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        if (here == null)
+            return;
+        Coord2d off = here.sc.sub(from);
+        Coord tile = dest.add(off).floor(MCache.tilesz);
+        if (Observed.solid(here.seg, tile) || Observed.gate(here.seg, tile))
+            return;   // the refusal is already explained; nothing to learn
+        if (!Router.walkable(gui, here.seg, here.sc.floor(MCache.tilesz), tile))
+            return;   // our record objects to the line too, so the client is not telling us anything
+        /* A gateway ANYWHERE on the line explains the refusal on its own, and this has to be tested
+         * separately because Router.walkable cannot do it: gate tiles are passable to the router by
+         * design, so a line straight through a shut gateway comes back walkable. Without this the
+         * far side of every gateway would be learned as blocked the first time one was shut, and the
+         * router would stop planning through gates at all - the one thing this must never cause.
+         * Deliberately reading the tile record rather than asking Gates, so it holds whether or not
+         * a gate gob has loaded and whether or not gate handling is switched on. */
+        Coord2d segFrom = here.sc, segTo = dest.add(off);
+        int steps = Math.max(1, (int) Math.ceil((segFrom.dist(segTo) / MCache.tilesz.x) * 2));
+        for (int i = 0; i <= steps; i++) {
+            Coord2d at = segFrom.add(segTo.sub(segFrom).mul((double) i / steps));
+            if (Observed.gate(here.seg, at.floor(MCache.tilesz)))
+                return;
+        }
+        Refused.note(here.seg, tile);
+        if (fresh)
+            NLog.log(log, "  our record calls that tile clear and the client will not walk to it"
+                + " - treating " + tile + " as blocked for now"
+                + " (" + Refused.count(here.seg) + " such tile(s) in this segment)");
     }
 
     /**
