@@ -104,6 +104,15 @@ public class Gates {
      */
     private static final double SIDEWAYS = 0.25;
 
+    /**
+     * How near a gateway has to be to the leg's destination to count as BEING that destination.
+     *
+     * Three tiles. A big gate's collision box is one tile by three, so the tile the router picked
+     * can sit a tile and a half from the gob's own centre before anything has gone wrong, and the
+     * router's waypoint is a tile centre rather than the gob's position.
+     */
+    private static final double AT_DEST = 11 * 3.0;
+
     private Gates() {}
 
     // ------------------------------------------------------------------ reading a gate
@@ -215,12 +224,29 @@ public class Gates {
             if (toGate > (strict ? NEAR : SEARCH))
                 continue;
             double onwards = g.rc.dist(dest);
-            // Going through it has to actually get us closer, or it is a gate in the wrong wall.
-            if (onwards >= direct)
-                continue;
+            /* The gateway IS where we are trying to get to.
+             *
+             * Not a special case so much as the commonest one, now that routing goes through gates:
+             * a gate tile is passable to the router, so A* runs through the gap and the turn it
+             * makes there becomes a waypoint - and the waypoint is the gate tile itself. Travel
+             * then walks at it, which is a click inside a shut gate's collision box, which the
+             * local pathfinder refuses; and the gate check, asked whether any gateway lies BETWEEN
+             * here and there, correctly answered no about the gateway it was standing in front of.
+             * Both tests below reject it: a gate at the destination is not nearer the destination
+             * than the destination, and it projects onto the very end of the line rather than
+             * inside it.
+             *
+             * That is the whole of "gates never open". The bot walks at the gap, is refused,
+             * reports no headway, asks about gateways, is told there are none, and paces. */
+            boolean itIsTheGate = onwards <= AT_DEST;
+            if (!itIsTheGate) {
+                // Going through it has to actually get us closer, or it is a gate in the wrong wall.
+                if (onwards >= direct)
+                    continue;
+                if (!between(me.rc, dest, g.rc, strict ? CORRIDOR : WIDE_CORRIDOR))
+                    continue;
+            }
             double cost = toGate + onwards;
-            if (!between(me.rc, dest, g.rc, strict ? CORRIDOR : WIDE_CORRIDOR))
-                continue;
             /* Nearest first when the gate is being chosen up front, because gateways come in
              * SERIES: the common way to build one is an air lock, two gates a few tiles apart with
              * a chamber between. Both lie on the same line to anywhere beyond, so "cheapest whole

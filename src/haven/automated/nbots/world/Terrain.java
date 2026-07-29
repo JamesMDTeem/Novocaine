@@ -4,6 +4,7 @@ import haven.Coord;
 import haven.GameUI;
 import haven.MCache;
 import haven.MapFile;
+import haven.automated.nbots.core.NLog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -161,14 +162,22 @@ public class Terrain {
         MapFile file = WorldAnchor.mapfile(gui);
         if (file == null)
             return null;
+        /* The lock is held across the WHOLE read, segment lookup and grid alike.
+         *
+         * MapFile.Segment.grid calls checklock(), which throws IllegalMonitorStateException unless
+         * the calling thread holds this lock - and the version of this method that released it
+         * after fetching the segment therefore threw on every single call, was caught by a blanket
+         * `catch (RuntimeException)` meaning "still loading", and returned "not known".
+         *
+         * So this class answered NOTHING, ever, and said so in the one way that looks like an
+         * ordinary miss. It is the only source of water in the router, so: deep water was never
+         * refused, the LP assistant's reachability check could not see a river, and Walk.lineClear
+         * could not refuse a swim. Every "it tried to path across the river" report is this, and it
+         * survived four rounds of looking at the routing code because the routing code was right.
+         */
+        file.lock.readLock().lock();
         try {
-            MapFile.Segment s;
-            file.lock.readLock().lock();
-            try {
-                s = file.segments.get(seg);
-            } finally {
-                file.lock.readLock().unlock();
-            }
+            MapFile.Segment s = file.segments.get(seg);
             if (s == null)
                 return null;
             MapFile.Grid g = s.grid(gc).get();
@@ -189,12 +198,24 @@ public class Terrain {
                 }
             }
             return out;
-        } catch (RuntimeException e) {
-            // Loading is itself a RuntimeException here - a grid still coming off disk lands in
-            // exactly this branch, which is the "not known right now" the caller wants.
+        } catch (haven.Loading e) {
+            // Genuinely not known right now: the grid is still coming off disk. Try again later.
             return null;
+        } catch (RuntimeException e) {
+            /* Anything else is a fault in this code, and swallowing it is what let the above hide
+             * for as long as it did. Reported once - a search asks about tens of thousands of tiles
+             * and a broken one would otherwise write a log line for each. */
+            if (!complained) {
+                complained = true;
+                NLog.crash("reading terrain from the map file", e);
+            }
+            return null;
+        } finally {
+            file.lock.readLock().unlock();
         }
     }
+
+    private static volatile boolean complained = false;
 
     /** Drops the cache. For when the map file has been rewritten under us. */
     public static void forget() {
