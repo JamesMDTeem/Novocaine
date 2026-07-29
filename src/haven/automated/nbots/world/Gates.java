@@ -737,7 +737,16 @@ public class Gates {
         double is = (n.x * (now.x - gate.rc.x)) + (n.y * (now.y - gate.rc.y));
         // A tile clear of the gateway itself, so a character standing in the opening does not read
         // as through and get the gate shut on it.
-        return ((was * is) < 0) && (Math.abs(is) >= MCache.tilesz.x);
+        /* Clear of the SLAB, not clear of a whole tile.
+         *
+         * A big gate's collision box is 5.49u to either side of its centre line - measured from this
+         * install's own hitboxes - so a character 6u past that line is out of the gateway and the
+         * gate can shut behind it. Demanding a full tile (11u) asks for twice the gate's own
+         * half-thickness, and the step-through routinely stops short of that: the observed pass came
+         * out at 7u, which is comfortably clear of the slab and was still judged as not through, so
+         * the gate was left standing open. Half a tile is the same width every other side judgement
+         * in this class now uses, and it is above the slab with a little to spare. */
+        return ((was * is) < 0) && (Math.abs(is) >= (MCache.tilesz.x / 2));
     }
 
     private static Coord2d beyond(Gob gate, Coord2d from, Coord2d dest) {
