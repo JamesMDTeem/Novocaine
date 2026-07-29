@@ -294,6 +294,19 @@ public class Router {
         return out;
     }
 
+    /**
+     * Whether a character could walk the straight line between two segment tiles.
+     *
+     * The same test {@link #simplify} uses to decide where a waypoint is needed, exposed so travel
+     * can ask it about the line it is ACTUALLY on rather than the one that was planned. Those come
+     * apart whenever a leg stops short of its waypoint, and what matters then is not how far short
+     * it stopped but whether the rest of the route still works from there - which is a question
+     * about the line, and has no sensible answer in tiles of tolerance.
+     */
+    public static boolean walkable(GameUI gui, long seg, Coord from, Coord to) {
+        return clear(new World(gui, seg, false), from, to);
+    }
+
     /** Whether every tile the straight line between two tiles crosses is passable. */
     private static boolean clear(World w, Coord a, Coord b) {
         for (Coord t : along(a, b)) {

@@ -767,6 +767,30 @@ public class BotNav {
             if (got)
                 continue;
 
+            /* Not reaching a waypoint is not the same as the route having failed.
+             *
+             * A waypoint is asked for within a tile, deliberately, so that the character actually
+             * goes to the corner instead of declaring three tiles away good enough. But some of
+             * them cannot be stood on to within a tile: stepTo pulls its aim back off anything
+             * solid, so a waypoint beside a stockpile is walked to and stopped at two tiles out,
+             * every time, for ever - which is what the log filled with once the tolerance was
+             * tightened, seven refused hops a leg and a leg that never ends.
+             *
+             * The question worth asking is not how far short it stopped, it is whether the REST of
+             * the route still works from here - and that is a question about a line, which the
+             * router can answer with the same test it used to place the waypoint in the first
+             * place. Clear, and stopping short cost nothing: carry on. Not clear, and we are in the
+             * case this tolerance exists for - beside a gateway, on the wrong side of a post - so
+             * fall through to the gate check and the re-plan below.
+             *
+             * Bounded to LEG_TOL as well, so that "the line happens to be clear from here" cannot
+             * excuse a leg that gave up a long way from where it was going. */
+            if (!last && (ended != null) && (ended.dist(legs.get(i)) <= LEG_TOL)
+                    && restIsWalkable(legs, i)) {
+                NLog.log(log, "  ...stopped short, but the line on from here is clear - carrying on");
+                continue;
+            }
+
             /* A leg that stops short in front of a wall is nearly always a shut gateway: the
              * route was planned through the gap, correctly, and the gap happens to have a gate
              * in it that is solid until somebody opens it. Try that before deciding the route
@@ -875,6 +899,24 @@ public class BotNav {
     private boolean arrived(Coord2d dest, double tol) {
         Gob me = player();
         return (me != null) && (me.rc.dist(dest) <= tol);
+    }
+
+    /**
+     * Whether the next leg of an itinerary is still walkable from where we are actually standing.
+     *
+     * The route's guarantee is about lines between waypoints; this asks the same question of the
+     * line we are really on. True when there is no next leg, since then nothing is being promised.
+     */
+    private boolean restIsWalkable(List<Coord2d> legs, int i) {
+        if ((i + 1) >= legs.size())
+            return true;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = player();
+        if ((here == null) || (me == null))
+            return true;   // cannot tell, so do not invent a failure
+        Coord2d off = here.sc.sub(me.rc);
+        return Router.walkable(gui, here.seg, here.sc.floor(MCache.tilesz),
+            legs.get(i + 1).add(off).floor(MCache.tilesz));
     }
 
     /**
