@@ -64,10 +64,24 @@ public class Drink implements Task {
         if (!fill.isOk())
             return fill;
 
+        double before = ctx.stamina();
         AUtils.drinkTillFull(ctx.gui, target, target);
         ctx.nav.waitUntil(() -> ctx.stamina() >= target, 60);
-        return ctx.stamina() >= target ? Outcome.ok()
-            : Outcome.failed("refilled but still couldn't drink - is that source actually water?");
+        /* Judged on whether drinking WORKED, not on reaching the target inside the wait.
+         *
+         * The target is nine tenths, and a trip for water starts at whatever is left - a third, on
+         * the run this was found in. A waterskin does not hold enough to close that in one go, and
+         * even when it does, the meter climbs over several seconds while the wait is a second and a
+         * half. So the errand succeeded, the character came back with water in it and more stamina
+         * than it left with, and this reported failure - which the caller takes as a reason to
+         * defer the work the water was for. "Filled, then errored" is this line.
+         *
+         * Not drinking AT ALL is still worth reporting, and now means what it says: the vessel was
+         * filled from that source and drinking from it moved nothing, so the source is not water. */
+        if (ctx.stamina() > before)
+            return Outcome.ok();
+        return Outcome.failed("refilled but drinking moved nothing"
+            + " - is that source actually water?");
     }
 
     @Override

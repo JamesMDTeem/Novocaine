@@ -398,6 +398,18 @@ public class Gates {
             return true;
         }
 
+        /* Line up square with the opening BEFORE closing on it, not after opening it.
+         *
+         * The lining-up step was doing its job in the wrong order. Walking at the gate first and
+         * straightening up afterwards means the approach is the part that comes in at whatever
+         * angle we happened to arrive from - and a shallow one meets the post, which stands proud
+         * of the gap, before it reaches the gate at all. Straight on from a distance worked and
+         * arriving from the side did not, which is exactly the shape of an approach that was never
+         * squared. Doing it first costs the same two tiles and makes every arrival identical. */
+        Coord2d ahead = square(gate, from);
+        if (ahead != null)
+            nav.stepTo(ahead, 11 * 1.5);
+
         if (!nav.approach(gate, REACH)) {
             NLog.log(log, "gate: couldn't get to #" + id);
             return refuse(skip, id);
@@ -421,10 +433,9 @@ public class Gates {
          *
          * Three steps rather than two, then, and the first is the one that matters: it costs a
          * couple of tiles of walking and turns every approach into the same approach. */
+        // Squaring up happened before the approach, so by here we are already on the gate's own
+        // centre line: middle, then out. Repeating the line-up would only walk us back off it.
         Coord2d through = beyond(use, from, dest);
-        Coord2d lineup = square(use, from);
-        if (lineup != null)
-            nav.stepTo(lineup, 11 * 1.5);
         nav.stepTo(use.rc, 11 * 1.5);
         boolean crossed = nav.stepTo(through, 11 * 2.5);
         Gob now = nav.player();
