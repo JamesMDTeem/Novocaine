@@ -203,6 +203,61 @@ public class Gates {
     }
 
     /**
+     * The shut gateway this leg is ROUTED THROUGH, or null if it isn't routed through one.
+     *
+     * The other two ways of choosing a gate are heuristics about geometry - is one near, does one
+     * project onto the line - and both have been wrong in both directions. This is not a heuristic:
+     * the router plans over tiles and a gateway's tiles are passable to it, so a leg whose line
+     * crosses one is a leg the router decided to send through it. Reading that back is not second-
+     * guessing the route, it is carrying it out.
+     *
+     * Which is what lets this be asked BEFORE walking rather than after failing to. The earlier
+     * proactive check had to be withdrawn because it fired on any gate near the line, and the way
+     * past an air lock is often beside its side stubs - so it walked the bot to a gateway the route
+     * had deliberately gone round. But waiting for a stall does not work either, and cannot: a shut
+     * gate is just another solid to the local pathfinder, which goes AROUND it perfectly happily.
+     * The bot therefore keeps moving, never stalls, and spends the whole shift walking up and down
+     * inside its own wall while nothing ever asks whether the gate in its route is shut. Every
+     * "it won't open the gate any more" report is that.
+     *
+     * A leg's line crossing a gate tile settles it, because a leg is only ever a straight run the
+     * router has already certified as clear - so if a gateway is on it, going through the gateway
+     * is the plan.
+     */
+    public static Gob onRoute(GameUI gui, Coord2d from, Coord2d to, Set<Long> skip) {
+        if (!NBotConfig.on(NBotConfig.Key.useGates))
+            return null;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
+        if ((here == null) || (me == null) || (from == null) || (to == null))
+            return null;
+        Coord2d off = here.sc.sub(me.rc);
+        double len = from.dist(to);
+        int steps = Math.max(1, (int) Math.ceil((len / MCache.tilesz.x) * 2));
+        for (int i = 0; i <= steps; i++) {
+            Coord2d at = from.add(to.sub(from).mul((double) i / steps));
+            if (!Observed.gate(here.seg, at.add(off).floor(MCache.tilesz)))
+                continue;
+            // A remembered gate tile is not a gob. Find the one standing on it, which is the only
+            // thing that can say whether it is open and the only thing that can be told to open.
+            Gob best = null;
+            double bestd = Double.MAX_VALUE;
+            for (Gob g : loaded(gui)) {
+                if ((skip != null) && skip.contains(g.id))
+                    continue;
+                double d = g.rc.dist(at);
+                if ((d < bestd) && (d <= AT_DEST)) {
+                    bestd = d;
+                    best = g;
+                }
+            }
+            if ((best != null) && !isOpen(best))
+                return best;
+        }
+        return null;
+    }
+
+    /**
      * @param shutOnly consider only gateways that are actually shut.
      * @param strict   hold candidates to {@link #DETOUR}, and prefer the NEAREST rather than the
      *                 cheapest whole journey. Both only make sense when picking a gate before

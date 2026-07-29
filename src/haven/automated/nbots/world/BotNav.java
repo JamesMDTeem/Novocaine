@@ -984,6 +984,19 @@ public class BotNav {
              * to move because of where we are standing says nothing whatever about what is between
              * us and the destination, and acting on it sends a bot off to open a gate it was
              * already on the right side of. */
+            /* Before anything else: is this leg routed THROUGH a gateway that is shut? That does
+             * not need a stall to establish and must not wait for one, because a stall never comes.
+             * A shut gate is an ordinary solid to the local pathfinder, so it walks around it and
+             * goes on making headway - up and down the inside of the wall, indefinitely, while the
+             * test below waits for a stall that the pathfinder is busy preventing. */
+            Gob routed = Gates.onRoute(gui, me.rc, dest, refusedGates);
+            if ((routed != null) && !wasStuck) {
+                NLog.log(log, "the route to " + Gates.fmt(dest) + " goes through shut gateway #"
+                    + routed.id + " at " + Gates.fmt(routed.rc) + " - opening it");
+                blockingGate = routed.id;
+                cancelWalk();
+                return false;
+            }
             if (((stalled > 0) || wasBlocked) && !wasStuck) {
                 Gob shut = Gates.blocking(gui, dest, refusedGates);
                 if (shut != null) {

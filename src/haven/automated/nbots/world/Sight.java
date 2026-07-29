@@ -258,26 +258,28 @@ public class Sight {
         return hist.length - 1;
     }
 
-    /** Where the far edge of the region actually sat, over every event of one kind. */
+    /**
+     * Where the edge of the region sat, over every event of one kind.
+     *
+     * Percentiles over the WHOLE range, with no window. The first version reported a "nearest"
+     * taken from a window twenty buckets below the maximum, which meant the number it printed was
+     * the edge of the window whenever anything at all fell there - a statistic that reports the
+     * shape of its own filter. Having just been caught setting a constant from a maximum, printing
+     * a fabricated minimum next to it would have been the same mistake with the sign flipped.
+     *
+     * So the low percentiles are honest and need reading with one thing in mind: objects also
+     * appear and vanish nearby for reasons that are not the boundary - an item picked up, a tree
+     * felled, a deer butchered. Those live in the low buckets. It is the 25th percentile upwards
+     * that describes the edge, and the gap between the 25th and the maximum that says whether the
+     * edge is a line or a band.
+     */
     private static String spread(int[] hist) {
-        // Only the outer half is the boundary; things also appear and vanish close by (an item
-        // dropped, a deer killed) and those say nothing about how far the region reaches.
-        int[] outer = new int[hist.length];
         int top = percentile(hist, 1.0);
         if (top < 0)
             return "no events";
-        for (int i = Math.max(0, top - 20); i < hist.length; i++)
-            outer[i] = hist[i];
-        return String.format("nearest %dt, 5%% %dt, half %dt, furthest %dt",
-            firstNonEmpty(outer), percentile(outer, 0.05), percentile(outer, 0.5), top);
-    }
-
-    private static int firstNonEmpty(int[] hist) {
-        for (int i = 0; i < hist.length; i++) {
-            if (hist[i] > 0)
-                return i;
-        }
-        return -1;
+        return String.format("5%% %dt, 25%% %dt, half %dt, 75%% %dt, furthest %dt",
+            percentile(hist, 0.05), percentile(hist, 0.25), percentile(hist, 0.5),
+            percentile(hist, 0.75), top);
     }
 
     /** @return true if this sample set a new record, which is what is worth logging immediately. */
