@@ -79,6 +79,22 @@ public class Sight {
     private static long settleAt = 0;
     private static long reported = 0;
 
+    /**
+     * How many events landed at each whole tile of on-axis distance, for adds and for removes.
+     *
+     * A maximum was not enough and reporting only one was a mistake with consequences: the sweep's
+     * radius was raised to just inside the largest distance ever seen, on the assumption that the
+     * boundary sits there always. If objects instead arrive in chunks - a band appearing at the
+     * leading edge as you cross a tile rather than a smooth slide - then the boundary moves within
+     * a range, the maximum is its far end, and a radius set there is outside it most of the time.
+     *
+     * A histogram says which. A hard boundary puts every removal in one or two buckets; a chunked
+     * one spreads them over the width of a chunk, and the LOW end of that spread is the only figure
+     * anything may safely be set to.
+     */
+    private static final int BUCKETS = 80;
+    private static final int[] inAt = new int[BUCKETS], outAt = new int[BUCKETS];
+
     private static double inMax = 0, outMax = 0;
     /**
      * The furthest a gob has appeared along each axis on its own.
@@ -186,6 +202,7 @@ public class Sight {
                 if (Math.max(dx, dy) <= SANE_TILES) {
                     inDx = Math.max(inDx, dx);
                     inDy = Math.max(inDy, dy);
+                    bucket(inAt, Math.max(dx, dy));
                 }
             }
         }
@@ -203,8 +220,64 @@ public class Sight {
         if ((here == null) || (g == null) || (now < settleAt))
             return;
         double tiles = here.dist(g.rc) / MCache.tilesz.x;
+        double axis = Math.max(Math.abs(g.rc.x - here.x), Math.abs(g.rc.y - here.y))
+            / MCache.tilesz.x;
         String what = name(g);
         record(false, tiles, what);
+        synchronized (LOCK) {
+            if (axis <= SANE_TILES)
+                bucket(outAt, axis);
+        }
+    }
+
+    /** Caller holds {@link #LOCK}. */
+    private static void bucket(int[] hist, double tiles) {
+        int i = (int) Math.floor(tiles);
+        if ((i >= 0) && (i < hist.length))
+            hist[i]++;
+    }
+
+    /**
+     * The distance below which only {@code share} of events fall.
+     *
+     * The low tail is the whole point. Where the boundary sits at its NEAREST is the only figure a
+     * sweep may be set to, because that is the one it is inside all of the time.
+     */
+    private static int percentile(int[] hist, double share) {
+        long total = 0;
+        for (int n : hist)
+            total += n;
+        if (total == 0)
+            return -1;
+        long want = (long) Math.ceil(total * share), seen = 0;
+        for (int i = 0; i < hist.length; i++) {
+            seen += hist[i];
+            if (seen >= want)
+                return i;
+        }
+        return hist.length - 1;
+    }
+
+    /** Where the far edge of the region actually sat, over every event of one kind. */
+    private static String spread(int[] hist) {
+        // Only the outer half is the boundary; things also appear and vanish close by (an item
+        // dropped, a deer killed) and those say nothing about how far the region reaches.
+        int[] outer = new int[hist.length];
+        int top = percentile(hist, 1.0);
+        if (top < 0)
+            return "no events";
+        for (int i = Math.max(0, top - 20); i < hist.length; i++)
+            outer[i] = hist[i];
+        return String.format("nearest %dt, 5%% %dt, half %dt, furthest %dt",
+            firstNonEmpty(outer), percentile(outer, 0.05), percentile(outer, 0.5), top);
+    }
+
+    private static int firstNonEmpty(int[] hist) {
+        for (int i = 0; i < hist.length; i++) {
+            if (hist[i] > 0)
+                return i;
+        }
+        return -1;
     }
 
     /** @return true if this sample set a new record, which is what is worth logging immediately. */
@@ -304,9 +377,11 @@ public class Sight {
             line = String.format(
                 "gobs appear out to %.1ft (%s, furthest on one axis alone %.1f x %.1f),"
                 + " disappear out to %.1ft (%s) over %d in / %d out;"
+                + " EDGE arriving [%s], leaving [%s];"
                 + " terrain now %dt in the tightest direction and %dt in the widest,"
                 + " best ever %dt / %dt%s",
                 inMax, inWhat, inDx, inDy, outMax, outWhat, inCount, outCount,
+                spread(inAt), spread(outAt),
                 terrainNow, terrainNowFar, terrainBest, terrainFar,
                 (dropped == 0) ? "" : ("; " + dropped + " samples over " + (int) SANE_TILES
                     + "t discarded as re-bases"));

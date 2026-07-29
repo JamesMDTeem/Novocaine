@@ -345,10 +345,33 @@ public class Observed {
         }
 
         Coord mine = here.sc.floor(MCache.tilesz);
+        /* How far out we may claim ground is EMPTY, from how far out objects have actually been
+         * delivered - not from a constant.
+         *
+         * A constant was wrong in a way that only shows up once it is nearly right. Objects arrive
+         * in chunks rather than sliding smoothly: cross one tile and a band several tiles deep
+         * appears at the leading edge and vanishes behind, so the real boundary is not a fixed
+         * radius but one that jumps about within a band. A measurement of its MAXIMUM - which is
+         * what SEES was raised to - is therefore the one value guaranteed to be outside it most of
+         * the time. And wiping past the boundary is not a small error: it records ground as empty
+         * BECAUSE nothing has loaded there, which is the precise opposite of what it means, and the
+         * ground most affected is where a wall sits at the edge of sight. The wall is erased, a
+         * route is planned through the gap, the wall re-appears as the bot approaches, and the
+         * route changes underneath it. That is a bot walking at a palisade and turning away, and
+         * doing it again from the other side.
+         *
+         * So the sweep asks what has arrived. The furthest object on each axis is a lower bound on
+         * the boundary that costs nothing to compute and cannot be stale, and staying inside it
+         * means every tile wiped is one we could have seen something on.
+         *
+         * In empty country this shrinks a long way, and that is correct rather than unfortunate:
+         * with nothing loaded there is no evidence of emptiness to record. Unseen ground is still
+         * passable to the router, just no longer asserted. */
+        int reach = Math.min(SEES, loadedReach(gobs, me));
         synchronized (LOCK) {
             load();
-            for (int y = -SEES; y <= SEES; y++) {
-                for (int x = -SEES; x <= SEES; x++)
+            for (int y = -reach; y <= reach; y++) {
+                for (int x = -reach; x <= reach; x++)
                     set(here.seg, mine.add(x, y), OPEN);
             }
             /* Stamped weakest first. A wall segment's box overlaps its own gate's and a gate's
@@ -440,6 +463,35 @@ public class Observed {
             }
         }
         return out;
+    }
+
+    /**
+     * How far out objects have actually been delivered, in tiles, along the tighter axis.
+     *
+     * The tighter of the two on purpose. The region is square, so its two axes normally agree; when
+     * they do not it is because one direction happens to be empty of objects, and the honest reach
+     * in that case is the one we can support rather than the one we would like.
+     *
+     * Anything that moves is left out. A wolf trotting past at fifty tiles is not evidence that the
+     * ground at fifty tiles has been delivered - it is evidence about the wolf, which was somewhere
+     * else a moment ago.
+     */
+    private static int loadedReach(List<Gob> gobs, Gob me) {
+        double fx = 0, fy = 0;
+        for (Gob g : gobs) {
+            try {
+                Resource res = g.getres();
+                if ((res == null) || mobile(res.name))
+                    continue;
+                fx = Math.max(fx, Math.abs(g.rc.x - me.rc.x));
+                fy = Math.max(fy, Math.abs(g.rc.y - me.rc.y));
+            } catch (RuntimeException e) {
+                // Not resolved yet; it says nothing either way.
+            }
+        }
+        // A tile inside the furthest thing seen, since that object proves its own tile arrived and
+        // nothing about the one beyond it.
+        return Math.max(0, (int) (Math.min(fx, fy) / MCache.tilesz.x) - 1);
     }
 
     /** What fraction of one tile an axis-aligned box covers. See {@link #CLIPS}. */
