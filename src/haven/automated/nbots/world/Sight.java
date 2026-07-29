@@ -80,6 +80,17 @@ public class Sight {
     private static long reported = 0;
 
     private static double inMax = 0, outMax = 0;
+    /**
+     * The furthest a gob has appeared along each axis on its own.
+     *
+     * Because a maximum DISTANCE cannot tell a circle from a square, and the difference decides
+     * what {@link Observed#SEES} may safely be. If the region the server sends is a square of
+     * half-width W, its furthest corner is W times root two - so a measured 61 would mean W is
+     * about 43, and wiping a square wider than that would record ground as empty in the corners
+     * where nothing had loaded. If it is a circle, 61 is the radius and there is far more room.
+     * Two numbers that come out near 43 mean a square; near 61, a circle.
+     */
+    private static double inDx = 0, inDy = 0;
     private static String inWhat = "?", outWhat = "?";
     private static long inCount = 0, outCount = 0, dropped = 0;
     /** This pass's readings, and the best each has ever been. Four numbers, not two - see below. */
@@ -168,7 +179,15 @@ public class Sight {
             Gob g = gui.ui.sess.glob.oc.getgob(id);
             if (g == null)
                 continue;      // came and went inside a second; nothing to learn from it
+            double dx = Math.abs(g.rc.x - me.rc.x) / MCache.tilesz.x;
+            double dy = Math.abs(g.rc.y - me.rc.y) / MCache.tilesz.y;
             news |= record(true, me.rc.dist(g.rc) / MCache.tilesz.x, name(g));
+            synchronized (LOCK) {
+                if (Math.max(dx, dy) <= SANE_TILES) {
+                    inDx = Math.max(inDx, dx);
+                    inDy = Math.max(inDy, dy);
+                }
+            }
         }
         return news;
     }
@@ -283,10 +302,11 @@ public class Sight {
         String line;
         synchronized (LOCK) {
             line = String.format(
-                "gobs appear out to %.1ft (%s), disappear out to %.1ft (%s) over %d in / %d out;"
+                "gobs appear out to %.1ft (%s, furthest on one axis alone %.1f x %.1f),"
+                + " disappear out to %.1ft (%s) over %d in / %d out;"
                 + " terrain now %dt in the tightest direction and %dt in the widest,"
                 + " best ever %dt / %dt%s",
-                inMax, inWhat, outMax, outWhat, inCount, outCount,
+                inMax, inWhat, inDx, inDy, outMax, outWhat, inCount, outCount,
                 terrainNow, terrainNowFar, terrainBest, terrainFar,
                 (dropped == 0) ? "" : ("; " + dropped + " samples over " + (int) SANE_TILES
                     + "t discarded as re-bases"));
