@@ -816,8 +816,50 @@ public class BotNav {
              * standing a tile off, re-planned, got the identical route back, and did it again -
              * six times, until the bound stopped it. Re-planning cannot fix being in the wrong
              * place. Walking can. */
-            if (got)
+            if (got) {
+                /* Arrived - but the route was certified between WAYPOINTS, and the next leg is
+                 * walked from wherever THIS one actually stopped. Those are not the same line, and a
+                 * tolerance's worth of drift is enough to make them different in the one place it
+                 * matters most.
+                 *
+                 * A gateway is three tiles wide and `simplify` will happily put the turn on its EDGE
+                 * tile. Arriving a tile to the side of that waypoint is well inside LEG_SLACK, so it
+                 * counts as arrived and travel walks on - along a line that now misses the gap and
+                 * crosses the WALL beside it. Nothing downstream can recover: `Gates.onRoute` is
+                 * asked about the line we are actually walking and answers, correctly, that no
+                 * gateway is on it, so the local pathfinder is left to go round - which it does, the
+                 * long way, and the WANDER guard catches it thirty-six tiles later pointing at a
+                 * gateway on the far side of the base. From the log: leg 3 aimed at (-10521,-10455)
+                 * and ended at (-10513,-10459), nine units east; leg 4 then ran from there and the
+                 * bot wandered 36 tiles on a 7-tile leg.
+                 *
+                 * So ask the same question an arrival is supposed to have settled: is the rest of
+                 * the route still walkable FROM HERE? Clear, and the drift cost nothing. Not clear,
+                 * and the honest answer is a new route from where we actually stand - which is what
+                 * `plan` will give, threading the gap from this side of it. Re-planning is right here
+                 * for the same reason it is wrong after a leg that never moved: we HAVE moved, we are
+                 * simply somewhere the route was not drawn for.
+                 *
+                 * This is also the angled-approach case - coming at a gateway from along the wall
+                 * rather than square to it puts the line across the wall for the same reason. */
+                if (last || restIsWalkable(legs, i))
+                    continue;
+                NLog.log(log, "  ...arrived, but from here the line on to the next waypoint is"
+                    + " blocked - re-planning rather than walking it");
+                if (++replans > MAX_REPLANS) {
+                    NLog.log(log, "route to " + Gates.fmt(dest) + " failed " + replans
+                        + " times; giving up " + (int) shortfall(dest) + "u short");
+                    return arrived(dest, tol);
+                }
+                Barriers.learn(gui);
+                List<Coord2d> off = plan(dest);
+                NLog.log(log, "re-planned after drifting off the route, from " + Gates.fmt(me())
+                    + ": " + ((off == null) ? "no route"
+                        : (off.size() + " waypoint(s) " + fmt(off))));
+                legs = itinerary(off, dest);
+                i = -1;
                 continue;
+            }
 
             /* Not reaching a waypoint is not the same as the route having failed.
              *
