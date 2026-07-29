@@ -105,14 +105,6 @@ public class BotNav {
      * so anything further off than this and the next leg is a line nobody has examined.
      */
     private static final double LEG_SLACK = 11 * 1.0;
-    /**
-     * How many times one journey will re-plan for drift.
-     *
-     * Separate from {@link #MAX_REPLANS}, which counts legs that FAILED, because these are legs
-     * that succeeded and each one has made ground. Bounded only so that a drift which never closes
-     * cannot re-plan for ever.
-     */
-    private static final int MAX_DRIFTS = 6;
 
     /**
      * How far from a leg's starting point the walk may get, as a multiple of the leg's own length,
@@ -727,7 +719,6 @@ public class BotNav {
         List<Coord2d> legs = itinerary(route, dest);
         int replans = 0;
         int gates = 0;
-        int drifts = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
                 return false;
@@ -746,7 +737,18 @@ public class BotNav {
              * aimed, and where it actually stopped is the whole of that picture, and it is one line
              * per waypoint rather than one per hop. */
             Coord2d began = me();
-            boolean got = walkStraight(legs.get(i), last ? tol : LEG_TOL);
+            /* A waypoint is reached within a TILE, not within three.
+             *
+             * Three was the same mistake as the trim, one layer down, and fixing the trim alone
+             * only moved it: walkStraight returns as soon as it is inside the tolerance, so a
+             * waypoint two tiles away was "arrived at" without the character moving at all. The
+             * waypoint that threads the air lock survives the trim now and was then skipped here
+             * for exactly the reason it used to be deleted there - so the next leg still began from
+             * the wrong side of the post, and the log still showed a leg reading "0t of 1t".
+             *
+             * A waypoint is a corner the route turns at. Passing three tiles wide of a corner is
+             * not passing it. */
+            boolean got = walkStraight(legs.get(i), last ? tol : LEG_SLACK);
             Coord2d ended = me();
             NLog.log(log, String.format("  leg %d/%d %s -> %s: %s at %s (%dt of %dt)",
                 i + 1, legs.size(), Gates.fmt(began), Gates.fmt(legs.get(i)),
@@ -754,37 +756,16 @@ public class BotNav {
                 (int) ((began == null || ended == null) ? -1
                     : began.dist(ended) / MCache.tilesz.x),
                 (int) ((began == null) ? -1 : began.dist(legs.get(i)) / MCache.tilesz.x)));
-            if (got) {
-                /* Arrived NEAR the waypoint is not arrived AT it, and the difference is the whole
-                 * of the route's guarantee.
-                 *
-                 * What the router promises is that the straight line between consecutive WAYPOINTS
-                 * is clear - it checked exactly those lines. A leg counts as done within three
-                 * tiles, because waypoints are corners to pass rather than places to stand, so the
-                 * next leg is then walked from wherever we actually stopped, along a line nobody
-                 * has ever looked at. Usually that is harmless. Beside a gateway it is not: two
-                 * tiles off the corner is the difference between the gap and the post, and the leg
-                 * that should have gone down through the air lock instead aims at the wall stub
-                 * next to it. The pathfinder then spends the full hop budget going round and round
-                 * whatever is in front of it, reporting progress the whole time, which is the
-                 * pacing - forty-four seconds of it in the log, from one leg, in silence.
-                 *
-                 * Re-planning from where we are restores the guarantee, and costs a couple of
-                 * milliseconds. Bounded, since a drift that never closes would otherwise re-plan
-                 * for ever. */
-                if (!last && (ended != null) && (ended.dist(legs.get(i)) > LEG_SLACK)
-                        && (drifts++ < MAX_DRIFTS)) {
-                    List<Coord2d> fresh = plan(dest);
-                    NLog.log(log, "  ...that is "
-                        + (int) (ended.dist(legs.get(i)) / MCache.tilesz.x)
-                        + "t off the waypoint, so the next leg was never checked - re-planning: "
-                        + ((fresh == null) ? "no route"
-                            : (fresh.size() + " waypoint(s) " + fmt(fresh))));
-                    legs = itinerary(fresh, dest);
-                    i = -1;
-                }
+            /* Arriving now MEANS arriving, so there is nothing left to correct for here.
+             *
+             * The re-plan that used to sit in this branch was a workaround for the loose tolerance
+             * above, and with the tolerance right it is not merely redundant but harmful: a leg
+             * inside the old three-tile tolerance returned without moving, the drift check saw it
+             * standing a tile off, re-planned, got the identical route back, and did it again -
+             * six times, until the bound stopped it. Re-planning cannot fix being in the wrong
+             * place. Walking can. */
+            if (got)
                 continue;
-            }
 
             /* A leg that stops short in front of a wall is nearly always a shut gateway: the
              * route was planned through the gap, correctly, and the gap happens to have a gate
