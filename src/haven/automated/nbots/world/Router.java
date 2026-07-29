@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.PriorityQueue;
@@ -173,11 +174,9 @@ public class Router {
 
     /** Every tile a straight line between two tiles crosses, appended in order. */
     private static void trace(List<Coord> into, Coord a, Coord b) {
-        int steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-        for (int i = 0; i <= steps; i++) {
-            int x = a.x + (((b.x - a.x) * i) / Math.max(1, steps));
-            int y = a.y + (((b.y - a.y) * i) / Math.max(1, steps));
-            Coord t = new Coord(x, y);
+        // The same walk the route was validated with, so the log describes the route that was
+        // approved rather than a differently-rounded neighbour of it.
+        for (Coord t : along(a, b)) {
             if (into.isEmpty() || !into.get(into.size() - 1).equals(t))
                 into.add(t);
         }
@@ -297,14 +296,59 @@ public class Router {
 
     /** Whether every tile the straight line between two tiles crosses is passable. */
     private static boolean clear(World w, Coord a, Coord b) {
-        int steps = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y)) * 2;
-        for (int i = 1; i < steps; i++) {
-            int x = a.x + (((b.x - a.x) * i) / steps);
-            int y = a.y + (((b.y - a.y) * i) / steps);
-            if (!w.passable(new Coord(x, y)))
+        for (Coord t : along(a, b)) {
+            if (!w.passable(t))
                 return false;
         }
         return true;
+    }
+
+    /** Samples per tile along a line. Quarter-tile, so no tile a line crosses is stepped over. */
+    private static final int SAMPLES = 4;
+    /** The character's own half-width, in tiles: three units of eleven. Same figure as Map.plbbox. */
+    private static final double HALFWIDTH = 3.0 / 11.0;
+
+    /**
+     * Every tile a character walking between two tile CENTRES would touch.
+     *
+     * Three things this has to get right, and the version it replaces got none of them.
+     *
+     * It walked in tile indices with integer division, which TRUNCATES - so for a line that drops
+     * one row over thirty-eight columns, every sample landed on the starting row and the row the
+     * line actually finishes on was never looked at. On this base that is a leg running west along
+     * the outside of the south palisade: the sampled row is the open ground one south of the wall,
+     * the real line clips the wall itself, and the route was approved. Then the walk sets off,
+     * meets the wall, makes no headway, and re-plans the same leg. That is "went down the wall and
+     * tried to path through the palisade", and it is why the route log could honestly report zero
+     * impassable tiles about a route that crossed thirty-seven of them.
+     *
+     * It measured between tile INDICES rather than centres. A waypoint becomes a tile centre when
+     * travel converts it back to world coordinates, so the line the character actually walks is the
+     * one between centres, offset half a tile from the one that was checked.
+     *
+     * And it treated the character as a point. A character is six units wide against tiles eleven
+     * across, so a line threading the join between two blocked tiles fits on paper and not in the
+     * game - which is the same corner-post the gate code keeps meeting, one layer up.
+     */
+    private static List<Coord> along(Coord a, Coord b) {
+        // Insertion-ordered and de-duplicating: consecutive samples land on the same tile over and
+        // over, and simplify() calls this once per waypoint candidate, so a linear scan per sample
+        // would make the whole pass cubic in route length.
+        Set<Coord> out = new LinkedHashSet<>();
+        double ax = a.x + 0.5, ay = a.y + 0.5, bx = b.x + 0.5, by = b.y + 0.5;
+        int steps = Math.max(1,
+            (int) Math.ceil(Math.max(Math.abs(bx - ax), Math.abs(by - ay)) * SAMPLES));
+        for (int i = 0; i <= steps; i++) {
+            double t = (double) i / steps;
+            double x = ax + ((bx - ax) * t), y = ay + ((by - ay) * t);
+            int lox = (int) Math.floor(x - HALFWIDTH), hix = (int) Math.floor(x + HALFWIDTH);
+            int loy = (int) Math.floor(y - HALFWIDTH), hiy = (int) Math.floor(y + HALFWIDTH);
+            for (int ty = loy; ty <= hiy; ty++) {
+                for (int tx = lox; tx <= hix; tx++)
+                    out.add(new Coord(tx, ty));
+            }
+        }
+        return new ArrayList<>(out);
     }
 
     // ------------------------------------------------------------------ the world, cached

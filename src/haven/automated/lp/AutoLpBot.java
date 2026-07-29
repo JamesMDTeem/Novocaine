@@ -281,6 +281,11 @@ public class AutoLpBot extends Window implements Runnable {
             }
         }
 
+        /* Once more on the way out. Tidying runs at the START of an action, which handles everything
+         * the run picks up except the last thing it picks up - there is no next action to clear it.
+         * So the final pick sat in the pack: not dropped, and, when it is a fruit whose LP is in the
+         * seed, not eaten either, which quietly loses the discovery the whole trip was for. */
+        tidyInventory();
         NLog.log(LOG, "=== run end: " + done + " action(s), " + attempts + " attempt(s)"
             + (attempts >= maxAttempts ? " (hit attempt limit)" : "") + " ===");
         gui.msg("Auto-LP finished after " + done + " action(s).", Color.WHITE);

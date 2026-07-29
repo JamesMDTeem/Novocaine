@@ -355,15 +355,22 @@ public class Gates {
 
         Gob live = nav.gob(id);
         Gob use = (live == null) ? gate : live;
-        /* Into the middle of the opening first, then out the far side. One step from wherever the
-         * approach happened to stop is a diagonal across the gateway, and a gateway is three tiles
-         * wide with a post at each end - so the diagonal clips a post, which is where a bot walking
-         * out of its own gate gets wedged. Two steps down the gate's own centre line is what a
-         * player does, and now that an open gateway is not treated as solid (see BotNav.solids) the
-         * first of them can aim at the gate itself. */
-        Coord2d mid = use.rc;
+        /* Line up square with the opening, then walk through it: a point on the gate's own centre
+         * line on OUR side, then the middle, then out the far side.
+         *
+         * Aiming straight at the middle is not enough and this is why. The posts that flank a
+         * gateway stand PROUD of the opening - the barrier is wider than the gap it contains - so a
+         * line coming in at a shallow angle meets a post before it reaches the middle, however
+         * exactly the middle was aimed at. What decides whether a walk fits through a three-tile
+         * gap is the angle it arrives at, and the only angle guaranteed to fit is square on.
+         *
+         * Three steps rather than two, then, and the first is the one that matters: it costs a
+         * couple of tiles of walking and turns every approach into the same approach. */
         Coord2d through = beyond(use, from, dest);
-        nav.stepTo(mid, 11 * 1.5);
+        Coord2d lineup = square(use, from);
+        if (lineup != null)
+            nav.stepTo(lineup, 11 * 1.5);
+        nav.stepTo(use.rc, 11 * 1.5);
         boolean crossed = nav.stepTo(through, 11 * 2.5);
         Gob now = nav.player();
         boolean past = (now != null) && passed(use, from, now.rc);
@@ -506,6 +513,22 @@ public class Gates {
                 + ", " + (int) (toGate / MCache.tilesz.x) + "t away): " + why);
         }
         return out;
+    }
+
+    /**
+     * A point square on to the gateway, on the same side of it as {@code from}.
+     *
+     * Null when the gate's axis cannot be worked out, in which case the caller simply skips the
+     * lining-up step and does what it did before.
+     */
+    private static Coord2d square(Gob gate, Coord2d from) {
+        Coord2d n = across(gate);
+        if ((n == null) || (from == null))
+            return null;
+        double side = (n.x * (from.x - gate.rc.x)) + (n.y * (from.y - gate.rc.y));
+        if (Math.abs(side) < 1.0)
+            return null;   // already in the opening; lining up would mean backing out of it
+        return gate.rc.add(n.mul((side > 0) ? THROUGH : -THROUGH));
     }
 
     private static boolean passed(Gob gate, Coord2d from, Coord2d now) {
