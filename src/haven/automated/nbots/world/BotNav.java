@@ -141,6 +141,15 @@ public class BotNav {
      * waypoint which cannot be stood on cannot be walked at for ever.
      */
     private static final int MAX_DRIFTS = 6;
+    /**
+     * How many blind hops a journey may make towards a destination the map file cannot place.
+     *
+     * Enough to cross the gap between two mapped areas - the longest in the log is a hundred and
+     * seventy tiles, which is seven hops - and bounded because a destination that never becomes
+     * placeable is a destination in another segment, and walking at one of those forever is the
+     * failure this replaced.
+     */
+    private static final int MAX_STAGES = 12;
     /** Travel gives up after this many hops that don't get closer. */
     private static final int TRAVEL_STALL_LIMIT = 6;
     /**
@@ -782,6 +791,40 @@ public class BotNav {
          * benefits from this trip rather than only the next one. */
         Barriers.learn(gui);
         refusedGates.clear();
+
+        /* NO ROUTE MUST NOT MEAN NO LIMIT.
+         *
+         * `itinerary` puts the destination on the end of every route, and when there is no route
+         * that is the WHOLE journey: one leg, aimed straight at somewhere that may be a hundred and
+         * seventy tiles away, walked by a hop loop that aims up to thirty-six tiles at a time. Every
+         * check this class has gained lives inside the routed path, and this leg never enters it.
+         *
+         * That is the whole of "it paths through things just out of render", and it is NOT a memory
+         * problem: replayed against botmap.json, the 176-tile leg at 10:30 crosses EIGHTEEN
+         * remembered WALL tiles and twenty-three solid ones. The record had every one of them, and
+         * every fix aimed at reading that record better was aimed at a code path this journey never
+         * took. The router was simply never asked - `WorldAnchor.capture` cannot place a destination
+         * that far off, so `plan` gives up with "the map file can't place it yet". Twenty-eight
+         * journeys in one log ran with no route at all.
+         *
+         * So walk one hop at a time and plan again after each. Nothing is lost - the hop goes the
+         * way the leg would have gone anyway - and by the time a hop or two has been made the map
+         * file can usually place the destination, so the next attempt gets a real route. What is
+         * gained is that each hop is short enough for the wall check and the local pathfinder to
+         * have an opinion about it, and that a journey nobody could plan no longer commits to a
+         * straight line across the county. */
+        for (int stage = 0; (stage < MAX_STAGES) && abort.running(); stage++) {
+            Coord2d at = me();
+            if ((at == null) || (at.dist(dest) <= HOP)
+                || (WorldAnchor.capture(gui, dest) != null))
+                break;
+            Coord2d far = at.add(dest.sub(at).div(at.dist(dest)).mul(HOP));
+            NLog.log(log, "cannot plan to " + Gates.fmt(dest) + " from here - walking one hop"
+                + " towards it, to " + Gates.fmt(far) + ", and asking again from there");
+            if (!walkStraight(far, LEG_TOL))
+                break;
+            Barriers.learn(gui);
+        }
 
         List<Coord2d> route = plan(dest);
         /* The waypoints themselves, not just how many. A count says nothing about the shape of a

@@ -227,11 +227,22 @@ public class NCleanupBot extends NBot {
              * declares victory after its first drink, so go back and look again before believing
              * it. Terminates because the trip ends inside the area and the second pass gets no
              * further than this. */
+            /* ...but only BELIEVE it from where the work is.
+             *
+             * `candidates` scans LOADED gobs and filters them by `inBounds`, so standing anywhere
+             * else it is empty for a reason that has nothing to do with the job being done. Upkeep
+             * used to run first and its last act is a trip home, so the scan happened back at the
+             * work site; asking first without also checking WHERE we are asked it at the barrel.
+             * In area mode the old code caught that. In nearest-first there is no `workPlace` at
+             * all, so it fell straight through to break - and the shift ended at the water, which
+             * is "it stopped our work job randomly far from the area".
+             *
+             * `origin` is the nearest-first anchor - the same one `inBounds` measures the radius
+             * from - so the two now agree about where the work is. */
             if (candidates().isEmpty()) {
-                Gob here = ctx.player();
-                if (workPlace != null && here != null && !workPlace.contains(gui, here.rc)) {
-                    ctx.log("no targets in sight; heading back to \"" + workPlace.name + "\"");
-                    if (new TravelTo(workPlace).run(ctx).isOk())
+                if (!atWork()) {
+                    ctx.log("no targets in sight from here; heading back to the work area");
+                    if (goToWork().isOk())
                         continue;
                 }
                 break;
@@ -357,6 +368,31 @@ public class NCleanupBot extends NBot {
      * rather than from where the character currently is, or a run would creep across the map one
      * tree at a time, each new target legitimising the next.
      */
+    /**
+     * Whether we are standing where the work is, in whichever mode this shift is running.
+     *
+     * The exact counterpart of {@link #inBounds}: that decides whether a TARGET counts, this
+     * decides whether an empty scan counts, and the two must use the same notion of "the work area"
+     * or a shift can end while standing somewhere the scan was never going to see anything.
+     */
+    private boolean atWork() {
+        Gob me = ctx.player();
+        if (me == null)
+            return true;   // cannot tell, so do not walk in circles over it
+        if (workPlace != null)
+            return workPlace.contains(gui, me.rc);
+        return (origin == null) || (origin.dist(me.rc) <= settings.num("radius"));
+    }
+
+    /** Back to wherever this shift's work is, by whichever handle we have on it. */
+    private Outcome goToWork() throws InterruptedException {
+        if (workPlace != null)
+            return new TravelTo(workPlace).run(ctx);
+        if (origin == null)
+            return Outcome.failed("nowhere recorded to go back to");
+        return new TravelTo(origin, haven.automated.nbots.world.BotNav.REACH).run(ctx);
+    }
+
     private boolean inBounds(Gob g) {
         if (workPlace != null)
             return workPlace.contains(gui, g.rc);

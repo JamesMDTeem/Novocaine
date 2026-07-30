@@ -41,6 +41,9 @@ public class Drink implements Task {
      */
     private static final double ENOUGH = 0.9;
 
+    /** Polls (of 25ms) to wait for a vessel's contents to arrive before calling it empty. */
+    private static final int CONTENTS_TICKS = 40;
+
     private final double target;
 
     public Drink() {
@@ -64,6 +67,22 @@ public class Drink implements Task {
          * trip ends by filling a vessel that was already full and coming back no better off, which
          * is what a chopping shift spent its time doing. Say what is actually being carried, since
          * every way this fails looks the same from outside. */
+        /* Give the contents a moment to resolve before believing the vessel is empty.
+         *
+         * {@code GItem.getcontents} returns null both when an item holds nothing and when the
+         * server has not sent its info yet, and the second is common exactly when this runs -
+         * having just walked somewhere, with windows opening and item info still arriving. Treating
+         * that as empty is what sends a bot with a full waterskin off to a barrel, logged as
+         * "carrying Waterskin(empty or unreadable) - going for water". Waiting costs a second on
+         * the one path where the answer is about to change and nothing on every other. */
+        if (Carried.holdingWater(ctx.gui).isEmpty() && !Carried.vessels(ctx.gui).isEmpty()) {
+            ctx.nav.waitUntil(() -> !Carried.holdingWater(ctx.gui).isEmpty(), CONTENTS_TICKS);
+            if (!Carried.holdingWater(ctx.gui).isEmpty())
+                sip(ctx);
+        }
+        if (ctx.stamina() >= enough())
+            return Outcome.ok();
+
         if (!Carried.holdingWater(ctx.gui).isEmpty())
             return Outcome.blocked("can't drink though " + Carried.describe(ctx.gui)
                 + " - not walking to a barrel over it");
