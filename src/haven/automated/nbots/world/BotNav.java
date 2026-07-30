@@ -117,6 +117,15 @@ public class BotNav {
     private static final double WANDER_SLACK = 11 * 6.0;
     /** How many gateways one journey may go through before that stops being plausible. */
     private static final int MAX_GATES = 4;
+
+    /**
+     * How many times one journey may re-plan because it drifted off the line the route was drawn on.
+     *
+     * Separate from {@link #MAX_REPLANS} and larger, because these are corrections rather than
+     * retries - see the counter's own comment in {@code travelTo}. Bounded at all only so that a
+     * route which somehow keeps producing a wall-crossing first leg cannot spin.
+     */
+    private static final int MAX_DRIFTS = 6;
     /** Travel gives up after this many hops that don't get closer. */
     private static final int TRAVEL_STALL_LIMIT = 6;
     /**
@@ -771,6 +780,15 @@ public class BotNav {
         List<Coord2d> legs = itinerary(route, dest);
         int replans = 0;
         int gates = 0;
+        /* Its own budget, not MAX_REPLANS'.
+         *
+         * A drift re-plan is a different animal from a failure re-plan: we HAVE moved, and planning
+         * again from the new position is productive - in the log the one that fired led straight to
+         * the gate being opened and stepped through. Failure re-plans are the ones that tend to
+         * return the identical route, which is what MAX_REPLANS is small for. Sharing the counter
+         * meant a couple of legitimate drift corrections used up the budget that a real failure
+         * later in the journey needed, and the journey gave up hundreds of units short. */
+        int drifts = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
                 return false;
@@ -842,15 +860,11 @@ public class BotNav {
                  *
                  * This is also the angled-approach case - coming at a gateway from along the wall
                  * rather than square to it puts the line across the wall for the same reason. */
-                if (last || restIsWalkable(legs, i))
+                if (last || (drifts >= MAX_DRIFTS) || !driftedIntoWall(legs, i))
                     continue;
-                NLog.log(log, "  ...arrived, but from here the line on to the next waypoint is"
-                    + " blocked - re-planning rather than walking it");
-                if (++replans > MAX_REPLANS) {
-                    NLog.log(log, "route to " + Gates.fmt(dest) + " failed " + replans
-                        + " times; giving up " + (int) shortfall(dest) + "u short");
-                    return arrived(dest, tol);
-                }
+                drifts++;
+                NLog.log(log, "  ...arrived, but from here the next leg cuts through a wall the"
+                    + " route went round - re-planning rather than walking into it");
                 Barriers.learn(gui);
                 List<Coord2d> off = plan(dest);
                 NLog.log(log, "re-planned after drifting off the route, from " + Gates.fmt(me())
@@ -1011,6 +1025,65 @@ public class BotNav {
      * The route's guarantee is about lines between waypoints; this asks the same question of the
      * line we are really on. True when there is no next leg, since then nothing is being promised.
      */
+    /**
+     * True if the next leg was drawn THROUGH a gateway and, from where we are actually standing, no
+     * longer goes through it.
+     *
+     * The narrow form of "have we drifted off the route", and it has to be narrow. The obvious test -
+     * is the rest of the route still walkable from here - fires constantly and wrongly: {@link
+     * Router#along} sweeps the character's six-unit width at quarter-tile steps against eleven-unit
+     * tiles, so a line drawn from the tile we are standing in rather than from the waypoint clips
+     * corners the certified line missed. Anywhere near a wall - which is exactly where routes thread
+     * gateways - one tile of difference flips the answer. Run as a general check it re-planned
+     * seventeen times in a two-minute session, on arrivals as good as four units off, burning the
+     * re-plan budget and turning working journeys into wandering ones.
+     *
+     * What actually breaks is specific and worth catching on its own. A gateway is three tiles wide
+     * and {@code simplify} will put the turn on its EDGE tile, so a tolerance's worth of drift moves
+     * the next leg's line off the gap and onto the WALL beside it - and then everything downstream is
+     * asked about the line being walked and answers honestly that no gateway is on it, leaving the
+     * local pathfinder to go round. Measured from the log: nine units of drift, thirty-six tiles of
+     * wander on a seven-tile leg.
+     *
+     * So compare the two lines on the one thing that decides it: does the line we would actually
+     * walk cross a WALL that the certified one did not? Replayed against botmap.json and the logged
+     * coordinates, that fires on the real case - the drifted line meets wall tiles (1044,1150) and
+     * (1044,1151), one column east of the gap - and stays silent on the long legs out in the open
+     * that the general test was re-planning for no reason.
+     *
+     * WALL and not SOLID, deliberately. A palisade is a thing the local pathfinder cannot get past
+     * and the router plans around; furniture it walks round by itself, and re-planning for every
+     * barrel a line happens to clip is how the general form of this check went wrong.
+     *
+     * Testing for the GATEWAY instead does not work, and it is worth saying why so nobody tries it
+     * again: the drifted line still clips one of the air lock's two gate rows, just not the one it
+     * needs, so "was drawn through a gateway and no longer is" is false on the very case this
+     * exists for.
+     */
+    private boolean driftedIntoWall(List<Coord2d> legs, int i) {
+        if ((i + 1) >= legs.size())
+            return false;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = player();
+        if ((here == null) || (me == null))
+            return false;   // cannot tell, so do not invent a detour
+        Coord2d off = here.sc.sub(me.rc);
+        Coord2d next = legs.get(i + 1).add(off);
+        return crossesWall(here.seg, here.sc, next)
+            && !crossesWall(here.seg, legs.get(i).add(off), next);
+    }
+
+    /** Whether the straight line between two points in segment coordinates meets a wall tile. */
+    private static boolean crossesWall(long seg, Coord2d from, Coord2d to) {
+        int steps = Math.max(1, (int) Math.ceil((from.dist(to) / MCache.tilesz.x) * 2));
+        for (int i = 0; i <= steps; i++) {
+            Coord t = from.add(to.sub(from).mul((double) i / steps)).floor(MCache.tilesz);
+            if (Observed.at(seg, t) == Observed.WALL)
+                return true;
+        }
+        return false;
+    }
+
     private boolean restIsWalkable(List<Coord2d> legs, int i) {
         if ((i + 1) >= legs.size())
             return true;
