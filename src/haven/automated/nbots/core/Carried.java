@@ -45,6 +45,8 @@ public class Carried {
 
     /** Polls (of 25ms) to wait for one drink to take effect. */
     private static final int SIP_TICKS = 60;
+    /** Polls to wait for the drink action to appear before deciding it is not a timed one. */
+    private static final int ACTION_TICKS = 8;
 
     private Carried() {}
 
@@ -108,7 +110,19 @@ public class Carried {
         // to wherever the mouse last was.
         ctx.gui.ui.lcc = Coord.z;
         AUtils.clickWItemAndSelectOption(ctx.gui, vessel, 0);
-        ctx.nav.pause(SIP_TICKS);
+        /* Wait for the ACTION, not for a fixed span.
+         *
+         * Drinking is timed and runs a progress bar, and a fresh click on a vessel CANCELS whatever
+         * action is running. A blind pause is therefore wrong in both directions at once: too short
+         * and the caller's next sip aborts a mouthful halfway through, which is the stutter a
+         * character shows when it is told to drink several times in a row; too long and every sip
+         * of a drink to full costs a second and a half whether or not anything is still happening.
+         *
+         * The progress bar not appearing at all is a perfectly ordinary answer - a sip small enough
+         * to be instant - so the first wait is short and its expiry means nothing. The second is
+         * the real one, and it ends the moment the bar goes away. */
+        ctx.nav.waitUntil(() -> ctx.gui.prog != null, ACTION_TICKS);
+        ctx.nav.waitUntil(() -> ctx.gui.prog == null, SIP_TICKS);
         return true;
     }
 

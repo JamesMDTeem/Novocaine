@@ -1,6 +1,5 @@
 package haven.automated.nbots.task;
 
-import haven.automated.AUtils;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Carried;
 import haven.automated.nbots.core.NBotConfig;
@@ -20,10 +19,32 @@ public class Drink implements Task {
     /** A bound on repeated sips, so a vessel that never registers as drunk cannot spin here. */
     private static final int MAX_SIPS = 30;
 
+    /**
+     * How full to drink to. All the way.
+     *
+     * It was nine tenths, which is the level below which a drink is worth HAVING, and using one
+     * number for both meant a bot stopped drinking at the point it would have started. Stamina is
+     * what every walk spends, a mouthful is free once the vessel is in hand, and the expensive part
+     * of a drink - noticing, stopping work, possibly a trip - has already been paid by the time we
+     * are here. Stopping short of full just brings the next stop forward.
+     */
+    private static final double FULL = 1.0;
+
+    /**
+     * Above this, not being full is no reason to walk to a barrel.
+     *
+     * Kept apart from {@link #FULL} deliberately, because the two questions are different: how far
+     * to keep drinking, and whether what we managed was worth an errand. Sharing one number in the
+     * other direction is a trap - drinking to nine tenths and then testing against the same nine
+     * tenths reports failure over a rounding error, and the caller reads a failed drink as a reason
+     * to defer the work the drink was for.
+     */
+    private static final double ENOUGH = 0.9;
+
     private final double target;
 
     public Drink() {
-        this(0.9);
+        this(FULL);
     }
 
     public Drink(double target) {
@@ -36,7 +57,7 @@ public class Drink implements Task {
             return Outcome.ok();
 
         sip(ctx);
-        if (ctx.stamina() >= target)
+        if (ctx.stamina() >= enough())
             return Outcome.ok();
 
         /* Carrying water and still not drinking is not thirst, and a barrel cannot cure it: the
@@ -86,24 +107,36 @@ public class Drink implements Task {
             + " - is that source actually water?");
     }
 
+    /** The level a trip to a barrel is judged against, never above what we are drinking to. */
+    private double enough() {
+        return Math.min(target, ENOUGH);
+    }
+
     /**
-     * Drinks by every means available until stamina stops improving or the target is reached.
+     * Drinks until stamina stops improving or the target is reached, by ONE means.
      *
-     * Two means, in order of cheapness. The client's own drink goes first because it loops
-     * internally and handles the ordinary case in one call; {@link Carried#drink} follows because
-     * it searches the whole equipory rather than two slots, and is therefore the only one that
-     * works for a waterskin worn somewhere unusual.
+     * It used to be two: the client's own {@code drinkTillFull} first, because it loops internally,
+     * and then {@link Carried#drink} because it is the only one that finds a waterskin worn in a
+     * slot the client does not check. Running both is not belt and braces, it is two hands on the
+     * same wheel. Drinking is a timed action with a progress bar, and issuing a fresh {@code iact}
+     * on a vessel CANCELS whatever action is running and starts again - so the second mechanism
+     * interrupted the first every time round, and a character that should have drunk four mouthfuls
+     * in six seconds spent that time starting and abandoning them. That is the stutter.
      *
-     * The second is ONE SIP per call, so it has to be repeated - a mouthful does not take a
-     * character from a sixth of stamina to nine tenths. Bounded, and stopped the moment a sip
-     * moves nothing, which is what an empty vessel or a skin full of tea looks like from here.
+     * {@link Carried#drink} is the one kept because it is a strict superset: every inventory the
+     * client can see plus every equipment slot rather than two, and a wider list of vessels. The
+     * one thing lost with the client's version is that it will fall back on TEA when there is no
+     * water; that is a deliberate trade, since {@link Carried} restricts itself to water on the
+     * grounds that water is what a refill trip actually produces.
+     *
+     * ONE SIP per call, so it has to be repeated - a mouthful does not take a character from a
+     * sixth of stamina to full. Bounded, and stopped the moment a sip moves nothing, which is what
+     * an empty vessel or a skin full of tea looks like from here.
      *
      * @return true if stamina rose at all.
      */
     private boolean sip(BotCtx ctx) throws InterruptedException {
         double start = ctx.stamina();
-        AUtils.drinkTillFull(ctx.gui, target, target);
-        ctx.nav.waitUntil(() -> ctx.stamina() >= target, 40);
         for (int i = 0; (i < MAX_SIPS) && (ctx.stamina() < target); i++) {
             double was = ctx.stamina();
             if (!Carried.drink(ctx))

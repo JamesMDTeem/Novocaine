@@ -107,6 +107,21 @@ public class BotNav {
     private static final double LEG_SLACK = 11 * 1.0;
 
     /**
+     * Close enough to be standing ON a waypoint rather than merely near it.
+     *
+     * A third of a tile, which is what it takes to guarantee being in the waypoint's own TILE: a
+     * waypoint is a tile centre, so anything inside this radius rounds to the same tile whichever
+     * way it is offset. That is the only property being bought - not precision for its own sake,
+     * but the difference between the gap and the wall beside it.
+     *
+     * Used solely by the drift correction in {@code travelTo}, never as a general leg tolerance.
+     * Held to as a rule it would be the two-tile hop dead band all over again: {@code stepTo} pulls
+     * its aim back off anything solid, so a waypoint next to a stockpile can never be stood on this
+     * exactly and a leg that demanded it would never finish.
+     */
+    private static final double ON_WAYPOINT = 11 * 0.34;
+
+    /**
      * How far from a leg's starting point the walk may get, as a multiple of the leg's own length,
      * before it is a detour rather than a leg.
      *
@@ -119,11 +134,11 @@ public class BotNav {
     private static final int MAX_GATES = 4;
 
     /**
-     * How many times one journey may re-plan because it drifted off the line the route was drawn on.
+     * How many times one journey may go back and finish walking onto a waypoint it drifted off.
      *
      * Separate from {@link #MAX_REPLANS} and larger, because these are corrections rather than
      * retries - see the counter's own comment in {@code travelTo}. Bounded at all only so that a
-     * route which somehow keeps producing a wall-crossing first leg cannot spin.
+     * waypoint which cannot be stood on cannot be walked at for ever.
      */
     private static final int MAX_DRIFTS = 6;
     /** Travel gives up after this many hops that don't get closer. */
@@ -782,12 +797,12 @@ public class BotNav {
         int gates = 0;
         /* Its own budget, not MAX_REPLANS'.
          *
-         * A drift re-plan is a different animal from a failure re-plan: we HAVE moved, and planning
-         * again from the new position is productive - in the log the one that fired led straight to
-         * the gate being opened and stepped through. Failure re-plans are the ones that tend to
-         * return the identical route, which is what MAX_REPLANS is small for. Sharing the counter
-         * meant a couple of legitimate drift corrections used up the budget that a real failure
-         * later in the journey needed, and the journey gave up hundreds of units short. */
+         * A drift correction is a different animal from a failure re-plan: we know exactly where we
+         * need to be and it is a few units away, so spending a walk on it is productive. Failure
+         * re-plans are the ones that tend to return the identical route, which is what MAX_REPLANS
+         * is small for. Sharing the counter meant a couple of legitimate corrections used up the
+         * budget that a real failure later in the journey needed, and the journey gave up hundreds
+         * of units short. */
         int drifts = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
@@ -853,26 +868,57 @@ public class BotNav {
                  *
                  * So ask the same question an arrival is supposed to have settled: is the rest of
                  * the route still walkable FROM HERE? Clear, and the drift cost nothing. Not clear,
-                 * and the honest answer is a new route from where we actually stand - which is what
-                 * `plan` will give, threading the gap from this side of it. Re-planning is right here
-                 * for the same reason it is wrong after a leg that never moved: we HAVE moved, we are
-                 * simply somewhere the route was not drawn for.
+                 * and the answer is NOT a new route - see below, that was tried and it loops - it is
+                 * to finish walking to the waypoint we stopped a tile short of.
                  *
                  * This is also the angled-approach case - coming at a gateway from along the wall
                  * rather than square to it puts the line across the wall for the same reason. */
-                if (last || (drifts >= MAX_DRIFTS) || !driftedIntoWall(legs, i))
+                if (last || !driftedIntoWall(legs, i))
                     continue;
-                drifts++;
-                NLog.log(log, "  ...arrived, but from here the next leg cuts through a wall the"
-                    + " route went round - re-planning rather than walking into it");
-                Barriers.learn(gui);
-                List<Coord2d> off = plan(dest);
-                NLog.log(log, "re-planned after drifting off the route, from " + Gates.fmt(me())
-                    + ": " + ((off == null) ? "no route"
-                        : (off.size() + " waypoint(s) " + fmt(off))));
-                legs = itinerary(off, dest);
-                i = -1;
-                continue;
+                /* WALK THE REST OF THE WAY ONTO IT. Re-planning here cannot work, and the log says
+                 * so in one unmistakable shape - seven of these, eight milliseconds apart:
+                 *
+                 *   leg 1/4 (-10512,-10456) -> (-10521,-10455): arrived at (-10512,-10456) (0t of 0t)
+                 *   ...arrived, but from here the next leg cuts through a wall the route went round
+                 *   re-planned ...: 3 waypoint(s) [(-10521,-10455) (-10521,-10378) (-10444,-10345)]
+                 *
+                 * The re-plan hands back the IDENTICAL route, and it is right to: keeping that
+                 * waypoint is exactly what stops the next leg crossing the wall, which is why
+                 * `plan` no longer trims it. Then travel walks the leg again, and `walkStraight`
+                 * returns true without issuing a click because we are already inside LEG_SLACK of
+                 * it. Nothing moves. Six goes at that, and then the wall-crossing leg is walked
+                 * anyway: 36 tiles of wander on a 7-tile leg, out through the wrong gateway, and
+                 * the whole trip back. 128 of these no-op arrivals in one log.
+                 *
+                 * The route was never wrong. We are nine units east of the mouth of a three-tile
+                 * gap, at tile (1044,1149) when the waypoint is (1043,1149), and row 1150 is WALL
+                 * at x=1044 and GATE at x=1043. One tile west is the entire fix, and one tile is
+                 * inside the tolerance that says we have arrived. So close it - a waypoint whose
+                 * job is to line us up is not passed by coming within a tile of it.
+                 *
+                 * ON_WAYPOINT and not LEG_SLACK only here, where the drift check has already shown
+                 * that this particular tile matters. Demanding it of every waypoint is the dead
+                 * band again - most of them cannot be stood on that exactly and do not need to be. */
+                if (drifts < MAX_DRIFTS) {
+                    drifts++;
+                    NLog.log(log, "  ...arrived, but the next leg cuts through a wall from here and"
+                        + " not from " + Gates.fmt(legs.get(i)) + " - walking onto it");
+                    walkStraight(legs.get(i), ON_WAYPOINT);
+                    ended = me();
+                    if (!driftedIntoWall(legs, i)) {
+                        NLog.log(log, "  ...on it at " + Gates.fmt(ended)
+                            + " and the next leg is clear from here");
+                        continue;
+                    }
+                }
+                /* Could not get onto it, so this leg did NOT arrive - fall through and let it be
+                 * handled as the failure it is. The gate check below is what actually rescues this,
+                 * and in the log it does: the identical case at 09:29:52 spent its drift budget on
+                 * no-op re-plans, and the moment the budget ran out `onRoute` found the shut gateway
+                 * and the bot went through it. Getting there without wasting six re-plans first is
+                 * the only difference. */
+                NLog.log(log, "  ...could not get onto " + Gates.fmt(legs.get(i))
+                    + " and the next leg still cuts a wall - counting the leg as failed");
             }
 
             /* Not reaching a waypoint is not the same as the route having failed.
@@ -1013,10 +1059,36 @@ public class BotNav {
         return (me == null) ? -1 : me.rc.dist(dest);
     }
 
-    /** Whether we are close enough to call it arrival. */
+    /**
+     * Whether we are close enough to call it arrival - AND on the same side of the wall as it.
+     *
+     * This was a bare distance, and a bare distance is not arrival. Tolerances here run from two
+     * tiles for a drawn place up to four for a bookmarked spot, and a palisade is one tile thick,
+     * so a bot stopped dead against the outside of a wall was entitled to report that it had got
+     * to somewhere three tiles beyond it. Nothing downstream re-checks that: the caller is told the
+     * journey succeeded and gets on with what it went there for, which for the work tasks means
+     * right-clicking a gob - and a right-click is a SERVER walk, which goes in a straight line
+     * through whatever is in the way. It is the same shape as the {@code walk.mc} bound in
+     * {@link #approach}, which exists because that exact hand-off swam a character across a river.
+     *
+     * WALL and not solid, and only strictly BETWEEN the two points. Furniture is not a reason to
+     * disown an arrival - stopping two tiles from a barrel because a crate is in the way is a
+     * perfectly good arrival - and the ends have to be allowed to be against something, or standing
+     * next to the palisade you were sent to would never count.
+     *
+     * It also answers the question the router already answers at its own level and nothing answered
+     * at this one: something walled in on every side has no reachable neighbour, so
+     * {@code Router.search} returns null for it - but travel then falls back to a straight walk, and
+     * the straight walk finishing four tiles short on the wrong side used to be success.
+     */
     private boolean arrived(Coord2d dest, double tol) {
         Gob me = player();
-        return (me != null) && (me.rc.dist(dest) <= tol);
+        if ((me == null) || (me.rc.dist(dest) > tol))
+            return false;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        if (here == null)
+            return true;   // cannot tell, so do not invent a failure
+        return !wallBetween(here.seg, here.sc, dest.add(here.sc.sub(me.rc)));
     }
 
     /**
@@ -1075,8 +1147,24 @@ public class BotNav {
 
     /** Whether the straight line between two points in segment coordinates meets a wall tile. */
     private static boolean crossesWall(long seg, Coord2d from, Coord2d to) {
+        return wallOn(seg, from, to, true);
+    }
+
+    /**
+     * As {@link #crossesWall}, but allowing either end to be standing against one.
+     *
+     * The distinction is the difference between "this line goes through a wall" and "a wall is
+     * between these two places". Route legs want the first, since a leg drawn onto a wall tile is
+     * wrong however it got there; {@link #arrived} wants the second, because being up against a
+     * palisade is where a lot of perfectly good destinations are.
+     */
+    private static boolean wallBetween(long seg, Coord2d from, Coord2d to) {
+        return wallOn(seg, from, to, false);
+    }
+
+    private static boolean wallOn(long seg, Coord2d from, Coord2d to, boolean ends) {
         int steps = Math.max(1, (int) Math.ceil((from.dist(to) / MCache.tilesz.x) * 2));
-        for (int i = 0; i <= steps; i++) {
+        for (int i = (ends ? 0 : 1); i <= (ends ? steps : (steps - 1)); i++) {
             Coord t = from.add(to.sub(from).mul((double) i / steps)).floor(MCache.tilesz);
             if (Observed.at(seg, t) == Observed.WALL)
                 return true;

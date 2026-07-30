@@ -38,6 +38,21 @@ public class Approach implements Task {
             return Outcome.ok();
         if (ctx.nav.approach(target, reach))
             return Outcome.ok();
+        /* Stopping short of `reach` is not the same as being unable to work.
+         *
+         * The default reach is twenty-two units and {@link #WORK_RANGE} is forty-four, so there is
+         * a two-tile band where the approach has failed by its own measure and a right-click would
+         * land perfectly well - and nothing was looking at it. What that costs is a tree given up
+         * on because the last two tiles were awkward: fallen logs lying across the tiles on the
+         * near side stop the local pathfinder getting to the trunk's hitbox from here, it reports
+         * failure at thirty units, and the target is retired. Standing thirty units away is a
+         * perfectly good place to chop from.
+         *
+         * Only where the caller asked to get CLOSER than working range, which is the case this is
+         * about. A caller that deliberately wanted more room than a right-click needs must not be
+         * handed working range as a consolation. */
+        if ((reach < WORK_RANGE) && inRange(ctx, target))
+            return Outcome.ok();
         // A beast in the way is temporary; anything else means this target can't be walked to and
         // trying again would spend another walk finding that out.
         return ctx.nav.hazardBlocked
