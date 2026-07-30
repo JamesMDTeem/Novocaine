@@ -60,6 +60,18 @@ public class Router {
      */
     private static final int UNKNOWN = 3;
 
+    /**
+     * What a tile the local pathfinder refused costs - see {@link Refused}.
+     *
+     * High enough that A* will go a very long way round rather than plan through one, low enough that
+     * it still WILL when there is no other way. That second half is the point: a refusal is an
+     * inference from one failed click, and an inference must not be able to make a destination
+     * unreachable. Making it impassable let two refusals seal the only way out of where a bot stood,
+     * the router returned null, and travel fell back on a single straight leg across fifteen solid
+     * tiles - a far worse outcome than any detour.
+     */
+    private static final int REFUSED_COST = 200;
+
     /** Straight and diagonal step costs, scaled so the whole search stays in integers. */
     private static final int STRAIGHT = 10, DIAGONAL = 14;
 
@@ -445,19 +457,20 @@ public class Router {
              * problem, not the route's. */
             if (s == Observed.GATE)
                 return true;
-            /* Below the gate test on purpose, so a refusal can never make the router plan around a
-             * gateway. A shut gate refuses the local pathfinder exactly as an unrecorded stockpile
-             * does, and telling the two apart is {@link Refused}'s caller's job - but if one ever
-             * slips through, a gate tile is still passable here and gate handling still runs.
+            /* A refused tile is EXPENSIVE, not impassable - see cost() below.
              *
-             * Otherwise: the client would not walk to this tile when our own record said it was
-             * clear, so something stands on it that Observed.CLIPS declined to record. The point of
-             * consulting it here rather than mending the record is that A* is the thing that has to
-             * change its mind - without this the re-plan after a failed leg returns the identical
-             * route, which is the four-identical-routes-then-give-up shape in the log. The goal tile
-             * is exempt by construction: `route` tests `!nb.equals(to)` before asking. */
-            if (refused.contains(t))
-                return false;
+             * It was impassable here, and that was a bad mistake. A refusal is an inference from one
+             * failed click, and making an inference absolute let two of them seal the only way out of
+             * where the bot was standing: the router returned null, travel fell back on its single
+             * greedy leg aimed at the destination, and that leg crossed fifteen solid tiles. "No
+             * route" is the worst answer this can give - it throws away the entire route layer and
+             * hands the journey to a straight line - so nothing short of a wall or deep water should
+             * ever produce it.
+             *
+             * Cost achieves what was actually wanted. A* will go a long way round rather than through
+             * a refused tile, which is all that was needed to stop it returning the identical route
+             * after a failed leg, and it will still go through one when there is genuinely no other
+             * way - which is the case where being wrong about the refusal must not be fatal. */
             if (strict && (s == Observed.UNSEEN))
                 return false;
             int w = wet(t);
@@ -488,6 +501,8 @@ public class Router {
         }
 
         int cost(Coord t) {
+            if (refused.contains(t))
+                return REFUSED_COST;
             return (state(t) == Observed.UNSEEN) ? UNKNOWN : 1;
         }
     }

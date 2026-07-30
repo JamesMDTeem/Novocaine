@@ -1162,8 +1162,34 @@ public class BotNav {
          * in the log, and the whole of "it goes the other way instead of through the gate beside
          * it": nothing had asked it to go through the gate, because the waypoint that would have
          * taken it there had been trimmed. */
-        while (!out.isEmpty() && (out.get(0).dist(me.rc) <= LEG_SLACK))
+        /* ...unless dropping it would aim the next leg through a WALL.
+         *
+         * This is the third form of the same bug. First the trim dropped waypoints for not being
+         * closer to the destination; then it dropped everything within three tiles; and now it drops
+         * the one waypoint that lines the bot up with a gateway, because the bot is standing a tile
+         * short of it.
+         *
+         * The drift re-plan made the two faults compound into a loop. Drifting to nine units off that
+         * waypoint is inside LEG_SLACK, so the arrival counts; the drift check correctly sees the next
+         * leg would cut the wall and re-plans; and plan() then deletes the very waypoint it had
+         * re-planned to reach. Replayed on the logged case: the route it handed back ran from tile
+         * (1044,1149) straight to (1043,1156) across FIVE wall tiles, which is the 36-tile wander
+         * being produced by the fix for the 36-tile wander.
+         *
+         * Testing for a gate TILE does not work here and it is worth saying why, because it is the
+         * obvious guess and it is wrong: the waypoint that matters is (1043,1149), one tile NORTH of
+         * the gateway and plain open ground. It is the alignment point, not the gap. So test the harm
+         * directly - would the first leg cross a wall that keeping this waypoint avoids - which is the
+         * same question {@link #driftedIntoWall} asks one layer up, and needs no guess about which
+         * waypoints are special. Verified on the logged case: keeping it, leg one crosses nothing and
+         * leg two runs down the gap through both gate rows clean. */
+        while (!out.isEmpty() && (out.get(0).dist(me.rc) <= LEG_SLACK)) {
+            Coord2d onward = (out.size() >= 2) ? out.get(1).sub(origin) : there.sc;
+            if (crossesWall(here.seg, here.sc, onward)
+                    && !crossesWall(here.seg, out.get(0).sub(origin), onward))
+                break;
             out.remove(0);
+        }
         /* Likewise the last one: {@link #itinerary} puts the destination itself on the end of
          * every route, so a waypoint already inside the final approach is that same walk done
          * twice. Dropping it here is safe only BECAUSE the destination is re-appended there - it
