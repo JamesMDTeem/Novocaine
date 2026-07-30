@@ -62,6 +62,16 @@ public class TravelTo implements Task {
 
     @Override
     public Outcome run(BotCtx ctx) throws InterruptedException {
+        /* Top up before setting off, not after arriving.
+         *
+         * Every journey in this tree comes through here, and none of it drinks: BotNav has no idea
+         * what stamina is, and the loop that does run upkeep runs it between TARGETS. So a bot sent
+         * to the far side of the base on half a meter walks the whole way on a falling one, arrives
+         * at walking pace because the server has taken the top gear away, and only then gets a
+         * chance to drink from the skin it was carrying the entire time. A mouthful before setting
+         * off costs a second and is the difference between arriving able to work and arriving
+         * needing another errand first. Carried water only - see the method. */
+        Drink.sipIfCarried(ctx);
         WorldAnchor a = (anchor != null) ? anchor : (place != null ? place.anchor : null);
         if (a != null) {
             double tol = tolerance;

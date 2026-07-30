@@ -212,19 +212,22 @@ public class NCleanupBot extends NBot {
 
         while (running() && attempts < 2000) {
             attempts++;
-            if (!upkeep())
-                return Outcome.failed(fatalStop);
-            if (settings.on("dropspoil"))
-                new Deposit(SPOIL, true).run(ctx);
-
-            Target t = takeTarget();
-            if (t == null) {
-                /* "Nothing left" and "we are not there any more" look identical from here, because
-                 * the scan only sees LOADED gobs and upkeep may just have walked us to a barrel
-                 * three hundred tiles away. In area mode that is the difference between a bot that
-                 * finishes its patch and one that declares victory after its first drink, so go
-                 * back and look again before believing it. Terminates because the trip ends inside
-                 * the area, and the second pass takes this branch no further. */
+            /* IS THERE ANY WORK LEFT - asked before spending anything on being fit to do it.
+             *
+             * Upkeep used to come first, and it is a whole errand: a dip in stamina sends the
+             * character across the base to a barrel and back before the loop ever looks at whether
+             * there is a target. So a shift whose last object had just been cleared went and
+             * fetched water, walked all the way back, and only then noticed it had finished - which
+             * is precisely what "it still checks water, runs to water and back, then decides it's
+             * finished" describes.
+             *
+             * "Nothing left" and "we are not there any more" look identical from here, because the
+             * scan only sees LOADED gobs and travel may have left us three hundred tiles away. In
+             * area mode that is the difference between a bot that finishes its patch and one that
+             * declares victory after its first drink, so go back and look again before believing
+             * it. Terminates because the trip ends inside the area and the second pass gets no
+             * further than this. */
+            if (candidates().isEmpty()) {
                 Gob here = ctx.player();
                 if (workPlace != null && here != null && !workPlace.contains(gui, here.rc)) {
                     ctx.log("no targets in sight; heading back to \"" + workPlace.name + "\"");
@@ -232,6 +235,18 @@ public class NCleanupBot extends NBot {
                         continue;
                 }
                 break;
+            }
+            if (!upkeep())
+                return Outcome.failed(fatalStop);
+            if (settings.on("dropspoil"))
+                new Deposit(SPOIL, true).run(ctx);
+
+            Target t = takeTarget();
+            if (t == null) {
+                /* Targets are in sight but every one is claimed by another client, or upkeep has
+                 * just walked us out of range of them. Either way go round: the emptiness test at
+                 * the top owns finishing, and it is the one that has looked. */
+                continue;
             }
 
             setStatus("Cleared " + done + " (" + t.job.name().toLowerCase() + ")");

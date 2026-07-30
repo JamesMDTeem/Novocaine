@@ -1179,19 +1179,39 @@ public class BotNav {
             return span;   // cannot tell, so do not invent an obstacle
         Coord2d off = here.sc.sub(me.rc);
         int steps = Math.max(1, (int) Math.ceil((span / MCache.tilesz.x) * 2));
+        /* WHERE the gateway is on this line, not merely whether there is one.
+         *
+         * The exemption used to hand back the whole span the moment a gate tile appeared anywhere
+         * along it, which forgives every wall on the line including ones nowhere near the gap. A
+         * CORNER POST is exactly that: it stands proud at the end of a run of palisade, several
+         * tiles from the opening, and a line drawn at a gateway from an angle meets the post long
+         * before it reaches the gap. Squaring up and failing against a corner post has been in
+         * every report of this; blanket-forgiving the line is why nothing could see it.
+         *
+         * So forgive walls only where the gateway actually IS - the posts flanking the opening,
+         * which a gate manoeuvre has to pass within a tile of - and stop at any other. */
+        double gateFrom = -1, gateTo = -1;
         for (int i = 0; i <= steps; i++) {
-            Coord t = from.add(dir.mul((span * i) / steps)).add(off).floor(MCache.tilesz);
-            if (Observed.gate(here.seg, t))
-                return span;
+            double d = (span * i) / steps;
+            Coord t = from.add(dir.mul(d)).add(off).floor(MCache.tilesz);
+            if (Observed.gate(here.seg, t)) {
+                if (gateFrom < 0)
+                    gateFrom = d;
+                gateTo = d;
+            }
         }
+        double slack = MCache.tilesz.x * 2;
         // From one sample in: the tile we are standing in is allowed to be against a wall, or a
         // character that has just stepped out of a gateway could not move at all.
         for (int i = 1; i <= steps; i++) {
             double d = (span * i) / steps;
             Coord2d p = from.add(dir.mul(d));
-            if ((Observed.at(here.seg, p.add(off).floor(MCache.tilesz)) == Observed.WALL)
-                    && !occupied(gui, p))
-                return Math.max(0, d - MCache.tilesz.x);
+            if ((Observed.at(here.seg, p.add(off).floor(MCache.tilesz)) != Observed.WALL)
+                    || occupied(gui, p))
+                continue;
+            if ((gateFrom >= 0) && (d >= (gateFrom - slack)) && (d <= (gateTo + slack)))
+                continue;   // the gateway's own posts, which we are entitled to pass between
+            return Math.max(0, d - MCache.tilesz.x);
         }
         return span;
     }

@@ -113,6 +113,26 @@ public class Drink implements Task {
     }
 
     /**
+     * Drinks from what is already carried, and never goes anywhere for it.
+     *
+     * For callers that are about to walk a long way. Nothing in travel drinks at all - {@code
+     * BotNav} does not know what stamina is, and the loop that does run upkeep runs it BETWEEN
+     * targets - so a bot that sets off across the base on half a meter arrives on a quarter of
+     * one, at walking pace, having spent the journey unable to do anything about a waterskin it
+     * was carrying the whole way. That is "drinking while going between work areas isn't working":
+     * it was never wired up at that layer rather than being broken at this one.
+     *
+     * Deliberately silent and deliberately cheap. It runs before every journey, so it must cost
+     * nothing when there is nothing to do, and it must never turn a trip into two trips - going
+     * for water in the middle of going somewhere else is how a shift stops making progress.
+     */
+    public static void sipIfCarried(BotCtx ctx) throws InterruptedException {
+        if (ctx.stamina() >= ENOUGH)
+            return;
+        new Drink(FULL).sip(ctx);
+    }
+
+    /**
      * Drinks until stamina stops improving or the target is reached, by ONE means.
      *
      * It used to be two: the client's own {@code drinkTillFull} first, because it loops internally,

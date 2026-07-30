@@ -675,12 +675,26 @@ public class Gates {
     }
 
     /**
-     * Whether something we have recorded as WALL stands between two live world points.
+     * Whether a wall THE CLIENT CANNOT SEE stands between two live world points.
      *
-     * Sampled the same way, and against the same record, as everything else that asks this question
-     * - see {@code BotNav.wallOn}. WALL and not solid: furniture is something the local pathfinder
-     * walks around by itself, and rejecting a gateway because a cart happens to sit on the line to
-     * it would throw away gates that work perfectly well.
+     * The visibility condition is not a refinement, it is the whole test, and leaving it out was a
+     * bad regression. A plain "is there a wall on the line" rejected a gateway thirty-three tiles
+     * off on the grounds that a base stood between us and it - which is true of nearly every gate
+     * worth walking to, since walking to one is how you get past the base. In the log it threw out
+     * the north air lock, and the diagnostic that prints WHY each candidate was turned down still
+     * said of it "AT the destination - should have been taken", because that list re-runs the
+     * geometric tests and never knew about this one. The bot then wandered thirty-six tiles on a
+     * three-tile leg.
+     *
+     * What the check is actually for is a gateway that cannot be WALKED to: a roundpole pen gate
+     * inside a base, which from outside scores well on every geometric test and sits behind a
+     * palisade. The walk that would be attempted is {@code approach}, which is the local
+     * pathfinder, and the local pathfinder goes round any wall it can see. So a wall it can see is
+     * not an objection; a wall it cannot see is, because then there is no second opinion and the
+     * approach simply fails - "gate: couldn't get to #<id>".
+     *
+     * Same predicate as {@code BotNav.clearSpan}, off the same box test the pathfinder itself runs,
+     * so the two cannot come apart about what counts as visible.
      */
     private static boolean wallBetween(GameUI gui, Coord2d from, Coord2d to) {
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
@@ -693,7 +707,8 @@ public class Gates {
         // be against one. Including them would reject every gate there is.
         for (int i = 1; i < steps; i++) {
             Coord2d at = from.add(to.sub(from).mul((double) i / steps));
-            if (Observed.at(here.seg, at.add(off).floor(MCache.tilesz)) == Observed.WALL)
+            if ((Observed.at(here.seg, at.add(off).floor(MCache.tilesz)) == Observed.WALL)
+                    && !BotNav.occupied(gui, at))
                 return true;
         }
         return false;
