@@ -276,8 +276,26 @@ public class Gates {
                 continue;
             if (shutOnly && isOpen(g))
                 continue;
+            if (locked(g.id))
+                continue;
             double toGate = me.rc.dist(g.rc);
             if (toGate > (strict ? NEAR : SEARCH))
+                continue;
+            /* Being able to SEE a gateway is not being able to reach it.
+             *
+             * Every test here is geometry - how near it is, whether it is on the line, whether it
+             * shortens the trip - and none of them asks the one question that decides whether
+             * walking to it can work. A base is full of gateways that are nothing to do with
+             * getting into it: roundpole gates on animal pens stand inside the walls, so from
+             * outside they score beautifully on all three counts and are on the far side of a
+             * palisade. The bot walks at one, meets the wall, and the log says "couldn't get to
+             * #<id>" - which reads like a gate fault and is not one.
+             *
+             * A wall between us and it is the specific harm, not a proxy for reachability: this
+             * picker is the fallback for when ROUTING has already failed, so a gateway that can only
+             * be got at the long way round is not one it can use anyway. Cheap, and it uses the same
+             * record everything else in this stack now agrees on. */
+            if (wallBetween(gui, me.rc, g.rc))
                 continue;
             double onwards = g.rc.dist(dest);
             /* The gateway IS where we are trying to get to.
@@ -449,7 +467,14 @@ public class Gates {
         }
 
         if (!toggle(nav, gui, id, true, log)) {
-            NLog.log(log, "gate: #" + id + " wouldn't open - leaving it alone");
+            /* Two attempts, standing at it, and it is still shut. The commonest reason by far is a
+             * LOCK - the game says "you lack the key" and there is nothing this can do about it -
+             * so remember it for the session rather than only for this journey, which is all the
+             * caller's skip set lasts. Otherwise every trip past this wall pays the same walk and
+             * the same two attempts to be told the same thing. */
+            lock(id);
+            NLog.log(log, "gate: #" + id + " wouldn't open - locked, most likely;"
+                + " leaving it alone for the rest of the session");
             return refuse(skip, id);
         }
 
@@ -622,6 +647,55 @@ public class Gates {
     private static boolean refuse(Set<Long> skip, long id) {
         if (skip != null)
             skip.add(id);
+        return false;
+    }
+
+    /**
+     * Gateways that would not open, remembered for the rest of the session.
+     *
+     * The caller's own skip set is cleared at the start of every journey, deliberately - a gate
+     * given up on because we could not get to it from where we stood is worth another try from
+     * somewhere else. A LOCKED one is not. "You lack the key" does not become untrue by walking at
+     * it from a different angle, and a locked gate in a wall we keep routing past costs the same
+     * two failed attempts and the same walk every single trip.
+     *
+     * Not persisted to disk, because a key can be handed over between sessions and there is nothing
+     * in the client that would tell us it had been.
+     */
+    private static final Set<Long> lockedGates =
+        java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
+    /** Remembers that this gateway would not open for us. */
+    private static void lock(long id) {
+        lockedGates.add(id);
+    }
+
+    private static boolean locked(long id) {
+        return lockedGates.contains(id);
+    }
+
+    /**
+     * Whether something we have recorded as WALL stands between two live world points.
+     *
+     * Sampled the same way, and against the same record, as everything else that asks this question
+     * - see {@code BotNav.wallOn}. WALL and not solid: furniture is something the local pathfinder
+     * walks around by itself, and rejecting a gateway because a cart happens to sit on the line to
+     * it would throw away gates that work perfectly well.
+     */
+    private static boolean wallBetween(GameUI gui, Coord2d from, Coord2d to) {
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
+        if ((here == null) || (me == null) || (from == null) || (to == null))
+            return false;   // cannot tell, so do not invent an obstacle
+        Coord2d off = here.sc.sub(me.rc);
+        int steps = Math.max(1, (int) Math.ceil((from.dist(to) / MCache.tilesz.x) * 2));
+        // Ends excluded: a gateway STANDS in a wall, so its own tile and ours are both allowed to
+        // be against one. Including them would reject every gate there is.
+        for (int i = 1; i < steps; i++) {
+            Coord2d at = from.add(to.sub(from).mul((double) i / steps));
+            if (Observed.at(here.seg, at.add(off).floor(MCache.tilesz)) == Observed.WALL)
+                return true;
+        }
         return false;
     }
 

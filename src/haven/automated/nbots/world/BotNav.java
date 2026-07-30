@@ -1145,6 +1145,57 @@ public class BotNav {
             && !crossesWall(here.seg, legs.get(i).add(off), next);
     }
 
+    /**
+     * How far along a heading a hop may aim before it would cross a wall we have learned.
+     *
+     * Returns {@code span} unchanged when the line is clear, which is the ordinary case and costs a
+     * handful of array lookups. The whole value is in the case it is not: see the caller.
+     *
+     * A GATEWAY anywhere on the line hands back the full span, because a gate manoeuvre is entitled
+     * to run within a tile of the posts - squaring up and stepping through both do - and refusing
+     * that would stop the bot approaching a gate at all, which is a worse failure than the one being
+     * fixed. The same exemption {@link Walk#lineClear} makes, for the same reason.
+     *
+     * Stops a TILE short of the wall rather than against it. Aiming at the last clear sample would
+     * put the character's own width into the wall's tile, which is a click inside a collision box -
+     * refused outright, and refused in a way that reads as being wedged.
+     *
+     * ONLY WALLS THE CLIENT CANNOT SEE. A wall it CAN see is one the local pathfinder will route
+     * around, and it is good at that - which is the whole reason it is used rather than raw clicks.
+     * Replayed over the log, refusing on every wall would have thrown away two legs that worked
+     * perfectly well, and in both the wall was half a tile from where the character stood: as loaded
+     * as anything gets. The failure this exists for is the opposite one, a wall further out than the
+     * objects the server has sent, where there is no second opinion coming and a linear server move
+     * walks straight into it.
+     *
+     * {@link #occupied} answers exactly that, off the very box test the pathfinder itself runs, so
+     * "can it see this" cannot drift apart from what it actually does about it. Asked only when a
+     * wall tile has already been found, since it builds a gob list per call.
+     */
+    private double clearSpan(Coord2d from, Coord2d dir, double span) {
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = player();
+        if ((here == null) || (me == null))
+            return span;   // cannot tell, so do not invent an obstacle
+        Coord2d off = here.sc.sub(me.rc);
+        int steps = Math.max(1, (int) Math.ceil((span / MCache.tilesz.x) * 2));
+        for (int i = 0; i <= steps; i++) {
+            Coord t = from.add(dir.mul((span * i) / steps)).add(off).floor(MCache.tilesz);
+            if (Observed.gate(here.seg, t))
+                return span;
+        }
+        // From one sample in: the tile we are standing in is allowed to be against a wall, or a
+        // character that has just stepped out of a gateway could not move at all.
+        for (int i = 1; i <= steps; i++) {
+            double d = (span * i) / steps;
+            Coord2d p = from.add(dir.mul(d));
+            if ((Observed.at(here.seg, p.add(off).floor(MCache.tilesz)) == Observed.WALL)
+                    && !occupied(gui, p))
+                return Math.max(0, d - MCache.tilesz.x);
+        }
+        return span;
+    }
+
     /** Whether the straight line between two points in segment coordinates meets a wall tile. */
     private static boolean crossesWall(long seg, Coord2d from, Coord2d to) {
         return wallOn(seg, from, to, true);
@@ -1477,6 +1528,35 @@ public class BotNav {
              * the time the new route is drawn. Re-planning finally produces a different answer,
              * which is what makes giving up on the swings possible. */
             double span = Math.min(len, reach);
+            /* NOBODY WAS CHECKING THE LINE BEFORE CLICKING.
+             *
+             * `stepTo` tests that the AIM POINT is not inside a collision box and then hands the
+             * click to the client pathfinder. Both of those only know about LOADED gobs, so a hop
+             * aimed twelve tiles into ground the server has not sent objects for is planned against
+             * nothing, and server movement is linear: the character walks into the palisade. A wall
+             * is one tile thick and the ground either side of it is perfectly standable, so a point
+             * test cannot tell the two sides apart - it says yes on both.
+             *
+             * The wall was in `Observed` the whole time. `Walk.lineClear` reads it, but only as the
+             * FALLBACK after the client has already refused, which is precisely the case where the
+             * client could see the obstacle. Where it could not see it there is no refusal, so
+             * nothing ever asked. That is "it paths through solid objects just outside its render
+             * range", and it is also why it does it repeatedly in the same place: each re-plan is
+             * made from a spot where the wall is again out of view, so each one looks new.
+             *
+             * So shorten the hop to the last point before the wall rather than aiming past it. The
+             * shortened hop still makes progress, and the leg failing at the wall is what gets the
+             * gate layer and the router involved - both of which can do something about it. */
+            double open = clearSpan(me.rc, dir, span);
+            if (open < span) {
+                if (open < MCache.tilesz.x) {
+                    NLog.log(log, "the way to " + Gates.fmt(dest) + " runs into a wall we have"
+                        + " learned, " + (int) open + "u out - not walking at it");
+                    cancelWalk();
+                    return false;
+                }
+                span = open;
+            }
             Coord2d aim = me.rc.add(dir.mul(span));
             /* A hop that IS the whole leg cannot be allowed a looser standard than the leg.
              *
@@ -1496,7 +1576,27 @@ public class BotNav {
              *
              * A partial hop keeps the two tiles: its aim is a point along the way, not the leg's
              * end, so arriving near it is all that is being asked. */
-            stepTo(aim, (span < len) ? (11 * 2.0) : Math.min(11 * 2.0, tol));
+            /* Tighter than the leg's own tolerance, and that is the whole point.
+             *
+             * This tolerance does not decide where the click goes - the click already aims at the
+             * point - it decides when to STOP WAITING for it. Set equal to the leg tolerance, as it
+             * was, the wait ends the instant the character is one tile out and still walking; the
+             * loop above then re-measures against the same tile, agrees, and the leg is declared
+             * arrived from wherever the character happened to be at that moment. Measured over the
+             * log: 360 of 363 intermediate legs finished eight units or more from the waypoint they
+             * aimed at, with a hard wall at eleven. NOT ONE ever reached its waypoint.
+             *
+             * That is the systematic form of the drift the wall check downstream keeps catching. A
+             * route is a chain of lines the router certified BETWEEN waypoints, so a travel that
+             * stops a tile short of every one of them walks every leg after the first along a line
+             * nobody validated - and one tile is the difference between the gap and the wall.
+             *
+             * There is no dead band this way round, which is what the equality was there to avoid:
+             * this is now STRICTLY TIGHTER than what the loop accepts, so anything the wait gives up
+             * on is still accepted a moment later by the loop. A waypoint that genuinely cannot be
+             * stood on - beside a stockpile, where `stepTo` pulls its aim back off the box - behaves
+             * exactly as it did before, because the wait was never what stopped the character. */
+            stepTo(aim, (span < len) ? (11 * 2.0) : Math.min(ON_WAYPOINT, tol));
             wasBlocked = stepRefused && (stepRefusal == Pathfinder.Refusal.NO_ROUTE);
             /* Anything that is not the search having looked and found nothing is treated as being
              * wedged, including a click that never reached a search at all - because the recovery

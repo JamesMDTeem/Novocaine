@@ -81,8 +81,7 @@ public abstract class NBot extends Window implements Runnable {
                     active = true;
                     change("Stop");
                 } else {
-                    active = false;
-                    change("Start");
+                    stopWork();
                 }
             }
         }, UI.scale(10, size.y - 28));
@@ -169,6 +168,35 @@ public abstract class NBot extends Window implements Runnable {
         synchronized (ui) {
             startButton.change("Start");
         }
+    }
+
+    /**
+     * Stop pressed: end the shift AND undo what the shift had running.
+     *
+     * The button used to set {@code active} and rename itself, and that was all - which stops the
+     * task loop at its next wait but leaves everything the loop had started still going. The
+     * character keeps walking, because nothing cancels the move the server was given; the work
+     * claims stay held, so another client cannot take the targets; the keep-out rings stay
+     * published, so the PLAYER's own clicks are still being routed around a bear that has wandered
+     * off; and the status label keeps whatever the last task wrote, which is why it goes on saying
+     * "Travelling to water" after the bot has been told to stop. Closing the window did all of this
+     * properly through {@link #stop}, which is exactly the difference reported.
+     *
+     * Deliberately NOT {@code stopped}, which is what {@link #stop} sets and which ends the run
+     * thread for good - the button has to leave the bot startable again.
+     */
+    protected void stopWork() {
+        active = false;
+        synchronized (ui) {
+            startButton.change("Start");
+        }
+        try {
+            nav.cancelWalk();
+        } catch (Exception ignored) {
+        }
+        Map.keepout(null);
+        WorkClaims.releaseAll();
+        setStatus("Stopped.");
     }
 
     @Override

@@ -96,13 +96,37 @@ public class Carried {
     }
 
     /**
-     * Drinks from the first carried vessel that has water in it.
+     * Drinks from the first carried vessel that has water in it - or, failing that, from one whose
+     * contents the client cannot read.
+     *
+     * The fallback is the whole of a recurring wasted errand. {@code GItem.getcontents} swallows
+     * every exception including {@link haven.Loading} and returns null, so "the server has not sent
+     * the item's info yet" is indistinguishable here from "the vessel is empty". A full waterskin
+     * whose contents happen not to have resolved reads as empty, {@link #holdingWater} comes back
+     * empty, and the bot breaks off work and walks across the base to fill something that was
+     * already full - which is exactly what "carrying Waterskin(empty or unreadable)" in the log is
+     * saying, at the moment it sets off.
+     *
+     * This class's own javadoc has said the right thing all along and the code did the opposite:
+     * "checking whether containers look full before drinking ... is more code and less reliable
+     * than simply observing that the stamina bar didn't move". So try the drink. A sip from a vessel
+     * that turns out to be empty costs one click and moves no meter, which is the answer the caller
+     * is already watching for; not trying costs a round trip.
+     *
+     * Tea is still excluded, and is the reason this takes unreadable rather than everything: a
+     * vessel KNOWN to hold tea is not what a refill trip produces and drinking it is not the job.
      *
      * @return true if a drink was actually issued - not that it worked, which the caller decides
      *         by watching the stamina meter, the same way the client's own drink loop does.
      */
     public static boolean drink(BotCtx ctx) throws InterruptedException {
         List<WItem> wet = holdingWater(ctx.gui);
+        if (wet.isEmpty()) {
+            for (WItem wi : vessels(ctx.gui)) {
+                if (contents(wi) == null)
+                    wet.add(wi);
+            }
+        }
         if (wet.isEmpty())
             return false;
         WItem vessel = wet.get(0);

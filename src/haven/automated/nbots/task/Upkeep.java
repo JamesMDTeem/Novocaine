@@ -55,7 +55,23 @@ public class Upkeep implements Task {
             return Outcome.failed("health was critical");
         }
 
-        boolean needDrink = (ctx.stamina() < DRINK_BELOW) || slowed(ctx);
+        /* Put the gear back FIRST, every cycle, whatever else is or is not wrong.
+         *
+         * This used to happen only inside the drink branch, and the trigger for that branch was
+         * `slowed` - which is true whenever the SELECTED speed is below what we want, for any
+         * reason at all. The client drops the selection whenever the cap falls and does not put it
+         * back when the cap returns, so an ordinary dip in stamina left the character walking
+         * afterwards; and the only thing that would put it right was a full drink-and-return-home
+         * errand. A bot at full stamina that had merely lost its gear went for a drink, and, when
+         * the waterskin's contents did not happen to be readable, walked to a barrel for it.
+         *
+         * Which is the wrong shape twice over. Re-selecting a speed is free, needs no reason, and
+         * has nothing to do with being thirsty - so do it unconditionally and stop making it an
+         * errand. What is left for the drink test is the honest signal: the server LOWERING THE
+         * CAP, which it does when the character is too tired to run, and which no threshold in this
+         * client has to guess at. */
+        resume(ctx);
+        boolean needDrink = (ctx.stamina() < DRINK_BELOW) || capped(ctx);
         boolean needEat = ctx.energy() < EAT_BELOW && NBotConfig.on(NBotConfig.Key.autoEat);
         if (!needDrink && !needEat) {
             // Energy is low but eating is switched off - that is a stop, not something to travel
@@ -96,16 +112,17 @@ public class Upkeep implements Task {
     }
 
     /**
-     * True if the game has taken our top speed away, and putting the character back up to it is
-     * the selected speed's job as well as drinking's.
+     * True if the GAME has taken our top speed away - the only half of this that means "tired".
      *
-     * Both halves are needed. MAX below what we want means the server will not allow it; CUR below
-     * what we want means it is allowed and we are simply not using it, which happens because the
-     * client drops the selection when the cap falls and does not put it back when the cap returns.
+     * MAX below what we want is the server refusing to let the character run, which it does on
+     * stamina and which is therefore a fact about stamina that no threshold here has to guess at.
+     * CUR below what we want used to be lumped in with it and must not be: that is only the client
+     * having dropped the selection, which {@link #resume} puts back for nothing, and treating it as
+     * thirst sent a bot at full stamina off to a barrel.
      */
-    private static boolean slowed(BotCtx ctx) {
+    private static boolean capped(BotCtx ctx) {
         Speedget s = speed(ctx);
-        return (s != null) && ((s.max < WANT_SPEED) || (s.cur < WANT_SPEED));
+        return (s != null) && (s.max < WANT_SPEED);
     }
 
     /** Puts the selected speed back up to whatever is now allowed. Free when nothing changed. */
