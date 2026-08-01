@@ -29,8 +29,32 @@ public class FoodService {
 
     private static final boolean cookbookDebug = false;
 
+    /**
+     * Cached endpoint URL for scheduler-thread use. Updated from the UI thread via
+     * {@link #refreshEndpointCache()} to avoid accessing {@code OptWnd} widget text
+     * fields from a background thread.
+     */
+    private static volatile String cachedEndpoint = null;
+    private static volatile String cachedToken = "";
+
     static {
         scheduler.scheduleAtFixedRate(FoodService::sendItems, 10L, 10, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Snapshot the current endpoint and token from OptWnd into volatile cache fields.
+     * Must be called from the UI thread (it reads widget text buffers).
+     */
+    public static void refreshEndpointCache() {
+        if ((OptWnd.cookBookEndpointTextEntry == null) || (OptWnd.cookBookTokenTextEntry == null)) {
+            cachedEndpoint = null;
+            cachedToken = "";
+            return;
+        }
+        String raw = OptWnd.cookBookEndpointTextEntry.buf.line();
+        cachedEndpoint = (raw != null && raw.trim().length() >= 5) ? raw.trim() : null;
+        String tk = OptWnd.cookBookTokenTextEntry.buf.line();
+        cachedToken = (tk != null) ? tk.trim() : "";
     }
 
     public static void checkFood(List<ItemInfo> ii, Resource res, String genus) {
@@ -101,10 +125,8 @@ public class FoodService {
     }
 
     public static boolean isValidEndpoint() {
-        String raw = OptWnd.cookBookEndpointTextEntry.buf.line();
-        if (raw == null) return false;
-        raw = raw.trim();
-        return raw.length() >= 5;
+        String raw = cachedEndpoint;
+        return raw != null && raw.length() >= 5;
     }
 
     private static void sendItems() {
@@ -112,7 +134,7 @@ public class FoodService {
             return;
         }
 
-        final String endpoint = OptWnd.cookBookEndpointTextEntry.buf.line();
+        final String endpoint = cachedEndpoint;
         if (endpoint == null || !isValidEndpoint()) return;
         final java.net.URI apiBase = java.net.URI.create(endpoint.trim());
 
@@ -137,8 +159,8 @@ public class FoodService {
                 connection.setRequestProperty("User-Agent", "H&H Client");
                 connection.setDoOutput(true);
 
-                String token = OptWnd.cookBookTokenTextEntry.buf.line();
-                if (token != null && !(token = token.trim()).isEmpty()) {
+                String token = cachedToken;
+                if (token != null && !token.isEmpty()) {
                     connection.setRequestProperty("Authorization", "Bearer " + token);
                 }
 

@@ -399,6 +399,11 @@ public class Router {
         private final Map<Coord, Object> water = new HashMap<>();
         /** Snapshotted once per search - see {@link Refused#snapshot}. Usually empty. */
         private final java.util.Set<Coord> refused;
+        /**
+         * Tiles whose centre a loaded gate gob stands on, so the router can treat them as passable
+         * even when the Observed record is stale (e.g. recorded before the gate was placed).
+         */
+        private final Set<Coord> gates;
         private static final Object NONE = new Object();
 
         World(GameUI gui, long seg, boolean strict) {
@@ -406,6 +411,31 @@ public class Router {
             this.seg = seg;
             this.strict = strict;
             this.refused = Refused.snapshot(seg);
+            this.gates = gateTiles(gui);
+        }
+
+        /**
+         * Every loaded gate gob's tile position, in the SEGMENT-relative tile space that
+         * {@link Observed} keys by - not raw world coordinates. Empty when no gui is available or
+         * the player is off the map, which leaves the observed data as the only source.
+         *
+         * A gob's {@code rc} is a world coordinate; the Observed record for the same tile is keyed
+         * by segment-tile. Without the {@code sc - me.rc} offset applied here, this set never
+         * intersects the tiles the router asks about and the gate-passable fallback in
+         * {@link #passable(Coord)} is dead code. See {@link Observed#observe} for the same idiom.
+         */
+        private static Set<Coord> gateTiles(GameUI gui) {
+            Set<Coord> out = new HashSet<>();
+            if ((gui == null) || (gui.map == null))
+                return out;
+            Gob me = gui.map.player();
+            WorldAnchor here = WorldAnchor.capturePlayer(gui);
+            if ((me == null) || (here == null))
+                return out;
+            Coord2d off = here.sc.sub(me.rc);
+            for (Gob g : Gates.loaded(gui))
+                out.add(g.rc.add(off).floor(MCache.tilesz));
+            return out;
         }
 
         private byte state(Coord t) {
@@ -450,8 +480,14 @@ public class Router {
              * which sent the gate check off to open an air lock the route never needed. Opening
              * gates, walking into the chamber, shutting itself in, failing to reach water twelve
              * tiles away: all of it downstream of this line. */
-            if ((s == Observed.SOLID) || (s == Observed.WALL))
+            if ((s == Observed.SOLID) || (s == Observed.WALL)) {
+                /* A gateway may have been placed after this tile was recorded, so the observed
+                 * data still marks it solid. The loaded gob list is a second opinion: a gate
+                 * standing here is passable - opening it is the task layer's problem. */
+                if (gates.contains(t))
+                    return true;
                 return false;
+            }
             /* A gateway settles it before the ground is looked at, since a gate is the one place a
              * wall is meant to be walked through. Whether it is open right now is the task layer's
              * problem, not the route's. */

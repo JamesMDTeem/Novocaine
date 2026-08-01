@@ -352,13 +352,12 @@ public class Map {
                 }
             } else {
                 for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxSecondaries) {
-                    if (!collisionBox.hitAble) {
-                        return;
-                    } else {
-                        if (collisionBox.coords == null || collisionBox.coords.length < 3) {
-                            return;
-                        }
+                    // A resource may expose several collision parts. An unwalkable or malformed
+                    // part must not hide the valid parts that follow it.
+                    if (!collisionBox.hitAble || collisionBox.coords == null || collisionBox.coords.length < 3)
+                        continue;
 
+                    {
                         double minX = Double.MAX_VALUE;
                         double minY = Double.MAX_VALUE;
                         double maxX = Double.MIN_VALUE;

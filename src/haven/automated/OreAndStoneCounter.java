@@ -1,8 +1,5 @@
 package haven.automated;
 
-import haven.Label;
-import haven.Scrollbar;
-import haven.Window;
 import haven.*;
 
 import java.awt.*;
@@ -15,7 +12,7 @@ import static haven.OCache.posres;
 
 public class OreAndStoneCounter extends Window implements Runnable {
     private final GameUI gui;
-    private boolean stop;
+    private volatile boolean stop;
     private OreList oreList;
 
     public OreAndStoneCounter(GameUI gui) {

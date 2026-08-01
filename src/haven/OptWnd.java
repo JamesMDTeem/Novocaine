@@ -26,6 +26,7 @@
 
 package haven;
 
+import haven.automated.cookbook.FoodService;
 import haven.automated.mapper.MappingClient;
 import haven.render.*;
 import haven.res.sfx.ambient.weather.wsound.WeatherSound;
@@ -4843,6 +4844,7 @@ public class OptWnd extends Window {
 			prev = add(cookBookEndpointTextEntry = new TextEntry(UI.scale(220), Utils.getpref("cookBookEndpoint", "")){
 				protected void changed() {
 					Utils.setpref("cookBookEndpoint", this.buf.line());
+					FoodService.refreshEndpointCache();
 					super.changed();
 				}
 			}, prev.pos("ur").adds(6, 0));
@@ -4850,9 +4852,11 @@ public class OptWnd extends Window {
 			prev = add(cookBookTokenTextEntry = new TextEntry(UI.scale(220), Utils.getpref("cookBookToken", "")){
 				protected void changed() {
 					Utils.setpref("cookBookToken", this.buf.line());
+					FoodService.refreshEndpointCache();
 					super.changed();
 				}
 			}, prev.pos("ur").adds(20, 0));
+			FoodService.refreshEndpointCache();
 
 			Widget backButton;
 			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), prev.pos("bl").adds(0, 26).x(0));

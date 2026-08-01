@@ -110,13 +110,13 @@ public class AStar {
             if (this == n)
                 return 0;
 
-            int diff = (int) Math.signum(f() - n.f());
+            int diff = Double.compare(f(), n.f());
 
             if (diff == 0)
-                diff = (int) Math.signum(h - n.h);
+                diff = Double.compare(h, n.h);
 
             if (diff == 0)
-                diff = order = n.order;
+                diff = Integer.compare(order, n.order);
 
             return diff;
         }

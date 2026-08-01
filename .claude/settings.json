@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude-code-docs__query_docs_filesystem_claude_code_docs",
+      "mcp__claude-in-chrome__get_page_text"
+    ]
+  }
+}

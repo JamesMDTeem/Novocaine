@@ -13,7 +13,7 @@ import static haven.OCache.posres;
 public class OceanScoutBot extends Window implements Runnable {
     private int checkClock;
     private GameUI gui;
-    public boolean stop;
+    public volatile boolean stop;
     private MCache mcache;
     private int clockwiseDirection = 1;
     private double ang = 0;

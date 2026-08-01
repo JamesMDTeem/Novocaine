@@ -77,6 +77,8 @@ public class TravelTo implements Task {
             double tol = tolerance;
             Coord2d aim;
             if (place != null) {
+                if (ctx.player() == null)
+                    return Outcome.failed("player position is unavailable");
                 if (place.contains(ctx.gui, ctx.player().rc))
                     return Outcome.ok();
                 /* A tile inside the place that can be stood on, rather than the geometric centre,

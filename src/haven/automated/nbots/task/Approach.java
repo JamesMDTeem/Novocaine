@@ -34,6 +34,14 @@ public class Approach implements Task {
     public Outcome run(BotCtx ctx) throws InterruptedException {
         if (target == null)
             return Outcome.failed("no target");
+        // Log the distance check before committing to the approach, so the gap between the
+        // target's actual distance and WORK_RANGE is visible in the log when a bot calls a
+        // target reachable and then fails to reach it.
+        Gob me = ctx.player();
+        Gob now = (target == null) ? null : ctx.gob(target.id);
+        double workDist = (me == null || now == null) ? -1 : me.rc.dist(now.rc);
+        ctx.log("approach: " + ((workDist < 0) ? "no player/target" :
+            String.format("%.0fu to #%d, WORK_RANGE=%.0fu", workDist, target.id, WORK_RANGE)));
         if (inRange(ctx, target))
             return Outcome.ok();
         if (ctx.nav.approach(target, reach))
@@ -51,6 +59,12 @@ public class Approach implements Task {
          * Only where the caller asked to get CLOSER than working range, which is the case this is
          * about. A caller that deliberately wanted more room than a right-click needs must not be
          * handed working range as a consolation. */
+        Gob after = ctx.player();
+        Gob live = ctx.gob(target.id);
+        double afterDist = (after == null || live == null) ? -1 : after.rc.dist(live.rc);
+        ctx.log("approach: nav approach fell short, reach=" + (int) (reach / 11) + "t,"
+            + " WORK_RANGE=" + (int) (WORK_RANGE / 11) + "t,"
+            + " now " + (int) (afterDist / 11) + "t from #" + target.id);
         if ((reach < WORK_RANGE) && inRange(ctx, target))
             return Outcome.ok();
         // A beast in the way is temporary; anything else means this target can't be walked to and

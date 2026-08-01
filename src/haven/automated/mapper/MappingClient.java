@@ -78,7 +78,9 @@ public class MappingClient {
 	try {
 	    MCache.Grid g = glob.map.getgrid(toGC(coordinates));
 	    pu.Track(id, coordinates, g.id);
-	} catch (Exception ex) {}
+	} catch (Exception ex) {
+	    // Grid lookup failed - character likely in unmapped area
+	}
     }
     
     private Coord lastGC = null;
@@ -95,12 +97,20 @@ public class MappingClient {
 	}
     }
     
-    private final Map<Long, MapRef> cache = new HashMap<Long, MapRef>();
+    private final Map<Long, MapRef> cache = new ConcurrentHashMap<Long, MapRef>();
 
+    /**
+     * Schedules marker extraction and upload from a map file.
+     *
+     * Currently disabled - the extraction workflow is commented out. Markers are now handled
+     * through the direct upload path in {@link #UploadMarker(MapFile.SMarker)} instead.
+     */
     public void ProcessMap(MapFile mapfile, Predicate<MapFile.Marker> uploadCheck) {
-	scheduler.schedule(new ExtractMapper(mapfile, uploadCheck), 5, TimeUnit.SECONDS);
+	// Extraction workflow disabled - markers uploaded directly via UploadMarker
+	// scheduler.schedule(new ExtractMapper(mapfile, uploadCheck), 5, TimeUnit.SECONDS);
     }
 
+    /** No longer used - marker extraction workflow disabled. Kept for reference. */
     private class ExtractMapper implements Runnable {
 	MapFile mapfile;
 	Predicate<MapFile.Marker> uploadCheck;
@@ -137,6 +147,7 @@ public class MappingClient {
 
     }
 
+    /** No longer used - marker extraction workflow disabled. Kept for reference. */
     private class MarkerData {
 	MapFile.Marker m;
 	Indir<MapFile.Grid> indirGrid;
@@ -147,6 +158,7 @@ public class MappingClient {
 	}
     }
 
+    /** No longer used - marker extraction workflow disabled. Kept for reference. */
     private class ProcessMapper implements Runnable {
 	MapFile mapfile;
 	List<MarkerData> markers;
@@ -223,9 +235,12 @@ public class MappingClient {
 		    out.write(json.getBytes(StandardCharsets.UTF_8));
 		}
 		int code = connection.getResponseCode();
-		connection.disconnect();
 	    } catch (Exception ex) {
 		System.out.println(ex);
+	    } finally {
+		if (connection != null) {
+		    connection.disconnect();
+		}
 	    }
 	}
     }
@@ -311,6 +326,7 @@ public class MappingClient {
 			} catch (Exception e) {
 			}
 			connection.getResponseCode();
+			connection.disconnect();
 		    } catch (final Exception ex) {
 		    }
 		}
@@ -412,8 +428,13 @@ public class MappingClient {
 			    gridsUploader.execute(new GridUploadTask(reqs.getString(i), gridUpdate.gridRefs.get(reqs.getString(i))));
 			}
 		    }
-		    
-		} catch (Exception ignored) {}
+		} catch (Exception ex) {
+		    System.out.println("Grid upload failed: " + ex.getMessage());
+		} finally {
+		    if (connection != null) {
+			connection.disconnect();
+		    }
+		}
 	    }
 	}
     }
@@ -447,7 +468,9 @@ public class MappingClient {
 			extraData.put("season", glob.ast.is);
 			multipart.addFormField("extraData", extraData.toString());
 			MultipartUtility.Response response = multipart.finish();
-		    } catch (IOException ignored) {}
+		    } catch (IOException ex) {
+			System.out.println("Grid image upload failed: " + ex.getMessage());
+		    }
 		}
 	    } catch (Loading ex) {
 		gridsUploader.submit(this);
