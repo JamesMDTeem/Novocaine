@@ -1,7 +1,17 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.ClickData;
+import haven.Config;
+import haven.Coord;
+import haven.Coord2d;
+import haven.FlowerMenu;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.OptWnd;
+import haven.Resource;
+import haven.Utils;
 
 import java.util.*;
 

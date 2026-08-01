@@ -1,6 +1,12 @@
 package haven.automated;
 
-import haven.*;
+import haven.Coord;
+import haven.Equipory;
+import haven.GItem;
+import haven.GameUI;
+import haven.Inventory;
+import haven.WItem;
+import haven.Widget;
 
 import java.util.Arrays;
 import java.util.HashMap;

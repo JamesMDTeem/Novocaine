@@ -1,6 +1,20 @@
 package haven.automated;
 
-import haven.*;
+import haven.Button;
+import haven.CheckBox;
+import haven.Config;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GItem;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.Resource;
+import haven.UI;
+import haven.Utils;
+import haven.WItem;
+import haven.Widget;
+import haven.Window;
 
 import java.util.Objects;
 
@@ -8,6 +22,11 @@ import static haven.OCache.posres;
 import static java.lang.Thread.sleep;
 
 public class CleanupBot extends Window implements Runnable {
+    /** Give a work action up to two seconds to progress, and pause two seconds between loop passes. */
+    private static final int ACTION_WAIT_MS = 2000;
+    /** Stamina fraction below which the bot stops working to drink. */
+    private static final double LOW_STAMINA_THRESHOLD = 0.40;
+
     private GameUI gui;
     private boolean chopBushes;
     public boolean stop;
@@ -124,7 +143,7 @@ public class CleanupBot extends Window implements Runnable {
                         gui.error("Cleanup Bot: Low on energy, stopping.");
                         stop();
                     }
-                    else if (gui.getmeter("stam", 0).a < 0.40) {
+                    else if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
                         try {
                             AUtils.drinkTillFull(gui, 0.99, 0.99);
                         } catch (InterruptedException e) {
@@ -137,7 +156,7 @@ public class CleanupBot extends Window implements Runnable {
                         destroyGob(gob);
                     }
                 }
-                sleep(2000);
+                sleep(ACTION_WAIT_MS);
             }
         } catch (InterruptedException e) {
         }
@@ -145,7 +164,7 @@ public class CleanupBot extends Window implements Runnable {
 
     private void destroyGob(Gob gob) throws InterruptedException {
         if(gui.prog != null && gui.map.player().getPoses().contains("pickan") || gui.map.player().getPoses().contains("treechop") || gui.map.player().getPoses().contains("chopping") || gui.map.player().getPoses().contains("shoveldig") || gui.map.player().getPoses().contains("drinkan")){
-            waitWhileWorking(2000);
+            waitWhileWorking(ACTION_WAIT_MS);
         } else {
             if (gob != null) {
                 gui.map.pfLeftClick(gob.rc.floor().add(20, 0), null);
@@ -158,16 +177,16 @@ public class CleanupBot extends Window implements Runnable {
                     if (res.name.contains("/trees/") && !res.name.endsWith("stump") && !res.name.endsWith("log") && !res.name.endsWith("oldtrunk") || res.name.contains("/bushes/")) {
                         AUtils.rightClickGobAndSelectOption(gui, gob, 0);
                         gui.map.wdgmsg("click", Coord.z, gob.rc.floor(posres), 3, 0, 0, (int) gob.id, gob.rc.floor(posres), 0, -1);
-                        waitWhileWorking(2000);
+                        waitWhileWorking(ACTION_WAIT_MS);
                     } else if (res.name.contains("/bumlings/")) {
                         AUtils.rightClickGobAndSelectOption(gui, gob, 0);
                         gui.map.wdgmsg("click", Coord.z, gob.rc.floor(posres), 3, 0, 0, (int) gob.id, gob.rc.floor(posres), 0, -1);
-                        waitWhileWorking(2000);
+                        waitWhileWorking(ACTION_WAIT_MS);
                     } else if (res.name.endsWith("stump") || res.name.endsWith("/stockpile-soil")) {
                         gui.act("destroy");
                         gui.map.wdgmsg("click", Coord.z, gob.rc.floor(posres), 1, 0, 0, (int) gob.id, gob.rc.floor(posres), 0, -1);
                         gui.map.wdgmsg("click", Coord.z, Coord.z, 3, 0);
-                        waitWhileWorking(2000);
+                        waitWhileWorking(ACTION_WAIT_MS);
                     }
                 }
             } else {
@@ -175,7 +194,7 @@ public class CleanupBot extends Window implements Runnable {
                 activeButton.change("Start");
                 active = false;
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(ACTION_WAIT_MS);
                 } catch (InterruptedException e) {
                 }
             }
@@ -193,7 +212,7 @@ public class CleanupBot extends Window implements Runnable {
         sleep(1500);
         int hz = 50;
         int time = 0;
-        while (gui.prog != null && gui.prog.prog != -1 && time < timeout && gui.getmeter("stam", 0).a > 0.40) {
+        while (gui.prog != null && gui.prog.prog != -1 && time < timeout && gui.getmeter("stam", 0).a > LOW_STAMINA_THRESHOLD) {
             time += hz;
             sleep(hz);
         }

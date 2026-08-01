@@ -209,15 +209,7 @@ public class WorkGob implements Task {
     }
 
     private static FlowerMenu awaitMenu(BotCtx ctx) throws InterruptedException {
-        for (int i = 0; i < 40; i++) {
-            if (!ctx.running())
-                throw new InterruptedException();
-            FlowerMenu fm = liveMenu(ctx);
-            if (fm != null)
-                return fm;
-            Thread.sleep(25);
-        }
-        return null;
+        return Widgets.awaitFlowerMenu(ctx.gui.ui.root, ctx::running);
     }
 
     private static FlowerMenu liveMenu(BotCtx ctx) {

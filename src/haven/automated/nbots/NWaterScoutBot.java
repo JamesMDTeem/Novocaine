@@ -56,6 +56,14 @@ import static haven.OCache.posres;
 public class NWaterScoutBot extends NBot {
     private static final String LOG = "nbot-scout.log";
 
+    // Distances in this bot are expressed in pixel units where one tile = 11px (MCache.tilesz).
+    private static final int TILE = (int) MCache.tilesz.x;
+    private static final int CLICK_STEP = 44;                 // px to nudge the boat per click
+    private static final double FLEE_STEP = TILE * 4.0;       // px to step away from a hazard
+    private static final int RANDOM_TILE_RADIUS = TILE * 30;  // px range for a random tile
+    private static final int SCAN_RADIUS = TILE * 25;         // px range for the per-cycle gob scan
+    private static final int SPOKES = 20;                     // directions swept per heading search
+    private static final int DEAD_END_LIMIT = 20;             // dead ends in a row before backing out
     /** Which body of water the bot is following, and how tightly. */
     private enum Mode {
         /**
@@ -93,9 +101,8 @@ public class NWaterScoutBot extends NBot {
     private static final String[] RIVER_HAZARDS = {"/beaver", "/beaverking", "/oldbeaver", "/grizzlybeaver"};
 
     /** How far a hazard's presence spoils a heading, and how close is close enough to flee. */
-    private static final double HAZARD_AVOID = 11 * 14;
-    private static final double HAZARD_FLEE = 11 * 11;
-
+    private static final double HAZARD_AVOID = TILE * 14;
+    private static final double HAZARD_FLEE = TILE * 11;
     private final MCache mcache;
     private final Random random = new Random();
 
@@ -172,7 +179,7 @@ public class NWaterScoutBot extends NBot {
 
             // Too many dead ends in a row means we've worked into a corner - a bay, or the head of
             // a river. Strike out towards open water and pick the edge up again from there.
-            if (deadEnds > 20) {
+            if (deadEnds > DEAD_END_LIMIT) {
                 setStatus("Backing out of a dead end.");
                 Coord2d open = randomTile(true);
                 if (open != null)
@@ -218,7 +225,7 @@ public class NWaterScoutBot extends NBot {
         if (me == null)
             return null;
         double start = ang;
-        int spokes = 20;
+        int spokes = SPOKES;
         while (turn == 1 ? ang <= start + 2 * Math.PI : ang >= start - 2 * Math.PI) {
             boolean blocked = false;
             for (int i = 1; i <= mode.steps && !blocked; i++) {
@@ -248,7 +255,7 @@ public class NWaterScoutBot extends NBot {
         int rad = mode.clearance;
         for (int i = -rad; i <= rad; i++) {
             for (int j = -rad; j <= rad; j++) {
-                Coord2d t = p.add(i * 11.0, j * 11.0);
+                Coord2d t = p.add(i * TILE, j * TILE);
                 if (!navigable(t) || solidAt(t) || hazardNear(t, HAZARD_AVOID) != null)
                     return true;
                 if (Crowd.occupied(others, t, Crowd.PERSONAL_SPACE * 2))
@@ -308,7 +315,7 @@ public class NWaterScoutBot extends NBot {
         Coord2d away = me.sub(threat.rc);
         double d = away.abs();
         away = (d < 1.0) ? new Coord2d(1, 0) : away.div(d);
-        gui.map.wdgmsg("click", Coord.z, me.add(away.mul(11 * 4.0)).floor(posres), 1, 0);
+        gui.map.wdgmsg("click", Coord.z, me.add(away.mul(FLEE_STEP)).floor(posres), 1, 0);
     }
 
     /** One short move towards a point, without engaging the pathfinder - this is a boat on water. */
@@ -320,7 +327,7 @@ public class NWaterScoutBot extends NBot {
         double d = dir.abs();
         if (d < 1.0)
             return;
-        gui.map.wdgmsg("click", Coord.z, me.add(dir.div(d).mul(44)).floor(posres), 1, 0);
+        gui.map.wdgmsg("click", Coord.z, me.add(dir.div(d).mul(CLICK_STEP)).floor(posres), 1, 0);
     }
 
     /**
@@ -332,7 +339,7 @@ public class NWaterScoutBot extends NBot {
         Coord2d base = playerPos();
         if (base == null)
             return null;
-        int radius = 11 * 30;
+        int radius = RANDOM_TILE_RADIUS;
         for (int i = 0; i < 400; i++) {
             Coord2d c = base.add(random.nextInt(radius * 2) - radius, random.nextInt(radius * 2) - radius);
             if (navigable(c) != wantLand)
@@ -361,7 +368,7 @@ public class NWaterScoutBot extends NBot {
                 if (g.id == gui.map.plgob)
                     continue;
                 double d = me.dist(g.rc);
-                if (d < 3 || d > 11 * 25)
+                if (d < 3 || d > SCAN_RADIUS)
                     continue;
                 if (g.collisionBox != null && g.collisionBox.fx != null)
                     solid.add(g);

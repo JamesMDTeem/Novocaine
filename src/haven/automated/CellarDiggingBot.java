@@ -1,6 +1,14 @@
 package haven.automated;
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.Resource;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
 import haven.Button;
 import haven.Window;
 
@@ -10,6 +18,17 @@ import static haven.OCache.posres;
 import static java.lang.Thread.sleep;
 
 public class CellarDiggingBot extends Window implements Runnable {
+    /** HP fraction below which the bot emergency-ports home. */
+    private static final double LOW_HP_THRESHOLD = 0.02;
+    /** Energy fraction below which the bot stops. */
+    private static final double ENERGY_THRESHOLD = 0.25;
+    /** Stamina fraction below which the bot stops to drink. */
+    private static final double LOW_STAMINA_THRESHOLD = 0.40;
+    /** Drink target stamina fractions. */
+    private static final double DRINK_TARGET_STAM = 0.99;
+    /** Drink target HP fraction. */
+    private static final double DRINK_TARGET_HP = 0.99;
+
     private final GameUI gui;
     private boolean stop;
     private boolean active;
@@ -43,8 +62,8 @@ public class CellarDiggingBot extends Window implements Runnable {
             while (!stop) {
                 if (!checkVitals()) { sleep(200); continue; }
                 if (active) {
-                    if (gui.getmeter("stam", 0).a < 0.40) {
-                        try { AUtils.drinkTillFull(gui, 0.99, 0.99); } catch (InterruptedException ignored) {}
+                    if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
+                        try { AUtils.drinkTillFull(gui, DRINK_TARGET_HP, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
                         sleep(200);
                         continue;
                     }
@@ -75,7 +94,7 @@ public class CellarDiggingBot extends Window implements Runnable {
     private boolean checkVitals() {
         try {
             double hp = gui.getmeters("hp").get(1).a;
-            if (hp < 0.02) {
+            if (hp < LOW_HP_THRESHOLD) {
                 System.out.println("HP IS " + hp + " .. PORTING HOME!");
                 gui.act("travel", "hearth");
                 try { Thread.sleep(8000); } catch (InterruptedException ignored) {}
@@ -84,7 +103,7 @@ public class CellarDiggingBot extends Window implements Runnable {
                 return false;
             }
             double nrj = ui.gui.getmeter("nrj", 0).a;
-            if (nrj < 0.25) {
+            if (nrj < ENERGY_THRESHOLD) {
                 gui.error("Cellar Digging Bot: Low on energy! Stopping.");
                 active = false;
                 activeButton.change("Start");
@@ -151,8 +170,8 @@ public class CellarDiggingBot extends Window implements Runnable {
         int idleTicks = 0;
         while (active && !stop && bumlingExists(bumling)) {
             if (!checkVitals()) break;
-            if (gui.getmeter("stam", 0).a < 0.40) {
-                try { AUtils.drinkTillFull(gui, 0.99, 0.99); } catch (InterruptedException ignored) {}
+            if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
+                try { AUtils.drinkTillFull(gui, DRINK_TARGET_HP, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
             }
             if (isMiningOrRunning()) {
                 idleTicks = 0;

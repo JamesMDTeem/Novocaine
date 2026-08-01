@@ -1,13 +1,19 @@
 package haven.automated;
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
+import haven.TextEntry;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
 import haven.Button;
 import haven.Label;
 import haven.Window;
 
 import java.awt.*;
 import java.text.DecimalFormat;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 

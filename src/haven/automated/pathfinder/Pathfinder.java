@@ -1,7 +1,16 @@
 package haven.automated.pathfinder;
 
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Coordf;
+import haven.Gob;
+import haven.LinMove;
+import haven.Loading;
+import haven.MCache;
+import haven.MapView;
+import haven.OCache;
+import haven.Pair;
 import haven.automated.helpers.HitBoxes;
 
 import java.util.ArrayList;
@@ -12,6 +21,21 @@ import java.util.concurrent.CopyOnWriteArraySet;
 
 import static haven.OCache.posres;
 
+/**
+ * Runs A* navigation on a background thread and drives the player along the route.
+ *
+ * A caller constructs one with a destination (optionally a target gob and the click flags for
+ * reaching it), starts it as a thread, and {@link #run()} keeps re-searching until the
+ * destination is reached or {@code terminate} is set. Each search builds a fresh {@link Map}
+ * centred on the current position, excludes the collision boxes of nearby gobs - and of the
+ * target gob itself, when one is set - runs the search, and turns the winning path into a
+ * sequence of movement clicks. {@link #pathWaypoints} exposes the last route (with the start
+ * position prepended) for diagnostics.
+ *
+ * A journey that cannot be made is reported through {@link Refusal} and the registered
+ * {@link PFListener}s instead of failing silently; see the enum's comments for what each
+ * refusal means and how a caller is expected to react.
+ */
 public class Pathfinder implements Runnable {
     private OCache oc;
     private MCache map;

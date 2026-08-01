@@ -1,6 +1,20 @@
 package haven.automated;
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Drawable;
+import haven.Equipory;
+import haven.FlowerMenu;
+import haven.GAttrib;
+import haven.GItem;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.MCache;
+import haven.ResDrawable;
+import haven.Resource;
+import haven.Tiler;
+import haven.WItem;
 import haven.resutil.WaterTile;
 
 import java.util.ArrayList;

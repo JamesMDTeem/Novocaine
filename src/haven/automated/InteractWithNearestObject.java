@@ -1,13 +1,38 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.Config;
+import haven.Coord;
+import haven.Coord2d;
+import haven.FlowerMenu;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.MCache;
+import haven.OptWnd;
+import haven.Resource;
+import haven.Utils;
 
 import java.util.*;
 
 import static haven.OCache.posres;
 
 public class InteractWithNearestObject implements Runnable {
+    /** One tile in world-coordinate units; matches {@code MCache.tilesz}. */
+    private static final int TILE = (int) MCache.tilesz.x;
+    /** Interaction range in world-coordinate units (12 tiles). */
+    private static final double MAX_INTERACT_DIST = 12 * TILE;
+    /**
+     * Door ids as sent in the click message's overlay slot, identifying which door of a
+     * building is the target. 16 is the front door, the only door single-door buildings
+     * have; 17 and 18 address the additional doors of multi-door buildings such as the
+     * Great Hall. The values come from the game's own object definitions, so they are
+     * named here rather than derived.
+     */
+    private static final int DOOR_FRONT = 16;
+    private static final int DOOR_SIDE_1 = 17;
+    private static final int DOOR_SIDE_2 = 18;
+
     private GameUI gui;
 
     public InteractWithNearestObject(GameUI gui) {
@@ -62,7 +87,7 @@ public class InteractWithNearestObject implements Runnable {
             "gfx/tiles/ridges/caveout"
     ));
 
-    double maxDistance = 12 * 11;
+    double maxDistance = MAX_INTERACT_DIST;
     @Override
     public void run() {
         Gob theObject = null;
@@ -217,24 +242,24 @@ public class InteractWithNearestObject implements Runnable {
 
     public static final Map<String, List<Door>> BUILDINGS = new HashMap<>();
     static {
-        BUILDINGS.put("gfx/terobjs/arch/logcabin", Arrays.asList(new Door(new Coord2d(22, 0), 16)));
-        BUILDINGS.put("gfx/terobjs/arch/timberhouse", Arrays.asList(new Door(new Coord2d(33, 0), 16)));
-        BUILDINGS.put("gfx/terobjs/arch/stonestead", Arrays.asList(new Door(new Coord2d(44, 0), 16)));
-        BUILDINGS.put("gfx/terobjs/arch/stonemansion", Arrays.asList(new Door(new Coord2d(48, 0), 16)));
+        BUILDINGS.put("gfx/terobjs/arch/logcabin", Arrays.asList(new Door(new Coord2d(22, 0), DOOR_FRONT)));
+        BUILDINGS.put("gfx/terobjs/arch/timberhouse", Arrays.asList(new Door(new Coord2d(33, 0), DOOR_FRONT)));
+        BUILDINGS.put("gfx/terobjs/arch/stonestead", Arrays.asList(new Door(new Coord2d(44, 0), DOOR_FRONT)));
+        BUILDINGS.put("gfx/terobjs/arch/stonemansion", Arrays.asList(new Door(new Coord2d(48, 0), DOOR_FRONT)));
         BUILDINGS.put("gfx/terobjs/arch/greathall", Arrays.asList(
-                new Door(new Coord2d(77, -28), 18),
-                new Door(new Coord2d(77, 0), 17),
-                new Door(new Coord2d(77, 28), 16)
+                new Door(new Coord2d(77, -28), DOOR_SIDE_2),
+                new Door(new Coord2d(77, 0), DOOR_SIDE_1),
+                new Door(new Coord2d(77, 28), DOOR_FRONT)
         ));
-        BUILDINGS.put("gfx/terobjs/arch/stonetower", Arrays.asList(new Door(new Coord2d(36, 0), 16)));
-        BUILDINGS.put("gfx/terobjs/arch/windmill", Arrays.asList(new Door(new Coord2d(0, 28), 16)));
+        BUILDINGS.put("gfx/terobjs/arch/stonetower", Arrays.asList(new Door(new Coord2d(36, 0), DOOR_FRONT)));
+        BUILDINGS.put("gfx/terobjs/arch/windmill", Arrays.asList(new Door(new Coord2d(0, 28), DOOR_FRONT)));
         BUILDINGS.put("gfx/terobjs/arch/greathall-door", Arrays.asList(
-                new Door(new Coord2d(0, -30), 18),
-                new Door(new Coord2d(0, 0), 17),
-                new Door(new Coord2d(0, 30), 16)
+                new Door(new Coord2d(0, -30), DOOR_SIDE_2),
+                new Door(new Coord2d(0, 0), DOOR_SIDE_1),
+                new Door(new Coord2d(0, 30), DOOR_FRONT)
         ));
-        BUILDINGS.put("gfx/terobjs/arch/greenhouse", Arrays.asList(new Door(new Coord2d(22, 0), 16)));
-        BUILDINGS.put("gfx/terobjs/arch/stonehut", Arrays.asList(new Door(new Coord2d(20, 0), 16)));
+        BUILDINGS.put("gfx/terobjs/arch/greenhouse", Arrays.asList(new Door(new Coord2d(22, 0), DOOR_FRONT)));
+        BUILDINGS.put("gfx/terobjs/arch/stonehut", Arrays.asList(new Door(new Coord2d(20, 0), DOOR_FRONT)));
     }
 
 

@@ -1,13 +1,12 @@
 package haven.automated;
 
 
-import haven.*;
-import haven.res.ui.stackinv.ItemStack;
+import haven.Coord;
+import haven.GItem;
+import haven.GameUI;
+import haven.Inventory;
+import haven.WItem;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class UnstackAllItems implements Runnable {
     private GameUI gui;

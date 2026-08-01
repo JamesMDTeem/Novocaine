@@ -44,10 +44,12 @@ import static haven.OCache.posres;
  * because it could not shut a gate, so a failed close is logged and the journey continues.
  */
 public class Gates {
+    /** Pixels per map tile (MCache.tilesz). Every distance in this class is stated in tiles. */
+    private static final double TILE = MCache.tilesz.x;
     /** Close enough for a right-click on the gate to land. */
-    private static final double REACH = 11 * 3.5;
+    private static final double REACH = TILE * 3.5;
     /** How far from the failed leg a gateway is still worth walking to. */
-    private static final double SEARCH = 11 * 45.0;
+    private static final double SEARCH = TILE * 45.0;
     /**
      * How far past the gateway to step before calling it "through".
      *
@@ -56,7 +58,7 @@ public class Gates {
      * aimed at solid ground, got as near as it could, and left the bot shut in the chamber, which
      * then re-planned back out through the gate it had just come in by.
      */
-    private static final double THROUGH = 11 * 3.0;
+    private static final double THROUGH = TILE * 3.0;
     /**
      * How near a shut gateway has to be before it is worth stopping the walk for.
      *
@@ -70,7 +72,7 @@ public class Gates {
      * one ends at its block, so this fires with a few tiles to spare, and before the walk starts
      * swinging sideways.
      */
-    private static final double NEAR = 11 * 8.0;
+    private static final double NEAR = TILE * 8.0;
     /** Polls (of 25ms) to wait for a gate to finish swinging. */
     private static final int SWING_TICKS = 80;
     /**
@@ -87,7 +89,7 @@ public class Gates {
      * the trade is the other way round - a long walk to a gateway beats not getting there - so
      * {@link #towards} does not apply it.
      */
-    private static final double CORRIDOR = 11 * 6.0;
+    private static final double CORRIDOR = TILE * 6.0;
     /**
      * The same, for a gateway picked AFTER a leg has already failed.
      *
@@ -97,7 +99,7 @@ public class Gates {
      * comfortably. The log has the bot walking to one such gate, failing to open it, and going back
      * again, while the wall it actually needed to cross was somewhere else entirely.
      */
-    private static final double WIDE_CORRIDOR = 11 * 15.0;
+    private static final double WIDE_CORRIDOR = TILE * 15.0;
     /**
      * The most of a journey's own length a gateway may sit off to the side of it. See
      * {@link #between} - a fixed corridor cannot tell a short trip from a long one, and on a short
@@ -112,7 +114,7 @@ public class Gates {
      * can sit a tile and a half from the gob's own centre before anything has gone wrong, and the
      * router's waypoint is a tile centre rather than the gob's position.
      */
-    private static final double AT_DEST = 11 * 3.0;
+    private static final double AT_DEST = TILE * 3.0;
 
     private Gates() {}
 
@@ -459,7 +461,7 @@ public class Gates {
          * squared. Doing it first costs the same two tiles and makes every arrival identical. */
         Coord2d ahead = square(gate, from);
         if (ahead != null)
-            nav.stepTo(ahead, 11 * 1.5);
+            nav.stepTo(ahead, TILE * 1.5);
 
         if (!nav.approach(gate, REACH)) {
             NLog.log(log, "gate: couldn't get to #" + id);
@@ -494,8 +496,8 @@ public class Gates {
         // Squaring up happened before the approach, so by here we are already on the gate's own
         // centre line: middle, then out. Repeating the line-up would only walk us back off it.
         Coord2d through = beyond(use, from, dest);
-        nav.stepTo(use.rc, 11 * 1.5);
-        boolean crossed = nav.stepTo(through, 11 * 2.5);
+        nav.stepTo(use.rc, TILE * 1.5);
+        boolean crossed = nav.stepTo(through, TILE * 2.5);
         Gob now = nav.player();
         boolean past = (now != null) && passed(use, from, now.rc);
         /* The numbers, not just a verdict, because "ok" for a step that arrived on our OWN side is

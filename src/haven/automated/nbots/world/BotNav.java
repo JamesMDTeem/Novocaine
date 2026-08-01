@@ -56,10 +56,24 @@ public class BotNav {
 
     private static final int POLL_MS = 25;
 
+    /**
+     * One tile, in world units.
+     *
+     * Every distance in this class is really a count of tiles, because tiles are the unit the
+     * things being reasoned about are measured in: a palisade is one tile thick, a gateway three
+     * tiles wide, and {@link Observed} records the world a tile at a time. They were spelt
+     * {@code 11 * n}, which reads as arithmetic rather than as the tile count it is.
+     *
+     * Taken from {@link MCache#tilesz} rather than written out again, since the rest of this file
+     * already divides by it to report distances in tiles - two spellings of one quantity is the
+     * drift this is here to stop.
+     */
+    private static final double TILE = MCache.tilesz.x;
+
     /** Close enough to right-click a gob and have its menu open. About two tiles. */
-    public static final double REACH = 22.0;
+    public static final double REACH = TILE * 2.0;
     /** How far a target may drift from where we aimed before re-pathing is worth it. */
-    private static final double DRIFT = 11.0;
+    private static final double DRIFT = TILE * 1.0;
     /** Give up chasing after this many re-paths that don't close the distance. */
     private static final int NO_PROGRESS_LIMIT = 10;
     /** How many times one approach may stop to back out of a beast's ring before giving up. */
@@ -72,7 +86,7 @@ public class BotNav {
      * Also the figure used for the coarse "is this within one hop" tests, which want a fixed answer
      * rather than one that changes with what happens to be loaded.
      */
-    private static final double HOP = 11 * 25.0;
+    private static final double HOP = TILE * 25.0;
     /**
      * The furthest a hop may ever aim.
      *
@@ -80,12 +94,12 @@ public class BotNav {
      * ({@code MAX_TILE_RANGE}), so asking for more does not fail - it silently lands somewhere
      * else, which is worse. Four tiles of margin keeps the hop honestly inside the clamp.
      */
-    private static final double HOP_MAX = 11 * 36.0;
+    private static final double HOP_MAX = TILE * 36.0;
     /**
      * The shortest a hop may aim. Below this the re-planning overhead per hop outweighs the
      * accuracy, and a bot in an empty field would inch along a tile at a time.
      */
-    private static final double HOP_MIN = 11 * 12.0;
+    private static final double HOP_MIN = TILE * 12.0;
     /**
      * How near a waypoint counts as reached.
      *
@@ -93,7 +107,7 @@ public class BotNav {
      * on, so insisting on arriving exactly would spend a pathfinder run per waypoint correcting a
      * few units that the next leg is about to undo anyway.
      */
-    private static final double LEG_TOL = 11 * 3.0;
+    private static final double LEG_TOL = TILE * 3.0;
     /** How many times a failed leg is worth re-routing before falling back to walking at it. */
     private static final int MAX_REPLANS = 3;
 
@@ -104,7 +118,7 @@ public class BotNav {
      * place to stand - but the router only ever checked the lines between the waypoints themselves,
      * so anything further off than this and the next leg is a line nobody has examined.
      */
-    private static final double LEG_SLACK = 11 * 1.0;
+    private static final double LEG_SLACK = TILE * 1.0;
 
     /**
      * Close enough to be standing ON a waypoint rather than merely near it.
@@ -119,7 +133,7 @@ public class BotNav {
      * its aim back off anything solid, so a waypoint next to a stockpile can never be stood on this
      * exactly and a leg that demanded it would never finish.
      */
-    private static final double ON_WAYPOINT = 11 * 0.34;
+    private static final double ON_WAYPOINT = TILE * 0.34;
 
     /**
      * How far from a leg's starting point the walk may get, as a multiple of the leg's own length,
@@ -129,7 +143,7 @@ public class BotNav {
      * cart is a large fraction of the distance - are not tripped by ordinary weaving.
      */
     private static final double WANDER = 1.5;
-    private static final double WANDER_SLACK = 11 * 6.0;
+    private static final double WANDER_SLACK = TILE * 6.0;
     /** How many gateways one journey may go through before that stops being plausible. */
     private static final int MAX_GATES = 4;
 
@@ -161,10 +175,10 @@ public class BotNav {
      * excusing real failures - the log had a barrel filled from forty units away with a reach of
      * twenty-two, and two tiles of slop would still have called that an arrival.
      */
-    private static final double STOP_SLACK = 11 * 1.0;
+    private static final double STOP_SLACK = TILE * 1.0;
     /** How far back off an occupied spot to look for standable ground, and in what steps. */
-    private static final double CLEAR_STEP = 11 * 0.5;
-    private static final double CLEAR_MAX = 11 * 3.0;
+    private static final double CLEAR_STEP = TILE * 0.5;
+    private static final double CLEAR_MAX = TILE * 3.0;
     /** How many refused clicks in a row mean the destination is not somewhere we can be. */
     private static final int REFUSE_LIMIT = 3;
     /**
@@ -1659,7 +1673,7 @@ public class BotNav {
              * on is still accepted a moment later by the loop. A waypoint that genuinely cannot be
              * stood on - beside a stockpile, where `stepTo` pulls its aim back off the box - behaves
              * exactly as it did before, because the wait was never what stopped the character. */
-            stepTo(aim, (span < len) ? (11 * 2.0) : Math.min(ON_WAYPOINT, tol));
+            stepTo(aim, (span < len) ? (TILE * 2.0) : Math.min(ON_WAYPOINT, tol));
             wasBlocked = stepRefused && (stepRefusal == Pathfinder.Refusal.NO_ROUTE);
             /* Anything that is not the search having looked and found nothing is treated as being
              * wedged, including a click that never reached a search at all - because the recovery

@@ -2,6 +2,14 @@ package haven.automated.helpers;
 
 import java.util.*;
 
+/**
+ * Item-name constants for the fishing bot and related scripts.
+ *
+ * Holds the canonical lists of poles, hooks, lines, lures, baits, and fish species
+ * so the fishing bot can recognize its equipment and match caught fish against the
+ * options the player selected. Separated from the bot itself because the same lists
+ * are useful to manual fishing helpers and to inventory organisation scripts.
+ */
 public class FishingAtlas {
 
     public static final List<String> fishingPoles = new ArrayList<>(Arrays.asList(

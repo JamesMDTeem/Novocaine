@@ -2,7 +2,6 @@ package haven.automated.nbots.task;
 
 import haven.Coord;
 import haven.Gob;
-import haven.Inventory;
 import haven.Loading;
 import haven.Resource;
 import haven.WItem;

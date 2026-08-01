@@ -1,6 +1,17 @@
 package haven.automated;
 
-import haven.*;
+import haven.CheckBox;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Equipory;
+import haven.GameUI;
+import haven.Gob;
+import haven.ItemInfo;
+import haven.Loading;
+import haven.MenuGrid;
+import haven.UI;
+import haven.WItem;
+import haven.Widget;
 import haven.Button;
 import haven.Label;
 import haven.Window;
@@ -29,6 +40,11 @@ public class FishingBot extends Window implements Runnable {
     private final MultiSelectList<String> fishLineChoice;
     private final MultiSelectList<String> baitChoice;
     private final MultiSelectList<String> lureChoice;
+
+    /** Number of rows shown at once in the pole/hook/line/bait/lure selection widgets. */
+    private static final int DROPDOWN_VISIBLE_ROWS = 18;
+    /** Millisecond pause after each UI action (equip, click) before the bot re-checks state. */
+    private static final int ACTION_DELAY_MS = 500;
 
     public FishingBot(GameUI gui) {
         super(UI.scale(415, 190), "Fishing Bot");
@@ -69,7 +85,7 @@ public class FishingBot extends Window implements Runnable {
         add(baitLabel, UI.scale(295, 0));
 
 
-        fishingPoleChoice = add(new TwoOptionSwitch<String>(UI.scale(120, 36), 18, FishingAtlas.fishingPoles) {
+        fishingPoleChoice = add(new TwoOptionSwitch<String>(UI.scale(120, 36), DROPDOWN_VISIBLE_ROWS, FishingAtlas.fishingPoles) {
             @Override
             protected void changed(String sel, int idx) {
                 if (idx == 0) {
@@ -89,22 +105,22 @@ public class FishingBot extends Window implements Runnable {
         }, UI.scale(10, 20));
 
         hookChoice = add(
-                new MultiSelectList<>(UI.scale(130, 72), 18, FishingAtlas.fishingHooks),
+                new MultiSelectList<>(UI.scale(130, 72), DROPDOWN_VISIBLE_ROWS, FishingAtlas.fishingHooks),
                 UI.scale(10, 92)
         );
 
         fishLineChoice = add(
-                new MultiSelectList<>(UI.scale(130, 144), 18, FishingAtlas.fishingLines),
+                new MultiSelectList<>(UI.scale(130, 144), DROPDOWN_VISIBLE_ROWS, FishingAtlas.fishingLines),
                 UI.scale(135, 20)
         );
 
         baitChoice = add(
-                new MultiSelectList<>(UI.scale(140, 144), 18, FishingAtlas.fishingBaits),
+                new MultiSelectList<>(UI.scale(140, 144), DROPDOWN_VISIBLE_ROWS, FishingAtlas.fishingBaits),
                 UI.scale(260, 20)
         );
 
         lureChoice = add(
-                new MultiSelectList<>(UI.scale(140, 144), 18, FishingAtlas.fishingLures),
+                new MultiSelectList<>(UI.scale(140, 144), DROPDOWN_VISIBLE_ROWS, FishingAtlas.fishingLures),
                 UI.scale(260, 20)
         );
         lureChoice.hide();
@@ -220,7 +236,7 @@ public class FishingBot extends Window implements Runnable {
         WItem handItem = gui.getequipory().slots[hand];
         if (handItem != null && handItem.item != null) {
             handItem.item.wdgmsg("itemact", 0);
-            sleep(500);
+            sleep(ACTION_DELAY_MS);
         } else {
             deactivate("Fishbot: No fishing pole in hand slot: " + hand + " to attach the line to. Stopping..");
         }
@@ -254,7 +270,7 @@ public class FishingBot extends Window implements Runnable {
         WItem handItem = gui.getequipory().slots[hand];
         if (handItem != null && handItem.item != null) {
             handItem.item.wdgmsg("itemact", 0);
-            sleep(500);
+            sleep(ACTION_DELAY_MS);
         } else {
             deactivate("Fishbot: No fishing pole in hand slot: " + hand + " to attach the hook to. Stopping..");
         }
@@ -289,7 +305,7 @@ public class FishingBot extends Window implements Runnable {
         WItem handItem = gui.getequipory().slots[hand];
         if (handItem != null && handItem.item != null) {
             handItem.item.wdgmsg("itemact", 0);
-            sleep(500);
+            sleep(ACTION_DELAY_MS);
         } else {
             deactivate("Fishbot: No fishing pole in hand slot: " + hand + " to attach the bait to. Stopping..");
         }
@@ -323,7 +339,7 @@ public class FishingBot extends Window implements Runnable {
         WItem handItem = gui.getequipory().slots[hand];
         if (handItem != null && handItem.item != null) {
             handItem.item.wdgmsg("itemact", 0);
-            sleep(500);
+            sleep(ACTION_DELAY_MS);
         } else {
             deactivate("Fishbot: No fishing pole in hand slot: " + hand + " to attach the lure to. Stopping..");
         }
@@ -344,7 +360,7 @@ public class FishingBot extends Window implements Runnable {
                 }
                 prepareFishingPole();
             }
-            sleep(500);
+            sleep(ACTION_DELAY_MS);
         }
     }
 
@@ -430,11 +446,11 @@ public class FishingBot extends Window implements Runnable {
             if ("Primitive Casting-Rod".equals(poleSel)) {
                 sleep(1500);
             } else {
-                sleep(500);
+                sleep(ACTION_DELAY_MS);
             }
 
             gui.map.wdgmsg("click", Coord.z, fishCoord.floor(posres), 1, 0);
-            sleep(500);
+            sleep(ACTION_DELAY_MS);
             gui.map.wdgmsg("click", Coord.z, fishCoord.floor(posres), 3, 0);
         }
     }

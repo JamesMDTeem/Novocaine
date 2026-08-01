@@ -4,6 +4,11 @@ import haven.Coord;
 
 import java.util.HashMap;
 
+/**
+ * Represents a rectangular obstacle that can be traversed around.
+ * Holds corner waypoints, clearance vertices, and a raster scan of occupied cells
+ * for visibility testing during pathfinding.
+ */
 public class TraversableObstacle {
     public Coord wa, wb, wc, wd;
     public Coord clra, clrb, clrc, clrd;

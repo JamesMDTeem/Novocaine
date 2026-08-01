@@ -1,12 +1,33 @@
 package haven.automated.helpers;
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Gob;
+import haven.Indir;
+import haven.Loading;
+import haven.MessageBuf;
+import haven.RenderLink;
+import haven.ResDrawable;
+import haven.Resource;
 
 import java.io.*;
 import java.sql.Connection;
 import java.sql.*;
 import java.util.*;
 
+/**
+ * Collision-box database and query interface for automated navigation and placement.
+ *
+ * Loads pre-computed collision polygons from {@code hitboxes.db} (one row per resource name,
+ * with a JSON array of box coordinates) into {@link #collisionBoxMap}. The pathfinder uses
+ * these to exclude gob footprints from the search grid; bots use {@link #getHitBox} and
+ * {@link #getGobHitbox} to test point/gob containment for placement and interaction range.
+ *
+ * A resource may have multiple boxes (buildings with annexes, gates with separate frame/leaf
+ * collision), and each box has a {@code hitAble} flag that gates whether it blocks pathing.
+ * {@link #passableGobs} names resource prefixes that are never obstacles despite having geometry
+ * (herbs, liftable items, clues, jellies).
+ */
 public class HitBoxes {
     private static final String DATABASE = "jdbc:sqlite:hitboxes.db";
     public static Map<String, CollisionBoxSecondary[]> collisionBoxMap = new HashMap<>();

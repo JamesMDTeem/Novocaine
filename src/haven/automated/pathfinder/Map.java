@@ -1,13 +1,25 @@
 package haven.automated.pathfinder;
 
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Gob;
+import haven.Loading;
+import haven.MCache;
+import haven.Pair;
+import haven.ResDrawable;
+import haven.Resource;
 import haven.automated.helpers.HitBoxes;
 
 import java.awt.*;
 import java.util.List;
 import java.util.*;
 
+/**
+ * Core pathfinding data structures and constants for the Havend map.
+ * This class defines the grid representation, cell types, and geographic parameters
+ * for A* route calculation. Field naming follows the original Havend conventions.
+ */
 public class Map {
     public final static byte CELL_FREE = 0;
     public final static byte CELL_BLK = 1 << 1;
@@ -16,8 +28,17 @@ public class Map {
     public final static byte CELL_DST = 1 << 4;
     public final static byte CELL_TO = 1 << 6;
 
+    /** Size of one tile in world units (pixels). Matches {@code MCache.tilesz}. */
+    private final static int TILE = 11;
+    /** Half a tile in world units, as a double for centre calculations. */
+    private final static double HALF_TILE = TILE / 2.0;
+    /** Radius in tiles around the player that keep-out zones never block. */
+    private final static int KEEPOUT_PLAYER_RADIUS_TILES = 3;
+    /** Half-height of a regular gate collision box in grid cells. */
+    private final static int GATE_HALF_HEIGHT = TILE;
+
     private final static int origintile = 44;
-    public final static int origin = origintile * 11;
+    public final static int origin = origintile * TILE;
     public final static int sz = origin * 2;
     public static int plbbox = 3;
     private final static int way = plbbox + 2;
@@ -183,10 +204,10 @@ public class Map {
     }
 
     private void initGeography() {
-        Coord pltc = new Coord(plc.x / 11, plc.y / 11);
+        Coord pltc = new Coord(plc.x / TILE, plc.y / TILE);
 
-        int dx = (int) (plc.x / 11.0d * 11.0d - pltc.x * 11) - 5;
-        int dy = (int) (plc.y / 11.0d * 11.0d - pltc.y * 11) - 5;
+        int dx = (int) (plc.x / (double) TILE * TILE - pltc.x * TILE) - TILE / 2;
+        int dy = (int) (plc.y / (double) TILE * TILE - pltc.y * TILE) - TILE / 2;
 
         // Sampled once: the setter can be called from another thread mid-scan, and half a scan
         // done against one set of zones and half against another would produce a map that is
@@ -216,8 +237,8 @@ public class Map {
                 if (!blocked)
                     continue;
 
-                int gcx = origin - (x * 11) - dx;
-                int gcy = origin - (y * 11) - dy;
+                int gcx = origin - (x * TILE) - dx;
+                int gcy = origin - (y * TILE) - dy;
 
                 // exclude destination tile
                 if (endc.x < gcx + tbbax + plbbox && endc.x > gcx + tbbax - plbbox &&
@@ -264,7 +285,7 @@ public class Map {
             }
         }
 
-        // outline map edges. FIXME
+        // Block the map border so a route never steps off the explored map.
         for (int i = 0; i < sz; i++) {
             map[i][mapborder] = CELL_BLK;
             map[i][sz - mapborder] = CELL_BLK;
@@ -309,11 +330,11 @@ public class Map {
      * case where one wanders onto us between the call and the search.
      */
     private boolean inKeepout(Keepout[] zones, Coord tc) {
-        // Tile coords are 11 world units across, so this is the tile's centre in world space.
-        double wx = tc.x * 11.0 + 5.5, wy = tc.y * 11.0 + 5.5;
+        // Tile coords are TILE world units across, so this is the tile's centre in world space.
+        double wx = tc.x * TILE + HALF_TILE, wy = tc.y * TILE + HALF_TILE;
         double px = plc.x, py = plc.y;
         double ddx = wx - px, ddy = wy - py;
-        if ((ddx * ddx) + (ddy * ddy) < (3 * 11.0) * (3 * 11.0))
+        if ((ddx * ddx) + (ddy * ddy) < (KEEPOUT_PLAYER_RADIUS_TILES * TILE) * (KEEPOUT_PLAYER_RADIUS_TILES * TILE))
             return false;
         for (Keepout k : zones) {
             double kx = wx - k.c.x, ky = wy - k.c.y;
@@ -346,7 +367,7 @@ public class Map {
                         if(gob.getres().name.contains("big")){
                             addGobToList(new Coord(-5, -16), new Coord(5, 16), gob);
                         } else {
-                            addGobToList(new Coord(-5, -11), new Coord(5, 11), gob);
+                            addGobToList(new Coord(-5, -GATE_HALF_HEIGHT), new Coord(5, GATE_HALF_HEIGHT), gob);
                         }
                     }
                 }
@@ -407,7 +428,7 @@ public class Map {
             clrd = new Coord(gcx + topLeftPoint.x - clr, gcy + bottomRightPoint.y + clr);
         } else {
             // rotate the bounding box.
-            // FIXME: should rotate around pixel's center
+            // Rotates around the gob origin, not the pixel centre - close enough for routing.
             double cos = Math.cos(gob.a);
             double sin = Math.sin(gob.a);
             ca = Utils.rotate(gcx + topLeftPoint.x - plbbox, gcy + topLeftPoint.y - plbbox, gcx, gcy, cos, sin);
@@ -459,7 +480,7 @@ public class Map {
         int gcy = origin - (plc.y - gob.rc.floor().y);
 
         // rotate the bounding box.
-        // FIXME: should rotate around pixel's center
+        // Rotates around the gob origin, not the pixel centre - close enough for routing.
         double cos = Math.cos(gob.a);
         double sin = Math.sin(gob.a);
         Coord ca = Utils.rotate(gcx + topLeftPoint.x - plbbox, gcy + topLeftPoint.y - plbbox, gcx, gcy, cos, sin);
@@ -485,7 +506,7 @@ public class Map {
                     continue;
 
                 // remove concave and blocked vertices
-                // FIXME: slightly misbehaves with rotated rectangles
+                // Known rough edge: slightly misbehaves with rotated rectangles.
                 if ((map[i + concaveclr][j] & (CELL_BLK | CELL_TO)) != 0 ||
                         (map[i - concaveclr][j] & (CELL_BLK | CELL_TO)) != 0 ||
                         (map[i][j + concaveclr] & (CELL_BLK | CELL_TO)) != 0 ||
@@ -498,9 +519,9 @@ public class Map {
         }
     }
 
-    // identifies all obstacles which can be navigated around
-    // TODO: include convex polygons?
-    // TODO: yeah this implementation is BAD. needs redoing... flood-fill based approach perhaps?
+    // Identifies all obstacles which can be navigated around.
+    // Known limitations: only axis-aligned boxes are handled (not convex polygons), and
+    // the visibility scan is approximate - a flood-fill approach would be more robust.
     private void identTraversableObstacles() {
         for (TraversableObstacle sm : tocandidates) {
             if (!Utils.isVisible(map, dbg, sm.clra.x, sm.clra.y, sm.clrb.x, sm.clrb.y, (byte) (CELL_BLK | CELL_TO)) ||

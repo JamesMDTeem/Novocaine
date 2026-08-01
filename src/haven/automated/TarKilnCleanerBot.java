@@ -1,6 +1,17 @@
 package haven.automated;
 
-import haven.*;
+import haven.CheckBox;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GItem;
+import haven.GameUI;
+import haven.Gob;
+import haven.ResDrawable;
+import haven.UI;
+import haven.Utils;
+import haven.WItem;
+import haven.Widget;
+import haven.Window;
 
 import java.util.ArrayList;
 import java.util.Objects;

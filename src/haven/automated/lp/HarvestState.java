@@ -1,6 +1,17 @@
 package haven.automated.lp;
 
-import haven.*;
+import haven.CharWnd;
+import haven.Coord;
+import haven.Drawable;
+import haven.Gob;
+import haven.Loading;
+import haven.Message;
+import haven.PUtils;
+import haven.ResDrawable;
+import haven.Resource;
+import haven.Sprite;
+import haven.TexI;
+import haven.UI;
 
 import java.awt.Color;
 import java.awt.Font;

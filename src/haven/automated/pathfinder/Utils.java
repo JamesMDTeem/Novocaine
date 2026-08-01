@@ -8,6 +8,15 @@ import java.util.HashSet;
 import java.util.Set;
 
 
+/**
+ * Raster helpers for the pathfinder's 2D obstacle grid.
+ *
+ * {@code rotate} maps a point around a pivot given precomputed cos/sin, used to orient gob
+ * collision boxes to their rotation. {@code plotRect} stamps a possibly-rotated rectangle
+ * into a byte map by drawing its frame with Bresenham lines and filling each row between its
+ * min/max x values - {@code MinMax} records those spans. This is how a gob's collision shape
+ * is painted into the per-journey grid that {@link Map} searches over.
+ */
 public class Utils {
 
     public static Coord rotate(int x, int y, float pivotx, float pivoty, double cos, double sin) {
@@ -18,6 +27,9 @@ public class Utils {
         return new Coord((int) Math.round((fx * cos - fy * sin) + pivotx), (int) Math.round((fx * sin + fy * cos) + pivoty));
     }
 
+    /**
+     * Tracks the min/max x-span for a given y-row during rectangle rasterization.
+     */
     public static class MinMax {
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;

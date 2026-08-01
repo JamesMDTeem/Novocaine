@@ -7,6 +7,11 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 
+/**
+ * Debug visualization for pathfinding.
+ * Renders the pathfinding grid state (blocked cells, traversable obstacles, waypoints, edges)
+ * as timestamped PNG images in the {@code pf/} directory. Only active when {@code DEBUG} is true.
+ */
 public class Dbg {
     private boolean enabled;
     private BufferedImage img;

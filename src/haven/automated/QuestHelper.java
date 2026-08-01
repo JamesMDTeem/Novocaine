@@ -2,7 +2,17 @@ package haven.automated;
 
 import haven.Button;
 import haven.Window;
-import haven.*;
+import haven.CheckBox;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GOut;
+import haven.GameUI;
+import haven.Loading;
+import haven.OldListBox;
+import haven.QuestWnd;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
 
 import java.awt.*;
 import java.util.List;

@@ -1,6 +1,17 @@
 package haven.automated;
 
-import haven.*;
+import haven.Composite;
+import haven.Composited;
+import haven.Coord;
+import haven.Drawable;
+import haven.GAttrib;
+import haven.GItem;
+import haven.GameUI;
+import haven.Gob;
+import haven.Inventory;
+import haven.Loading;
+import haven.Resource;
+import haven.WItem;
 
 import static haven.OCache.posres;
 

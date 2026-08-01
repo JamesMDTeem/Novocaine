@@ -1,7 +1,12 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.Resource;
 
 import java.util.HashSet;
 import java.util.Set;

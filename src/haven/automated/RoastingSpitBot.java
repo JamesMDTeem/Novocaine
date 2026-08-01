@@ -1,9 +1,20 @@
 package haven.automated;
 
-import haven.*;
+import haven.CheckBox;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GItem;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.Resource;
+import haven.RichText;
+import haven.UI;
+import haven.Utils;
+import haven.WItem;
+import haven.Widget;
 import haven.Button;
 import haven.Window;
-import haven.automated.helpers.AreaSelectCallback;
 import haven.render.RenderTree;
 
 import java.awt.*;

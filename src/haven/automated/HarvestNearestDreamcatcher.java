@@ -1,7 +1,13 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.FlowerMenu;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.Resource;
 
 import static haven.OCache.posres;
 

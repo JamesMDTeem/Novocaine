@@ -1,6 +1,9 @@
 package haven.automated.cookbook;
 
-import haven.*;
+import haven.Defer;
+import haven.ItemInfo;
+import haven.OptWnd;
+import haven.Resource;
 import haven.res.ui.tt.q.qbuff.QBuff;
 import haven.resutil.FoodInfo;
 import org.json.JSONArray;
@@ -25,9 +28,38 @@ import java.util.concurrent.TimeUnit;
 public class FoodService {
     private static final Map<String, ParsedFoodInfo> cachedItems = new ConcurrentHashMap<>();
     private static final Queue<HashedFoodInfo> sendQueue = new ConcurrentLinkedQueue<>();
-    public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
     private static final boolean cookbookDebug = false;
+
+    /** Number of threads in the scheduler pool. */
+    private static final int SCHEDULER_THREADS = 2;
+
+    public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(SCHEDULER_THREADS);
+
+    /** Haven item quality is on a 0-10 scale; 10.0 is the maximum, used both as the
+     * default when no quality buff is present and as the divisor that normalizes quality. */
+    private static final double QUALITY_SCALE = 10.0;
+
+    /** Food fractions (energy, ingredient amounts) are reported as percentages on a 0-100 scale. */
+    private static final int PERCENT_SCALE = 100;
+
+    /** Multiplier/divisor that rounds a value to two decimal places. */
+    private static final double ROUND_2DP_SCALE = 100.0;
+
+    /** A cookbook endpoint shorter than this is not treated as a usable URL. */
+    private static final int MIN_ENDPOINT_LENGTH = 5;
+
+    /** How often the queued food items are flushed to the cookbook endpoint. */
+    private static final long SEND_INTERVAL_SECONDS = 10L;
+
+    /** Hunger scale factor applied to glutton values. */
+    private static final int HUNGER_SCALE = 1000;
+
+    /** HTTP status code indicating success. */
+    private static final int HTTP_OK = 200;
+
+    /** Radix for hexadecimal string conversion. */
+    private static final int HEX_RADIX = 16;
 
     /**
      * Cached endpoint URL for scheduler-thread use. Updated from the UI thread via
@@ -38,7 +70,7 @@ public class FoodService {
     private static volatile String cachedToken = "";
 
     static {
-        scheduler.scheduleAtFixedRate(FoodService::sendItems, 10L, 10, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(FoodService::sendItems, SEND_INTERVAL_SECONDS, SEND_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
     /**
@@ -52,7 +84,7 @@ public class FoodService {
             return;
         }
         String raw = OptWnd.cookBookEndpointTextEntry.buf.line();
-        cachedEndpoint = (raw != null && raw.trim().length() >= 5) ? raw.trim() : null;
+        cachedEndpoint = (raw != null && raw.trim().length() >= MIN_ENDPOINT_LENGTH) ? raw.trim() : null;
         String tk = OptWnd.cookBookTokenTextEntry.buf.line();
         cachedToken = (tk != null) ? tk.trim() : "";
     }
@@ -65,15 +97,15 @@ public class FoodService {
                 FoodInfo foodInfo = ItemInfo.find(FoodInfo.class, infoList);
                 if (foodInfo != null) {
                     QBuff qBuff = ItemInfo.find(QBuff.class, infoList);
-                    double quality = qBuff != null ? qBuff.q : 10.0;
-                    double multiplier = Math.sqrt(quality / 10.0);
+                    double quality = qBuff != null ? qBuff.q : QUALITY_SCALE;
+                    double multiplier = Math.sqrt(quality / QUALITY_SCALE);
                     double multiplier2 = Math.sqrt(multiplier);
 
                     ParsedFoodInfo parsedFoodInfo = new ParsedFoodInfo();
                     parsedFoodInfo.resourceName = resName;
                     parsedFoodInfo.genus = genus;
-                    parsedFoodInfo.energy = (int) (Math.round(foodInfo.end * 100));
-                    parsedFoodInfo.hunger = round2Dig(foodInfo.glut * 1000 / multiplier2);
+                    parsedFoodInfo.energy = (int) (Math.round(foodInfo.end * PERCENT_SCALE));
+                    parsedFoodInfo.hunger = round2Dig(foodInfo.glut * HUNGER_SCALE / multiplier2);
 
                     for (int i = 0; i < foodInfo.evs.length; i++) {
                         parsedFoodInfo.feps.add(new FoodFEP(foodInfo.evs[i].ev.nm, round2Dig(foodInfo.evs[i].a / multiplier)));
@@ -93,11 +125,11 @@ public class FoodService {
                         if (info.getClass().getName().contains("Ingredient")) {
                             String name = (String) info.getClass().getField("name").get(info);
                             Double value = (Double) info.getClass().getField("val").get(info);
-                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * 100)));
+                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * PERCENT_SCALE)));
                         } else if (info.getClass().getName().contains("Smoke")) {
                             String name = (String) info.getClass().getField("name").get(info);
                             Double value = (Double) info.getClass().getField("val").get(info);
-                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * 100)));
+                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * PERCENT_SCALE)));
                         }
                     }
                     checkAndSend(parsedFoodInfo);
@@ -112,7 +144,7 @@ public class FoodService {
     }
 
     private static double round2Dig(double value) {
-        return Math.round(value * 100.0) / 100.0;
+        return Math.round(value * ROUND_2DP_SCALE) / ROUND_2DP_SCALE;
     }
 
     private static void checkAndSend(ParsedFoodInfo info) {
@@ -126,7 +158,7 @@ public class FoodService {
 
     public static boolean isValidEndpoint() {
         String raw = cachedEndpoint;
-        return raw != null && raw.length() >= 5;
+        return raw != null && raw.length() >= MIN_ENDPOINT_LENGTH;
     }
 
     private static void sendItems() {
@@ -170,7 +202,7 @@ public class FoodService {
 
                 int code = connection.getResponseCode();
 
-                if (code != 200) {
+                if (code != HTTP_OK) {
                     if (cookbookDebug) {
                         String responseMessage = connection.getResponseMessage();
 
@@ -214,9 +246,10 @@ public class FoodService {
 
     private static String getHex(byte[] bytes) {
         BigInteger bigInteger = new BigInteger(1, bytes);
-        return bigInteger.toString(16);
+        return bigInteger.toString(HEX_RADIX);
     }
 
+    /** Internal holder pairing a content hash with its food payload for deduplication. */
     private static class HashedFoodInfo {
         public String hash;
         public ParsedFoodInfo foodInfo;
@@ -227,6 +260,7 @@ public class FoodService {
         }
     }
 
+    /** Single ingredient entry serialized for cookbook submission (name + percentage scaled 0-100). */
     public static class FoodIngredient {
         public String name;
         public Integer percentage;
@@ -245,6 +279,7 @@ public class FoodService {
         }
     }
 
+    /** Nutrient component (name + value) from food effect description. */
     public static class FoodFEP {
         public String name;
         public Double value;
@@ -263,6 +298,7 @@ public class FoodService {
         }
     }
 
+    /** Holds parsed food information for cookbook submission. Fields are initialized with default values in constructor. */
     public static class ParsedFoodInfo {
         public String itemName;
         public String resourceName;

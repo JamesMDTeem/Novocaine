@@ -1,7 +1,16 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.Coord;
+import haven.Coord3f;
+import haven.Drawable;
+import haven.FlowerMenu;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.ResDrawable;
+import haven.Resource;
+import haven.Utils;
 
 import static haven.OCache.posres;
 import static java.lang.Thread.sleep;
@@ -29,8 +38,8 @@ public class EnterNearestVehicle implements Runnable {
                     res = gob.getres();
                 } catch (Loading l) {
                 }
-                if (res != null) { // TODO: ND: Need to fix or do more rigorous testing.
-                                   //  Either the gob.occupants don't properly update when one of them leaves the rowboat, or something else is wrong
+                if (res != null) { // ND: occupants don't reliably update when a passenger leaves the
+                                   //  rowboat, so the occupant count below can be stale.
                     int type = 0;
                     if (res.name.equals("gfx/terobjs/vehicle/knarr") /*&& gob.occupants.size() < 10*/) {
                         type = 1;

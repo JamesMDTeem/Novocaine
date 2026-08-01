@@ -1,6 +1,17 @@
 package haven.automated;
 
-import haven.*;
+import haven.Config;
+import haven.Coord;
+import haven.GOut;
+import haven.GameUI;
+import haven.Label;
+import haven.Loading;
+import haven.Resource;
+import haven.Scrollbar;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
+import haven.Window;
 
 import java.awt.*;
 import java.util.ArrayList;

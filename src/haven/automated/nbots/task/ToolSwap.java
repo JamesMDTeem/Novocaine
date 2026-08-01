@@ -12,7 +12,6 @@ import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.NBotConfig;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.Outcome;
-import haven.automated.nbots.core.Task;
 import haven.automated.nbots.world.BotNav;
 
 import java.util.ArrayList;

@@ -18,6 +18,7 @@ import haven.automated.AUtils;
 import haven.resutil.FoodInfo;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.UiWatchdog;
+import haven.automated.nbots.core.Widgets;
 
 import java.awt.Color;
 import java.util.Collections;
@@ -808,35 +809,12 @@ public class AutoLpBot extends Window implements Runnable {
 
     private void closeMenu(FlowerMenu fm) throws InterruptedException {
         fm.wdgmsg("cl", -1);
-        waitUntil(() -> findFlowerMenuNow() == null, 50);
+        waitUntil(() -> Widgets.find(gui.ui.root, FlowerMenu.class) == null, 50);
     }
 
     /** Polls briefly for a flower menu to open (the rclick lands asynchronously). */
     private FlowerMenu findFlowerMenu() throws InterruptedException {
-        for (int i = 0; i < 40; i++) {
-            if (!active || stop)
-                throw new InterruptedException();
-            FlowerMenu fm = findFlowerMenuNow();
-            if (fm != null)
-                return fm;
-            Thread.sleep(POLL_MS);
-        }
-        return null;
-    }
-
-    private FlowerMenu findFlowerMenuNow() {
-        return findChild(gui.ui.root, FlowerMenu.class);
-    }
-
-    private static <T extends Widget> T findChild(Widget root, Class<T> cls) {
-        for (Widget w = root.child; w != null; w = w.next) {
-            if (cls.isInstance(w))
-                return cls.cast(w);
-            T deep = findChild(w, cls);
-            if (deep != null)
-                return deep;
-        }
-        return null;
+        return Widgets.awaitFlowerMenu(gui.ui.root, () -> active && !stop);
     }
 
     // Per-target count of consecutive "menu wouldn't open" misses. Returns true once it crosses

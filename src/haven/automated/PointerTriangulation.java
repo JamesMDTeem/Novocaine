@@ -1,6 +1,18 @@
 package haven.automated;
 
-import haven.*;
+import haven.Button;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
+import haven.Label;
+import haven.MCache;
+import haven.MapFile;
+import haven.RichText;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
+import haven.Window;
 import haven.sprites.ClueSprite;
 
 import java.util.ArrayList;
@@ -12,6 +24,10 @@ import static haven.MCache.cmaps;
 import static haven.MCache.tilesz;
 
 public class PointerTriangulation extends Window {
+    /** Size of one map grid in world units (100 tiles of 11 units each). */
+    private static final int GRID_SIZE = 1100;
+    /** Rounding scale for stored checkpoint coordinates: keeps 2 decimal places of world precision. */
+    private static final int ROUND_SCALE = 100;
     public static boolean pointerChecked = false;
     public static double pointerAngle = 0;
     private final GameUI gui;
@@ -69,7 +85,7 @@ public class PointerTriangulation extends Window {
                     }
                     double calcX = gridCoords.x - curGridCoords.x;
                     double calcY = gridCoords.y - curGridCoords.y;
-                    Coord2d firstCoord = new Coord2d(calcX * 1100 + grid.gc.x * 1100 + lineData.initCoords.x, calcY * 1100 + grid.gc.y * 1100 + lineData.initCoords.y);
+                    Coord2d firstCoord = new Coord2d(calcX * GRID_SIZE + grid.gc.x * GRID_SIZE + lineData.initCoords.x, calcY * GRID_SIZE + grid.gc.y * GRID_SIZE + lineData.initCoords.y);
                     gui.mapfile.view.addSprite(new ClueSprite(firstCoord, lineData.angle, lineData.angle, 1, 10000, 10));
 
                 } else {
@@ -101,8 +117,8 @@ public class PointerTriangulation extends Window {
             MCache.Grid grid = ui.sess.glob.map.getgrid(initialCoord.div(cmaps));
             MapFile.GridInfo info = ui.gui.mapfile.file.gridinfo.get(grid.id);
             Long segment = info.seg;
-            double xValue = Math.floor((playerCoord.x - (grid.gc.x * 1100)) * 100) / 100;
-            double yValue = Math.floor((playerCoord.y - (grid.gc.y * 1100)) * 100) / 100;
+            double xValue = Math.floor((playerCoord.x - (grid.gc.x * GRID_SIZE)) * ROUND_SCALE) / ROUND_SCALE;
+            double yValue = Math.floor((playerCoord.y - (grid.gc.y * GRID_SIZE)) * ROUND_SCALE) / ROUND_SCALE;
             lines.add(new LineData(segment, grid.id, new Coord2d(xValue, yValue), pointerAngle));
         } catch (Exception ignored) {}
         pointerChecked = false;

@@ -1,6 +1,5 @@
 package haven.automated.lp;
 
-import haven.Config;
 import haven.automated.AUtils;
 import haven.automated.nbots.world.Hazards;
 

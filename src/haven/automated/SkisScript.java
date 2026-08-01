@@ -1,6 +1,18 @@
 package haven.automated;
 
-import haven.*;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Drawable;
+import haven.Equipory;
+import haven.FlowerMenu;
+import haven.GAttrib;
+import haven.GItem;
+import haven.GameUI;
+import haven.Gob;
+import haven.Loading;
+import haven.ResDrawable;
+import haven.Resource;
+import haven.WItem;
 
 import static haven.OCache.posres;
 

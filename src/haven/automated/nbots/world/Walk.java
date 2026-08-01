@@ -54,8 +54,10 @@ import static haven.OCache.posres;
 public class Walk {
     private Walk() {}
 
+    /** Pixels per map tile (MCache.tilesz). Every distance in this class is stated in tiles. */
+    private static final double TILE = MCache.tilesz.x;
     /** How finely a straight line is sampled before it is trusted, in world units. */
-    private static final double SAMPLE = 11 * 0.5;
+    private static final double SAMPLE = TILE * 0.5;
     /**
      * The furthest a straight line is worth checking and handing over.
      *
@@ -63,13 +65,13 @@ public class Walk {
      * few tiles the sampling below is doing the local pathfinder's job worse than it does, and
      * every unit past here is a unit walked without anything having planned it.
      */
-    public static final double MAX_DIRECT = 11 * 8.0;
+    public static final double MAX_DIRECT = TILE * 8.0;
     /** Polls (of 25ms) to wait for the server to acknowledge a move by starting one. */
     private static final int START_TICKS = 12;
     /** Polls to wait for a move to finish. A long leg at walking pace, with room to spare. */
     private static final int RUN_TICKS = 400;
     /** How far an unstick step tries to travel, and the headings it tries in turn. */
-    private static final double NUDGE = 11 * 2.5;
+    private static final double NUDGE = TILE * 2.5;
     private static final int NUDGE_HEADINGS = 8;
 
     /** True while the server says the character is moving. The only authority on this. */
@@ -221,11 +223,11 @@ public class Walk {
             Coord2d to = me.rc.add(new Coord2d(Math.cos(a), Math.sin(a)).mul(NUDGE));
             if (!lineClear(gui, me.rc, to))
                 continue;
-            if (straightTo(nav, gui, to, 11 * 1.0))
+            if (straightTo(nav, gui, to, TILE * 1.0))
                 return true;
             // Moved at all? Even a partial step is out of whatever we were inside.
             Gob now = player(gui);
-            if ((now != null) && (now.rc.dist(me.rc) > 11 * 0.5))
+            if ((now != null) && (now.rc.dist(me.rc) > TILE * 0.5))
                 return true;
         }
         return false;

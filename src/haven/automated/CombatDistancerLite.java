@@ -1,14 +1,11 @@
 package haven.automated;
 
-import haven.*;
-import haven.Button;
-import haven.Label;
-import haven.Window;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
 
 import java.awt.*;
-import java.text.DecimalFormat;
-import java.util.Map;
-import java.util.Objects;
 
 import static haven.OCache.posres;
 import static haven.automated.CombatDistanceTool.animalDistances;

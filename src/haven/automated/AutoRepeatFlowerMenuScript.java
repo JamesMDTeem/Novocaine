@@ -1,6 +1,13 @@
 package haven.automated;
 
-import haven.*;
+import haven.Coord;
+import haven.FlowerMenu;
+import haven.GItem;
+import haven.GameUI;
+import haven.Inventory;
+import haven.Loading;
+import haven.OptWnd;
+import haven.WItem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,13 +24,18 @@ public class AutoRepeatFlowerMenuScript implements Runnable{
     private final String name;
     private List<GItem> items;
 
+    /** Maximum number of repeat cycles for a single flower menu action. */
+    private static final int MAX_REPEAT_CYCLES = 10;
+    /** Extra milliseconds added to ping for interaction timing. */
+    private static final int PING_MARGIN_MS = 10;
+
     public AutoRepeatFlowerMenuScript(GameUI gui, String name) {
         scheduler.schedule(() -> {
             stop = true;
             }, 2000, TimeUnit.MILLISECONDS);
         this.gui = gui;
         Integer ping = GameUI.getPingValue();
-        this.ping = ping != null ? ping + 10 : 200;
+        this.ping = ping != null ? ping + PING_MARGIN_MS : 200;
         option = "";
         this.name = name;
         items = iterateThroughItems(name);
@@ -68,7 +80,7 @@ public class AutoRepeatFlowerMenuScript implements Runnable{
                     stop = true;
                 } else {
                     int counter = 0;
-                    while(!items.isEmpty() && counter <= 10){
+                    while(!items.isEmpty() && counter <= MAX_REPEAT_CYCLES){
                         counter++;
                         for(GItem item : items){
                             FlowerMenu.setNextSelection(option);
@@ -82,7 +94,7 @@ public class AutoRepeatFlowerMenuScript implements Runnable{
                         }
                         items = iterateThroughItems(name);
                         Integer pingValue = GameUI.getPingValue();
-                        ping = pingValue != null ? pingValue + 10 : 200;
+                        ping = pingValue != null ? pingValue + PING_MARGIN_MS : 200;
                     }
                     stop = true;
                 }

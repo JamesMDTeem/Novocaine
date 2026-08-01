@@ -4,6 +4,15 @@ import java.util.Map;
 import java.util.*;
 
 
+/**
+ * A* shortest-path search over the pathfinder's {@link Vertex}/{@link Edge} visibility graph.
+ *
+ * The graph is built per journey by {@link Map}; this class runs the search and hands the
+ * winning route back as the ordered list of {@link Edge}s. {@code Node.compareTo} ranks nodes
+ * by f-score, breaks ties by heuristic, and breaks the last tie by a strictly increasing
+ * insertion {@code order} - so the {@link java.util.PriorityQueue} is deterministic and a
+ * re-opened equal-cost node keeps its place instead of comparing equal to its predecessor.
+ */
 public class AStar {
 
     public Iterable<Edge> route(Vertex start, Vertex end) {

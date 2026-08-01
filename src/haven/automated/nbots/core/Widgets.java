@@ -1,6 +1,9 @@
 package haven.automated.nbots.core;
 
+import haven.FlowerMenu;
 import haven.Widget;
+
+import java.util.function.Supplier;
 
 /**
  * Finding a widget in the live tree.
@@ -25,5 +28,37 @@ public class Widgets {
                 return deep;
         }
         return null;
+    }
+
+    /**
+     * Polls for a {@link FlowerMenu} to appear under {@code root}.
+     *
+     * Waits up to {@code maxPolls * pollMs} milliseconds, checking {@code running.get()} each
+     * iteration so the caller can abort cleanly. Returns the first menu found, or {@code null}
+     * if the timeout expires or the running flag becomes false.
+     *
+     * @param root the UI root to search under (typically {@code gui.ui.root})
+     * @param running a supplier that returns true while the caller should keep waiting
+     * @param maxPolls maximum poll iterations (each sleeps {@code pollMs})
+     * @param pollMs milliseconds to sleep between polls
+     * @return the FlowerMenu if found, otherwise null
+     */
+    public static FlowerMenu awaitFlowerMenu(Widget root, Supplier<Boolean> running,
+                                             int maxPolls, int pollMs) throws InterruptedException {
+        for (int i = 0; i < maxPolls; i++) {
+            if (running == null || !running.get())
+                throw new InterruptedException();
+            FlowerMenu fm = find(root, FlowerMenu.class);
+            if (fm != null)
+                return fm;
+            Thread.sleep(pollMs);
+        }
+        return null;
+    }
+
+    /** Convenience overload with the standard polling parameters (40 polls, 25ms = ~1 second). */
+    public static FlowerMenu awaitFlowerMenu(Widget root, Supplier<Boolean> running)
+            throws InterruptedException {
+        return awaitFlowerMenu(root, running, 40, 25);
     }
 }

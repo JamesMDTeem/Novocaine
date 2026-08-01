@@ -3,7 +3,20 @@ package haven.automated;
 import haven.Button;
 import haven.Label;
 import haven.Window;
-import haven.*;
+import haven.CheckBox;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GOut;
+import haven.GameUI;
+import haven.Gob;
+import haven.GobHealth;
+import haven.OldDropBox;
+import haven.OptWnd;
+import haven.RichText;
+import haven.Text;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
 
 import java.awt.*;
 import java.util.ArrayList;
@@ -13,6 +26,18 @@ import java.util.Set;
 import static haven.OCache.posres;
 
 public class MiningSafetyAssistant extends Window implements Runnable {
+    // Distances are in pixels, where one tile = 11px (MCache.tilesz).
+    private static final int TILE = 11;
+    private static final double HALF_TILE = TILE / 2.0;          // centre of a tile
+    private static final double MINED_TILE_OFFSET = 13.75;       // how far ahead of the player the pick lands
+    private static final int WOODEN_SUPPORT_RANGE = 100;         // ladder/minesupport support radius, px
+    private static final int COLUMN_SUPPORT_RANGE = 125;         // stone column support radius, px
+    private static final int MINEBEAM_SUPPORT_RANGE = 150;       // minebeam support radius, px
+    private static final int LOOSE_ROCK_RANGE = 125;             // loose rock closer than this stops mining, px
+    private static final double SUPPORT_HP_FIFTY = 0.5;          // hp fraction that trips the "<50" stop
+    private static final double SUPPORT_HP_TWENTY_FIVE = 0.25;   // hp fraction that trips the "<25" stop
+    private static final int ESC_KEY = 27;                       // ESC cancels the current mining pose
+
     private final GameUI gui;
     private boolean stop;
     public static CheckBox preventUnsafeMiningCheckBox;
@@ -130,7 +155,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(-11, -11).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(-TILE, -TILE).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(150, 27));
@@ -138,7 +163,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(0, -11).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(0, -TILE).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(170, 27));
@@ -146,7 +171,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(11, -11).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(TILE, -TILE).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(190, 27));
@@ -155,7 +180,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(-11, 0).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(-TILE, 0).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(150, 50));
@@ -163,7 +188,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    Coord2d center = ui.gui.map.player().rc.div(11).floord().mul(11).add(5.5, 5.5);
+                    Coord2d center = ui.gui.map.player().rc.div(TILE).floord().mul(TILE).add(HALF_TILE, HALF_TILE);
                     gui.map.wdgmsg("click", Coord.z, center.floor(posres), 1, 0);
                 }
             }
@@ -172,7 +197,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(11, 0).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(TILE, 0).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(190, 50));
@@ -182,7 +207,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(-11, 11).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(-TILE, TILE).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(150, 73));
@@ -190,7 +215,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(0, 11).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(0, TILE).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(170, 73));
@@ -198,7 +223,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             @Override
             public void click() {
                 if (gui.map.player().getv() == 0) {
-                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(11, 11).floor(posres), 1, 0);
+                    gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.add(TILE, TILE).floor(posres), 1, 0);
                 }
             }
         }, UI.scale(190, 73));
@@ -228,40 +253,40 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             if(gui.map.player() != null){
                 if (stopUnsafeMiningCheckBox.a && (gui.map.player().getPoses().contains("pickan") || gui.map.player().getPoses().contains("gfx/borka/choppan"))) {
                     Gob player = gui.map.player();
-                    Coord2d minedTile = new Coord2d(player.rc.x + (Math.cos(player.a) * 13.75), player.rc.y + Math.sin(player.a) * 13.75);
+                    Coord2d minedTile = new Coord2d(player.rc.x + (Math.cos(player.a) * MINED_TILE_OFFSET), player.rc.y + Math.sin(player.a) * MINED_TILE_OFFSET);
                     Set<Gob> gobsInRange = new HashSet<>();
                     for (Gob support : supports) {
                         String res = support.getres().name;
                         if (res.equals("gfx/terobjs/ladder") || res.equals("gfx/terobjs/minesupport")) {
-                            if (support.rc.dist(minedTile) <= 100) {
+                            if (support.rc.dist(minedTile) <= WOODEN_SUPPORT_RANGE) {
                                 gobsInRange.add(support);
                             }
                         } else if (res.equals("gfx/terobjs/column")) {
-                            if (support.rc.dist(minedTile) <= 125) {
+                            if (support.rc.dist(minedTile) <= COLUMN_SUPPORT_RANGE) {
                                 gobsInRange.add(support);
                             }
                         } else if (res.equals("gfx/terobjs/minebeam")) {
-                            if (support.rc.dist(minedTile) <= 150) {
+                            if (support.rc.dist(minedTile) <= MINEBEAM_SUPPORT_RANGE) {
                                 gobsInRange.add(support);
                             }
                         }
                     }
                     if (gobsInRange.size() < 1) {
-                        ui.root.wdgmsg("gk", 27);
+                        ui.root.wdgmsg("gk", ESC_KEY);
                         gui.error("Trying to mine outside supports.");
                     }
                 }
 
                 if (stopMiningLooseRockCHeckBox.a && (gui.map.player().getPoses().contains("pickan") || gui.map.player().getPoses().contains("gfx/borka/choppan"))) {
                     Gob player = gui.map.player();
-                    Coord2d minedTile = new Coord2d(player.rc.x + (Math.cos(player.a) * 13.75), player.rc.y + Math.sin(player.a) * 13.75);
+                    Coord2d minedTile = new Coord2d(player.rc.x + (Math.cos(player.a) * MINED_TILE_OFFSET), player.rc.y + Math.sin(player.a) * MINED_TILE_OFFSET);
                     if (counter == 0) {
                         looseRocks = AUtils.getGobs("gfx/terobjs/looserock", gui);
                     }
                     for (Gob looseRock : looseRocks) {
-                        if (looseRock.rc.dist(minedTile) <= 125) {
+                        if (looseRock.rc.dist(minedTile) <= LOOSE_ROCK_RANGE) {
                             looseRock.highlight(Color.red);
-                            ui.root.wdgmsg("gk", 27);
+                            ui.root.wdgmsg("gk", ESC_KEY);
                             gui.error("Loose rock is too close to mine safely.");
                         }
                     }
@@ -269,46 +294,46 @@ public class MiningSafetyAssistant extends Window implements Runnable {
 
                 if ((stopMiningFiftyCheckBox.a || stopMiningTwentyFiveCheckBox.a) && (gui.map.player().getPoses().contains("pickan") || gui.map.player().getPoses().contains("gfx/borka/choppan"))) {
                     Gob player = gui.map.player();
-                    Coord2d minedTile = new Coord2d(player.rc.x + (Math.cos(player.a) * 13.75), player.rc.y + Math.sin(player.a) * 13.75);
+                    Coord2d minedTile = new Coord2d(player.rc.x + (Math.cos(player.a) * MINED_TILE_OFFSET), player.rc.y + Math.sin(player.a) * MINED_TILE_OFFSET);
                     for (Gob support : supports) {
                         String res = support.getres().name;
                         if (res.equals("gfx/terobjs/ladder") || res.equals("gfx/terobjs/minesupport")) {
-                            if (support.rc.dist(minedTile) <= 100) {
+                            if (support.rc.dist(minedTile) <= WOODEN_SUPPORT_RANGE) {
                                 if (support.getattr(GobHealth.class) != null) {
-                                    if (support.getattr(GobHealth.class).hp <= 0.5 && stopMiningFiftyCheckBox.a) {
-                                        ui.root.wdgmsg("gk", 27);
+                                    if (support.getattr(GobHealth.class).hp <= SUPPORT_HP_FIFTY && stopMiningFiftyCheckBox.a) {
+                                        ui.root.wdgmsg("gk", ESC_KEY);
                                         gui.error("Support nearby below 50%..");
                                         support.highlight(Color.red);
-                                    } else if (support.getattr(GobHealth.class).hp <= 0.25 && stopMiningTwentyFiveCheckBox.a) {
-                                        ui.root.wdgmsg("gk", 27);
+                                    } else if (support.getattr(GobHealth.class).hp <= SUPPORT_HP_TWENTY_FIVE && stopMiningTwentyFiveCheckBox.a) {
+                                        ui.root.wdgmsg("gk", ESC_KEY);
                                         gui.error("Support nearby below 25%..");
                                         support.highlight(Color.red);
                                     }
                                 }
                             }
                         } else if (res.equals("gfx/terobjs/column")) {
-                            if (support.rc.dist(minedTile) <= 125) {
+                            if (support.rc.dist(minedTile) <= COLUMN_SUPPORT_RANGE) {
                                 if (support.getattr(GobHealth.class) != null) {
-                                    if (support.getattr(GobHealth.class).hp <= 0.5 && stopMiningFiftyCheckBox.a) {
-                                        ui.root.wdgmsg("gk", 27);
+                                    if (support.getattr(GobHealth.class).hp <= SUPPORT_HP_FIFTY && stopMiningFiftyCheckBox.a) {
+                                        ui.root.wdgmsg("gk", ESC_KEY);
                                         gui.error("Support nearby below 50%..");
                                         support.highlight(Color.red);
-                                    } else if (support.getattr(GobHealth.class).hp <= 0.25 && stopMiningTwentyFiveCheckBox.a) {
-                                        ui.root.wdgmsg("gk", 27);
+                                    } else if (support.getattr(GobHealth.class).hp <= SUPPORT_HP_TWENTY_FIVE && stopMiningTwentyFiveCheckBox.a) {
+                                        ui.root.wdgmsg("gk", ESC_KEY);
                                         gui.error("Support nearby below 25%..");
                                         support.highlight(Color.red);
                                     }
                                 }
                             }
                         } else if (res.equals("gfx/terobjs/minebeam")) {
-                            if (support.rc.dist(minedTile) <= 150) {
+                            if (support.rc.dist(minedTile) <= MINEBEAM_SUPPORT_RANGE) {
                                 if (support.getattr(GobHealth.class) != null) {
-                                    if (support.getattr(GobHealth.class).hp <= 0.5 && stopMiningFiftyCheckBox.a) {
-                                        ui.root.wdgmsg("gk", 27);
+                                    if (support.getattr(GobHealth.class).hp <= SUPPORT_HP_FIFTY && stopMiningFiftyCheckBox.a) {
+                                        ui.root.wdgmsg("gk", ESC_KEY);
                                         gui.error("Support nearby below 50%..");
                                         support.highlight(Color.red);
-                                    } else if (support.getattr(GobHealth.class).hp <= 0.25 && stopMiningTwentyFiveCheckBox.a) {
-                                        ui.root.wdgmsg("gk", 27);
+                                    } else if (support.getattr(GobHealth.class).hp <= SUPPORT_HP_TWENTY_FIVE && stopMiningTwentyFiveCheckBox.a) {
+                                        ui.root.wdgmsg("gk", ESC_KEY);
                                         gui.error("Support nearby below 25%..");
                                         support.highlight(Color.red);
                                     }
@@ -332,13 +357,13 @@ public class MiningSafetyAssistant extends Window implements Runnable {
     }
 
     public static boolean isAreaInSupportRange(Coord one, Coord two, GameUI gui) {
-        Coord northWestCoord = new Coord(Math.min(one.x, two.x) * 11, Math.min(one.y, two.y) * 11);
+        Coord northWestCoord = new Coord(Math.min(one.x, two.x) * TILE, Math.min(one.y, two.y) * TILE);
         Set<Coord2d> tiles = new HashSet<>();
         int tilesCountX = Math.abs(one.x - two.x) + 1;
         int tilesCountY = Math.abs(one.y - two.y) + 1;
         for (int x = 0; x < tilesCountX; x++) {
             for (int y = 0; y < tilesCountY; y++) {
-                tiles.add(new Coord2d(northWestCoord.x + (x * 11) + 5.5, northWestCoord.y + (y * 11) + 5.5));
+                tiles.add(new Coord2d(northWestCoord.x + (x * TILE) + HALF_TILE, northWestCoord.y + (y * TILE) + HALF_TILE));
             }
         }
         ArrayList<Gob> supportsStatic = AUtils.getAllSupports(gui);
@@ -347,15 +372,15 @@ public class MiningSafetyAssistant extends Window implements Runnable {
             for (Gob support : supportsStatic) {
                 String res = support.getres().name;
                 if (res.equals("gfx/terobjs/ladder") || res.equals("gfx/terobjs/minesupport")) {
-                    if (support.rc.dist(tile) <= 100) {
+                    if (support.rc.dist(tile) <= WOODEN_SUPPORT_RANGE) {
                         inRange++;
                     }
                 } else if (res.equals("gfx/terobjs/column")) {
-                    if (support.rc.dist(tile) <= 125) {
+                    if (support.rc.dist(tile) <= COLUMN_SUPPORT_RANGE) {
                         inRange++;
                     }
                 } else if (res.equals("gfx/terobjs/minebeam")) {
-                    if (support.rc.dist(tile) <= 150) {
+                    if (support.rc.dist(tile) <= MINEBEAM_SUPPORT_RANGE) {
                         inRange++;
                     }
                 }

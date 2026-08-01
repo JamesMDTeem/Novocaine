@@ -1,6 +1,19 @@
 package haven.automated;
 
-import haven.*;
+import haven.Composited;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Drawable;
+import haven.GAttrib;
+import haven.GameUI;
+import haven.Gob;
+import haven.IMeter;
+import haven.Inventory;
+import haven.Loading;
+import haven.MCache;
+import haven.Resource;
+import haven.WItem;
+import haven.Widget;
 import haven.Composite;
 import haven.Window;
 
@@ -205,16 +218,25 @@ public class AUtils {
         return null;
     }
 
+    /** Interval in milliseconds for checking hand state during waitForEmptyHand. */
+    private static final long HAND_CHECK_INTERVAL_MS = 5L;
+
+    /** Timeout in milliseconds at which waitForEmptyHand fails and reports an error. */
+    private static final long HAND_WAIT_TIMEOUT_MS = 2000L;
+
+    /** Sleep interval in milliseconds used to avoid busy waiting in waitForEmptyHand and waitForOccupiedHand. */
+    private static final long HAND_SLEEP_INTERVAL_MS = 5L;
+
     public static boolean waitForEmptyHand(final GameUI gui, final int timeout, final String error) throws InterruptedException {
         int t = 0;
         while (gui.vhand != null) {
-            t += 5;
+            t += HAND_CHECK_INTERVAL_MS;
             if (t >= timeout) {
                 gui.error(error);
                 return false;
             }
             try {
-                Thread.sleep(5L);
+                Thread.sleep(HAND_SLEEP_INTERVAL_MS);
             }
             catch (InterruptedException ie) {
                 throw ie;
@@ -226,13 +248,13 @@ public class AUtils {
     public static boolean waitForOccupiedHand(final GameUI gui, final int timeout, final String error) throws InterruptedException {
         int t = 0;
         while (gui.vhand == null) {
-            t += 5;
+            t += HAND_CHECK_INTERVAL_MS;
             if (t >= timeout) {
                 gui.error(error);
                 return false;
             }
             try {
-                Thread.sleep(5L);
+                Thread.sleep(HAND_SLEEP_INTERVAL_MS);
             }
             catch (InterruptedException ie) {
                 throw ie;
@@ -241,33 +263,48 @@ public class AUtils {
         return true;
     }
 
+    /** Initial sleep in milliseconds before polling pathfinder thread. */
+    private static final long PATHFINDER_INITIAL_SLEEP_MS = 300L;
+
+    /** Poll interval in milliseconds for pathfinder thread and player velocity. */
+    private static final long PATHFINDER_POLL_INTERVAL_MS = 70L;
+
+    /** Time in milliseconds with no progress before attempting unstuck. */
+    private static final long PATHFINDER_STUCK_THRESHOLD_MS = 2000L;
+
+    /** Maximum time in milliseconds to wait for pathfinder before giving up. */
+    private static final long PATHFINDER_MAX_WAIT_MS = 20000L;
+
     public static boolean waitPf(GameUI gui) throws InterruptedException {
         if(gui.map.pfthread == null){
             return false;
         }
         int time = 0;
         boolean moved = false;
-        Thread.sleep(300);
+        Thread.sleep(PATHFINDER_INITIAL_SLEEP_MS);
         while (gui.map.pfthread.isAlive() || gui.map.player().getv() > 0) {
-            time += 70;
-            Thread.sleep(70);
+            time += PATHFINDER_POLL_INTERVAL_MS;
+            Thread.sleep(PATHFINDER_POLL_INTERVAL_MS);
             if (gui.map.player().getv() > 0) {
                 time = 0;
                 moved = true;
             }
-            if (time > 2000 && moved == false) {
+            if (time > PATHFINDER_STUCK_THRESHOLD_MS && moved == false) {
                 System.out.println("TRYING UNSTUCK");
                 return false;
-            } else if (time > 20000) {
+            } else if (time > PATHFINDER_MAX_WAIT_MS) {
                 return false;
             }
         }
         return true;
     }
 
+    /** Sleep interval in milliseconds while waiting for progress bar to complete. */
+    private static final long PROGRESS_BAR_SLEEP_MS = 40L;
+
     public static void waitProgBar(GameUI gui) throws InterruptedException {
         while (gui.prog != null && gui.prog.prog >= 0) {
-            Thread.sleep(40);
+            Thread.sleep(PROGRESS_BAR_SLEEP_MS);
         }
     }
 
@@ -291,11 +328,17 @@ public class AUtils {
         return gobs;
     }
 
+    /** Sleep interval in milliseconds between drink attempts. */
+    private static final long DRINK_SLEEP_MS = 490L;
+
+    /** Sleep interval in milliseconds for stamina check loop. */
+    private static final long STAMINA_CHECK_SLEEP_MS = 10L;
+
     public static void drinkTillFull(GameUI gui, double threshold, double stoplevel) throws InterruptedException {
         while (gui.drink(threshold)) {
-            Thread.sleep(490);
+            Thread.sleep(DRINK_SLEEP_MS);
             do {
-                Thread.sleep(10);
+                Thread.sleep(STAMINA_CHECK_SLEEP_MS);
                 IMeter.Meter stam = gui.getmeter("stam", 0);
                 if (stam.a >= stoplevel)
                     break;
@@ -308,14 +351,23 @@ public class AUtils {
         gui.ui.rcvr.rcvmsg(gui.ui.lastWidgetID+1, "cl", index, gui.ui.modflags());
     }
 
+    /** Number of random click attempts in unstuck routine. */
+    private static final int UNSTUCK_ATTEMPTS = 5;
+
+    /** Maximum coordinate offset in pixels for random unstuck clicks. */
+    private static final int UNSTUCK_MAX_OFFSET = 250;
+
+    /** Sleep interval in milliseconds between unstuck click attempts. */
+    private static final long UNSTUCK_SLEEP_MS = 100L;
+
     public static void unstuck(GameUI gui) throws InterruptedException {
         Coord2d pc = gui.map.player().rc;
         Random r = new Random();
-        for (int i = 0; i < 5; i++) {
-            int xAdd = r.nextInt(500) - 250;
-            int yAdd = r.nextInt(500) - 250;
+        for (int i = 0; i < UNSTUCK_ATTEMPTS; i++) {
+            int xAdd = r.nextInt(UNSTUCK_MAX_OFFSET * 2) - UNSTUCK_MAX_OFFSET;
+            int yAdd = r.nextInt(UNSTUCK_MAX_OFFSET * 2) - UNSTUCK_MAX_OFFSET;
             gui.map.wdgmsg("click", Coord.z, pc.floor(posres).add(xAdd, yAdd), 1, 0);
-            Thread.sleep(100);
+            Thread.sleep(UNSTUCK_SLEEP_MS);
         }
     }
 
@@ -340,13 +392,16 @@ public class AUtils {
         return supports;
     }
 
+    /** Grid size in tiles for getGridHeightAvg calculation. */
+    private static final int GRID_SIZE_TILES = 100;
+
     public static void getGridHeightAvg(GameUI gui){
         try {
             Coord playerCoord = gui.map.player().rc.floor(tilesz);
             MCache.Grid grid = gui.ui.sess.glob.map.getgrid(playerCoord.div(cmaps));
             float wholeGridHeight = 0;
             float[] quarterHeights = new float[4];
-            int gridSize = 100;
+            int gridSize = GRID_SIZE_TILES;
             int halfGridSize = gridSize / 2;
             for (int i = 0; i < gridSize; i++) {
                 for (int j = 0; j < gridSize; j++) {

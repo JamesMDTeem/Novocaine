@@ -2,18 +2,17 @@ package haven.automated.nbots.task;
 
 import haven.Coord;
 import haven.FlowerMenu;
-import haven.GItem;
 import haven.Gob;
 import haven.Inventory;
 import haven.ItemInfo;
 import haven.Loading;
-import haven.Resource;
 import haven.WItem;
 import haven.Widget;
 import haven.automated.nbots.core.Alias;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
+import haven.automated.nbots.core.Widgets;
 import haven.automated.nbots.world.Place;
 import haven.automated.nbots.world.PlaceRoles;
 import haven.automated.nbots.world.Places;
@@ -221,30 +220,11 @@ public class Eat implements Task {
     // ------------------------------------------------------------------ menu plumbing
 
     private static FlowerMenu awaitMenu(BotCtx ctx) throws InterruptedException {
-        for (int i = 0; i < 40; i++) {
-            if (!ctx.running())
-                throw new InterruptedException();
-            FlowerMenu fm = liveMenu(ctx);
-            if (fm != null)
-                return fm;
-            Thread.sleep(25);
-        }
-        return null;
+        return Widgets.awaitFlowerMenu(ctx.gui.ui.root, ctx::running);
     }
 
     private static FlowerMenu liveMenu(BotCtx ctx) {
-        return find(ctx.gui.ui.root, FlowerMenu.class);
-    }
-
-    private static <T extends Widget> T find(Widget root, Class<T> cls) {
-        for (Widget w = root.child; w != null; w = w.next) {
-            if (cls.isInstance(w))
-                return cls.cast(w);
-            T deep = find(w, cls);
-            if (deep != null)
-                return deep;
-        }
-        return null;
+        return Widgets.find(ctx.gui.ui.root, FlowerMenu.class);
     }
 
     @Override

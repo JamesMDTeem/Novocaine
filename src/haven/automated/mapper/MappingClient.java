@@ -1,6 +1,15 @@
 package haven.automated.mapper;
 
-import haven.*;
+import haven.BuddyWnd;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Glob;
+import haven.Gob;
+import haven.Indir;
+import haven.Loading;
+import haven.MCache;
+import haven.MapFile;
+import haven.OptWnd;
 import haven.MCache.LoadingMap;
 import haven.res.ui.obj.buddy.Buddy;
 import org.json.JSONArray;
@@ -16,11 +25,20 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 
 /** @author Vendan **/
 public class MappingClient {
+    /** Size of one map grid in world units (100 tiles of 11 units each). */
+    private static final int GRID_SIZE = 1100;
+    /** Number of tiles along one edge of a map grid (100x100). */
+    private static final int TILES_PER_GRID = 100;
+    /** Size of one tile in world units. */
+    private static final int TILE_SIZE = 11;
+    /** Interval in seconds at which live player positions are reported. */
+    private static final long POSITION_UPDATE_SECONDS = 2L;
+
+    /** Submission infrastructure for live player positions and grid updates. */
     private ExecutorService gridsUploader = Executors.newSingleThreadExecutor();
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
     
@@ -65,7 +83,7 @@ public class MappingClient {
     
     private MappingClient(Glob glob) {
 	this.glob = glob;
-	scheduler.scheduleAtFixedRate(pu, 2L, 2L, TimeUnit.SECONDS);
+	scheduler.scheduleAtFixedRate(pu, POSITION_UPDATE_SECONDS, POSITION_UPDATE_SECONDS, TimeUnit.SECONDS);
     }
 
     private String playerName;
@@ -128,7 +146,7 @@ public class MappingClient {
 //				List<MarkerData> markers = mapfile.markers.stream()
 //						.filter(uploadCheck)
 //						.map(m -> {
-//							Coord mgc = new Coord(Math.floorDiv(m.tc.x, 100), Math.floorDiv(m.tc.y, 100));
+//							Coord mgc = new Coord(Math.floorDiv(m.tc.x, TILES_PER_GRID), Math.floorDiv(m.tc.y, TILES_PER_GRID));
 //							Indir<MapFile.Grid> indirGrid = mapfile.segments.get(m.seg).grid(mgc);
 //							return new MarkerData(m, indirGrid);
 //						})
@@ -176,7 +194,7 @@ public class MappingClient {
 		while (iterator.hasNext()) {
 		    MarkerData md = iterator.next();
 		    try {
-			Coord mgc = new Coord(Math.floorDiv(md.m.tc.x, 100), Math.floorDiv(md.m.tc.y, 100));
+			Coord mgc = new Coord(Math.floorDiv(md.m.tc.x, TILES_PER_GRID), Math.floorDiv(md.m.tc.y, TILES_PER_GRID));
 			long gridId;
 			try {
 				gridId = md.indirGrid.get().id;
@@ -187,7 +205,7 @@ public class MappingClient {
 			JSONObject o = new JSONObject();
 			o.put("name", md.m.nm);
 			o.put("gridID", String.valueOf(gridId));
-			Coord gridOffset = md.m.tc.sub(mgc.mul(100));
+			Coord gridOffset = md.m.tc.sub(mgc.mul(TILES_PER_GRID));
 			o.put("x", gridOffset.x);
 			o.put("y", gridOffset.y);
 
@@ -215,6 +233,7 @@ public class MappingClient {
 	}
     }
 
+    /** Sends marker updates to the webmap endpoint. */
     private class MarkerUpdate implements Runnable {
 	JSONArray data;
 
@@ -224,8 +243,9 @@ public class MappingClient {
 
 	@Override
 	public void run() {
+	    HttpURLConnection connection = null;
 	    try {
-		HttpURLConnection connection =
+		connection =
 		    (HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/markerUpdate").openConnection();
 		connection.setRequestMethod("POST");
 		connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
@@ -245,8 +265,10 @@ public class MappingClient {
 	}
     }
     
+    /** Tracks active character positions for periodic position updates. */
     private class PositionUpdates implements Runnable {
-	private class Tracking {
+	/** Live position tracking entry for a single character. */
+        private class Tracking {
 	    public String name;
 	    public String type;
 	    public long gridId;
@@ -258,8 +280,8 @@ public class MappingClient {
 		j.put("type", type);
 		j.put("gridID", String.valueOf(gridId));
 		JSONObject c = new JSONObject();
-		c.put("x", (int) (coords.x / 11));
-		c.put("y", (int) (coords.y / 11));
+		c.put("x", (int) (coords.x / TILE_SIZE));
+		c.put("y", (int) (coords.y / TILE_SIZE));
 		j.put("coords", c);
 		return j;
 	    }
@@ -336,6 +358,7 @@ public class MappingClient {
 	}
     }
     
+    /** Container for a 3x3 grid region plus weak refs to backing MCache.Grid objects. */
     private static class GridUpdate {
 	String[][] grids;
 	Map<String, WeakReference<MCache.Grid>> gridRefs;
@@ -351,6 +374,7 @@ public class MappingClient {
 	}
     }
     
+    /** Generates a grid update for a 3x3 region around the given coordinate. */
     private class GenerateGridUpdateTask implements Runnable {
 	Coord coord;
 	int retries = 3;
@@ -386,6 +410,7 @@ public class MappingClient {
 	}
     }
     
+    /** Uploads a generated grid update and dispatches per-grid image uploads. */
     private class UploadGridUpdateTask implements Runnable {
 	private final GridUpdate gridUpdate;
 	
@@ -399,8 +424,9 @@ public class MappingClient {
 		HashMap<String, Object> dataToSend = new HashMap<>();
 		
 		dataToSend.put("grids", this.gridUpdate.grids);
+		HttpURLConnection connection = null;
 		try {
-		    HttpURLConnection connection =
+		    connection =
 			(HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/gridUpdate").openConnection();
 		    connection.setRequestMethod("POST");
 		    connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
@@ -421,9 +447,8 @@ public class MappingClient {
 			String response = buffer.toString(StandardCharsets.UTF_8.name());
 			JSONObject jo = new JSONObject(response);
 			JSONArray reqs = jo.optJSONArray("gridRequests");
-			synchronized (cache) {
-			    cache.put(Long.valueOf(gridUpdate.grids[1][1]), new MapRef(jo.getLong("map"), new Coord(jo.getJSONObject("coords").getInt("x"), jo.getJSONObject("coords").getInt("y"))));
-			}
+			/* cache is a ConcurrentHashMap - the put is atomic, no external lock needed. */
+			cache.put(Long.valueOf(gridUpdate.grids[1][1]), new MapRef(jo.getLong("map"), new Coord(jo.getJSONObject("coords").getInt("x"), jo.getJSONObject("coords").getInt("y"))));
 			for (int i = 0; reqs != null && i < reqs.length(); i++) {
 			    gridsUploader.execute(new GridUploadTask(reqs.getString(i), gridUpdate.gridRefs.get(reqs.getString(i))));
 			}
@@ -439,6 +464,7 @@ public class MappingClient {
 	}
     }
     
+    /** Uploads a single grid's minimap image via multipart POST. */
     private class GridUploadTask implements Runnable {
 	private final String gridID;
 	private final WeakReference<MCache.Grid> grid;
@@ -480,11 +506,11 @@ public class MappingClient {
     }
     
     private static Coord toGC(Coord2d c) {
-	return new Coord(Math.floorDiv((int) c.x, 1100), Math.floorDiv((int) c.y, 1100));
+	return new Coord(Math.floorDiv((int) c.x, GRID_SIZE), Math.floorDiv((int) c.y, GRID_SIZE));
     }
     
     private static Coord toGridUnit(Coord2d c) {
-	return new Coord(Math.floorDiv((int) c.x, 1100) * 1100, Math.floorDiv((int) c.y, 1100) * 1100);
+	return new Coord(Math.floorDiv((int) c.x, GRID_SIZE) * GRID_SIZE, Math.floorDiv((int) c.y, GRID_SIZE) * GRID_SIZE);
     }
     
     private static Coord2d gridOffset(Coord2d c) {
@@ -492,6 +518,7 @@ public class MappingClient {
 	return new Coord2d(c.x - gridUnit.x, c.y - gridUnit.y);
     }
     
+    /** Reference to a map space (mapID + grid coordinate) returned by the server. */
     public class MapRef {
 	public Coord gc;
 	public long mapID;
@@ -528,13 +555,13 @@ public class MappingClient {
 	/** the grid coordinate of a map grid, used for retrieving map grids in mcache
 	 * example: "glob.map.getgrid(toGridCoordinate(gob.rc)).id" will get the grid id for the coordinate the gob is on **/
 	public static Coord toGridCoordinate(Coord2d c) {
-		return new Coord(Math.floorDiv((int) c.x, 1100), Math.floorDiv((int) c.y, 1100));
+		return new Coord(Math.floorDiv((int) c.x, GRID_SIZE), Math.floorDiv((int) c.y, GRID_SIZE));
 	}
 
-	/** a coordinate (0-100,0-100) within a 100x100 map grid **/
+	/** a coordinate (0-TILES_PER_GRID,0-TILES_PER_GRID) within a TILES_PER_GRIDxTILES_PER_GRID map grid **/
 	public static Coord gridOffset2(Coord2d c) {
 		Coord gridUnit = toGridUnit(c);
-		return new Coord((int) ((c.x - gridUnit.x)/11d), (int) ((c.y - gridUnit.y)/11d));
+		return new Coord((int) ((c.x - gridUnit.x)/TILE_SIZE), (int) ((c.y - gridUnit.y)/TILE_SIZE));
 	}
 
 }

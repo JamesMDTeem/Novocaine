@@ -1,7 +1,20 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.Button;
+import haven.CheckBox;
+import haven.Coord;
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
+import haven.Label;
+import haven.Loading;
+import haven.MCache;
+import haven.Resource;
+import haven.UI;
+import haven.Utils;
+import haven.Widget;
+import haven.Window;
 import haven.automated.pathfinder.Pathfinder;
 
 import java.util.ArrayList;
@@ -11,6 +24,17 @@ import java.util.Random;
 import static haven.OCache.posres;
 
 public class OceanScoutBot extends Window implements Runnable {
+    // Distances in this bot are expressed in pixel units where one tile = 11px (MCache.tilesz).
+    private static final int TILE = (int) MCache.tilesz.x;
+    private static final int CLICK_STEP = 44;               // px to nudge the player per click
+    private static final int FLEE_STEP = 2 * TILE;          // px to step away from a nearby mob
+    private static final int GROUND_SEARCH_RADIUS = 40 * TILE; // px range for random ground tile
+    private static final int WATER_SEARCH_RADIUS = 30 * TILE;  // px range for random water tile
+    private static final int GOB_SCAN_RADIUS = 25 * TILE;      // px range for nearby-gob scans
+    private static final int DANGER_RADIUS = 14 * TILE;        // px inside which a walrus/orca is dangerous
+    private static final int VERY_DANGER_RADIUS = 11 * TILE;   // px inside which a walrus/orca is fled
+    private static final int SAMPLE_STEPS = 20;                // radial/angular samples per sweep in getNextLoc
+
     private int checkClock;
     private GameUI gui;
     public volatile boolean stop;
@@ -70,7 +94,7 @@ public class OceanScoutBot extends Window implements Runnable {
                 if (successLocs > 20) {
                     Coord2d groundTile = findRandomGroundTile();
                     Coord2d groundVector = groundTile.sub(ui.gui.map.player().rc);
-                    groundVector = groundVector.div(groundVector.abs()).mul(44);
+                    groundVector = groundVector.div(groundVector.abs()).mul(CLICK_STEP);
                     ui.gui.map.wdgmsg("click", Coord.z, ui.gui.map.player().rc.add(groundVector).floor(posres), 1, 0);
                     Thread.sleep(300);
                 }
@@ -85,12 +109,12 @@ public class OceanScoutBot extends Window implements Runnable {
                     Coord2d dangerMob = isVeryDangerZone(ui.gui.map.player().rc.floor());
                     if (dangerMob != null) {
                         Coord2d addCoord = pcCoord.sub(dangerMob);
-                        Coord2d clickCoord = pcCoord.add(addCoord.div(addCoord.abs()).mul(11 * 2));
+                        Coord2d clickCoord = pcCoord.add(addCoord.div(addCoord.abs()).mul(FLEE_STEP));
                         ui.gui.map.wdgmsg("click", Coord.z, clickCoord.floor(posres), 1, 0);
                     } else {
                         Coord2d gocoord = findRandomWaterTile();
                         Coord2d groundVector = gocoord.sub(ui.gui.map.player().rc);
-                        groundVector = groundVector.div(groundVector.abs()).mul(44);
+                        groundVector = groundVector.div(groundVector.abs()).mul(CLICK_STEP);
                         ui.gui.map.wdgmsg("click", Coord.z, ui.gui.map.player().rc.add(groundVector).floor(posres), 1, 0);
                     }
                     Thread.sleep(300);
@@ -106,7 +130,7 @@ public class OceanScoutBot extends Window implements Runnable {
 
     private Coord2d findRandomGroundTile() {
         Coord2d basecoord = gui.map.player().rc;
-        int radius = 40 * 11;
+        int radius = GROUND_SEARCH_RADIUS;
         for (int i = 0; i < 1000; i++) {
             Coord2d rancoord = new Coord2d(random.nextInt(radius * 2) - radius, random.nextInt(radius * 2) - radius);
             if (!isWater(basecoord.add(rancoord).floor())) {
@@ -118,7 +142,7 @@ public class OceanScoutBot extends Window implements Runnable {
 
     private Coord2d findRandomWaterTile() {
         Coord2d basecoord = gui.map.player().rc;
-        int radius = 30 * 11;
+        int radius = WATER_SEARCH_RADIUS;
         for (int i = 0; i < 1000; i++) {
             Coord2d rancoord = new Coord2d(random.nextInt(radius * 2) - radius, random.nextInt(radius * 2) - radius);
             if (isWater(basecoord.add(rancoord).floor())) {
@@ -135,7 +159,7 @@ public class OceanScoutBot extends Window implements Runnable {
                 if (gui.map.player().rc.dist(gob.rc) < 3) {
                     continue;
                 }
-                if (gui.map.player().rc.dist(gob.rc) < 25 * 11 && gob.collisionBox != null && gob.collisionBox.fx != null) {
+                if (gui.map.player().rc.dist(gob.rc) < GOB_SCAN_RADIUS && gob.collisionBox != null && gob.collisionBox.fx != null) {
                     gobs.add(gob);
                 }
             }
@@ -147,10 +171,10 @@ public class OceanScoutBot extends Window implements Runnable {
 //        Coord pltc = new Coord(gui.map.player().rc.floor().x / 11, gui.map.player().rc.floor().y / 11);
         Coord pc = gui.map.player().rc.floor();
         double curAng = ang;
-        int angles = 20;
+        int angles = SAMPLE_STEPS;
         while (clockwiseDirection == 1 ? ang <= curAng + 2 * Math.PI : ang >= curAng - 2 * Math.PI) {
             boolean foundground = false;
-            for (int i = 0; i < 20; i++) {
+            for (int i = 0; i < SAMPLE_STEPS; i++) {
                 Coord2d addcoord = new Coord2d(-Math.cos(-ang) * i * searchRadius, Math.sin(-ang) * i * searchRadius);
                 Coord t = pc.add(addcoord.floor());
 
@@ -160,7 +184,7 @@ public class OceanScoutBot extends Window implements Runnable {
                 }
             }
             if (!foundground) {
-                Coord2d addcoord = new Coord2d(-Math.cos(-ang) * 20 * searchRadius, Math.sin(-ang) * 20 * searchRadius);
+                Coord2d addcoord = new Coord2d(-Math.cos(-ang) * SAMPLE_STEPS * searchRadius, Math.sin(-ang) * SAMPLE_STEPS * searchRadius);
                 successLocs++;
                 return (pc.add(addcoord.floor()));
             } else {
@@ -175,11 +199,11 @@ public class OceanScoutBot extends Window implements Runnable {
         int rad = 2;
         for (int i = -rad; i <= rad; i++) {
             for (int j = -rad; j <= rad; j++) {
-                if (!isWater(t.add(i * 11, j * 11))) {
+                if (!isWater(t.add(i * TILE, j * TILE))) {
                     return true;
-                } else if (isGobCollision(t.add(i * 11, j * 11))) {
+                } else if (isGobCollision(t.add(i * TILE, j * TILE))) {
                     return true;
-                } else if (isDangerZone(t.add(i * 11, j * 11))) {
+                } else if (isDangerZone(t.add(i * TILE, j * TILE))) {
                     return true;
                 }
             }
@@ -201,7 +225,7 @@ public class OceanScoutBot extends Window implements Runnable {
     private boolean isDangerZone(Coord t) {
         for (Gob gob : nearbyGobs) {
             if(gob.getres() != null){
-                if ((gob.getres().name.endsWith("/walrus") || (gob.getres().name.endsWith("/orca")) && t.dist(gob.rc.floor()) < 11 * 14)) {
+                if ((gob.getres().name.endsWith("/walrus") || (gob.getres().name.endsWith("/orca")) && t.dist(gob.rc.floor()) < DANGER_RADIUS)) {
                     return true;
                 }
             }
@@ -212,7 +236,7 @@ public class OceanScoutBot extends Window implements Runnable {
     private Coord2d isVeryDangerZone(Coord t) {
         for (Gob gob : nearbyGobs) {
             if (gob.getres() != null) {
-                if ((gob.getres().name.endsWith("/walrus") || (gob.getres().name.endsWith("/orca")) && t.dist(gob.rc.floor()) < 11 * 11)) {
+                if ((gob.getres().name.endsWith("/walrus") || (gob.getres().name.endsWith("/orca")) && t.dist(gob.rc.floor()) < VERY_DANGER_RADIUS)) {
                     return gob.rc;
                 }
             }

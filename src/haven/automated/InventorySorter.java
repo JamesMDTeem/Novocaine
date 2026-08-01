@@ -1,6 +1,17 @@
 package haven.automated;
 
-import haven.*;
+import haven.Audio;
+import haven.Coord;
+import haven.Defer;
+import haven.Future;
+import haven.GameUI;
+import haven.Inventory;
+import haven.ItemInfo;
+import haven.Loading;
+import haven.Resource;
+import haven.WItem;
+import haven.Widget;
+import haven.Window;
 import haven.res.ui.tt.q.quality.Quality;
 
 import java.util.*;

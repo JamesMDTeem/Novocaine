@@ -1,11 +1,17 @@
 package haven.automated;
 
 
-import haven.*;
+import haven.ClickData;
+import haven.Composite;
+import haven.Composited;
+import haven.Coord;
+import haven.Coord2d;
+import haven.Drawable;
+import haven.GAttrib;
+import haven.GameUI;
+import haven.Gob;
 
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.stream.Collectors;
 
 import static haven.OCache.posres;
 import static haven.automated.AUtils.potentialAggroTargets;

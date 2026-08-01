@@ -2,7 +2,6 @@ package haven.automated.lp;
 
 import haven.Button;
 import haven.CheckBox;
-import haven.Coord;
 import haven.GameUI;
 import haven.Label;
 import haven.TextEntry;

@@ -6,7 +6,6 @@ import haven.Gob;
 import haven.automated.nbots.core.Alias;
 import haven.automated.nbots.core.NLog;
 import org.json.JSONArray;
-import org.json.JSONObject;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
