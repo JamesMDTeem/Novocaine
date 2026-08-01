@@ -104,6 +104,8 @@ public class AutoLpBot extends Window implements Runnable {
     private static final int DEFER_ATTEMPTS = 12;
     /** Total attempts that may be spent waiting for wildlife to clear before a run gives up. */
     private static final int HAZARD_WAIT_LIMIT = 60;
+    /** Ticks to wait for a discovery to register after an action that yields one (eat for seed, etc.). */
+    private static final int DISCOVERY_SETTLE_TICKS = 12;
 
     /** Attempt counter, shared with the deferral bookkeeping. */
     private int attempt;
@@ -703,7 +705,7 @@ public class AutoLpBot extends Window implements Runnable {
         // for its name to resolve and register as a discovery (GItem.tick's possession gate),
         // before dropping it - dropping too early would throw the seed away before it counts.
         waitUntil(() -> !newDroppable(beforeEat).isEmpty(), 40);
-        waitUntil(() -> false, 12);  // ~0.3s settle so the discovery registers first
+        waitUntil(() -> false, DISCOVERY_SETTLE_TICKS);  // ~0.3s settle so the discovery registers first
         for (WItem seed : newDroppable(beforeEat)) {
             NLog.log(LOG, "dropping eaten-seed product '" + seed.item.getname() + "'");
             dropToGround(seed);
@@ -746,16 +748,16 @@ public class AutoLpBot extends Window implements Runnable {
         if (p == null)
             return;
         gui.map.wdgmsg("drop", Coord.z, p.rc.floor(posres), 0);
-        waitUntil(() -> gui.vhand == null, 50);
+        waitUntil(() -> gui.vhand == null, HAND_OPERATION_TICKS);
     }
 
     private void dropToGround(WItem wi) throws InterruptedException {
         wi.item.wdgmsg("take", Coord.z);
-        waitUntil(() -> gui.vhand != null, 50);
+        waitUntil(() -> gui.vhand != null, HAND_OPERATION_TICKS);
         Gob p = player();
         if (p != null)
             gui.map.wdgmsg("drop", Coord.z, p.rc.floor(posres), 0);
-        waitUntil(() -> gui.vhand == null, 50);
+        waitUntil(() -> gui.vhand == null, HAND_OPERATION_TICKS);
     }
 
     // Tools have to survive the cull - dropping the axe mid-run would strand every felling task.
@@ -1295,6 +1297,8 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     private static final int POLL_MS = 25;
+    /** Ticks to wait for the hand to empty or fill during a drop/pickup operation. */
+    private static final int HAND_OPERATION_TICKS = 50;
 
     /**
      * Sleep-polling wait: checks the condition first (so an already-true condition returns with no
