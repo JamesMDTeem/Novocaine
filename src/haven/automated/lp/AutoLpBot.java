@@ -800,7 +800,7 @@ public class AutoLpBot extends Window implements Runnable {
         for (FlowerMenu.Petal petal : fm.opts) {
             if (name.equals(petal.name)) {
                 fm.wdgmsg("cl", petal.num, 0);
-                waitUntil(() -> findFlowerMenuNow() == null, 50);
+                waitUntil(() -> Widgets.find(gui.ui.root, FlowerMenu.class) == null, 50);
                 return true;
             }
         }
