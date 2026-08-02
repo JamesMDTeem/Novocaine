@@ -74,6 +74,11 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	public Thread checkpointManagerThread;
 	public Pathfinder pf;
 	public Thread pfthread;
+	/* Why the last pf*Click did not start a search, or null if it did. The callers can only see
+	 * that pfthread did not change, which reads the same for a missing player, an out-of-window
+	 * destination and a thrown exception - three different faults that want three different
+	 * responses from a bot. Written on every path out that starts no thread. */
+	public volatile String pfrefusal;
 	private static final int MAX_TILE_RANGE = 40;
 	private AreaSelectCallback areaSelectCallback;
 	public boolean areaSelect = false;
@@ -3175,29 +3180,38 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	}
 
 	public void pfLeftClick(Coord mc, String action) {
+		pfrefusal = null;
 		try{
 			Gob player = player();
-			if (player == null)
+			if (player == null) {
+				pfrefusal = "no player object yet - the grid is still loading";
 				return;
+			}
 			if (mc.dist(player.rc.floor()) > 11 * MAX_TILE_RANGE) {
 				Coord between = mc.sub(player.rc.floor());
 				double mul = 11 * MAX_TILE_RANGE / mc.dist(player.rc.floor());
 				mc = player.rc.floor().add(between.mul(mul));
 			}
 			synchronized (Pathfinder.class) {
+				Coord src = player.rc.floor();
+				int gcx = haven.automated.pathfinder.Map.origin - (src.x - mc.x);
+				int gcy = haven.automated.pathfinder.Map.origin - (src.y - mc.y);
+				/* Checked before the running search is killed below. Bailing out afterwards left
+				 * the caller with no path and no walk either, having just cancelled the movement
+				 * it was in the middle of. */
+				if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz) {
+					pfrefusal = "destination outside the search window";
+					return;
+				}
+
 				if (pf != null) {
 					pf.terminate = true;
-					pfthread.interrupt();
+					if (pfthread != null)
+						pfthread.interrupt();
 					// cancel movement
 					if (player.getattr(Moving.class) != null)
 						wdgmsg("gk", 27);
 				}
-
-				Coord src = player.rc.floor();
-				int gcx = haven.automated.pathfinder.Map.origin - (src.x - mc.x);
-				int gcy = haven.automated.pathfinder.Map.origin - (src.y - mc.y);
-				if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz)
-					return;
 
 				pf = new Pathfinder(this, new Coord(gcx, gcy), action);
 				pf.addListener(this);
@@ -3205,65 +3219,131 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 				pfthread.start();
 			}
 		} catch (Exception e){
-			e.getMessage();
+			/* Was e.getMessage() - a call whose result went nowhere, so every fault in here
+			 * vanished without trace and looked to the caller exactly like a refused click. */
+			pfrefusal = "threw " + e;
 		}
 	}
 
 	public void pfLeftClickGob(Gob gob, String action) {
-		Gob player = player();
-		if (player == null || gob == null)
-			return;
-
-		synchronized (Pathfinder.class) {
-			if (pf != null) {
-				pf.terminate = true;
-				pfthread.interrupt();
-				if (player.getattr(Moving.class) != null)
-					wdgmsg("gk", 27);
+		pfrefusal = null;
+		try {
+			Gob player = player();
+			if (player == null || gob == null) {
+				pfrefusal = (gob == null) ? "no gob to walk to"
+					: "no player object yet - the grid is still loading";
+				return;
 			}
 
-			Coord dest = gob.rc.floor();
+			synchronized (Pathfinder.class) {
+				Coord dest = gob.rc.floor();
+				/* Clamp far targets to the search window edge, like pfLeftClick does.
+				 * Without this the bounds check below fires and returns, leaving the caller
+				 * with no path and no walk either, having just cancelled the movement it
+				 * was in the middle of. */
+				if (dest.dist(player.rc.floor()) > 11 * MAX_TILE_RANGE) {
+					Coord between = dest.sub(player.rc.floor());
+					double mul = 11 * MAX_TILE_RANGE / dest.dist(player.rc.floor());
+					dest = player.rc.floor().add(between.mul(mul));
+				}
 
-			Coord src = player.rc.floor();
-			int gcx = haven.automated.pathfinder.Map.origin - (src.x - dest.x);
-			int gcy = haven.automated.pathfinder.Map.origin - (src.y - dest.y);
-			if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz)
-				return;
+				Coord src = player.rc.floor();
+				int gcx = haven.automated.pathfinder.Map.origin - (src.x - dest.x);
+				int gcy = haven.automated.pathfinder.Map.origin - (src.y - dest.y);
+				if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz) {
+					pfrefusal = "gob outside the search window";
+					return;
+				}
 
-			pf = new Pathfinder(this, new Coord(gcx, gcy), gob, -1, 1, 0, action);
-			pf.addListener(this);
-			pfthread = new Thread(pf, "Pathfinder");
-			pfthread.start();
+				if (pf != null) {
+					pf.terminate = true;
+					if (pfthread != null)
+						pfthread.interrupt();
+					if (player.getattr(Moving.class) != null)
+						wdgmsg("gk", 27);
+				}
+
+				pf = new Pathfinder(this, new Coord(gcx, gcy), gob, -1, 1, 0, action);
+				pf.addListener(this);
+				pfthread = new Thread(pf, "Pathfinder");
+				pfthread.start();
+			}
+		} catch (Exception e) {
+			/* Was e.getMessage() - a call whose result went nowhere, so every fault in here
+			 * vanished without trace and looked to the caller exactly like a refused click. */
+			pfrefusal = "threw " + e;
 		}
 	}
 
 	public void pfRightClick(Gob gob, int meshid, int clickb, int modflags, String action) {
-		Gob player = player();
-		if (player == null)
-			return;
-		if (gob.rc.dist(player.rc) > 11 * MAX_TILE_RANGE) {
-			pfLeftClick(gob.rc.floor(), null);
-			return;
-		}
-		synchronized (Pathfinder.class) {
-			if (pf != null) {
-				pf.terminate = true;
-				pfthread.interrupt();
-				// cancel movement
-				if (player.getattr(Moving.class) != null)
-					wdgmsg("gk", 27);
-			}
-
-			Coord src = player.rc.floor();
-			int gcx = haven.automated.pathfinder.Map.origin - (src.x - gob.rc.floor().x);
-			int gcy = haven.automated.pathfinder.Map.origin - (src.y - gob.rc.floor().y);
-			if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz)
+		pfrefusal = null;
+		try {
+			Gob player = player();
+			if (player == null || gob == null) {
+				pfrefusal = (gob == null) ? "no gob to interact with"
+					: "no player object yet - the grid is still loading";
 				return;
+			}
+			if (gob.rc.dist(player.rc) > 11 * MAX_TILE_RANGE) {
+				/* Aim at the hitbox edge, not the centre. Walking to the centre of a
+				 * collision box is refused by the pathfinder (the vertex is inside a box,
+				 * so the search returns empty). Compute the max radius of the gob's
+				 * hitAble collision boxes and step back from the centre along the line
+				 * from us to it. */
+				Coord2d from = player.rc;
+				Coord2d to = gob.rc;
+				double radius = 0;
+				try {
+					haven.Resource res = gob.getres();
+					if (res != null) {
+						haven.automated.helpers.HitBoxes.CollisionBoxSecondary[] boxes =
+							haven.automated.helpers.HitBoxes.collisionBoxMap.get(res.name);
+						if (boxes != null) {
+							for (haven.automated.helpers.HitBoxes.CollisionBoxSecondary box : boxes) {
+								if (box != null && box.hitAble && box.coords != null) {
+									for (haven.Coord2d c : box.coords)
+										radius = Math.max(radius, Math.hypot(c.x, c.y));
+								}
+							}
+						}
+					}
+				} catch (RuntimeException ignored) {
+				}
+				Coord2d dir = to.sub(from);
+				double dist = dir.abs();
+				if (dist > radius && radius > 0)
+					dir = dir.mul((dist - radius) / dist);
+				pfLeftClick(from.add(dir).floor(), null);
+				return;
+			}
+			synchronized (Pathfinder.class) {
+				Coord src = player.rc.floor();
+				int gcx = haven.automated.pathfinder.Map.origin - (src.x - gob.rc.floor().x);
+				int gcy = haven.automated.pathfinder.Map.origin - (src.y - gob.rc.floor().y);
+				/* Answered before the running search is killed, for the reason given in pfLeftClick. */
+				if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz) {
+					pfrefusal = "gob outside the search window";
+					return;
+				}
 
-			pf = new Pathfinder(this, new Coord(gcx, gcy), gob, meshid, clickb, modflags, action);
-			pf.addListener(this);
-			pfthread = new Thread(pf, "Pathfinder");
-			pfthread.start();
+				if (pf != null) {
+					pf.terminate = true;
+					if (pfthread != null)
+						pfthread.interrupt();
+					// cancel movement
+					if (player.getattr(Moving.class) != null)
+						wdgmsg("gk", 27);
+				}
+
+				pf = new Pathfinder(this, new Coord(gcx, gcy), gob, meshid, clickb, modflags, action);
+				pf.addListener(this);
+				pfthread = new Thread(pf, "Pathfinder");
+				pfthread.start();
+			}
+		} catch (Exception e) {
+			/* Was e.getMessage() - a call whose result went nowhere, so every fault in here
+			 * vanished without trace and looked to the caller exactly like a refused click. */
+			pfrefusal = "threw " + e;
 		}
 	}
 

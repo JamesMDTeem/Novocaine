@@ -211,6 +211,9 @@ public class BotNav {
      */
     private long blockingGate = 0;
 
+    /** The last point we printed the full evidence for, so a re-plan doesn't print it again. */
+    private Coord2d whined = null;
+
     /**
      * Set when the last {@link #stepTo} click never became a walk at all.
      *
@@ -219,10 +222,13 @@ public class BotNav {
      * is evidence about the click. Reading the second as the first is what sent a bot standing
      * inside its own base out through a gateway to reach a barrel twelve tiles away.
      */
-    /** The last point we printed the full evidence for, so a re-plan doesn't print it again. */
-    private Coord2d whined = null;
-
     private boolean stepRefused = false;
+
+    /**
+     * The keep-out circles {@link #publishKeepouts} last put in force, kept after they are dropped
+     * from the shared map so {@link #ringedOff} can still ask what they were.
+     */
+    private Map.Keepout[] lastKeepouts = new Map.Keepout[0];
 
     /** Which way the last {@link #stepTo} was refused, or null if it was not. */
     private Pathfinder.Refusal stepRefusal = null;
@@ -359,12 +365,46 @@ public class BotNav {
         Map.Keepout[] beasts = Hazards.keepouts(gui, from);
         Map.Keepout[] people = NBotConfig.on(NBotConfig.Key.avoidOthers)
             ? Crowd.keepouts(gui, from) : new Map.Keepout[0];
-        Map.keepout(Crowd.merge(beasts, people));
+        Map.Keepout[] all = Crowd.merge(beasts, people);
+        /* Kept past the clear below so a refusal can be checked against the circles that were in
+         * force when it happened - see learnRefusal, which must not file a tile as furniture when
+         * one of our own rings is what the search actually objected to. */
+        lastKeepouts = (all == null) ? new Map.Keepout[0] : all;
+        Map.keepout(all);
     }
 
     /** Drops every keep-out. Must be called on every exit path - see {@link #approach}. */
     public void clearKeepouts() {
         Map.keepout(null);
+    }
+
+    /**
+     * True if one of the circles we published could itself be the reason a search gave up short of
+     * {@code dest}, either by sitting on the destination or by lying across the way to it.
+     *
+     * A keep-out is invisible to every other record: {@link Observed} does not hold it, the router
+     * does not consult it, and the tile under it stays honestly open. So a bear wandering past a
+     * doorway makes the pathfinder refuse a perfectly good tile, and without this test that tile is
+     * filed as blocked and stays that way long after the bear has gone - which is how open ground
+     * inside a walled base ended up unreachable.
+     */
+    private boolean ringedOff(Coord2d from, Coord2d dest) {
+        for (Map.Keepout k : lastKeepouts) {
+            if (k == null)
+                continue;
+            if (dest.dist(k.c) <= k.r)
+                return true;
+            Coord2d span = dest.sub(from);
+            double len2 = (span.x * span.x) + (span.y * span.y);
+            Coord2d rel = k.c.sub(from);
+            /* Nearest point on the segment to the circle's middle; the clamp keeps that point
+             * between the two ends rather than out along the infinite line. */
+            double t = (len2 < 1e-6) ? 0.0
+                : Math.max(0.0, Math.min(1.0, ((rel.x * span.x) + (rel.y * span.y)) / len2));
+            if (from.add(span.mul(t)).dist(k.c) <= k.r)
+                return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------------ approach
@@ -576,6 +616,11 @@ public class BotNav {
         if (me == null)
             return false;
         String why = "the click was thrown away before a search started";
+        /* True once a fresh search is actually running for this click. A click that never got
+         * this far is not a verdict on the ground - it is a click that was thrown away - and it
+         * must not be allowed to reach the direct-walk fallback below, which exists to answer
+         * refusals the search itself produced. */
+        boolean started = false;
         try {
             Coord2d aim = standable(me.rc, dest);
             publishKeepouts(me.rc);
@@ -590,7 +635,30 @@ public class BotNav {
             Thread pft = gui.map.pfthread;
             if ((pft == null) || (pft == was) || (walk == null)) {
                 stepRefused = true;
+                /* The click started no search. The map knows which of several quite different
+                 * faults that was - a missing player, a target off the edge of the window, a
+                 * thrown exception - and until it was asked, all of them read here as the same
+                 * unhelpful sentence. */
+                if (gui.map.pfrefusal != null)
+                    why = gui.map.pfrefusal;
+                /* And the search that WAS running is still aimed at its old target. pfLeftClick
+                 * deliberately does not cancel it on a refused click (that was the dead-stop the
+                 * caller is about to recover from), but while it lives it keeps issuing clicks
+                 * toward the old place as this leg re-plans for the new one - two movement
+                 * streams fighting. Stop it here, where the new click is known not to have
+                 * superseded it.
+                 *
+                 * Terminate the CAPTURED search ({@code walk}), not whatever the shared slot now
+                 * holds. In the throwaway branch the slot was not replaced by this click, but a
+                 * concurrent clicker - a second bot window, or a human using the client - could
+                 * have replaced it between the captures above, and terminating that one would
+                 * stop a walk this bot does not own. */
+                if ((walk != null) && (was != null) && was.isAlive()) {
+                    walk.terminate = true;
+                    was.interrupt();
+                }
             } else {
+                started = true;
                 waitUntil(() -> {
                     Gob p = player();
                     return p == null || p.rc.dist(dest) <= tol || !pft.isAlive();
@@ -602,8 +670,21 @@ public class BotNav {
                 stepRefusal = walk.refusal;
                 if (walk.why() != null)
                     why = walk.why();
+                /* The wait above returns on its timeout as well as on arrival, so the search can
+                 * still be running here. That does not stop the finally below clearing the
+                 * circles: the search reads them ONCE, at the top of pathfind - Map.initGeography
+                 * samples the static into a local before the A* runs - so a clear here cannot
+                 * rewrite a route that has already been planned around them. The only re-read is
+                 * the step-aside re-path when the origin is blocked, a handful of tiles; losing a
+                 * circle for that one segment is nothing next to the alternative. */
             }
         } finally {
+            /* Clear whatever this step published, on every exit path. Holding the circles while a
+             * long search still ran - the previous behaviour - leaked them: travel and its
+             * helpers never clear on the way out, so a hop whose search outlived the wait left a
+             * stale ring standing, and every later click, the bot's and a human's, was rerouted
+             * through where a bear used to stand. Each step republishes fresh circles before its
+             * own click, so clearing here only ever removes the previous step's stale set. */
             clearKeepouts();
         }
         /* The pathfinder declined, so ask the SERVER, which does not decline. See {@link Walk}:
@@ -614,11 +695,24 @@ public class BotNav {
          * into the wall" is a fair description of what it looks like.
          *
          * The line has to be proved first, since server movement is linear and the server will
-         * swim. Keep-outs are dropped before this runs, deliberately: they exist to shape the
-         * pathfinder's search, whereas {@link Walk#lineClear} checks hazards along the line
-         * itself, and a bot standing inside a ring must still be able to walk out of it. */
+         * swim. Keep-outs are still up when this runs - they are cleared only in the finally,
+         * after this fallback - which is fine: they exist to shape the pathfinder's search,
+         * whereas {@link Walk#lineClear} checks hazards along the line itself, and a bot standing
+         * inside a ring must still be able to walk out of it. */
         if (stepRefused) {
-            if (Walk.lineClear(gui, me.rc, dest)) {
+            /* The two cases the fallback must NOT answer with a direct walk, both of which explain
+             * the refusal without any verdict on the ground: a keep-out ring is a bear that will
+             * move on, and a click that never became a search says nothing at all about the tile
+             * it aimed at. Direct-walking either is the shape of the give-up loop this method was
+             * built to end - the log has it walking a clear line seven times over, no progress. */
+            if (ringedOff(me.rc, dest)) {
+                NLog.log(log, "pathfinder refused " + Gates.fmt(dest)
+                    + " and one of our own keep-out circles was across the way"
+                    + " - not walking the line directly");
+            } else if (!started) {
+                NLog.log(log, "the click for " + Gates.fmt(dest) + " never became a search ("
+                    + why + ") - not walking the line unplanned");
+            } else if (Walk.lineClear(gui, me.rc, dest)) {
                 NLog.log(log, "pathfinder refused " + Gates.fmt(dest) + " (" + why
                     + ") - walking there directly, the line is clear");
                 Walk.straightTo(this, gui, dest, tol);
@@ -668,6 +762,12 @@ public class BotNav {
     private void learnRefusal(Coord2d from, Coord2d dest, boolean fresh) {
         if (stepRefusal != Pathfinder.Refusal.NO_ROUTE)
             return;
+        if (ringedOff(from, dest)) {
+            if (fresh)
+                NLog.log(log, "  not learning that tile - one of our own keep-out circles"
+                    + " was across the way, so the refusal says nothing about the ground");
+            return;
+        }
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
         if (here == null)
             return;
@@ -710,7 +810,8 @@ public class BotNav {
      */
     private Coord2d standable(Coord2d from, Coord2d aim) {
         List<Gob> gobs = solids(gui);
-        if (!inside(gobs, aim))
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        if (!blockedThere(gobs, here, from, aim))
             return aim;
         Coord2d back = from.sub(aim);
         double len = back.abs();
@@ -719,10 +820,39 @@ public class BotNav {
         back = back.div(len);
         for (double d = CLEAR_STEP; (d <= CLEAR_MAX) && (d < len); d += CLEAR_STEP) {
             Coord2d t = aim.add(back.mul(d));
-            if (!inside(gobs, t))
+            if (!blockedThere(gobs, here, from, t))
                 return t;
         }
         return aim;
+    }
+
+    /**
+     * True if anything blocks a live world point - either loaded and boxed, or merely remembered.
+     *
+     * The loaded-gob half alone was the bug. {@link #solids} can only see what is in the object
+     * cache, so a palisade corner post that has scrolled out of view is not in it, and an aim
+     * landing on that post was handed to the pathfinder unchanged: the bot walked at a wall it had
+     * already seen and stood there refusing until the leg died. The record kept by {@link Observed}
+     * outlives the gob, and {@link Probe} was already reading it - which is why the diagnostics
+     * could name the corner post ("seen=wall") in the very log line that says we aimed at it. This
+     * closes that gap by asking the same record the diagnostics ask.
+     *
+     * {@code here} converts between live and segment coordinates the way {@link #learnRefusal}
+     * does: it holds where we are in both systems, so the difference carries any nearby point
+     * across, which is sound over the few tiles an aim is ever nudged. A null one means the map
+     * cannot place us, leaving only the live test - the old behaviour, and the right fallback,
+     * since a remembered tile we cannot locate is worse than no answer at all.
+     *
+     * {@link Observed#solid} counts walls but deliberately not gateways, so this keeps the
+     * open-gate exception {@link #solids} makes rather than fighting it.
+     */
+    private static boolean blockedThere(List<Gob> gobs, WorldAnchor here, Coord2d from, Coord2d wc) {
+        if (inside(gobs, wc))
+            return true;
+        if (here == null)
+            return false;
+        Coord tile = wc.add(here.sc.sub(from)).floor(MCache.tilesz);
+        return Observed.solid(here.seg, tile);
     }
 
     /**
@@ -806,7 +936,7 @@ public class BotNav {
         Barriers.learn(gui);
         refusedGates.clear();
 
-        /* NO ROUTE MUST NOT MEAN NO LIMIT.
+        /* NO ROUTE MUST NOT MEAN BLIND HOP.
          *
          * `itinerary` puts the destination on the end of every route, and when there is no route
          * that is the WHOLE journey: one leg, aimed straight at somewhere that may be a hundred and
@@ -821,26 +951,42 @@ public class BotNav {
          * that far off, so `plan` gives up with "the map file can't place it yet". Twenty-eight
          * journeys in one log ran with no route at all.
          *
-         * So walk one hop at a time and plan again after each. Nothing is lost - the hop goes the
-         * way the leg would have gone anyway - and by the time a hop or two has been made the map
-         * file can usually place the destination, so the next attempt gets a real route. What is
-         * gained is that each hop is short enough for the wall check and the local pathfinder to
-         * have an opinion about it, and that a journey nobody could plan no longer commits to a
-         * straight line across the county. */
-        for (int stage = 0; (stage < MAX_STAGES) && abort.running(); stage++) {
-            Coord2d at = me();
-            if ((at == null) || (at.dist(dest) <= HOP)
-                || (WorldAnchor.capture(gui, dest) != null))
-                break;
-            Coord2d far = at.add(dest.sub(at).div(at.dist(dest)).mul(HOP));
-            NLog.log(log, "cannot plan to " + Gates.fmt(dest) + " from here - walking one hop"
-                + " towards it, to " + Gates.fmt(far) + ", and asking again from there");
-            if (!walkStraight(far, LEG_TOL))
-                break;
-            Barriers.learn(gui);
+         * The handler below walks ONE short hop, learns whatever is there, and asks the router
+         * again. That is the only fallback that does not bypass the router: a longer hop would
+         * walk around whatever walls the hop could not see, the loop below would re-plan from
+         * the far side having learned nothing, and the next hop would do the same. */
+        // First, try to get a route. If WorldAnchor can't place dest, fall back to walking ONE
+        // hop straight at it and asking again - not because wall-following the old way was wrong
+        // in isolation, but because the loop below owns re-planning and giving it a hop that
+        // crossed 12 walls would mean re-planning on the far side of those walls, learning
+        // nothing about them, and re-planning again on the next hop for the same reason.
+        List<Coord2d> route = plan(dest);
+        /* When the router cannot place the destination at all, the old code ran a "local corridor"
+         * loop that aimed 25 tiles at a time and re-planned each time. Twenty hops of that is the
+         * distance from any reasonable gate to a far work site, and "aim 25 tiles at the goal"
+         * with no router in the way is "walk 25 tiles at the goal" - which is what produced
+         * journeys that crossed eighteen remembered WALL tiles while still believing the route
+         * was empty. The behaviour that replaces it is the same loop the router uses for any
+         * ordinary failure: walk one hop short enough that the only thing that can stop it is a
+         * wall, learn whatever's there, and ask the router again. */
+        if (route == null) {
+            /* A single hop, never to the destination itself, so the worst case is failing in
+             * front of a wall that this hop saw and a normal walkStraight failure cannot
+             * bypass. */
+            if (!hopToward(dest))
+                return false;
+            route = plan(dest);
+            /* Still nothing. The router knows nothing more than it did a moment ago, which means
+             * the destination is genuinely unreachable from here - handing the loop a single
+             * waypoint (the destination) is exactly the bypass this method exists to stop. Give
+             * up and let the caller decide what an unreachable destination means for its task. */
+            if (route == null) {
+                NLog.log(log, "no route to " + Gates.fmt(dest) + " from "
+                    + Gates.fmt(me()) + " after a one-hop probe - giving up");
+                return arrived(dest, tol);
+            }
         }
 
-        List<Coord2d> route = plan(dest);
         /* The waypoints themselves, not just how many. A count says nothing about the shape of a
          * route, and the shape is the thing that goes wrong - whether it turns towards a gateway,
          * whether it doubles back, whether the one waypoint it produced is anywhere near the way.
@@ -1203,31 +1349,16 @@ public class BotNav {
     }
 
     /**
-     * How far along a heading a hop may aim before it would cross a wall we have learned.
+     * How far along a heading a hop may aim before it would cross an impassable tile we have learned.
      *
-     * Returns {@code span} unchanged when the line is clear, which is the ordinary case and costs a
-     * handful of array lookups. The whole value is in the case it is not: see the caller.
+     * Returns {@code span} unchanged when the line is clear. Checks WALL, SOLID, deep water, and shallow
+     * water (when BLOCK_WATER is on). Only blocks on tiles the CLIENT CANNOT SEE - visible obstacles
+     * are handled by the local pathfinder.
      *
-     * A GATEWAY anywhere on the line hands back the full span, because a gate manoeuvre is entitled
-     * to run within a tile of the posts - squaring up and stepping through both do - and refusing
-     * that would stop the bot approaching a gate at all, which is a worse failure than the one being
-     * fixed. The same exemption {@link Walk#lineClear} makes, for the same reason.
+     * A GATEWAY on the line forgives walls ONLY within 1 tile of the gateway posts (reduced from 2).
+     * This prevents corner-post forgiveness from letting a line slip through a palisade corner.
      *
-     * Stops a TILE short of the wall rather than against it. Aiming at the last clear sample would
-     * put the character's own width into the wall's tile, which is a click inside a collision box -
-     * refused outright, and refused in a way that reads as being wedged.
-     *
-     * ONLY WALLS THE CLIENT CANNOT SEE. A wall it CAN see is one the local pathfinder will route
-     * around, and it is good at that - which is the whole reason it is used rather than raw clicks.
-     * Replayed over the log, refusing on every wall would have thrown away two legs that worked
-     * perfectly well, and in both the wall was half a tile from where the character stood: as loaded
-     * as anything gets. The failure this exists for is the opposite one, a wall further out than the
-     * objects the server has sent, where there is no second opinion coming and a linear server move
-     * walks straight into it.
-     *
-     * {@link #occupied} answers exactly that, off the very box test the pathfinder itself runs, so
-     * "can it see this" cannot drift apart from what it actually does about it. Asked only when a
-     * wall tile has already been found, since it builds a gob list per call.
+     * Stops a TILE short of the obstacle rather than against it.
      */
     private double clearSpan(Coord2d from, Coord2d dir, double span) {
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
@@ -1236,17 +1367,7 @@ public class BotNav {
             return span;   // cannot tell, so do not invent an obstacle
         Coord2d off = here.sc.sub(me.rc);
         int steps = Math.max(1, (int) Math.ceil((span / MCache.tilesz.x) * 2));
-        /* WHERE the gateway is on this line, not merely whether there is one.
-         *
-         * The exemption used to hand back the whole span the moment a gate tile appeared anywhere
-         * along it, which forgives every wall on the line including ones nowhere near the gap. A
-         * CORNER POST is exactly that: it stands proud at the end of a run of palisade, several
-         * tiles from the opening, and a line drawn at a gateway from an angle meets the post long
-         * before it reaches the gap. Squaring up and failing against a corner post has been in
-         * every report of this; blanket-forgiving the line is why nothing could see it.
-         *
-         * So forgive walls only where the gateway actually IS - the posts flanking the opening,
-         * which a gate manoeuvre has to pass within a tile of - and stop at any other. */
+        /* WHERE the gateway is on this line, not merely whether there is one. */
         double gateFrom = -1, gateTo = -1;
         for (int i = 0; i <= steps; i++) {
             double d = (span * i) / steps;
@@ -1257,17 +1378,33 @@ public class BotNav {
                 gateTo = d;
             }
         }
-        double slack = MCache.tilesz.x * 2;
-        // From one sample in: the tile we are standing in is allowed to be against a wall, or a
-        // character that has just stepped out of a gateway could not move at all.
+        double postSlack = MCache.tilesz.x; // REDUCED: 1 tile (was 2) - only forgive actual gateway posts
+        // From one sample in: the tile we are standing in is allowed to be against a wall.
         for (int i = 1; i <= steps; i++) {
             double d = (span * i) / steps;
             Coord2d p = from.add(dir.mul(d));
-            if ((Observed.at(here.seg, p.add(off).floor(MCache.tilesz)) != Observed.WALL)
-                    || occupied(gui, p))
+            Coord tile = p.add(off).floor(MCache.tilesz);
+            byte obs = Observed.at(here.seg, tile);
+            // Check ALL impassable types, not just WALL
+            boolean isBlocking = (obs == Observed.WALL) || (obs == Observed.SOLID);
+            // Check water via Terrain - look up the tile's water class from the map file
+            Coord gc = Terrain.floorDiv(tile, MCache.cmaps);
+            Coord in = tile.sub(gc.mul(MCache.cmaps));
+            byte[] classes = Terrain.classes(gui, here.seg, gc);
+            if (classes != null) {
+                byte w = classes[(in.y * MCache.cmaps.x) + in.x];
+                if (w == Terrain.DEEP || (w == Terrain.SHALLOW && Map.BLOCK_WATER))
+                    isBlocking = true;
+            }
+            if (!isBlocking)
                 continue;
-            if ((gateFrom >= 0) && (d >= (gateFrom - slack)) && (d <= (gateTo + slack)))
-                continue;   // the gateway's own posts, which we are entitled to pass between
+            // Gateway post forgiveness - ONLY for actual gateway tiles ± 1 tile
+            if ((gateFrom >= 0) && (d >= (gateFrom - postSlack)) && (d <= (gateTo + postSlack)))
+                continue;
+            // Visible objects are handled by local PF - only block on UNKNOWN walls
+            if (occupied(gui, p))
+                continue;
+            // Stop 1 tile before the obstacle
             return Math.max(0, d - MCache.tilesz.x);
         }
         return span;
@@ -1446,6 +1583,59 @@ public class BotNav {
         if (far <= 0)
             return HOP;
         return Math.max(HOP_MIN, Math.min(HOP_MAX, far));
+    }
+
+    /**
+     * One short hop straight at a destination the router cannot yet place.
+     *
+     * Used only when {@link #plan} has nothing to say - usually because the destination is too far
+     * for {@code WorldAnchor.capture} to anchor. The point of a single hop is the only thing this
+     * helper is allowed to optimise for: it is short enough that the only obstacle it can fail on
+     * is a wall, which is precisely the information {@link #plan} needs to draw a real route on
+     * the next attempt. Anything longer is wall-following, which is the failure mode this method
+     * exists to replace.
+     *
+     * Aims well short of the destination, so the hop cannot overshoot or arrive and is forced to
+     * fail honestly - arriving at the destination with no router in the loop would let the
+     * caller mark the journey done.
+     *
+     * @return true if the hop made progress; false if it could not or stopped short, in which
+     *         case any wall in the way has been learned and the caller should re-plan.
+     */
+    private boolean hopToward(Coord2d dest) throws InterruptedException {
+        Gob me = player();
+        if ((me == null) || (dest == null))
+            return false;
+        double dist = me.rc.dist(dest);
+        if (dist <= LEG_TOL)
+            return true;
+        /* Min hop, not max. A minimum hop is the smallest thing that can move the character, and
+         * the smallest movement is the one most likely to fit in any pocket the loaded terrain
+         * has left. Aim at half the distance so a successful hop halves the gap and cannot
+         * succeed without reaching its own tolerance; if it can, the destination is genuinely
+         * close enough to hand to walkStraight. */
+        Coord2d dir = dest.sub(me.rc);
+        double len = dir.abs();
+        /* Half the distance, never more than HOP_MAX and never past the destination. The far
+         * case matters more than the near one: hopToward exists because the router could not
+         * anchor this destination, and an unclamped half of a far destination would be a blind
+         * un-routed walk toward it - exactly what this method exists to avoid. Capping at HOP_MAX
+         * keeps it one short hop no matter how far away the destination is. For a destination
+         * closer than a minimum hop the unclamped aim landed PAST the destination - HOP_MIN is
+         * twelve tiles - so walkStraight overran it by up to eleven tiles, which is the shape of
+         * walking into the wall that sits just past a near destination. Clamping a near
+         * destination to ninety percent keeps the aim short of it so the hop can only fail short
+         * of it, never past it. */
+        double aimLen = Math.min(len * 0.9, Math.min(HOP_MAX, Math.max(HOP_MIN, len * 0.5)));
+        Coord2d aim = me.rc.add(dir.div(len).mul(aimLen));
+        if (!walkStraight(aim, LEG_TOL))
+            return false;
+        Coord2d after = me();
+        if (after == null)
+            return false;
+        /* Reaching the aim point is not the same as making headway - both stalls and detours end
+         * there. A hop that did not move us closer is no better than one that did not run. */
+        return after.dist(dest) < dist - MCache.tilesz.x;
     }
 
     /**

@@ -41,8 +41,15 @@ public class Pathfinder implements Runnable {
     private MCache map;
     private MapView mv;
     private Coord dest;
-    public boolean terminate = false;
-    public boolean moveinterupted = false;
+    /* Both flags are written by whichever thread cancels or restarts a search and read by this
+     * search's own thread. Without volatile the reading thread is free to hoist the load out of a
+     * loop, so a cancelled search can keep running and then publish its result over the state the
+     * next hop has already set up. interrupt() is not a reliable substitute: the A* phase
+     * ({@link Map#main}) never blocks, so an interrupt arriving there cannot stop it until the
+     * loop next touches the flag - which is the point of the flags being checked there. The
+     * refusal fields below are volatile for the same reason. */
+    public volatile boolean terminate = false;
+    public volatile boolean moveinterupted = false;
     private int meshid;
     private int clickb;
     private Gob gob;
