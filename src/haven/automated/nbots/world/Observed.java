@@ -222,6 +222,14 @@ public class Observed {
         return tilesIn(seg, GATE, GATE);
     }
 
+    /** All segments that have any recorded data. */
+    public static Set<Long> allSegments() {
+        synchronized (LOCK) {
+            load();
+            return new HashSet<>(map.keySet());
+        }
+    }
+
     private static Set<Coord> tilesIn(long seg, byte a, byte b) {
         Set<Coord> out = new HashSet<>();
         synchronized (LOCK) {
@@ -384,6 +392,10 @@ public class Observed {
             for (Coord t : gates)
                 set(here.seg, t, GATE);
         }
+        /* Invalidate the LPA* cache so the next route re-computes from the freshly observed
+         * map. The sweep overwrites many tiles at once (up to SEES*2+1 squared), so individual
+         * updateTile calls would be expensive; blowing the cache is the right call here. */
+        Router.invalidateCache();
     }
 
     /**
@@ -750,5 +762,29 @@ public class Observed {
             dirty = true;
         }
         save();
+        /* The entire map was discarded — the cached LPA* paths are definitely stale. */
+        Router.invalidateCache();
+    }
+
+    /**
+     * Returns a defensive copy of the loaded map data for diagnostic tools.
+     * Does not trigger a load if the map is not already in memory.
+     *
+     * @return Map of segment -> (grid coordinate -> tile state array), or null if not loaded.
+     */
+    public static Map<Long, Map<Coord, byte[]>> loadMapData() {
+        synchronized (LOCK) {
+            if (map == null)
+                return null;
+            Map<Long, Map<Coord, byte[]>> copy = new HashMap<>();
+            for (Map.Entry<Long, Map<Coord, byte[]>> segEntry : map.entrySet()) {
+                Map<Coord, byte[]> segCopy = new HashMap<>();
+                for (Map.Entry<Coord, byte[]> gridEntry : segEntry.getValue().entrySet()) {
+                    segCopy.put(gridEntry.getKey(), gridEntry.getValue().clone());
+                }
+                copy.put(segEntry.getKey(), segCopy);
+            }
+            return copy;
+        }
     }
 }

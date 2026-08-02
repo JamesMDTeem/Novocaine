@@ -10,7 +10,9 @@ import haven.Utils;
 import haven.Widget;
 import haven.Window;
 import haven.automated.nbots.core.NBotConfig;
+import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.world.Barriers;
+import haven.automated.nbots.world.MapVerify;
 import haven.automated.nbots.world.PlaceOverlay;
 
 import java.awt.Color;
@@ -66,6 +68,16 @@ public class NBotsSettingsWindow extends Window {
                  * the client, so it is a button. */
                 Barriers.reset();
                 gui.msg("Forgot every remembered wall and gate.", Color.WHITE);
+            }
+        }, new Coord(UI.scale(16), y)), UI.scale(10));
+        y = below(add(new Button(UI.scale(180), "Verify map recording") {
+            @Override
+            public void click() {
+                /* Runs MapVerify on the current persistent tile record and prints a report.
+                 * Looks for gaps in walls, isolated wall tiles, and state mismatches. */
+                String report = MapVerify.verify();
+                NLog.log("mapverify.log", report);
+                gui.msg("Map verification report written to logs/mapverify.log", Color.WHITE);
             }
         }, new Coord(UI.scale(16), y)), UI.scale(10));
 

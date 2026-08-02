@@ -4,7 +4,7 @@ import haven.Coord2d;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
-import haven.automated.nbots.world.Gates;
+import haven.automated.nbots.world.GateManager;
 import haven.automated.nbots.world.Place;
 
 /**
@@ -13,8 +13,8 @@ import haven.automated.nbots.world.Place;
  * Travel already does this for itself when a leg dies at a wall, which is where it matters most and
  * where no bot should have to ask for it. This exists for the other case: a bot that knows perfectly
  * well it is about to leave the base and would rather deal with the gate deliberately than discover
- * it by failing at it. Same code either way - the whole of it lives in {@link Gates}, and this is
- * the {@link Task} face of it so a shift can compose it with everything else.
+ * it by failing at it. Same code either way - the whole of it lives in {@link GateManager}, and
+ * this is the {@link Task} face of it so a shift can compose it with everything else.
  *
  * Not finding a gate is BLOCKED, not failed. There being no gateway between here and there is a
  * perfectly ordinary state of affairs - most journeys have no wall in them at all - and reporting it
@@ -42,7 +42,7 @@ public class PassGate implements Task {
         // No named gate and no skip set: a task asked for on purpose is one attempt at whatever
         // gateway is on the way, so there is nothing already identified to pass on and no journey
         // for a refusal to be scoped to. Travel keeps both - see BotNav.
-        return Gates.pass(ctx.nav, ctx.gui, dest, 0, null, ctx.log)
+        return GateManager.pass(ctx.nav, ctx.gui, dest, 0, null, ctx.log)
             ? Outcome.ok()
             : Outcome.blocked("no gateway worth using between here and there");
     }

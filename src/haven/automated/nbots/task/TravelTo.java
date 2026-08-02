@@ -4,6 +4,7 @@ import haven.Coord2d;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
+import haven.automated.nbots.world.GateManager;
 import haven.automated.nbots.world.Place;
 import haven.automated.nbots.world.WorldAnchor;
 
@@ -100,16 +101,13 @@ public class TravelTo implements Task {
             if (aim == null)
                 return Outcome.failed(what + " is not on this part of the map");
             ctx.status("Travelling to " + what + ".");
-            if (ctx.nav.travelTo(aim, tol))
-                return Outcome.ok();
-            // The walk may still have put us in the place even if it stopped short of the tile.
-            return ((place != null) && place.contains(ctx.gui, ctx.player().rc))
-                ? Outcome.ok() : Outcome.blocked("couldn't walk to " + what);
+            return GateManager.pass(ctx.nav, ctx.gui, aim, 0, null, ctx.log)
+                ? Outcome.ok() : Outcome.failed("couldn't walk to " + what);
         }
         if (point == null)
             return Outcome.failed("no destination");
-        return ctx.nav.travelTo(point, tolerance) ? Outcome.ok()
-            : Outcome.blocked("couldn't walk to " + what);
+        return GateManager.pass(ctx.nav, ctx.gui, point, 0, null, ctx.log)
+            ? Outcome.ok() : Outcome.failed("couldn't walk to " + what);
     }
 
     @Override

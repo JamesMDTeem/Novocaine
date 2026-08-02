@@ -5,6 +5,7 @@ import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
+import haven.automated.pathfinder.LPAStar;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ import java.util.Set;
  */
 public class Router {
     /** Search ceiling, in tiles. A route needing more than this is a bad question. */
-    private static final int MAX_TILES = 250000;
+    public static final int MAX_TILES = 250000;
 
     /**
      * What a step across never-seen ground costs, as a multiple of a step across seen ground.
@@ -78,7 +79,19 @@ public class Router {
     private static final int[] DX = {1, -1, 0, 0, 1, 1, -1, -1};
     private static final int[] DY = {0, 0, 1, -1, 1, -1, 1, -1};
 
+    /** Cached LPA* instance for incremental re-planning. */
+    private static LPAStar lpaStar;
+
     private Router() {}
+
+    /**
+     * Invalidate the cached LPA* state. Call this when the segment changes or when the
+     * observed world state has changed in a way that cannot be incrementally updated
+     * (e.g., a full map reload).
+     */
+    public static void invalidateCache() {
+        lpaStar = null;
+    }
 
     /**
      * Whether the player could walk to a live world point at all.
@@ -110,9 +123,9 @@ public class Router {
         if ((me == null) || (here == null) || (there == null) || (here.seg != there.seg))
             return true;
         Coord from = here.sc.floor(MCache.tilesz), to = there.sc.floor(MCache.tilesz);
-        Coord lo = new Coord(Math.min(from.x, to.x), Math.min(from.y, to.y)).sub(margin, margin);
-        Coord hi = new Coord(Math.max(from.x, to.x), Math.max(from.y, to.y)).add(margin, margin);
-        return search(new World(gui, here.seg, true), from, to, lo, hi) != null;
+        // Use LPA* search over clamped world (UNSEEN impassable). No bounding box needed -
+        // LPAStar has its own search limit (MAX_TILES).
+        return searchLPA(new World(gui, here.seg, true), from, to, false) != null;
     }
 
     /**
@@ -135,7 +148,73 @@ public class Router {
      * straight at the target, which is what it would have done anyway.
      */
     public static List<Coord> route(GameUI gui, long seg, Coord fromTile, Coord toTile) {
-        return search(new World(gui, seg, false), fromTile, toTile, null, null);
+        return searchLPA(new World(gui, seg, false), fromTile, toTile, false);
+    }
+
+    /**
+     * Route clamped to observed ground — UNSEEN tiles are treated as impassable.
+     *
+     * Unlike {@link #route}, which treats UNSEEN as passable (cost 3) and will plan through
+     * ground we have never seen, this method refuses to cross UNSEEN tiles. If the destination
+     * cannot be reached through observed ground, it returns the best path to the reachable
+     * observed tile nearest the destination (the "vision edge" toward the goal). This prevents
+     * the router from "guessing" through unseen ground where invisible walls may hide.
+     *
+     * The caller must handle the clamped to completion: walk the clamped route, then step toward
+     * the destination to observe more, then re-plan.
+     */
+    public static List<Coord> routeClamped(GameUI gui, long seg, Coord fromTile, Coord toTile) {
+        return searchLPA(new World(gui, seg, true), fromTile, toTile, true);
+    }
+
+    /**
+     * Internal search using LPA* for incremental re-planning.
+     *
+     * LPA* manages its own cache internally. When the segment, start, goal, or clamped mode
+     * changes, it automatically performs a full A* search. Otherwise it does incremental repair.
+     */
+    private static List<Coord> searchLPA(World w, Coord from, Coord to, boolean clamped) {
+        if (from.equals(to))
+            return new ArrayList<>();
+
+        if (lpaStar == null) {
+            lpaStar = new LPAStar();
+        }
+
+        // LPAStar.search() handles both fresh and incremental searches internally
+        List<Coord> path = lpaStar.search(w, from, to, clamped);
+        if (path != null) {
+            return simplify(w, path);
+        }
+        return null;
+    }
+
+    /**
+     * Notify that a single tile's cost or passability has changed.
+     *
+     * Call this when the observed world has changed (e.g., Barriers.learn() discovered
+     * new walls, a gate opened/closed, or Refused tiles expired). The next route()
+     * or routeClamped() call with matching segment/start/goal/clamped will use
+     * incremental LPA* repair instead of a full A* re-search.
+     *
+     * @param t the segment tile that changed
+     */
+    public static void updateTile(Coord t) {
+        if (lpaStar != null && t != null) {
+            lpaStar.updateTile(t);
+        }
+    }
+
+    /**
+     * Notify that multiple tiles changed. Equivalent to calling {@link #updateTile}
+     * on each.
+     *
+     * @param tiles the segment tiles that changed
+     */
+    public static void updateTiles(Set<Coord> tiles) {
+        if (lpaStar != null && tiles != null) {
+            lpaStar.updateTiles(tiles);
+        }
     }
 
     /**
@@ -196,91 +275,6 @@ public class Router {
             if (into.isEmpty() || !into.get(into.size() - 1).equals(t))
                 into.add(t);
         }
-    }
-
-    // ------------------------------------------------------------------ the search
-
-    private static List<Coord> search(World w, Coord from, Coord to, Coord lo, Coord hi) {
-        if (from.equals(to))
-            return new ArrayList<>();
-
-        Map<Coord, Coord> came = new HashMap<>();
-        Map<Coord, Integer> g = new HashMap<>();
-        Set<Coord> done = new HashSet<>();
-        /* The priority is carried WITH the entry rather than read back out of the cost map by a
-         * comparator. Those are not the same thing: a comparator that reads a map the search is
-         * still writing to changes the ordering of items already in the queue, which is exactly
-         * what a heap may not have happen underneath it. It mostly survives, because the closed
-         * set catches the stale entries - but "mostly survives" is not a property to build a
-         * router on, and carrying the number costs nothing. */
-        PriorityQueue<Step> open = new PriorityQueue<>((a, b) -> Integer.compare(a.f, b.f));
-        g.put(from, 0);
-        open.add(new Step(from, h(from, to)));
-
-        int seen = 0;
-        while (!open.isEmpty() && (seen++ < MAX_TILES)) {
-            Coord cur = open.poll().at;
-            if (cur.equals(to))
-                return simplify(w, trace(came, cur));
-            if (!done.add(cur))
-                continue;
-            int cg = g.getOrDefault(cur, Integer.MAX_VALUE);
-            for (int i = 0; i < 8; i++) {
-                Coord nb = cur.add(DX[i], DY[i]);
-                if (done.contains(nb))
-                    continue;
-                if ((lo != null)
-                    && ((nb.x < lo.x) || (nb.y < lo.y) || (nb.x > hi.x) || (nb.y > hi.y)))
-                    continue;
-                /* The destination is entered whatever stands on it, because a caller has already
-                 * decided it wants to be there and destinations sit against things - a barrel, a
-                 * tree, the wall a water place is drawn up to. This needs none of the old
-                 * which-side machinery: the goal is ONE tile now, so it can only be entered from a
-                 * neighbour that is itself reachable, and something genuinely walled in has no
-                 * such neighbour. */
-                if (!nb.equals(to) && !w.passable(nb))
-                    continue;
-                boolean diag = (DX[i] != 0) && (DY[i] != 0);
-                /* No cutting corners. A diagonal between two blocked orthogonals is a step through
-                 * the join between two walls, which looks fine on a grid and is solid in the game
-                 * - and it is exactly how an eight-connected search slips through a palisade at
-                 * every corner post. */
-                if (diag && (!w.passable(new Coord(cur.x + DX[i], cur.y))
-                    || !w.passable(new Coord(cur.x, cur.y + DY[i]))))
-                    continue;
-                int ng = cg + ((diag ? DIAGONAL : STRAIGHT) * w.cost(nb));
-                if (ng < g.getOrDefault(nb, Integer.MAX_VALUE)) {
-                    g.put(nb, ng);
-                    came.put(nb, cur);
-                    open.add(new Step(nb, ng + h(nb, to)));
-                }
-            }
-        }
-        return null;
-    }
-
-    /** One tile in the open set, carrying the priority it was queued with. */
-    private static final class Step {
-        final Coord at;
-        final int f;
-
-        Step(Coord at, int f) {
-            this.at = at;
-            this.f = f;
-        }
-    }
-
-    /** Octile distance, in the same units as the step costs. */
-    private static int h(Coord a, Coord b) {
-        int dx = Math.abs(a.x - b.x), dy = Math.abs(a.y - b.y);
-        return (STRAIGHT * Math.max(dx, dy)) + ((DIAGONAL - STRAIGHT) * Math.min(dx, dy));
-    }
-
-    private static List<Coord> trace(Map<Coord, Coord> came, Coord end) {
-        Deque<Coord> out = new ArrayDeque<>();
-        for (Coord c = end; c != null; c = came.get(c))
-            out.addFirst(c);
-        return new ArrayList<>(out);
     }
 
     /**
@@ -390,7 +384,7 @@ public class Router {
      * turns a few milliseconds of arithmetic into a second of lock traffic. Here each grid is
      * fetched once.
      */
-    private static final class World {
+    public static final class World {
         private final GameUI gui;
         private final long seg;
         /** Refuse ground nobody has seen, rather than charging extra for it. */
@@ -433,7 +427,7 @@ public class Router {
             if ((me == null) || (here == null))
                 return out;
             Coord2d off = here.sc.sub(me.rc);
-            for (Gob g : Gates.loaded(gui))
+            for (Gob g : GateManager.loaded(gui))
                 out.add(g.rc.add(off).floor(MCache.tilesz));
             return out;
         }
@@ -465,7 +459,7 @@ public class Router {
             return ((byte[]) o)[(in.y * MCache.cmaps.x) + in.x];
         }
 
-        boolean passable(Coord t) {
+        public boolean passable(Coord t) {
             byte s = state(t);
             /* BOTH of them. Observed keeps walls apart from other solids so that the enclosure
              * inference can reason about walls alone - see Observed.WALL - and routing must not
@@ -536,7 +530,7 @@ public class Router {
             return true;
         }
 
-        int cost(Coord t) {
+        public int cost(Coord t) {
             if (refused.contains(t))
                 return REFUSED_COST;
             return (state(t) == Observed.UNSEEN) ? UNKNOWN : 1;

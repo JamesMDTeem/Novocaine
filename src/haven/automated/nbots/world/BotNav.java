@@ -164,6 +164,14 @@ public class BotNav {
      * failure this replaced.
      */
     private static final int MAX_STAGES = 12;
+    /**
+     * How many exploration hops toward a destination the clamped router can see but not reach.
+     *
+     * Each hop extends the observed region by up to {@link #HOP_MAX} tiles. Twelve is enough for
+     * ~400 tiles of unknown ground - far more than any base-to-base journey. Bounded so that a
+     * genuinely unreachable destination doesn't trap the bot in an endless explore loop.
+     */
+    private static final int MAX_EXPLORE = 12;
     /** Travel gives up after this many hops that don't get closer. */
     private static final int TRAVEL_STALL_LIMIT = 6;
     /**
@@ -232,6 +240,27 @@ public class BotNav {
 
     /** Which way the last {@link #stepTo} was refused, or null if it was not. */
     private Pathfinder.Refusal stepRefusal = null;
+
+    /**
+     * Whether the last {@link #plan} could only reach the observed edge, not the destination.
+     *
+     * The clamped router ({@link Router#routeClamped}) treats UNSEEN ground as impassable and,
+     * when the destination lies beyond the observed edge, returns a route that stops at the
+     * nearest reachable observed tile instead. That route is not walkable as-is - its final leg
+     * (the destination) would be walked straight at through unseen ground, which is the very
+     * wall-hiding behaviour the clamp exists to stop. So {@link #travelTo} reads this flag to
+     * decide it must explore forward (a hop, observing more) and re-plan before walking on.
+     */
+    private boolean planClamped = false;
+
+    /**
+     * The active route waypoints from the last {@link #plan}, stored so corridor checks can
+     * compare keep-out circles against the full planned path, not just the current leg.
+     *
+     * Updated by {@link #plan} each time a route is computed. Read by {@link #checkPathBlocked}
+     * to decide whether a moving entity has drifted onto the route between legs.
+     */
+    private List<Coord2d> currentRoute = null;
 
     /**
      * Set when an approach was abandoned because of wildlife rather than because the target can't
@@ -405,6 +434,27 @@ public class BotNav {
                 return true;
         }
         return false;
+    }
+
+    /**
+     * True if a keep-out circle now intersects the corridor from {@code from} to {@code to}.
+     *
+     * Called proactively at the start of each leg in {@link #travelTo} to catch a beast or
+     * character that has drifted onto the planned path between legs. The reactive check inside
+     * {@link #walkStraight} catches one that steps onto the leg DURING the walk; this catches
+     * one already in place when the leg begins, which is the case the user reported.
+     *
+     * Uses the same segment-circle intersection math as {@link #ringedOff}, checking every
+     * circle currently in {@link #lastKeepouts}.
+     *
+     * @param from the current position
+     * @param to   the leg destination (next waypoint, or the final destination on the last leg)
+     * @return true if any keep-out circle intersects the segment
+     */
+    private boolean checkPathBlocked(Coord2d from, Coord2d to) {
+        if (from == null || to == null)
+            return false;
+        return ringedOff(from, to);
     }
 
     // ------------------------------------------------------------------ approach
@@ -706,14 +756,14 @@ public class BotNav {
              * it aimed at. Direct-walking either is the shape of the give-up loop this method was
              * built to end - the log has it walking a clear line seven times over, no progress. */
             if (ringedOff(me.rc, dest)) {
-                NLog.log(log, "pathfinder refused " + Gates.fmt(dest)
+                NLog.log(log, "pathfinder refused " + GateManager.fmt(dest)
                     + " and one of our own keep-out circles was across the way"
                     + " - not walking the line directly");
             } else if (!started) {
-                NLog.log(log, "the click for " + Gates.fmt(dest) + " never became a search ("
+                NLog.log(log, "the click for " + GateManager.fmt(dest) + " never became a search ("
                     + why + ") - not walking the line unplanned");
             } else if (Walk.lineClear(gui, me.rc, dest)) {
-                NLog.log(log, "pathfinder refused " + Gates.fmt(dest) + " (" + why
+                NLog.log(log, "pathfinder refused " + GateManager.fmt(dest) + " (" + why
                     + ") - walking there directly, the line is clear");
                 Walk.straightTo(this, gui, dest, tol);
                 stepRefused = false;
@@ -725,7 +775,7 @@ public class BotNav {
                  * actually differs between "the destination is on a barrel", "it is in a lake" and
                  * "there is a wall in front of it". */
                 boolean fresh = (whined == null) || (whined.dist(dest) > MCache.tilesz.x);
-                NLog.log(log, "pathfinder refused " + Gates.fmt(dest) + " (" + why
+                NLog.log(log, "pathfinder refused " + GateManager.fmt(dest) + " (" + why
                     + ") and the straight line is not clear either"
                     + (fresh ? "" : " [same point]"));
                 if (fresh) {
@@ -889,7 +939,7 @@ public class BotNav {
                 for (Gob g : gui.ui.sess.glob.oc) {
                     if (g.isPlgob(gui))
                         continue;
-                    if (Gates.isGate(g) && Gates.isOpen(g))
+                    if (GateManager.isGate(g) && GateManager.isOpen(g))
                         continue;
                     out.add(g);
                 }
@@ -926,11 +976,13 @@ public class BotNav {
      * planning, but the client simply has no global navigation mesh to plan against, and it gets
      * around the local obstructions that actually occur between a work site and a water barrel.
      *
-     * @return true if we ended within {@code tol} of the destination.
+     * @return a {@link TravelResult} describing how the journey ended: {@link TravelResult#arrived}
+     *         if we got within {@code tol} of the destination, or a blocked/failed/aborted result
+     *         explaining why not.
      */
-    public boolean travelTo(Coord2d dest, double tol) throws InterruptedException {
+    public TravelResult travelTo(Coord2d dest, double tol) throws InterruptedException {
         if (dest == null)
-            return false;
+            return TravelResult.failed(null, "null destination");
         /* Record whatever walls are in sight before planning, so the route about to be chosen
          * benefits from this trip rather than only the next one. */
         Barriers.learn(gui);
@@ -974,17 +1026,55 @@ public class BotNav {
              * front of a wall that this hop saw and a normal walkStraight failure cannot
              * bypass. */
             if (!hopToward(dest))
-                return false;
+                return TravelResult.blocked(me(),
+                    "hop toward " + GateManager.fmt(dest) + " stopped short - a wall is in the way");
             route = plan(dest);
             /* Still nothing. The router knows nothing more than it did a moment ago, which means
              * the destination is genuinely unreachable from here - handing the loop a single
              * waypoint (the destination) is exactly the bypass this method exists to stop. Give
              * up and let the caller decide what an unreachable destination means for its task. */
             if (route == null) {
-                NLog.log(log, "no route to " + Gates.fmt(dest) + " from "
-                    + Gates.fmt(me()) + " after a one-hop probe - giving up");
-                return arrived(dest, tol);
+                NLog.log(log, "no route to " + GateManager.fmt(dest) + " from "
+                    + GateManager.fmt(me()) + " after a one-hop probe - giving up");
+                return finish(dest, tol, true,
+                    "no route to " + GateManager.fmt(dest) + " after a one-hop probe");
             }
+        }
+
+        /* A route clamped at the observed edge is not walkable as-is.
+         *
+         * {@link #plan} asked the clamped router, so a route that stops at the vision edge rather
+         * than at the destination means the destination is beyond what has been observed. Walking
+         * that route means walking its last leg - the destination - straight at a target nobody has
+         * seen, through whatever invisible wall may sit there, which is exactly what the clamp
+         * exists to stop. So a clamped route is a cue to walk a hop forward, see more, and ask
+         * again. Each hop extends the observed region by up to {@link #HOP_MAX} tiles, so twelve
+         * covers far more than any base-to-base gap.
+         *
+         * Bounded at all only so that a destination which is genuinely out of reach - a place
+         * nobody can stand, or another segment - does not walk the bot away from base for ever. */
+        int explores = 0;
+        while (planClamped && (explores++ < MAX_EXPLORE)) {
+            NLog.log(log, "route clamped " + (int) shortfall(dest) + "u short of "
+                + GateManager.fmt(dest) + " - exploring forward (hop " + explores + "/"
+                + MAX_EXPLORE + ")");
+            if (!hopToward(dest))
+                return TravelResult.blocked(me(), "exploration hop toward " + GateManager.fmt(dest)
+                    + " stopped short - a wall is in the way");
+            Barriers.learn(gui);
+            route = plan(dest);
+            if (route == null) {
+                NLog.log(log, "no route to " + GateManager.fmt(dest) + " after exploring - giving up");
+                return finish(dest, tol, true,
+                    "no route to " + GateManager.fmt(dest) + " after exploring");
+            }
+        }
+        if (planClamped) {
+            NLog.log(log, "destination " + GateManager.fmt(dest) + " still beyond the observed edge after "
+                + MAX_EXPLORE + " exploration hops - giving up");
+            return TravelResult.failed(me(),
+                "destination " + GateManager.fmt(dest) + " beyond observed ground after " + MAX_EXPLORE
+                    + " hops");
         }
 
         /* The waypoints themselves, not just how many. A count says nothing about the shape of a
@@ -992,7 +1082,7 @@ public class BotNav {
          * whether it doubles back, whether the one waypoint it produced is anywhere near the way.
          * Several rounds of this have been spent inferring that from distances in failure
          * messages, which is guesswork when it could be a fact. */
-        NLog.log(log, "travel to " + Gates.fmt(dest) + " from " + Gates.fmt(me())
+        NLog.log(log, "travel to " + GateManager.fmt(dest) + " from " + GateManager.fmt(me())
             + ": " + ((route == null) ? "no route" : (route.size() + " waypoint(s) " + fmt(route)))
             + " then the destination");
         List<Coord2d> legs = itinerary(route, dest);
@@ -1009,11 +1099,33 @@ public class BotNav {
         int drifts = 0;
         for (int i = 0; i < legs.size(); i++) {
             if (!abort.running())
-                return false;
+                return TravelResult.aborted(me());
             /* The destination is the last leg and is the only one that has to be arrived at
              * properly; the rest are waypoints to pass near. */
             boolean last = (i == (legs.size() - 1));
             blockingGate = 0;
+            /* If a keep-out circle (beast aggro ring, other character's personal space) has
+             * drifted onto the current leg's corridor since the route was planned, re-plan
+             * before wasting a walk on a leg that is now blocked. The local pathfinder inside
+             * walkStraight will also catch this and abort mid-leg, but catching it here saves
+             * the hop budget and gets a fresh route drawn around the new obstacle sooner.
+             *
+             * This is proactive rather than reactive: ringedOff inside walkStraight catches a
+             * beast that steps onto the leg DURING the walk; this catches one that was already
+             * there when the leg started, which is the case the user asked about. */
+            if (checkPathBlocked(me(), legs.get(i))) {
+                NLog.log(log, "keep-out circle now blocks leg corridor to " + GateManager.fmt(legs.get(i))
+                    + " from " + GateManager.fmt(me()) + " - re-planning");
+                Barriers.learn(gui);
+                List<Coord2d> again = plan(dest);
+                if (again == null) {
+                    return finish(dest, tol, true,
+                        "re-plan failed - keep-out blocking corridor to " + GateManager.fmt(legs.get(i)));
+                }
+                legs = itinerary(again, dest);
+                i = -1;
+                continue;
+            }
             /* Every leg, whether it works or not.
              *
              * The failure paths have all been well logged for some time and the SUCCESS path has
@@ -1039,8 +1151,8 @@ public class BotNav {
             boolean got = walkStraight(legs.get(i), last ? tol : LEG_SLACK);
             Coord2d ended = me();
             NLog.log(log, String.format("  leg %d/%d %s -> %s: %s at %s (%dt of %dt)",
-                i + 1, legs.size(), Gates.fmt(began), Gates.fmt(legs.get(i)),
-                got ? "arrived" : "stopped", Gates.fmt(ended),
+                i + 1, legs.size(), GateManager.fmt(began), GateManager.fmt(legs.get(i)),
+                got ? "arrived" : "stopped", GateManager.fmt(ended),
                 (int) ((began == null || ended == null) ? -1
                     : began.dist(ended) / MCache.tilesz.x),
                 (int) ((began == null) ? -1 : began.dist(legs.get(i)) / MCache.tilesz.x)));
@@ -1061,7 +1173,7 @@ public class BotNav {
                  * A gateway is three tiles wide and `simplify` will happily put the turn on its EDGE
                  * tile. Arriving a tile to the side of that waypoint is well inside LEG_SLACK, so it
                  * counts as arrived and travel walks on - along a line that now misses the gap and
-                 * crosses the WALL beside it. Nothing downstream can recover: `Gates.onRoute` is
+                 * crosses the WALL beside it. Nothing downstream can recover: `GateManager.onRoute` is
                  * asked about the line we are actually walking and answers, correctly, that no
                  * gateway is on it, so the local pathfinder is left to go round - which it does, the
                  * long way, and the WANDER guard catches it thirty-six tiles later pointing at a
@@ -1105,11 +1217,11 @@ public class BotNav {
                 if (drifts < MAX_DRIFTS) {
                     drifts++;
                     NLog.log(log, "  ...arrived, but the next leg cuts through a wall from here and"
-                        + " not from " + Gates.fmt(legs.get(i)) + " - walking onto it");
+                        + " not from " + GateManager.fmt(legs.get(i)) + " - walking onto it");
                     walkStraight(legs.get(i), ON_WAYPOINT);
                     ended = me();
                     if (!driftedIntoWall(legs, i)) {
-                        NLog.log(log, "  ...on it at " + Gates.fmt(ended)
+                        NLog.log(log, "  ...on it at " + GateManager.fmt(ended)
                             + " and the next leg is clear from here");
                         continue;
                     }
@@ -1120,7 +1232,7 @@ public class BotNav {
                  * no-op re-plans, and the moment the budget ran out `onRoute` found the shut gateway
                  * and the bot went through it. Getting there without wasting six re-plans first is
                  * the only difference. */
-                NLog.log(log, "  ...could not get onto " + Gates.fmt(legs.get(i))
+                NLog.log(log, "  ...could not get onto " + GateManager.fmt(legs.get(i))
                     + " and the next leg still cuts a wall - counting the leg as failed");
             }
 
@@ -1179,7 +1291,7 @@ public class BotNav {
              * legs already have their own bound in MAX_REPLANS just below; this one exists to stop
              * a bot being pushed back and forth through the same gateway for ever. */
             if ((gates < MAX_GATES)
-                && Gates.pass(this, gui, leg, blockingGate, refusedGates, log)) {
+                && GateManager.pass(this, gui, leg, blockingGate, refusedGates, log)) {
                 gates++;
                 Barriers.learn(gui);
                 List<Coord2d> after = plan(dest);
@@ -1187,7 +1299,7 @@ public class BotNav {
                  * why a bot that stepped through a gate and then walked fifty tiles the wrong way
                  * looked like a gate fault: the route it was following afterwards never appeared
                  * anywhere. */
-                NLog.log(log, "re-planned from the gateway, at " + Gates.fmt(me()) + ": "
+                NLog.log(log, "re-planned from the gateway, at " + GateManager.fmt(me()) + ": "
                     + ((after == null) ? "no route" : (after.size() + " waypoint(s) " + fmt(after))));
                 legs = itinerary(after, dest);
                 i = -1;
@@ -1198,21 +1310,22 @@ public class BotNav {
              * from outside looks like pacing back and forth near the destination. Give up on
              * routing after a few and let the straight walk have its go. */
             if (++replans > MAX_REPLANS) {
-                NLog.log(log, "route to " + Gates.fmt(dest) + " failed " + replans
+                NLog.log(log, "route to " + GateManager.fmt(dest) + " failed " + replans
                     + " times; giving up " + (int) shortfall(dest) + "u short");
-                return arrived(dest, tol);
+                return finish(dest, tol, true,
+                    "route failed " + replans + " times");
             }
             /* The route was wrong about something - almost always a wall learned since, or
              * one that was never in view when the map file recorded the tiles. Re-plan from
              * where we actually are and start the itinerary again. */
             Barriers.learn(gui);
             List<Coord2d> again = plan(dest);
-            NLog.log(log, "re-planned after a failed leg, from " + Gates.fmt(me()) + ": "
+            NLog.log(log, "re-planned after a failed leg, from " + GateManager.fmt(me()) + ": "
                 + ((again == null) ? "no route" : (again.size() + " waypoint(s) " + fmt(again))));
             legs = itinerary(again, dest);
             i = -1;
         }
-        return arrived(dest, tol);
+        return finish(dest, tol, false, "could not reach " + GateManager.fmt(dest));
     }
 
     /**
@@ -1251,7 +1364,7 @@ public class BotNav {
         for (Coord2d c : route) {
             if (sb.length() > 1)
                 sb.append(' ');
-            sb.append(Gates.fmt(c));
+            sb.append(GateManager.fmt(c));
         }
         return sb.append(']').toString();
     }
@@ -1292,6 +1405,26 @@ public class BotNav {
         if (here == null)
             return true;   // cannot tell, so do not invent a failure
         return !wallBetween(here.seg, here.sc, dest.add(here.sc.sub(me.rc)));
+    }
+
+    /**
+     * The end-of-journey judgement: a {@link TravelResult} for whichever of arrived/blocked/failed
+     * actually happened.
+     *
+     * Travel's ending returns all used to be the same boolean - "did {@link #arrived} hold?" - which
+     * threw away why it didn't. The two non-arrival flavours are told apart here: a journey that was
+     * walked to the end without getting there is {@link TravelResult#blocked} (something in the way,
+     * worth retrying), while one that could never be routed is {@link TravelResult#failed} (routing
+     * again is likely to produce the same nothing).
+     *
+     * @param permanent whether the reason is "routing could not find a way" (failed) rather than
+     *                  "walked but did not arrive" (blocked)
+     */
+    private TravelResult finish(Coord2d dest, double tol, boolean permanent, String reason) {
+        Coord2d here = me();
+        if (arrived(dest, tol))
+            return TravelResult.arrived(here);
+        return permanent ? TravelResult.failed(here, reason) : TravelResult.blocked(here, reason);
     }
 
     /**
@@ -1465,25 +1598,37 @@ public class BotNav {
          * able to place something and are nothing to do with the terrain; only the third is the
          * router actually failing to find a way, and that is the one worth reading a log over. */
         if ((me == null) || (here == null) || (there == null)) {
-            NLog.log(log, "cannot plan to " + Gates.fmt(dest)
+            NLog.log(log, "cannot plan to " + GateManager.fmt(dest)
                 + ": the map file can't place " + ((here == null) ? "us" : "it") + " yet");
             return null;
         }
         if (here.seg != there.seg) {
-            NLog.log(log, "cannot plan to " + Gates.fmt(dest)
+            NLog.log(log, "cannot plan to " + GateManager.fmt(dest)
                 + ": it is in map segment " + there.seg + " and we are in " + here.seg);
             return null;
         }
         Coord fromTile = here.sc.floor(MCache.tilesz), toTile = there.sc.floor(MCache.tilesz);
-        List<Coord> nodes = Router.route(gui, here.seg, fromTile, toTile);
-        if (nodes == null)
+        /* Use the clamped router: UNSEEN ground is treated as impassable, so the route stays
+         * within observed territory. If the destination is beyond the observed edge, the router
+         * returns the path to the observed-tile nearest the destination. The caller (travelTo)
+         * detects this and explores forward to extend observation before re-planning. */
+        List<Coord> nodes = Router.routeClamped(gui, here.seg, fromTile, toTile);
+        /* Track whether the route was clamped (the router could not reach the destination tile
+         * through observed ground). Detect this by checking if the last tile differs from the
+         * destination tile — a normal route always ends at toTile; a clamped fallback ends at the
+         * closest reachable observed tile. */
+        planClamped = (nodes != null) && !nodes.isEmpty() && !nodes.get(nodes.size() - 1).equals(toTile);
+        if (nodes == null) {
+            planClamped = false;
             return null;
+        }
         /* What the route is made of, not just where it goes. The interesting number is how much of
          * it crosses ground nobody has looked at and how far out that starts, because a route
          * through the unknown is a guess - and the reports of walking through palisades and across
          * rivers all describe it happening just past the edge of what was on screen, which is
          * exactly where the record stops and the guessing begins. */
-        NLog.log(log, "  route " + Router.describe(gui, here.seg, fromTile, toTile, nodes));
+        NLog.log(log, "  route " + Router.describe(gui, here.seg, fromTile, toTile, nodes)
+            + (planClamped ? " [CLAMPED]" : ""));
         /* Segment coordinates back into live world ones. The player is in both spaces at once, so
          * the difference between the two readings of where WE are is the offset for everything
          * else - no second map-file lookup per waypoint. */
@@ -1549,6 +1694,11 @@ public class BotNav {
          * is not this method's job to leave something for travel to walk to. */
         while (!out.isEmpty() && (out.get(out.size() - 1).dist(dest) <= LEG_TOL))
             out.remove(out.size() - 1);
+        /* Store the route so the travel loop can check each leg's corridor against live
+         * keep-out circles before walking it. A beast or other character that drifts onto
+         * the planned corridor between legs is invisible to the router and would otherwise
+         * be walked into rather than routed around. */
+        currentRoute = out;
         return out;
     }
 
@@ -1688,7 +1838,7 @@ public class BotNav {
             if ((began != null) && (began.dist(me.rc) > (leg * WANDER) + WANDER_SLACK)) {
                 NLog.log(log, "walk wandered " + (int) (began.dist(me.rc) / MCache.tilesz.x)
                     + "t from the start of a " + (int) (leg / MCache.tilesz.x)
-                    + "t leg to " + Gates.fmt(dest) + " - that is a detour, not a leg");
+                    + "t leg to " + GateManager.fmt(dest) + " - that is a detour, not a leg");
                 cancelWalk();
                 return false;
             }
@@ -1698,7 +1848,7 @@ public class BotNav {
                 stalled = 0;
                 refused = 0;
             } else if (++stalled > TRAVEL_STALL_LIMIT) {
-                NLog.log(log, "walk gave up " + (int) dist + "u short of " + Gates.fmt(dest)
+                NLog.log(log, "walk gave up " + (int) dist + "u short of " + GateManager.fmt(dest)
                     + " after " + stalled + " hops without progress");
                 cancelWalk();
                 return false;
@@ -1737,19 +1887,19 @@ public class BotNav {
              * A shut gate is an ordinary solid to the local pathfinder, so it walks around it and
              * goes on making headway - up and down the inside of the wall, indefinitely, while the
              * test below waits for a stall that the pathfinder is busy preventing. */
-            Gob routed = Gates.onRoute(gui, me.rc, dest, refusedGates);
+            Gob routed = GateManager.onRoute(gui, me.rc, dest, refusedGates);
             if ((routed != null) && !wasStuck) {
-                NLog.log(log, "the route to " + Gates.fmt(dest) + " goes through shut gateway #"
-                    + routed.id + " at " + Gates.fmt(routed.rc) + " - opening it");
+                NLog.log(log, "the route to " + GateManager.fmt(dest) + " goes through shut gateway #"
+                    + routed.id + " at " + GateManager.fmt(routed.rc) + " - opening it");
                 blockingGate = routed.id;
                 cancelWalk();
                 return false;
             }
             if (((stalled > 0) || wasBlocked) && !wasStuck) {
-                Gob shut = Gates.blocking(gui, dest, refusedGates);
+                Gob shut = GateManager.blocking(gui, dest, refusedGates);
                 if (shut != null) {
-                    NLog.log(log, "no headway towards " + Gates.fmt(dest) + " and shut gateway #"
-                        + shut.id + " at " + Gates.fmt(shut.rc) + " is in the way - opening it");
+                    NLog.log(log, "no headway towards " + GateManager.fmt(dest) + " and shut gateway #"
+                        + shut.id + " at " + GateManager.fmt(shut.rc) + " is in the way - opening it");
                     blockingGate = shut.id;
                     cancelWalk();
                     return false;
@@ -1817,7 +1967,7 @@ public class BotNav {
             double open = clearSpan(me.rc, dir, span);
             if (open < span) {
                 if (open < MCache.tilesz.x) {
-                    NLog.log(log, "the way to " + Gates.fmt(dest) + " runs into a wall we have"
+                    NLog.log(log, "the way to " + GateManager.fmt(dest) + " runs into a wall we have"
                         + " learned, " + (int) open + "u out - not walking at it");
                     cancelWalk();
                     return false;
@@ -1870,6 +2020,18 @@ public class BotNav {
              * for all of those is the same, and because being wrong in this direction costs one
              * sidestep while being wrong in the other costs an unwanted trip to a gate. */
             wasStuck = stepRefused && !wasBlocked;
+            /* If a beast's keep-out circle now blocks the remaining leg corridor, stop and let
+             * travel re-plan. The local pathfinder handled this hop by going around the beast,
+             * but the router's subsequent legs may now be invalid - the route was certified
+             * before the beast moved into it, and the router does not consult keep-out circles.
+             * Re-planning from here gives the router a fresh chance to route around the new
+             * position. */
+            if (ringedOff(me.rc, dest)) {
+                NLog.log(log, "keep-out circle blocks remaining leg to " + GateManager.fmt(dest)
+                    + " from " + GateManager.fmt(me.rc) + " - will re-plan");
+                cancelWalk();
+                return false;
+            }
             /* Refused over and over means the aim really is somewhere we cannot be, and no amount
              * of swinging sideways from the same spot will change that. Say so rather than burning
              * the hop budget wandering, which is the shape this failure used to take. */
@@ -1881,7 +2043,7 @@ public class BotNav {
                  * afterwards. Bounded, because if stepping clear does not help twice over then it
                  * is not what was wrong. */
                 if ((++unsticks <= UNSTICK_LIMIT) && Walk.unstick(this, gui, dest)) {
-                    NLog.log(log, "wedged " + (int) dist + "u short of " + Gates.fmt(dest)
+                    NLog.log(log, "wedged " + (int) dist + "u short of " + GateManager.fmt(dest)
                         + " with every click refused - stepped clear and carrying on");
                     refused = 0;
                     best = Double.MAX_VALUE;
@@ -1889,8 +2051,8 @@ public class BotNav {
                     wasStuck = false;
                     continue;
                 }
-                NLog.log(log, "nothing walkable at " + Gates.fmt(aim) + " on the way to "
-                    + Gates.fmt(dest) + " - " + refused + " clicks refused, "
+                NLog.log(log, "nothing walkable at " + GateManager.fmt(aim) + " on the way to "
+                    + GateManager.fmt(dest) + " - " + refused + " clicks refused, "
                     + (int) dist + "u short");
                 cancelWalk();
                 return false;
@@ -1908,31 +2070,31 @@ public class BotNav {
      * maps to are only valid relative to where the player is now, and the client can re-base those
      * as you travel. Resolving once at the start and walking to that Coord2d would drift.
      *
-     * @return true on arrival; false if the anchor can't be resolved (different segment, or the map
-     *         file doesn't know where we are) or the walk failed.
+     * @return a {@link TravelResult} describing how the journey ended.
      */
-    public boolean travelTo(WorldAnchor anchor, double tol) throws InterruptedException {
+    public TravelResult travelTo(WorldAnchor anchor, double tol) throws InterruptedException {
         if (anchor == null)
-            return false;
+            return TravelResult.failed(null, "null anchor");
         for (int hop = 0; hop < 120; hop++) {
             Coord2d dest = anchor.resolve(gui);
             if (dest == null) {
                 NLog.log(log, "cannot resolve " + anchor + " - different map segment?");
-                return false;
+                return TravelResult.failed(me(), "cannot resolve " + anchor);
             }
             Gob me = player();
             if (me == null)
-                return false;
+                return TravelResult.failed(null, "player is unavailable");
             double dist = me.rc.dist(dest);
             if (dist <= tol)
-                return true;
+                return TravelResult.arrived(me.rc);
             // Inside one hop of the target: hand the rest to travelTo, which owns the stall and
             // detour bookkeeping, and let it finish the job.
             if (dist <= HOP)
                 return travelTo(dest, tol);
-            if (!travelTo(dest, HOP * 0.75))
-                return false;
+            TravelResult r = travelTo(dest, HOP * 0.75);
+            if (!r.isArrived())
+                return r;
         }
-        return false;
+        return TravelResult.failed(me(), "gave up after 120 hops");
     }
 }
