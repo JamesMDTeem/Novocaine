@@ -69,11 +69,11 @@ public class GateManager {
      */
     public static final class GateInfo {
         private final Gob gob;
-        private final Coord2d tile;
+        private final Coord tile;
         private final boolean open;
         private final long lastSeen;
 
-        public GateInfo(Gob gob, Coord2d tile, boolean open, long lastSeen) {
+        public GateInfo(Gob gob, Coord tile, boolean open, long lastSeen) {
             this.gob = gob;
             this.tile = tile;
             this.open = open;
@@ -83,7 +83,7 @@ public class GateManager {
         /** ID of the gate gob. */
         public long id() { return gob.id; }
         public Gob gob() { return gob; }
-        public Coord2d tile() { return tile; }
+        public Coord tile() { return tile; }
         public boolean isOpen() { return open; }
         public long lastSeen() { return lastSeen; }
     }
@@ -159,9 +159,10 @@ public class GateManager {
             return out;
         Coord2d off = here.sc.sub(me.rc);
         for (Gob g : loaded(gui)) {
-            if (g.rc.floor(MCache.tilesz).seg() != seg)
+            WorldAnchor gAnchor = WorldAnchor.capture(gui, g.rc);
+            if (gAnchor == null || gAnchor.seg != seg)
                 continue;
-            Coord2d tile = g.rc.add(off).floor(MCache.tilesz);
+            Coord tile = g.rc.add(off).floor(MCache.tilesz);
             out.add(new GateInfo(g, tile, isOpen(g), System.nanoTime()));
         }
         return out;
