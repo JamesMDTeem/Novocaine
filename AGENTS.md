@@ -16,8 +16,9 @@ Loftar/Seatribe's open-source "Vanilla" `hafen-client` and maintained by **Night
 - Entry point / Main-Class: **`haven.Client`** (`src/haven/Client.java`).
 - ~840 `.java` files. Java **17–21** (21 recommended), source/target level **15**.
 - Build tool: **Apache Ant** (`build.xml`). There is **no** Maven or Gradle.
-- Two git remotes: `Hurricane` (fork/origin) and `LoftarSeatribe` (upstream vanilla,
-  `git://sh.seatribe.se/hafen-client`). Upstream is merged periodically.
+- **Three git remotes**: `upstream` (Nightdawg/Hurricane), `hafen` (dolda2000/hafen-client),
+  `nurgling` (aleksandrsvoboda/nurgling2). Upstream changes are merged deliberately via
+  `tools/merge-upstream.ps1` (List/Diff/Import/Pick), not by an auto-update script.
 
 ## Where everything lives
 
@@ -35,18 +36,33 @@ A map of the working layer — where to find what, so nothing is a mystery:
 - **Docs tooling** → `rag/` (zero-dependency JDK programs: retrieval index, code map, dependency
   graph, full-text bundle). Rebuild the generated artifacts with `ant docs`.
 - **Release / generator scripts** → `tools/` (e.g. `gen-menugrid-res.py`,
-  `extract-alchbook.py`).
+  `extract-alchbook.py`, `merge-upstream.ps1`).
 - **Work plans & session scratch** → `plans/` at the repo root (gitignored, local-only). Session
   prompts, design questions, and analysis dumps go there, never loose at the root.
 
 ## Build / run / test commands
 
 ```bash
-ant            # full build -> bin/ (default target "deftgt")
-ant jar        # fast: compile + package build/hafen.jar (use this to check compilation)
-ant bin        # assemble runnable bin/ folder
-ant run        # build + launch the client
-ant clean      # remove build/, bin/, downloaded lib/ext/
+ant                    # full build -> bin/ (default target "deftgt")
+ant jar                # fast: compile + package build/hafen.jar (use this to check compilation)
+ant bin                # assemble runnable bin/ folder
+ant run                # build + launch the client
+ant clean              # remove build/, bin/, downloaded lib/ext/
+```
+
+The daily build/launch script:
+```powershell
+.\build-and-play.ps1          # build + launch
+.\build-and-play.ps1 -NoLaunch  # build only
+```
+
+Upstream integration (reviewed, deliberate):
+```powershell
+.\tools\merge-upstream.ps1 -List            # see available upstream tags/commits
+.\tools\merge-upstream.ps1 -Diff <tag>      # review source delta before importing
+.\tools\merge-upstream.ps1 -Import <tag>    # import after review (stages, no auto-commit)
+.\tools\merge-upstream.ps1 -Pick <remote> <sha>  # cherry-pick a feature
+.\tools\merge-upstream.ps1 -ForkDiff        # live fork delta vs vendor-baseline
 ```
 
 - There is **no unit-test suite** to run; validate changes with `ant jar` (compiles) and, when

@@ -18,38 +18,51 @@ project (and Loftar's Vanilla client under that).
    extract it.
 4. **Run the launcher** from the repo folder in PowerShell:
    ```powershell
-   .\update-and-play.ps1
+   .\build-and-play.ps1
    ```
-   The first run fetches the full Hurricane release (source, resources, jars — a few
-   hundred MB) from upstream, builds, and launches. That first run takes a few
-   minutes; every run after is much faster.
+   The first run downloads JOGL/LWJGL/Steamworks jars and the game resources
+   (~300 MB) from the Hurricane CDN, builds, and launches. That first run takes a
+   few minutes; every run after is much faster.
 
 If either tool is missing, the script tells you exactly what to install and where to
 put it, then stops cleanly — just rerun it once you have both.
 
 ## How this fork works
 
-The custom work is deliberately kept as a **patch between two tags** rather than a
-long-lived branch:
+**master is the trunk.** We own this client and take full authorship. Upstream changes
+are pulled in deliberately, one at a time, through a reviewed merge process — not by
+an auto-update script that re-applies the whole fork as a patch.
 
-```
-vendor-baseline .. alchemy
-```
+The old auto-update flow (keeping the fork as a `vendor-baseline..alchemy` patch and
+re-applying it on top of each new Hurricane release) is **retired**. The `vendor-baseline`
+and `alchemy` tags remain as static historical markers only.
 
-Updating to a new Hurricane release means: check out the upstream release, re-apply
-that patch, rebuild. `update-and-play.ps1` automates the whole cycle:
-
-```powershell
-.\update-and-play.ps1              # update to latest upstream release, rebuild, launch
-.\update-and-play.ps1 -SkipUpdate  # rebuild + launch what's checked out (after editing the fork)
-.\update-and-play.ps1 -Tag v1.67   # pin a specific upstream release
-```
-
-After committing any change to the fork, re-point the tag or the next update will
-re-apply stale work:
+To bring in upstream changes:
 
 ```powershell
-git tag -f alchemy HEAD
+# See what's available upstream
+.\tools\merge-upstream.ps1 -List
+
+# Review the source delta before importing
+.\tools\merge-upstream.ps1 -Diff v1.68
+
+# Import after review (stages changes, no auto-commit by default)
+.\tools\merge-upstream.ps1 -Import v1.68
+# Review with: git diff --staged
+# Then commit manually, or use -Commit to auto-commit
+
+# Or cherry-pick a specific feature from hafen/nurgling
+.\tools\merge-upstream.ps1 -Pick hafen abc1234
+
+# See the full current fork delta vs upstream v1.67
+.\tools\merge-upstream.ps1 -ForkDiff
+```
+
+The daily build/launch script is `build-and-play.ps1`:
+
+```powershell
+.\build-and-play.ps1          # build + launch
+.\build-and-play.ps1 -NoLaunch  # build only
 ```
 
 ## Custom features
@@ -100,11 +113,14 @@ pushed state.
 ## Remotes
 
 - `origin` — this repo (our fork).
-- `upstream` — `https://github.com/Nightdawg/Hurricane.git` (releases are fetched
-  shallowly, on demand, by the update script).
+- `upstream` — `https://github.com/Nightdawg/Hurricane.git` (Hurricane lineage)
+- `hafen`    — `https://github.com/dolda2000/hafen-client.git` (Vanilla lineage, upstream of Hurricane)
+- `nurgling` — `https://github.com/aleksandrsvoboda/nurgling2.git` (active fork with useful features)
+
+`tools/merge-upstream.ps1` adds `hafen` and `nurgling` automatically on first run.
 
 ## Building & playing
 
-Requires JDK 17–21 and Apache Ant (see "Getting started" above). `.\update-and-play.ps1`
+Requires JDK 17–21 and Apache Ant (see "Getting started" above). `.\build-and-play.ps1`
 resolves both, builds with Ant, and launches via `bin\Play.bat`. See Hurricane's own
 docs for base-client details.

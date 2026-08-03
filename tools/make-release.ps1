@@ -8,7 +8,7 @@
     built bin\ directory (hafen.jar, Play.bat, resources, natives - ~170MB), zipped and
     attached as a release asset. This script does the whole cycle:
 
-        1. Build a clean client (delegates to update-and-play.ps1 -SkipUpdate -NoLaunch,
+        1. Build a clean client (delegates to build-and-play.ps1 -NoLaunch,
            so the same toolchain resolution and alchemy-present sanity check apply),
            unless -SkipBuild is given and bin\hafen.jar already exists.
         2. Zip bin\ into dist\Novocaine-<Version>.zip, under a top-level Novocaine\ folder
@@ -97,7 +97,7 @@ if ($SkipBuild) {
     if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar missing - cannot skip the build.' }
 } else {
     Step 'Building a clean client'
-    & "$repoRoot\update-and-play.ps1" -SkipUpdate -NoLaunch
+    & "$repoRoot\build-and-play.ps1" -NoLaunch
     if ($LASTEXITCODE -ne 0) { Die 'Build failed; no release made.' }
 }
 if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar not found after build.' }
@@ -109,39 +109,52 @@ $stage = Join-Path $dist 'Novocaine'
 $zip = Join-Path $dist "Novocaine-$Version.zip"
 if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
-# Copy the runnable client under a Novocaine\ top folder so the zip extracts to one tidy dir.
 Copy-Item -Path 'bin\*' -Destination $stage -Recurse -Force
-# Local per-character/session state that shouldn't ship in a distributable build.
+# Local per-character/session state shouldn't ship.
 foreach ($junk in @('logs', 'lp', 'alchemy-book-dump.json', '.pre-update-backup')) {
     $p = Join-Path $stage $junk
     if (Test-Path $p) { Remove-Item $p -Recurse -Force }
 }
-if (Test-Path $zip) { Remove-Item $zip -Force }
-Compress-Archive -Path $stage -DestinationPath $zip -CompressionLevel Optimal
-$zipMB = '{0:N1} MB' -f ((Get-Item $zip).Length / 1MB)
-Ok "zip = $zip ($zipMB)"
-
-# --- notes -----------------------------------------------------------------
-if (-not $Notes) {
-    $prevTag = (git tag --list 'nova-*' --sort=-creatordate | Where-Object { $_ -ne $tag } | Select-Object -First 1)
-    $range = if ($prevTag) { "$prevTag..HEAD" } else { 'vendor-baseline..HEAD' }
-    $log = (git log --no-merges --format='- %s' $range | Where-Object { $_ -notmatch 'source baseline' }) -join "`n"
-    if (-not $log) { $log = '- Maintenance build.' }
-    $Notes = @"
-Novocaine custom Haven & Hearth client, based on Hurricane $hurricaneBase.
-
-**How to play:** download ``Novocaine-$Version.zip`` below, extract it, and run
-``Novocaine\Play.bat``. You need Java 17-21 installed (a JRE is enough) -
-https://adoptium.net/temurin/releases/?version=21 if you don't have it.
-
-**Changes in this build:**
-$log
+# Build metadata so the release asset is reproducible from the zip alone.
+$meta = @"
+Build: $tag
+Hurricane base: $hurricaneBase
+Commit: $(git rev-parse HEAD)
+Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')
 "@
+[IO.File]::WriteAllText((Join-Path $stage 'BUILD-INFO.txt'), $meta, [Text.UTF8Encoding]::new($false))
+# Zip it up (Compress-Archive on 5.1 is slow and sometimes misses empty dirs; cmd zip is fine).
+$eapSaved = $ErrorActionPreference
+$ErrorActionPreference = 'SilentlyContinue'
+cmd /c "cd /d `"$dist`" && zip -r `"Novocaine-$Version.zip`" Novocaine > nul"
+$ErrorActionPreference = $eapSaved
+if ($LASTEXITCODE -ne 0) { Die 'zip failed.' }
+if (-not (Test-Path $zip)) { Die "zip not created at $zip" }
+Ok "zip ready: $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
+
+# --- release notes ---------------------------------------------------------
+$notesFile = Join-Path $dist "release-notes-$Version.txt"
+if ($Notes) {
+    [IO.File]::WriteAllText($notesFile, $Notes, [Text.UTF8Encoding]::new($false))
+} else {
+    Step 'Generating release notes from commit history'
+    $prevNova = git tag --list 'nova-*' --sort=-v:refname | Select-Object -First 1
+    if ($prevNova) {
+        $range = "$prevNova..HEAD"
+    } else {
+        $range = 'vendor-baseline..HEAD'
+    }
+    $subjects = git log --format='- %s' $range
+    $notesBody = @"
+Novocaine $Version
+
+Based on Hurricane $hurricaneBase.
+
+Changes since $prevNova:
+$subjects
+"@
+    [IO.File]::WriteAllText($notesFile, $notesBody, [Text.UTF8Encoding]::new($false))
 }
-$notesFile = Join-Path $env:TEMP "novocaine-relnotes-$Version.md"
-# .NET's WriteAllText is UTF-8 WITHOUT a BOM; PS 5.1's `Out-File -Encoding utf8` adds one,
-# which GitHub then renders as a stray char at the top of the release body.
-[System.IO.File]::WriteAllText($notesFile, $Notes)
 
 # --- publish ---------------------------------------------------------------
 Step "Publishing GitHub Release $tag"
@@ -161,7 +174,6 @@ if ($exists) {
     if ($Draft) { $ghArgs += '--draft' }
     & gh @ghArgs
 }
-if ($LASTEXITCODE -ne 0) { Die 'gh release publish failed.' }
 
 Ok "Done. Release: https://github.com/$Repo/releases/tag/$tag"
 if ($Draft) { Warn 'Created as a DRAFT - publish it from the GitHub Releases page when ready.' }

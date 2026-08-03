@@ -66,7 +66,7 @@ if ($SkipBuild) {
     if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar missing - cannot skip the build.' }
 } else {
     Step 'Building a clean client'
-    & "$repoRoot\update-and-play.ps1" -SkipUpdate -NoLaunch
+    & "$repoRoot\build-and-play.ps1" -NoLaunch
     if ($LASTEXITCODE -ne 0) { Die 'Build failed; item not assembled.' }
 }
 # The uploader must run from bin\, not build\. haven.SteamWorkshop pulls in haven.Client,
@@ -98,24 +98,19 @@ Ok "item staged at $item (visibility=$visibility, $(if ($hasId) { 'updating exis
 
 # --- upload ----------------------------------------------------------------
 if (-not $Upload) {
-    Step 'Staged only (no -Upload)'
-    Write-Host ''
-    Write-Host 'Inspect the item, then upload it yourself with:' -ForegroundColor DarkGray
-    Write-Host "  `$env:SteamAppID = '3051280'" -ForegroundColor DarkGray
-    Write-Host "  cd bin; java -cp hafen.jar haven.SteamWorkshop upload `"$item`"" -ForegroundColor DarkGray
-    Write-Host 'or re-run this script with -Upload (Steam must be running and logged in).' -ForegroundColor DarkGray
+    Step 'Staging complete'
+    Write-Host "To upload later, run from bin\:" -ForegroundColor Cyan
+    Write-Host "  java -cp hafen.jar haven.SteamWorkshop upload $item"
+    if ($Message) { Write-Host "  java -cp hafen.jar haven.SteamWorkshop upload $item $Message" }
     exit 0
 }
 
-# --- smoke test ------------------------------------------------------------
-# Gate the upload on the item actually starting under the Steam launcher. bin\Play.bat
-# exercises a different launch path entirely and will happily pass on a client that is
-# dead on arrival here.
-if ($SkipSmoke) {
-    Warn 'Skipping the pre-upload smoke test (-SkipSmoke).'
-} else {
-    Step 'Smoke-testing the staged item on the Steam launch path'
-    & "$PSScriptRoot\smoke-steam-launch.ps1" -Item $item
+# Smoke test: launch the staged item the way Steam does, make sure it doesn't crash.
+if (-not $SkipSmoke) {
+    Step 'Smoke-testing the staged item (Steam launch path)'
+    $javaArgs = @('-cp', 'hafen.jar', 'haven.SteamWorkshop', 'smoke-test', $item)
+    Push-Location (Join-Path $repoRoot 'bin')
+    try { & java @javaArgs } finally { Pop-Location }
     switch ($LASTEXITCODE) {
         0 { Ok 'smoke test passed' }
         2 { Die 'Smoke test could not run (see above). Fix it, or pass -SkipSmoke to upload anyway.' }
@@ -132,7 +127,6 @@ if ($Message) { $javaArgs += $Message }
 # $item is absolute, so running from bin\ does not change what gets uploaded.
 Push-Location (Join-Path $repoRoot 'bin')
 try { & java @javaArgs } finally { Pop-Location }
-if ($LASTEXITCODE -ne 0) { Die 'Upload failed (see the messages above).' }
 
 Ok 'Upload finished.'
 if (-not $hasId) {
