@@ -262,6 +262,17 @@ public class GateManager {
             double toGate = me.rc.dist(g.rc);
             if (toGate > (strict ? NEAR : SEARCH))
                 continue;
+            /* An OPEN gateway we are already standing at is not an obstacle, so it must never be
+             * picked. Its tiles are passable to the router already, and `pass` is hard-coded to
+             * refuse exactly this case ("is open and we are already at it"), so a pick here always
+             * wastes a replan - and with MAX_REPLANS=3 in BotNav, a couple of those plus one real
+             * failure make the whole journey report "couldn't walk to <dest>". The observed run
+             * had the bot standing on an open gate and opening EVERY journey with "using #<that
+             * gate>" - it scored minimum cost (toGate=0) so it won for every destination. A SHUT
+             * gate at our feet is the one legitimate exception: that really is the thing blocking
+             * us, and arriving at it is exactly when `pass` is meant to open it. */
+            if (isOpen(g) && (toGate <= REACH))
+                continue;
             if (wallBetween(gui, me.rc, g.rc))
                 continue;
             double onwards = g.rc.dist(dest);
@@ -602,6 +613,8 @@ public class GateManager {
             else if (toGate > SEARCH)
                 why = String.format("%.0ft away, past the %.0ft search radius",
                     toGate / MCache.tilesz.x, SEARCH / MCache.tilesz.x);
+            else if (isOpen(g) && (toGate <= REACH))
+                why = "open and we are already standing at it - not what is blocking us";
             else if ((onwards <= AT_DEST) && ourSide(g, me.rc, dest))
                 why = String.format("near the destination but on OUR side of it"
                     + " (we are %+.0fu across the wall, the target %+.0fu) - not on the way",

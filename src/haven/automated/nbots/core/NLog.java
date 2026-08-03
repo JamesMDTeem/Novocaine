@@ -1,6 +1,7 @@
 package haven.automated.nbots.core;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -9,14 +10,26 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 
 /**
  * Minimal append-only file logging, for diagnosing problems that only show up in the running
  * client - crashes, freezes, and bot behaviour. Everything lands under a "logs" folder in the
  * client's working directory (bin\ when launched via Play.bat), next to the other data files the
  * client writes there (hitboxes.db, alchemy-book-dump.json).
+ *
+ * Each launch opens every log with a banner line that records the timestamp and the git revision
+ * the client was built from (read from the /buildinfo classpath resource the build writes). That
+ * makes a log file a forensic artefact: you can tell at a glance which build produced a given run
+ * and whether it was a dirty checkout. When a file is opened for the first time in a launch, it is
+ * trimmed down to the last few launch blocks so a long-running client doesn't grow logs without
+ * bound.
  *
  * Thread-safe by a single lock: bot threads, the UI thread and the watchdog all write here.
  */
@@ -25,8 +38,77 @@ public class NLog {
     private static final SimpleDateFormat STAMP = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private static volatile boolean handlerInstalled = false;
 
+    /** Banners to keep from the previous run when trimming a log at launch. */
+    private static final int KEEP_LAUNCHES = 3;
+
+    /** Files already opened (and trimmed/bannered) this launch. Per-JVM, so trimming is once per run. */
+    private static final Set<String> bootstrapped = new HashSet<>();
+
+    private static volatile String rev;
+
     private static Path dir() {
         return Paths.get("logs");
+    }
+
+    /**
+     * The git identity of the running build, from the /buildinfo resource the build drops on the
+     * classpath. Returns "unknown" when it can't be read (e.g. running from an IDE without a
+     * build). Appends "(dirty)" when the checkout had uncommitted changes at build time - a log
+     * from a half-edited tree otherwise looks identical to a clean one.
+     */
+    private static String gitRev() {
+        String r = rev;
+        if (r == null) {
+            synchronized (LOCK) {
+                if (rev == null)
+                    rev = loadGitRev();
+                r = rev;
+            }
+        }
+        return r;
+    }
+
+    private static String loadGitRev() {
+        try (InputStream in = NLog.class.getResourceAsStream("/buildinfo")) {
+            if (in == null)
+                return "unknown";
+            Properties p = new Properties();
+            p.load(in);
+            String rev = p.getProperty("git-rev", "unknown").trim();
+            if ("true".equals(p.getProperty("git-dirty-flag", "false").trim()))
+                rev += " (dirty)";
+            return rev.isEmpty() ? "unknown" : rev;
+        } catch (IOException ignore) {
+            return "unknown";
+        }
+    }
+
+    /**
+     * Cuts a log file down to its last {@link #KEEP_LAUNCHES} launch blocks, so the current launch's
+     * banner lands right after them and older runs fall off the end. A launch block is everything
+     * between two banner lines; banner lines are the ones starting with {@link #banner()}'s prefix.
+     */
+    private static void trimToRecentLaunches(Path file) {
+        if (!Files.exists(file))
+            return;
+        try {
+            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            List<Integer> banners = new ArrayList<>();
+            for (int i = 0; i < lines.size(); i++)
+                if (lines.get(i).startsWith("-- launch"))
+                    banners.add(i);
+            int extra = banners.size() - KEEP_LAUNCHES;
+            if (extra > 0) {
+                int from = banners.get(banners.size() - KEEP_LAUNCHES);
+                Files.write(file, lines.subList(from, lines.size()), StandardCharsets.UTF_8);
+            }
+        } catch (IOException ignore) {
+            // Trimming is best-effort; a locked/read-only log should not stop the client.
+        }
+    }
+
+    private static String banner() {
+        return "-- launch " + STAMP.format(new Date()) + "  git " + gitRev();
     }
 
     private static void append(String file, String line) {
@@ -34,8 +116,13 @@ public class NLog {
             try {
                 Path dir = dir();
                 Files.createDirectories(dir);
-                Files.write(dir.resolve(file),
-                    (STAMP.format(new Date()) + " " + line + System.lineSeparator())
+                Path f = dir.resolve(file);
+                if (bootstrapped.add(file)) {
+                    trimToRecentLaunches(f);
+                    Files.write(f, (banner() + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
+                        StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                }
+                Files.write(f, (STAMP.format(new Date()) + " " + line + System.lineSeparator())
                         .getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
             } catch (IOException ignore) {

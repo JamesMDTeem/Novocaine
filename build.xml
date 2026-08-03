@@ -20,16 +20,27 @@
     <exec executable="git" outputproperty="git-rev" failifexecutionfails="false">
       <arg line="rev-parse HEAD" />
     </exec>
+    <exec executable="git" outputproperty="git-dirty-out" failifexecutionfails="false">
+      <arg line="status --porcelain" />
+    </exec>
+    <condition property="git-dirty-flag" value="true" else="false">
+      <not>
+        <length string="${git-dirty-out}" length="0" trim="true" />
+      </not>
+    </condition>
     <condition property="buildinfo-unchanged">
-      <equals arg1="${buildinfo.git-rev}" arg2="${git-rev}" />
+      <and>
+        <equals arg1="${buildinfo.git-rev}" arg2="${git-rev}" />
+        <equals arg1="${buildinfo.git-dirty-flag}" arg2="${git-dirty-flag}" />
+      </and>
     </condition>
   </target>
 
   <target name="buildinfo" depends="make-buildinfo" unless="buildinfo-unchanged">
     <echo message="Updating buildinfo" />
-    <echo file="build/classes/buildinfo" xml:space="default">
-      git-rev = ${git-rev}
-    </echo>
+    <echo file="build/classes/buildinfo" xml:space="preserve">git-rev = ${git-rev}
+git-dirty-flag = ${git-dirty-flag}
+</echo>
   </target>
 
 
