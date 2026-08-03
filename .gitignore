@@ -31,3 +31,10 @@
 /.updater-backup/
 *.db
 steamicon.gif
+
+# Local Claude/AI config and work plans — kept out of the public repo.
+# Untracked files survive the update script's baseline checkout; tracked ones get deleted.
+.claude/
+CLAUDE.md
+/plans/
+/*.txt
