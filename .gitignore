@@ -38,3 +38,7 @@ steamicon.gif
 CLAUDE.md
 /plans/
 /*.txt
+!/llms.txt
+
+# AI knowledge base — generated artifacts (regenerate via rag/ tools)
+/llms-full.txt
