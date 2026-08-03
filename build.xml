@@ -296,4 +296,25 @@ git-dirty-flag = ${git-dirty-flag}
     <delete dir="lib/ext" />
     <delete dir="bin" />
   </target>
+
+  <target name="docs" depends="build-env">
+    <!-- Rebuild the local AI knowledge artifacts (mirrors .github/workflows/ai-docs.yml):
+         RAG retrieval index, structured code map, dependency metrics, and the
+         llms-full.txt bundle. The rag/ tools are zero-dependency single-file JDK
+         programs; they run from the repo root. Most outputs (rag/*.jsonl, *.txt,
+         llms-full.txt) are gitignored; Class-Index.md and Code-Metrics.md under
+         ai-docs/reference/ are tracked and refreshed by this target. Re-running
+         is clean: the generators emit LF line endings on every platform. -->
+    <mkdir dir="build/rag" />
+    <javac srcdir="rag" destdir="build/rag" includeantruntime="false" encoding="UTF-8" />
+    <java classname="HurricaneRAG" classpath="build/rag" fork="true" failonerror="true" dir="${basedir}">
+      <arg value="index" />
+      <arg value="--source" />
+    </java>
+    <java classname="CodeMap" classpath="build/rag" fork="true" failonerror="true" dir="${basedir}" />
+    <java classname="DepGraph" classpath="build/rag" fork="true" failonerror="true" dir="${basedir}" />
+    <java classname="HurricaneRAG" classpath="build/rag" fork="true" failonerror="true" dir="${basedir}">
+      <arg value="bundle" />
+    </java>
+  </target>
 </project>

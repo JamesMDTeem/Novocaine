@@ -234,7 +234,7 @@ public class CodeMap {
             w.write("> Regenerate with `java rag/CodeMap.java` (or `rag/codemap.bat`). Heuristic parse; the\n");
             w.write("> source file is always the source of truth. Full machine-readable data (incl. methods)\n");
             w.write("> is in `rag/code-map.jsonl`.\n\n");
-            w.write(String.format("Total: **%d types** across **%d packages**. See [[Package-Map]] and [[Key-Classes]].%n%n", types.size(), byPkg.size()));
+            w.write(String.format("Total: **%d types** across **%d packages**. See [[Package-Map]] and [[Key-Classes]].\n\n", types.size(), byPkg.size()));
             w.write("Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>/<Name>.java`.\n\n");
             for (Map.Entry<String,List<Type>> e : byPkg.entrySet()) {
                 e.getValue().sort(Comparator.comparing(x -> x.name.toLowerCase()));
@@ -245,7 +245,7 @@ public class CodeMap {
                     if (!t.impl.isEmpty()) sup += (sup.isEmpty() ? "" : " ") + ": " + String.join(", ", t.impl);
                     if (!t.fromResource.isEmpty()) sup = "@FromResource(" + t.fromResource + ") " + sup;
                     sup = sup.replace("|", "\\|").trim();
-                    w.write(String.format("| `%s` | %s | %s | %d |%n", t.name, t.kind, sup, t.lines));
+                    w.write(String.format("| `%s` | %s | %s | %d |\n", t.name, t.kind, sup, t.lines));
                 }
                 w.write("\n");
             }

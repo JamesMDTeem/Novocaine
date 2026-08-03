@@ -184,21 +184,21 @@ public class DepGraph {
             w.write("---\ntitle: Code Metrics (generated)\naliases: [Code Metrics, Hotspots, Complexity]\ntags: [reference, generated]\n---\n\n");
             w.write("# Code Metrics (generated)\n\n");
             w.write("> [!warning] Generated file — do not edit by hand.\n> Regenerate with `java rag/DepGraph.java`. Reference detection is heuristic (whole-word\n> simple-name matching); same-name types across packages are conflated. Full per-type fan-out is in\n> `rag/import-graph.jsonl`.\n\n");
-            w.write(String.format("**Totals:** %d types · %,d source lines · %d `// ND:` Hurricane markers · %d TODO/FIXME/XXX/HACK.%n%n", all.size(), totalLines, totalNd, totalTodo));
+            w.write(String.format("**Totals:** %d types · %,d source lines · %d `// ND:` Hurricane markers · %d TODO/FIXME/XXX/HACK.\n\n", all.size(), totalLines, totalNd, totalTodo));
             w.write("See [[Package-Map]], [[Key-Classes]], [[Class-Index]].\n\n");
 
             w.write("## Most-referenced types (fan-in) — the load-bearing classes\n\n");
             w.write("How many files reference each type. High fan-in = change with extra care.\n\n");
             w.write("| Type | Referenced by (files) |\n|---|---|\n");
             for (int i = 0; i < Math.min(35, byFanIn.size()); i++)
-                w.write(String.format("| `%s` | %d |%n", byFanIn.get(i).getKey(), byFanIn.get(i).getValue()));
+                w.write(String.format("| `%s` | %d |\n", byFanIn.get(i).getKey(), byFanIn.get(i).getValue()));
             w.write("\n");
 
             w.write("## Largest types by line count\n\n");
             w.write("| Type | Package | Lines |\n|---|---|---|\n");
             for (int i = 0; i < Math.min(35, byLines.size()); i++) {
                 F f = byLines.get(i);
-                w.write(String.format("| `%s` | `%s` | %d |%n", f.name, f.pkg, f.lines));
+                w.write(String.format("| `%s` | `%s` | %d |\n", f.name, f.pkg, f.lines));
             }
             w.write("\n");
 
@@ -206,14 +206,14 @@ public class DepGraph {
             w.write("`// ND:` comments mark intentional Hurricane (Nightdawg) behavior. High counts = heavily customized.\n\n");
             w.write("| File | `// ND:` markers | Lines |\n|---|---|---|\n");
             int shown = 0;
-            for (F f : byNd) { if (f.nd == 0) break; w.write(String.format("| `%s` | %d | %d |%n", f.path, f.nd, f.lines)); if (++shown >= 25) break; }
+            for (F f : byNd) { if (f.nd == 0) break; w.write(String.format("| `%s` | %d | %d |\n", f.path, f.nd, f.lines)); if (++shown >= 25) break; }
             w.write("\n");
 
             w.write("## Packages by total source lines\n\n");
             w.write("| Package | Types | Lines |\n|---|---|---|\n");
             for (int i = 0; i < Math.min(30, byPkg.size()); i++) {
                 Map.Entry<String,int[]> e = byPkg.get(i);
-                w.write(String.format("| `%s` | %d | %,d |%n", e.getKey(), e.getValue()[0], e.getValue()[1]));
+                w.write(String.format("| `%s` | %d | %,d |\n", e.getKey(), e.getValue()[0], e.getValue()[1]));
             }
             w.write("\n#reference #generated\n");
         }

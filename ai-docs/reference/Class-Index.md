@@ -11,7 +11,7 @@ tags: [reference, generated]
 > source file is always the source of truth. Full machine-readable data (incl. methods)
 > is in `rag/code-map.jsonl`.
 
-Total: **840 types** across **68 packages**. See [[Package-Map]] and [[Key-Classes]].
+Total: **921 types** across **75 packages**. See [[Package-Map]] and [[Key-Classes]].
 
 Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>/<Name>.java`.
 
@@ -95,7 +95,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `VorbisException` | class | → FormatException | 12 |
 | `VorbisStream` | class |  | 266 |
 
-## `haven`  (377)
+## `haven`  (378)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
@@ -110,12 +110,12 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `Area` | class | : Iterable<Coord>, java.io.Serializable | 169 |
 | `Argon2` | class |  | 340 |
 | `ArrayIdentity` | class |  | 102 |
-| `Astronomy` | class |  | 92 |
+| `Astronomy` | class |  | 99 |
 | `AttrBonusesWdg` | class | → Widget : ItemInfo.Owner | 214 |
 | `AttributedStringBuffer` | class |  | 101 |
 | `Audio` | class |  | 694 |
 | `AudioSprite` | class |  | 229 |
-| `AuthClient` | class | : Closeable | 543 |
+| `AuthClient` | class | : Closeable | 552 |
 | `AutoDropManagerWindow` | class | → Window | 156 |
 | `AutoGiveButton` | class | → Widget | 87 |
 | `Avatar` | class | → GAttrib | 78 |
@@ -129,8 +129,8 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `BinHeap` | class | → AbstractCollection<T> : Queue<T> | 160 |
 | `Blake2b` | class | : Digest.Algorithm | 253 |
 | `BMap` | interface | → Map<K, V> | 33 |
-| `Bootstrap` | class | : UI.Receiver, UI.Runner | 321 |
-| `BuddyWnd` | class | → Widget : Iterable<BuddyWnd.Buddy> | 685 |
+| `Bootstrap` | class | : UI.Receiver, UI.Runner | 326 |
+| `BuddyWnd` | class | → Widget : Iterable<BuddyWnd.Buddy> | 703 |
 | `Buff` | class | → Widget : ItemInfo.ResOwner, Bufflist.Managed | 217 |
 | `Bufflist` | class | → Widget | 115 |
 | `BuildManifest` | class |  | 148 |
@@ -149,7 +149,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `Clickable` | class | → State | 50 |
 | `ClickData` | class |  | 58 |
 | `ClickLocation` | class | → Texture.Image> extends State | 75 |
-| `Client` | class | : Console.Directory | 453 |
+| `Client` | class | : Console.Directory | 496 |
 | `ClipAmbiance` | class | : RenderTree.Node | 296 |
 | `CloudShadow` | class | → State | 107 |
 | `CollisionBox` | class | → SlottedNode : Rendered | 291 |
@@ -157,7 +157,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `ColorOptionWidget` | class | → Widget | 81 |
 | `CompImage` | class |  | 168 |
 | `Composite` | class | → Drawable : EquipTarget | 334 |
-| `Composited` | class | : RenderTree.Node, EquipTarget | 569 |
+| `Composited` | class | : RenderTree.Node, EquipTarget | 571 |
 | `Config` | class |  | 1259 |
 | `Connection` | class | : Transport | 867 |
 | `Console` | class |  | 123 |
@@ -171,7 +171,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `CPUProfile` | class | → Profile | 146 |
 | `CraftWindow` | class | → Window | 107 |
 | `DeadlockWatchdog` | class | → HackThread | 103 |
-| `Debug` | class |  | 257 |
+| `Debug` | class |  | 255 |
 | `DefaultCollection` | interface | → Collection<E> | 136 |
 | `Defer` | class | → ThreadGroup | 324 |
 | `Defrag` | class |  | 90 |
@@ -207,14 +207,14 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `FromResource` | interface |  | 37 |
 | `Future` | interface | → Indir<T> | 102 |
 | `Fuzzy` | class |  | 83 |
-| `GameUI` | class | → ConsoleHost : Console.Directory, UI.Notice.Handler | 3159 |
+| `GameUI` | class | → ConsoleHost : Console.Directory, UI.Notice.Handler | 3352 |
 | `GAttrib` | class |  | 79 |
 | `GenFun` | class |  | 101 |
-| `GItem` | class | → AWidget : ItemInfo.SpriteOwner, GSprite.Owner, RandomSource | 798 |
+| `GItem` | class | → AWidget : ItemInfo.SpriteOwner, GSprite.Owner, RandomSource | 818 |
 | `GitHubVersionFetcher` | class |  | 76 |
 | `GiveButton` | class | → Widget | 84 |
 | `Glob` | class |  | 525 |
-| `Gob` | class | : RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, EquipTarget, RandomSource | 2743 |
+| `Gob` | class | : RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, EquipTarget, RandomSource | 2779 |
 | `GobBeeskepHarvestInfo` | class | → GobInfo | 94 |
 | `GobCheeseRackInfo` | class | → GobInfo | 66 |
 | `GobCombatDataInfo` | class | → GobInfo | 381 |
@@ -225,10 +225,11 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `GobGrowthInfo` | class | → GobInfo | 170 |
 | `GobHealth` | class | → GAttrib : Gob.SetupMod | 71 |
 | `GobHealthInfo` | class | → GobInfo | 61 |
-| `GobIcon` | class | → GAttrib | 1294 |
+| `GobIcon` | class | → GAttrib | 1296 |
 | `GobIconCategoryList` | class | → OldListBox<GobIconCategoryList.GobCategory> | 336 |
 | `GobIconsCustom` | class |  | 98 |
 | `GobInfo` | class | → GAttrib : RenderTree.Node, PView.Render2D | 65 |
+| `GobLpDiscoveryInfo` | class | → GobInfo | 109 |
 | `GobPartyHighlight` | class | → GAttrib : Gob.SetupMod | 22 |
 | `GobPermanentHighlight` | class | → GAttrib : Gob.SetupMod | 18 |
 | `GobPingHighlight` | class | → GAttrib : Gob.SetupMod | 32 |
@@ -247,7 +248,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `HalfFloat` | class | → Number | 111 |
 | `Hash` | interface |  | 41 |
 | `HashBMap` | class | → AbstractMap<K, V> : BMap<K, V> | 148 |
-| `HashDirCache` | class | : ResCache | 419 |
+| `HashDirCache` | class | : ResCache | 420 |
 | `HashedMap` | class | → AbstractMap<K, V> | 241 |
 | `HashedSet` | class | → AbstractSet<E> | 208 |
 | `HashMultiMap` | class | : MultiMap<K, V> | 206 |
@@ -294,21 +295,21 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `LockDebugList` | class | → AbstractList<E> | 103 |
 | `Locked` | class | : AutoCloseable | 47 |
 | `LockedFile` | class | : AutoCloseable | 86 |
-| `LoginScreen` | class | → Widget | 759 |
+| `LoginScreen` | class | → Widget | 762 |
 | `Lumin` | class | → GAttrib | 49 |
-| `Makewindow` | class | → Widget | 527 |
+| `Makewindow` | class | → Widget | 569 |
 | `MapFile` | class |  | 2041 |
-| `MapMesh` | class | : RenderTree.Node, Disposable | 792 |
+| `MapMesh` | class | : RenderTree.Node, Disposable | 794 |
 | `MapPrefs` | class | → AbstractPreferences | 76 |
 | `MapSource` | interface |  | 120 |
-| `MapView` | class | → PView : DTarget, Console.Directory, PFListener | 3335 |
-| `MapWnd` | class | → Window : Console.Directory | 1356 |
+| `MapView` | class | → PView : DTarget, Console.Directory, PFListener | 3417 |
+| `MapWnd` | class | → Window : Console.Directory | 1394 |
 | `Material` | class | : Pipe.Op | 331 |
 | `Matrix4f` | class |  | 330 |
 | `Maybe` | interface | → Supplier<T> | 111 |
-| `MCache` | class | : MapSource | 1301 |
-| `MenuGrid` | class | → Widget : KeyBinding.Bindable | 1147 |
-| `MenuSearch` | class | → Window | 294 |
+| `MCache` | class | : MapSource | 1309 |
+| `MenuGrid` | class | → Widget : KeyBinding.Bindable | 1206 |
+| `MenuSearch` | class | → Window | 295 |
 | `MeshAnim` | class | → State | 480 |
 | `MeshBuf` | class |  | 379 |
 | `MeshMorph` | class |  | 85 |
@@ -316,10 +317,10 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `MessageBuf` | class | → Message : java.io.Serializable | 146 |
 | `MessageInputStream` | class | → InputStream | 63 |
 | `MiniFloat` | class | → Number | 111 |
-| `MiniMap` | class | → Widget | 1733 |
+| `MiniMap` | class | → Widget | 1748 |
 | `MiniStudy` | class | → GameUI.Hidewnd | 96 |
 | `Mipmapper` | class |  | 368 |
-| `ModSprite` | class | → Sprite : Sprite.CUpd, EquipTarget | 817 |
+| `ModSprite` | class | → Sprite : Sprite.CUpd, EquipTarget | 822 |
 | `Moving` | class | → GAttrib | 42 |
 | `MultiMap` | interface |  | 41 |
 | `Music` | class |  | 194 |
@@ -331,7 +332,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `OldDropBox` | class | → OldListWidget<T> | 120 |
 | `OldListBox` | class | → OldListWidget<T> | 145 |
 | `OldListWidget` | class | → Widget | 76 |
-| `OptWnd` | class | → Window | 5636 |
+| `OptWnd` | class | → Window | 5668 |
 | `Outlines` | class | : RenderTree.Node | 164 |
 | `OwnerContext` | interface |  | 126 |
 | `PackCont` | class | → Widget | 164 |
@@ -340,7 +341,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `Partyview` | class | → Widget | 246 |
 | `PeekReader` | class | → Reader | 85 |
 | `PMessage` | class | → MessageBuf | 57 |
-| `Polity` | class | → Widget | 210 |
+| `Polity` | class | → Widget | 247 |
 | `PoseMorph` | class |  | 353 |
 | `PosixArgs` | class |  | 126 |
 | `PosLight` | class | → Light | 79 |
@@ -375,7 +376,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `ResData` | class |  | 72 |
 | `ResDrawable` | class | → Drawable : Sprite.Owner, EquipTarget | 136 |
 | `ResID` | class | → Number : Indir<Resource> | 88 |
-| `Resource` | class | : Serializable | 2412 |
+| `Resource` | class | : Serializable | 2434 |
 | `RetryingInputStream` | class | → InputStream | 172 |
 | `RichText` | class | → Text | 910 |
 | `RichTextBox` | class | → Widget | 127 |
@@ -446,7 +447,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `Text` | class | : Disposable | 501 |
 | `TextEntry` | class | → Widget : ReadLine.Owner | 214 |
 | `Textlog` | class | → Widget | 153 |
-| `TileHighlight` | class |  | 546 |
+| `TileHighlight` | class |  | 551 |
 | `Tiler` | class |  | 275 |
 | `Tileset` | class | → Resource.Layer | 493 |
 | `Timeout` | class |  | 198 |
@@ -468,7 +469,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `WeakHashedSet` | class | → AbstractSet<E> | 264 |
 | `WeakList` | class | → AbstractCollection<T> | 134 |
 | `WeightList` | class | : java.io.Serializable | 65 |
-| `Widget` | class |  | 2021 |
+| `Widget` | class |  | 2033 |
 | `Window` | class | → Widget | 989 |
 | `WItem` | class | → Widget : DTarget | 513 |
 | `WorkshopLauncher` | class |  | 533 |
@@ -481,82 +482,189 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `AddBranchesToFurnace` | class | : Runnable | 92 |
-| `AddCoalToSmelter` | class | : Runnable | 92 |
-| `AddWoodBlocksToSmokeShed` | class | : Runnable | 92 |
+| `AddBranchesToFurnace` | class | : Runnable | 97 |
+| `AddCoalToSmelter` | class | : Runnable | 97 |
+| `AddWoodBlocksToSmokeShed` | class | : Runnable | 97 |
 | `AggroEveryoneInRange` | class | : Runnable | 76 |
 | `AggroNearestPlayer` | class | : Runnable | 91 |
 | `AggroNearestTarget` | class | : Runnable | 158 |
-| `AggroOrTargetCursorNearest` | class | : Runnable | 114 |
+| `AggroOrTargetCursorNearest` | class | : Runnable | 120 |
 | `AttackOpponent` | class | : Runnable | 23 |
-| `AUtils` | class |  | 448 |
-| `AutoRepeatFlowerMenuScript` | class | : Runnable | 105 |
-| `CellarDiggingBot` | class | → Window : Runnable | 234 |
-| `CleanupBot` | class | → Window : Runnable | 265 |
-| `CloverScript` | class | : Runnable | 142 |
-| `CombatDistancerLite` | class | : Runnable | 87 |
-| `CombatDistanceTool` | class | → Window : Runnable | 235 |
-| `CoracleScript` | class | : Runnable | 244 |
-| `DestroyNearestTrellisPlantScript` | class | : Runnable | 53 |
-| `EnterNearestVehicle` | class | : Runnable | 118 |
-| `EquipFromBelt` | class | : Runnable | 375 |
-| `FillCheeseTray` | class | : Runnable | 56 |
-| `FishingBot` | class | → Window : Runnable | 573 |
-| `GrubGrubBot` | class | → Window : Runnable | 106 |
-| `HarvestNearestDreamcatcher` | class | : Runnable | 58 |
-| `InteractWithCursorNearest` | class | : Runnable | 186 |
-| `InteractWithNearestObject` | class | : Runnable | 237 |
-| `InventorySorter` | class | : Defer.Callable<Void> | 251 |
-| `LootNearestKnockedPlayer` | class | : Runnable | 47 |
-| `MiningSafetyAssistant` | class | → Window : Runnable | 375 |
-| `OceanScoutBot` | class | → Window : Runnable | 274 |
-| `OreAndStoneCounter` | class | → Window : Runnable | 187 |
-| `PointerTriangulation` | class | → Window | 153 |
+| `AUtils` | class |  | 503 |
+| `AutoRepeatFlowerMenuScript` | class | : Runnable | 117 |
+| `CellarDiggingBot` | class | → Window : Runnable | 253 |
+| `CleanupBot` | class | → Window : Runnable | 284 |
+| `CloverScript` | class | : Runnable | 153 |
+| `CombatDistancerLite` | class | : Runnable | 84 |
+| `CombatDistanceTool` | class | → Window : Runnable | 241 |
+| `CoracleScript` | class | : Runnable | 258 |
+| `DestroyNearestTrellisPlantScript` | class | : Runnable | 58 |
+| `EnterNearestVehicle` | class | : Runnable | 127 |
+| `EquipFromBelt` | class | : Runnable | 381 |
+| `FillCheeseTray` | class | : Runnable | 61 |
+| `FishingBot` | class | → Window : Runnable | 589 |
+| `GrubGrubBot` | class | → Window : Runnable | 113 |
+| `HarvestNearestDreamcatcher` | class | : Runnable | 64 |
+| `InteractWithCursorNearest` | class | : Runnable | 196 |
+| `InteractWithNearestObject` | class | : Runnable | 266 |
+| `InventorySorter` | class | : Defer.Callable<Void> | 262 |
+| `LootNearestKnockedPlayer` | class | : Runnable | 52 |
+| `MiningSafetyAssistant` | class | → Window : Runnable | 400 |
+| `OceanScoutBot` | class | → Window : Runnable | 298 |
+| `OreAndStoneCounter` | class | → Window : Runnable | 195 |
+| `PointerTriangulation` | class | → Window | 169 |
 | `PushPlayer` | class | : Runnable | 46 |
-| `QuestHelper` | class | → Window | 341 |
-| `RefillWaterContainers` | class | : Runnable | 263 |
-| `RoastingSpitBot` | class | → Window : Runnable | 267 |
-| `SkisScript` | class | : Runnable | 151 |
-| `StackAllItems` | class | : Runnable | 93 |
-| `TarKilnCleanerBot` | class | → Window : Runnable | 130 |
-| `UnstackAllItems` | class | : Runnable | 39 |
-| `WagonNearestLiftable` | class | : Runnable | 258 |
+| `QuestHelper` | class | → Window | 351 |
+| `RefillWaterContainers` | class | : Runnable | 286 |
+| `RoastingSpitBot` | class | → Window : Runnable | 278 |
+| `SkisScript` | class | : Runnable | 163 |
+| `StackAllItems` | class | : Runnable | 98 |
+| `TarKilnCleanerBot` | class | → Window : Runnable | 141 |
+| `UnstackAllItems` | class | : Runnable | 38 |
+| `WagonNearestLiftable` | class | : Runnable | 267 |
+
+## `haven.automated.alchemy`  (2)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `AlchemyBook` | class |  | 179 |
+| `AlchemyService` | class |  | 198 |
 
 ## `haven.automated.cookbook`  (1)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `FoodService` | class |  | 293 |
+| `FoodService` | class |  | 351 |
 
 ## `haven.automated.helpers`  (3)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `AreaSelectCallback` | interface |  | 7 |
-| `FishingAtlas` | class |  | 42 |
-| `HitBoxes` | class |  | 325 |
+| `AreaSelectCallback` | interface |  | 14 |
+| `FishingAtlas` | class |  | 50 |
+| `HitBoxes` | class |  | 386 |
+
+## `haven.automated.lp`  (20)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `AutoLpBot` | class | → Window : Runnable | 1321 |
+| `BushHarvestSpec` | class | : HarvestSpec | 60 |
+| `HarvestSpec` | interface |  | 59 |
+| `HarvestSpecs` | class |  | 32 |
+| `HarvestState` | class |  | 382 |
+| `LpAlias` | class | → Alias | 18 |
+| `LpAssistantManagerWindow` | class | → Window | 228 |
+| `LpConfig` | class |  | 83 |
+| `LpConfirm` | class | → Window | 77 |
+| `LpContext` | class |  | 85 |
+| `LpExplorer` | class |  | 722 |
+| `LpIcons` | class |  | 141 |
+| `LpLog` | class |  | 289 |
+| `LpPlanner` | class |  | 375 |
+| `LpSpec` | class |  | 2093 |
+| `LpTargets` | class |  | 362 |
+| `LpTask` | class |  | 65 |
+| `MinimapDiscoveryRenderer` | class |  | 132 |
+| `ProductListHarvestSpec` | class | : HarvestSpec | 72 |
+| `TreeHarvestSpec` | class | : HarvestSpec | 101 |
 
 ## `haven.automated.mapper`  (3)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `MappingClient` | class |  | 517 |
-| `MinimapImageGenerator` | class |  | 80 |
+| `MappingClient` | class |  | 567 |
+| `MinimapImageGenerator` | class |  | 85 |
 | `MultipartUtility` | class |  | 136 |
 
-## `haven.automated.pathfinder`  (9)
+## `haven.automated.nbots`  (8)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `AStar` | class |  | 124 |
-| `Dbg` | class |  | 88 |
-| `Edge` | class |  | 13 |
-| `Map` | class |  | 602 |
-| `Pathfinder` | class | : Runnable | 308 |
-| `PFListener` | interface |  | 5 |
-| `TraversableObstacle` | class |  | 24 |
-| `Utils` | class |  | 350 |
-| `Vertex` | class |  | 15 |
+| `BotDef` | class |  | 44 |
+| `BotRegistry` | class |  | 104 |
+| `NBot` | class | → Window : Runnable | 291 |
+| `NBotsSettingsWindow` | class | → Window | 163 |
+| `NCellarDiggerBot` | class | → NBot | 248 |
+| `NCleanupBot` | class | → NBot | 442 |
+| `NWaterScoutBot` | class | → NBot | 411 |
+| `PlacesWindow` | class | → Window | 632 |
+
+## `haven.automated.nbots.core`  (10)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `Alias` | class |  | 107 |
+| `BotCtx` | class |  | 123 |
+| `BotSettings` | class |  | 444 |
+| `Carried` | class |  | 190 |
+| `NBotConfig` | class |  | 91 |
+| `NLog` | class |  | 179 |
+| `Outcome` | class |  | 79 |
+| `Task` | interface |  | 29 |
+| `UiWatchdog` | class |  | 67 |
+| `Widgets` | class |  | 64 |
+
+## `haven.automated.nbots.task`  (11)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `Approach` | class | : Task | 88 |
+| `Deposit` | class | : Task | 190 |
+| `Drink` | class | : Task | 197 |
+| `Eat` | class | : Task | 234 |
+| `FillWater` | class | : Task | 384 |
+| `PassGate` | class | : Task | 54 |
+| `TakeWorkSlot` | class | : Task | 168 |
+| `ToolSwap` | class |  | 285 |
+| `TravelTo` | class | : Task | 117 |
+| `Upkeep` | class | : Task | 147 |
+| `WorkGob` | class | : Task | 244 |
+
+## `haven.automated.nbots.world`  (25)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `AreaDraw` | class |  | 135 |
+| `Barriers` | class |  | 249 |
+| `BotNav` | class |  | 2100 |
+| `Crowd` | class |  | 189 |
+| `GateManager` | class |  | 651 |
+| `Gates` | class |  | 185 |
+| `Hazards` | class |  | 154 |
+| `ItemGroups` | class |  | 142 |
+| `MapVerify` | class |  | 252 |
+| `Observed` | class |  | 790 |
+| `Place` | class |  | 274 |
+| `PlaceOverlay` | class |  | 140 |
+| `PlaceRoles` | class |  | 55 |
+| `Places` | class |  | 230 |
+| `Probe` | class |  | 210 |
+| `Reach` | class |  | 69 |
+| `Refused` | class |  | 111 |
+| `Router` | class |  | 539 |
+| `Sight` | class |  | 418 |
+| `Terrain` | class |  | 226 |
+| `TravelResult` | interface |  | 175 |
+| `Walk` | class |  | 235 |
+| `WorkClaims` | class |  | 249 |
+| `WorkSlots` | class |  | 151 |
+| `WorldAnchor` | class |  | 176 |
+
+## `haven.automated.pathfinder`  (10)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `AStar` | class |  | 133 |
+| `Dbg` | class |  | 93 |
+| `Edge` | class |  | 17 |
+| `LPAStar` | class |  | 332 |
+| `Map` | class |  | 810 |
+| `Pathfinder` | class | : Runnable | 413 |
+| `PFListener` | interface |  | 13 |
+| `TraversableObstacle` | class |  | 29 |
+| `Utils` | class |  | 362 |
+| `Vertex` | class |  | 19 |
 
 ## `haven.error`  (7)
 
@@ -570,26 +678,27 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `ReportException` | class | → IOException | 35 |
 | `SimpleHandler` | class | → ThreadGroup | 42 |
 
-## `haven.iosys`  (1)
+## `haven.iosys`  (2)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
+| `Providers` | class | → Annotation> | 145 |
 | `Unavailable` | class | → RuntimeException | 34 |
 
 ## `haven.iosys.audio`  (3)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `AudioSystem` | interface |  | 185 |
-| `DummyAudio` | class | : AudioSystem | 109 |
+| `AudioSystem` | interface |  | 90 |
+| `DummyAudio` | class | : AudioSystem | 110 |
 | `JavaSound` | class | : haven.iosys.audio.AudioSystem | 259 |
 
 ## `haven.iosys.tk`  (17)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `Acephal` | interface |  | 150 |
-| `AWTToolkit` | class | : Toolkit | 1122 |
+| `Acephal` | interface |  | 56 |
+| `AWTToolkit` | class | : Toolkit | 1271 |
 | `Clipboard` | interface |  | 139 |
 | `Cursor` | interface | → Disposable | 51 |
 | `DropHandler` | interface |  | 52 |
@@ -597,14 +706,14 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `FilePicker` | interface |  | 54 |
 | `JOGLOffscreen` | class | : Acephal | 155 |
 | `JOGLToolkit` | class | → AWTToolkit | 269 |
-| `Key` | interface |  | 247 |
+| `Key` | interface |  | 263 |
 | `LWJGLToolkit` | class | → AWTToolkit | 211 |
 | `Monitor` | interface |  | 35 |
 | `MouseBtn` | interface |  | 50 |
-| `NEWTContext` | class | : Toolkit.Factory | 687 |
+| `NEWTContext` | class | : Providers.Factory<Toolkit> | 752 |
 | `Test` | class |  | 47 |
-| `Toolkit` | interface |  | 203 |
-| `Windeye` | interface |  | 84 |
+| `Toolkit` | interface |  | 110 |
+| `Windeye` | interface |  | 89 |
 
 ## `haven.render`  (55)
 
@@ -644,8 +753,8 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `PointSize` | class | → State | 47 |
 | `Projection` | class | → Transform | 93 |
 | `ProxyPipe` | class | : Pipe | 71 |
-| `Render` | interface | → Disposable | 70 |
-| `Rendered` | interface |  | 125 |
+| `Render` | interface | → Disposable | 72 |
+| `Rendered` | interface |  | 127 |
 | `RenderList` | interface |  | 113 |
 | `RenderTree` | class | : RenderList.Adapter, Disposable | 926 |
 | `SinglePipe` | class | → State> : Pipe | 56 |
@@ -671,16 +780,16 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
 | `Applier` | class |  | 343 |
-| `BGL` | class |  | 1120 |
+| `BGL` | class |  | 1138 |
 | `BufferBGL` | class | → BGL | 153 |
 | `FboState` | class | → GLState | 309 |
 | `Fence` | class | : BGL.Request | 62 |
 | `FillBuffers` | class |  | 82 |
-| `GL` | interface |  | 351 |
+| `GL` | interface |  | 366 |
 | `GLBuffer` | class | → GLObject : BGL.ID | 60 |
 | `GLDoubleBuffer` | class |  | 107 |
-| `GLDrawList` | class | : DrawList | 1092 |
-| `GLEnvironment` | class | : Environment | 1050 |
+| `GLDrawList` | class | : DrawList | 1101 |
+| `GLEnvironment` | class | : Environment | 1052 |
 | `GLException` | class | → RuntimeException | 115 |
 | `GLFence` | class | → GLQuery | 63 |
 | `GLFrameBuffer` | class | → GLObject : BGL.ID | 185 |
@@ -689,7 +798,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `GLProgram` | class | : Disposable | 512 |
 | `GLQuery` | class | → GLObject | 40 |
 | `GLReference` | class | → Disposable> extends Finalizer.Reference<T> | 44 |
-| `GLRender` | class | : Render, Disposable | 586 |
+| `GLRender` | class | : Render, Disposable | 590 |
 | `GLState` | class |  | 56 |
 | `GLTexture` | class | → GLObject : BGL.ID | 717 |
 | `GLTimestamp` | class | → GLQuery | 68 |
@@ -711,8 +820,8 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 |---|---|---|---|
 | `JOGLBuffer` | class | : SysBuffer | 45 |
 | `JOGLEnvironment` | class | → GLEnvironment | 89 |
-| `JOGLWrap` | class | : GL, WrappedJOGL | 201 |
-| `JOGLWrapBackup` | class | : GL, WrappedJOGL | 169 |
+| `JOGLWrap` | class | : GL, WrappedJOGL | 204 |
+| `JOGLWrapBackup` | class | : GL, WrappedJOGL | 172 |
 | `Test` | class | : GLEventListener, KeyListener | 240 |
 | `WrappedJOGL` | interface |  | 33 |
 
@@ -722,7 +831,7 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 |---|---|---|---|
 | `LWJGLBuffer` | class | → GLObject : SysBuffer | 84 |
 | `LWJGLEnvironment` | class | → GLEnvironment | 73 |
-| `LWJGLWrap` | class | : GL | 190 |
+| `LWJGLWrap` | class | : GL | 193 |
 | `Test` | class |  | 124 |
 
 ## `haven.render.sl`  (65)
@@ -858,6 +967,13 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 |---|---|---|---|
 | `RidgeEdge` | class | : Tileset.Flavor | 176 |
 
+## `haven.res.gfx.tiles.flavor.wspray`  (2)
+
+| Type | Kind | Extends / Implements | Lines |
+|---|---|---|---|
+| `Effect` | class | → Sprite | 171 |
+| `WaterSpray` | class | : Tileset.Flavor | 96 |
+
 ## `haven.res.lib.bollar`  (2)
 
 | Type | Kind | Extends / Implements | Lines |
@@ -949,14 +1065,14 @@ Each row: type, kind, supertypes, line count. File path = `src/<package-as-path>
 | `Column` | class | → Entry> | 52 |
 | `Entry` | class | → Widget | 97 |
 | `RosterButton` | class | → MenuGrid.PagButton | 55 |
-| `RosterWindow` | class | → Window | 55 |
+| `RosterWindow` | class | → Window | 51 |
 | `TypeButton` | class | → IButton | 28 |
 
 ## `haven.res.ui.expwnd`  (1)
 
 | Type | Kind | Extends / Implements | Lines |
 |---|---|---|---|
-| `ExpWnd` | class | → Window | 67 |
+| `ExpWnd` | class | → Window | 59 |
 
 ## `haven.res.ui.hondead`  (1)
 

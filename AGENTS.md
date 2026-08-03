@@ -19,6 +19,26 @@ Loftar/Seatribe's open-source "Vanilla" `hafen-client` and maintained by **Night
 - Two git remotes: `Hurricane` (fork/origin) and `LoftarSeatribe` (upstream vanilla,
   `git://sh.seatribe.se/hafen-client`). Upstream is merged periodically.
 
+## Where everything lives
+
+A map of the working layer — where to find what, so nothing is a mystery:
+
+- **Client code** → `src/`. Fork-authored code lives under `src/haven/automated/**`
+  (`alchemy/`, `cookbook/`, `helpers/`, `lp/`, `mapper/`, `nbots/`, `pathfinder/`); everything
+  else under `src/` is vendored upstream Hurricane and is edited freely (see conventions).
+- **Agent / AI docs** → this file, the Obsidian vault in `ai-docs/`, and the RAG retrieval
+  tooling in `rag/`. `llms.txt` is the machine-readable entry point; `llms-full.txt` is its
+  generated, fully-concatenated form (rebuilt by `ant docs`).
+- **Per-tool rule files** → thin pointers that redirect here: `CLAUDE.md`, `GEMINI.md`,
+  `.github/copilot-instructions.md`, `.junie/guidelines.md`, `.cursor/rules/hurricane.mdc`,
+  `.windsurfrules`, `.clinerules`.
+- **Docs tooling** → `rag/` (zero-dependency JDK programs: retrieval index, code map, dependency
+  graph, full-text bundle). Rebuild the generated artifacts with `ant docs`.
+- **Release / generator scripts** → `tools/` (e.g. `gen-menugrid-res.py`,
+  `extract-alchbook.py`).
+- **Work plans & session scratch** → `plans/` at the repo root (gitignored, local-only). Session
+  prompts, design questions, and analysis dumps go there, never loose at the root.
+
 ## Build / run / test commands
 
 ```bash

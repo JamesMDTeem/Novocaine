@@ -5,6 +5,7 @@
 /local-boot.properties
 /build.properties
 /.idea
+*.iml
 *~
 
 # Redistributables and assets, not source. These are the shipped Hurricane

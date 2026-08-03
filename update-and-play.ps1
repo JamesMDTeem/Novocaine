@@ -1,19 +1,25 @@
 <#
 .SYNOPSIS
-    Update Hurricane to the latest upstream release, re-apply the alchemy changes,
+    Update Novocaine to the latest upstream Hurricane release, re-apply the fork,
     rebuild, and launch.
 
 .DESCRIPTION
-    The fork is deliberately tiny -- one line in GameUI.java plus the alchemy package
-    and its tools -- so it is kept as a patch between two tags rather than as a
-    long-lived branch:
+    Update the Novocaine fork (a custom Haven & Hearth client built on Nightdawg's
+    Hurricane). The fork's own work is kept as a patch between two tags rather than as
+    a long-lived branch:
 
         vendor-baseline .. alchemy
 
+    The patch carries everything we own that upstream doesn't: the alchemy
+    integration, the LP-assistant port, the nbots crew automation, the
+    mapper/cookbook integrations, the AI knowledge base (ai-docs/, rag/, the agent
+    instruction files), and the build scripts themselves. It is an update
+    convenience, not a limit on editing.
+
     Updating therefore means: check out the upstream release, record it as a source
     baseline commit on master, re-apply that patch, re-tag, push to origin, rebuild.
-    Nothing has to be merged by hand unless upstream edits the same line of
-    GameUI.tick, which the script reports rather than guesses at.
+    Nothing has to be merged by hand unless upstream edits the same lines the fork
+    touches, which the script reports rather than guesses at.
 
     Upstream tracks the jars and resources this install also holds as untracked files,
     so checking out a release must overwrite them. Local databases are backed up first,
@@ -158,11 +164,15 @@ if (-not $SkipUpdate) {
 
     Step 'Saving the fork as a patch'
     $patch = Join-Path $env:TEMP "novocaine-fork-$(Get-Date -Format yyyyMMdd-HHmmss).patch"
+    # Everything the fork owns that upstream doesn't (or changes). These survive the
+    # baseline checkout because the patch re-applies them - including the AI knowledge
+    # base and the agent instruction files. Keep this list in sync with CLAUDE.md.
+    $ForkPaths = 'src tools res steam build.xml update-and-play.ps1 README.md AGENTS.md GEMINI.md llms.txt ai-docs rag .clinerules .windsurfrules .cursor .junie .github'
     # This script is included deliberately: it is tracked in the fork but absent from
     # upstream, so the checkout below would delete it. The patch puts it back.
     # cmd redirection keeps the patch as the raw bytes git emitted; PowerShell
     # redirection would re-encode it with a BOM, which git apply rejects.
-    cmd /c "git diff --binary vendor-baseline..alchemy -- src tools res steam build.xml update-and-play.ps1 README.md > `"$patch`""
+    cmd /c "git diff --binary vendor-baseline..alchemy -- $ForkPaths > `"$patch`""
     if (-not (Test-Path $patch) -or (Get-Item $patch).Length -eq 0) { Die 'The fork patch came out empty.' }
     Ok "patch = $patch"
 
@@ -230,13 +240,13 @@ if (-not $SkipUpdate) {
         Warn 'The patch did not apply cleanly. Upstream has probably changed a line the fork touches.'
         Warn "Patch kept at: $patch"
         Warn 'Resolve the conflicts, then finish by hand:'
-        Warn '  git add -- src tools res steam build.xml update-and-play.ps1 README.md'
+        Warn "  git add -- $ForkPaths"
         Warn "  git commit -m `"Re-apply Novocaine fork on $Tag`""
         Warn "  git tag -f vendor-baseline $baseline ; git tag -f alchemy HEAD"
         Warn '  git push origin master ; git push -f origin vendor-baseline alchemy'
         Die 'Stopping before build so a half-patched client is never launched.'
     }
-    git add -- src tools res steam build.xml update-and-play.ps1 README.md
+    git add -- $ForkPaths
     git commit -q -m "Re-apply Novocaine fork on $Tag"
     git tag -f vendor-baseline $baseline
     git tag -f alchemy HEAD
