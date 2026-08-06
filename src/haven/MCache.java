@@ -335,6 +335,7 @@ public class MCache implements MapSource {
 	    private Defer.Future<T> def;
 	    private T val;
 	    private boolean inited = false;
+	    private boolean disposed = false;
 
 	    public T get() {
 		T ret = this.val;
@@ -362,7 +363,14 @@ public class MCache implements MapSource {
 	    }
 
 	    protected void update(T val) {
-		this.val = val;
+		synchronized(this) {
+		    if(disposed) {
+			if(val instanceof Disposable)
+			    ((Disposable)val).dispose();
+		    } else {
+			this.val = val;
+		    }
+		}
 	    }
 
 	    public T cur() {
@@ -384,7 +392,19 @@ public class MCache implements MapSource {
 	    public void dispose() {
 		synchronized(this) {
 		    inited = true;
+		    disposed = true;
 		    if(this.def != null) {
+			// If the future is already done (build completed), get the value and dispose it
+			// to prevent GPU resource leaks
+			if(this.def.done()) {
+			    try {
+				T val = this.def.get();
+				if(val instanceof Disposable)
+				    ((Disposable)val).dispose();
+			    } catch (Exception ignored) {
+				// Ignore exceptions during cleanup
+			    }
+			}
 			this.def.cancel();
 			this.def = null;
 		    }

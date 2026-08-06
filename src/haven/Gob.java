@@ -63,10 +63,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     private Collection<RenderTree.Slot> culledSlots = null;
     public final Glob glob;
 	public ConcurrentHashMap<Class<? extends GAttrib>, GAttrib> attr = new ConcurrentHashMap<>(); // ND: Make this ConcurrentHashMap to prevent concurrent modification exceptions. It doesn't seem to affect performance
-    public final Collection<Overlay> ols = new ArrayList<Overlay>();
+    public final Collection<Overlay> ols = new CopyOnWriteArrayList<>(); // ND: Make this COW to prevent concurrent modification exceptions. It doesn't seem to affect performance
     public final Collection<RenderTree.Slot> slots = new CopyOnWriteArrayList<>(); // ND: Make this COW to prevent concurrent modification exceptions. It doesn't seem to affect performance
     public int updateseq = 0, lastolid = 0;
-    private final Collection<SetupMod> setupmods = new ArrayList<>();
+    public final Collection<SetupMod> setupmods = new CopyOnWriteArrayList<SetupMod>();
     private final LinkedList<Runnable> deferred = new LinkedList<>();
     private Loader.Future<?> deferral = null;
 	public Boolean isComposite = false;
@@ -74,7 +74,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	public Boolean isMannequin = null;
 	public Boolean isSkeleton = null;
 	private boolean isLoftar = false;
-	public final ArrayList<Gob> occupants = new ArrayList<Gob>(); // ND: The "passengers" of this gob
+	public final Collection<Gob> occupants = new CopyOnWriteArrayList<Gob>(); // ND: The "passengers" of this gob
 	public Long occupiedGobID = null; // ND: The id of the "vehicle" this gob is currently in
 	private HitBoxGobSprite<HidingBox> hidingBoxHollow = null;
 	private HitBoxGobSprite<HidingBox> hidingBoxFilled = null;
@@ -196,7 +196,9 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		return;
 	    }
 	    remove0();
-	    gob.ols.remove(this);
+	    synchronized (gob.ols) {
+		gob.ols.remove(this);
+	    }
 	    removed();
 	}
 
@@ -549,23 +551,22 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	for(GAttrib a : attr.values()){
 	    a.ctick(dt);
 	}
-    try { // ND: Potentially fixes the crashes related to placing cupboards that have a decal on them (and probably other stuff like that)
-	for(Iterator<Overlay> i = ols.iterator(); i.hasNext();) {
-	    Overlay ol = i.next();
-	    if(ol.slots == null) {
-		try {
-		    ol.init();
-		} catch(Loading e) {}
-	    } else {
-		boolean done = ol.tick(dt);
-		if((!ol.delign || (ol.spr instanceof Sprite.CDel)) && done) {
-		    ol.remove0();
-		    i.remove();
+	List<Overlay> toRemove = new ArrayList<>();
+		for (Overlay ol : ols) {
+			if (ol.slots == null) {
+				try {
+					ol.init();
+				} catch (Loading e) {}
+			} else {
+				boolean done = ol.tick(dt);
+				if ((!ol.delign || (ol.spr instanceof Sprite.CDel)) && done) {
+					ol.remove0();
+					toRemove.add(ol);
+				}
+			}
 		}
-	    }
-	}
-    } catch (ConcurrentModificationException ignored) {}
-	updstate();
+		ols.removeAll(toRemove);
+		updstate();
 	if(virtual && ols.isEmpty() && (getattr(Drawable.class) == null))
 	    glob.oc.remove(this);
 	if (isMe == null) {
@@ -576,9 +577,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		playPlayerAlarm();
 		if (OptWnd.enableSkyboxCheckBox.a && !(GameUI.backgroundSong.equals("cabin") || GameUI.backgroundSong.equals("cave")) && skyboxOverlay == null && isMe) {
 			skyboxOverlay = new Overlay(this, new SkyBoxSprite(this, null));
-			synchronized (ols) {
-				addol(skyboxOverlay);
-			}
+			addol(skyboxOverlay);
 		} else if (!OptWnd.enableSkyboxCheckBox.a || (GameUI.backgroundSong.equals("cabin") || GameUI.backgroundSong.equals("cave"))) {
 			if (skyboxOverlay != null) {
 				removeOl(skyboxOverlay);
@@ -629,7 +628,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	Drawable d = getattr(Drawable.class);
 	if(d != null)
 	    d.gtick(g);
-	List<Overlay> olsSnapshot = new ArrayList<>(ols); // ND: Idk if this will break anything, but THIS PIECE OF SHIT SEEMS TO BE THE ROOT CAUSE OF ALL OLS CRASHES
+	List<Overlay> olsSnapshot;
+	synchronized (ols) {
+	    olsSnapshot = new ArrayList<>(ols);
+	}
 	for(Overlay ol : olsSnapshot) {
 	    if(ol.spr != null)
 		ol.spr.gtick(g);
@@ -712,7 +714,9 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 	ol.init();
 	ol.add0();
-	ols.add(ol);
+	synchronized (ols) {
+	    ols.add(ol);
+	}
 	try {
 		Sprite spr = ol.spr;
 		if(spr != null) {
@@ -1784,13 +1788,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 					}
 					break;
 				case "gfx/terobjs/barrel":
-					int olsSize = ols.size();
-					if(collisionBox != null)
-						olsSize = olsSize - 1;
-					if (olsSize < 1) {
-						if (OptWnd.showContainerFullnessEmptyCheckBox.a) setGobStateHighlight(OptWnd.showContainerFullnessEmptyColorOptionWidget.currentColor);
-						else delattr(GobStateHighlight.class);
-					} else delattr(GobStateHighlight.class);
+					synchronized (ols) {
+						int olsSize = ols.size();
+						if(collisionBox != null)
+							olsSize = olsSize - 1;
+						if (olsSize < 1) {
+							if (OptWnd.showContainerFullnessEmptyCheckBox.a) setGobStateHighlight(OptWnd.showContainerFullnessEmptyColorOptionWidget.currentColor);
+							else delattr(GobStateHighlight.class);
+						} else delattr(GobStateHighlight.class);
+					}
 					break;
 				default:
 					break;
@@ -1889,16 +1895,16 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 			}
 			if (resName.equals("gfx/terobjs/cheeserack")) {
 				if (olsSize == 3) {
-					if (OptWnd.showWorkstationProgressFinishedCheckBox.a) setGobStateHighlight(OptWnd.showWorkstationProgressFinishedColorOptionWidget.currentColor);
-					else delattr(GobStateHighlight.class);
-				} else if (olsSize == 0) {
-					if (OptWnd.showWorkstationProgressReadyForUseCheckBox.a) setGobStateHighlight(OptWnd.showWorkstationProgressReadyForUseColorOptionWidget.currentColor);
-					else delattr(GobStateHighlight.class);
-				} else {
-					if (OptWnd.showWorkstationProgressInProgressCheckBox.a) setGobStateHighlight(OptWnd.showWorkstationProgressInProgressColorOptionWidget.currentColor);
-					else delattr(GobStateHighlight.class);
-				}
+				if (OptWnd.showWorkstationProgressFinishedCheckBox.a) setGobStateHighlight(OptWnd.showWorkstationProgressFinishedColorOptionWidget.currentColor);
+				else delattr(GobStateHighlight.class);
+			} else if (olsSize == 0) {
+				if (OptWnd.showWorkstationProgressReadyForUseCheckBox.a) setGobStateHighlight(OptWnd.showWorkstationProgressReadyForUseColorOptionWidget.currentColor);
+				else delattr(GobStateHighlight.class);
+			} else {
+				if (OptWnd.showWorkstationProgressInProgressCheckBox.a) setGobStateHighlight(OptWnd.showWorkstationProgressInProgressColorOptionWidget.currentColor);
+				else delattr(GobStateHighlight.class);
 			}
+		}
 
 			// ND: Workstations that depend on both rbuf and overlays
 			if (resName.equals("gfx/terobjs/gardenpot")) {
@@ -1942,22 +1948,24 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		String barterStandOverlays = null;
 		if (resourceName.contains("barter")) {
 			try {
-				barterStandOverlays = this.ols.stream()
-						.map(ol -> {
-							if(Reflect.is(ol.spr, "haven.res.gfx.fx.eq.Equed")) {
-							Sprite espr = Reflect.getFieldValue(ol.spr, "espr", Sprite.class);
-								try {
-									if (espr.res != null)
-										return espr.res.basename();
-									else return null;
-								} catch (IndexOutOfBoundsException e) {
-									return "N/A";
+				synchronized (ols) {
+					barterStandOverlays = this.ols.stream()
+							.map(ol -> {
+								if(Reflect.is(ol.spr, "haven.res.gfx.fx.eq.Equed")) {
+								Sprite espr = Reflect.getFieldValue(ol.spr, "espr", Sprite.class);
+									try {
+										if (espr.res != null)
+											return espr.res.basename();
+										else return null;
+									} catch (IndexOutOfBoundsException e) {
+										return "N/A";
+									}
 								}
-							}
-							return "N/A";
-						})
-						.filter(Objects::nonNull)
-						.collect(Collectors.joining(", "));
+								return "N/A";
+							})
+							.filter(Objects::nonNull)
+							.collect(Collectors.joining(", "));
+				}
 			} catch (Exception ignores) {
 			}
 		}
@@ -2298,10 +2306,12 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 
 	public void checkIfObjectJustDied(){
 		if (virtual){
-			for (int i = 0; i < ols.size(); i++) {
-				Overlay ol = (Overlay) ols.toArray()[i];
-				if (ol.spr.res != null && ol.spr.res.name.equals("gfx/fx/death")){
-					setSomethingJustDiedStatus();
+			synchronized (ols) {
+				for (int i = 0; i < ols.size(); i++) {
+					Overlay ol = (Overlay) ols.toArray()[i];
+					if (ol.spr.res != null && ol.spr.res.name.equals("gfx/fx/death")){
+						setSomethingJustDiedStatus();
+					}
 				}
 			}
 		}
@@ -2702,26 +2712,27 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
             }
             Party party = glob.party;
             if (party != null && party.memb.size() > 1) {
+                Color color = null;
+                // Lock ordering: party.memb (global) before ols (per-Gob) to avoid deadlocks
                 synchronized (party.memb) {
                     for (Party.Member m : party.memb.values()) {
                         if (m.gobid == id) {
                             if (m == party.leader) {
-                                partyCircleOverlay = new Overlay(this, new PartyCircleSprite(this, PartyCircleSprite.LEADER_OL_COLOR));
+                                color = PartyCircleSprite.LEADER_OL_COLOR;
                                 break;
                             } else if (isMe != null && isMe) {
-                                partyCircleOverlay = new Overlay(this, new PartyCircleSprite(this, PartyCircleSprite.YOURSELF_OL_COLOR));
+                                color = PartyCircleSprite.YOURSELF_OL_COLOR;
                                 break;
                             } else {
-                                partyCircleOverlay = new Overlay(this, new PartyCircleSprite(this, PartyCircleSprite.MEMBER_OL_COLOR));
+                                color = PartyCircleSprite.MEMBER_OL_COLOR;
                                 break;
                             }
                         }
                     }
                 }
-                if (partyCircleOverlay != null) {
-                    synchronized (ols) {
-                        addol(partyCircleOverlay);
-                    }
+                if (color != null) {
+                    partyCircleOverlay = new Overlay(this, new PartyCircleSprite(this, color));
+                    addol(partyCircleOverlay);
                 }
             }
         } else if (partyCircleOverlay != null) {

@@ -477,7 +477,7 @@ public class AUtils {
 
             if (foundOverlay.isPresent()) {
                 Gob.Overlay gobOverlay = foundOverlay.get();
-                gui.map.wdgmsg("click", Coord.z, gob.rc.floor(posres), 3, 0, 1, (int) gob.id, gob.rc.floor(posres), gobOverlay.id, -1);;
+                gui.map.wdgmsg("click", Coord.z, gob.rc.floor(posres), 3, 0, 1, (int) gob.id, gob.rc.floor(posres), gobOverlay.id, -1);
                 gui.ui.rcvr.rcvmsg(gui.ui.lastWidgetID+1, "cl", index, gui.ui.modflags());
                 return true;
             } else {

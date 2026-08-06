@@ -43,6 +43,8 @@ public class UiWatchdog {
 
     private static void loop() {
         boolean dumped = false;
+        long lastDump = 0;
+        final long DUMP_COOLDOWN_MS = 30000; // 30 seconds between dumps
         while (true) {
             try {
                 Thread.sleep(POLL_MS);
@@ -54,10 +56,12 @@ public class UiWatchdog {
                 continue;
             }
             long since = System.currentTimeMillis() - lastBeat;
+            long now = System.currentTimeMillis();
             if (since > STALL_MS) {
-                if (!dumped) {
+                if (!dumped || now - lastDump > DUMP_COOLDOWN_MS) {
                     NLog.dumpAllThreads("UI thread appears frozen (" + since + "ms since last frame)");
                     dumped = true;
+                    lastDump = now;
                 }
             } else {
                 dumped = false;  // UI recovered; arm for the next distinct freeze
