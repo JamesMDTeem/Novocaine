@@ -15,7 +15,7 @@ import java.util.Set;
  * This exists because of one failure that nothing else in the stack can break out of. {@link
  * Observed} deliberately under-records free-placed objects - a stockpile or a barrel dropped
  * anywhere clips slivers off two to four tiles, and blocking all of them seals gaps a character
- * walks straight through, so {@code Observed.CLIPS} keeps only tiles an object covers a third of.
+ * walks straight through, so it keeps only the tiles whose CENTRE a character could not stand on.
  * Under-blocking is the safe direction, and the stated reason it is safe is that the local
  * pathfinder does exact geometry on arrival.
  *

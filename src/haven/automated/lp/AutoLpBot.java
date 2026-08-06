@@ -204,6 +204,12 @@ public class AutoLpBot extends Window implements Runnable {
         NLog.log(LOG, "=== run start: radius=" + radius + " maxActions=" + maxActions
             + " (pre-existing pack items: " + preexisting.size() + ") ===");
 
+        /* One-shot, to bin/logs/menu.log. Names every action the character's menu offers, because
+         * the hearth-fire travel button's resource string cannot be read out of this tree and
+         * guessing it would fire an unknown action on a live character. Remove this call once the
+         * string is known - see MenuDump. */
+        haven.automated.helpers.MenuDump.once(gui);
+
         // Route around water for the length of the run. The client can swim, so this is opt-in
         // rather than the pathfinder's default; a bot that swims off after a shoreline mushroom
         // arrives soaked, slowed and out of reach of everything it was going to do next. Restored
@@ -230,17 +236,31 @@ public class AutoLpBot extends Window implements Runnable {
                 throw new InterruptedException();
             attempt = ++attempts;
 
-            List<LpTask> tasks = LpPlanner.plan(gui, radius, exhausted);
+            int[] walledOff = new int[1];
+            List<LpTask> tasks = LpPlanner.plan(gui, radius, exhausted, walledOff);
             List<LpTask> ready = new java.util.ArrayList<>(tasks.size());
             for (LpTask t : tasks) {
                 if (!isDeferred(t))
                     ready.add(t);
             }
             NLog.log(LOG, "plan #" + attempts + ": " + tasks.size() + " task(s), "
-                + ready.size() + " ready" + (ready.isEmpty() ? "" : ", next=" + ready.get(0)));
+                + ready.size() + " ready"
+                + ((walledOff[0] > 0) ? (", " + walledOff[0] + " walled off") : "")
+                + (ready.isEmpty() ? "" : ", next=" + ready.get(0)));
             setStatus("Actions: " + done + ", targets left: " + tasks.size());
-            if (tasks.isEmpty())
+            if (tasks.isEmpty()) {
+                /* Say WHY there is nothing left. "Finished" and "everything that is left is behind
+                 * a wall I cannot open" are completely different outcomes to the person reading the
+                 * status, and they used to print the same. */
+                if (walledOff[0] > 0) {
+                    NLog.log(LOG, "=== nothing reachable left: " + walledOff[0]
+                        + " remaining target(s) are inside walls we are not inside ===");
+                    gui.msg("Auto-LP finished: the only targets left are inside walls"
+                        + " this bot cannot enter.", Color.YELLOW);
+                    setStatus("Done: " + walledOff[0] + " target(s) left, all walled off.");
+                }
                 break;
+            }
 
             if (ready.isEmpty()) {
                 // Everything in range is waiting out a beast. Idling here is the whole point of
@@ -353,12 +373,10 @@ public class AutoLpBot extends Window implements Runnable {
         if (tree == null)
             return false;
         if (!walkTo(tree)) {
-            if (hazardBlocked) {
+            if (hazardBlocked)
                 defer(task);
-            } else {
-                NLog.log(LOG, "couldn't reach " + task + " to fell it - retiring");
-                retire(task);
-            }
+            else
+                cannotWalkTo(task);
             return false;
         }
         tree = findGob(task.gob.id);
@@ -423,7 +441,16 @@ public class AutoLpBot extends Window implements Runnable {
 
     /** @return true if an action was actually performed (so it counts toward maxActions). */
     private boolean executeOnce(LpTask task) throws InterruptedException {
+        /* Around the tidy-up as well as around the walk, because "turns away then turns back" is
+         * still unexplained and a 7u move toward the target cannot be it. The remaining candidate
+         * is that the character is still finishing the PREVIOUS action's leftover movement while
+         * this eats or drops - so what reads as turning away and back is really finishing the last
+         * move and then setting off. Dropping and eating are pure UI, so any movement here is
+         * inherited, and that is exactly what wants naming. */
+        haven.Coord2d pt = here();
         tidyInventory();
+        trail("the inventory tidy-up - INHERITED FROM THE LAST ACTION",
+            pt, here(), task.isItem() ? null : task.gob);
 
         if (task.tool != null && !toolEquipped(task.tool)) {
             // Retiring every option rather than just the current one is deliberate: all of a
@@ -444,20 +471,42 @@ public class AutoLpBot extends Window implements Runnable {
             Gob gob = task.gob;
             if (findGob(gob.id) == null)
                 return false;  // despawned or already felled since planning
+            /* The position trail. Reported repeatedly and never yet pinned down: after finishing at
+             * one object the character sets off, stops, and only then takes a proper route - "turns
+             * around and turns back". Two things could do that and they want opposite fixes. Either
+             * the SERVER is moving us (a raw right-click on a gob is also a move-to, and it walks in
+             * a straight line through anything), or we are issuing two paths and the second cancels
+             * the first.
+             *
+             * They are indistinguishable in the log as it stands, so record where we actually are at
+             * each step. tidyInventory and rclickGob are not supposed to move the character at all,
+             * so ANY line from those two stages is the answer. Only real movement prints. */
+            haven.Coord2d p0 = here();
             if (!walkTo(gob)) {
                 // Either it outran us, it despawned, or wildlife got in the way. Don't right-click
                 // from out of range: the menu wouldn't open, and that would burn a menu-fail retry
                 // on something that isn't a menu problem.
                 if (hazardBlocked)
                     defer(task);          // temporary - the beast moves, the target is still good
-                else if (findGob(gob.id) != null) {
-                    NLog.log(LOG, "couldn't reach " + task + " - retiring");
-                    retire(task);
-                }
+                else if (findGob(gob.id) != null)
+                    cannotWalkTo(task);
                 return false;
             }
-            rclickGob(gob);
+            haven.Coord2d p1 = here();
+            trail("the walk", p0, p1, gob);
+            openMenuOn(gob);
+            haven.Coord2d p2 = here();
+            /* Expected now, and not a warning. This stage used to be a raw click that moved nothing
+             * itself; it is now openMenuOn, which walks the last gap on PURPOSE when we are further
+             * out than CLICK_CLOSE. Measured after that change: 44 moves here, mean 12u, ending a
+             * mean 6.7u from the target - which is the pathfinder doing the job the server used to
+             * do badly. Left in because the distance is worth watching, not because it is suspect.
+             *
+             * The canary moved to the menu-wait line below: that one is still supposed to be
+             * silent, and it went 39 -> 0 when this replaced the raw click. */
+            trail("closing the last gap", p1, p2, gob);
             fm = findFlowerMenu();
+            trail("waiting for the flower menu - NOBODY ASKED FOR THIS MOVE", p2, here(), gob);
         }
 
         if (fm == null) {
@@ -817,6 +866,22 @@ public class AutoLpBot extends Window implements Runnable {
         return Widgets.awaitFlowerMenu(gui.ui.root, () -> active && !stop);
     }
 
+    /**
+     * The same, without waiting - "is one open right now".
+     *
+     * {@link #findFlowerMenu} blocks until a menu appears or the bot stops, which is right when a
+     * menu is expected and wrong for asking whether one already arrived. {@link #openMenuOn} needs
+     * the latter: it has to decide whether the pathfinder's own click produced a menu before
+     * falling back to a raw one, and blocking there would wait out the very case it is testing for.
+     */
+    private FlowerMenu findFlowerMenuNow() {
+        for (haven.Widget w = gui.ui.root.child; w != null; w = w.next) {
+            if (w instanceof FlowerMenu)
+                return (FlowerMenu) w;
+        }
+        return null;
+    }
+
     // Per-target count of consecutive "menu wouldn't open" misses. Returns true once it crosses
     // the retry threshold, meaning the caller should stop retrying this target.
     private final Map<String, Integer> menuFails = new HashMap<>();
@@ -837,6 +902,22 @@ public class AutoLpBot extends Window implements Runnable {
      */
     private void reportUnknownOptions(LpTask task, FlowerMenu fm) {
         String label = task.isItem() ? ("item " + task.why) : LpExplorer.resname(task.gob);
+        /* Learn it, not just report it. The menu in front of us is the authority on what this
+         * SPECIES offers, and every option we wanted that is not on it is one we should stop
+         * generating tasks for - a juniper does not have Take bark however firmly LpSpec believes
+         * in its Tough Bark. Recorded before the once-per-resource report below, because that
+         * report returns early on the second sighting and the learning must not depend on being
+         * the first.
+         *
+         * Literal options only. SEED_PICK is a placeholder resolved against the live menu, so its
+         * absence here says nothing about the species. */
+        if (!task.isItem() && (task.gob != null)) {
+            String res = LpExplorer.resname(task.gob);
+            for (String opt : task.options) {
+                if (!LpPlanner.SEED_PICK.equals(opt) && !hasOpt(fm, opt))
+                    LpPlanner.menuLacks(res, opt);
+            }
+        }
         if (!reported.add(label))
             return;
         StringBuilder available = new StringBuilder();
@@ -1057,8 +1138,29 @@ public class AutoLpBot extends Window implements Runnable {
                 && walk != null && walk.mc != null
                 && aimed.dist(now.rc) <= DRIFT
                 && here.rc.dist(now.rc)
-                   <= (REACH + haven.automated.nbots.world.BotNav.bulk(now) + STOP_SLACK))
+                   <= (REACH + haven.automated.nbots.world.BotNav.bulk(now) + STOP_SLACK)) {
+                /* Said out loud whenever we accept a stop that is NOT within reach.
+                 *
+                 * This branch is the only way a walk can succeed while short of the target, and it
+                 * is the only candidate left for "the bot stopped early on the path" and "it got
+                 * stuck on a bush": nothing else in this method reports failure, and the logs
+                 * confirm it - no walk in a full session ever ran out of attempts or retired a
+                 * target as unreachable, while four right-clicks opened no flower menu, which is
+                 * what clicking from out of range looks like.
+                 *
+                 * The bound is deliberately generous, because pfRightClick paths to the edge of a
+                 * hitbox and demanding REACH would have the bot circling every big tree. Whether it
+                 * is TOO generous is a question about numbers nobody has measured, so print them
+                 * rather than guess: stopping four units past a wide trunk is the bound doing its
+                 * job, stopping forty because a bush was in the way is not. */
+                double gap = here.rc.dist(now.rc);
+                double bulk = haven.automated.nbots.world.BotNav.bulk(now);
+                if (gap > REACH)
+                    NLog.log(LOG, "walk to #" + id + " stopped " + (int) gap + "u out, past the "
+                        + (int) REACH + "u reach - allowed by the target's own bulk (" + (int) bulk
+                        + "u) plus slack; acting from here");
                 return true;
+            }
         }
         NLog.log(LOG, "walk to #" + id + " ran out of attempts");
         Gob me = player(), target = findGob(id);
@@ -1107,6 +1209,55 @@ public class AutoLpBot extends Window implements Runnable {
     private void rclickGob(Gob gob) {
         gui.map.wdgmsg("click", Coord.z, gob.rc.floor(posres), 3, 0, 0, (int) gob.id,
             gob.rc.floor(posres), 0, -1);
+    }
+
+    /**
+     * How close we must be before a RAW right-click is safe to send. One tile.
+     *
+     * {@link #REACH} is 22 - two tiles - and a walk that ends anywhere inside it counts as
+     * arrival, so the click routinely goes out from a tile or more away. That gap is the problem
+     * below.
+     */
+    private static final double CLICK_CLOSE = 11.0;
+
+    /**
+     * Opens a gob's flower menu without handing the last few units to the server.
+     *
+     * A raw click is a MOVE ORDER, and the basic movement line is not collision aware - that is
+     * the entire reason {@code haven.automated.pathfinder} exists. So right-clicking a gob we are
+     * not yet standing at tells the server to close the distance in a STRAIGHT LINE, through
+     * whatever is in the way, and the route we so carefully planned is discarded for the last
+     * stretch of it.
+     *
+     * Measured, 46 actions in one run: the character moved on 39 of them while waiting for the
+     * menu, mean 7.5u, always toward the target. Not during the click - the click returns at once
+     * and the server's walk arrives asynchronously, which is why it looked like the menu wait was
+     * to blame and why it took an instrument to place it.
+     *
+     * So when we are further off than {@link #CLICK_CLOSE}, hand the whole thing to the client
+     * pathfinder instead: {@code clickb=3} makes it walk - around things - and then issue the
+     * interaction itself on arrival. Inside that range the raw click stays, because there is no
+     * meaningful distance left for the server to drag us through.
+     *
+     * The fallback matters: a pathfinder approach can end without a menu (an empty path issues no
+     * click at all). Falling back to the raw click keeps the old behaviour as the floor rather
+     * than turning a cosmetic problem into a stuck bot.
+     */
+    private void openMenuOn(Gob gob) throws InterruptedException {
+        Gob me = player();
+        double d = (me == null) ? 0 : me.rc.dist(gob.rc);
+        if (d <= CLICK_CLOSE) {
+            rclickGob(gob);
+            return;
+        }
+        NLog.log(LOG, "  " + (int) d + "u out - walking the last gap with the pathfinder rather"
+            + " than letting the click drag us there through whatever is in the way");
+        gui.map.pfRightClick(gob, -1, 3, 0, null);
+        waitUntil(() -> !walking(), 60);
+        if (findFlowerMenuNow() == null) {
+            NLog.log(LOG, "  the pathfinder approach opened no menu - falling back to a direct click");
+            rclickGob(gob);
+        }
     }
 
     private void rclickAndChoose(Gob gob, String option) throws InterruptedException {
@@ -1189,15 +1340,21 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     /**
-     * How far outside the box holding us and the target the reachability search may wander, in
-     * TILES. Fifty: room for a proper way round a pond or a wall, and not room for a detour the
-     * chase could never hold on to anyway.
+     * How far from the target we are willing to END UP, in WORLD UNITS. Fifty is a bit under five
+     * tiles - close enough to work whatever it is, far enough that the near bank of a stream or
+     * the walkable side of a wide trunk still counts.
      *
-     * In tiles because the router works in tiles. It used to be twelve, in four-tile routing
-     * nodes, which was the same fifty - so when the router moved to tile resolution this number
-     * silently became twelve TILES, a box so tight that anything needing more than a token detour
-     * would have come back unreachable. A unit changing under a constant is not a compile error
-     * and would not have shown up as one.
+     * UNITS, despite what this said for two rounds. It fed a bounding box for the reachability
+     * search once, and was documented in tiles for that job; the box is gone - {@link
+     * haven.automated.nbots.world.Router#reachable} bounds itself by its own search ceiling now -
+     * and the number's only remaining use is the radius passed to {@code standableAround}, which
+     * divides by {@code MCache.tilesz} and so reads it as units. Fifty tiles and fifty units are
+     * both plausible-looking radii, which is why nothing caught it: the value never changed, only
+     * what it meant, and a unit changing under a constant is not a compile error.
+     *
+     * Whatever this is, it must be the SAME value passed to {@link
+     * haven.automated.nbots.world.Router#groundedAround} - that method answers whether reachable
+     * could mean anything, and a different margin makes it answer about a different question.
      */
     private static final int REACH_MARGIN = 50;
 
@@ -1219,6 +1376,18 @@ public class AutoLpBot extends Window implements Runnable {
         if (task.isItem() || task.gob == null)
             return null;  // already in the pack; there is no walk to fail
         Gob target = task.gob;
+        /* Standing at it already, so there is no walk to prove. Everything below answers "could we
+         * get there", and we are there.
+         *
+         * This is the common case and it was paying full price for it: one gob routinely carries
+         * several tasks - a log offers boards AND blocks, and they are separate tasks because they
+         * need different tools - so after acting on the first, the second went through the enclosure
+         * test and a reachability search before walkToward returned true on its first line without
+         * moving. That is the pause between picking one thing and picking the next off the same
+         * object, which looks exactly like the bot re-pathing to something it is standing on. */
+        Gob here = player();
+        if ((here != null) && (here.rc.dist(target.rc) <= REACH))
+            return null;
         try {
             /* Inside somebody's wall is refused on its own terms rather than as a routing failure,
              * because routing would not call it one: a gateway counts as passable there, since
@@ -1236,17 +1405,120 @@ public class AutoLpBot extends Window implements Runnable {
             if (!haven.automated.nbots.world.Router.answerable(gui, target.rc))
                 NLog.log(LOG, "cannot tell whether " + LpExplorer.resname(target)
                     + " is reachable - the map file can't place one end yet; trying it anyway");
-            if (!haven.automated.nbots.world.Router.reachable(gui, target.rc, REACH_MARGIN))
-                return "no way to it on foot - water or a cliff between here and there";
+            /* The other silent yes, and the one that had nothing watching it. A run where the line
+             * above never fired was read as "every yes was a real yes"; it is not, because
+             * reachable also passes anything it cannot find standable ground beside, on purpose.
+             * Until this is counted there is no way to tell a proven route from an unproven one,
+             * and the difference is exactly the reported "walks at a wall". */
+            else if (!haven.automated.nbots.world.Router.groundedAround(gui, target.rc, REACH_MARGIN))
+                NLog.log(LOG, "cannot tell whether " + LpExplorer.resname(target)
+                    + " is reachable - no ground we have observed lies beside it; trying it anyway");
+            /* Not through gateways, because this bot cannot open one.
+             *
+             * It chases with the client's own pathfinder and nothing else - no route layer, no gate
+             * layer - so a target whose only way in is a shut gate is not a target, it is a wall to
+             * walk at until the attempt budget runs out. One logged run did exactly that four times
+             * in two minutes, on felled logs inside the palisade, each ruled reachable through a
+             * gateway the bot had no way to operate. An open gateway it CAN walk through, and one
+             * out of render is taken to be shut - passing over a target costs a target, believing in
+             * one costs the whole attempt budget. */
+            if (!haven.automated.nbots.world.Router.reachable(gui, target.rc, REACH_MARGIN, false))
+                return "no way to it on foot - water, a cliff, or a shut gateway in between";
             return null;
         } catch (Loading l) {
             return null;  // ask again next attempt rather than retiring on a half-loaded map
         }
     }
 
+    /** Where the character is this instant, or null if it has not loaded. */
+    private haven.Coord2d here() {
+        Gob me = player();
+        return (me == null) ? null : me.rc;
+    }
+
+    /**
+     * Says that the character moved during a stage, and how far.
+     *
+     * Prints ONLY when it actually moved, so the quiet stages stay quiet and a line is a fact
+     * rather than a reading. A metre of slop is ignored - the character drifts a little settling
+     * out of a walk, and that is not what this is looking for.
+     */
+    private void trail(String stage, haven.Coord2d from, haven.Coord2d to, Gob target) {
+        if ((from == null) || (to == null))
+            return;
+        double d = from.dist(to);
+        if (d < 1.0)
+            return;
+        NLog.log(LOG, "  moved " + (int) d + "u during " + stage
+            + ((target == null) ? "" : (" (now " + (int) to.dist(target.rc) + "u from it)")));
+    }
+
     private void retire(LpTask task) {
         for (String opt : task.options)
             exhausted.add(task.key(opt));
+    }
+
+    /** How many times a target may fail to be WALKED to before we stop believing in it. */
+    private static final int WALK_TRIES = 2;
+
+    /** Targets we have failed to walk to, and how often, so the last try can retire them. */
+    private final java.util.Map<Long, Integer> unwalkable = new java.util.HashMap<>();
+
+    /**
+     * A target we could not walk to: set aside and tried again, and only spent once it has failed
+     * repeatedly.
+     *
+     * Retiring on the first failed walk was throwing away good resources for the rest of the
+     * session. {@link #retire} marks every option {@code exhausted} PERMANENTLY, and the thing that
+     * sent it there is a local pathfinder that ran out of attempts - which is a statement about one
+     * moment, not about the target. The log has this happening to a flint the bot walks past
+     * perfectly well seventeen seconds later; the difference between the two was where it happened
+     * to be standing, and where it is standing is the one thing guaranteed to have changed by the
+     * next attempt.
+     *
+     * Twice, though, not for ever. Something genuinely unreachable - the far bank of a river that
+     * {@code reachable} did not catch - would otherwise be retried every plan for the whole session,
+     * and a target that has beaten us from two different places has earned being written off.
+     */
+    private void cannotWalkTo(LpTask task) {
+        if (task.isItem() || task.gob == null) {
+            retire(task);
+            return;
+        }
+        int failed = unwalkable.merge(task.gob.id, 1, Integer::sum);
+        if (failed >= WALK_TRIES) {
+            NLog.log(LOG, "couldn't reach " + task + " on " + failed
+                + " separate attempts - retiring it for good");
+            retire(task);
+            return;
+        }
+        NLog.log(LOG, "couldn't reach " + task + " (attempt " + failed + " of " + WALK_TRIES
+            + ") - setting it aside rather than spending it; we will be standing somewhere else"
+            + " next time");
+        blockedBy(task);
+        defer(task);
+    }
+
+    /**
+     * Names whatever the record thinks is in the way of a target we could not reach.
+     *
+     * The same dump that turned "the bot walks into things" into "the bot is in an orchard and
+     * aiming at a tile with a lemon tree on it" for the cleanup bot. One failure a session is far
+     * too thin to design against, and until now nothing recorded what actually stopped the walk -
+     * only that it stopped.
+     */
+    private void blockedBy(LpTask task) {
+        try {
+            Gob me = player();
+            if ((me == null) || (task.gob == null))
+                return;
+            NLog.log(LOG, "  it is " + (int) me.rc.dist(task.gob.rc) + "u away; what our record"
+                + " says is between us and it:");
+            NLog.log(LOG, haven.automated.nbots.world.Probe.map(gui, task.gob.rc, 12));
+            NLog.log(LOG, haven.automated.nbots.world.Probe.objectsNear(gui, task.gob.rc, 8));
+        } catch (RuntimeException e) {
+            // Diagnostics must never be the reason a shift dies.
+        }
     }
 
     /**

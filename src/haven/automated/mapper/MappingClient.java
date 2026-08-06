@@ -547,7 +547,11 @@ public class MappingClient {
 			obj.put("id", marker.oid);
 			obj.put("image", marker.res.name);
 
-			scheduler.execute(new MarkerUpdate(new JSONArray(List.of(obj))));
+			// .put(obj), not new JSONArray(List.of(obj)): the bundled org.json only has a
+			// JSONArray(Collection<Object>) ctor, which List<JSONObject> does not match (invariant
+			// generics), so that form binds to JSONArray(Object) and throws at runtime - the same
+			// trap that kept LpLog from ever writing. See LpLog.writeTo.
+			scheduler.execute(new MarkerUpdate(new JSONArray().put(obj)));
 		} catch (Loading ignored) {
 		}
 	}

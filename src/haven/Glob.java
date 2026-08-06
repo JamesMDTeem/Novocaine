@@ -125,7 +125,7 @@ public class Glob {
 	    this.info = info;
 		compLine = null;
 	}
-	
+
 	public void update(int base, int comp, ItemInfo.Raw info) {
 	    this.base = base;
 	    this.comp = comp;
@@ -151,7 +151,7 @@ public class Glob {
         return compLine;
     }
     }
-    
+
     private static Color colstep(Color o, Color t, double a) {
 	int or = o.getRed(), og = o.getGreen(), ob = o.getBlue(), oa = o.getAlpha();
 	int tr = t.getRed(), tg = t.getGreen(), tb = t.getBlue(), ta = t.getAlpha();
@@ -412,6 +412,17 @@ public class Glob {
 		cattr.put(nm, a);
 	    }
 	    return(a);
+	}
+    }
+
+    /* Every character attribute the server has actually sent, by name. getcattr answers for a
+     * name you already know and CREATES a zeroed entry when you guess wrong, so it cannot be used
+     * to find out what exists - which is what the bots need for things like travel weariness,
+     * whose attribute name appears nowhere in this tree. A copy, so the caller cannot hold the
+     * lock or the map. */
+    public java.util.Map<String, CAttr> cattrs() {
+	synchronized(cattr) {
+	    return(new java.util.HashMap<String, CAttr>(cattr));
 	}
     }
 

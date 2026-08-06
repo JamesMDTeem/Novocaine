@@ -59,6 +59,25 @@ public class Place {
      */
     public boolean show = false;
 
+    /**
+     * What was last SEEN inside this place - full resource name to how many of them.
+     *
+     * Gobs are not in the map file, so a place a hundred tiles away can report nothing standing in
+     * it, and every consumer used to read that as "there is nothing there". A bot at a work site
+     * would decide its own water place held no barrel, on the strength of a scan taken from too far
+     * away to see one, and go looking for water somewhere else - which is how a base with a full
+     * barrel in it ends up sending bots out through its own gates.
+     *
+     * So what was seen is remembered, and only ever replaced by a fresh look taken from close enough
+     * for the answer to mean something ({@link #observe}). An out-of-range scan now changes nothing,
+     * which is the correct amount for it to change.
+     *
+     * Persisted, because the knowledge is worth more across a relog than a stale entry costs: the
+     * worst case is one wasted walk to a barrel somebody moved, and the first look on arrival
+     * corrects it.
+     */
+    public final java.util.Map<String, Integer> memory = new java.util.LinkedHashMap<>();
+
     public Place(String name, WorldAnchor anchor, int w, int h) {
         this.name = name;
         this.anchor = anchor;
@@ -168,7 +187,95 @@ public class Place {
                     out.add(g);
             }
         }
+        /* Every look is also a chance to learn, so memory keeps itself up to date with no call site
+         * having to remember to do it - "update when re-rendered" falls out of somebody asking.
+         * observe() decides for itself whether this look was taken from close enough to count. */
+        observe(gui, out);
         return out;
+    }
+
+    /**
+     * Whether this place is close enough RIGHT NOW for a scan of it to mean anything.
+     *
+     * The whole rectangle has to be inside the range objects stream in at ({@link Observed#sees()}),
+     * not just its centre: a scan that can see two thirds of a storage area and reports what it found
+     * is the same trap one tile further out, and half-remembering an area is worse than not
+     * refreshing it. Being strict costs a walk closer; being loose costs forgetting a barrel.
+     */
+    public boolean observable(GameUI gui) {
+        Coord2d nw = (anchor == null) ? null : anchor.resolve(gui);
+        Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
+        if ((nw == null) || (me == null))
+            return false;
+        double reach = Observed.sees() * MCache.tilesz.x;
+        // The far corner, so both extents are covered by one distance test.
+        Coord2d se = nw.add(Math.max(w, 1) * MCache.tilesz.x, Math.max(h, 1) * MCache.tilesz.y);
+        return (me.rc.dist(nw) <= reach) && (me.rc.dist(se) <= reach);
+    }
+
+    /**
+     * Replaces what this place remembers with what is standing in it, if it can currently be seen.
+     *
+     * Deliberately all-or-nothing. A scan taken from out of range is not evidence of absence, so it
+     * is discarded rather than merged - merging is what would let one distant look quietly delete a
+     * barrel. An observable place with nothing in it DOES clear the memory, which is the other half
+     * of being correct: a barrel that was carted away has to be forgettable.
+     */
+    public void observe(GameUI gui, List<Gob> live) {
+        if (!observable(gui))
+            return;
+        java.util.Map<String, Integer> now = new java.util.LinkedHashMap<>();
+        for (Gob g : live) {
+            try {
+                Resource res = g.getres();
+                if (res == null)
+                    continue;
+                String n = res.name;
+                // Characters wander through; remembering them would make every place "contain" whoever
+                // last walked over it.
+                if (n.startsWith("gfx/borka/") || n.contains("/body"))
+                    continue;
+                now.merge(n, 1, Integer::sum);
+            } catch (Loading | NullPointerException ignored) {
+            }
+        }
+        synchronized (memory) {
+            if (memory.equals(now))
+                return;
+            memory.clear();
+            memory.putAll(now);
+        }
+        Places.save();
+    }
+
+    /** How many things matching {@code pattern} this place is known to hold, seen or remembered. */
+    public int remembers(Alias pattern) {
+        int n = 0;
+        synchronized (memory) {
+            for (java.util.Map.Entry<String, Integer> e : memory.entrySet()) {
+                if (pattern.matchesPart(e.getKey()))
+                    n += e.getValue();
+            }
+        }
+        return n;
+    }
+
+    /**
+     * The best answer available about what is in here: live when it can be seen, memory when it
+     * cannot. For DECIDING (is this place worth walking to) - acting on a gob still needs a live one.
+     */
+    public java.util.Map<String, Integer> known(GameUI gui) {
+        if (observable(gui))
+            return contents(gui);
+        synchronized (memory) {
+            java.util.Map<String, Integer> out = new java.util.TreeMap<>();
+            for (java.util.Map.Entry<String, Integer> e : memory.entrySet()) {
+                String kind = kindOf(e.getKey());
+                if (kind != null)
+                    out.merge(kind, e.getValue(), Integer::sum);
+            }
+            return out;
+        }
     }
 
     /** Gobs within this place whose resource name matches, e.g. every barrel in the water place. */
@@ -202,6 +309,16 @@ public class Place {
         o.put("accepts", accepts.store());
         o.put("provides", provides.store());
         o.put("show", show);
+        /* Built key by key rather than handed the map: the bundled org.json's JSONObject(Map) is
+         * declared Map<String,Object>, and generics are invariant, so a Map<String,Integer> misses
+         * it and falls through to JSONObject(Object) - the bean constructor, which silently writes
+         * an empty object instead of throwing. Same family of trap as the JSONArray note above. */
+        JSONObject mem = new JSONObject();
+        synchronized (memory) {
+            for (java.util.Map.Entry<String, Integer> e : memory.entrySet())
+                mem.put(e.getKey(), e.getValue().intValue());
+        }
+        o.put("memory", mem);
         return o;
     }
 
@@ -218,6 +335,11 @@ public class Place {
         p.accepts = Alias.parse("accepts", o.optString("accepts", ""));
         p.provides = Alias.parse("provides", o.optString("provides", ""));
         p.show = o.optBoolean("show", false);
+        JSONObject mem = o.optJSONObject("memory");
+        if (mem != null) {
+            for (String k : mem.keySet())
+                p.memory.put(k, mem.optInt(k, 0));
+        }
         return p;
     }
 
@@ -253,19 +375,23 @@ public class Place {
     private static String kindOf(Gob g) {
         try {
             Resource res = g.getres();
-            if (res == null)
-                return null;
-            String n = res.name;
-            if (n.startsWith("gfx/borka/") || n.contains("/body"))
-                return null;
-            String tail = n.substring(n.lastIndexOf('/') + 1);
-            // Trailing digits are variant numbers ("granite3"), and -m/-f are material suffixes.
-            tail = tail.replaceAll("[0-9]+$", "");
-            tail = tail.replaceAll("-[a-z]$", "");
-            return tail.isEmpty() ? null : tail;
+            return (res == null) ? null : kindOf(res.name);
         } catch (Loading | NullPointerException e) {
             return null;
         }
+    }
+
+    /** The same reduction applied to a bare resource name, for reading it back out of {@link #memory}. */
+    private static String kindOf(String n) {
+        if (n == null)
+            return null;
+        if (n.startsWith("gfx/borka/") || n.contains("/body"))
+            return null;
+        String tail = n.substring(n.lastIndexOf('/') + 1);
+        // Trailing digits are variant numbers ("granite3"), and -m/-f are material suffixes.
+        tail = tail.replaceAll("[0-9]+$", "");
+        tail = tail.replaceAll("-[a-z]$", "");
+        return tail.isEmpty() ? null : tail;
     }
 
     public String toString() {

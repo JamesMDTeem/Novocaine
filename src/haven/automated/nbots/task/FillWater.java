@@ -175,9 +175,19 @@ public class FillWater implements Task {
                  * player: an empty place needs a barrel or a different rectangle, whereas drained
                  * barrels just need filling. Reporting both as "nothing here" sent people looking
                  * for a mistake in the place they had defined correctly. */
-                return hadBarrels
-                    ? Outcome.blocked("every barrel in " + place.name + " is empty")
-                    : Outcome.failed("no water barrel or fresh water inside " + place.name);
+                if (hadBarrels)
+                    return Outcome.blocked("every barrel in " + place.name + " is empty");
+                /* "I looked and there was nothing" and "I could not see" are the same empty scan and
+                 * must not be the same answer. Reporting the second as failed retires the place, and
+                 * a bot that has retired its own water place goes looking for water elsewhere - out
+                 * through the gates of the base it is standing in, which is what the logs showed.
+                 * Blocked instead: try again, from closer, rather than concluding anything. */
+                if (!place.observable(ctx.gui))
+                    return Outcome.blocked("couldn't see inside " + place.name + " from here"
+                        + (place.remembers(BARREL) > 0
+                           ? " (it is remembered as holding " + place.remembers(BARREL) + " barrel(s))"
+                           : ""));
+                return Outcome.failed("no water barrel or fresh water inside " + place.name);
             }
             // The run-wide water avoidance is exactly wrong for the last few steps: filling from a
             // lake means standing IN it. Lifted just for the approach and put straight back, so the

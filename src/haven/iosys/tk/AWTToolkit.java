@@ -275,7 +275,7 @@ public abstract class AWTToolkit implements Toolkit {
     }
     public static class AWTMouseWheelEvent extends AWTMouseEvent implements MouseWheelEvent {
 	public final java.awt.event.MouseWheelEvent wev;
-	
+
 	public AWTMouseWheelEvent(java.awt.event.MouseWheelEvent awt) {
 	    super(awt);
 	    this.wev = awt;
@@ -502,9 +502,30 @@ public abstract class AWTToolkit implements Toolkit {
 	class EventQueue implements WindowListener, KeyListener, MouseListener, MouseWheelListener, MouseMotionListener, DropTargetListener {
 	    private final List<InputEvent> events = new ArrayList<>();
 	    private java.awt.event.MouseEvent mousemv;
+	    /* Made HERE, at startup, rather than inside windowClosing.
+	     *
+	     * It was `callback(new CloseRequest() {})`, and an anonymous class is only loaded the
+	     * first time the code creating it runs - which for this one is the first time anybody
+	     * tries to close the window. If the jar has been replaced since the client started, that
+	     * load fails:
+	     *
+	     *   NoClassDefFoundError: haven/iosys/tk/AWTToolkit$AWTWindow$EventQueue$1
+	     *       at AWTToolkit$AWTWindow$EventQueue.windowClosing(AWTToolkit.java:507)
+	     *
+	     * The close request is never delivered and the window CANNOT BE CLOSED - not by the X, not
+	     * by Alt+F4. Eleven of these in one crash log, every one at shutdown, and it was misread as
+	     * environmental noise about a rebuilt jar rather than as the reason the game would not quit.
+	     *
+	     * Replacing a running jar is normal here (build-and-play rebuilds under a live client), so
+	     * the fix is to need nothing new at closing time. Constructing it with the window loads the
+	     * class while the original jar is still the one on disk.
+	     *
+	     * Safe to share one instance: CloseRequest is a marker interface with no state, and its
+	     * only consumer tests it with instanceof (Client.java:122). */
+	    private final CloseRequest closereq = new CloseRequest() {};
 
 	    public void windowClosing(WindowEvent e) {
-		callback(new CloseRequest() {});
+		callback(closereq);
 	    }
 	    public void windowActivated(WindowEvent e) {
 		focused = true;
@@ -1042,7 +1063,7 @@ public abstract class AWTToolkit implements Toolkit {
 	.put(VK_META, Key.Std.META)
 	.put(VK_BACK_QUOTE, Key.Std.BACKQUOTE)
 	.put(VK_QUOTE, Key.Std.QUOTE)
- 
+
 	.put(VK_AMPERSAND, Key.Std.AMPERSAND)
 	.put(VK_ASTERISK, Key.Std.ASTERISK)
 	.put(VK_QUOTEDBL, Key.Std.DBLQUOTE)
@@ -1109,7 +1130,7 @@ public abstract class AWTToolkit implements Toolkit {
 	.put(VK_DEAD_IOTA, Key.Std.DEADIOTA)
 	.put(VK_DEAD_VOICED_SOUND, Key.Std.DEADVOICED)
 	.put(VK_DEAD_SEMIVOICED_SOUND, Key.Std.DEADSEMIVOICED)
- 
+
 	.put(VK_0, Key.Std.N0)
 	.put(VK_1, Key.Std.N1)
 	.put(VK_2, Key.Std.N2)
@@ -1120,7 +1141,7 @@ public abstract class AWTToolkit implements Toolkit {
 	.put(VK_7, Key.Std.N7)
 	.put(VK_8, Key.Std.N8)
 	.put(VK_9, Key.Std.N9)
- 
+
 	.put(VK_A, Key.Std.A)
 	.put(VK_B, Key.Std.B)
 	.put(VK_C, Key.Std.C)
@@ -1147,7 +1168,7 @@ public abstract class AWTToolkit implements Toolkit {
 	.put(VK_X, Key.Std.X)
 	.put(VK_Y, Key.Std.Y)
 	.put(VK_Z, Key.Std.Z)
- 
+
 	.put(VK_F1, Key.Std.F1)
 	.put(VK_F2, Key.Std.F2)
 	.put(VK_F3, Key.Std.F3)
@@ -1172,7 +1193,7 @@ public abstract class AWTToolkit implements Toolkit {
 	.put(VK_F22, Key.Std.F22)
 	.put(VK_F23, Key.Std.F23)
 	.put(VK_F24, Key.Std.F24)
- 
+
 	.put(VK_NUMPAD0, Key.Std.NP0)
 	.put(VK_NUMPAD1, Key.Std.NP1)
 	.put(VK_NUMPAD2, Key.Std.NP2)

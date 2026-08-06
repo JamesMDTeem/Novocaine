@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * One character's LP-discovery log: which products (per resource) this character has been seen
@@ -37,6 +40,23 @@ public class LpLog {
 
     /** Set when something LP-relevant changed and should be persisted on the next tick. */
     public volatile boolean newLpExplorer = false;
+
+    /**
+     * The per-tick flush runs off the UI thread. A discovery used to block the render loop on a
+     * file write and an fsync-ish atomic rename every time it fired; small, but on the UI thread and
+     * on every discovery. A single background thread keeps those writes serialized among themselves,
+     * so they still land in order. The user-initiated Reset/Restore writes stay synchronous (see
+     * {@link #write()}), because those must be on disk before the call returns.
+     */
+    private static final ExecutorService WRITER = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "LpLog-writer");
+        t.setDaemon(true);
+        return t;
+    });
+
+    /** Uniquifies the scratch file each write uses, so a background flush and a synchronous
+     *  Reset writing the same log at once cannot tear each other's half-written temp file. */
+    private static final AtomicLong writeSeq = new AtomicLong();
 
     private final Path file;
     /** Where clearLpExplorer() parks the log it is about to wipe, so a reset can be undone. */
@@ -188,9 +208,14 @@ public class LpLog {
         if (!newLpExplorer)
             return;
         newLpExplorer = false;
-        write();
+        // Off the UI thread: writeTo reads the live maps under their own locks, so it is safe to run
+        // on the writer thread, and the render loop never waits on the disk. A discovery that lands
+        // between the flag clear and the write just re-arms newLpExplorer for the next tick; writeTo
+        // reads the maps when it runs, so it always persists the latest state either way.
+        WRITER.execute(() -> writeTo(file));
     }
 
+    /** Synchronous persist, for the paths that must be on disk before they return (Reset/Restore). */
     public void write() {
         writeTo(file);
     }
@@ -216,7 +241,7 @@ public class LpLog {
             // that fails to parse on next load - silently costing the character its entire
             // discovery history. The rename is atomic, so the log is always either the old
             // complete version or the new one.
-            Path tmp = target.resolveSibling(target.getFileName() + ".tmp");
+            Path tmp = target.resolveSibling(target.getFileName() + "." + writeSeq.incrementAndGet() + ".tmp");
             Files.write(tmp, root.toString(2).getBytes(StandardCharsets.UTF_8));
             try {
                 Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);

@@ -533,9 +533,14 @@ public class PlacesWindow extends Window {
     private String contents(Place p) {
         if (!p.reachable(gui))
             return "(walk there to see)";
-        Map<String, Integer> counts = p.contents(gui);
+        /* What is KNOWN, not what is rendered: from across the map this reports what was last seen
+         * there rather than "nothing", which is the same correction the bots got. The label below
+         * says which of the two you are looking at, since "barrel x1" means different things when
+         * it is being watched and when it is being remembered. */
+        boolean seeing = p.observable(gui);
+        Map<String, Integer> counts = p.known(gui);
         if (counts.isEmpty())
-            return "nothing rendered inside it";
+            return seeing ? "nothing inside it" : "nothing remembered inside it";
         StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, Integer> e : counts.entrySet()) {
             if (sb.length() > 0)
@@ -550,6 +555,10 @@ public class PlacesWindow extends Window {
                 break;
             }
         }
+        // Said plainly, because acting on a remembered barrel and acting on one you can see are
+        // different amounts of confident.
+        if (!seeing)
+            sb.append("  (remembered)");
         return sb.toString();
     }
 

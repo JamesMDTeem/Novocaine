@@ -363,11 +363,14 @@ public class LpExplorer {
         return info.IsLpExplorerContains(gobResName, product);
     }
 
-    private static boolean isLeafProduct(String product) {
+    // Package-visible so LpPlanner can classify ONE gob's undiscovered products back into menu
+    // categories - see LpPlanner.harvestOptions(res, isTree, undiscovered).
+    static boolean isLeafProduct(String product) {
         return product.contains("Leaf") || product.contains("Leaves");
     }
 
-    private static boolean isBoughProduct(String product) {
+    // Package-visible for the same reason as isLeafProduct.
+    static boolean isBoughProduct(String product) {
         // Most species name this product "<Species> Bough", but a few (olive) call it
         // "<Species> Branch" and offer it via a "Take branch" menu option. Both are the same
         // bough category. Without the Branch case, "Olive Branch" fell through to the seed

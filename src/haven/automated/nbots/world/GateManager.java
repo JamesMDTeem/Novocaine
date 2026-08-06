@@ -194,7 +194,19 @@ public class GateManager {
      * The gateway most worth walking to on the way to {@code dest}, or null if none is.
      */
     public static Gob towards(GameUI gui, Coord2d dest, Set<Long> skip) {
-        return pick(gui, dest, skip, false, false);
+        /* SHUT ones only, which is the whole of what a gateway problem is.
+         *
+         * This used to consider open gateways too, and that was the single worst behaviour in the
+         * navigation stack. An open gateway is not an obstacle: {@link Router.World#passable} lets
+         * the search walk straight through it, so a route that needs one already has one. Picking it
+         * anyway meant the bot ABANDONED its journey to walk to a doorway - the log is full of
+         * "using #X (open) to reach <somewhere else>" followed by "at open #X - re-planning from the
+         * gateway", which is the round trip achieving precisely nothing and then starting over.
+         * Journeys to a water place died this way, leaving the bot standing at a fence running the
+         * fill-from-barrel logic where there was no barrel.
+         *
+         * A shut gateway is a real obstacle and still handled: that is what this returns now. */
+        return pick(gui, dest, skip, true, false);
     }
 
     /**
@@ -320,7 +332,7 @@ public class GateManager {
                 remembered = Barriers.gatesIn(here.seg).size();
             NLog.log(log, "gate: nothing usable between here and " + fmt(dest)
                 + " (" + near.size() + " loaded, " + remembered + " gate tiles remembered)");
-            for (String s : rejections(gui, dest, skip))
+            for (String s : rejections(gui, dest, skip, true))
                 NLog.log(log, "    " + s);
             return false;
         }
@@ -335,17 +347,17 @@ public class GateManager {
         Coord2d from = me.rc;
 
         if (wasOpen) {
-            if (me.rc.dist(gate.rc) <= REACH) {
-                NLog.log(log, "gate: #" + id + " is open and we are already at it"
-                    + " - it is not what is blocking us");
-                return refuse(skip, id);
-            }
-            if (!nav.approach(gate, REACH)) {
-                NLog.log(log, "gate: couldn't get to open #" + id);
-                return refuse(skip, id);
-            }
-            NLog.log(log, "gate: at open #" + id + " - re-planning from the gateway");
-            return true;
+            /* Nothing to do, wherever it is. An open gateway is a doorway the route already walks
+             * through on its own, so there is no such thing as "using" one - and walking to it to
+             * re-plan from there is a detour that achieves nothing but arriving somewhere we were
+             * not going. It was the commonest line in the log and the reason journeys to a place
+             * ended at whatever gate happened to lie off to one side of them.
+             *
+             * A gate that was shut when it was chosen and has been opened since (by a crewmate, or
+             * by us on a previous pass) lands here too, and the answer is the same: the obstacle is
+             * gone, so carry on with the ordinary route rather than treating it as an event. */
+            NLog.log(log, "gate: #" + id + " is open - not an obstacle, carrying on");
+            return refuse(skip, id);
         }
 
         Coord2d ahead = square(gate, from);
@@ -367,7 +379,21 @@ public class GateManager {
         Gob live = nav.gob(id);
         Gob use = (live == null) ? gate : live;
         Coord2d through = beyond(use, from, dest);
-        nav.stepTo(use.rc, TILE * 1.5);
+        /* Do NOT click the gateway's own centre on the way through, which is what stood here.
+         * It reads as the obvious intermediate hop and it is the one coordinate that cannot
+         * work: the gob's collision box is centred on it, so pfLeftClick throws the click away
+         * before a search starts, and EVERY crossing in the log paid a "pathfinder refused
+         * <the gate>" for it. Three rounds were spent trying to nudge the aim off that tile
+         * instead - hopeless by construction, since a gateway is the only gap in a wall, so
+         * both the backward and the sideways search find nothing but more wall.
+         *
+         * Standing square-on the near side is what the hop was actually for, and the step
+         * beyond walks through the opening on its own. Re-squared from where we are NOW rather
+         * than from {@code from}: approaching the gate has moved us since. */
+        Gob at = nav.player();
+        Coord2d nearside = square(use, (at == null) ? from : at.rc);
+        if (nearside != null)
+            nav.stepTo(nearside, TILE * 1.5);
         boolean crossed = nav.stepTo(through, TILE * 2.5);
         Gob now = nav.player();
         boolean past = (now != null) && passed(use, from, now.rc);
@@ -422,6 +448,23 @@ public class GateManager {
         return (sMe * sDest) > 0;
     }
 
+    /**
+     * Whether a gateway lies usefully between us and where we are going.
+     *
+     * Two bounds here used to scale with the LENGTH OF THE LEG, which made gateways least available
+     * exactly when they matter most - when the destination is close and on the other side of your
+     * own wall. On an eight tile line the sideways allowance came to about two tiles, so a gate
+     * eight tiles along the same wall was dismissed as "off to the side of the line"; the log has
+     * that verdict on gates the bot then spent two failed legs walking at the wall beside. Behind a
+     * wall, "on the way" cannot mean "nearly on the straight line", because the whole point of a
+     * gateway is that the straight line does not work.
+     *
+     * So both bounds get a floor that does not shrink. Sideways keeps the proportional rule for long
+     * journeys, where a gate a third of the way off really is a different route, but never tightens
+     * below {@link #NEAR}. And a gate slightly PAST the destination stays eligible when a wall lies
+     * between us and that destination - going through it and doubling back is what a person does at
+     * a walled compound, and refusing on {@code along >= 1} alone rejected it out of hand.
+     */
     private static boolean between(Coord2d me, Coord2d dest, Coord2d gate, double corridor) {
         Coord2d v = dest.sub(me);
         double len = v.abs();
@@ -429,10 +472,15 @@ public class GateManager {
             return false;
         Coord2d w = gate.sub(me);
         double along = ((w.x * v.x) + (w.y * v.y)) / (len * len);
-        if ((along <= 0.0) || (along >= 1.0))
+        if (along <= 0.0)
+            return false;
+        // Past the far end is allowed only as far as one gate's approach beyond it, so this stays a
+        // gateway ON the way rather than any gateway in the general direction.
+        double past = 1.0 + (NEAR / len);
+        if (along >= past)
             return false;
         double offx = w.x - (v.x * along), offy = w.y - (v.y * along);
-        return Math.hypot(offx, offy) <= Math.min(corridor, len * SIDEWAYS);
+        return Math.hypot(offx, offy) <= Math.min(corridor, Math.max(NEAR, len * SIDEWAYS));
     }
 
     private static boolean refuse(Set<Long> skip, long id) {
@@ -598,7 +646,21 @@ public class GateManager {
         return lockedGates.contains(id);
     }
 
-    private static List<String> rejections(GameUI gui, Coord2d dest, Set<Long> skip) {
+    /**
+     * Why each loaded gateway was not the one, in the same order {@link #pick} asks the questions.
+     *
+     * The order is the whole point, and getting it wrong made this dump a source of WRONG diagnoses
+     * rather than a cure for them. It used to leave out the shut-only filter entirely, so every OPEN
+     * gateway fell through to whichever geometric test happened to catch it - and a dump reading
+     * "fourteen rejected, off to the side of the line", nine of them open, sent a reading of these
+     * logs off after the corridor geometry when the corridor had never been consulted. A gateway
+     * standing open is not rejected by geometry; it is not a candidate at all, because there is
+     * nothing to open and nothing blocking us.
+     *
+     * @param shutOnly what the caller passed to {@link #pick}, so the two agree.
+     */
+    private static List<String> rejections(GameUI gui, Coord2d dest, Set<Long> skip,
+                                           boolean shutOnly) {
         List<String> out = new ArrayList<>();
         Gob me = (gui == null || gui.map == null) ? null : gui.map.player();
         if ((me == null) || (dest == null))
@@ -610,11 +672,17 @@ public class GateManager {
             String why;
             if ((skip != null) && skip.contains(g.id))
                 why = "given up on earlier this journey";
+            else if (shutOnly && isOpen(g))
+                why = "already open - it is a gap, not an obstacle, so there is nothing to pass";
+            else if (locked(g.id))
+                why = "would not open earlier this session";
             else if (toGate > SEARCH)
                 why = String.format("%.0ft away, past the %.0ft search radius",
                     toGate / MCache.tilesz.x, SEARCH / MCache.tilesz.x);
             else if (isOpen(g) && (toGate <= REACH))
                 why = "open and we are already standing at it - not what is blocking us";
+            else if (wallBetween(gui, me.rc, g.rc))
+                why = "there is a wall between us and it - we cannot even get to it";
             else if ((onwards <= AT_DEST) && ourSide(g, me.rc, dest))
                 why = String.format("near the destination but on OUR side of it"
                     + " (we are %+.0fu across the wall, the target %+.0fu) - not on the way",
