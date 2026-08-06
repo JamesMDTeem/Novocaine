@@ -85,6 +85,27 @@ public class Observed {
     public static final byte WALL = 4;
 
     /**
+     * Crossable, but with nowhere to STOP on it - the walkable channel runs off to one side.
+     *
+     * One byte was being asked two different questions and could only answer one. "Can a character
+     * stand at this tile's centre" is the right question for a WAYPOINT, because a waypoint is a
+     * tile centre and the server throws away a click that lands in an object. "Can a character get
+     * across this tile" is the right question for a STEP, and the two come apart precisely where a
+     * gap is tight: a channel a character fits through, running not through the middle of the tile
+     * but along one edge of it.
+     *
+     * Answering the first for both is what produced the worst route in the logs - three tiles from
+     * the water barrel with four such tiles in between, and a hundred and five tile detour around
+     * the cheese racks to reach it. Every one of those four was crossable.
+     *
+     * So: SOLID when the object covers the whole tile, TIGHT when it only covers the middle. The
+     * router may cross a TIGHT tile and is charged for the privilege; nothing may put a waypoint on
+     * one, and {@link #solid} reports it as solid because every OTHER caller is asking the
+     * standability question.
+     */
+    public static final byte TIGHT = 5;
+
+    /**
      * How far out the character is taken to be able to SEE, in tiles.
      *
      * MEASURED, by {@link Sight}, from the distance at which objects are added to and removed from
@@ -114,6 +135,18 @@ public class Observed {
      */
     private static final int SEES = 44;
 
+    /**
+     * The same figure, for anything that needs to ask "is that ground in view right now".
+     *
+     * Exposed because the alternative is every caller picking its own number, which is how this one
+     * came to be measured in the first place - see the note above. {@link Place#observable} uses it
+     * to tell "the area is empty" apart from "the area is out of range", which are the same scan
+     * result and completely different facts.
+     */
+    public static int sees() {
+        return SEES;
+    }
+
     /** How often the sweep actually looks, in milliseconds. */
     private static final long SWEEP_MS = 1000;
     /** How often a changed record is written out, in milliseconds. */
@@ -125,23 +158,83 @@ public class Observed {
     private static final int MAX_SPAN = 12;
 
     /**
-     * How much of a tile an ordinary object must cover before the tile counts as blocked.
+     * The character's own half-width in world units - three of a tile's eleven.
+     *
+     * An ordinary object blocks a tile when it comes within this of the tile's CENTRE, which is the
+     * only point on a tile the router ever aims at. See {@link #footprint} for why that rule, and
+     * not "how much of the tile is covered", and not "every tile the grown box touches".
      *
      * Only walls and gateways are built on the tile grid. Everything a player puts down - a
      * stockpile, a barrel, a cupboard - lands wherever it was dropped, so a small object routinely
-     * straddles an edge and clips a sliver off two or four tiles at once. Blocking all of them
-     * makes an object two or four times its real size, and a one-tile gap between two of them, which
-     * a character walks through without noticing, reads as sealed.
-     *
-     * A third of a tile, and only for those objects. A wall keeps every tile it touches, because it
-     * IS tile-aligned - a partial rule there would be a licence to route through a palisade built a
-     * few units off true, which is the one mistake this whole layer exists to prevent.
+     * straddles an edge and clips a sliver off two or four tiles at once; blocking all of them makes
+     * the object two or four times its real size and seals one-tile gaps a character walks through
+     * without noticing. Walls are exempt and keep every tile they touch.
      *
      * Under-blocking is the safe direction and this is the layer to do it in: the local pathfinder
      * does exact geometry against the same boxes when the bot arrives, so a sliver missed here costs
      * a step around it. Over-blocking has no such second opinion - it deletes the route.
      */
-    private static final double CLIPS = 1.0 / 3.0;
+    private static final double HALFWIDTH = 3.0;
+
+    /**
+     * WHAT is standing on each tile, beside the byte grid that says only THAT something is.
+     *
+     * The byte grid answers the routing question - can a character be here - in one byte per tile,
+     * and that is the right shape for a search that reads millions of them. It is the wrong shape
+     * for every other question. A map dump of a base is a solid block of {@code #} in which a house,
+     * a palisade, a chest and a storage well are indistinguishable, so a route that walks into
+     * something cannot be told from a route that walks into something ELSE - and diagnosing these
+     * failures has meant guessing which, repeatedly and wrongly.
+     *
+     * So the same sweep that stamps the grid also records the resource behind each occupied tile.
+     * Segment -> tile -> a short human label ("house", "well", "pclay", "palisade"). Nothing routes
+     * off this; it exists so the logs can say what was hit.
+     *
+     * Session-scoped rather than persisted: the byte grid is the thing that has to survive a relog,
+     * and an object list that outlived the objects would be worse than none. It refills the moment
+     * anything is in sight.
+     */
+    private static final java.util.Map<Long, java.util.Map<Coord, String>> objects = new HashMap<>();
+
+    /** Labels already announced, so the log records each kind of thing once, not once per sweep. */
+    private static final Set<String> announced = new HashSet<>();
+
+    /** How many tiles each kind of thing accounts for, for the log. */
+    private static java.util.Map<String, Integer> tally(java.util.Map<Coord, String> m) {
+        java.util.Map<String, Integer> out = new java.util.TreeMap<>();
+        for (String v : m.values())
+            out.merge(v, 1, Integer::sum);
+        return out;
+    }
+
+    /** What is standing on a tile, or null if nothing is recorded there. */
+    public static String objectAt(long seg, Coord segTile) {
+        synchronized (LOCK) {
+            java.util.Map<Coord, String> m = objects.get(seg);
+            return (m == null) ? null : m.get(segTile);
+        }
+    }
+
+    /** Everything recorded in a segment, by tile. A copy - safe to iterate. */
+    public static java.util.Map<Coord, String> objectsIn(long seg) {
+        synchronized (LOCK) {
+            java.util.Map<Coord, String> m = objects.get(seg);
+            return (m == null) ? new HashMap<>() : new HashMap<>(m);
+        }
+    }
+
+    /**
+     * A resource name reduced to something a person reads at a glance.
+     *
+     * The last path element, with the variant digits and material suffixes taken off, so
+     * "gfx/terobjs/arch/timberhouse" reads as "timberhouse" and four granite boulders collapse to
+     * one word instead of four.
+     */
+    static String label(String res) {
+        String tail = res.substring(res.lastIndexOf('/') + 1);
+        tail = tail.replaceAll("[0-9]+$", "").replaceAll("-[a-z]$", "");
+        return tail.isEmpty() ? res : tail;
+    }
 
     private static final int GRID = MCache.cmaps.x * MCache.cmaps.y;
 
@@ -194,7 +287,11 @@ public class Observed {
     /** True if something solid - and not a gateway - is known to stand here. */
     public static boolean solid(long seg, Coord segTile) {
         byte s = at(seg, segTile);
-        return (s == SOLID) || (s == WALL);
+        // TIGHT included on purpose: every caller of this is asking "can we be here" - an aim to
+        // nudge, a spot to stand, a place to work - and the answer for a tile with no standable
+        // middle is no. The one caller asking "can we cross here" is Router.World.passable, which
+        // inlines its own test rather than coming through here. See TIGHT.
+        return (s == SOLID) || (s == WALL) || (s == TIGHT);
     }
 
     /** Every wall and gateway tile known in a segment, for the enclosure inference. */
@@ -333,20 +430,59 @@ public class Observed {
          * by the order the object cache happened to hand the gobs over, which walled gates shut
          * with their own posts about half the time. */
         Set<Coord> solids = new HashSet<>(), walls = new HashSet<>(), gates = new HashSet<>();
+        /* Crossable but not stoppable - see TIGHT. Gathered across every gob rather than per gob,
+         * because a tile only counts as tight if NOTHING has swallowed it: two objects can each
+         * leave a different edge free and between them leave nothing at all. Stamped after the
+         * solids, and only where a solid did not already claim the tile. */
+        Set<Coord> tights = new HashSet<>();
+        java.util.Map<Coord, String> found = new HashMap<>();
         Coord2d off = here.sc.sub(me.rc);
         for (Gob g : gobs) {
             try {
                 Resource res = g.getres();
                 if ((res == null) || mobile(res.name))
                     continue;
-                HitBoxes.CollisionBoxSecondary[] boxes = HitBoxes.collisionBoxMap.get(res.name);
-                if (boxes == null)
+                if (phantom(res.name))
                     continue;
+                HitBoxes.CollisionBoxSecondary[] boxes = HitBoxes.collisionBoxMap.get(res.name);
+                if (boxes == null) {
+                    /* No hitbox on file does NOT mean no obstacle - it means we do not know the
+                     * SHAPE of one we can plainly see. Dropping the gob entirely recorded the
+                     * ground under it as open, and that is the difference between our record and
+                     * the server that every "walks into it, then re-plans" report comes down to:
+                     * the route is drawn through a storage well, a potter's wheel or the fringe of
+                     * a chest, the click is thrown away because it landed on the object, the leg
+                     * fails, and the re-plan plots the same line again because the record still
+                     * says open. It is also why a journey arrives as three short hops instead of
+                     * one - each collision costs a leg and a re-plan.
+                     *
+                     * So record what we do know: something is standing on that tile. One tile is
+                     * the conservative floor, not the truth - a big object covers more - but a tile
+                     * of honest obstacle beats a hole in the record, and the router will route
+                     * around it instead of into it.
+                     *
+                     * Forage is the exception, and has to be: herbs and crops are walked over, and
+                     * blocking them would wall a bot off from the very things it is sent to pick.
+                     *
+                     * The real repair is a hitbox for these resources in hitboxes.db; until then
+                     * this keeps the record on the safe side of wrong. */
+                    if (walkOver(res.name))
+                        continue;
+                    solids.add(g.rc.add(off).floor(MCache.tilesz));
+                    continue;
+                }
                 Barriers.Kind k = Barriers.kind(res.name);
                 Set<Coord> into = (k == Barriers.Kind.GATE) ? gates
                     : (k == Barriers.Kind.WALL) ? walls : solids;
-                // kind() is null for anything that is not part of a barrier - see CLIPS.
-                into.addAll(footprint(g, off, boxes, k == null));
+                // kind() is null for anything that is not part of a barrier - see HALFWIDTH.
+                Set<Coord> tiles = footprint(g, off, boxes, k == null, tights);
+                into.addAll(tiles);
+                // The same tiles, remembered by WHAT put them there - see the objects registry.
+                String lbl = label(res.name);
+                for (Coord t : tiles)
+                    found.put(t, lbl);
+                for (Coord t : tights)
+                    found.putIfAbsent(t, lbl);
             } catch (RuntimeException e) {
                 // Includes Loading: a gob whose resource has not arrived is picked up next sweep.
             }
@@ -375,16 +511,47 @@ public class Observed {
          * In empty country this shrinks a long way, and that is correct rather than unfortunate:
          * with nothing loaded there is no evidence of emptiness to record. Unseen ground is still
          * passable to the router, just no longer asserted. */
-        int reach = Math.min(SEES, loadedReach(gobs, me));
+        /* A rectangle, not a square: each side is bounded by what has actually been delivered on
+         * that side. See loadedReach - a square let a well-furnished direction authorise wiping an
+         * empty one, and erased the wall the bot was standing in front of. */
+        int[] r = loadedReach(gobs, me);
+        final int west = r[0], east = r[1], north = r[2], south = r[3];
         synchronized (LOCK) {
             load();
-            for (int y = -reach; y <= reach; y++) {
-                for (int x = -reach; x <= reach; x++)
+            for (int y = -north; y <= south; y++) {
+                for (int x = -west; x <= east; x++)
                     set(here.seg, mine.add(x, y), OPEN);
+            }
+            /* The object registry follows the same wipe-then-stamp rule as the grid, and for the
+             * same reason: inside the swept box our knowledge is current, so anything recorded there
+             * and no longer seen is gone. Outside it we know nothing new and must not touch what is
+             * remembered. */
+            java.util.Map<Coord, String> reg = objects.computeIfAbsent(here.seg, s -> new HashMap<>());
+            for (int y = -north; y <= south; y++) {
+                for (int x = -west; x <= east; x++)
+                    reg.remove(mine.add(x, y));
+            }
+            reg.putAll(found);
+            /* Each KIND announced once. A line per sweep would be several a second saying the same
+             * thing; a line the first time a house or a storage well is ever recorded is the thing
+             * actually worth having, because it says what the solid blocks in a map dump are made
+             * of - which is exactly what could not be told before. */
+            for (java.util.Map.Entry<String, Integer> e : tally(found).entrySet()) {
+                if (announced.add(e.getKey()))
+                    haven.automated.nbots.core.NLog.log("observed.log", "first sighting of "
+                        + e.getKey() + " - " + e.getValue() + " tile(s) in this sweep");
             }
             /* Stamped weakest first. A wall segment's box overlaps its own gate's and a gate's
              * posts, so whichever is written last wins, and a gateway recorded as solid seals a
-             * base for good. Furniture, then walls, then gateways. */
+             * base for good. Tight ground, then furniture, then walls, then gateways.
+             *
+             * Tight goes FIRST because it is the weakest claim of the four - "something is in the
+             * middle of this" - and any of the others standing on the same tile is a stronger one
+             * that must survive. Two objects each leaving a different edge free leave no way
+             * across between them, and the second one's SOLID overwriting the first one's TIGHT is
+             * exactly how that comes out right. */
+            for (Coord t : tights)
+                set(here.seg, t, TIGHT);
             for (Coord t : solids)
                 set(here.seg, t, SOLID);
             for (Coord t : walls)
@@ -392,9 +559,9 @@ public class Observed {
             for (Coord t : gates)
                 set(here.seg, t, GATE);
         }
-        /* Invalidate the LPA* cache so the next route re-computes from the freshly observed
-         * map. The sweep overwrites many tiles at once (up to SEES*2+1 squared), so individual
-         * updateTile calls would be expensive; blowing the cache is the right call here. */
+        /* Announce that the observed map changed under the router. This is a no-op now that
+         * searches are stateless and read the map fresh, but the call stays as the honest place to
+         * say "a whole sweep of tiles just changed" - up to SEES*2+1 squared at once. */
         Router.invalidateCache();
     }
 
@@ -420,7 +587,7 @@ public class Observed {
      *
      * Two kritter resources are placed objects rather than creatures, and those stay.
      */
-    private static boolean mobile(String res) {
+    static boolean mobile(String res) {
         if (res.startsWith("gfx/borka/"))
             return true;
         if (!res.startsWith("gfx/kritter/"))
@@ -443,6 +610,15 @@ public class Observed {
      */
     private static Set<Coord> footprint(Gob g, Coord2d off, HitBoxes.CollisionBoxSecondary[] boxes,
                                         boolean partial) {
+        return footprint(g, off, boxes, partial, new HashSet<>());
+    }
+
+    /**
+     * @param tight collects tiles that are crossable but have no standable middle. See {@link
+     *              #TIGHT}. Walls never produce any - they are whole tiles by construction.
+     */
+    private static Set<Coord> footprint(Gob g, Coord2d off, HitBoxes.CollisionBoxSecondary[] boxes,
+                                        boolean partial, Set<Coord> tight) {
         Set<Coord> out = new HashSet<>();
         Coord2d pos = g.rc.add(off);
         if (!partial)
@@ -462,15 +638,57 @@ public class Observed {
                 miny = Math.min(miny, ry);
                 maxy = Math.max(maxy, ry);
             }
-            Coord lo = pos.add(minx, miny).floor(MCache.tilesz);
-            Coord hi = pos.add(maxx - EDGE, maxy - EDGE).floor(MCache.tilesz);
+            /* An object blocks a tile when a character CANNOT STAND AT ITS CENTRE - the box grown
+             * by the character's half-width, tested against the one point that matters.
+             *
+             * Two rules were tried before this and both were wrong in the same place. Asking how
+             * much of the tile the raw box covers, and blocking at a third of it, answers a question
+             * nobody asks: a storage well can put two and a half units of itself into the next tile
+             * along - a fifth of it, comfortably under the threshold, so the tile reads open - and
+             * still leave nowhere within three units of that tile's centre to put a character. The
+             * route aims there, the server refuses the click before a search starts, the leg fails,
+             * the re-plan draws the same line because the record still says open, and the journey
+             * arrives in three broken hops. Growing the box and then keeping every tile it OVERLAPS
+             * fixes that and breaks more than it mends: it turns a one-tile palisade segment into
+             * three tiles by three and seals the one-tile gaps a character walks through.
+             *
+             * Every waypoint this record feeds is a tile centre, so make the record answer for tile
+             * centres exactly. A palisade segment keeps its own tile and leaves its neighbours alone
+             * (their centres are eleven units off, well clear of eight and a half); the well's south
+             * neighbour is blocked, because its centre really is inside the well plus a character.
+             *
+             * Walls are exempt and keep every tile they touch. They are the one thing built ON the
+             * grid, they are already whole tiles, and under-blocking one is a licence to route
+             * through a palisade built a few units off true.
+             *
+             * Three units, the same figure Router.HALFWIDTH and Map.plbbox use. Note that Router's
+             * own line checks sweep the same half-width along a leg: that is the CONTINUOUS layer
+             * doing it for the space between waypoints, this is the grid layer doing it for the
+             * waypoints themselves. Neither is redundant, and neither should be widened to cover
+             * for the other - do it in both and the character is modelled at twice its real width,
+             * which is the previous rule's second bug. */
+            double grow = partial ? HALFWIDTH : 0;
+            Coord2d blo = pos.add(minx - grow, miny - grow);
+            Coord2d bhi = pos.add(maxx + grow, maxy + grow);
+            Coord lo = blo.floor(MCache.tilesz);
+            Coord hi = pos.add((maxx + grow) - EDGE, (maxy + grow) - EDGE).floor(MCache.tilesz);
             if (((hi.x - lo.x) > MAX_SPAN) || ((hi.y - lo.y) > MAX_SPAN))
                 continue;
             for (int y = lo.y; y <= hi.y; y++) {
                 for (int x = lo.x; x <= hi.x; x++) {
-                    if (partial && (cover(pos.add(minx, miny), pos.add(maxx, maxy), x, y) < CLIPS))
+                    if (!partial) {
+                        out.add(new Coord(x, y));
                         continue;
-                    out.add(new Coord(x, y));
+                    }
+                    if (!holds(blo, bhi, grow, x, y))
+                        continue;
+                    /* The middle is taken; whether the WHOLE tile is decides which kind of taken.
+                     *
+                     * A tile the grown box covers entirely cannot be crossed. A tile it only
+                     * covers the middle of can - along whichever edge the box leaves free - and
+                     * calling those two the same thing is what put a hundred-tile detour between
+                     * the bot and a barrel three tiles away. See TIGHT. */
+                    (swallows(blo, bhi, grow, x, y) ? out : tight).add(new Coord(x, y));
                 }
             }
         }
@@ -478,42 +696,187 @@ public class Observed {
     }
 
     /**
-     * How far out objects have actually been delivered, in tiles, along the tighter axis.
+     * How far out objects have actually been delivered, in tiles, in EACH of the four directions:
+     * {@code [west, east, north, south]}.
      *
-     * The tighter of the two on purpose. The region is square, so its two axes normally agree; when
-     * they do not it is because one direction happens to be empty of objects, and the honest reach
-     * in that case is the one we can support rather than the one we would like.
+     * Per direction, because a single symmetric figure is the bug this method used to have. It took
+     * {@code max|dx|} and {@code max|dy|} - each mixing a direction with its opposite - and wiped a
+     * SQUARE of that half-width all round. So one object to the east and one to the south together
+     * authorised wiping eight tiles NORTH, where nothing had loaded at all.
+     *
+     * That is not a corner case, it is where a bot stands: inside a base beside its own north wall,
+     * the furniture behind it supplies the whole reach, and the palisade in front - not yet
+     * delivered, because it is at the edge of sight - is recorded as OPEN. The router then plans
+     * straight through it. Observed live: a route aimed at x=-10565, seven tiles west of the only
+     * gateway, refused four times against the palisade and wedged 188u short, with ten gobs loaded.
+     *
+     * Erasing a real wall is much worse than remembering a torn-down one - it records ground as
+     * empty BECAUSE nothing has loaded there, which is the exact opposite of what it means - so
+     * every direction is bounded by its own evidence and nothing else's.
      *
      * Anything that moves is left out. A wolf trotting past at fifty tiles is not evidence that the
      * ground at fifty tiles has been delivered - it is evidence about the wolf, which was somewhere
      * else a moment ago.
      */
-    private static int loadedReach(List<Gob> gobs, Gob me) {
-        double fx = 0, fy = 0;
+    private static int[] loadedReach(List<Gob> gobs, Gob me) {
+        double w = 0, e = 0, n = 0, s = 0;
         for (Gob g : gobs) {
             try {
                 Resource res = g.getres();
                 if ((res == null) || mobile(res.name))
                     continue;
-                fx = Math.max(fx, Math.abs(g.rc.x - me.rc.x));
-                fy = Math.max(fy, Math.abs(g.rc.y - me.rc.y));
-            } catch (RuntimeException e) {
+                double dx = g.rc.x - me.rc.x, dy = g.rc.y - me.rc.y;
+                if (dx < 0)
+                    w = Math.max(w, -dx);
+                else
+                    e = Math.max(e, dx);
+                if (dy < 0)
+                    n = Math.max(n, -dy);
+                else
+                    s = Math.max(s, dy);
+            } catch (RuntimeException e0) {
                 // Not resolved yet; it says nothing either way.
             }
         }
-        // A tile inside the furthest thing seen, since that object proves its own tile arrived and
-        // nothing about the one beyond it.
-        return Math.max(0, (int) (Math.min(fx, fy) / MCache.tilesz.x) - 1);
+        return new int[] {tiles(w), tiles(e), tiles(n), tiles(s)};
     }
 
-    /** What fraction of one tile an axis-aligned box covers. See {@link #CLIPS}. */
-    private static double cover(Coord2d lo, Coord2d hi, int tx, int ty) {
+    /**
+     * A delivery distance in units as a number of tiles we are willing to call swept - one tile
+     * INSIDE the furthest thing seen, since that object proves its own tile arrived and nothing
+     * whatever about the one beyond it.
+     */
+    private static int tiles(double units) {
+        return Math.min(SEES, Math.max(0, (int) (units / MCache.tilesz.x) - 1));
+    }
+
+    /**
+     * Things a character walks straight over, so an unknown hitbox on one means "no obstacle"
+     * rather than "obstacle of unknown shape".
+     *
+     * Kept deliberately short. The cost of leaving something off this list is a tile of ground
+     * needlessly avoided; the cost of putting something on it wrongly is the bot walking into that
+     * thing for ever, which is the failure this whole path exists to stop - so anything not plainly
+     * walk-over stays off.
+     */
+    /**
+     * Things carrying a collision box that the SERVER does not actually stop anyone with.
+     *
+     * A different question from {@link #walkOver}, which answers "we do not know this thing's
+     * shape". Here the shape is on file and correct, and the ground is still walkable - so the box
+     * must not reach the grid at all, or we record an obstacle the game does not have and route
+     * around a fire the character would have strolled straight through.
+     *
+     * Hearth fires ({@code pow}) are the case this exists for, and EVERY hearth fire belongs here,
+     * not only ours: none of them collide, so none of them block. Whose it is matters only when
+     * choosing one to travel to, which is a question for the task layer and has nothing to do with
+     * the map.
+     *
+     * Kept as short and as specific as {@link #walkOver}, and for the same reason: an entry here is
+     * a promise that walking into the thing is free, and a wrong promise is a bot pushing at
+     * something solid for ever.
+     */
+    private static boolean phantom(String name) {
+        return name.equals("gfx/terobjs/pow") || name.equals("gfx/terobjs/powr");
+    }
+
+    private static boolean walkOver(String name) {
+        return name.startsWith("gfx/terobjs/herbs/")
+            || name.startsWith("gfx/terobjs/plants/")
+            || name.startsWith("gfx/terobjs/items/")
+            || name.startsWith("gfx/invobjs/");
+    }
+
+    /**
+     * Whether an axis-aligned box contains a tile's CENTRE - the tile's one standable point.
+     *
+     * Called with the box already grown by the character's half-width, so "contains the centre"
+     * reads as "a character standing in the middle of this tile would be inside the object". See
+     * {@link #footprint}.
+     */
+    private static boolean holds(Coord2d lo, Coord2d hi, double grow, int tx, int ty) {
+        /* The CENTRE, and it has to be the centre.
+         *
+         * This was briefly changed to "the box overlaps the tile at all", to catch a destination
+         * that was refused on a tile we called clear. That was wrong, and wrong in a way worth
+         * recording, because the reasoning sounded good.
+         *
+         * A character has ONE hitbox and collision is ONE test, so any point it can pass through is
+         * a point it can stand on. There is no such thing as passable-but-not-standable space, and
+         * a rule that marks a tile unstandable because a box clips its corner - while its centre is
+         * perfectly free - is not describing the world. TIGHT is not about the character at all: it
+         * is about ADDRESSING. A waypoint can only ever be a tile centre, because that is the only
+         * point the grid can name, so the question this answers is "is the one point we are able to
+         * aim at inside the object" - and the answer for a corner-clipped tile is no.
+         *
+         * Crossing is checked continuously and separately - clear()/along() sample the real line at
+         * quarter-tile against the real half-width - so nothing is lost by keeping this narrow. The
+         * grid answers where we may STOP; the line check answers where we may GO.
+         *
+         * The overlap version tripled the tight tiles in a route (5 -> 27 on one leg), which was
+         * enough to expose an unbounded loop in Router.simplify and to leave the LP assistant
+         * unable to stand next to bushes it had picked from all session.
+         *
+         * The destination case it was meant to fix is real and is NOT a grid problem: a destination
+         * is an arbitrary world point, not a tile centre, so it wants an exact test against the box
+         * rather than a coarser rule about its tile. That belongs in the continuous layer. */
+        double cx = (tx * MCache.tilesz.x) + (MCache.tilesz.x / 2);
+        double cy = (ty * MCache.tilesz.y) + (MCache.tilesz.y / 2);
+        /* Distance to the box, against a ROUND character - not "inside the box grown by grow".
+         *
+         * Growing a rectangle by a square over-blocks its corners, and the character is not square.
+         * Observed in play: turning on the spot lets the corners of our modelled box enter an
+         * object while the game goes on treating the position as legal, which is what a DISC of
+         * radius {@link #HALFWIDTH} looks like when you have been drawing a square around it. The
+         * error is worst exactly at a corner and is worth 3*(sqrt(2)-1), about 1.24 units - a
+         * ninth of a tile, which is plenty to lose a tile that was standable all along.
+         *
+         * So: grow the box by a disc, which is a rounded rectangle, and test the centre against it.
+         * The nearest-point-on-box distance below is that test written the cheap way. Sides behave
+         * exactly as before - it is only corners that stop being over-claimed.
+         *
+         * lo/hi arrive already grown by grow, so un-grow them to recover the real box. */
+        double x0 = lo.x + grow, x1 = hi.x - grow;
+        double y0 = lo.y + grow, y1 = hi.y - grow;
+        double dx = Math.max(0, Math.max(x0 - cx, cx - x1));
+        double dy = Math.max(0, Math.max(y0 - cy, cy - y1));
+        return ((dx * dx) + (dy * dy)) <= (grow * grow);
+    }
+
+    /**
+     * Whether an axis-aligned box contains a tile ENTIRELY - so there is no way across it either.
+     *
+     * The companion to {@link #holds}, and the difference between the two is the whole of {@link
+     * #TIGHT}. Called with the box already grown by the character's half-width, so "contains the
+     * tile" reads as "a character could not be anywhere on this tile, not even passing through".
+     */
+    private static boolean swallows(Coord2d lo, Coord2d hi, double grow, int tx, int ty) {
+        /* Round, like {@link #holds} - the character is a disc, and a tile only has no way across
+         * it if EVERY point of it is within the character's half-width of the box. For a rectangle
+         * the extreme points are the four corners, so testing those settles it.
+         *
+         * Was the square-grown box, which is the same over-claim {@code holds} used to make and in
+         * the same place: at the corners. It matters less here - a tile has to be fully covered to
+         * be SOLID, so the corners are rarely what decides it - but leaving the two tests
+         * disagreeing means a tile can be too enclosed to stand on and not enclosed enough to be
+         * solid by DIFFERENT geometry, which is not a distinction anyone intended.
+         *
+         * lo/hi arrive already grown by grow; un-grow to recover the real box. */
+        double bx0 = lo.x + grow, bx1 = hi.x - grow;
+        double by0 = lo.y + grow, by1 = hi.y - grow;
         double x0 = tx * MCache.tilesz.x, y0 = ty * MCache.tilesz.y;
-        double w = Math.min(hi.x, x0 + MCache.tilesz.x) - Math.max(lo.x, x0);
-        double h = Math.min(hi.y, y0 + MCache.tilesz.y) - Math.max(lo.y, y0);
-        if ((w <= 0) || (h <= 0))
-            return 0;
-        return (w * h) / (MCache.tilesz.x * MCache.tilesz.y);
+        double x1 = x0 + MCache.tilesz.x, y1 = y0 + MCache.tilesz.y;
+        double r2 = grow * grow;
+        return within(bx0, bx1, by0, by1, x0, y0, r2) && within(bx0, bx1, by0, by1, x1, y0, r2)
+            && within(bx0, bx1, by0, by1, x0, y1, r2) && within(bx0, bx1, by0, by1, x1, y1, r2);
+    }
+
+    /** Whether a point is within {@code sqrt(r2)} of the box - the disc test {@link #holds} uses. */
+    private static boolean within(double bx0, double bx1, double by0, double by1,
+                                  double px, double py, double r2) {
+        double dx = Math.max(0, Math.max(bx0 - px, px - bx1));
+        double dy = Math.max(0, Math.max(by0 - py, py - by1));
+        return ((dx * dx) + (dy * dy)) <= r2;
     }
 
     /** Caller holds {@link #LOCK}. */
@@ -758,11 +1121,16 @@ public class Observed {
         synchronized (LOCK) {
             map = new HashMap<>();
             looked = new HashMap<>();
+            // The object registry too, or "forget everything" would leave the labels for a base that
+            // has just been torn down attached to tiles the grid no longer says anything about.
+            objects.clear();
+            announced.clear();
             fileAt = UNKNOWN;
             dirty = true;
         }
         save();
-        /* The entire map was discarded — the cached LPA* paths are definitely stale. */
+        /* The entire map was discarded; tell the router. A no-op now (stateless search), but the
+         * right place to record that the world changed wholesale. */
         Router.invalidateCache();
     }
 

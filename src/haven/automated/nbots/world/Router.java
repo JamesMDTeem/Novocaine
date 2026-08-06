@@ -5,7 +5,7 @@ import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
-import haven.automated.pathfinder.LPAStar;
+import haven.automated.pathfinder.GridAStar;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -73,24 +73,49 @@ public class Router {
      */
     private static final int REFUSED_COST = 200;
 
+    /**
+     * What routing a step through a SHUT gateway costs, as a multiple of a step over open ground.
+     *
+     * Only shut ones cost anything, because only shut ones cost anything: an open gateway is a
+     * doorway you walk through without breaking stride, and charging for it made bots take long
+     * detours around their own open doors. A shut one has to be stopped at, opened, and walked
+     * through, which is worth a few tiles of walking to avoid - but only a few. This was briefly
+     * twenty-five, which is a detour so large it distorted every route inside a base; six is enough
+     * to prefer the open door next to the shut one and nothing like enough to send a bot round the
+     * outside of a palisade.
+     *
+     * The gate a route genuinely needs still gets used, which is the half that must not break: a
+     * cost can be paid, and only an impassable tile cannot.
+     */
+    private static final int GATE_COST = 6;
+
+    /**
+     * What a tile with no standable middle costs to cross. See {@link Observed#TIGHT}.
+     *
+     * Four, so a lane of three tight tiles loses to any open way up to about eight tiles longer and
+     * wins against anything further. The number the logs argue for is "less than a hundred": the
+     * behaviour being replaced is a hundred-and-five tile detour around a three tile gap.
+     */
+    private static final int TIGHT_COST = 4;
+
     /** Straight and diagonal step costs, scaled so the whole search stays in integers. */
     private static final int STRAIGHT = 10, DIAGONAL = 14;
 
     private static final int[] DX = {1, -1, 0, 0, 1, 1, -1, -1};
     private static final int[] DY = {0, 0, 1, -1, 1, -1, 1, -1};
 
-    /** Cached LPA* instance for incremental re-planning. */
-    private static LPAStar lpaStar;
-
     private Router() {}
 
     /**
-     * Invalidate the cached LPA* state. Call this when the segment changes or when the
-     * observed world state has changed in a way that cannot be incrementally updated
-     * (e.g., a full map reload).
+     * No-op, kept for its callers.
+     *
+     * The router used to hold a single cached LPA* instance whose cost maps this invalidated. That
+     * cache is gone (see {@link GridAStar}): every search is stateless and reads the observed world
+     * fresh, so there is nothing to invalidate - a change to the world is seen by the next search
+     * automatically. Left in place because {@link Observed} calls it on a full map reload, and that
+     * call correctly expresses "the world changed"; it simply no longer needs to do anything.
      */
     public static void invalidateCache() {
-        lpaStar = null;
     }
 
     /**
@@ -117,15 +142,150 @@ public class Router {
      * real answer.
      */
     public static boolean reachable(GameUI gui, Coord2d target, int margin) {
+        return reachable(gui, target, margin, true);
+    }
+
+    /**
+     * @param throughGateways whether the caller can OPEN a shut gateway on the way. Pass false from
+     *                        anything that walks with the client's own pathfinder and nothing else -
+     *                        it answers a materially different question, and answering the wrong one
+     *                        is how the LP assistant came to pick four felled logs inside a palisade
+     *                        it had no way through and walk at the wall for each of them.
+     */
+    public static boolean reachable(GameUI gui, Coord2d target, int margin, boolean throughGateways) {
         Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
         WorldAnchor there = WorldAnchor.capture(gui, target);
         if ((me == null) || (here == null) || (there == null) || (here.seg != there.seg))
             return true;
         Coord from = here.sc.floor(MCache.tilesz), to = there.sc.floor(MCache.tilesz);
-        // Use LPA* search over clamped world (UNSEEN impassable). No bounding box needed -
-        // LPAStar has its own search limit (MAX_TILES).
-        return searchLPA(new World(gui, here.seg, true), from, to, false) != null;
+        // Search over a clamped world (UNSEEN impassable). No bounding box needed - the search has
+        // its own ceiling (MAX_TILES).
+        World w = new World(gui, here.seg, true, throughGateways);
+        w.confine(from, to, DETOUR);
+        /* NEXT TO it, not ON it - which is what the margin has always been for and what this method
+         * spent its whole life ignoring, the parameter being accepted and then dropped on the floor.
+         *
+         * Everything worth walking to is a solid object, and an object's own tile carries its own
+         * collision box, so it is impassable BY DEFINITION. Asking whether a path exists onto that
+         * tile therefore answers no for every bush, tree and boulder in the world - including ones
+         * the character is standing next to. That is the whole of "the LP bot will not path to
+         * things literally right beside it": they were all being reported unreachable, correctly,
+         * for a question nobody meant to ask.
+         *
+         * So the goal is the nearest tile within the margin that can actually be stood on, which is
+         * where the bot would end up anyway.
+         *
+         * SEVERAL of them, tried in order, not just the nearest one. Taking the first and answering
+         * on it alone makes the verdict turn on which side of the object happens to be a tile
+         * closer: a tree on the far bank of a one-tile stream has its nearest standable tile on the
+         * FAR side, no path leads there, and the tree is declared unreachable on foot - while the
+         * near bank, a tile further out and perfectly walkable, was never asked about. That is the
+         * shape of the surviving "no way to it on foot" rejections. Each extra candidate is one more
+         * bounded search, and the first that succeeds ends it. */
+        List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), TRIES);
+        if (goals.isEmpty())
+            return true;   // nowhere to stand near it that we know of - don't rule the target out on that
+        for (Coord goal : goals) {
+            if (search(w, from, goal, false) != null)
+                return true;
+        }
+        return false;
+    }
+
+    /** How many standable spots around a target {@link #reachable} will try before answering no. */
+    private static final int TRIES = 4;
+
+    /**
+     * How far outside the two ends a NEARBY question may search, in tiles. See {@link World#confine}.
+     *
+     * Forty: room to go the long way round a pond, a building or a stretch of palisade, and no room
+     * for a journey. Deliberately more than generous relative to what it bounds - LP's targets are
+     * things it can see, at most {@link Observed#SEES} = 44 tiles off, and a forty-tile detour to
+     * reach a tree eight tiles away is already far past anything worth walking.
+     *
+     * Erring large on purpose. Too small reports a reachable target unreachable, and the LP
+     * assistant RETIRES on that answer - it would quietly write off good resources for the session,
+     * which is the expensive mistake. Too large only costs search time, which is what this is for.
+     */
+    private static final int DETOUR = 40;
+
+    /**
+     * How far the player would actually WALK to a live world point, in world units, or -1 if that
+     * cannot be worked out from what has been observed.
+     *
+     * The companion to {@link #reachable}, for the same caller and the same reason. A chooser that
+     * ranks its candidates by how far away they LOOK will send the bot round a lake to a tree eleven
+     * tiles off while an identical tree fourteen tiles off, on this bank, goes untouched - straight
+     * line distance is a lower bound on walking distance and the gap between them is exactly the
+     * obstacle. Measuring the walk instead ranks by the thing that costs time.
+     *
+     * -1 rather than infinity for "cannot tell", because it is not a claim that the target is far;
+     * it is the absence of a claim, and a caller that treats it as far would quietly demote
+     * everything just beyond the observed edge. Callers should fall back to the straight line, which
+     * is what this would have returned had the ground been flat and empty.
+     */
+    public static double walkingDistance(GameUI gui, Coord2d target, int margin) {
+        Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        WorldAnchor there = WorldAnchor.capture(gui, target);
+        if ((me == null) || (here == null) || (there == null) || (here.seg != there.seg))
+            return -1;
+        Coord from = here.sc.floor(MCache.tilesz), to = there.sc.floor(MCache.tilesz);
+        World w = new World(gui, here.seg, true);
+        w.confine(from, to, DETOUR);
+        List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), TRIES);
+        double best = -1;
+        for (Coord goal : goals) {
+            List<Coord> path = search(w, from, goal, false);
+            if (path == null)
+                continue;
+            // Waypoints, not tiles - simplify has already collapsed the straight runs, and the
+            // length of a polyline is the same either way.
+            double len = 0;
+            Coord at = from;
+            for (Coord c : path) {
+                len += at.dist(c) * MCache.tilesz.x;
+                at = c;
+            }
+            if ((best < 0) || (len < best))
+                best = len;
+        }
+        return best;
+    }
+
+    /**
+     * The closest tiles to {@code at} that a character could stand on, within {@code radius} tiles,
+     * nearest first and at most {@code max} of them.
+     *
+     * Rings outward from the target so the order is by distance to the thing itself, which is what
+     * the caller cares about - and so that stopping early stops on the near ones.
+     */
+    private static List<Coord> standableAround(World w, Coord at, int radius, int max) {
+        List<Coord> out = new ArrayList<>();
+        // standable, not passable: this is picking somewhere to BE, and a tile a character can only
+        // squeeze across is not somewhere to be. See World.standable.
+        if (w.standable(at))
+            out.add(at);
+        for (int r = 1; (r <= Math.max(radius, 1)) && (out.size() < max); r++) {
+            List<Coord> ring = new ArrayList<>();
+            for (int dy = -r; dy <= r; dy++) {
+                for (int dx = -r; dx <= r; dx++) {
+                    // Only the ring just reached; the inside was covered by a previous, tighter pass.
+                    if ((Math.abs(dx) != r) && (Math.abs(dy) != r))
+                        continue;
+                    if (w.standable(at.add(dx, dy)))
+                        ring.add(new Coord(dx, dy));
+                }
+            }
+            ring.sort((a, b) -> Double.compare(Math.hypot(a.x, a.y), Math.hypot(b.x, b.y)));
+            for (Coord d : ring) {
+                if (out.size() >= max)
+                    break;
+                out.add(at.add(d));
+            }
+        }
+        return out;
     }
 
     /**
@@ -142,13 +302,48 @@ public class Router {
     }
 
     /**
+     * Whether we know of anywhere to STAND near this target.
+     *
+     * The SECOND way {@link #reachable} answers yes without knowing anything, and the one nothing
+     * was watching. {@link #answerable} covers only the first - the map file not being able to
+     * place one end - and a run where that fired zero times was read as "every yes was a real
+     * yes". It is not: when {@code standableAround} comes back empty, reachable returns true on
+     * the deliberate principle that it should not rule a target out for its own ignorance, and
+     * that yes is indistinguishable in a log from a route it actually found.
+     *
+     * This is the common case for anything seen at render distance but never walked near, because
+     * standable ground has to have been OBSERVED to count. So the bot proves nothing, chases with
+     * the local pathfinder, and walks at whatever is in the way until its attempt budget is gone -
+     * which is the shape of the surviving "it tried to path through a solid wall" reports.
+     *
+     * Asked separately rather than folded into {@code answerable} so a log names which of the two
+     * it was: "cannot place it" is a map-file problem and "no known ground beside it" is a
+     * not-explored-yet one, and they want opposite responses.
+     *
+     * @param margin the same reach margin the matching {@link #reachable} call uses - a different
+     *               one would answer about a different question.
+     */
+    public static boolean groundedAround(GameUI gui, Coord2d target, int margin) {
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        WorldAnchor there = WorldAnchor.capture(gui, target);
+        if ((here == null) || (there == null) || (here.seg != there.seg))
+            return false;
+        /* Gateways open here, unlike the reachable call this shadows: whether a tile can be stood
+         * on is a fact about the tile, and has nothing to do with what we can get through to
+         * reach it. Passing false would make the answer depend on the wrong thing. */
+        World w = new World(gui, here.seg, true, true);
+        return !standableAround(w, there.sc.floor(MCache.tilesz),
+            (int) Math.ceil(margin / MCache.tilesz.x), TRIES).isEmpty();
+    }
+
+    /**
      * Waypoints from one segment tile to another, or null if there is no route.
      *
      * A null return is not a failure to report - it is the caller's cue to fall back on walking
      * straight at the target, which is what it would have done anyway.
      */
     public static List<Coord> route(GameUI gui, long seg, Coord fromTile, Coord toTile) {
-        return searchLPA(new World(gui, seg, false), fromTile, toTile, false);
+        return search(new World(gui, seg, false), fromTile, toTile, false);
     }
 
     /**
@@ -164,57 +359,43 @@ public class Router {
      * the destination to observe more, then re-plan.
      */
     public static List<Coord> routeClamped(GameUI gui, long seg, Coord fromTile, Coord toTile) {
-        return searchLPA(new World(gui, seg, true), fromTile, toTile, true);
+        return search(new World(gui, seg, true), fromTile, toTile, true);
     }
 
     /**
-     * Internal search using LPA* for incremental re-planning.
+     * Internal search: a full stateless A* over {@code w}, thinned to waypoints exactly once.
      *
-     * LPA* manages its own cache internally. When the segment, start, goal, or clamped mode
-     * changes, it automatically performs a full A* search. Otherwise it does incremental repair.
+     * {@link GridAStar#search} returns the RAW tile path and does no thinning of its own - that job
+     * belongs to {@link #simplify} alone, because it is the pass that checks a line at quarter-tile
+     * resolution against the character's half-width. Thinning twice, with a coarser test first, used
+     * to drop the corner waypoints that check exists to keep.
      */
-    private static List<Coord> searchLPA(World w, Coord from, Coord to, boolean clamped) {
+    private static List<Coord> search(World w, Coord from, Coord to, boolean clamped) {
         if (from.equals(to))
             return new ArrayList<>();
 
-        if (lpaStar == null) {
-            lpaStar = new LPAStar();
-        }
-
-        // LPAStar.search() handles both fresh and incremental searches internally
-        List<Coord> path = lpaStar.search(w, from, to, clamped);
-        if (path != null) {
+        List<Coord> path = GridAStar.search(w, from, to, clamped);
+        if (path != null)
             return simplify(w, path);
-        }
         return null;
     }
 
     /**
-     * Notify that a single tile's cost or passability has changed.
+     * No-op, kept for its callers.
      *
-     * Call this when the observed world has changed (e.g., Barriers.learn() discovered
-     * new walls, a gate opened/closed, or Refused tiles expired). The next route()
-     * or routeClamped() call with matching segment/start/goal/clamped will use
-     * incremental LPA* repair instead of a full A* re-search.
+     * This fed the removed LPA* cache the identity of a tile whose passability had changed, so the
+     * next incremental repair would revisit it. Searches are stateless now ({@link GridAStar}): the
+     * next {@link #route} reads the tile's current state directly, so a change needs no announcing.
+     * {@link Refused} still calls this when a refusal is learned or expires, which reads as "this
+     * tile changed" and is correct; it just no longer has anywhere to record it.
      *
      * @param t the segment tile that changed
      */
     public static void updateTile(Coord t) {
-        if (lpaStar != null && t != null) {
-            lpaStar.updateTile(t);
-        }
     }
 
-    /**
-     * Notify that multiple tiles changed. Equivalent to calling {@link #updateTile}
-     * on each.
-     *
-     * @param tiles the segment tiles that changed
-     */
+    /** No-op, kept for its callers. See {@link #updateTile}. */
     public static void updateTiles(Set<Coord> tiles) {
-        if (lpaStar != null && tiles != null) {
-            lpaStar.updateTiles(tiles);
-        }
     }
 
     /**
@@ -240,7 +421,7 @@ public class Router {
             at = next;
         }
         trace(line, at, to);
-        int unseen = 0, unmapped = 0, wet = 0, blocked = 0, firstUnseen = -1;
+        int unseen = 0, unmapped = 0, wet = 0, blocked = 0, tight = 0, firstUnseen = -1;
         for (int i = 0; i < line.size(); i++) {
             Coord t = line.get(i);
             if (w.state(t) == Observed.UNSEEN) {
@@ -256,15 +437,57 @@ public class Router {
                 wet++;
             if (!w.passable(t))
                 blocked++;
+            else if (w.state(t) == Observed.TIGHT)
+                tight++;
         }
         int learned = Refused.count(seg);
         return String.format("%d tiles, %d waypoint(s): %d never looked at%s, %d with no map file,"
-            + " %d water, %d impassable%s", line.size(), route.size(), unseen,
+            + " %d water, %d impassable%s%s%s", line.size(), route.size(), unseen,
             (firstUnseen < 0) ? "" : (" (first " + firstUnseen + "t out)"),
             unmapped, wet, blocked,
             // Named separately from "impassable" because it is the client's opinion rather than
             // anything observed, and a route that changed for this reason should say so.
-            (learned == 0) ? "" : (", avoiding " + learned + " tile(s) the client refused"));
+            (learned == 0) ? "" : (", avoiding " + learned + " tile(s) the client refused"),
+            // Said out loud because it is the route taking a squeeze rather than the long way round,
+            // which is a decision worth being able to see when one of them goes wrong.
+            (tight == 0) ? "" : (", threading " + tight + " tile(s) with no standable middle"),
+            detour(w, from, to, line.size()));
+    }
+
+    /**
+     * What stands on the straight line, when the route taken is meaningfully longer than it.
+     *
+     * The question every odd-looking route raises is "why not just go straight", and until now the
+     * log could not answer it: a detour leaves no trace of the ground it avoided. Naming what is on
+     * the direct line - and, when the answer is one of the router's GUESSES rather than something
+     * observed, saying so - turns "it would not go through a gap it fits through" from an argument
+     * about which rule might have fired into a fact.
+     *
+     * Only when the detour is real (a fifth longer than the direct line, and at least a few tiles
+     * of difference), so an ordinary route round a corner does not carry a paragraph.
+     */
+    private static String detour(World w, Coord from, Coord to, int taken) {
+        int straight = (int) from.dist(to);
+        if ((straight <= 0) || (taken < (straight * 6 / 5)) || ((taken - straight) < 4))
+            return "";
+        java.util.Map<String, Integer> why = new java.util.TreeMap<>();
+        List<Coord> line = new ArrayList<>();
+        trace(line, from, to);
+        for (Coord t : line) {
+            String r = w.why(t);
+            if (r != null)
+                why.merge(r, 1, Integer::sum);
+        }
+        if (why.isEmpty())
+            // Worth saying out loud: a clear direct line and a long route means the detour came from
+            // COST rather than from passability - a shut gate, or tiles the client refused.
+            return String.format(" [%dt round a %dt direct line that reads clear - cost, not walls]",
+                taken, straight);
+        StringBuilder sb = new StringBuilder(String.format(" [%dt round a %dt direct line:", taken,
+            straight));
+        for (java.util.Map.Entry<String, Integer> e : why.entrySet())
+            sb.append(' ').append(e.getValue()).append('x').append(' ').append(e.getKey()).append(';');
+        return sb.append(']').toString();
     }
 
     /** Every tile a straight line between two tiles crosses, appended in order. */
@@ -296,11 +519,46 @@ public class Router {
         int anchor = 0;
         for (int i = 2; i < path.size(); i++) {
             if (!clear(w, path.get(anchor), path.get(i))) {
-                out.add(path.get(i - 1));
-                anchor = i - 1;
+                /* Never on a tile with no standable middle.
+                 *
+                 * A waypoint IS a tile centre - travel aims at one and the server throws away a
+                 * click that lands inside an object - so putting one on a tight tile hands the
+                 * client a target it must refuse, which is the failure the whole tight/solid split
+                 * exists to stop. Crossing such a tile is fine; stopping on it is not. Walk back
+                 * along the path to the last tile we could actually stand on, which is always at
+                 * worst the anchor itself, since we stood there. */
+                int at = i - 1;
+                while ((at > anchor) && (w.state(path.get(at)) == Observed.TIGHT))
+                    at--;
+                /* THE ANCHOR MUST MOVE. Walking back can reach the anchor itself - when every tile
+                 * between it and here is tight - and the previous code then re-emitted the anchor,
+                 * left {@code anchor} where it was and reset {@code i} to the same place, which is
+                 * not "one re-test and terminates" as the note below once claimed but an unbounded
+                 * loop appending one coordinate.
+                 *
+                 * It survived only because tight runs were rare. The moment footprints started
+                 * marking partly-covered tiles tight - which is most tiles beside most objects -
+                 * it fired: a single logged route came out with 1,173,222 waypoints, all the same
+                 * coordinate, an 18MB log line, and a client too busy to do anything else.
+                 *
+                 * So take i-1 regardless when the walk-back found nothing standable. A waypoint on
+                 * a tight tile is a real cost - one click the server may refuse, which travel
+                 * recovers from - and it is at least reachable from the anchor in a clear line,
+                 * since i is the first index that is not. Guaranteeing progress is worth more than
+                 * guaranteeing standable. */
+                if (at == anchor)
+                    at = Math.max(anchor + 1, i - 1);
+                out.add(path.get(at));
+                anchor = at;
+                /* The scan must not step backwards, or a run of tight tiles re-tests the same pair
+                 * for ever. Resuming at the new anchor costs one re-test, and with anchor now
+                 * strictly increasing it terminates - out can never exceed path in length. */
+                i = at + 1;
             }
         }
-        out.add(path.get(path.size() - 1));
+        Coord end = path.get(path.size() - 1);
+        if (out.isEmpty() || !out.get(out.size() - 1).equals(end))
+            out.add(end);
         return out;
     }
 
@@ -389,6 +647,17 @@ public class Router {
         private final long seg;
         /** Refuse ground nobody has seen, rather than charging extra for it. */
         private final boolean strict;
+        /**
+         * Whether the asker can OPEN a gateway, as opposed to merely walk through an open one.
+         *
+         * The router has always assumed yes, because the caller it was written for - {@link BotNav} -
+         * has a whole gate layer behind it. The LP assistant does not: it chases with the client's
+         * own pathfinder, which opens nothing. So "reachable" was answering a question LP was not
+         * asking, and answering it yes: four targets in one logged run were felled logs INSIDE the
+         * palisade while the bot stood outside it, each ruled reachable through a gateway it had no
+         * way to operate, each then walked at the wall until its attempt budget ran out.
+         */
+        private final boolean opensGates;
         private final Map<Coord, byte[]> obs = new HashMap<>();
         private final Map<Coord, Object> water = new HashMap<>();
         /** Snapshotted once per search - see {@link Refused#snapshot}. Usually empty. */
@@ -398,14 +667,60 @@ public class Router {
          * even when the Observed record is stale (e.g. recorded before the gate was placed).
          */
         private final Set<Coord> gates;
+        /** The subset standing SHUT - the only gateways a route pays anything to cross. */
+        private final Set<Coord> shutGates;
         private static final Object NONE = new Object();
 
+        /** Search box, or null for the whole segment. See {@link #confine}. */
+        private Coord blo = null, bhi = null;
+
+        /**
+         * Confine every search over this world to a box round the two ends.
+         *
+         * For a question about somewhere NEARBY, which is the only kind the LP assistant asks. Its
+         * targets are things it can see - {@link Observed#SEES} is 44 tiles - so a search ceiling of
+         * {@link Router#MAX_TILES}, a 500x500 square, is about thirty times the area the question
+         * could possibly need.
+         *
+         * That costs nothing when the answer is yes: the heuristic walks more or less straight at a
+         * reachable goal. It is the NO that is dear, because proving a target unreachable means
+         * exhausting everywhere that is reachable first - and after a long session inside a base
+         * that is every tile the bot has ever observed. Measured: sixteen to eighteen seconds of
+         * frozen client per plan, with the bot standing still holding an undropped item.
+         *
+         * A box makes running out of room a real answer rather than a timeout, which is exactly why
+         * this existed before, was removed as redundant against MAX_TILES, and is back: MAX_TILES
+         * bounds a cross-map route sensibly and bounds a question about a tree eight tiles away not
+         * at all.
+         *
+         * NOT for the long-range route methods. {@link Router#route} and {@link Router#clampedRoute}
+         * plan journeys across a segment and must keep the whole of it.
+         *
+         * @param margin how far outside the two ends the search may wander, in TILES - the detour
+         *               allowance. Generous on purpose: the cost of being wrong is a reachable
+         *               target reported unreachable, and LP RETIRES on that answer.
+         */
+        void confine(Coord a, Coord b, int margin) {
+            blo = new Coord(Math.min(a.x, b.x) - margin, Math.min(a.y, b.y) - margin);
+            bhi = new Coord(Math.max(a.x, b.x) + margin, Math.max(a.y, b.y) + margin);
+        }
+
         World(GameUI gui, long seg, boolean strict) {
+            this(gui, seg, strict, true);
+        }
+
+        /**
+         * @param opensGates whether whoever is asking can OPERATE a gateway. False makes a shut
+         *                   gateway a wall, which is what it is to a caller that cannot open one.
+         */
+        World(GameUI gui, long seg, boolean strict, boolean opensGates) {
             this.gui = gui;
             this.seg = seg;
             this.strict = strict;
+            this.opensGates = opensGates;
             this.refused = Refused.snapshot(seg);
             this.gates = gateTiles(gui);
+            this.shutGates = gateTiles(gui, true);
         }
 
         /**
@@ -419,6 +734,11 @@ public class Router {
          * {@link #passable(Coord)} is dead code. See {@link Observed#observe} for the same idiom.
          */
         private static Set<Coord> gateTiles(GameUI gui) {
+            return gateTiles(gui, false);
+        }
+
+        /** @param shutOnly only the gateways standing shut, which are the ones that cost something. */
+        private static Set<Coord> gateTiles(GameUI gui, boolean shutOnly) {
             Set<Coord> out = new HashSet<>();
             if ((gui == null) || (gui.map == null))
                 return out;
@@ -427,8 +747,11 @@ public class Router {
             if ((me == null) || (here == null))
                 return out;
             Coord2d off = here.sc.sub(me.rc);
-            for (Gob g : GateManager.loaded(gui))
+            for (Gob g : GateManager.loaded(gui)) {
+                if (shutOnly && GateManager.isOpen(g))
+                    continue;
                 out.add(g.rc.add(off).floor(MCache.tilesz));
+            }
             return out;
         }
 
@@ -459,7 +782,80 @@ public class Router {
             return ((byte[]) o)[(in.y * MCache.cmaps.x) + in.x];
         }
 
+        /**
+         * Why a tile is impassable, in a word, or null when it is not.
+         *
+         * The router has never been able to answer this, and it is the one question its failures
+         * actually raise. A route that goes the long way round leaves NO trace of the ground it
+         * refused - it just quietly comes back longer - so "it will not go through a gap it plainly
+         * fits through" has no log line at all, and diagnosing it has meant reasoning about which
+         * rule MIGHT have fired. There are five candidates and they are not interchangeable: a wall
+         * is a fact, a refusal is an inference from one failed click, and the water dilation below
+         * is a GUESS about ground the map file has not described yet. Which one sealed a gap decides
+         * whether the fix is data, a threshold, or nothing at all.
+         *
+         * Kept exactly in step with {@link #passable} - same order, same tests - so it can never
+         * describe a decision the router did not make.
+         */
+        public String why(Coord t) {
+            byte s = state(t);
+            if ((s == Observed.SOLID) || (s == Observed.WALL)) {
+                if (gates.contains(t))
+                    return null;
+                return (s == Observed.WALL) ? "wall" : "solid";
+            }
+            if (s == Observed.GATE)
+                return null;
+            if (strict && (s == Observed.UNSEEN))
+                return "never looked at";
+            int w = wet(t);
+            if (w == Terrain.DEEP)
+                return "deep water";
+            if ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER)
+                return "shallow water";
+            if (w < 0) {
+                for (int i = 0; i < 8; i++) {
+                    if (wet(t.add(DX[i], DY[i])) == Terrain.DEEP)
+                        // Named at length because it is the only one of these that is not evidence.
+                        return "no map file here and deep water next to it - assumed wet";
+                }
+            }
+            return null;
+        }
+
+        /**
+         * Whether a character could STOP here, as opposed to merely cross it.
+         *
+         * Everything that picks a spot rather than a step wants this one: a goal to search toward,
+         * a place to stand beside a tree, a waypoint. The difference is {@link Observed#TIGHT} -
+         * ground with a walkable channel but nothing standable in the middle, which is passable and
+         * is not a destination.
+         */
+        public boolean standable(Coord t) {
+            return passable(t) && (state(t) != Observed.TIGHT);
+        }
+
+        /**
+         * Whether a gateway tile is something the asker can actually get through.
+         *
+         * Yes for anyone with a gate layer, which is the historic answer and stays the default. For
+         * an asker that cannot open one, only a gateway we can SEE standing open counts - and a
+         * gateway out of render counts as shut, because the cost of being wrong that way is one
+         * target passed over, while the other way round is what the logs show: walking at a wall
+         * until the attempt budget dies.
+         */
+        private boolean openTo(Coord t) {
+            if (opensGates)
+                return true;
+            return gates.contains(t) && !shutGates.contains(t);
+        }
+
         public boolean passable(Coord t) {
+            /* Outside the box, if one was set - see confine(). Tested before anything else because
+             * the whole point is to not look at those tiles at all. */
+            if ((blo != null)
+                    && ((t.x < blo.x) || (t.y < blo.y) || (t.x > bhi.x) || (t.y > bhi.y)))
+                return false;
             byte s = state(t);
             /* BOTH of them. Observed keeps walls apart from other solids so that the enclosure
              * inference can reason about walls alone - see Observed.WALL - and routing must not
@@ -479,14 +875,14 @@ public class Router {
                  * data still marks it solid. The loaded gob list is a second opinion: a gate
                  * standing here is passable - opening it is the task layer's problem. */
                 if (gates.contains(t))
-                    return true;
+                    return openTo(t);
                 return false;
             }
             /* A gateway settles it before the ground is looked at, since a gate is the one place a
              * wall is meant to be walked through. Whether it is open right now is the task layer's
-             * problem, not the route's. */
+             * problem, not the route's - unless the asker has no task layer. */
             if (s == Observed.GATE)
-                return true;
+                return openTo(t);
             /* A refused tile is EXPENSIVE, not impassable - see cost() below.
              *
              * It was impassable here, and that was a bad mistake. A refusal is an inference from one
@@ -533,7 +929,22 @@ public class Router {
         public int cost(Coord t) {
             if (refused.contains(t))
                 return REFUSED_COST;
-            return (state(t) == Observed.UNSEEN) ? UNKNOWN : 1;
+            byte s = state(t);
+            /* SHUT gateways only, and only ones we can actually see to be shut.
+             *
+             * A recorded GATE tile says a gateway is there, not whether it is standing open, so
+             * charging on the record alone taxed every open door in the base and sent routes the long
+             * way round. The live gob is the only thing that knows, so that is what is asked. A
+             * gateway out of render costs nothing, which is the right way to be wrong: the worst case
+             * is a route that walks up to a shut gate and opens it, which is a gate doing its job. */
+            if (shutGates.contains(t))
+                return GATE_COST;
+            /* Threading a gap is worth doing and worth avoiding when there is room elsewhere. Dear
+             * enough that an open lane a few tiles longer wins, cheap enough that it still beats
+             * the hundred-tile way round which is what the alternative used to be. */
+            if (s == Observed.TIGHT)
+                return TIGHT_COST;
+            return (s == Observed.UNSEEN) ? UNKNOWN : 1;
         }
     }
 }

@@ -303,9 +303,16 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 
 	    class EventHandler implements WindowListener, MouseListener, KeyListener {
 		private float[] wheelacc = {0, 0, 0};
+		/* Made at startup, not at closing time - the same fix as AWTToolkit's EventQueue, where
+		 * this shape stopped the window closing at all. An anonymous class is loaded the first
+		 * time it is constructed; if that is only ever inside the close handler, and the jar has
+		 * been replaced under the running client since, the load throws NoClassDefFoundError and
+		 * the close request is never delivered. Fixed here too even though the AWT toolkit is the
+		 * one in use, because the bug is in the shape rather than in the toolkit. */
+		private final CloseRequest closereq = new CloseRequest() {};
 
 		public void windowDestroyNotify(WindowEvent ev) {
-		    callback(new CloseRequest() {});
+		    callback(closereq);
 		}
 		public void windowResized(WindowEvent ev) {}
 		public void windowMoved(WindowEvent ev) {}
@@ -619,7 +626,7 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	.put(VK_META, Key.Std.META)
 	.put(VK_BACK_QUOTE, Key.Std.BACKQUOTE)
 	.put(VK_QUOTE, Key.Std.QUOTE)
- 
+
 	.put(VK_AMPERSAND, Key.Std.AMPERSAND)
 	.put(VK_ASTERISK, Key.Std.ASTERISK)
 	.put(VK_QUOTEDBL, Key.Std.DBLQUOTE)
@@ -679,7 +686,7 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	.put(VK_7, Key.Std.N7)
 	.put(VK_8, Key.Std.N8)
 	.put(VK_9, Key.Std.N9)
- 
+
 	.put(VK_A, Key.Std.A)
 	.put(VK_B, Key.Std.B)
 	.put(VK_C, Key.Std.C)
@@ -706,7 +713,7 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	.put(VK_X, Key.Std.X)
 	.put(VK_Y, Key.Std.Y)
 	.put(VK_Z, Key.Std.Z)
- 
+
 	.put(VK_F1, Key.Std.F1)
 	.put(VK_F2, Key.Std.F2)
 	.put(VK_F3, Key.Std.F3)
@@ -731,7 +738,7 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	.put(VK_F22, Key.Std.F22)
 	.put(VK_F23, Key.Std.F23)
 	.put(VK_F24, Key.Std.F24)
- 
+
 	.put(VK_NUMPAD0, Key.Std.NP0)
 	.put(VK_NUMPAD1, Key.Std.NP1)
 	.put(VK_NUMPAD2, Key.Std.NP2)

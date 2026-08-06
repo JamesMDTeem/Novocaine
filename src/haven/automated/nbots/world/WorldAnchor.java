@@ -81,6 +81,36 @@ public class WorldAnchor {
         }
     }
 
+    /**
+     * Another live position in the same segment, worked out from this anchor rather than from the
+     * map file.
+     *
+     * The inverse of {@link #resolve}, and it exists because {@link #capture} needs the DESTINATION'S
+     * grid to be loaded and in gridinfo, which for anything more than a screen away it routinely is
+     * not. That turned a transient streaming state into a permanent verdict: {@code plan} gave up
+     * with "the map file can't place it yet", travel fell back to a single probe hop, and the journey
+     * was abandoned. One logged session hit that twenty-four times and the cleanup bot cleared
+     * nothing at all in thirty-two minutes - not because anywhere was unreachable, but because the
+     * router was never asked.
+     *
+     * It does not need the map file. Live world coordinates are one continuous space per session, so
+     * the difference between two live positions IS the difference between their segment positions;
+     * apply it to a segment position we already trust - the player's, whose grid is loaded by
+     * definition - and the answer is exact, for free, at any distance.
+     *
+     * The one thing it cannot do is notice that the target is in a DIFFERENT segment, since it
+     * assumes the one it was called on. So it stays a fallback: ask {@link #capture} first, which is
+     * authoritative when the grid is there, and come here when it is not.
+     *
+     * @param mine this anchor's position in live world coordinates (i.e. where the player is)
+     * @param wc   the live position to convert
+     */
+    public WorldAnchor offsetTo(Coord2d mine, Coord2d wc) {
+        if ((mine == null) || (wc == null))
+            return null;
+        return new WorldAnchor(seg, sc.add(wc.sub(mine)));
+    }
+
     /** The player's own position as a segment anchor, or null if it can't be resolved right now. */
     public static WorldAnchor capturePlayer(GameUI gui) {
         if (gui == null || gui.map == null || gui.map.player() == null)

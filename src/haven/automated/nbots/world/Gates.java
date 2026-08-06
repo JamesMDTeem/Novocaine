@@ -36,8 +36,9 @@ import java.util.Set;
  * PICKING A GATE. The key question is always which gate to use, because there may be several. The
  * answer depends on where we are, where we are going, and which gates are shut. Three queries:
  *
- * - {@link #towards}: the best gate on the way to a destination, open or shut. Used to pick a gate
- *   BEFORE starting a leg, so we can approach it open.
+ * - {@link #towards}: the best SHUT gate on the way to a destination. Shut only, because an open
+ *   one is a gap the route already walks through and has nothing to be done to it - picking those
+ *   too is what ended journeys at whichever gateway happened to lie off to one side of them.
  * - {@link #blocking}: the shut gate between us and a destination. Used when a leg is stuck, to
  *   tell whether the fix is to open a gate or to walk somewhere else.
  * - {@link #onRoute}: the gate a planned route passes through. Used after a leg failure to check

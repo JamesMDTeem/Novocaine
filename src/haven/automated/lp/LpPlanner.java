@@ -67,7 +67,19 @@ public class LpPlanner {
      */
     public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted)
             throws InterruptedException {
+        return plan(gui, radius, exhausted, null);
+    }
+
+    /**
+     * @param walledOff if non-null, {@code walledOff[0]} receives how many targets were dropped for
+     *                  standing inside a wall we are not inside - so a caller that ends up with an
+     *                  empty list can say WHY it is empty instead of just reporting "finished".
+     */
+    public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted, int[] walledOff)
+            throws InterruptedException {
         List<LpTask> tasks = new ArrayList<>();
+        if (walledOff != null)
+            walledOff[0] = 0;
         if (!LpExplorer.isEnabled() || gui == null || gui.map == null || gui.map.player() == null)
             return tasks;
 
@@ -81,6 +93,42 @@ public class LpPlanner {
             }
             return true;  // every option for this target already tried and spent
         });
+
+        /* Anything inside somebody's wall leaves the list HERE, rather than being discovered one
+         * per plan at the head of it.
+         *
+         * This is not tidiness, it is the fix for a sixteen-second freeze. {@link #rerankByWalk}
+         * measures the real walking distance to the leading candidates, and a walled-off target is
+         * the worst possible input to that: the search cannot reach it, so it exhausts every tile
+         * it CAN reach - up to Router.MAX_TILES - before returning "no". Eight of those at the head
+         * of a plan is the bot standing still for the better part of a minute, which is exactly
+         * what the log shows (18s between an action and the next plan, 16s between a skip and the
+         * next, both while walled-off targets held the head of the list).
+         *
+         * It also ends the churn those targets caused: each one used to cost a whole re-plan of
+         * 150+ tasks to reject a single gob, and the plan numbers walked up one target at a time
+         * doing nothing else.
+         *
+         * Cheap enough to run over the WHOLE list, unlike the reachability search the executor
+         * keeps for the one target it is about to walk to: this is a tile lookup against the
+         * remembered barriers, not a route. */
+        int walled = 0;
+        for (java.util.Iterator<LpTask> it = tasks.iterator(); it.hasNext(); ) {
+            LpTask t = it.next();
+            if (t.isItem() || (t.gob == null))
+                continue;
+            try {
+                if (haven.automated.nbots.world.Barriers.walledOffFrom(gui, t.gob.rc)) {
+                    it.remove();
+                    walled++;
+                }
+            } catch (RuntimeException e) {
+                // Includes Loading: a half-loaded map says nothing either way, so leave the target
+                // in and let the executor's own check decide once it can be answered.
+            }
+        }
+        if (walledOff != null)
+            walledOff[0] = walled;
 
         haven.Coord2d me = gui.map.player().rc;
         tasks.sort((a, b) -> {
@@ -98,7 +146,74 @@ public class LpPlanner {
             double db = b.isItem() ? 0 : b.gob.rc.dist(me);
             return Double.compare(da, db);
         });
+        rerankByWalk(gui, tasks);
         return tasks;
+    }
+
+    /** How many of the nearest candidates get their real walking distance measured. */
+    private static final int RERANK = 8;
+
+    /**
+     * How far from a target to look for somewhere to stand, passed to the router.
+     *
+     * The same figure {@code AutoLpBot.REACH_MARGIN} passes to {@code Router.reachable}, and it must
+     * stay the same: the two questions are "can I get to it" and "how far is getting to it", and
+     * they have to be asked about the same spot or a target can be accepted by one and ranked by a
+     * walk to somewhere else. Note the router divides it by the tile size, so this is world units.
+     */
+    private static final int STAND_MARGIN = 50;
+
+    /**
+     * Re-orders the leading candidates by how far the bot would actually WALK to each.
+     *
+     * The sort above measures the straight line, which is the distance to a target only when
+     * nothing is in the way. Across a stream, round a palisade, or the far side of a cliff, the
+     * nearest-LOOKING thing is routinely the dearest one to get to - and the bot marches at it,
+     * spends its attempt budget, gives up, and comes back to it next plan because it still looks
+     * nearest. That is the "not pathing to the closest valid object" the logs kept showing.
+     *
+     * Only the leading few, because each one costs a search. They are the only ones that can win
+     * anyway: a route is never shorter than the straight line, so a candidate lying further off in
+     * a straight line than the best measured WALK cannot beat it, and everything past the head of
+     * this list is further off than everything in it.
+     *
+     * A candidate whose walk cannot be measured - beyond observed ground, another segment - keeps
+     * its straight-line distance, which is the honest lower bound and exactly what it was ranked by
+     * before. Unmeasurable must not mean unattractive; that would demote everything past the
+     * observed edge on no evidence.
+     */
+    private static void rerankByWalk(GameUI gui, List<LpTask> tasks) {
+        int end = 0;
+        // Stop at the felling boundary as well as at RERANK: felling is deprioritised as a class,
+        // and re-ordering across that line would undo it.
+        while ((end < tasks.size()) && (end < RERANK) && (tasks.get(end).tier != LpTask.TIER_FELL))
+            end++;
+        if (end < 2)
+            return;
+        haven.Coord2d me = gui.map.player().rc;
+        java.util.Map<LpTask, Double> walk = new java.util.IdentityHashMap<>();
+        for (LpTask t : tasks.subList(0, end)) {
+            if (t.isItem()) {
+                walk.put(t, 0.0);
+                continue;
+            }
+            /* Near enough to be standing at it: no route to measure, and no search worth spending.
+             * A straight line this short cannot be hiding a detour - the margin is the distance we
+             * are willing to end up at anyway - so the walk is zero and it sorts to the front,
+             * which is where a target we are already touching belongs. Saves a full A* per task on
+             * the commonest case there is: the second and third jobs on the log under our feet. */
+            double line = t.gob.rc.dist(me);
+            if (line <= STAND_MARGIN) {
+                walk.put(t, 0.0);
+                continue;
+            }
+            double d = haven.automated.nbots.world.Router.walkingDistance(gui, t.gob.rc, STAND_MARGIN);
+            walk.put(t, (d < 0) ? line : d);
+        }
+        List<LpTask> head = new ArrayList<>(tasks.subList(0, end));
+        head.sort((a, b) -> Double.compare(walk.get(a), walk.get(b)));
+        for (int i = 0; i < end; i++)
+            tasks.set(i, head.get(i));
     }
 
     /**
@@ -127,6 +242,88 @@ public class LpPlanner {
             opts.add("Pick leaf");
         if (cats.seed)
             opts.addAll(SEED_OPTIONS);
+        return opts;
+    }
+
+    /**
+     * The same, for ONE PARTICULAR tree or bush rather than for its species.
+     *
+     * The species answer is the wrong one to plan a walk on. A rowan that has been picked clean
+     * still belongs to a species with undiscovered berries, so it kept generating a task, the bot
+     * kept walking to it, and the flower menu did not offer what it came for - which is the
+     * "no known option ... menu offers: [...]" line, three of them in one 25-action run, each a
+     * wasted trip to learn something that was already on screen.
+     *
+     * The per-gob answer already exists and is exactly what the floating LP marker draws:
+     * {@link LpExplorer#allUndiscoveredProducts} gates on maturity and on the live seed/leaf
+     * bitmask ({@code Sprite.decnum(d.sdt)}). Only the planner was not asking it. So take the
+     * products it returns for THIS gob and map them back to menu options, instead of asking the
+     * species what it might have.
+     *
+     * Bark is not bit-gated - it is assumed available on any mature tree - so it comes through
+     * {@code undiscovered} the same way and needs no separate test here.
+     */
+    /**
+     * Species+option pairs the LIVE flower menu has been seen not to offer.
+     *
+     * A data gap we can close by watching. LpSpec says a juniper has Tough Bark and
+     * {@link LpExplorer#allUndiscoveredProducts} passes bark through ungated - bark is the one
+     * category with no live bit, on the assumption that any mature tree has some. Junipers
+     * disprove it: their menu offers Chop, Take branch and Pick berries, never Take bark. Seven
+     * "no known option" lines in one run were that assumption meeting the game.
+     *
+     * We cannot know it from the resource, but the menu tells us the moment we look, and it is
+     * a fact about the SPECIES rather than the individual - so one look answers it for every
+     * juniper for the rest of the session.
+     *
+     * Session-scoped on purpose, not persisted: it is inferred from one menu rather than looked
+     * up, and a wrong entry that outlived the session would quietly stop harvesting something
+     * real. Concurrent because the planner reads it while the bot thread writes it.
+     */
+    private static final Set<String> menuLacks =
+        Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+
+    /** Records that {@code gobResName}'s flower menu did not offer {@code option}. */
+    public static void menuLacks(String gobResName, String option) {
+        if ((gobResName != null) && (option != null))
+            menuLacks.add(gobResName + '|' + option);
+    }
+
+    private static boolean lacks(String gobResName, String option) {
+        return menuLacks.contains(gobResName + '|' + option);
+    }
+
+    public static List<String> harvestOptions(String gobResName, boolean isTree,
+                                              List<String> undiscovered) {
+        boolean bark = false, bough = false, leaf = false, seed = false;
+        String barkName = isTree ? HarvestState.getBarkProductName(gobResName) : null;
+        for (String p : undiscovered) {
+            if ((barkName != null) && barkName.equals(p))
+                bark = true;
+            else if (LpExplorer.isBoughProduct(p))
+                bough = true;
+            else if (LpExplorer.isLeafProduct(p))
+                leaf = true;
+            else
+                seed = true;
+        }
+        List<String> opts = new ArrayList<>();
+        if (bark)
+            opts.add("Take bark");
+        if (bough) {
+            // Both, for the same reason as above: most species say "Take bough", olive says
+            // "Take branch", and the executor takes whichever the live menu actually has.
+            opts.add("Take bough");
+            opts.add("Take branch");
+        }
+        if (leaf)
+            opts.add("Pick leaf");
+        if (seed)
+            opts.addAll(SEED_OPTIONS);
+        // Drop anything this species' menu has already been seen not to offer. Left to the end so
+        // the categories above stay readable, and so a species that lacks EVERY option we know
+        // returns empty and generates no task at all.
+        opts.removeIf(o -> lacks(gobResName, o));
         return opts;
     }
 
@@ -199,14 +396,23 @@ public class LpPlanner {
                     else if (HarvestSpecs.STONE.matches(res))
                         out.add(LpTask.onGob(gob, STONE_PROCESS, PICKAXE, LpTask.TIER_MINE, why));
                     else if (HarvestSpecs.BUSH.matches(res) || HarvestSpecs.TREE.matches(res)) {
-                        List<String> opts = harvestOptions(res, HarvestSpecs.TREE.matches(res));
+                        List<String> opts = harvestOptions(res, HarvestSpecs.TREE.matches(res),
+                            undiscovered);
                         if (!opts.isEmpty())
                             out.add(LpTask.onGob(gob, opts, null, LpTask.TIER_HARVEST, why));
                     }
                     else
-                        // Ground forage (herbs, mushrooms, kritters) - no HarvestSpec covers
-                        // these, and the bare "Pick" is what foraging uses for them.
-                        out.add(LpTask.onGob(gob, Collections.singletonList("Pick"), null,
+                        /* Ground forage (herbs, mushrooms, kritters). "Pick" covers nearly all of
+                         * them and is tried first; "Cut" is here because a few are harvested with a
+                         * blade instead - standing grass is the one that showed up, logging "no
+                         * known option for gfx/terobjs/herbs/standinggrass wanted=[Pick] menu
+                         * offers: [Cut]" on every attempt and never yielding its LP.
+                         *
+                         * Listing both rather than mapping each species to its verb: the menu is
+                         * asked what it actually offers and the first option it recognises wins, so
+                         * an extra candidate costs nothing on the gobs that don't have it and saves
+                         * maintaining a table that only ever gets discovered to be incomplete. */
+                        out.add(LpTask.onGob(gob, Arrays.asList("Pick", "Cut"), null,
                             LpTask.TIER_HARVEST, why));
                 }
 

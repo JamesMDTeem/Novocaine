@@ -4,8 +4,8 @@ import haven.Coord2d;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
-import haven.automated.nbots.world.GateManager;
 import haven.automated.nbots.world.Place;
+import haven.automated.nbots.world.TravelResult;
 import haven.automated.nbots.world.WorldAnchor;
 
 /**
@@ -101,13 +101,44 @@ public class TravelTo implements Task {
             if (aim == null)
                 return Outcome.failed(what + " is not on this part of the map");
             ctx.status("Travelling to " + what + ".");
-            return GateManager.pass(ctx.nav, ctx.gui, aim, 0, null, ctx.log)
-                ? Outcome.ok() : Outcome.failed("couldn't walk to " + what);
+            return arrive(ctx, aim, tol);
         }
         if (point == null)
             return Outcome.failed("no destination");
-        return GateManager.pass(ctx.nav, ctx.gui, point, 0, null, ctx.log)
-            ? Outcome.ok() : Outcome.failed("couldn't walk to " + what);
+        return arrive(ctx, point, tolerance);
+    }
+
+    /**
+     * Actually walks there, and reports what happened.
+     *
+     * This used to BE {@code GateManager.pass(...)} - the whole of "travel to a place" was "find a
+     * gateway between here and there and go through it", with its boolean answer returned as the
+     * journey's outcome. Nothing in it ever planned a route or walked to the destination, which is
+     * why {@link BotNav#travelTo} - the router, the segment-wide plan, the leg-by-leg walk, all of
+     * it - had no callers at all outside BotNav's own file.
+     *
+     * What that produced was a bot that walked to whatever gateway happened to lie near the line to
+     * its destination and then reported SUCCESS, because passing a gate returned true. So a trip to
+     * the water place ended at a gate, and the fill-from-barrel step then ran where it stood - at a
+     * fence, with no barrel - and blamed the place for being empty.
+     *
+     * Gates are still handled, in the place that always meant to handle them: {@link BotNav} opens a
+     * shut gateway when a leg of the route is blocked by one, and carries on to the destination
+     * afterwards. A gateway is a thing crossed on the way somewhere, not a destination.
+     */
+    private Outcome arrive(BotCtx ctx, Coord2d dest, double tol) throws InterruptedException {
+        TravelResult r = ctx.nav.travelTo(dest, tol);
+        if (r.isArrived())
+            return Outcome.ok();
+        if (r.isAborted())
+            return Outcome.blocked("stopped on the way to " + what);
+        // Blocked is a transient obstacle and worth another go later; failed means no route exists,
+        // which retrying from the same spot cannot mend. Passing the distinction on rather than
+        // flattening both to "couldn't walk there" is what lets a caller tell "try again in a
+        // minute" from "this destination is wrong".
+        String why = (r.reason() == null) ? "couldn't walk to " + what
+            : "couldn't walk to " + what + ": " + r.reason();
+        return r.isBlocked() ? Outcome.blocked(why) : Outcome.failed(why);
     }
 
     @Override
