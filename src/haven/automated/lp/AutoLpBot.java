@@ -1330,24 +1330,23 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     /**
-     * How close we must be before a RAW right-click is safe to send.
+     * How far off an object's FACE a raw right-click is still safe to send.
      *
-     * {@link #REACH} is 22 - two tiles - and a walk that ends anywhere inside it counts as
-     * arrival, so the click routinely goes out from a tile or more away. That gap is the problem
-     * below.
+     * Measured from the face, not the centre - see {@link #openMenuOn}, which subtracts the
+     * target's bulk before comparing. The two differ by up to nine units, which is most of a tile,
+     * and using the centre had the bot pathing at boulders it was already touching.
      *
-     * Four units, not the eleven it was. Eleven is a whole tile, and the point of this threshold
-     * is that there is no meaningful distance left for the server to drag us through - which a
-     * tile plainly is. A raw click from a tile out walks a straight uncollided line for a tile,
-     * and a felled log or a bush lying in that tile is exactly what it walks through; that is the
-     * "walks through a solid object after picking" report, and it survived the last fix because
-     * the fix only covered the case beyond this threshold.
+     * Four units, not the eleven it started as. The point of the threshold is that there is no
+     * meaningful distance left for the server to drag us through, and a whole tile plainly is:
+     * a raw click is a move order on an uncollided line, so from a tile out it walks through
+     * whatever lies in that tile. That is the "walks through a solid object after picking"
+     * report.
      *
-     * Not zero, and not deleted. The pathed approach opens no menu about seven times in a hundred
-     * (8 of 118 in the logs to date), and each of those falls through to a menu-fail retry that
-     * retires the target after three - so a threshold of zero trades a visible drag for an
-     * invisible loss of work. Four units keeps the cheap path for the genuinely-adjacent case,
-     * where the drag is a third of a tile and cannot cross into a neighbouring object.
+     * Not zero, and the fallback stays. The pathed approach opens no menu about seven times in a
+     * hundred, and each of those becomes a menu-fail retry that retires the target after three -
+     * so a threshold of zero trades a visible drag for invisible lost work. Four units off the
+     * face keeps the cheap path for the genuinely-adjacent case, where the drag is a third of a
+     * tile and cannot cross into a neighbouring object.
      */
     private static final double CLICK_CLOSE = 4.0;
 
@@ -1377,11 +1376,32 @@ public class AutoLpBot extends Window implements Runnable {
     private void openMenuOn(Gob gob) throws InterruptedException {
         Gob me = player();
         double d = (me == null) ? 0 : me.rc.dist(gob.rc);
-        if (d <= CLICK_CLOSE) {
+        /* From the FACE of the thing, not from its centre.
+         *
+         * The centre is the wrong origin and it is why the bot kept pathing at objects it was
+         * already leaning on. Bulk runs from about 2 units for a bush to 9 for a boulder or a
+         * felled log, so "ten units from the centre" is a tile away from a raspberry bush and
+         * one unit off the rock face - the same number, opposite situations, and only the second
+         * one has anything left to walk. Measured over one run: stops divide cleanly into a
+         * cluster one to three units off the face, some of them touching it (a negative gap, the
+         * disc overlapping the modelled box), and a second cluster ten to eighteen out. Only the
+         * far cluster is worth a path. The near one was getting one anyway, and each of those is
+         * a search, a wait, and a fair share of the eight approaches a run that come back with no
+         * menu at all.
+         *
+         * It also closes a gap between two ideas of "close enough" that never agreed: the walk
+         * accepts arrival anywhere inside REACH (22) of the centre, and this then re-pathed above
+         * 4 of the centre - so almost every arrival was followed by another path. Reach is what
+         * decides whether the menu will open; the face is what decides whether there is any
+         * distance left to cross. */
+        double bulk = haven.automated.nbots.world.BotNav.bulk(gob);
+        double face = Math.max(0, d - bulk);
+        if (face <= CLICK_CLOSE) {
             rclickGob(gob);
             return;
         }
-        NLog.log(LOG, "  " + (int) d + "u out - walking the last gap with the pathfinder rather"
+        NLog.log(LOG, "  " + (int) face + "u off its face (" + (int) d + "u to centre, bulk "
+            + (int) bulk + "u) - walking the last gap with the pathfinder rather"
             + " than letting the click drag us there through whatever is in the way");
         gui.map.pfRightClick(gob, -1, 3, 0, null);
         waitUntil(() -> !walking(), 60);
