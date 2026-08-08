@@ -38,6 +38,22 @@ public class MappingClient {
     /** Interval in seconds at which live player positions are reported. */
     private static final long POSITION_UPDATE_SECONDS = 2L;
 
+    /**
+     * Timeouts for every call to the map server, in milliseconds.
+     *
+     * There were none, and {@code HttpURLConnection}'s default is to wait forever. Each of these
+     * uploads runs on a single-threaded executor, so one unreachable or wedged server does not
+     * fail a request - it parks the thread that would have made the next one, and the queue behind
+     * it stops moving for the rest of the session with nothing in the log to say why. A dropped
+     * update is worth nothing; a stalled uploader costs every update after it.
+     *
+     * Read is the longer of the two because a grid upload carries image data and the server has to
+     * write it; connect only has to reach the host, and a host that has not answered in five
+     * seconds is not going to.
+     */
+    static final int CONNECT_TIMEOUT_MS = 5000;
+    static final int READ_TIMEOUT_MS = 20000;
+
     /** Submission infrastructure for live player positions and grid updates. */
     private ExecutorService gridsUploader = Executors.newSingleThreadExecutor();
     private ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(3);
@@ -247,6 +263,8 @@ public class MappingClient {
 	    try {
 		connection =
 		    (HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/markerUpdate").openConnection();
+		connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+		connection.setReadTimeout(READ_TIMEOUT_MS);
 		connection.setRequestMethod("POST");
 		connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
 		connection.setDoOutput(true);
@@ -339,6 +357,8 @@ public class MappingClient {
 		    try {
 			final HttpURLConnection connection =
 			    (HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/positionUpdate").openConnection();
+			connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+			connection.setReadTimeout(READ_TIMEOUT_MS);
 			connection.setRequestMethod("POST");
 			connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
 			connection.setDoOutput(true);
@@ -428,6 +448,8 @@ public class MappingClient {
 		try {
 		    connection =
 			(HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/gridUpdate").openConnection();
+		    connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+		    connection.setReadTimeout(READ_TIMEOUT_MS);
 		    connection.setRequestMethod("POST");
 		    connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
 		    connection.setDoOutput(true);

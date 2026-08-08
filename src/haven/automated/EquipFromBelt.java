@@ -321,8 +321,18 @@ public class EquipFromBelt implements Runnable {
                         .limit(1)
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             }
+            /* The isNull flag has to describe the SLOT being written, not a fixed hand.
+             *
+             * switchItem drops the belt item into `slot`; whatever was already there lands in the
+             * hand, and the `!isNull` branch is what puts it back in the belt. Pass the wrong
+             * hand's flag and the two failures are opposite: a full slot flagged empty leaves the
+             * displaced tool sitting in the hand, and an empty slot flagged full drops the item we
+             * just equipped straight back into the belt - the equip silently undoes itself.
+             *
+             * Slot 6 is the left hand and pairs with isNullFirst; slot 7 is the right and pairs
+             * with isNullSecond, exactly as the single-item paths above already do. */
             if (isFirstEquippedLeftHand){
-                switchItem(secondItemInBelt, equipory, 7, isNullFirst, belt);
+                switchItem(secondItemInBelt, equipory, 7, isNullSecond, belt);
             } else if (isFirstEquippedRightHand){
                 switchItem(secondItemInBelt, equipory, 6, isNullFirst, belt);
             }
@@ -337,9 +347,9 @@ public class EquipFromBelt implements Runnable {
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             }
             if (isSecondEquippedLeftHand){
-                switchItem(firstItemInBelt, equipory, 7, isNullFirst, belt);
+                switchItem(firstItemInBelt, equipory, 7, isNullSecond, belt);
             } else if (isSecondEquippedRightHand){
-                switchItem(firstItemInBelt, equipory, 6, isNullSecond, belt);
+                switchItem(firstItemInBelt, equipory, 6, isNullFirst, belt);
             }
         } else {
             if (firstItemInBelt.isEmpty()) {
@@ -360,8 +370,8 @@ public class EquipFromBelt implements Runnable {
                         .limit(1)
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             }
-            switchItem(firstItemInBelt, equipory, 6, isNullSecond, belt);
-            switchItem(secondItemInBelt, equipory, 7, isNullFirst, belt);
+            switchItem(firstItemInBelt, equipory, 6, isNullFirst, belt);
+            switchItem(secondItemInBelt, equipory, 7, isNullSecond, belt);
         }
     }
     private void switchItem(Map<GItem, Coord> itemInBelt, Equipory equipory, int slot, boolean isNull, Inventory belt) throws InterruptedException {

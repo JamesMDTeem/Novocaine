@@ -36,6 +36,10 @@ public class MultipartUtility {
 
         URL url = new URL(requestURL);
         httpConn = (HttpURLConnection) url.openConnection();
+        // Same reason as the three in MappingClient: the default is to wait forever, and these run
+        // on a single-threaded uploader, so one wedged request stops the queue behind it.
+        httpConn.setConnectTimeout(MappingClient.CONNECT_TIMEOUT_MS);
+        httpConn.setReadTimeout(MappingClient.READ_TIMEOUT_MS);
         httpConn.setUseCaches(false);
         httpConn.setDoOutput(true); // indicates POST method
         httpConn.setDoInput(true);

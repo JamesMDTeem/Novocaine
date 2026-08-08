@@ -213,6 +213,22 @@ public class RefillWaterContainers implements Runnable {
         return containers;
     }
 
+    /**
+     * "The client cannot answer for this item yet" - which is NOT "this item is empty".
+     *
+     * Those two were the same value, and that is the infinite refill. {@code item.info()} throws
+     * {@link Loading} while the server's item info is still on its way, which is ordinary control
+     * flow and happens most often exactly when this runs - right after a window opens. Swallowing
+     * it returned null, null meant empty, empty meant "needs filling", so a container that was
+     * already full got queued for a refill, and the next scan asked the same question and got the
+     * same non-answer.
+     *
+     * A genuinely empty vessel still comes back null and is still refilled: its info arrives
+     * without throwing, it simply carries no Contents.
+     */
+    private static final ItemInfo.Contents.Content UNKNOWN =
+        new ItemInfo.Contents.Content(null, null, -1);
+
     private ItemInfo.Contents.Content getContent(GItem item) {
         ItemInfo.Contents.Content content = null;
         try {
@@ -222,12 +238,15 @@ public class RefillWaterContainers implements Runnable {
                 }
             }
         } catch (Loading ignored) {
-
+            return UNKNOWN;
         }
         return content;
     }
 
     private boolean shouldAddToContainers(ItemInfo.Contents.Content content, float contentCount) {
+        // Not an answer - leave it out of this pass and ask again on the next scan.
+        if (content == UNKNOWN)
+            return false;
         return content == null || (content.count != contentCount && Objects.equals(content.name, "Water"));
     }
 

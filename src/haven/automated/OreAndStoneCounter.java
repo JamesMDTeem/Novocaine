@@ -49,14 +49,23 @@ public class OreAndStoneCounter extends Window implements Runnable {
                         Resource res =  gui.ui.sess.glob.map.tilesetr(t);
                         if(res.name.contains("gfx/tiles/rocks/")){
                             String name = res.basename();
+                            /* Default 0, not 1. getOrDefault supplies the value to use when the
+                             * key is ABSENT - that is the tile we are counting right now, so the
+                             * running total before it is zero. Defaulting to 1 and adding 1 made
+                             * every first sighting report 2, and every count after it was that
+                             * error carried forward. */
                             if(Config.ORE_FULL_NAMES.get(name) != null) {
                                 name = Config.ORE_FULL_NAMES.get(name);
-                                ores.put(name, ores.getOrDefault(name, 1) + 1);
+                                ores.put(name, ores.getOrDefault(name, 0) + 1);
                             } else if(Config.STONE_FULL_NAMES.get(name) != null){
+                                /* Stones go in `rocks`. This branch put them in `ores` while
+                                 * reading the previous count from `rocks` - so a named stone was
+                                 * listed as an ore, and its tally was seeded from a map that was
+                                 * never written, restarting at 1 on every tile. */
                                 name = Config.STONE_FULL_NAMES.get(name);
-                                ores.put(name, rocks.getOrDefault(name, 1) + 1);
+                                rocks.put(name, rocks.getOrDefault(name, 0) + 1);
                             } else {
-                                rocks.put(name, rocks.getOrDefault(name, 1) + 1);
+                                rocks.put(name, rocks.getOrDefault(name, 0) + 1);
                             }
                         }
                     } catch (Loading ignored) {}
