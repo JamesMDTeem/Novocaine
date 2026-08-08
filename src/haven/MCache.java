@@ -1206,6 +1206,29 @@ public class MCache implements MapSource {
 	return(sets[i].get());
     }
 
+    /**
+     * Resource name for a tile type id (e.g. "gfx/tiles/bog"), or null when the id is
+     * not defined for this world. Used by the mapper to report per-cell terrain.
+     */
+    public String tileTypeName(int id) {
+	if(id < 0 || id >= sets.length || sets[id] == null)
+	    return(null);
+	return(((Resource.Spec) sets[id]).name);
+    }
+
+    /**
+     * All tile type resource names currently known for this world, keyed by id.
+     * The ids are stable per world and index into the tile list the server sends.
+     */
+    public java.util.Map<Integer, String> tileTypeNames() {
+	java.util.Map<Integer, String> names = new java.util.LinkedHashMap<>();
+	for(int i = 0; i < sets.length; i++) {
+	    if(sets[i] != null)
+		names.put(i, ((Resource.Spec) sets[i]).name);
+	}
+	return(names);
+    }
+
     public Tileset tileset(int i) {
 	Reference<Tileset>[] csets = this.csets;
 	if(i >= csets.length)

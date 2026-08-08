@@ -542,6 +542,24 @@ public class MappingClient {
 			multipart.addFilePart("file", inputStream, "minimap.png");
 			extraData.put("season", glob.ast.is);
 			multipart.addFormField("extraData", extraData.toString());
+
+			// Terrain: per-cell tile ids (100x100, uint16 LE) so the server can show
+			// biome info on the map. The id -> resource name table rides along so the
+			// server never needs a separate handshake; it is tiny (a few dozen entries).
+			ByteArrayOutputStream terrainOut = new ByteArrayOutputStream(20000);
+			Coord tc = new Coord();
+			for(tc.y = 0; tc.y < MCache.cmaps.y; tc.y++) {
+			    for(tc.x = 0; tc.x < MCache.cmaps.x; tc.x++) {
+				int tid = g.gettile(tc);
+				terrainOut.write(tid & 0xFF);
+				terrainOut.write((tid >> 8) & 0xFF);
+			    }
+			}
+			multipart.addFilePart("terrain", new ByteArrayInputStream(terrainOut.toByteArray()), "terrain.bin");
+			JSONObject terrainTypes = new JSONObject();
+			for(java.util.Map.Entry<Integer, String> e : glob.map.tileTypeNames().entrySet())
+			    terrainTypes.put(String.valueOf(e.getKey()), e.getValue());
+			multipart.addFormField("terrainTypes", terrainTypes.toString());
 			MultipartUtility.Response response = multipart.finish();
 		    } catch (IOException ex) {
 			System.out.println("Grid image upload failed: " + ex.getMessage());
