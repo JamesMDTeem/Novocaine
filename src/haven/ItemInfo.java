@@ -150,6 +150,11 @@ public abstract class ItemInfo {
 		});
 	    for(Tip tip : tips)
 		tip.layout(this);
+	    /* Tips are free to draw nothing, so a non-empty tip list can still compose to
+	     * nothing. Compositing that is a zero-size raster, which throws out of the UI
+	     * thread and takes the client down. Report "no tooltip" instead. */
+	    if((cmp.sz.x < 1) || (cmp.sz.y < 1))
+		return(null);
 	    return(cmp.compose());
 	}
     }
@@ -277,14 +282,16 @@ public abstract class ItemInfo {
 	    this.str = Text.render(name, Color.GREEN);
 	}
 
-	public BufferedImage tipimg() {
-	    return((OptWnd.extendedMouseoverInfoCheckBox != null) && OptWnd.extendedMouseoverInfoCheckBox.a ? str.img : null);
+	/* Whether to attach this tip at all. Decided when the info list is built rather
+	 * than when it renders: a tip that is present but draws nothing leaves the
+	 * composition empty, and an empty composition is a zero-size image that kills
+	 * the client on the next hover. */
+	public static boolean enabled() {
+	    return((OptWnd.extendedMouseoverInfoCheckBox != null) && OptWnd.extendedMouseoverInfoCheckBox.a);
 	}
 
-	public void layout(Layout l) {
-	    BufferedImage img = tipimg();
-	    if(img != null)
-		l.cmp.add(img, new Coord(0, l.cmp.sz.y + img.getHeight()));
+	public BufferedImage tipimg() {
+	    return(str.img);
 	}
 
 	public int order() {return(20000);}
@@ -461,7 +468,10 @@ public abstract class ItemInfo {
 	}
 	if(l.tips.size() < 1)
 	    return(null);
-	return(PUtils.strokeImg(l.render()));
+	BufferedImage img = l.render();
+	if(img == null)
+	    return(null);
+	return(PUtils.strokeImg(img));
     }
 
     public static BufferedImage shorttip(List<ItemInfo> info) {
@@ -473,7 +483,10 @@ public abstract class ItemInfo {
 		    sinfo.add(tip);
 	    }
 	}
-	return(PUtils.strokeImg(longtip(sinfo)));
+	BufferedImage img = longtip(sinfo);
+	if(img == null)
+	    return(null);
+	return(PUtils.strokeImg(img));
     }
 
     public static <T> T find(Class<T> cl, List<ItemInfo> il) {
