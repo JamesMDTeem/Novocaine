@@ -223,53 +223,17 @@ public class LpPlanner {
             tasks.set(i, head.get(i));
     }
 
-    /**
-     * The harvest options worth offering for one tree/bush, restricted to categories that are
-     * ACTUALLY still undiscovered for this species.
+    /* The species-level harvestOptions(String, boolean) stood here and is DELETED, not merely
+     * unused. It answered "what might a tree of this kind still have" and there is no caller left
+     * for whom that is the right question: the planner and the executor both want THIS gob.
      *
-     * This restriction is the whole point. Offering a fixed list and letting the executor take
-     * whichever the menu happened to have meant "Take bark" - first in the list and available on
-     * every mature tree - got picked on tree after tree long after bark was discovered, because
-     * the tree still had an undiscovered leaf or seed and so still generated a task. Most species
-     * share the same bark item ("Treebark", or "Tough Bark" for the BARKS_MAP group), so one
-     * pickup satisfies nearly all of them at once; asking per species was pure wasted walking.
-     */
-    public static List<String> harvestOptions(String gobResName, boolean isTree) {
-        List<String> opts = new ArrayList<>();
-        if (isTree && LpExplorer.hasUndiscoveredBarkProduct(gobResName))
-            opts.add("Take bark");
-        LpExplorer.UndiscoveredCategories cats = LpExplorer.undiscoveredCategories(gobResName);
-        if (cats.bough) {
-            // Most species offer "Take bough"; a few (olive) offer "Take branch" for the same
-            // category. Both are candidates - the executor takes whichever the live menu has.
-            opts.add("Take bough");
-            opts.add("Take branch");
-        }
-        if (cats.leaf)
-            opts.add("Pick leaf");
-        if (cats.seed)
-            opts.addAll(SEED_OPTIONS);
-        return opts;
-    }
+     * Left in place it was a live trap rather than dead weight. It sat directly above the per-gob
+     * overload with a nearly identical signature and a confident javadoc, and the executor picked
+     * it - so the bot correctly stopped WALKING to picked-clean bushes while still asking them for
+     * things once it arrived, which reads in the log as the planner being wrong when it was right.
+     * Its restriction-to-undiscovered-categories reasoning is not lost; the per-gob overload
+     * applies the same restriction, from the gob's own bitmask rather than from the species. */
 
-    /**
-     * The same, for ONE PARTICULAR tree or bush rather than for its species.
-     *
-     * The species answer is the wrong one to plan a walk on. A rowan that has been picked clean
-     * still belongs to a species with undiscovered berries, so it kept generating a task, the bot
-     * kept walking to it, and the flower menu did not offer what it came for - which is the
-     * "no known option ... menu offers: [...]" line, three of them in one 25-action run, each a
-     * wasted trip to learn something that was already on screen.
-     *
-     * The per-gob answer already exists and is exactly what the floating LP marker draws:
-     * {@link LpExplorer#allUndiscoveredProducts} gates on maturity and on the live seed/leaf
-     * bitmask ({@code Sprite.decnum(d.sdt)}). Only the planner was not asking it. So take the
-     * products it returns for THIS gob and map them back to menu options, instead of asking the
-     * species what it might have.
-     *
-     * Bark is not bit-gated - it is assumed available on any mature tree - so it comes through
-     * {@code undiscovered} the same way and needs no separate test here.
-     */
     /**
      * Species+option pairs the LIVE flower menu has been seen not to offer.
      *
@@ -300,6 +264,28 @@ public class LpPlanner {
         return menuLacks.contains(gobResName + '|' + option);
     }
 
+    /**
+     * The same, for ONE PARTICULAR tree or bush rather than for its species.
+     *
+     * The species answer is the wrong one to plan a walk on. A rowan that has been picked clean
+     * still belongs to a species with undiscovered berries, so it kept generating a task, the bot
+     * kept walking to it, and the flower menu did not offer what it came for - which is the
+     * "no known option ... menu offers: [...]" line, three of them in one 25-action run, each a
+     * wasted trip to learn something that was already on screen.
+     *
+     * The per-gob answer already exists and is exactly what the floating LP marker draws:
+     * {@link LpExplorer#allUndiscoveredProducts} gates on maturity and on the live seed/leaf
+     * bitmask ({@code Sprite.decnum(d.sdt)}). So take the products it returns for THIS gob and map
+     * them back to menu options, instead of asking the species what it might have.
+     *
+     * Bark is not bit-gated - it is assumed available on any mature tree - so it comes through
+     * {@code undiscovered} the same way and needs no separate test here. What catches the species
+     * that genuinely lacks it is {@link #menuLacks}, applied at the end.
+     *
+     * Both the planner and the executor call THIS one. They did not always: the executor kept the
+     * species overload above, so the bot stopped walking to picked-clean bushes but went on asking
+     * them for things once it had arrived.
+     */
     public static List<String> harvestOptions(String gobResName, boolean isTree,
                                               List<String> undiscovered) {
         boolean bark = false, bough = false, leaf = false, seed = false;

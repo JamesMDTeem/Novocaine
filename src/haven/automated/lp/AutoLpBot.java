@@ -336,9 +336,28 @@ public class AutoLpBot extends Window implements Runnable {
             // Bounded: a tree has at most bark+bough+leaf+seed to give, and harvestOptions shrinks
             // as each category is discovered, so this converges well inside the cap.
             for (int i = 0; i < 6; i++) {
-                if (findGob(task.gob.id) == null)
+                Gob live = findGob(task.gob.id);
+                if (live == null)
                     break;
-                List<String> opts = LpPlanner.harvestOptions(res, HarvestSpecs.TREE.matches(res));
+                /* Ask THIS tree, not its species - the same question the planner asks.
+                 *
+                 * The two-argument overload answers for the species: it reads LpSpec and the
+                 * session's discoveries and knows nothing about the gob standing in front of us.
+                 * So a rowan already picked clean still belongs to a species with undiscovered
+                 * berries, and this loop kept offering options the individual does not carry -
+                 * seven "no known option ... menu offers: [...]" lines in one run, each a menu
+                 * opened to learn what was already on screen. It also skipped the menuLacks
+                 * filter, so a juniper's absent bark was re-tried inside the same visit even
+                 * after the session had watched the menu and learned better.
+                 *
+                 * The three-argument overload takes the products for THIS gob - maturity and the
+                 * live seed/leaf bitmask already applied - and ends by dropping anything the
+                 * species' menu has been seen not to offer. The planner has called it that way
+                 * since per-gob availability landed; only the executor was left behind, which is
+                 * why the bot stopped WALKING to picked-clean bushes but went on asking them for
+                 * things once it arrived. */
+                List<String> opts = LpPlanner.harvestOptions(res, HarvestSpecs.TREE.matches(res),
+                    LpExplorer.allUndiscoveredProducts(live));
                 if (opts.isEmpty())
                     break;
                 LpTask sub = LpTask.onGob(task.gob, opts, null, LpTask.TIER_HARVEST, task.why);
