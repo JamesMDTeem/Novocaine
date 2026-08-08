@@ -53,6 +53,8 @@ tags: [moc, hurricane, haven-and-hearth]
 - [[Class-Index]] — generated index of all ~840 types (kind, supertypes, line counts)
 - [[Code-Metrics]] — generated hotspots: load-bearing classes, largest files, `// ND:` density
 - [[Resource-Naming]] — decode `gob.getres().name` (creatures, items, objects, actions)
+- [[Protocol-Notes]] — wire format from instrumenting a live session: datagram types,
+  renumbered RMessage IDs, TTO encoding, mapdata subs, what quality the client can see
 - [[Glossary]]
 
 ## 🤖 For AI agents — read this first
