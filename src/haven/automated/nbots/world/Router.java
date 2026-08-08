@@ -153,6 +153,22 @@ public class Router {
      *                        it had no way through and walk at the wall for each of them.
      */
     public static boolean reachable(GameUI gui, Coord2d target, int margin, boolean throughGateways) {
+        return reachable(gui, target, margin, throughGateways, null);
+    }
+
+    /**
+     * The same, reporting WHY when the answer is no.
+     *
+     * A bare boolean was costing whole rounds of guesswork. "no way to it on foot" went from about
+     * seven a run to fifty-three between two builds, and the honest position was two plausible
+     * causes and nothing to separate them: routing had just been taught to refuse rock and cave
+     * (so the rise could be correct), and the candidate set had just changed shape (so it could be
+     * a fault). {@link World#why} has always been able to answer, and this method threw it away.
+     *
+     * @param reason if non-null, {@code reason[0]} is filled with a short account of the refusal.
+     */
+    public static boolean reachable(GameUI gui, Coord2d target, int margin, boolean throughGateways,
+                                    String[] reason) {
         Gob me = ((gui == null) || (gui.map == null)) ? null : gui.map.player();
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
         WorldAnchor there = WorldAnchor.capture(gui, target);
@@ -186,9 +202,59 @@ public class Router {
          * All of them at once, by {@link #floodReaches} - not one search each. Reachability is a
          * property of the connected component, so the whole candidate set shares one traversal. */
         List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), TRIES);
-        if (goals.isEmpty())
-            return true;   // nowhere to stand near it that we know of - don't rule the target out on that
-        return floodReaches(w, from, new HashSet<>(goals));
+        if (goals.isEmpty()) {
+            // Not a refusal - this returns TRUE. Recorded anyway: "nowhere to stand" and "cut off"
+            // are different worlds and they were indistinguishable in the log.
+            if (reason != null)
+                reason[0] = "nowhere standable within " + margin + "u of it";
+            return true;
+        }
+        if (floodReaches(w, from, new HashSet<>(goals)))
+            return true;
+        if (reason != null)
+            reason[0] = refusalAccount(w, from, to, goals);
+        return false;
+    }
+
+    /**
+     * What stopped us, in the fewest words that still separate the causes.
+     *
+     * Two very different failures wear the same sentence in the LP log. Either the places to stand
+     * are themselves refused - and then WHICH rule refused them is the whole answer, because "rock,
+     * cave or void" means the terrain classification, "deep water" means the map file, and "wall"
+     * or "solid" means the observed record - or every one of them is fine and simply not connected
+     * to where we are, which is a genuine barrier and nothing to fix.
+     *
+     * Reports the reasons actually seen rather than the first, since a mixture is itself the
+     * answer: all of them rock says a rule changed, a spread says the target is behind something.
+     */
+    private static String refusalAccount(World w, Coord from, Coord to, List<Coord> goals) {
+        java.util.Map<String, Integer> tally = new java.util.LinkedHashMap<>();
+        int open = 0;
+        for (Coord g : goals) {
+            String why = w.why(g);
+            if (why == null) {
+                open++;
+                continue;
+            }
+            tally.merge(why, 1, Integer::sum);
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(goals.size()).append(" place(s) to stand: ");
+        if (open == goals.size()) {
+            sb.append("all walkable but none connected to us - a real barrier in between");
+        } else {
+            if (open > 0)
+                sb.append(open).append(" walkable, ");
+            boolean first = true;
+            for (java.util.Map.Entry<String, Integer> e : tally.entrySet()) {
+                if (!first)
+                    sb.append(", ");
+                sb.append(e.getValue()).append("x ").append(e.getKey());
+                first = false;
+            }
+        }
+        return sb.toString();
     }
 
     /**

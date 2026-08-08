@@ -77,13 +77,28 @@ public class LpPlanner {
      */
     public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted, int[] walledOff)
             throws InterruptedException {
+        return plan(gui, radius, exhausted, walledOff, null);
+    }
+
+    /**
+     * @param ownGear items the character was already carrying when the run began, which are the
+     *                player's own and not the bot's work. {@code tidyInventory} has always drawn
+     *                that line and refuses to drop them; planning did not, so a Forest Snail in the
+     *                pack at login became a task to Skin, Butcher and Collect bones from. It has no
+     *                flower menu where it sits, so the bot right-clicked it, waited, retried three
+     *                times and retired it - at the head of the list, so it cost the first three
+     *                plans and about three seconds of every single run.
+     */
+    public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted, int[] walledOff,
+                                    Set<haven.GItem> ownGear)
+            throws InterruptedException {
         List<LpTask> tasks = new ArrayList<>();
         if (walledOff != null)
             walledOff[0] = 0;
         if (!LpExplorer.isEnabled() || gui == null || gui.map == null || gui.map.player() == null)
             return tasks;
 
-        collectInventoryTasks(gui, tasks);
+        collectInventoryTasks(gui, tasks, ownGear);
         collectWorldTasks(gui, radius, tasks);
 
         tasks.removeIf(t -> {
@@ -555,7 +570,7 @@ public class LpPlanner {
      * in a processable category and lets the executor's exhausted-set prune what turns out to
      * yield nothing - cheap, since these cost no travel at all.
      */
-    private static void collectInventoryTasks(GameUI gui, List<LpTask> out)
+    private static void collectInventoryTasks(GameUI gui, List<LpTask> out, Set<haven.GItem> ownGear)
             throws InterruptedException {
         if (gui.maininv == null)
             return;
@@ -565,6 +580,10 @@ public class LpPlanner {
             items = new ArrayList<>(gui.maininv.wmap.values());
         }
         for (WItem wi : items) {
+            // The player's own, not something the bot picked up - the same line tidyInventory draws
+            // before it drops anything. See the note on the ownGear parameter.
+            if ((ownGear != null) && ownGear.contains(wi.item))
+                continue;
             String name = wi.item.getname();
             if (name == null || !processable.contains(name))
                 continue;

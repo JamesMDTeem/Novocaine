@@ -238,7 +238,7 @@ public class AutoLpBot extends Window implements Runnable {
             attempt = ++attempts;
 
             int[] walledOff = new int[1];
-            List<LpTask> tasks = LpPlanner.plan(gui, radius, exhausted, walledOff);
+            List<LpTask> tasks = LpPlanner.plan(gui, radius, exhausted, walledOff, preexisting);
             List<LpTask> ready = new java.util.ArrayList<>(tasks.size());
             for (LpTask t : tasks) {
                 if (!isDeferred(t))
@@ -1519,8 +1519,14 @@ public class AutoLpBot extends Window implements Runnable {
              * gateway the bot had no way to operate. An open gateway it CAN walk through, and one
              * out of render is taken to be shut - passing over a target costs a target, believing in
              * one costs the whole attempt budget. */
-            if (!haven.automated.nbots.world.Router.reachable(gui, target.rc, REACH_MARGIN, false))
-                return "no way to it on foot - water, a cliff, or a shut gateway in between";
+            /* Say WHICH of water, cliff and gateway, because the guess in that sentence was costing
+             * rounds. This line went from about seven a run to fifty-three between two builds, and
+             * with only the generic wording there was no way to tell a correct new refusal (routing
+             * had just been taught to refuse rock and cave) from a fault in the candidate search
+             * (which had just changed shape). The router knows; it was only ever asked yes or no. */
+            String[] why = new String[1];
+            if (!haven.automated.nbots.world.Router.reachable(gui, target.rc, REACH_MARGIN, false, why))
+                return "no way to it on foot - " + ((why[0] == null) ? "reason unknown" : why[0]);
             return null;
         } catch (Loading l) {
             return null;  // ask again next attempt rather than retiring on a half-loaded map
