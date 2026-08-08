@@ -266,17 +266,42 @@ public class LpPlanner {
      * up, and a wrong entry that outlived the session would quietly stop harvesting something
      * real. Concurrent because the planner reads it while the bot thread writes it.
      */
-    private static final Set<String> menuLacks =
-        Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<String, Boolean>());
+    private static final java.util.Map<String, Set<Long>> menuLacks =
+        new java.util.concurrent.ConcurrentHashMap<>();
 
-    /** Records that {@code gobResName}'s flower menu did not offer {@code option}. */
-    public static void menuLacks(String gobResName, String option) {
-        if ((gobResName != null) && (option != null))
-            menuLacks.add(gobResName + '|' + option);
+    /**
+     * How many DIFFERENT gobs of a species must lack an option before we believe it of the species.
+     *
+     * One was not evidence, and treating it as evidence is the bug this constant exists to fix.
+     * The observation is per-object: a tree whose bark has already been taken offers no "Take bark"
+     * either, and generalising that stops the bot trying bark on every other tree of the species -
+     * including the ones that still have it. The juniper case this mechanism was built for was read
+     * from one grove across three sessions, which is equally consistent with the grove being
+     * stripped; it was never proof that junipers lack bark.
+     *
+     * Three distinct gob ids separates the two the only way the evidence can. A stripped patch is a
+     * handful of neighbouring objects and rarely three that the bot happens to visit for the same
+     * option; a species the data is simply wrong about lacks it on every gob everywhere, so the
+     * third arrives quickly and costs two wasted visits to learn a fact worth the whole session.
+     *
+     * Per-gob memory needs none of this and is not affected: {@code exhausted} already keys on
+     * {@code "g<gobId>|option"}, so an individual that lacked an option is retired individually the
+     * moment it is seen, whatever this decides about its species.
+     */
+    private static final int LACK_CONFIRMATIONS = 3;
+
+    /** Records that ONE gob of {@code gobResName} did not offer {@code option} in its live menu. */
+    public static void menuLacks(String gobResName, String option, long gobId) {
+        if ((gobResName == null) || (option == null))
+            return;
+        menuLacks.computeIfAbsent(gobResName + '|' + option,
+            k -> Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Long, Boolean>()))
+            .add(gobId);
     }
 
     private static boolean lacks(String gobResName, String option) {
-        return menuLacks.contains(gobResName + '|' + option);
+        Set<Long> seen = menuLacks.get(gobResName + '|' + option);
+        return (seen != null) && (seen.size() >= LACK_CONFIRMATIONS);
     }
 
     /**

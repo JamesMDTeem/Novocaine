@@ -985,20 +985,28 @@ public class AutoLpBot extends Window implements Runnable {
      */
     private void reportUnknownOptions(LpTask task, FlowerMenu fm) {
         String label = task.isItem() ? ("item " + task.why) : LpExplorer.resname(task.gob);
-        /* Learn it, not just report it. The menu in front of us is the authority on what this
-         * SPECIES offers, and every option we wanted that is not on it is one we should stop
-         * generating tasks for - a juniper does not have Take bark however firmly LpSpec believes
-         * in its Tough Bark. Recorded before the once-per-resource report below, because that
-         * report returns early on the second sighting and the learning must not depend on being
-         * the first.
+        /* Learn it, not just report it - but learn it about THIS GOB, and let the planner decide
+         * when enough gobs agree to call it a fact about the species.
+         *
+         * The menu is the authority on what the object in front of us offers, and that is not the
+         * same as what its species offers. A tree whose bark has already been taken offers no
+         * "Take bark" either, so one sighting cannot tell "junipers have no bark" from "this
+         * juniper has been stripped" - and the observation this mechanism was built on was a
+         * single grove, which is exactly the ambiguous case. Generalising it stopped bark on every
+         * tree of the species, including the ones that still had it.
+         *
+         * The gob id goes with the record now; see LpPlanner.LACK_CONFIRMATIONS.
+         *
+         * Recorded before the once-per-resource report below, because that report returns early on
+         * the second sighting and the learning must not depend on being the first.
          *
          * Literal options only. SEED_PICK is a placeholder resolved against the live menu, so its
-         * absence here says nothing about the species. */
+         * absence here says nothing at all. */
         if (!task.isItem() && (task.gob != null)) {
             String res = LpExplorer.resname(task.gob);
             for (String opt : task.options) {
                 if (!LpPlanner.SEED_PICK.equals(opt) && !hasOpt(fm, opt))
-                    LpPlanner.menuLacks(res, opt);
+                    LpPlanner.menuLacks(res, opt, task.gob.id);
             }
         }
         if (!reported.add(label))
@@ -1295,13 +1303,26 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     /**
-     * How close we must be before a RAW right-click is safe to send. One tile.
+     * How close we must be before a RAW right-click is safe to send.
      *
      * {@link #REACH} is 22 - two tiles - and a walk that ends anywhere inside it counts as
      * arrival, so the click routinely goes out from a tile or more away. That gap is the problem
      * below.
+     *
+     * Four units, not the eleven it was. Eleven is a whole tile, and the point of this threshold
+     * is that there is no meaningful distance left for the server to drag us through - which a
+     * tile plainly is. A raw click from a tile out walks a straight uncollided line for a tile,
+     * and a felled log or a bush lying in that tile is exactly what it walks through; that is the
+     * "walks through a solid object after picking" report, and it survived the last fix because
+     * the fix only covered the case beyond this threshold.
+     *
+     * Not zero, and not deleted. The pathed approach opens no menu about seven times in a hundred
+     * (8 of 118 in the logs to date), and each of those falls through to a menu-fail retry that
+     * retires the target after three - so a threshold of zero trades a visible drag for an
+     * invisible loss of work. Four units keeps the cheap path for the genuinely-adjacent case,
+     * where the drag is a third of a tile and cannot cross into a neighbouring object.
      */
-    private static final double CLICK_CLOSE = 11.0;
+    private static final double CLICK_CLOSE = 4.0;
 
     /**
      * Opens a gob's flower menu without handing the last few units to the server.
@@ -1552,8 +1573,28 @@ public class AutoLpBot extends Window implements Runnable {
         double d = from.dist(to);
         if (d < 1.0)
             return;
-        NLog.log(LOG, "  moved " + (int) d + "u during " + stage
-            + ((target == null) ? "" : (" (now " + (int) to.dist(target.rc) + "u from it)")));
+        String where = "";
+        if (target != null) {
+            /* The distance alone cannot tell arrival from pinning, and that is the whole of the
+             * "caught clipping the edge of objects" report.
+             *
+             * The pathfinder carves the target's own collision box out of the map
+             * (Pathfinder.excludeGob) so a route can be found INTO it, and the server's move then
+             * stops the disc at first contact with the real box. Stopping at the face is correct
+             * and is what most of these are - but a diagonal approach contacts a CORNER, where the
+             * disc pins further out than the face, and on a long thin box (a felled log, the end of
+             * a palisade) that pin can be well away from the gob. Both read as "now 7u from it".
+             *
+             * So print what the number should be compared against. A stop at about the bulk is the
+             * face and is right; a stop consistently past it, especially where the menu then fails,
+             * is the pin - and only then is it worth changing where the walk aims, which is a
+             * movement change and not one to make on a hunch. */
+            double gap = to.dist(target.rc);
+            double bulk = haven.automated.nbots.world.BotNav.bulk(target);
+            where = " (now " + (int) gap + "u from it, its bulk is " + (int) bulk + "u"
+                + ((gap > (bulk + CLICK_CLOSE)) ? " - PAST THE FACE" : "") + ")";
+        }
+        NLog.log(LOG, "  moved " + (int) d + "u during " + stage + where);
     }
 
     private void retire(LpTask task) {
