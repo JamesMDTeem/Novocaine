@@ -1118,6 +1118,21 @@ public class AutoLpBot extends Window implements Runnable {
         double best = Double.MAX_VALUE;
         int stalled = 0;
         int retreats = 0;
+        /* Set when a walk ended without getting us there, which is the ONLY reason a static target
+         * ever needs a second path.
+         *
+         * Everything else in this loop that triggers a re-path is about the target MOVING - the
+         * aimed/DRIFT test, and the stall counter that hangs off it. That is the right model for a
+         * beast and no model at all for a rock: a rock's rc never drifts, so once aimed is set the
+         * re-path branch is unreachable, and because the stall counter only increments inside that
+         * branch it never counts either. The observed result is a path that draws itself around a
+         * felled log, dies before arriving, and leaves the character standing perfectly still for
+         * the rest of the sixty attempts - about half a minute - before "ran out of attempts". No
+         * second path is ever tried, and nothing is logged the whole time.
+         *
+         * A path dying short is worth retrying rather than waiting out: the search reads a world
+         * that is still loading in, and the second answer is routinely better than the first. */
+        boolean walkDied = false;
         // The search behind the last path issued, so the arrival test below can tell a walk that
         // ended from one that never began.
         haven.automated.pathfinder.Pathfinder walk = null;
@@ -1167,7 +1182,8 @@ public class AutoLpBot extends Window implements Runnable {
                 stalled = 0;
             }
 
-            if (aimed == null || aimed.dist(target.rc) > DRIFT) {
+            if (aimed == null || aimed.dist(target.rc) > DRIFT || walkDied) {
+                walkDied = false;
                 if (aimed != null && ++stalled > NO_PROGRESS_LIMIT) {
                     NLog.log(LOG, "giving up chase of #" + id + " ("
                         + LpExplorer.resname(target) + "): " + stalled
@@ -1252,6 +1268,17 @@ public class AutoLpBot extends Window implements Runnable {
                         + "u) plus slack; acting from here");
                 return true;
             }
+            /* Got here with the walk over and no arrival accepted, so the path did not deliver -
+             * either it found no way and issued no move at all (walk.mc null), or it ran out
+             * somewhere short of the bound above. Ask for another one on the next pass.
+             *
+             * This is what makes the stall counter mean something for a target that cannot drift.
+             * Each dead path now costs one re-path and one increment, so a target the pathfinder
+             * genuinely cannot serve is given up after NO_PROGRESS_LIMIT tries with the existing
+             * "giving up chase" line - seconds, and said out loud - instead of sixty silent passes
+             * of standing still. */
+            if (!walking())
+                walkDied = true;
         }
         NLog.log(LOG, "walk to #" + id + " ran out of attempts");
         Gob me = player(), target = findGob(id);
