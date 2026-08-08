@@ -5,7 +5,6 @@ import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
-import haven.automated.nbots.core.NLog;
 import haven.automated.pathfinder.GridAStar;
 
 import java.util.ArrayDeque;
@@ -182,21 +181,61 @@ public class Router {
          * closer: a tree on the far bank of a one-tile stream has its nearest standable tile on the
          * FAR side, no path leads there, and the tree is declared unreachable on foot - while the
          * near bank, a tile further out and perfectly walkable, was never asked about. That is the
-         * shape of the surviving "no way to it on foot" rejections. Each extra candidate is one more
-         * bounded search, and the first that succeeds ends it. */
+         * shape of the surviving "no way to it on foot" rejections.
+         *
+         * All of them at once, by {@link #floodReaches} - not one search each. Reachability is a
+         * property of the connected component, so the whole candidate set shares one traversal. */
         List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), TRIES);
         if (goals.isEmpty())
             return true;   // nowhere to stand near it that we know of - don't rule the target out on that
-        for (int i = 0; i < goals.size(); i++) {
-            if (search(w, from, goals.get(i), false) != null) {
-                /* Answered from beyond the near cluster - the four-candidate pass this method used to
-                 * stop at would have said no. Logged because that pass being wrong is the whole reason
-                 * the list is this long, and a run where this line never appears is a run where the
-                 * extra candidates cost search time and bought nothing. */
-                if (i >= NEAR)
-                    NLog.log("router.log", "reachable " + GateManager.fmt(target) + " only via candidate "
-                        + (i + 1) + " of " + goals.size() + " - the nearest " + NEAR + " would have refused it");
-                return true;
+        return floodReaches(w, from, new HashSet<>(goals));
+    }
+
+    /**
+     * Whether a flood from {@code from} over passable ground touches ANY of {@code goals}.
+     *
+     * One traversal for the whole candidate set, and that is the point rather than a tidiness.
+     * This was a loop running one A* per candidate, and a FAILED A* has already explored every
+     * tile it can reach - so asking again for a second goal in the same enclosure re-walks exactly
+     * the same ground, and asking twenty-four times walks it twenty-four times. Widening the
+     * candidate list from four to the full first two rings therefore did not cost 6x a little, it
+     * cost 6x the most expensive branch this class has, and the LP assistant went from planning in
+     * milliseconds to visibly stalling on the first target it could not reach.
+     *
+     * A flood answers all of them at once because they share the question: reachability is a
+     * property of the connected component, not of the individual goal. Cost is one component
+     * traversal no matter how many candidates there are - strictly cheaper than the four-search
+     * version this replaced, while asking about six times as many places to stand.
+     *
+     * No heuristic and no ordering: nothing here wants the shortest route, only whether one
+     * exists. The caller that wants a distance is {@link #walkingDistance}, and it still searches.
+     *
+     * Bounded by {@link #MAX_TILES} exactly as the searches were, and by the world's own confine
+     * box - a flood over a clamped world stops at the edge of what has been seen.
+     */
+    private static boolean floodReaches(World w, Coord from, Set<Coord> goals) {
+        if (goals.contains(from))
+            return true;
+        Set<Coord> seen = new HashSet<>();
+        Deque<Coord> queue = new ArrayDeque<>();
+        seen.add(from);
+        queue.add(from);
+        int visited = 0;
+        while (!queue.isEmpty() && (visited++ < MAX_TILES)) {
+            Coord cur = queue.poll();
+            for (int i = 0; i < 8; i++) {
+                Coord nb = cur.add(DX[i], DY[i]);
+                if (seen.contains(nb) || !w.passable(nb))
+                    continue;
+                // The same no-corner-cutting rule the search uses; a flood that squeezed through a
+                // diagonal the router will not take would answer for a route nobody can walk.
+                if ((DX[i] != 0) && (DY[i] != 0)
+                    && (!w.passable(cur.add(DX[i], 0)) || !w.passable(cur.add(0, DY[i]))))
+                    continue;
+                if (goals.contains(nb))
+                    return true;
+                seen.add(nb);
+                queue.add(nb);
             }
         }
         return false;
@@ -217,15 +256,20 @@ public class Router {
      * the 15:27-15:31 session that verdict fired nineteen times in three runs and drained one run's
      * whole ready list - LP RETIRES on a no, so each one wrote a good resource off for the session.
      *
-     * The cost lands only where it is affordable. A reachable target is answered by its first or
-     * second candidate and never sees the rest; it is the NO that walks the whole list, and a NO was
-     * always the dear branch here - see the note on bounding by area rather than by node count.
+     * The count is nearly free now and was not always. While this fed one A* per candidate, raising
+     * it from four multiplied the most expensive branch in the class by six and stalled the LP
+     * assistant on the first target it could not reach. {@link #floodReaches} answers the whole set
+     * in one traversal, so the list can be as long as the geometry warrants.
      */
     private static final int TRIES = 24;
 
     /**
-     * The old budget, kept only as the boundary {@link #reachable} reports against: an answer found at
-     * or beyond this index is one the previous implementation would have got wrong.
+     * The smaller budget {@link #walkingDistance} keeps, and why the two differ.
+     *
+     * That one measures rather than decides: it has no early exit, it searches every candidate it
+     * is handed to find the cheapest, and it runs for the leading few targets of every plan. It
+     * cannot use the flood - a flood answers whether, not how far - so its cost really is one
+     * search per candidate and it stays small.
      */
     private static final int NEAR = 4;
 
