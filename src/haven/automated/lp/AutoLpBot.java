@@ -16,6 +16,7 @@ import haven.Widget;
 import haven.Window;
 import haven.automated.AUtils;
 import haven.resutil.FoodInfo;
+import haven.automated.nbots.core.Carried;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.UiWatchdog;
 import haven.automated.nbots.core.Widgets;
@@ -354,12 +355,30 @@ public class AutoLpBot extends Window implements Runnable {
     private static final double FELL_EAT_ENERGY = 0.35;
 
     /**
+     * Below this fraction of what the carried vessels hold, the water really has run out.
+     *
+     * A dreg is not a drink. Five percent is low enough that anything above it is worth another
+     * mouthful and a moment for the meter to catch up, and low enough that a genuinely empty flask
+     * still ends the run rather than leaving the bot chopping at a tree it cannot fell.
+     */
+    private static final double FELL_LOW_WATER = 0.05;
+
+    /**
+     * How many times a swing may find low stamina, water in hand, and no recovery yet.
+     *
+     * Bounded because the alternative is a bot standing at a tree drinking forever. Five is well
+     * past a slow drink and well short of a stall; the swing budget bounds it again from outside.
+     */
+    private static final int FELL_DRINK_RETRIES = 5;
+
+    /**
      * Fells a standing tree for its wood LP. Unlike everything else this can't be a single click:
      * chopping is long and drains stamina, and when it runs low the character breaks off to DRINK,
      * which returns the pose to idle - a generic wait-for-idle would read that pause as "finished"
      * and walk off leaving the tree standing. So: chop, and whenever stamina bottoms out, drink
-     * (AUtils.drinkTillFull) and chop again, until the tree is actually gone. Low ENERGY is a
-     * fatal stop - the nurgling version tried to eat, but auto-eating is riskier than stopping.
+     * ({@code Carried.drink} - see {@link #fell}, it was drinkTillFull and that could not see a
+     * worn flask) and chop again, until the tree is actually gone. Low ENERGY is a fatal stop -
+     * the nurgling version tried to eat, but auto-eating is riskier than stopping.
      */
     private boolean executeFell(LpTask task) throws InterruptedException {
         tidyInventory();
@@ -394,6 +413,7 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     private boolean fell(long id) throws InterruptedException {
+        int thirstyRetries = 0;
         for (int swing = 0; swing < 300; swing++) {
             if (Thread.interrupted() || !active || stop)
                 throw new InterruptedException();
@@ -408,14 +428,58 @@ public class AutoLpBot extends Window implements Runnable {
                 return findGob(id) == null;
             }
             if (stamina() <= FELL_DRINK_STAMINA) {
-                AUtils.drinkTillFull(gui, 0.9, 0.9);
+                /* Carried.drink, NOT AUtils.drinkTillFull, and never both.
+                 *
+                 * drinkTillFull goes through GameUI.drink, which scans inventories for a flask but
+                 * checks only equipment slots 6 and 7 and only for a bucket-water - so a Waterflask
+                 * WORN is invisible to it. It returns false, drinkTillFull does nothing, and the
+                 * stamina test below then reads that as "no water" and kills the run over a flask
+                 * that is full. Carried reads every equipment slot.
+                 *
+                 * One mechanism only: drinking is a timed action and a fresh iact on a vessel
+                 * CANCELS the one in progress, so running both interrupts every mouthful. Sipping
+                 * is bounded here the way Drink bounds it - each sip is one swallow, and a sip that
+                 * moves nothing means the vessel is done. */
+                for (int sip = 0; (sip < 30) && (stamina() < 0.9); sip++) {
+                    double was = stamina();
+                    if (!Carried.drink(gui))
+                        break;
+                    waitUntil(() -> stamina() > was, 40);
+                    if (stamina() <= was)
+                        break;
+                }
                 waitUntil(() -> stamina() > FELL_DRINK_STAMINA, 100);
                 if (stamina() <= FELL_DRINK_STAMINA) {
-                    // No water to recover with - don't limp on to the next tree; stop the run.
-                    NLog.log(LOG, "fell: couldn't restore stamina - fatal");
+                    /* Ask the FLASK, not the stamina bar.
+                     *
+                     * This used to read "the meter did not clear 45% inside one wait" as "no water"
+                     * and end the whole run on it. The meter is the wrong witness twice over. A
+                     * mouthful is worth a few percent and climbs over seconds while chopping is
+                     * spending stamina the whole time, so a drink that WORKED can easily leave the
+                     * bar below where it started the wait - and {@code AUtils.drinkTillFull} goes
+                     * through the client's own drink, which searches open windows and two equipment
+                     * slots, so a flask worn anywhere else is invisible to it and invisible reads
+                     * exactly like empty. Between them: "couldn't drink to keep chopping (no water)"
+                     * over a flask with water in it, reported while chopping.
+                     *
+                     * -1 is "cannot tell" and is deliberately NOT treated as empty, for the same
+                     * reason {@code Carried} exists at all. An unreadable vessel gets the benefit of
+                     * the doubt and the retry budget; only a reading we actually have, and which is
+                     * genuinely low, ends the run. */
+                    double left = Carried.waterFraction(gui);
+                    if (((left < 0) || (left >= FELL_LOW_WATER)) && (++thirstyRetries <= FELL_DRINK_RETRIES)) {
+                        NLog.log(LOG, "fell: stamina still " + stamina() + " but "
+                            + ((left < 0) ? "the vessels are unreadable" : ("water is at " + Math.round(left * 100) + "% of capacity"))
+                            + " - drinking again rather than ending the run (" + thirstyRetries + "/" + FELL_DRINK_RETRIES + ")");
+                        continue;
+                    }
+                    // Genuinely dry, or out of patience - don't limp on to the next tree; stop the run.
+                    NLog.log(LOG, "fell: couldn't restore stamina, water at "
+                        + ((left < 0) ? "unknown" : (Math.round(left * 100) + "%")) + " - fatal");
                     fatalStop = "Auto-LP stopped: couldn't drink to keep chopping (no water).";
                     return findGob(id) == null;
                 }
+                thirstyRetries = 0;
                 tree = findGob(id);
                 if (tree == null)
                     return true;
@@ -1263,7 +1327,21 @@ public class AutoLpBot extends Window implements Runnable {
     private void rclickAndChoose(Gob gob, String option) throws InterruptedException {
         if (gob == null)
             return;
-        rclickGob(gob);
+        /* Through {@link #openMenuOn}, not a bare {@link #rclickGob}, and this was the last place
+         * still sending the raw one from a distance.
+         *
+         * A raw right-click is a MOVE ORDER on a movement line that is not collision aware, so
+         * clicking a gob we are not standing at hands the last stretch to the server, which closes
+         * it in a straight line through whatever is in the way - no client route, no path line.
+         * openMenuOn already guards that with {@link #CLICK_CLOSE} and the harvest path has used it
+         * since the fix; this one, the CHOPPING path, kept the old call and so kept the old bug.
+         * The evidence they are the same bug: the harvest path's instrument
+         * ("NOBODY ASKED FOR THIS MOVE") fell from 39 in a run to 1 when it was routed this way,
+         * while chopping went on issuing the click cold.
+         *
+         * Felling is where it shows worst, because the swing loop re-clicks the same tree many
+         * times and the arrival bound deliberately accepts a stop up to REACH (22u) out. */
+        openMenuOn(gob);
         FlowerMenu fm = findFlowerMenu();
         if (fm != null) {
             if (!chooseOpt(fm, option))

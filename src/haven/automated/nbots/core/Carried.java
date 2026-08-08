@@ -96,6 +96,55 @@ public class Carried {
     }
 
     /**
+     * The largest amount each kind of vessel has been SEEN to hold, which is its capacity.
+     *
+     * Learned rather than tabulated. Writing "a waterskin holds 2" here would be folklore - nothing
+     * in this client states it, the number is the server's, and it goes stale the first time it is
+     * rebalanced. A vessel that has been full once has told us its capacity exactly, and one that
+     * never has cannot be judged as a fraction at all, which {@link #waterFraction} says by
+     * answering -1 rather than by guessing.
+     *
+     * Keyed on the vessel's own name. Concurrent because bots read this from their own threads.
+     */
+    private static final java.util.concurrent.ConcurrentHashMap<String, Float> CAPACITY =
+        new java.util.concurrent.ConcurrentHashMap<>();
+
+    /**
+     * How full the carried water vessels are, as a fraction of what they can hold, or -1 if that
+     * cannot be worked out yet.
+     *
+     * -1 is "no idea", NOT "empty", and the difference matters to every caller: a bot that treats
+     * an unreadable vessel as empty is the bot that walks to a barrel with a full waterskin, which
+     * this class exists to stop. The same reasoning as {@code Router.walkingDistance} returning -1.
+     *
+     * Totalled across vessels rather than reported per vessel, because the question a caller has is
+     * "can I keep drinking", and two half-full skins answer it as well as one full one.
+     */
+    public static double waterFraction(GameUI gui) {
+        float held = 0, cap = 0;
+        for (WItem wi : vessels(gui)) {
+            ItemInfo.Contents.Content c = content(wi);
+            if (c == null)
+                continue;
+            String n = name(wi);
+            if (n.isEmpty())
+                continue;
+            // Every vessel teaches us its capacity, whatever is in it - including tea, since the
+            // container is the same size either way.
+            Float seen = CAPACITY.get(n);
+            if ((seen == null) || (c.count > seen))
+                CAPACITY.put(n, c.count);
+            Float known = CAPACITY.get(n);
+            if ((known == null) || (known <= 0))
+                continue;
+            cap += known;
+            if ("Water".equals(c.name))
+                held += c.count;
+        }
+        return (cap <= 0) ? -1 : (held / cap);
+    }
+
+    /**
      * Drinks from the first carried vessel that is KNOWN to have water in it.
      *
      * It briefly also drank from vessels whose contents the client could not read. The reasoning
@@ -115,14 +164,57 @@ public class Carried {
      *         by watching the stamina meter, the same way the client's own drink loop does.
      */
     public static boolean drink(BotCtx ctx) throws InterruptedException {
-        List<WItem> wet = holdingWater(ctx.gui);
+        return drink(ctx.gui, ctx.nav::waitUntil);
+    }
+
+    /**
+     * How the caller waits. Bots have abort-aware waits of their own and must keep using them, so
+     * the wait is passed in rather than chosen here.
+     */
+    public interface Waiter {
+        void until(haven.automated.nbots.world.BotNav.Cond cond, int ticks) throws InterruptedException;
+    }
+
+    /**
+     * The same drink for a caller that has a {@link GameUI} and no bot context.
+     *
+     * Exists for the LP assistant, which is not an nbot and was reaching for
+     * {@code AUtils.drinkTillFull} - the client's own drink, which scans inventories for a flask but
+     * checks only equipment slots 6 and 7 and only for a {@code bucket-water}. A Waterflask WORN
+     * anywhere is therefore invisible to it, it returns false, and the LP bot read that as "no
+     * water" and ended the whole run while carrying a full flask. This one goes through
+     * {@link #vessels}, which reads every equipment slot.
+     *
+     * Polls on its own thread and honours interruption, which is how the LP bot is stopped.
+     */
+    public static boolean drink(GameUI gui) throws InterruptedException {
+        return drink(gui, (cond, ticks) -> {
+            for (int i = 0; i < ticks; i++) {
+                if (Thread.interrupted())
+                    throw new InterruptedException();
+                try {
+                    if (cond.check())
+                        return;
+                } catch (haven.Loading l) {
+                    // Still arriving; keep waiting.
+                }
+                Thread.sleep(POLL_MS);
+            }
+        });
+    }
+
+    /** Poll interval, matching the bots' own. */
+    private static final int POLL_MS = 25;
+
+    private static boolean drink(GameUI gui, Waiter wait) throws InterruptedException {
+        List<WItem> wet = holdingWater(gui);
         if (wet.isEmpty())
             return false;
         WItem vessel = wet.get(0);
         // Matching GameUI.drink: the click coordinate has to be cleared or the menu opens relative
         // to wherever the mouse last was.
-        ctx.gui.ui.lcc = Coord.z;
-        AUtils.clickWItemAndSelectOption(ctx.gui, vessel, 0);
+        gui.ui.lcc = Coord.z;
+        AUtils.clickWItemAndSelectOption(gui, vessel, 0);
         /* Wait for the ACTION, not for a fixed span.
          *
          * Drinking is timed and runs a progress bar, and a fresh click on a vessel CANCELS whatever
@@ -134,8 +226,8 @@ public class Carried {
          * The progress bar not appearing at all is a perfectly ordinary answer - a sip small enough
          * to be instant - so the first wait is short and its expiry means nothing. The second is
          * the real one, and it ends the moment the bar goes away. */
-        ctx.nav.waitUntil(() -> ctx.gui.prog != null, ACTION_TICKS);
-        ctx.nav.waitUntil(() -> ctx.gui.prog == null, SIP_TICKS);
+        wait.until(() -> gui.prog != null, ACTION_TICKS);
+        wait.until(() -> gui.prog == null, SIP_TICKS);
         return true;
     }
 
@@ -179,10 +271,25 @@ public class Carried {
 
     /** What is in this vessel, or null if it is empty or the client cannot tell yet. */
     private static String contents(WItem wi) {
+        ItemInfo.Contents.Content c = content(wi);
+        return (c == null) ? null : c.name;
+    }
+
+    /**
+     * The same reading with the AMOUNT kept, for callers that need how much rather than what.
+     *
+     * Null on the same terms {@link #contents} returns null on, and for the same reason: the server
+     * not having sent the item's info yet is indistinguishable from an empty vessel, so neither may
+     * be reported as a fact. Note {@code Contents.content} is never itself null - it is
+     * {@code Content.EMPTY}, whose name is - so the name is what has to be tested.
+     */
+    private static ItemInfo.Contents.Content content(WItem wi) {
         try {
             GItem it = wi.item;
             ItemInfo.Contents cont = (it == null) ? null : it.getcontents();
-            return ((cont == null) || (cont.content == null)) ? null : cont.content.name;
+            if ((cont == null) || (cont.content == null) || (cont.content.name == null))
+                return null;
+            return cont.content;
         } catch (RuntimeException e) {
             return null;
         }
