@@ -1394,14 +1394,13 @@ public class AutoLpBot extends Window implements Runnable {
          * 4 of the centre - so almost every arrival was followed by another path. Reach is what
          * decides whether the menu will open; the face is what decides whether there is any
          * distance left to cross. */
-        double bulk = haven.automated.nbots.world.BotNav.bulk(gob);
-        double face = Math.max(0, d - bulk);
+        double face = (me == null) ? 0 : haven.automated.nbots.world.BotNav.faceGap(gob, me.rc);
         if (face <= CLICK_CLOSE) {
             rclickGob(gob);
             return;
         }
-        NLog.log(LOG, "  " + (int) face + "u off its face (" + (int) d + "u to centre, bulk "
-            + (int) bulk + "u) - walking the last gap with the pathfinder rather"
+        NLog.log(LOG, "  " + (int) face + "u off its box (" + (int) d + "u to centre)"
+            + " - walking the last gap with the pathfinder rather"
             + " than letting the click drag us there through whatever is in the way");
         gui.map.pfRightClick(gob, -1, 3, 0, null);
         waitUntil(() -> !walking(), 60);
@@ -1637,9 +1636,9 @@ public class AutoLpBot extends Window implements Runnable {
              * is the pin - and only then is it worth changing where the walk aims, which is a
              * movement change and not one to make on a hunch. */
             double gap = to.dist(target.rc);
-            double bulk = haven.automated.nbots.world.BotNav.bulk(target);
-            where = " (now " + (int) gap + "u from it, its bulk is " + (int) bulk + "u"
-                + ((gap > (bulk + CLICK_CLOSE)) ? " - PAST THE FACE" : "") + ")";
+            double face = haven.automated.nbots.world.BotNav.faceGap(target, to);
+            where = " (now " + (int) gap + "u to centre, " + (int) face + "u off its box"
+                + ((face > CLICK_CLOSE) ? " - PAST THE FACE" : "") + ")";
         }
         NLog.log(LOG, "  moved " + (int) d + "u during " + stage + where);
     }
