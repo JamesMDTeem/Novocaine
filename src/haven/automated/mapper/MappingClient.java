@@ -312,10 +312,19 @@ public class MappingClient {
 	
 	private void Track(long id, Coord2d coordinates, long gridId) {
 	    Tracking t = tracking.get(id);
-	    if(t == null) {
+	    boolean fresh = (t == null);
+	    if(fresh) {
+		/* Filled in FIRST and published at the end of this method, not here.
+		 *
+		 * It used to go into the map the moment it was constructed, with coords still null,
+		 * and be finished several statements later. PositionUpdater iterates this map from
+		 * the scheduler thread every two seconds, so landing in that window read a Tracking
+		 * whose getJSON dereferences coords - an NPE, thrown out of a scheduleAtFixedRate
+		 * task, which Java answers by cancelling the task for good. The symptom is one
+		 * character quietly missing from the live map for the rest of the session while
+		 * everyone else keeps updating, and nothing in the log to say why. */
 		t = new Tracking();
-		tracking.put(id, t);
-		
+
 		if(id == glob.sess.ui.gui.map.plgob) {
 		    t.name = playerName;
 		    t.type = "player";
@@ -335,10 +344,24 @@ public class MappingClient {
 	    }
 	    t.gridId = gridId;
 	    t.coords = gridOffset(coordinates);
+	    if(fresh)
+		tracking.put(id, t);
 	}
 	
 	@Override
 	public void run() {
+	    /* NOTHING may escape this method.
+	     *
+	     * scheduleAtFixedRate answers an uncaught throwable by cancelling the task - silently,
+	     * permanently, and with no way back short of a restart. For a two-second position feed
+	     * that trades a dropped update for the whole feed, which is a terrible bargain: any
+	     * transient fault in here (a half-built gob, a window torn down mid-login, a Loading
+	     * from item info) costs this character its place on the live map for the session.
+	     *
+	     * The HTTP work below has its own catch and keeps it. This is the outer guarantee, and
+	     * it is deliberately Throwable rather than Exception - an Error escaping is even less of
+	     * a reason to stop reporting positions. */
+	    try {
 	    if(spamCount == spamPreventionVal) {
 		spamCount = 0;
 		if(OptWnd.sendLiveLocationCheckBox.a) {
@@ -375,9 +398,13 @@ public class MappingClient {
 	    } else {
 		spamCount++;
 	    }
+	    } catch(final Throwable t) {
+		// Deliberately silent, like the HTTP catch below it: this runs every two seconds, so
+		// a fault that recurs would fill the log with the same line hundreds of times a shift.
+	    }
 	}
     }
-    
+
     /** Container for a 3x3 grid region plus weak refs to backing MCache.Grid objects. */
     private static class GridUpdate {
 	String[][] grids;
