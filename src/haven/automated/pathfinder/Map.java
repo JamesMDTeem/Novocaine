@@ -29,7 +29,11 @@ public class Map {
     public final static byte CELL_TO = 1 << 6;
 
     /** Size of one tile in world units (pixels). Matches {@code MCache.tilesz}. */
-    private final static int TILE = 11;
+    /* int, and it must stay int: the arithmetic below relies on it. {@code TILE / 2} on lines 209-210
+     * is integer division and yields 5, which is deliberately NOT {@link #HALF_TILE}'s 5.5. Taking
+     * the seam's double and casting keeps the one physical fact in one place without changing any of
+     * that. */
+    private final static int TILE = (int) World.TILE;
     /** Half a tile in world units, as a double for centre calculations. */
     private final static double HALF_TILE = TILE / 2.0;
     /** Radius in tiles around the player that keep-out zones never block. */
@@ -40,7 +44,11 @@ public class Map {
     private final static int origintile = 44;
     public final static int origin = origintile * TILE;
     public final static int sz = origin * 2;
-    public static int plbbox = 3;
+    /* The character disc's radius in WORLD units, which is the unit everything it is added to here
+     * carries (gcx/gcy come from origin - x * TILE). Same physical fact as Observed.HALFWIDTH; NOT
+     * the same number as Router.HALFWIDTH, which is this divided by TILE because that file counts in
+     * tiles. Left non-final because it always was; nothing in the tree assigns it. */
+    public static int plbbox = (int) World.HALFWIDTH;
     private final static int way = plbbox + 2;
     private final static int clr = way + 1;
     private final static int concaveclr = 2;
@@ -104,6 +112,25 @@ public class Map {
     /** Either kind. What a caller wants when the question really is "is this water". */
     public static boolean isWater(String tilesetName) {
         return isDeep(tilesetName) || isShallow(tilesetName);
+    }
+
+    /**
+     * Ground that is not water and still cannot be walked: cave mouths, the nil tile, and rock faces.
+     *
+     * Split out of {@link #initGeography}, where these three names were spelled inline and were
+     * therefore known ONLY to the click path. The planner reads the map file through
+     * {@code nbots.world.Terrain}, which classified water and nothing else, so a long-range route was
+     * planned straight across a rock wall or a cave mouth and the click was refused on arrival - the
+     * certified-then-refused loop. Both layers now ask this one method, so they agree by construction.
+     *
+     * Unconditional, like {@link #DEEP} and unlike {@link #SHALLOW}: there is no setting under which
+     * walking into a rock face is the answer.
+     */
+    public static boolean isImpassableGround(String tilesetName) {
+        return (tilesetName != null)
+            && (tilesetName.equals("gfx/tiles/cave")
+                || tilesetName.equals("gfx/tiles/nil")
+                || tilesetName.startsWith("gfx/tiles/rocks/"));
     }
 
     /**
@@ -224,10 +251,7 @@ public class Map {
                     continue;
 
                 String name = res.name;
-                boolean blocked = isDeep(name) ||
-                        name.equals("gfx/tiles/cave") ||
-                        name.equals("gfx/tiles/nil") ||
-                        name.startsWith("gfx/tiles/rocks/");
+                boolean blocked = isDeep(name) || isImpassableGround(name);
                 if (!blocked && blockWater)
                     blocked = isShallow(name);
                 if (!blocked && BLOCK_CLIFFS)

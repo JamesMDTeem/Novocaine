@@ -1652,7 +1652,9 @@ public class BotNav {
             byte[] classes = Terrain.classes(gui, here.seg, gc);
             if (classes != null) {
                 byte w = classes[(in.y * MCache.cmaps.x) + in.x];
-                if (w == Terrain.DEEP || (w == Terrain.SHALLOW && Map.BLOCK_WATER))
+                // BLOCKED (rock/cave/nil) belongs with DEEP, not with the optional water: a hop that
+                // aims across a rock face is refused on arrival whatever the water setting says.
+                if (w == Terrain.DEEP || w == Terrain.BLOCKED || (w == Terrain.SHALLOW && Map.BLOCK_WATER))
                     isBlocking = true;
             }
             if (!isBlocking)

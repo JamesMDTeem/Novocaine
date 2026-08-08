@@ -8,6 +8,7 @@ import haven.MCache;
 import haven.Resource;
 import haven.automated.helpers.HitBoxes;
 import haven.automated.nbots.core.NLog;
+import haven.automated.pathfinder.World;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -174,7 +175,7 @@ public class Observed {
      * does exact geometry against the same boxes when the bot arrives, so a sliver missed here costs
      * a step around it. Over-blocking has no such second opinion - it deletes the route.
      */
-    private static final double HALFWIDTH = 3.0;
+    private static final double HALFWIDTH = World.HALFWIDTH;
 
     /**
      * WHAT is standing on each tile, beside the byte grid that says only THAT something is.

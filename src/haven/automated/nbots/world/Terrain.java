@@ -49,6 +49,16 @@ public class Terrain {
     static final byte SHALLOW = 1;
     /** Impassable to anyone on foot, whatever the settings say. */
     static final byte DEEP = 2;
+    /**
+     * Not water, and still impassable: cave mouths, the nil tile, rock faces.
+     *
+     * This class exists because the planner could not see any of them. The rules lived inline in
+     * {@code pathfinder.Map.initGeography}, which reads the LIVE window, so they applied to the
+     * character's own clicks and to nothing else - a long-range route was planned straight across a
+     * rock wall and refused on arrival. Recorded here it reaches every caller that reads the map
+     * file, which is the whole grid layer. See {@code Map.isImpassableGround}.
+     */
+    static final byte BLOCKED = 3;
 
     /**
      * segment -> segment grid coord -> per-tile water class. Only successful reads are cached.
@@ -84,7 +94,9 @@ public class Terrain {
             return true;
         Coord in = segTile.sub(gc.mul(MCache.cmaps));
         byte w = g[(in.y * MCache.cmaps.x) + in.x];
-        if (w == DEEP)
+        // Both unconditional, and for the same reason: no setting makes a rock face or the deep
+        // crossable, so neither is subject to the water preference below.
+        if ((w == DEEP) || (w == BLOCKED))
             return false;
         return (w != SHALLOW) || !haven.automated.pathfinder.Map.BLOCK_WATER;
     }
@@ -192,6 +204,8 @@ public class Terrain {
                     byte w = DRY;
                     if (haven.automated.pathfinder.Map.isDeep(name))
                         w = DEEP;
+                    else if (haven.automated.pathfinder.Map.isImpassableGround(name))
+                        w = BLOCKED;
                     else if (haven.automated.pathfinder.Map.isShallow(name))
                         w = SHALLOW;
                     out[(y * MCache.cmaps.x) + x] = w;

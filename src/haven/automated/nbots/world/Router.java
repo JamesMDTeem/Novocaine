@@ -5,6 +5,7 @@ import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
+import haven.automated.nbots.core.NLog;
 import haven.automated.pathfinder.GridAStar;
 
 import java.util.ArrayDeque;
@@ -186,15 +187,47 @@ public class Router {
         List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), TRIES);
         if (goals.isEmpty())
             return true;   // nowhere to stand near it that we know of - don't rule the target out on that
-        for (Coord goal : goals) {
-            if (search(w, from, goal, false) != null)
+        for (int i = 0; i < goals.size(); i++) {
+            if (search(w, from, goals.get(i), false) != null) {
+                /* Answered from beyond the near cluster - the four-candidate pass this method used to
+                 * stop at would have said no. Logged because that pass being wrong is the whole reason
+                 * the list is this long, and a run where this line never appears is a run where the
+                 * extra candidates cost search time and bought nothing. */
+                if (i >= NEAR)
+                    NLog.log("router.log", "reachable " + GateManager.fmt(target) + " only via candidate "
+                        + (i + 1) + " of " + goals.size() + " - the nearest " + NEAR + " would have refused it");
                 return true;
+            }
         }
         return false;
     }
 
-    /** How many standable spots around a target {@link #reachable} will try before answering no. */
-    private static final int TRIES = 4;
+    /**
+     * How many standable spots around a target {@link #reachable} will try before answering no.
+     *
+     * Twenty-four, which is every tile of the first two rings - all eight neighbours, then all sixteen
+     * at two tiles. The point is the COMPLETE ring, not the count: {@link #standableAround} returns
+     * nearest-first, so a smaller budget is spent entirely on whichever side of the target happens to
+     * touch it, and the far side is never asked about.
+     *
+     * That is not hypothetical. It was four, and four is what the eight-tile first ring hands back for
+     * anything standing in the open - so the margin said "look five tiles out" and nothing beyond one
+     * tile was ever tried. A tree at the water's edge has its nearest standable tiles across the
+     * stream; all four candidates landed there, none was reachable, and the tree was written off. In
+     * the 15:27-15:31 session that verdict fired nineteen times in three runs and drained one run's
+     * whole ready list - LP RETIRES on a no, so each one wrote a good resource off for the session.
+     *
+     * The cost lands only where it is affordable. A reachable target is answered by its first or
+     * second candidate and never sees the rest; it is the NO that walks the whole list, and a NO was
+     * always the dear branch here - see the note on bounding by area rather than by node count.
+     */
+    private static final int TRIES = 24;
+
+    /**
+     * The old budget, kept only as the boundary {@link #reachable} reports against: an answer found at
+     * or beyond this index is one the previous implementation would have got wrong.
+     */
+    private static final int NEAR = 4;
 
     /**
      * How far outside the two ends a NEARBY question may search, in tiles. See {@link World#confine}.
@@ -234,7 +267,19 @@ public class Router {
         Coord from = here.sc.floor(MCache.tilesz), to = there.sc.floor(MCache.tilesz);
         World w = new World(gui, here.seg, true);
         w.confine(from, to, DETOUR);
-        List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), TRIES);
+        /* {@link #NEAR}, not {@link #TRIES}, and the asymmetry with {@link #reachable} is deliberate.
+         *
+         * This one has no early exit - it wants the CHEAPEST walk, so it searches every candidate it
+         * is given - and it runs for the leading handful of candidates on every plan. Handing it the
+         * full ring would multiply a per-plan cost by six to sharpen a ranking, where reachable pays
+         * the same price once, on a branch that is already the dear one, to stop a target being
+         * written off for the session.
+         *
+         * The two can now disagree: a target reachable only from the far ring gets no distance here
+         * and comes back -1. That is the documented "cannot tell", the caller falls back to the
+         * straight line, and a target ranked by its straight line is a target ranked slightly
+         * optimistically - not one that is lost. */
+        List<Coord> goals = standableAround(w, to, (int) Math.ceil(margin / MCache.tilesz.x), NEAR);
         double best = -1;
         for (Coord goal : goals) {
             List<Coord> path = search(w, from, goal, false);
@@ -586,8 +631,22 @@ public class Router {
 
     /** Samples per tile along a line. Quarter-tile, so no tile a line crosses is stepped over. */
     private static final int SAMPLES = 4;
-    /** The character's own half-width, in tiles: three units of eleven. Same figure as Map.plbbox. */
-    private static final double HALFWIDTH = 3.0 / 11.0;
+    /**
+     * The character's own half-width, in TILES: three units of eleven.
+     *
+     * The unit is the whole point and it is why this is not {@code World.HALFWIDTH}. That constant is
+     * the same physical fact in WORLD UNITS (3.0); everything on this line is grid arithmetic, where
+     * one step is a tile, so the radius has to be expressed as a fraction of one. Substituting the
+     * world-unit constant here does not read as a unit error - it compiles, it is the "same" number
+     * from the same seam, and it silently models the character as eleven times its real width, which
+     * seals every corridor on the map.
+     *
+     * Derived from {@code pathfinder.World.HALFWIDTH} rather than spelled 3.0 again, so the physical
+     * fact still has one home and the conversion is visible at the point of use. Fully qualified
+     * because {@link World} inside this file is Router's own grid adapter, not the seam - which is
+     * the second way this substitution goes wrong quietly.
+     */
+    private static final double HALFWIDTH = haven.automated.pathfinder.World.HALFWIDTH / MCache.tilesz.x;
 
     /**
      * Every tile a character walking between two tile CENTRES would touch.
@@ -811,6 +870,8 @@ public class Router {
             int w = wet(t);
             if (w == Terrain.DEEP)
                 return "deep water";
+            if (w == Terrain.BLOCKED)
+                return "rock, cave or void";
             if ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER)
                 return "shallow water";
             if (w < 0) {
@@ -901,6 +962,11 @@ public class Router {
                 return false;
             int w = wet(t);
             if (w == Terrain.DEEP)
+                return false;
+            // Rock, cave mouth and the nil tile - refused unconditionally, like the deep, and for
+            // the same reason: no setting makes them crossable. Until this class existed the planner
+            // could not see them at all and routed straight through.
+            if (w == Terrain.BLOCKED)
                 return false;
             if ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER)
                 return false;

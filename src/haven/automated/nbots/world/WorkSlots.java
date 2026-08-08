@@ -106,8 +106,10 @@ public class WorkSlots {
             Resource res = mcache.tilesetr(mcache.gettile(tc));
             if (res == null)
                 return false;
-            if (Map.isWater(res.name) || res.name.equals("gfx/tiles/cave")
-                || res.name.equals("gfx/tiles/nil") || res.name.startsWith("gfx/tiles/rocks/"))
+            // The cave/nil/rocks trio was spelled out here too - a fourth copy, and the one most
+            // likely to drift, being furthest from the routing code. It is Map.isImpassableGround
+            // now, which is also what the click path and the map-file record ask.
+            if (Map.isWater(res.name) || Map.isImpassableGround(res.name))
                 return false;
             return !haven.resutil.Ridges.brokenp(mcache, tc);
         } catch (Loading e) {

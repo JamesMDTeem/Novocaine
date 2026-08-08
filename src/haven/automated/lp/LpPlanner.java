@@ -160,6 +160,13 @@ public class LpPlanner {
      * stay the same: the two questions are "can I get to it" and "how far is getting to it", and
      * they have to be asked about the same spot or a target can be accepted by one and ranked by a
      * walk to somewhere else. Note the router divides it by the tile size, so this is world units.
+     *
+     * The MARGIN is shared; how many standing spots inside it each question tries is not, and since
+     * 2026-08-06 they differ on purpose - {@code Router.reachable} walks the whole first two rings,
+     * {@code Router.walkingDistance} keeps to the nearest four. See the note on {@code Router.NEAR}.
+     * The consequence to know about here: a target reachable only from the outer ring is accepted
+     * but comes back with no measured distance, so it is ranked by its straight line. It is ranked
+     * optimistically, which costs a place in the ordering - it is not dropped.
      */
     private static final int STAND_MARGIN = 50;
 
