@@ -78,16 +78,21 @@ if (-not (Test-Path 'bin\hafen.jar')) { Die 'bin\hafen.jar not found - the uploa
 # --- stage the item --------------------------------------------------------
 Step 'Assembling the Workshop item'
 $item = Join-Path $repoRoot 'dist\steam-item'
-if (Test-Path $item) { Remove-Item $item -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $item | Out-Null
-Copy-Item -Path 'bin\*' -Destination $item -Recurse -Force
-# Local per-character/session state shouldn't ship.
-foreach ($junk in @('logs', 'lp', 'alchemy-book-dump.json', '.pre-update-backup')) {
-    $p = Join-Path $item $junk
-    if (Test-Path $p) { Remove-Item $p -Recurse -Force }
-}
+# Only shippable files, never the running client's world state - see tools\stage-client.ps1.
+# The old copy-everything-then-delete-four-names approach published one player's botmap,
+# drawn areas and work claims to the Workshop.
+& (Join-Path $PSScriptRoot 'stage-client.ps1') -Destination $item -RepoRoot $repoRoot -NoManifest | Out-Null
+# Steam keeps Workshop items updated itself, so the item ships no updater. The channel
+# marker is belt-and-braces for a copy that ends up somewhere odd: Update.ps1 reads it and
+# declines rather than pulling a GitHub build over a Steam install.
+$steamMeta = "Build: steam-workshop`nChannel: steam`nCommit: $(git rev-parse HEAD)`n"
+[IO.File]::WriteAllText((Join-Path $item 'BUILD-INFO.txt'), $steamMeta, [Text.UTF8Encoding]::new($false))
 # Overlay the Novocaine steam metadata (and any preview image) OVER bin\'s Hurricane copy.
 Copy-Item -Path (Join-Path $steamSrc '*') -Destination $item -Recurse -Force -Exclude 'README.md'
+# The overlay replaced files the staged manifest had already hashed; redo it so the item's
+# manifest.json describes the item that actually ships.
+& java -cp (Join-Path $repoRoot 'bin\hafen.jar') haven.BuildManifest $item (Join-Path $item 'manifest.json')
+if ($LASTEXITCODE -ne 0) { Die 'Failed to regenerate manifest.json for the Workshop item.' }
 
 # Sanity: the staged properties must be ours, not Hurricane's.
 $stagedProps = Get-Content (Join-Path $item 'workshop-client.properties') -Raw

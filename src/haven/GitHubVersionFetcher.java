@@ -9,23 +9,27 @@ import java.util.concurrent.*;
 public class GitHubVersionFetcher {
     private static final ExecutorService executor = Executors.newCachedThreadPool();
 
+    /**
+     * Asks GitHub for a repository's latest release tag and hands it to the callback.
+     *
+     * The callback runs on the worker thread, not the caller's. This used to submit the task
+     * and then immediately future.get() on the calling thread - which is the UI thread building
+     * the login screen - so the "async" executor bought nothing and the client sat frozen for
+     * as long as the request took. With no timeouts set on the connection either (see below),
+     * a network that accepts the connection and then goes quiet would hang the login screen
+     * indefinitely.
+     */
     public static void fetchLatestVersion(String owner, String repo, VersionCallback callback) {
         // Set loading state
         callback.onVersionFetched("Loading...");
 
-        // Use the shared ExecutorService to manage the task
-        java.util.concurrent.Future<String> future = executor.submit(() -> getLatestReleaseVersion(owner, repo));
-
-        // Retrieve the result
-        try {
-            String version = future.get(); // This will block until the result is available
-            callback.onVersionFetched(version); // Call the callback with the version
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // Restore the interrupted status
-            callback.onVersionFetched("Failed"); // Update to failed on interruption
-        } catch (ExecutionException e) {
-            callback.onVersionFetched("Failed"); // Update to failed on exceptions
-        }
+        executor.submit(() -> {
+            try {
+                callback.onVersionFetched(getLatestReleaseVersion(owner, repo));
+            } catch (Exception e) {
+                callback.onVersionFetched("Failed");
+            }
+        });
     }
 
     private static String getLatestReleaseVersion(String owner, String repo) throws Exception {
@@ -38,6 +42,9 @@ public class GitHubVersionFetcher {
             connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setRequestProperty("Accept", "application/vnd.github.v3+json");
+            // HttpURLConnection defaults to waiting forever on both.
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(15000);
 
             if (connection.getResponseCode() != 200) {
                 throw new RuntimeException("Failed : HTTP error code : " + connection.getResponseCode());

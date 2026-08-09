@@ -47,6 +47,52 @@ public class Config {
 	public static final String clientVersion = "v1.67";
 	public static String githubLatestVersion = "Loading...";
 
+	/**
+	 * Which Novocaine release this install came from, as the release tag ("nova-0.1.9"), or
+	 * null for a build run straight out of bin\.
+	 *
+	 * Read from the BUILD-INFO.txt that tools\make-release.ps1 writes into the zip, rather than
+	 * compiled in, so the jar does not have to be rebuilt to be re-tagged and so a dev build
+	 * (which has no BUILD-INFO.txt) is never told it is out of date. The login screen compares
+	 * it against our own latest release; it used to compare a hard-coded "v1.67" against
+	 * Nightdawg/Hurricane's latest, which would have told every Novocaine user to go and
+	 * install a different client the moment upstream tagged anything.
+	 */
+	private static boolean novaVersionRead = false;
+	private static String novaVersion = null;
+
+	/** Resolved on first use, not in a static initialiser: Config is initialised very early,
+	 *  and reaching into Client from here would drag its static init (which loads HUD
+	 *  resources) in with it. */
+	public static synchronized String novaVersion() {
+		if(!novaVersionRead) {
+			novaVersion = readNovaVersion();
+			novaVersionRead = true;
+		}
+		return(novaVersion);
+	}
+
+	private static String readNovaVersion() {
+		try {
+			/* Relative to the working directory, which Play.bat and the Steam launcher both
+			 * set to the install. */
+			Path info = Utils.path("BUILD-INFO.txt");
+			if(!Files.exists(info))
+				return(null);
+			for(String line : Files.readAllLines(info)) {
+				if(line.startsWith("Build:")) {
+					String v = line.substring(6).trim();
+					/* The Workshop item is stamped "steam-workshop": Steam updates it, so there
+					 * is nothing for the check to usefully say. */
+					return(v.isEmpty() || v.equals("steam-workshop") ? null : v);
+				}
+			}
+		} catch(Exception e) {
+			/* An unreadable build stamp is not worth failing startup over. */
+		}
+		return(null);
+	}
+
     private static Config global = null;
     public static Config get() {
 	if(global != null)

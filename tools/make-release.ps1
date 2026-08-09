@@ -107,22 +107,33 @@ Step 'Packaging bin\ into a release zip'
 $dist = Join-Path $repoRoot 'dist'
 $stage = Join-Path $dist 'Novocaine'
 $zip = Join-Path $dist "Novocaine-$Version.zip"
-if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
-New-Item -ItemType Directory -Force -Path $stage | Out-Null
-Copy-Item -Path 'bin\*' -Destination $stage -Recurse -Force
-# Local per-character/session state shouldn't ship.
-foreach ($junk in @('logs', 'lp', 'alchemy-book-dump.json', '.pre-update-backup')) {
-    $p = Join-Path $stage $junk
-    if (Test-Path $p) { Remove-Item $p -Recurse -Force }
-}
+# Only shippable files, never the running client's world state - see tools\stage-client.ps1.
+# The old copy-everything-then-delete-four-names approach published one player's botmap,
+# drawn areas, work claims and a hand-taken pre-merge backup to everyone who downloaded a
+# release. Staging also regenerates manifest.json over the staged tree, which is what the
+# delta packaging below and Update.ps1's post-apply verification both key off.
+& (Join-Path $PSScriptRoot 'stage-client.ps1') -Destination $stage -RepoRoot $repoRoot -NoManifest | Out-Null
+
+# The self-updater, so friends stop re-downloading the whole client by hand. GitHub-release
+# only: a Workshop install is updated by Steam, and Update.ps1 refuses to touch one.
+Copy-Item -Path (Join-Path $repoRoot 'launcher\*') -Destination $stage -Force
 # Build metadata so the release asset is reproducible from the zip alone.
 $meta = @"
 Build: $tag
+Channel: github
 Hurricane base: $hurricaneBase
 Commit: $(git rev-parse HEAD)
 Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')
 "@
 [IO.File]::WriteAllText((Join-Path $stage 'BUILD-INFO.txt'), $meta, [Text.UTF8Encoding]::new($false))
+
+# manifest.json last, so it covers Update.ps1/Update.bat and BUILD-INFO.txt too. It has to:
+# Update.ps1 verifies exactly what the manifest names, and a delta is exactly the files
+# whose hash moved - if BUILD-INFO.txt were missing from it, an updated install would keep
+# reporting the old version and never see the next release.
+$stagedManifest = Join-Path $stage 'manifest.json'
+& java -cp (Join-Path $repoRoot 'bin\hafen.jar') haven.BuildManifest $stage $stagedManifest
+if ($LASTEXITCODE -ne 0) { Die 'Failed to generate manifest.json for the release.' }
 # Zip it up. This used to shell out to `zip`, which is not installed here and is not a
 # Windows built-in, so packaging died at this line every time. .NET's ZipFile exists on any
 # PS 5.1 box and does not have Compress-Archive's empty-directory problem. The staging dir
@@ -140,9 +151,69 @@ try {
 } catch {
     Die "zip failed: $($_.Exception.Message)"
 }
+# Move it back rather than deleting: the delta below diffs the staged tree.
+Move-Item -LiteralPath (Join-Path $pack 'Novocaine') -Destination $stage
 Remove-Item -LiteralPath $pack -Recurse -Force
 if (-not (Test-Path $zip)) { Die "zip not created at $zip" }
 Ok "zip ready: $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
+
+# --- delta package ---------------------------------------------------------
+# The full client is ~170MB and almost all of it is res/ and the vendored jars, which do
+# not change between our releases; a typical update is hafen.jar and little else. So we
+# also publish just the files whose hash moved since the previous release, and Update.ps1
+# prefers it. Requires the previous release to have published a manifest.json asset - the
+# first release that does simply has no delta, which the updater handles by falling back.
+$deltaZip = $null
+$prevTag = git tag --list 'nova-*' --sort=-v:refname | Where-Object { $_ -ne $tag } | Select-Object -First 1
+if ($prevTag) {
+    Step "Building a delta against $prevTag"
+    $prevDir = Join-Path $dist '_prevmanifest'
+    if (Test-Path -LiteralPath $prevDir) { Remove-Item -LiteralPath $prevDir -Recurse -Force }
+    New-Item -ItemType Directory -Force -Path $prevDir | Out-Null
+    $eapSaved = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
+    gh release download $prevTag --repo $Repo --pattern 'manifest.json' --dir $prevDir 1>$null 2>$null
+    $gotPrev = ($LASTEXITCODE -eq 0)
+    $ErrorActionPreference = $eapSaved
+
+    if (-not $gotPrev) {
+        Warn "$prevTag published no manifest.json - no delta this time (full download only)."
+    } else {
+        $prevMap = @{}
+        foreach ($f in (Get-Content (Join-Path $prevDir 'manifest.json') -Raw | ConvertFrom-Json).files) { $prevMap[$f.path] = $f.sha256 }
+        $newMap = @{}
+        foreach ($f in (Get-Content $stagedManifest -Raw | ConvertFrom-Json).files) { $newMap[$f.path] = $f.sha256 }
+
+        $changed = @($newMap.Keys | Where-Object { $prevMap[$_] -ne $newMap[$_] })
+        $removed = @($prevMap.Keys | Where-Object { -not $newMap.ContainsKey($_) })
+
+        $dwork = Join-Path $dist '_delta'
+        if (Test-Path -LiteralPath $dwork) { Remove-Item -LiteralPath $dwork -Recurse -Force }
+        New-Item -ItemType Directory -Force -Path (Join-Path $dwork 'payload') | Out-Null
+        foreach ($rel in $changed) {
+            $src = Join-Path $stage ($rel -replace '/', '\')
+            $dst = Join-Path (Join-Path $dwork 'payload') ($rel -replace '/', '\')
+            $parent = Split-Path $dst -Parent
+            if (-not (Test-Path -LiteralPath $parent)) { New-Item -ItemType Directory -Force -Path $parent | Out-Null }
+            Copy-Item -LiteralPath $src -Destination $dst -Force
+        }
+        # manifest.json is never in $changed - BuildManifest leaves its own output out of the
+        # listing it writes - but the install's copy has to move forward with the rest, or
+        # Update.ps1 verifies the new files against the previous release's hashes and falls
+        # back to the full download every single time.
+        Copy-Item -LiteralPath $stagedManifest -Destination (Join-Path $dwork 'payload\manifest.json') -Force
+        [IO.File]::WriteAllText((Join-Path $dwork 'removed.txt'), (($removed -join "`n") + "`n"), [Text.UTF8Encoding]::new($false))
+        [IO.File]::WriteAllText((Join-Path $dwork 'delta-info.txt'), "from=$prevTag`nto=$tag`nchanged=$($changed.Count)`nremoved=$($removed.Count)`n", [Text.UTF8Encoding]::new($false))
+
+        $prevVersion = $prevTag -replace '^nova-', ''
+        $deltaZip = Join-Path $dist "Novocaine-$Version-from-$prevVersion.zip"
+        if (Test-Path -LiteralPath $deltaZip) { Remove-Item -LiteralPath $deltaZip -Force }
+        [IO.Compression.ZipFile]::CreateFromDirectory($dwork, $deltaZip, [IO.Compression.CompressionLevel]::Optimal, $false)
+        Remove-Item -LiteralPath $dwork -Recurse -Force
+        Ok "delta ready: $($changed.Count) changed, $($removed.Count) removed ($([math]::Round((Get-Item $deltaZip).Length / 1MB, 1)) MB)"
+    }
+    Remove-Item -LiteralPath $prevDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # --- release notes ---------------------------------------------------------
 $notesFile = Join-Path $dist "release-notes-$Version.txt"
@@ -177,12 +248,17 @@ gh release view $tag --repo $Repo 1>$null 2>$null
 $exists = ($LASTEXITCODE -eq 0)
 $ErrorActionPreference = $eapSaved
 
+# manifest.json rides along as its own asset: it is how the NEXT release works out what
+# changed, and it is small enough that Update.ps1 could fetch it on its own.
+$assets = @($zip, $stagedManifest)
+if ($deltaZip) { $assets += $deltaZip }
+
 if ($exists) {
-    Warn "Release $tag already exists - updating its notes and replacing the zip asset."
+    Warn "Release $tag already exists - updating its notes and replacing its assets."
     & gh release edit $tag --repo $Repo --title $title --notes-file $notesFile
-    & gh release upload $tag $zip --repo $Repo --clobber
+    & gh release upload $tag @assets --repo $Repo --clobber
 } else {
-    $ghArgs = @('release', 'create', $tag, $zip, '--repo', $Repo, '--title', $title, '--notes-file', $notesFile)
+    $ghArgs = @('release', 'create', $tag) + $assets + @('--repo', $Repo, '--title', $title, '--notes-file', $notesFile)
     if ($Draft) { $ghArgs += '--draft' }
     & gh @ghArgs
 }

@@ -213,8 +213,9 @@ public class LoginScreen extends Widget {
 	updateWindow = new Window(Coord.z, "Update Available!", true) {
 		{
 			Widget prev;
-			prev = add(new Label("A new client version is available!"), UI.scale(new Coord(74, 3)));
-			prev = add(new Label("Please remember to update your client to avoid bugs & crashes!"), prev.pos("bl").adds(0, 8).x(0));
+			prev = add(new Label("A new Novocaine version is available!"), UI.scale(new Coord(74, 3)));
+			prev = add(new Label("Close the game and run Update.bat in your Novocaine folder."), prev.pos("bl").adds(0, 8).x(0));
+			prev = add(new Label("It downloads the update and starts the game for you."), prev.pos("bl").adds(0, 8).x(0));
 			Button close = new Button(UI.scale(120), "Close", false) {
 				@Override
 				public void click() {
@@ -237,13 +238,19 @@ public class LoginScreen extends Widget {
 				super.wdgmsg(sender, msg, args);
 		}
 	};
+	/* Our releases, not Hurricane's. This used to ask Nightdawg/Hurricane for its latest tag
+	 * and compare it to a hard-coded "v1.67" - so the first time upstream tagged anything,
+	 * every Novocaine user would have been told to go and install a different client. A dev
+	 * build has no BUILD-INFO.txt, so novaVersion() is null there and the check is skipped. */
 	Config.githubLatestVersion = "Loading...";
-	GitHubVersionFetcher.fetchLatestVersion("Nightdawg", "Hurricane", new GitHubVersionFetcher.VersionCallback() {
-		@Override
-		public void onVersionFetched(String version) {
-			Config.githubLatestVersion = version; // Update immediately upon response
-		}
-	});
+	if(Config.novaVersion() != null) {
+		GitHubVersionFetcher.fetchLatestVersion("JamesMDTeem", "Novocaine", new GitHubVersionFetcher.VersionCallback() {
+			@Override
+			public void onVersionFetched(String version) {
+				Config.githubLatestVersion = version; // Update immediately upon response
+			}
+		});
+	}
 	GameUI.verifiedAccount = false;
 	GameUI.subscribedAccount = false;
 	add(new IButton("customclient/discord", "", "-d", "-h") {
@@ -612,7 +619,7 @@ public class LoginScreen extends Widget {
 			createFirstTimeUseWindow();
 		}
 		if (!githubVersionChecked && !Config.githubLatestVersion.equals("Loading...") && !Config.githubLatestVersion.equals("Failed")){
-			if (!Config.clientVersion.equals(Config.githubLatestVersion)) {
+			if ((Config.novaVersion() != null) && !Config.novaVersion().equals(Config.githubLatestVersion)) {
 				adda(updateWindow, 0.5, 0);
 			}
 			githubVersionChecked = true;
