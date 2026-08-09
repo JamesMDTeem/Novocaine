@@ -11,8 +11,16 @@ import haven.Utils;
  */
 public class LpConfig {
     public enum Key {
-        /** Master switch for LP-discovery tracking, markers and the bot. */
-        lpassistent(true),
+        /**
+         * Master switch for LP-discovery tracking, markers and the bot.
+         *
+         * Off by default. It was on, and a fresh install therefore arrived with ground rings,
+         * floating icons and minimap markers nobody had asked for - a fork feature announcing
+         * itself over the vanilla client. Everything else in this class is reached only through
+         * this key (LpExplorer.isEnabled), so off here means the whole feature set is silent
+         * until someone opens the LP Assistant Manager and turns it on.
+         */
+        lpassistent(false),
         /** Always-on harvest overlay per gob type. */
         treeHarvestOverlay(false),
         bushHarvestOverlay(false),
