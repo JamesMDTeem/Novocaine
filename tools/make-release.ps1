@@ -215,6 +215,12 @@ if ($prevTag) {
     Remove-Item -LiteralPath $prevDir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
+# The staged tree only had to outlive the zip so the delta could be cut from it; the zip
+# and manifest are the artifacts worth keeping in dist\.
+$publishedManifest = Join-Path $dist 'manifest.json'
+Copy-Item -LiteralPath $stagedManifest -Destination $publishedManifest -Force
+Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue
+
 # --- release notes ---------------------------------------------------------
 $notesFile = Join-Path $dist "release-notes-$Version.txt"
 if ($Notes) {
@@ -250,7 +256,7 @@ $ErrorActionPreference = $eapSaved
 
 # manifest.json rides along as its own asset: it is how the NEXT release works out what
 # changed, and it is small enough that Update.ps1 could fetch it on its own.
-$assets = @($zip, $stagedManifest)
+$assets = @($zip, $publishedManifest)
 if ($deltaZip) { $assets += $deltaZip }
 
 if ($exists) {
