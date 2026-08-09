@@ -2363,9 +2363,30 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private static final java.util.regex.Pattern COLLECTABLE_LEADIN =
 	java.util.regex.Pattern.compile("(?:ready|refills?|replenish(?:es)?)\\s+in\\s+", java.util.regex.Pattern.CASE_INSENSITIVE);
 
-    /** One "<number> <unit>" component; the unit is keyed off its first letter. */
+    /** One "<number> <unit>" component; the unit word is resolved by {@link #unitSeconds}. */
     private static final java.util.regex.Pattern COLLECTABLE_COMPONENT =
-	java.util.regex.Pattern.compile("(\\d+)\\s*([dhms])[a-z]*", java.util.regex.Pattern.CASE_INSENSITIVE);
+	java.util.regex.Pattern.compile("(\\d+)\\s*([a-z]+)", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Seconds in one of the unit words the game uses, or 0 for anything unrecognised.
+     *
+     * Matched on the whole word rather than its first letter. The first version keyed off
+     * [dhms], which silently ignored "2 weeks" - a Lilypad Lotus reports in weeks - and,
+     * worse, would have read a month as a minute. An unknown unit contributes nothing
+     * rather than a plausible wrong number: a missing timer is visibly missing, while a
+     * two-month wait shown as two minutes looks like real data and is wrong all day.
+     */
+    private static long unitSeconds(String unit) {
+	String u = unit.toLowerCase();
+	if(u.startsWith("mo"))                      // month, before the "m" of minute
+	    return(0);                              // real length varies; not worth inventing
+	if(u.startsWith("w"))    return(604800);
+	if(u.startsWith("d"))    return(86400);
+	if(u.startsWith("h"))    return(3600);
+	if(u.startsWith("m"))    return(60);
+	if(u.startsWith("s"))    return(1);
+	return(0);
+    }
 
     /**
      * Seconds until ready, from an inspected collectable's chat line, or 0 if the line is
@@ -2386,12 +2407,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    } catch(NumberFormatException e) {
 		continue;
 	    }
-	    switch(Character.toLowerCase(part.group(2).charAt(0))) {
-	    case 'd': secs += n * 86400; break;
-	    case 'h': secs += n * 3600; break;
-	    case 'm': secs += n * 60; break;
-	    case 's': secs += n; break;
-	    }
+	    secs += n * unitSeconds(part.group(2));
 	}
 	return(secs);
     }
