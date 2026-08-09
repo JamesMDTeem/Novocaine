@@ -123,7 +123,18 @@ public class OCache implements Iterable<Gob> {
 	}
 	Consumer<Gob> task = g -> {
 	    synchronized(g) {
-		g.ctick(dt);
+		try {
+		    g.ctick(dt);
+		} catch(Loading l) {
+		    /* One object still waiting on a resource is not a reason to abandon the
+		     * tick for every other object - and when this runs on the parallel stream
+		     * an escaping exception does not just skip the rest, it comes back out of
+		     * ctick and ends the UI loop. Whatever this gob wanted will be there on a
+		     * later tick, so let it sit this one out.
+		     *
+		     * Deliberately only Loading: anything else is a real fault and should
+		     * still be loud rather than silently swallowed frame after frame. */
+		}
 	    }
 	};
 	if(!Config.par.get())

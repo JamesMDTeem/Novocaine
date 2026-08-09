@@ -75,6 +75,30 @@ public class RUtils {
 		    add.accept(slot);
 		}
 	    } catch(RuntimeException e2) {
+		/* Both the new content and the old one only got as far as "not ready yet".
+		 * That is not a broken tree, it is a tree we cannot finish populating this
+		 * instant - and it happens in bursts, because recreating the GL environment
+		 * (which making the window borderless or windowed both do, since AWT will not
+		 * change a frame's decoration without disposing its peer) invalidates every
+		 * prepared texture at once, so the next few frames re-decode all of them.
+		 *
+		 * Leave the slots empty and report the wait. Callers here already treat a
+		 * Loading as "keep the pending change and try again next tick" - Composited's
+		 * chequ/chmod only advance cequ/cmod on success, and Composite.updequ catches
+		 * Loading and holds onto nequ - so the slots refill a frame or two later. The
+		 * alternative was an Error out of the object tick, which took the client down
+		 * over a moment of missing gear. */
+		if((e instanceof Loading) && (e2 instanceof Loading)) {
+		    boolean emptied = true;
+		    try {
+			for(Slot slot : ch)
+			    slot.clear();
+		    } catch(RuntimeException e3) {
+			emptied = false;
+		    }
+		    if(emptied)
+			throw((Loading)e);
+		}
 		Error err = new Error("Unexpected non-local exit", e2);
 		err.addSuppressed(e);
 		throw(err);
