@@ -649,14 +649,23 @@ public class MappingClient {
 	     * it is deliberately Throwable rather than Exception - an Error escaping is even less of
 	     * a reason to stop reporting positions. */
 	    try {
+	    /* P5: sample what is on screen every tick, not only on the send tick.
+	     *
+	     * This used to sit inside the spam gate below, so the seen region was only sampled
+	     * once every third tick - about six seconds. A character on foot covers more ground
+	     * in six seconds than the ~45-tile region is wide, so consecutive samples did not
+	     * overlap and the overlay came out as stripes with unseen gaps between them.
+	     *
+	     * Sampling is local bit-setting against the in-memory masks and costs nothing on the
+	     * wire: the upload still happens on the send tick, and still only for masks whose
+	     * bits actually changed. */
+	    markSeenRegion();
 	    if(spamCount == spamPreventionVal) {
 		spamCount = 0;
 		if(OptWnd.sendLiveLocationCheckBox.a) {
 		    // Ask the session where the player is before serialising, so an arrival that
 		    // fired no movement event still goes out with this send.
 		    refreshPlayer();
-		    // P5: mark the currently-rendered region as seen and flush changed masks.
-		    markSeenRegion();
 		    Glob g = glob;
 		    Iterator<Map.Entry<Long, Tracking>> i = tracking.entrySet().iterator();
 		    JSONObject upload = new JSONObject();
