@@ -185,10 +185,14 @@ function Expand-To($zipPath, $dir) {
 }
 
 # --- manifest helpers --------------------------------------------------------
+# -Encoding UTF8 is load-bearing. BuildManifest writes UTF-8 without a BOM, and PS 5.1's
+# Get-Content decodes a BOM-less file as the system ANSI codepage - which turns the game's
+# res/gfx/hud/meter/hast.res (that is an a-umlaut) into mojibake, so verification reports a
+# perfectly good file as missing and throws the whole download away.
 function Read-Manifest($path) {
     $map = @{}
     if (-not (Test-Path -LiteralPath $path)) { return $map }
-    $json = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+    $json = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
     foreach ($f in $json.files) { $map[$f.path] = $f.sha256 }
     return $map
 }
@@ -274,7 +278,7 @@ function Apply-Delta {
     Copy-Into-Install $payload
     $removed = Join-Path $ex 'removed.txt'
     if (Test-Path -LiteralPath $removed) {
-        foreach ($rel in Get-Content -LiteralPath $removed) {
+        foreach ($rel in (Get-Content -LiteralPath $removed -Encoding UTF8)) {
             if (-not $rel.Trim()) { continue }
             $p = Join-Path $install ($rel.Trim() -replace '/', '\')
             if (Test-Path -LiteralPath $p) {

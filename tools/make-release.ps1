@@ -180,9 +180,9 @@ if ($prevTag) {
         Warn "$prevTag published no manifest.json - no delta this time (full download only)."
     } else {
         $prevMap = @{}
-        foreach ($f in (Get-Content (Join-Path $prevDir 'manifest.json') -Raw | ConvertFrom-Json).files) { $prevMap[$f.path] = $f.sha256 }
+        foreach ($f in (Get-Content (Join-Path $prevDir 'manifest.json') -Raw -Encoding UTF8 | ConvertFrom-Json).files) { $prevMap[$f.path] = $f.sha256 }
         $newMap = @{}
-        foreach ($f in (Get-Content $stagedManifest -Raw | ConvertFrom-Json).files) { $newMap[$f.path] = $f.sha256 }
+        foreach ($f in (Get-Content $stagedManifest -Raw -Encoding UTF8 | ConvertFrom-Json).files) { $newMap[$f.path] = $f.sha256 }
 
         $changed = @($newMap.Keys | Where-Object { $prevMap[$_] -ne $newMap[$_] })
         $removed = @($prevMap.Keys | Where-Object { -not $newMap.ContainsKey($_) })
