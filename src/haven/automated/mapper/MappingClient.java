@@ -9,6 +9,7 @@ import haven.Indir;
 import haven.Loading;
 import haven.MCache;
 import haven.MapFile;
+import haven.MapView;
 import haven.OptWnd;
 import haven.MCache.LoadingMap;
 import haven.res.ui.obj.buddy.Buddy;
@@ -544,6 +545,44 @@ public class MappingClient {
 		tracking.put(id, t);
 	}
 	
+	/* Re-reads the player straight from the session, rather than waiting to be told.
+	 *
+	 * Track() is only ever called from Gob.move(). That covers walking, and nothing else:
+	 * a character who arrives somewhere without taking a step - return to dock, waystation,
+	 * carriage, boat - never reports the arrival, so the entry keeps the grid it left from
+	 * and the icon on the web map sits at the old location. It looks like the page is stale
+	 * because reloading appears to fix it; in fact the next footstep is what fixes it, and a
+	 * reload just happens to come after one.
+	 *
+	 * Reading the position here makes the feed self-healing: whatever did or did not fire a
+	 * movement event, the next send carries where the character actually is.
+	 *
+	 * Right after a teleport the destination grid is usually not paged in yet and getgrid
+	 * throws. That is a reason to try again on the next tick, not to publish a position we
+	 * know is wrong, so the entry is left untouched and the retry carries it. */
+	private void refreshPlayer() {
+	    Glob g = glob;
+	    if((g.sess == null) || (g.sess.ui == null) || (g.sess.ui.gui == null))
+		return;
+	    MapView mv = g.sess.ui.gui.map;
+	    if(mv == null)
+		return;
+	    Gob pl = mv.player();
+	    if(pl == null)
+		return;
+	    Coord2d rc = pl.rc;
+	    if(rc == null)
+		return;
+	    try {
+		MCache.Grid grid = g.map.getgrid(toGC(rc));
+		Track(pl.id, rc, grid.id);
+	    } catch(Loading l) {
+		// Destination not paged in yet - next tick.
+	    } catch(Exception e) {
+		// Same: an unmapped area is a wait, not a failure.
+	    }
+	}
+
 	@Override
 	public void run() {
 	    /* NOTHING may escape this method.
@@ -561,6 +600,9 @@ public class MappingClient {
 	    if(spamCount == spamPreventionVal) {
 		spamCount = 0;
 		if(OptWnd.sendLiveLocationCheckBox.a) {
+		    // Ask the session where the player is before serialising, so an arrival that
+		    // fired no movement event still goes out with this send.
+		    refreshPlayer();
 		    Glob g = glob;
 		    Iterator<Map.Entry<Long, Tracking>> i = tracking.entrySet().iterator();
 		    JSONObject upload = new JSONObject();
