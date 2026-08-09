@@ -123,12 +123,24 @@ Commit: $(git rev-parse HEAD)
 Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss zzz')
 "@
 [IO.File]::WriteAllText((Join-Path $stage 'BUILD-INFO.txt'), $meta, [Text.UTF8Encoding]::new($false))
-# Zip it up (Compress-Archive on 5.1 is slow and sometimes misses empty dirs; cmd zip is fine).
-$eapSaved = $ErrorActionPreference
-$ErrorActionPreference = 'SilentlyContinue'
-cmd /c "cd /d `"$dist`" && zip -r `"Novocaine-$Version.zip`" Novocaine > nul"
-$ErrorActionPreference = $eapSaved
-if ($LASTEXITCODE -ne 0) { Die 'zip failed.' }
+# Zip it up. This used to shell out to `zip`, which is not installed here and is not a
+# Windows built-in, so packaging died at this line every time. .NET's ZipFile exists on any
+# PS 5.1 box and does not have Compress-Archive's empty-directory problem. The staging dir
+# is moved under a throwaway parent first so the archive keeps its top-level Novocaine\
+# folder and still extracts cleanly.
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
+$pack = Join-Path $dist '_pkg'
+if (Test-Path -LiteralPath $pack) { Remove-Item -LiteralPath $pack -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $pack | Out-Null
+Move-Item -LiteralPath $stage -Destination (Join-Path $pack 'Novocaine')
+try {
+    [IO.Compression.ZipFile]::CreateFromDirectory(
+        $pack, $zip, [IO.Compression.CompressionLevel]::Optimal, $false)
+} catch {
+    Die "zip failed: $($_.Exception.Message)"
+}
+Remove-Item -LiteralPath $pack -Recurse -Force
 if (-not (Test-Path $zip)) { Die "zip not created at $zip" }
 Ok "zip ready: $zip ($([math]::Round((Get-Item $zip).Length / 1MB, 1)) MB)"
 
@@ -150,7 +162,7 @@ Novocaine $Version
 
 Based on Hurricane $hurricaneBase.
 
-Changes since $prevNova:
+Changes since ${prevNova}:
 $subjects
 "@
     [IO.File]::WriteAllText($notesFile, $notesBody, [Text.UTF8Encoding]::new($false))
