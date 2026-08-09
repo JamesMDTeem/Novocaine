@@ -113,9 +113,17 @@ if (-not $Upload) {
 # Smoke test: launch the staged item the way Steam does, make sure it doesn't crash.
 if (-not $SkipSmoke) {
     Step 'Smoke-testing the staged item (Steam launch path)'
-    $javaArgs = @('-cp', 'hafen.jar', 'haven.SteamWorkshop', 'smoke-test', $item)
-    Push-Location (Join-Path $repoRoot 'bin')
-    try { & java @javaArgs } finally { Pop-Location }
+    # The actual test is smoke-steam-launch.ps1: it drives the real launcher.jar the way
+    # Steam does, captures the javaw child's command line and re-runs it with java.exe so
+    # stderr is readable.
+    #
+    # This used to call `haven.SteamWorkshop smoke-test` - a subcommand that has never
+    # existed. The uploader answered "invalid workshop command: smoke-test" and exited
+    # non-zero, so the gate failed on every run and the only way to publish was
+    # -SkipSmoke. A check that always fails protects nothing; this one was added after a
+    # broken item shipped, so it is worth having actually connected. The exit codes below
+    # (0 pass / 1 fail / 2 could-not-run) were already written for this script.
+    & (Join-Path $PSScriptRoot 'smoke-steam-launch.ps1') -Item $item
     switch ($LASTEXITCODE) {
         0 { Ok 'smoke test passed' }
         2 { Die 'Smoke test could not run (see above). Fix it, or pass -SkipSmoke to upload anyway.' }
