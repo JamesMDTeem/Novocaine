@@ -56,6 +56,25 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
     private double fstart;
 	public static ArrayList<String> customButtonPaths = new ArrayList<String>();
 
+	/** Combat deck display names (from FightWnd saves[]), keyed by deck index (0-based). */
+	private static final Map<Integer, String> combatDeckNames = new HashMap<>();
+
+	/** Pushes the current combat deck names onto the five CombatDeck buttons. Called
+	 *  whenever FightWnd receives updated deck names; unused decks keep their default
+	 *  label. Works for both the menu-grid and action-bar copies, which share the same
+	 *  Pagina objects. */
+	public static void setCombatDeckNames(java.util.List<String> names) {
+	    synchronized(combatDeckNames) {
+		combatDeckNames.clear();
+		if(names != null) {
+		    for(int i = 0; i < names.size(); i++) {
+			if(names.get(i) != null)
+			    combatDeckNames.put(i, names.get(i));
+		    }
+		}
+	    }
+	}
+
     @RName("scm")
     public static class $_ implements Factory {
 	public Widget create(UI ui, Object[] args) {
@@ -70,6 +89,8 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	public byte[] sdt = null;
 	public int anew, tnew;
 	public Object[] rawinfo = {};
+	/** Optional display-name override (combat deck names); null keeps the resource name. */
+	public String nameOverride = null;
 
 	public Pagina(MenuGrid scm, Object id, Indir<Resource> res) {
 	    this.scm = scm;
@@ -159,7 +180,24 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		spr = GSprite.create(this, res, Message.nil);
 	    return(spr);
 	}
-	public String name() {return(act().name);}
+	/** Deck display name for a combat-deck resource (read at render time, so late
+	 *  FightWnd updates show immediately on both menu-grid and action-bar copies). */
+	static String deckNameFor(String resName) {
+	    String prefix = "customclient/menugrid/CombatDecks/CombatDeck";
+	    if((resName == null) || !resName.startsWith(prefix) || (resName.length() != prefix.length() + 1))
+		return(null);
+	    int n = resName.charAt(resName.length() - 1) - (int) '1';
+	    synchronized(combatDeckNames) {
+		return(combatDeckNames.get(n));
+	    }
+	}
+
+	public String name() {
+	    String d = deckNameFor(res.name);
+	    if(d != null)
+		return(d);
+	    return((pag.nameOverride != null) ? pag.nameOverride : act().name);
+	}
 	public KeyMatch hotkey() {
 	    char hk = act().hk;
 	    if(hk == 0)

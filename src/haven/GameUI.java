@@ -2320,11 +2320,42 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			try {
 				int q = Integer.parseInt(m.group(1));
 				g.setQualityInfo(q);
+				// P6: a quality observation on a collectable is the gather signal - reset
+				// the timer to the type's max on the mapper and record the quality.
+				haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
+				if(mc != null)
+				    mc.uploadCollectable(g, gobResName(g), 0L, Integer.valueOf(q), true);
 			} catch (Exception ignored) {}
 			lastInspectedGob = null;
+		} else {
+			// P6: "ready in Xd Xh Xm Xs" countdown - collapse the mapper's timer window
+			// to the exact inspected value.
+			Matcher cd = COLLECTABLE_COUNTDOWN.matcher(msg.message());
+			if(cd.find()) {
+				long secs = 0;
+				secs += (cd.group(1) != null) ? Long.parseLong(cd.group(1)) * 86400 : 0;
+				secs += (cd.group(2) != null) ? Long.parseLong(cd.group(2)) * 3600 : 0;
+				secs += (cd.group(3) != null) ? Long.parseLong(cd.group(3)) * 60 : 0;
+				secs += (cd.group(4) != null) ? Long.parseLong(cd.group(4)) : 0;
+				if(secs > 0) {
+					haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
+					if(mc != null)
+					    mc.uploadCollectable(g, gobResName(g), (long) Utils.rtime() + secs * 1000L, null, false);
+				}
+			}
 		}
 	}
 	return(true);
+    }
+
+    /** P6: "ready in Xd Xh Xm Xs" countdown (leading units optional). */
+    private static final java.util.regex.Pattern COLLECTABLE_COUNTDOWN =
+	java.util.regex.Pattern.compile("ready\\s+in\\s+(?:(\\d+)\\s*d\\s*)?(?:(\\d+)\\s*h\\s*)?(?:(\\d+)\\s*m\\s*)?(?:(\\d+)\\s*s\\s*)?", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** The gob's resource name (e.g. "gfx/terobjs/fairystone") for the collectable table. */
+    private String gobResName(Gob gob) {
+	Resource res = (gob == null) ? null : gob.getres();
+	return((res == null) ? "" : res.name);
     }
 
 	public void msg(String msg, Color color, Audio.Clip sfx){

@@ -63,6 +63,17 @@ public class MappingClient {
     
     private int spamPreventionVal = 3;
     private int spamCount = 0;
+	// --- P5: per-cell "seen" masks (what the character actually rendered) ---
+	/** Half-width of the gob-delivery region in tiles (~45-tile square around the player). */
+	private static final int SEEN_HALF_TILES = 22;
+	private static final int SEEN_CELL_PX = 11;          // px per tile (1100 / 100)
+	private static final int SEEN_GRID_CELLS = 100;      // cells per grid dimension
+	private static final int SEEN_MASK_BYTES = 1250;     // 100*100/8
+	/** gridId -> seen mask (bit per cell, LSB-first). Monotonic: only gains bits. */
+	private final Map<Long, byte[]> seenMasks = new HashMap<>();
+	/** Grids whose mask gained bits since the last flush. */
+	private final Set<Long> dirtySeenGrids = new LinkedHashSet<>();
+
     private Glob glob;
     
     public static void init(Glob glob) {
@@ -124,8 +135,14 @@ public class MappingClient {
 
     /** How many grids to offer the server per gap query. Server caps at 2000. */
     private static final int BACKFILL_QUERY_BATCH = 500;
-    /** Pause between grid uploads, so a backfill never crowds out live map traffic. */
-    private static final long BACKFILL_UPLOAD_GAP_MS = 250L;
+    /** Grids per multipart batch upload (P4): one request per batch instead of per grid. */
+    private static final int BACKFILL_BATCH_SIZE = 20;
+    /** Pause between batch uploads; the server's backfill rate lane owns pacing now. */
+    private static final long BACKFILL_BATCH_GAP_MS = 500L;
+    /** How many times to retry a batch the server throttled (429) or refused. */
+    private static final int BACKFILL_MAX_ATTEMPTS = 3;
+    /** Backoff before retrying a throttled batch. */
+    private static final long BACKFILL_THROTTLE_BACKOFF_MS = 5000L;
 
     private volatile boolean backfillRunning = false;
     private volatile String backfillStatus = "idle";
@@ -188,21 +205,39 @@ public class MappingClient {
 			Set<String> missing = askWhichAreMissing(batch);
 			if(missing == null)
 			    return;          // server unreachable or refused; stop quietly
-			for(String gridId : missing) {
+			List<String> missingList = new ArrayList<>(missing);
+			for(int j = 0; j < missingList.size(); j += BACKFILL_BATCH_SIZE) {
 			    if(!OptWnd.uploadMapTilesCheckBox.a)
 				return;
-			    if(uploadOne(Long.parseLong(gridId)))
-				sent++;
-			    else
-				skipped++;
+			    List<String> chunk = missingList.subList(j, Math.min(j + BACKFILL_BATCH_SIZE, missingList.size()));
+			    // A throttled/failed batch is retried with backoff, not silently skipped.
+			    int handled = -1;
+			    for(int attempt = 0; attempt < BACKFILL_MAX_ATTEMPTS && handled < 0; attempt++) {
+				handled = uploadBatch(chunk);
+				if(handled < 0) {
+				    backfillStatus = "throttled - backing off";
+				    try {
+					Thread.sleep(BACKFILL_THROTTLE_BACKOFF_MS);
+				    } catch(InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				    }
+				}
+			    }
+			    if(handled < 0) {
+				skipped += chunk.size();   // gave up after retries
+			    } else {
+				sent += handled;
+				skipped += chunk.size() - handled;
+			    }
+			    backfillStatus = String.format("sent %d, skipped %d", sent, skipped);
 			    try {
-				Thread.sleep(BACKFILL_UPLOAD_GAP_MS);
+				Thread.sleep(BACKFILL_BATCH_GAP_MS);
 			    } catch(InterruptedException e) {
 				Thread.currentThread().interrupt();
 				return;
 			    }
 			}
-			backfillStatus = String.format("sent %d, skipped %d", sent, skipped);
 		    }
 		}
 		backfillStatus = String.format("done: sent %d, skipped %d", sent, skipped);
@@ -257,44 +292,60 @@ public class MappingClient {
 	    }
 	}
 
-	/** Sends one grid's stored terrain. False when it could not be read or was refused. */
-	private boolean uploadOne(long gridId) {
-	    MapFile.Grid grid;
-	    file.lock.readLock().lock();
+	/** Sends one batch of grids' stored terrain via /gridUploadBatch (terrainOnly mode).
+	 *  Returns how many grids the server accepted (accepted + silent), or -1 when the
+	 *  whole batch was refused/throttled and should be retried with backoff. */
+	private int uploadBatch(List<String> gridIds) {
 	    try {
-		grid = MapFile.Grid.load(file, gridId);
-	    } catch(Exception e) {
-		return(false);
-	    } finally {
-		file.lock.readLock().unlock();
-	    }
-	    // Indexed but absent happens (crashes, reboots); export() tolerates it, so do we.
-	    if(grid == null || grid.tilesets == null || grid.tiles == null)
-		return(false);
-
-	    try {
-		// Cells are indices into this grid's own tileset list, so the names travel
-		// with them and the server maps both onto the map's shared id space.
-		ByteArrayOutputStream cells = new ByteArrayOutputStream(20000);
-		for(int t : grid.tiles) {
-		    cells.write(t & 0xFF);
-		    cells.write((t >> 8) & 0xFF);
-		}
-		JSONArray names = new JSONArray();
-		for(MapFile.TileInfo ti : grid.tilesets)
-		    names.put((ti == null || ti.res == null) ? "" : ti.res.name);
-
 		MultipartUtility multipart = new MultipartUtility(
-		    OptWnd.webmapEndpointTextEntry.buf.line() + "/terrainUpload", "utf-8");
-		multipart.addFormField("id", String.valueOf(gridId));
-		multipart.addFilePart("terrain", new ByteArrayInputStream(cells.toByteArray()), "terrain.bin");
-		multipart.addFormField("tilesets", names.toString());
-		multipart.addFormField("observedAt", String.valueOf(grid.mtime));
-		multipart.finish();
-		return(true);
+		    OptWnd.webmapEndpointTextEntry.buf.line() + "/gridUploadBatch", "utf-8");
+		JSONObject metadata = new JSONObject();
+		metadata.put("backfill", true);
+		metadata.put("terrainOnly", true);
+		JSONArray ids = new JSONArray();
+		for(String gid : gridIds)
+		    ids.put(gid);
+		metadata.put("ids", ids);
+		multipart.addFormField("metadata", metadata.toString());
+
+		int i = 0;
+		for(String gid : gridIds) {
+		    MapFile.Grid grid;
+		    file.lock.readLock().lock();
+		    try {
+			grid = MapFile.Grid.load(file, Long.parseLong(gid));
+		    } catch(Exception e) {
+			grid = null;
+		    } finally {
+			file.lock.readLock().unlock();
+		    }
+		    // Indexed but absent happens (crashes, reboots); export() tolerates it, so do we.
+		    if(grid == null || grid.tilesets == null || grid.tiles == null)
+			continue;
+
+		    ByteArrayOutputStream cells = new ByteArrayOutputStream(20000);
+		    for(int t : grid.tiles) {
+			cells.write(t & 0xFF);
+			cells.write((t >> 8) & 0xFF);
+		    }
+		    JSONArray names = new JSONArray();
+		    for(MapFile.TileInfo ti : grid.tilesets)
+			names.put((ti == null || ti.res == null) ? "" : ti.res.name);
+
+		    multipart.addFilePart("terrain_" + i, new ByteArrayInputStream(cells.toByteArray()), "terrain.bin");
+		    multipart.addFormField("tilesets_" + i, names.toString());
+		    multipart.addFormField("observedAt_" + i, String.valueOf(grid.mtime));
+		    i++;
+		}
+		if(i == 0)
+		    return 0;
+
+		MultipartUtility.Response response = multipart.finish();
+		JSONObject body = new JSONObject(response.response);
+		return body.getInt("accepted") + body.getInt("silent");
 	    } catch(Exception e) {
-		System.out.println("Terrain backfill: upload of grid " + gridId + " failed: " + e.getMessage());
-		return(false);
+		System.out.println("Terrain backfill: batch upload failed: " + e.getMessage());
+		return(-1);   // 429 or network error -> caller backs off and retries
 	    }
 	}
     }
@@ -503,6 +554,7 @@ public class MappingClient {
 	}
 	
 	private Map<Long, Tracking> tracking = new ConcurrentHashMap<Long, Tracking>();
+
 	
 	private PositionUpdates() {
 	}
@@ -603,6 +655,8 @@ public class MappingClient {
 		    // Ask the session where the player is before serialising, so an arrival that
 		    // fired no movement event still goes out with this send.
 		    refreshPlayer();
+		    // P5: mark the currently-rendered region as seen and flush changed masks.
+		    markSeenRegion();
 		    Glob g = glob;
 		    Iterator<Map.Entry<Long, Tracking>> i = tracking.entrySet().iterator();
 		    JSONObject upload = new JSONObject();
@@ -636,9 +690,155 @@ public class MappingClient {
 	    } else {
 		spamCount++;
 	    }
+	    try {
+		flushSeenMasks();
+	    } catch(final Throwable t) {
+		// Seen uploads are best-effort; a failure here must not kill the position feed.
+	    }
 	    } catch(final Throwable t) {
 		// Deliberately silent, like the HTTP catch below it: this runs every two seconds, so
 		// a fault that recurs would fill the log with the same line hundreds of times a shift.
+	    }
+	}
+    }
+
+    /* Marks every cell inside the gob-delivery region around the player as seen, in the
+     * per-grid bitmasks. Monotonic: bits are only ever set, so a grid whose mask did not
+     * change is not re-uploaded. Runs on the scheduler thread, never the UI thread. */
+    private void markSeenRegion() {
+	Glob g = glob;
+	if((g.sess == null) || (g.sess.ui == null) || (g.sess.ui.gui == null))
+	    return;
+	MapView mv = g.sess.ui.gui.map;
+	if(mv == null)
+	    return;
+	Gob pl = mv.player();
+	if((pl == null) || (pl.rc == null))
+	    return;
+	int px = (int) pl.rc.x;
+	int py = (int) pl.rc.y;
+	int span = SEEN_HALF_TILES * SEEN_CELL_PX;
+	int cellMinX = Math.floorDiv(px - span, SEEN_CELL_PX);
+	int cellMaxX = Math.floorDiv(px + span, SEEN_CELL_PX);
+	int cellMinY = Math.floorDiv(py - span, SEEN_CELL_PX);
+	int cellMaxY = Math.floorDiv(py + span, SEEN_CELL_PX);
+
+	for(int cy = cellMinY; cy <= cellMaxY; cy++) {
+	    int gridY = Math.floorDiv(cy, SEEN_GRID_CELLS);
+	    int cellY = Math.floorMod(cy, SEEN_GRID_CELLS);
+	    for(int cx = cellMinX; cx <= cellMaxX; cx++) {
+		int gridX = Math.floorDiv(cx, SEEN_GRID_CELLS);
+		int cellX = Math.floorMod(cx, SEEN_GRID_CELLS);
+		long gridId;
+		try {
+		    gridId = g.map.getgrid(new Coord(gridX, gridY)).id;
+		} catch(Exception e) {
+		    continue; // grid not loaded; can't attribute cells to it yet
+		}
+		byte[] mask = seenMasks.get(gridId);
+		if(mask == null) {
+		    mask = new byte[SEEN_MASK_BYTES];
+		    seenMasks.put(gridId, mask);
+		}
+		int cell = cellY * SEEN_GRID_CELLS + cellX;
+		int bit = 1 << (cell & 7);
+		if((mask[cell >> 3] & bit) == 0) {
+		    mask[cell >> 3] |= bit;
+		    dirtySeenGrids.add(gridId);
+		}
+	    }
+	}
+    }
+
+    /* Uploads the seen masks that gained bits since the last flush. Monotonic OR-merge on
+     * the server, so re-sending is harmless and never un-sees. Best-effort: failures are
+     * dropped here and the dirty set is retained for the next tick. */
+    private void flushSeenMasks() {
+	if(dirtySeenGrids.isEmpty() || !OptWnd.sendLiveLocationCheckBox.a)
+	    return;
+	try {
+	    JSONArray items = new JSONArray();
+	    for(Long gridId : dirtySeenGrids) {
+		byte[] mask = seenMasks.get(gridId);
+		if(mask == null)
+		    continue;
+		JSONObject item = new JSONObject();
+		item.put("id", String.valueOf(gridId));
+		item.put("seen", java.util.Base64.getEncoder().encodeToString(mask));
+		items.put(item);
+	    }
+	    dirtySeenGrids.clear();
+	    if(items.length() == 0)
+		return;
+	    final HttpURLConnection connection =
+		(HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/seenUpload").openConnection();
+	    connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+	    connection.setReadTimeout(READ_TIMEOUT_MS);
+	    connection.setRequestMethod("POST");
+	    connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+	    connection.setDoOutput(true);
+	    try (DataOutputStream out = new DataOutputStream(connection.getOutputStream())) {
+		out.write(items.toString().getBytes(StandardCharsets.UTF_8));
+	    }
+	    connection.getResponseCode();
+	    connection.disconnect();
+	} catch(Exception e) {
+	    // Keep the dirty set for the next tick; the masks are monotonic so nothing is lost.
+	}
+    }
+
+    /** P6: uploads a collectable timer/quality observation to /markerReady, which
+     *  collapses the ready window to the exact countdown, resets it on collection
+     *  (Collected: true -> now + the type's max) and records the gathered quality. */
+    public void uploadCollectable(Gob gob, String objectType, long readyAtMs, Integer quality, boolean collected) {
+	try {
+	    MCache.Grid grid = glob.map.getgrid(toGridCoordinate(gob.rc));
+	    Coord offset = gridOffset2(gob.rc);
+
+	    JSONObject obj = new JSONObject();
+	    obj.put("gridID", String.valueOf(grid.id));
+	    obj.put("x", offset.x);
+	    obj.put("y", offset.y);
+	    obj.put("objectType", objectType);
+	    obj.put("quality", (quality == null) ? JSONObject.NULL : quality.intValue());
+	    obj.put("collected", collected);
+	    if(readyAtMs > 0) {
+		obj.put("maxReady", readyAtMs);
+		obj.put("minReady", readyAtMs);
+	    }
+	    scheduler.execute(new CollectableUpdate(new JSONArray().put(obj)));
+	} catch (Loading ignored) {
+	}
+    }
+
+    private class CollectableUpdate implements Runnable {
+	JSONArray data;
+
+	CollectableUpdate(JSONArray data) {
+	    this.data = data;
+	}
+
+	@Override
+	public void run() {
+	    HttpURLConnection connection = null;
+	    try {
+		connection =
+		    (HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/markerReady").openConnection();
+		connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
+		connection.setReadTimeout(READ_TIMEOUT_MS);
+		connection.setRequestMethod("POST");
+		connection.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+		connection.setDoOutput(true);
+		try (DataOutputStream out = new DataOutputStream(connection.getOutputStream())) {
+		    final String json = data.toString();
+		    out.write(json.getBytes(StandardCharsets.UTF_8));
+		}
+		connection.getResponseCode();
+	    } catch(Exception e) {
+		// Best-effort; the next inspection re-uploads.
+	    } finally {
+		if(connection != null)
+		    connection.disconnect();
 	    }
 	}
     }

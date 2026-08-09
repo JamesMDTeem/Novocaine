@@ -879,6 +879,11 @@ public class FightWnd extends Widget {
 		    saves[i] = unused;
 		}
 	    }
+	    // P7b: push the deck names onto the combat deck swap buttons (menu grid + action bars).
+	    java.util.List<String> names = new java.util.ArrayList<>();
+	    for(int i = 0; i < nsave; i++)
+		names.add((saves[i] == unused) ? null : saves[i].text);
+	    MenuGrid.setCombatDeckNames(names);
 	} else if(nm == "use") {
 		int i = (int) args[0];
 		if (i >= 0 && i < saves.length)

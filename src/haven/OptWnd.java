@@ -4791,6 +4791,7 @@ public class OptWnd extends Window {
 
 	public static TextEntry webmapEndpointTextEntry;
 	public static CheckBox uploadMapTilesCheckBox;
+	public static CheckBox twelveHourClockCheckBox;
 	public static CheckBox sendLiveLocationCheckBox;
 	public static TextEntry liveLocationNameTextEntry;
 //	public static TextEntry webmapTokenTextEntry;
@@ -4820,6 +4821,16 @@ public class OptWnd extends Window {
 				}
 			}, prev.pos("bl").adds(0, 8).x(12));
 			uploadMapTilesCheckBox.tooltip = uploadMapTilesTooltip;
+
+			// 12-hour (AM/PM) clock instead of 24-hour military time in the HUD info bar.
+			prev = add(twelveHourClockCheckBox = new CheckBox("Use 12-hour (AM/PM) clock"){
+				{a = Utils.getprefb("twelveHourClock", false); Glob.twelveHourClock = a;}
+				public void changed(boolean val) {
+					Utils.setprefb("twelveHourClock", val);
+					Glob.twelveHourClock = val;
+				}
+			}, prev.pos("bl").adds(0, 8).x(12));
+
 
 			// Terrain normally only reaches the server on grids it asks to be re-sent, so
 			// everywhere you explored before that stays blank. This walks the local map

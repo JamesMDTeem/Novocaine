@@ -479,6 +479,9 @@ public class Glob {
 		}
 	}
 
+	/** When true, the server-time HUD string uses a 12-hour AM/PM clock. */
+	public static volatile boolean twelveHourClock = false;
+
 	private void servertimecalc() {
 		long secs = (long) (globtime());
 		long day = secs / secinday;
@@ -513,7 +516,13 @@ public class Glob {
 			phaseOfMoon = mPhaseNames[mp] + " Moon";
 		}
 
-		mservertime = "Day" + String.format(" %d, %02d:%02d:%02d", day, hours, mins, seconds);
+		String clockText = String.format(" %d, %02d:%02d:%02d", day, hours, mins, seconds);
+		if(twelveHourClock) {
+		    long h12 = hours % 12;
+		    if(h12 == 0) h12 = 12;
+		    clockText = String.format(" %d, %02d:%02d:%02d %s", day, h12, mins, seconds, (hours < 12) ? "AM" : "PM");
+		}
+		mservertime = "Day" + clockText;
 		lservertime = String.format("%s", dayOfMonth);
 		rservertime = phaseOfMoon;
 		if (secintoday >= dewyladysmantletimemin && secintoday <= dewyladysmantletimemax)
