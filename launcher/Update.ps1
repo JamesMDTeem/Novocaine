@@ -193,13 +193,26 @@ function Read-Manifest($path) {
     return $map
 }
 
+# .NET rather than Get-FileHash: that cmdlet lives in Microsoft.PowerShell.Utility, and if
+# this is launched from a PowerShell 7 session the inherited PSModulePath makes
+# powershell.exe load PS7's copy of that module instead of its own, at which point
+# Get-FileHash does not exist. Update.bat clears PSModulePath to prevent it; not needing the
+# cmdlet at all is the belt to that pair of braces. It is also quicker over ~800 files.
+function Get-Sha256($path) {
+    $sha = [Security.Cryptography.SHA256]::Create()
+    try {
+        $fs = [IO.File]::Open($path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::ReadWrite)
+        try { return [BitConverter]::ToString($sha.ComputeHash($fs)).Replace('-', '') }
+        finally { $fs.Dispose() }
+    } finally { $sha.Dispose() }
+}
+
 function Test-Install($manifestMap) {
     $bad = New-Object Collections.Generic.List[string]
     foreach ($rel in $manifestMap.Keys) {
         $p = Join-Path $install ($rel -replace '/', '\')
         if (-not (Test-Path -LiteralPath $p)) { $bad.Add("missing $rel"); continue }
-        $h = (Get-FileHash -LiteralPath $p -Algorithm SHA256).Hash
-        if ($h -ne $manifestMap[$rel].ToUpperInvariant()) { $bad.Add("corrupt $rel") }
+        if ((Get-Sha256 $p) -ne $manifestMap[$rel].ToUpperInvariant()) { $bad.Add("corrupt $rel") }
     }
     return $bad
 }

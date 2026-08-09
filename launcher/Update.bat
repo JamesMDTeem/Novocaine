@@ -9,6 +9,12 @@ setlocal
 set "NOVOCAINE_HOME=%~dp0"
 if "%NOVOCAINE_HOME:~-1%"=="\" set "NOVOCAINE_HOME=%NOVOCAINE_HOME:~0,-1%"
 
+rem Clear the inherited module path so Windows PowerShell rebuilds its own default. If this
+rem is launched from a PowerShell 7 session, PSModulePath arrives pointing at PS7's module
+rem directories first, powershell.exe loads PS7's Microsoft.PowerShell.Utility instead of
+rem its own, and cmdlets it cannot bind - Get-FileHash among them - simply vanish.
+set "PSModulePath="
+
 set "RUNNER=%TEMP%\Novocaine-Update-running.ps1"
 copy /y "%NOVOCAINE_HOME%\Update.ps1" "%RUNNER%" >nul
 if errorlevel 1 (
