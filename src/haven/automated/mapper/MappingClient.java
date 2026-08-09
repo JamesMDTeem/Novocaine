@@ -556,6 +556,11 @@ public class MappingClient {
 			    }
 			}
 			multipart.addFilePart("terrain", new ByteArrayInputStream(terrainOut.toByteArray()), "terrain.bin");
+			// When we actually looked at this ground. A grid only refreshes while the
+			// character is standing in it, so upload order says nothing about whose view
+			// is newer; the server keeps whichever was observed last, not whichever
+			// arrived last. This grid is in view right now, so that is now.
+			multipart.addFormField("terrainObservedAt", String.valueOf(System.currentTimeMillis()));
 			JSONObject terrainTypes = new JSONObject();
 			for(java.util.Map.Entry<Integer, String> e : glob.map.tileTypeNames().entrySet())
 			    terrainTypes.put(String.valueOf(e.getKey()), e.getValue());
