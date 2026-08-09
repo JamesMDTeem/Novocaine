@@ -2328,29 +2328,73 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			} catch (Exception ignored) {}
 			lastInspectedGob = null;
 		} else {
-			// P6: "ready in Xd Xh Xm Xs" countdown - collapse the mapper's timer window
-			// to the exact inspected value.
-			Matcher cd = COLLECTABLE_COUNTDOWN.matcher(msg.message());
-			if(cd.find()) {
-				long secs = 0;
-				secs += (cd.group(1) != null) ? Long.parseLong(cd.group(1)) * 86400 : 0;
-				secs += (cd.group(2) != null) ? Long.parseLong(cd.group(2)) * 3600 : 0;
-				secs += (cd.group(3) != null) ? Long.parseLong(cd.group(3)) * 60 : 0;
-				secs += (cd.group(4) != null) ? Long.parseLong(cd.group(4)) : 0;
-				if(secs > 0) {
-					haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
-					if(mc != null)
-					    mc.uploadCollectable(g, gobResName(g), (long) Utils.rtime() + secs * 1000L, null, false);
-				}
+			// P6: an inspected countdown - collapse the mapper's timer window to it.
+			long secs = parseCollectableCountdown(msg.message());
+			if(secs > 0) {
+				haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
+				if(mc != null)
+				    // Wall clock, not Utils.rtime(): the mapper stores this as an epoch
+				    // millisecond stamp and compares it against the server's own now.
+				    // rtime() counts seconds since this client started, so the old
+				    // expression both mixed units and used a relative origin - a two-day
+				    // timer uploaded as a moment in January 1970, i.e. permanently ready.
+				    mc.uploadCollectable(g, gobResName(g), System.currentTimeMillis() + secs * 1000L, null, false);
 			}
 		}
 	}
 	return(true);
     }
 
-    /** P6: "ready in Xd Xh Xm Xs" countdown (leading units optional). */
-    private static final java.util.regex.Pattern COLLECTABLE_COUNTDOWN =
-	java.util.regex.Pattern.compile("ready\\s+in\\s+(?:(\\d+)\\s*d\\s*)?(?:(\\d+)\\s*h\\s*)?(?:(\\d+)\\s*m\\s*)?(?:(\\d+)\\s*s\\s*)?", java.util.regex.Pattern.CASE_INSENSITIVE);
+    /* P6 countdown parsing.
+     *
+     * The first version matched "ready in Xd Xh Xm Xs", which was taken from how the feature
+     * was described rather than from anything the game says. The first real inspection - a
+     * Jotun Mussel - produced "Will refill in 2 days": a different lead-in verb and spelled-out
+     * units, so nothing matched and no timer was ever uploaded.
+     *
+     * Split into a lead-in and a unit scanner. The lead-in stays a fixed list of verbs so
+     * ordinary chat containing a duration cannot be mistaken for a countdown, and the scanner
+     * then reads however many components follow, in whatever order, spelled out or compact -
+     * "2 days", "3h", "1 hour and 30 minutes" all read the same way.
+     *
+     * Only the "N days" form is confirmed against the game so far; the rest is generalisation
+     * from one sample. Sub-day wordings are guesses until someone inspects a nearly-ready
+     * collectable and reports the exact text. */
+    private static final java.util.regex.Pattern COLLECTABLE_LEADIN =
+	java.util.regex.Pattern.compile("(?:ready|refills?|replenish(?:es)?)\\s+in\\s+", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /** One "<number> <unit>" component; the unit is keyed off its first letter. */
+    private static final java.util.regex.Pattern COLLECTABLE_COMPONENT =
+	java.util.regex.Pattern.compile("(\\d+)\\s*([dhms])[a-z]*", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Seconds until ready, from an inspected collectable's chat line, or 0 if the line is
+     * not a countdown at all.
+     */
+    private static long parseCollectableCountdown(String message) {
+	if(message == null)
+	    return(0);
+	Matcher lead = COLLECTABLE_LEADIN.matcher(message);
+	if(!lead.find())
+	    return(0);
+	Matcher part = COLLECTABLE_COMPONENT.matcher(message.substring(lead.end()));
+	long secs = 0;
+	while(part.find()) {
+	    long n;
+	    try {
+		n = Long.parseLong(part.group(1));
+	    } catch(NumberFormatException e) {
+		continue;
+	    }
+	    switch(Character.toLowerCase(part.group(2).charAt(0))) {
+	    case 'd': secs += n * 86400; break;
+	    case 'h': secs += n * 3600; break;
+	    case 'm': secs += n * 60; break;
+	    case 's': secs += n; break;
+	    }
+	}
+	return(secs);
+    }
 
     /** The gob's resource name (e.g. "gfx/terobjs/fairystone") for the collectable table. */
     private String gobResName(Gob gob) {
