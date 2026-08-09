@@ -4821,6 +4821,35 @@ public class OptWnd extends Window {
 			}, prev.pos("bl").adds(0, 8).x(12));
 			uploadMapTilesCheckBox.tooltip = uploadMapTilesTooltip;
 
+			// Terrain normally only reaches the server on grids it asks to be re-sent, so
+			// everywhere you explored before that stays blank. This walks the local map
+			// file - every grid this character has ever seen - and fills in the gaps.
+			prev = add(new Button(UI.scale(200), "Send terrain for explored areas") {
+				public void click() {
+					MappingClient mc = MappingClient.getInstance();
+					if(mc == null) {
+						getparent(GameUI.class).error("Connect to your map server first.");
+						return;
+					}
+					if(!uploadMapTilesCheckBox.a) {
+						getparent(GameUI.class).error("Enable \"Upload Map Tiles\" first.");
+						return;
+					}
+					MapWnd mw = getparent(GameUI.class).mapfile;
+					if(mw == null) {
+						getparent(GameUI.class).error("The map window has not loaded yet.");
+						return;
+					}
+					if(mc.backfillRunning()) {
+						getparent(GameUI.class).msg("Terrain backfill already running: " + mc.backfillStatus(), Color.WHITE);
+						return;
+					}
+					mc.startTerrainBackfill(mw.file);
+					getparent(GameUI.class).msg("Terrain backfill started; it runs in the background.", Color.WHITE);
+				}
+			}, prev.pos("bl").adds(0, 8).x(12));
+			prev.tooltip = sendStoredTerrainTooltip;
+
 			prev = add(sendLiveLocationCheckBox = new CheckBox("Send Live Location to your Web Map Server"){
 				{a = Utils.getprefb("enableLocationTracking", false);}
 				public void changed(boolean val) {
@@ -5643,6 +5672,11 @@ public class OptWnd extends Window {
 
 	// Server Integration Settings Tooltips
 	private static final Object uploadMapTilesTooltip = RichText.render("Enable this to upload your map tiles to your web map server.", UI.scale(300));
+	private static final Object sendStoredTerrainTooltip = RichText.render("Sends the ground type of every area $col[218,163,0]{this character has already explored}, read straight out of your local map file." +
+			"\n" +
+			"\nNormally terrain only reaches the server for grids it asks you to re-upload, so anywhere you visited before is never filled in. This catches all of it up in one pass." +
+			"\n" +
+			"\n$col[185,185,185]{Only sends what the server is missing, and never overwrites a newer sighting from another player - if someone has seen a spot more recently than you, theirs is kept. Runs in the background and is safe to leave alone.}", UI.scale(320));
 	private static final Object sendLiveLocationTooltip = RichText.render("Enable this to show your current location on your web map server.", UI.scale(320));
 	private static final Object liveLocationNameTooltip = RichText.render("If you send your location to the server, your name will appear as whatever you set in this text entry + your current character name." +
 			"\n" +

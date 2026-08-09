@@ -96,10 +96,206 @@ public class MappingClient {
     }
 
     private PositionUpdates pu = new PositionUpdates();
-    
+
     private MappingClient(Glob glob) {
 	this.glob = glob;
 	scheduler.scheduleAtFixedRate(pu, POSITION_UPDATE_SECONDS, POSITION_UPDATE_SECONDS, TimeUnit.SECONDS);
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Terrain backfill
+    //
+    // Terrain otherwise only rides along with a grid image upload, and those only happen
+    // for grids the server asks for - which means coverage tracks where the character
+    // walks today, and anywhere explored before the feature existed stays blank forever.
+    //
+    // The client already has the answer on disk. MapFile keeps every grid this character
+    // has ever seen, each with its own tileset list and per-cell indices into it, plus the
+    // mtime of when it was last looked at. That is exactly a terrain sidecar, for the whole
+    // explored history, and it needs no game session to read.
+    //
+    // Two things make this safe to run against a shared server:
+    //   - We ask which grids the server is missing first, and send only those.
+    //   - Every upload carries the grid's mtime, and the server keeps the later sighting.
+    //     A character returning after months away cannot stamp its stale view over someone
+    //     else's fresher one.
+    // ---------------------------------------------------------------------------------
+
+    /** How many grids to offer the server per gap query. Server caps at 2000. */
+    private static final int BACKFILL_QUERY_BATCH = 500;
+    /** Pause between grid uploads, so a backfill never crowds out live map traffic. */
+    private static final long BACKFILL_UPLOAD_GAP_MS = 250L;
+
+    private volatile boolean backfillRunning = false;
+    private volatile String backfillStatus = "idle";
+
+    public String backfillStatus() {return(backfillStatus);}
+    public boolean backfillRunning() {return(backfillRunning);}
+
+    /**
+     * Walks the local map file and uploads terrain for every grid the server does not have.
+     * Safe to call repeatedly - a second call while one is running is ignored. Runs on the
+     * scheduler, never on the UI thread: it does disk I/O per grid.
+     */
+    public void startTerrainBackfill(MapFile mapfile) {
+	if(mapfile == null)
+	    return;
+	synchronized(this) {
+	    if(backfillRunning)
+		return;
+	    backfillRunning = true;
+	}
+	scheduler.execute(new TerrainBackfillTask(mapfile));
+    }
+
+    private class TerrainBackfillTask implements Runnable {
+	private final MapFile file;
+
+	TerrainBackfillTask(MapFile file) {
+	    this.file = file;
+	}
+
+	@Override
+	public void run() {
+	    int sent = 0, skipped = 0;
+	    try {
+		// Snapshot the segment list under the read lock rather than holding it for the
+		// whole walk - loading a grid can hit disk, and the map file is live.
+		List<Long> segments;
+		file.lock.readLock().lock();
+		try {
+		    segments = new ArrayList<>(file.knownsegs);
+		} finally {
+		    file.lock.readLock().unlock();
+		}
+
+		for(Long sid : segments) {
+		    if(!OptWnd.uploadMapTilesCheckBox.a)
+			break;
+		    List<Long> gridIds = new ArrayList<>();
+		    file.lock.readLock().lock();
+		    try {
+			MapFile.Segment seg = file.segments.get(sid);
+			if(seg != null)
+			    gridIds.addAll(seg.map.values());
+		    } finally {
+			file.lock.readLock().unlock();
+		    }
+
+		    for(int i = 0; i < gridIds.size(); i += BACKFILL_QUERY_BATCH) {
+			List<Long> batch = gridIds.subList(i, Math.min(i + BACKFILL_QUERY_BATCH, gridIds.size()));
+			Set<String> missing = askWhichAreMissing(batch);
+			if(missing == null)
+			    return;          // server unreachable or refused; stop quietly
+			for(String gridId : missing) {
+			    if(!OptWnd.uploadMapTilesCheckBox.a)
+				return;
+			    if(uploadOne(Long.parseLong(gridId)))
+				sent++;
+			    else
+				skipped++;
+			    try {
+				Thread.sleep(BACKFILL_UPLOAD_GAP_MS);
+			    } catch(InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return;
+			    }
+			}
+			backfillStatus = String.format("sent %d, skipped %d", sent, skipped);
+		    }
+		}
+		backfillStatus = String.format("done: sent %d, skipped %d", sent, skipped);
+	    } catch(Exception e) {
+		backfillStatus = "failed: " + e.getMessage();
+		System.out.println("Terrain backfill failed: " + e);
+	    } finally {
+		backfillRunning = false;
+	    }
+	}
+
+	/** Grid ids the server has no terrain for, or null when it could not be asked. */
+	private Set<String> askWhichAreMissing(List<Long> gridIds) {
+	    HttpURLConnection conn = null;
+	    try {
+		JSONArray ids = new JSONArray();
+		for(Long id : gridIds)
+		    ids.put(String.valueOf(id));
+		JSONObject body = new JSONObject();
+		body.put("grids", ids);
+
+		conn = (HttpURLConnection) new URL(
+		    OptWnd.webmapEndpointTextEntry.buf.line() + "/terrainGaps").openConnection();
+		conn.setConnectTimeout(CONNECT_TIMEOUT_MS);
+		conn.setReadTimeout(READ_TIMEOUT_MS);
+		conn.setRequestMethod("POST");
+		conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
+		conn.setDoOutput(true);
+		try(OutputStream out = conn.getOutputStream()) {
+		    out.write(body.toString().getBytes(StandardCharsets.UTF_8));
+		}
+		if(conn.getResponseCode() != 200)
+		    return(null);
+		StringBuilder sb = new StringBuilder();
+		try(BufferedReader in = new BufferedReader(
+			new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
+		    String line;
+		    while((line = in.readLine()) != null)
+			sb.append(line);
+		}
+		JSONArray missing = new JSONObject(sb.toString()).getJSONArray("missing");
+		Set<String> out = new LinkedHashSet<>();
+		for(int i = 0; i < missing.length(); i++)
+		    out.add(missing.getString(i));
+		return(out);
+	    } catch(Exception e) {
+		System.out.println("Terrain backfill: gap query failed: " + e.getMessage());
+		return(null);
+	    } finally {
+		if(conn != null)
+		    conn.disconnect();
+	    }
+	}
+
+	/** Sends one grid's stored terrain. False when it could not be read or was refused. */
+	private boolean uploadOne(long gridId) {
+	    MapFile.Grid grid;
+	    file.lock.readLock().lock();
+	    try {
+		grid = MapFile.Grid.load(file, gridId);
+	    } catch(Exception e) {
+		return(false);
+	    } finally {
+		file.lock.readLock().unlock();
+	    }
+	    // Indexed but absent happens (crashes, reboots); export() tolerates it, so do we.
+	    if(grid == null || grid.tilesets == null || grid.tiles == null)
+		return(false);
+
+	    try {
+		// Cells are indices into this grid's own tileset list, so the names travel
+		// with them and the server maps both onto the map's shared id space.
+		ByteArrayOutputStream cells = new ByteArrayOutputStream(20000);
+		for(int t : grid.tiles) {
+		    cells.write(t & 0xFF);
+		    cells.write((t >> 8) & 0xFF);
+		}
+		JSONArray names = new JSONArray();
+		for(MapFile.TileInfo ti : grid.tilesets)
+		    names.put((ti == null || ti.res == null) ? "" : ti.res.name);
+
+		MultipartUtility multipart = new MultipartUtility(
+		    OptWnd.webmapEndpointTextEntry.buf.line() + "/terrainUpload", "utf-8");
+		multipart.addFormField("id", String.valueOf(gridId));
+		multipart.addFilePart("terrain", new ByteArrayInputStream(cells.toByteArray()), "terrain.bin");
+		multipart.addFormField("tilesets", names.toString());
+		multipart.addFormField("observedAt", String.valueOf(grid.mtime));
+		multipart.finish();
+		return(true);
+	    } catch(Exception e) {
+		System.out.println("Terrain backfill: upload of grid " + gridId + " failed: " + e.getMessage());
+		return(false);
+	    }
+	}
     }
 
     private String playerName;
