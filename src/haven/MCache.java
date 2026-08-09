@@ -1206,25 +1206,48 @@ public class MCache implements MapSource {
 	return(sets[i].get());
     }
 
-    /**
-     * Resource name for a tile type id (e.g. "gfx/tiles/bog"), or null when the id is
-     * not defined for this world. Used by the mapper to report per-cell terrain.
-     */
-    public String tileTypeName(int id) {
-	if(id < 0 || id >= sets.length || sets[id] == null)
+    /* A tile's indir is a Resource.Named when the grid spelled the resource out, but a
+     * session res-id reference when the tile arrived by id, and that kind only learns its
+     * name once the id has been announced and the resource resolved. Answer null rather
+     * than waiting: callers here are background threads that would rather report the tile
+     * types they do know than block a whole upload on one unresolved tile. */
+    private static String setname(Indir<Resource> set) {
+	if(set instanceof Resource.Named)
+	    return(((Resource.Named)set).name);
+	try {
+	    Resource res = set.get();
+	    return((res == null) ? null : res.name);
+	} catch(Loading l) {
 	    return(null);
-	return(((Resource.Spec) sets[id]).name);
+	}
     }
 
     /**
-     * All tile type resource names currently known for this world, keyed by id.
-     * The ids are stable per world and index into the tile list the server sends.
+     * Resource name for a tile type id (e.g. "gfx/tiles/bog"), or null when the id is not
+     * defined for this world or its name has not resolved yet. Used by the mapper to
+     * report per-cell terrain.
+     */
+    public String tileTypeName(int id) {
+	Indir<Resource>[] sets = this.sets;
+	if((id < 0) || (id >= sets.length) || (sets[id] == null))
+	    return(null);
+	return(setname(sets[id]));
+    }
+
+    /**
+     * All tile type resource names currently known for this world, keyed by id. The ids
+     * are stable per world and index into the tile list the server sends. Ids whose name
+     * has not resolved yet are left out; a later call picks them up.
      */
     public java.util.Map<Integer, String> tileTypeNames() {
+	Indir<Resource>[] sets = this.sets;
 	java.util.Map<Integer, String> names = new java.util.LinkedHashMap<>();
 	for(int i = 0; i < sets.length; i++) {
-	    if(sets[i] != null)
-		names.put(i, ((Resource.Spec) sets[i]).name);
+	    if(sets[i] == null)
+		continue;
+	    String nm = setname(sets[i]);
+	    if(nm != null)
+		names.put(i, nm);
 	}
 	return(names);
     }
