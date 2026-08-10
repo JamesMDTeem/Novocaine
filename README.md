@@ -1,11 +1,23 @@
 # Novocaine
 
-A custom Haven & Hearth client: a live pull of
-[Nightdawg/Hurricane](https://github.com/Nightdawg/Hurricane) with our own features
-layered on top. All credit for the base client goes to Nightdawg and the Hurricane
-project (and Loftar's Vanilla client under that).
+A custom Haven & Hearth client, built on
+[Nightdawg/Hurricane](https://github.com/Nightdawg/Hurricane) (currently v1.67) with our own
+features layered on top. All credit for the base client goes to Nightdawg and the Hurricane
+project, and to Loftar's Vanilla client under that — Loftar's own README is preserved here as
+[`README_Vanilla-Client`](README_Vanilla-Client).
 
-## Getting started (new install)
+## Just want to play?
+
+Grab the newest zip from [Releases](https://github.com/JamesMDTeem/Novocaine/releases),
+extract it, and run `Play.bat`. You need a JRE, nothing else — no clone, no build.
+
+After that, run **`Update.bat`** instead of `Play.bat`: it checks GitHub for a newer release,
+downloads the small delta rather than the ~170 MB full zip where it can, verifies every file
+against the release manifest, and then launches. Your settings live in the registry and
+`%APPDATA%\Haven and Hearth`, so they are never touched, and anything you dropped into the
+install folder yourself is left alone.
+
+## Getting started (building from source)
 
 1. **Install a JDK.** [Eclipse Temurin 21](https://adoptium.net/temurin/releases/?version=21)
    (free, official OpenJDK builds) — during setup, tick "Set JAVA_HOME" and "Add to
@@ -67,23 +79,46 @@ The daily build/launch script is `build-and-play.ps1`:
 
 ## Custom features
 
-- **Alchemy Book mirror** (`src/haven/automated/alchemy/`) — passively reads the
-  in-game Alchemy Book via reflection on login and uploads ingredient discoveries and
-  elixir crafts to the mapper server. One integration hook: a single line in
-  `GameUI.tick`.
-- **Reflective contract tools** (`tools/extract-alchbook.py`,
-  `tools/check-alchbook-contract.sh`) — the alchemy code reflects into classes the
-  game server ships, which the compiler cannot check. If the book ever reports empty
-  after a game update, run these (from WSL) to diagnose drift. Silence, not
-  exceptions, is the failure mode.
-- **Nurgling Imports** (`src/haven/automated/lp/`, menu grid: Custom Client Extras →
-  Nurgling Imports) — the LP-assistant feature set ported from nurgling2: discovery
-  markers (world + minimap, right-clickable) for undiscovered LP products, always-on
-  harvest overlays, a never-crafted highlight in the crafting menu, and an Auto-LP bot
-  that walks to and collects nearby undiscovered products. Configure via the "LP
-  Assistant Manager" button; toggle quickly via "Toggle LP Assistant".
-  `tools/gen-lpspec.py` / `tools/gen-menugrid-res.py` regenerate the underlying data
-  and menu resources — see the comments in each for when to rerun them.
+The in-game ones all live under a single menu-grid folder:
+**Custom Client Extras → | Novocaine |**.
+
+- **LP Assistant** (`src/haven/automated/lp/`, menu: | Novocaine | → | LP Assistant |) — the
+  LP-assistant feature set ported from nurgling2: discovery markers (world + minimap,
+  right-clickable) for undiscovered LP products, always-on harvest overlays, a never-crafted
+  highlight in the crafting menu, and an **Auto LP Bot** that walks to and collects nearby
+  undiscovered products. Configure via **LP Assistant Manager**; flip it off quickly via
+  **Toggle LP Assistant**.
+
+- **Crew bots** (`src/haven/automated/nbots/`, menu: | Novocaine | → | Crew Bots |) — bots
+  written for several characters working one site at once rather than one character working
+  alone: **Cellar Digger**, **Cleanup** and **Water Scout**, all "(crew)". They coordinate
+  across client processes so two characters never walk to the same working spot, share the
+  areas you draw in **Bot Places**, and route over terrain they have actually seen rather than
+  guessing. Shared behaviour is under **Custom Settings**.
+
+  Their learned state lives in the install folder (`botmap.json`, `botplaces.json`, `logs/`),
+  so it survives an update but not a fresh extract to a new directory.
+
+- **Alchemy Book mirror** (`src/haven/automated/alchemy/`) — no menu entry; it runs passively.
+  On login it reads the in-game Alchemy Book by reflection and writes
+  `alchemy-book-dump.json`. If (and only if) you have configured a cookbook endpoint, it also
+  uploads ingredient discoveries and elixir crafts to the same server — with no endpoint set,
+  nothing leaves your machine. One integration hook: a single line in `GameUI.tick`.
+
+  The alchemy code reflects into classes the *game server* ships, so the compiler cannot check
+  it and the failure mode is **silence, not an exception** — a book that reports empty after a
+  game update means the contract drifted. `tools/extract-alchbook.py` and
+  `tools/check-alchbook-contract.sh` (run from WSL) diagnose that.
+
+- `tools/gen-lpspec.py` / `tools/gen-menugrid-res.py` regenerate the LP data tables and the
+  menu resources — see the comments in each for when to rerun them.
+
+## Privacy
+
+The client talks **only** to the official Seatribe server unless you configure an integration
+yourself. The web-map upload, the cookbook/food-stats service, and the alchemy upload above are
+all opt-in and all point at an endpoint you supply in the options window. There is no telemetry
+and no default endpoint.
 
 ## Releasing to friends (maintainer)
 
@@ -92,7 +127,7 @@ Two distribution channels, each a one-command script:
 - **GitHub Release** (easiest for friends — no clone, no build, just a JRE):
   ```powershell
   .\tools\make-release.ps1 -Draft        # build, zip bin\, publish a draft release
-  .\tools\make-release.ps1 -Version 0.1.0
+  .\tools\make-release.ps1 -Version 0.1.13
   ```
   Builds a clean client, zips `bin\` into `dist\Novocaine-<version>.zip`, and creates/updates
   the GitHub Release with it attached. Friends download the zip, extract, and run
@@ -122,5 +157,11 @@ pushed state.
 ## Building & playing
 
 Requires JDK 17–21 and Apache Ant (see "Getting started" above). `.\build-and-play.ps1`
-resolves both, builds with Ant, and launches via `bin\Play.bat`. See Hurricane's own
-docs for base-client details.
+resolves both, builds with Ant, and launches via `bin\Play.bat`.
+
+A note on `bin\`: it is the **live game install**, not build output. Alongside the jars it
+holds the crew-bot state and the alchemy dump. `ant clean` deletes it — use
+`.\build-and-play.ps1` instead unless you actually mean to start over.
+
+For base-client details, see [`README_Vanilla-Client`](README_Vanilla-Client) (Loftar's own
+README) and the [Hurricane](https://github.com/Nightdawg/Hurricane) repo.

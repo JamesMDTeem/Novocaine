@@ -33,14 +33,20 @@
 *.db
 steamicon.gif
 
-# Local Claude/AI config and work plans — kept out of the public repo.
-# Untracked files survive the update script's baseline checkout; tracked ones get deleted.
+# AI / agent material — local development only, never published.
+#
+# Everything an assistant reads lives in exactly two places: the two root entry
+# files the tools auto-load (AGENTS.md for Opencode/Deepseek/Reasonix, CLAUDE.md
+# for Claude Code), and ai-docs/ which holds the knowledge base, the RAG tooling
+# and the work plans. Per-tool runtime dirs (.claude/, .reasonix/) stay at the
+# root because those tools require them there.
+AGENTS.md
+CLAUDE.md
+/ai-docs/
 .claude/
 .reasonix/
-CLAUDE.md
-/plans/
-/*.txt
-!/llms.txt
+reasonix.toml
 
-# AI knowledge base — generated artifacts (regenerate via rag/ tools)
-/llms-full.txt
+# Loose scratch text at the repo root (session prompts, error dumps). Durable
+# notes belong in ai-docs/plans/ instead.
+/*.txt
