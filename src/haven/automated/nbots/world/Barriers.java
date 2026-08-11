@@ -85,26 +85,6 @@ public class Barriers {
         return null;
     }
 
-    /** True if something solid - not a gateway - is known to stand on this segment tile. */
-    public static boolean blocks(long seg, Coord segTile) {
-        return Observed.solid(seg, segTile);
-    }
-
-    /** True if a gateway stands on this segment tile. */
-    public static boolean isGateTile(long seg, Coord segTile) {
-        return Observed.gate(seg, segTile);
-    }
-
-    /** Every known gateway tile in a segment. The caller decides which is worth walking to. */
-    public static Set<Coord> gatesIn(long seg) {
-        return Observed.gatesIn(seg);
-    }
-
-    /** Records whatever is in sight right now. Kept so travel can look before it plans. */
-    public static void learn(GameUI gui) {
-        Observed.observe(gui);
-    }
-
     /** Forgets everything seen. For when a base has been torn down and rebuilt. */
     public static void reset() {
         Observed.reset();

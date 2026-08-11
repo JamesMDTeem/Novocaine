@@ -79,7 +79,7 @@ public class Terrain {
      * @param segTile a tile coordinate in segment space, as {@link WorldAnchor#sc} divides down to.
      */
     public static boolean walkable(GameUI gui, long seg, Coord segTile) {
-        return ground(gui, seg, segTile) && !Barriers.blocks(seg, segTile);
+        return ground(gui, seg, segTile) && !Observed.solid(seg, segTile);
     }
 
     /**

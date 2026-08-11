@@ -156,15 +156,6 @@ public class BotNav {
      */
     private static final int MAX_DRIFTS = 6;
     /**
-     * How many blind hops a journey may make towards a destination the map file cannot place.
-     *
-     * Enough to cross the gap between two mapped areas - the longest in the log is a hundred and
-     * seventy tiles, which is seven hops - and bounded because a destination that never becomes
-     * placeable is a destination in another segment, and walking at one of those forever is the
-     * failure this replaced.
-     */
-    private static final int MAX_STAGES = 12;
-    /**
      * How many exploration hops toward a destination the clamped router can see but not reach.
      *
      * Each hop extends the observed region by up to {@link #HOP_MAX} tiles. Twelve is enough for
@@ -1147,7 +1138,7 @@ public class BotNav {
             return TravelResult.failed(null, "null destination");
         /* Record whatever walls are in sight before planning, so the route about to be chosen
          * benefits from this trip rather than only the next one. */
-        Barriers.learn(gui);
+        Observed.observe(gui);
         refusedGates.clear();
 
         /* NO ROUTE MUST NOT MEAN BLIND HOP.
@@ -1223,7 +1214,7 @@ public class BotNav {
             if (!hopToward(dest))
                 return TravelResult.blocked(me(), "exploration hop toward " + GateManager.fmt(dest)
                     + " stopped short - a wall is in the way");
-            Barriers.learn(gui);
+            Observed.observe(gui);
             route = plan(dest);
             if (route == null) {
                 NLog.log(log, "no route to " + GateManager.fmt(dest) + " after exploring - giving up");
@@ -1295,7 +1286,7 @@ public class BotNav {
                 NLog.log(log, "keep-out circle now blocks leg corridor to " + GateManager.fmt(legs.get(i))
                     + " from " + GateManager.fmt(me()) + " - re-planning"
                     + " (" + blocked + " of " + MAX_BLOCKED + ")");
-                Barriers.learn(gui);
+                Observed.observe(gui);
                 List<Coord2d> again = plan(dest);
                 if (again == null) {
                     return finish(dest, tol, true,
@@ -1479,7 +1470,7 @@ public class BotNav {
             if ((gates < MAX_GATES)
                 && GateManager.pass(this, gui, leg, blockingGate, refusedGates, log)) {
                 gates++;
-                Barriers.learn(gui);
+                Observed.observe(gui);
                 List<Coord2d> after = plan(dest);
                 /* Logged like every other re-plan. This one used to be silent, and its silence is
                  * why a bot that stepped through a gate and then walked fifty tiles the wrong way
@@ -1504,7 +1495,7 @@ public class BotNav {
             /* The route was wrong about something - almost always a wall learned since, or
              * one that was never in view when the map file recorded the tiles. Re-plan from
              * where we actually are and start the itinerary again. */
-            Barriers.learn(gui);
+            Observed.observe(gui);
             List<Coord2d> again = plan(dest);
             NLog.log(log, "re-planned after a failed leg, from " + GateManager.fmt(me()) + ": "
                 + ((again == null) ? "no route" : (again.size() + " waypoint(s) " + fmt(again))));

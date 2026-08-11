@@ -107,18 +107,6 @@ public class Router {
     private Router() {}
 
     /**
-     * No-op, kept for its callers.
-     *
-     * The router used to hold a single cached LPA* instance whose cost maps this invalidated. That
-     * cache is gone (see {@link GridAStar}): every search is stateless and reads the observed world
-     * fresh, so there is nothing to invalidate - a change to the world is seen by the next search
-     * automatically. Left in place because {@link Observed} calls it on a full map reload, and that
-     * call correctly expresses "the world changed"; it simply no longer needs to do anything.
-     */
-    public static void invalidateCache() {
-    }
-
-    /**
      * Whether the player could walk to a live world point at all.
      *
      * For callers that CHOOSE targets rather than travel to them - the LP assistant is the one that
@@ -533,24 +521,6 @@ public class Router {
         if (path != null)
             return simplify(w, path);
         return null;
-    }
-
-    /**
-     * No-op, kept for its callers.
-     *
-     * This fed the removed LPA* cache the identity of a tile whose passability had changed, so the
-     * next incremental repair would revisit it. Searches are stateless now ({@link GridAStar}): the
-     * next {@link #route} reads the tile's current state directly, so a change needs no announcing.
-     * {@link Refused} still calls this when a refusal is learned or expires, which reads as "this
-     * tile changed" and is correct; it just no longer has anywhere to record it.
-     *
-     * @param t the segment tile that changed
-     */
-    public static void updateTile(Coord t) {
-    }
-
-    /** No-op, kept for its callers. See {@link #updateTile}. */
-    public static void updateTiles(Set<Coord> tiles) {
     }
 
     /**

@@ -560,10 +560,6 @@ public class Observed {
             for (Coord t : gates)
                 set(here.seg, t, GATE);
         }
-        /* Announce that the observed map changed under the router. This is a no-op now that
-         * searches are stateless and read the map fresh, but the call stays as the honest place to
-         * say "a whole sweep of tiles just changed" - up to SEES*2+1 squared at once. */
-        Router.invalidateCache();
     }
 
     /**
@@ -1130,9 +1126,6 @@ public class Observed {
             dirty = true;
         }
         save();
-        /* The entire map was discarded; tell the router. A no-op now (stateless search), but the
-         * right place to record that the world changed wholesale. */
-        Router.invalidateCache();
     }
 
     /**

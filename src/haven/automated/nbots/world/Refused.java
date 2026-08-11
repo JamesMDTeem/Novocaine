@@ -62,10 +62,6 @@ public class Refused {
             return;
         refused.computeIfAbsent(seg, k -> new HashMap<>())
             .put(segTile, System.currentTimeMillis() + KEEP);
-        /* Tell the router that this tile is now effectively impassable, so its cached
-         * routes are refreshed on the next planning attempt rather than reusing a path
-         * that now runs through refused ground. */
-        Router.updateTile(segTile);
     }
 
     /** How many refusals are currently believed, for the route description to report. */
@@ -100,11 +96,7 @@ public class Refused {
         for (Iterator<Map.Entry<Coord, Long>> it = m.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<Coord, Long> entry = it.next();
             if (entry.getValue() < now) {
-                Coord removed = entry.getKey();
                 it.remove();
-                /* A refused tile that has expired is no longer an inference — the furniture
-                 * that caused it may have moved. Mark it so the router re-evaluates it. */
-                Router.updateTile(removed);
             }
         }
     }

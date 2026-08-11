@@ -329,7 +329,7 @@ public class GateManager {
             int remembered = 0;
             WorldAnchor here = WorldAnchor.capturePlayer(gui);
             if (here != null)
-                remembered = Barriers.gatesIn(here.seg).size();
+                remembered = Observed.gatesIn(here.seg).size();
             NLog.log(log, "gate: nothing usable between here and " + fmt(dest)
                 + " (" + near.size() + " loaded, " + remembered + " gate tiles remembered)");
             for (String s : rejections(gui, dest, skip, true))
