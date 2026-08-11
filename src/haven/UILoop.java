@@ -560,6 +560,7 @@ public abstract class UILoop implements Console.Directory {
 			uilock.notifyAll();
 		    }
 		    Debug.cycle(ui.modflags());
+		    haven.automated.LeakDbg.tick(ui);
 
 		    Frame curframe = frame(ui, buf, prevframe);
 		    prevframe = null;

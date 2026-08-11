@@ -1,7 +1,7 @@
 /*
  *  This file is part of the Haven & Hearth game client.
  *  Copyright (C) 2009 Fredrik Tolf <fredrik@dolda2000.com>, and
- *                     Björn Johannessen <johannessen.bjorn@gmail.com>
+ *                     BjÃ¶rn Johannessen <johannessen.bjorn@gmail.com>
  *
  *  Redistribution and/or modification of this file is subject to the
  *  terms of the GNU Lesser General Public License, version 3, as
@@ -331,6 +331,7 @@ public class Session implements Resource.Resolver {
 						return entry.getKey();
 					}
 				} catch (Loading e) {
+					// CachedRes.get() may still be mid-load; treat as absent and keep scanning.
 				}
 			}
 		}

@@ -681,7 +681,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
         if (OptWnd.onlyRenderCameraVisibleObjectsCheckBox.a) {
             if (ob == null || ob.virtual)
                 return false;
-            if (ob.isMe != null && ob.isMe)
+            if (ob.isMe)
                 return false;
             try {
                 Coord3f gc = ob.getc();
@@ -1369,6 +1369,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     protected void lights() {
 	GSettings gprefs = basic.state().get(GSettings.slot);
 	if((lighting == null) || !lighting.valid(gprefs)) {
+	    haven.automated.LeakDbg.transition("light");
 	    basic(Light.class, null);
 	    lighting = new LightCompiler(gprefs);
 	}
@@ -3131,7 +3132,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		super.added();
 		try {
 			glob.oc.getgob(plgob).delattr(Buddy.class); // ND: This is only needed for Valhalla.
-			glob.oc.getgob(plgob).isMe = null;
+			glob.oc.getgob(plgob).resetIsMe();
 		} catch (NullPointerException ignored){}
 
         if (glob != null){

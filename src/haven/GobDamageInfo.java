@@ -40,7 +40,7 @@ public class GobDamageInfo extends GobInfo {
     @Override
     protected boolean enabled() {
         if (OptWnd.toggleGobDamageInfoCheckBox.a) {
-            if (gob.isMe != null && gob.isMe)
+            if (gob.isMe)
                 return  OptWnd.yourselfDamageInfoCheckBox.a;
             else if (gob.isPartyMember())
                 return OptWnd.partyMembersDamageInfoCheckBox.a;

@@ -720,6 +720,7 @@ public class MCache implements MapSource {
 
 	public void dispose() {
 	    removed = true;
+	cached.remove();
 	    for(Cut cut : cuts)
 		cut.dispose();
 	}
@@ -963,6 +964,7 @@ public class MCache implements MapSource {
     }
 
     public void invalblob(Message msg) {
+	haven.automated.LeakDbg.transition("invalblob");
 	int type = msg.uint8();
 	if(type == 0) {
 	    invalidate(msg.coord());
@@ -1281,6 +1283,8 @@ public class MCache implements MapSource {
     }
 
     public void trimall() {
+	haven.automated.LeakDbg.transition("trimall");
+	cached.remove();
 	synchronized(grids) {
 	    synchronized(req) {
 		for(Grid g : grids.values())
@@ -1293,6 +1297,7 @@ public class MCache implements MapSource {
     }
 
     public void trim(Coord ul, Coord lr) {
+	haven.automated.LeakDbg.transition("trim");
 	synchronized(grids) {
 	    synchronized(req) {
 		for(Iterator<Map.Entry<Coord, Grid>> i = grids.entrySet().iterator(); i.hasNext();) {

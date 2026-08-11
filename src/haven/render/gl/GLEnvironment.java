@@ -1026,6 +1026,12 @@ public abstract class GLEnvironment implements Environment {
 	return(buf.toString());
     }
 
+    /** Copy of the per-pool GPU byte counts (INDICES, VERTICES, TEXTURES, VAOS, FBOS). */
+    public long[] memBytes() {return(stats_mem.clone());}
+
+    /** Copy of the per-pool GPU object counts (INDICES, VERTICES, TEXTURES, VAOS, FBOS). */
+    public int[] memObjects() {return(stats_obj.clone());}
+
     public void dispose() {
 	{
 	    Collection<GLRender> copy;
