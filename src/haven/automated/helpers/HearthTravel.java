@@ -1,0 +1,301 @@
+package haven.automated.helpers;
+
+import haven.Coord2d;
+import haven.GameUI;
+import haven.Gob;
+import haven.MCache;
+import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.world.WorldAnchor;
+
+/**
+ * Fires the hearth-fire travel action, bounded per run and measured, so that any bot can offer it
+ * as a travel option without gambling the character's weariness budget.
+ *
+ * The action is {@code paginae/act/travel-hearth}. Weariness is a flat 0.1 per travel against a
+ * cap (observed live at 22.7/57.0, i.e. around 343 travels), and it is NOT readable from the
+ * client - the travel window is a server-shipped resource widget whose code layer this tree does
+ * not have, and none of the 51 {@code Glob.CAttr}s carried it when they were all dumped. So this
+ * helper never tries to read it. Instead it bounds hearth travels per run ({@link #BUDGET}, ten is
+ * under 2% of the cap) and logs every use.
+ *
+ * The other missing piece is the channel duration: how long a hearth travel actually takes, start
+ * to arrival. The emergency hearth-home paths in the legacy bots and {@code Upkeep} used to fire
+ * the action and sleep a flat 8 seconds blind. {@link #travel} replaces that with a measured wait,
+ * and the passive watcher ({@link #noteAct}, fed by {@code GameUI.wdgmsg}) catches MANUAL hearth
+ * travels too - the player clicks the paginae button, the watcher sees the {@code act} leave, then
+ * sees the character's position jump a whole map and logs the elapsed time, the landing anchor and
+ * the jump distance. That is the channel-duration data the travel-vs-walk decision needs, without
+ * anyone having to arrange a bot at low health to collect it.
+ *
+ * Emergency callers must never be blocked by the budget: {@link #travel} fires unconditionally and
+ * just records the use. The budget is the guard for OPTIONAL travel (the future "teleport when it
+ * beats walking" decision), which checks {@link #canTravel} before calling.
+ */
+public class HearthTravel {
+    /** Hearth travels permitted per run, on top of the unreadable weariness cap. */
+    public static final int BUDGET = 10;
+
+    /** How long to watch the player's position for the teleport to land, in milliseconds. */
+    private static final long ARRIVAL_TIMEOUT_MS = 12_000L;
+
+    /** A move of more than one tile counts as the teleport landing. */
+    private static final double MOVE_TILE = 1.0;
+
+    /** Settle time after the position first moves, so the recorded rc is the final one. */
+    private static final long SETTLE_MS = 500L;
+
+    /** A position change this large within one watch sample is a teleport, not walking. */
+    private static final double JUMP_TILES = 3.0;
+
+    /** How often the watcher samples the player's position, in milliseconds. */
+    private static final long WATCH_PERIOD_MS = 200L;
+
+    /** An act this long ago can no longer be the start of the jump just seen. */
+    private static final long ACT_WINDOW_MS = 60_000L;
+
+    /** How long sustained movement is accumulated before a speed figure is logged. */
+    private static final long SPEED_WINDOW_MS = 10_000L;
+
+    /** Only a move slower than this counts as sustained movement (faster = teleport/jump). */
+    private static final double SPEED_MAX_TILES_PER_S = 6.0;
+
+    /**
+     * The character's travel speed at gear 3, in units per second: the in-game speedometer under
+     * the character reads roughly 49-50 u/s (user-supplied, 2026-08-11). Tiles are 11 units, so
+     * that is ~4.5 tiles/s - comfortably under the watcher's 6-tile cap and far under the 3-tile
+     * per 200ms sample that reads as a teleport jump.
+     */
+    private static final double WALK_U_PER_S = 49.5;
+
+    /**
+     * Measured hearth-travel channel duration, in milliseconds: two manual travels logged
+     * 4800ms and 4814ms (2026-08-11), so the channel is ~4.8s.
+     */
+    private static final long CHANNEL_MS = 4800L;
+
+    /**
+     * A floor on top of the channel time, in seconds, so the travel-vs-walk decision never fires
+     * for a short trip: the teleport also costs 0.1 weariness and strands the character at the
+     * hearth, so it should only win by a clear margin.
+     */
+    private static final double FLOOR_S = 5.0;
+
+    private static final String LOG = "hearth.log";
+
+    private static int used = 0;
+
+    /** When the last hearth-travel act left the client (manual or bot), or -1. */
+    private static volatile long travelActAt = -1;
+
+    /** True while {@link #travel} is doing its own measured wait, so the watcher stays quiet. */
+    private static volatile boolean botInFlight = false;
+
+    private static volatile Thread watcher = null;
+
+    private HearthTravel() {}
+
+    /** How many hearth travels remain in the per-run budget. */
+    public static synchronized int remaining() {
+        return Math.max(0, BUDGET - used);
+    }
+
+    /** Whether an OPTIONAL hearth travel is still within the per-run budget. */
+    public static synchronized boolean canTravel() {
+        return used < BUDGET;
+    }
+
+    /**
+     * Whether hearth travel beats walking to a destination that is {@code walkingDist} units
+     * away, per the measured numbers.
+     *
+     * Walking that distance takes {@code walkingDist / WALK_U_PER_S} seconds; hearth travel takes
+     * the {@code CHANNEL_MS} channel plus the {@link #FLOOR_S} margin (so a short trip, or one
+     * where the two are close, stays on foot - the teleport costs 0.1 weariness and strands the
+     * character at the hearth). Feed it {@code Router.walkingDistance} for the distance.
+     *
+     * @param walkingDist the on-foot distance in world units, or -1 when it cannot be told
+     */
+    public static boolean beatsWalking(double walkingDist) {
+        if (walkingDist < 0)
+            return false;
+        double walkS = walkingDist / WALK_U_PER_S;
+        return walkS > (CHANNEL_MS / 1000.0) + FLOOR_S;
+    }
+
+    /**
+     * Whether hearth travel beats walking to a live target, folded in beside
+     * {@code Router.walkingDistance} so a caller gets the whole decision in one call.
+     *
+     * This is the OPTIONAL-travel decision: it respects the per-run budget ({@link #canTravel})
+     * and the {@link #FLOOR_S} margin, and it asks the router for the on-foot distance rather than
+     * guessing from the straight line. It never fires the action - callers travel only after this
+     * says yes, and the emergency hearth-home paths call {@link #travel} directly, past any budget.
+     *
+     * The useful shape of this is \"I want to get back to somewhere near the hearth\" (a water
+     * refill, a drop-off, the end of a run): hearth travel only goes to the hearth, so a target
+     * that is not on the hearth side of the comparison would never beat walking anyway.
+     *
+     * @return true when hearth travel wins AND the budget allows it; false otherwise
+     */
+    public static boolean betterThanWalking(GameUI gui, haven.Coord2d target, int margin) {
+        if (!canTravel())
+            return false;
+        return beatsWalking(haven.automated.nbots.world.Router.walkingDistance(gui, target, margin));
+    }
+
+    /** Resets the per-run budget; call at the start of a bot's run. */
+    public static synchronized void resetRun() {
+        used = 0;
+    }
+
+    /**
+     * Hooks every {@code act} message the client sends, so a MANUAL hearth travel (the player
+     * clicking the paginae button) is measured too. {@code GameUI.wdgmsg} calls this for every act.
+     *
+     * The bot path ({@code gui.act("travel", "hearth")}) arrives as {@code ["travel","hearth"]};
+     * the paginae button arrives as {@code ["travel-hearth", mods, ...]}. Either is the start of a
+     * channel whose length the watcher then measures against the next position jump.
+     *
+     * The watcher starts on ANY act, hearth or not: the sustained-movement lines it logs are the
+     * walking-speed figure the travel-vs-walk decision needs, and a session that never hearths
+     * should still produce them.
+     */
+    public static void noteAct(GameUI gui, String msg, Object... args) {
+        if ((args == null) || (args.length == 0) || !(args[0] instanceof String))
+            return;
+        startWatcher(gui);
+        String a0 = (String) args[0];
+        boolean hearth = "travel-hearth".equals(a0)
+            || ("travel".equals(a0) && args.length >= 2 && "hearth".equals(args[1]));
+        if (hearth)
+            travelActAt = System.currentTimeMillis();
+    }
+
+    /**
+     * Fires the hearth-fire travel action and waits for the character to land.
+     *
+     * The wait is measured rather than a blind sleep: the player's position is polled for the
+     * teleport's one-tile-plus jump, and the elapsed time plus the landing {@link WorldAnchor} are
+     * logged to {@code logs/hearth.log}. If the position never moves inside {@link #ARRIVAL_TIMEOUT_MS}
+     * (already at the hearth, travel refused, an unreadable client state) the wait still ends and
+     * the elapsed time is logged as-is - the caller behaves exactly as if the old flat sleep had
+     * run.
+     *
+     * Fires unconditionally even past the budget, because an emergency hearth-home must never be
+     * denied; the use is recorded and logged regardless.
+     *
+     * @return the elapsed time in milliseconds, or -1 if the player could not be read at all
+     */
+    public static long travel(GameUI gui) throws InterruptedException {
+        long started = System.currentTimeMillis();
+        Coord2d before = playerRc(gui);
+        if (before == null)
+            return -1;
+        botInFlight = true;
+        try {
+            gui.act("travel", "hearth");
+            long deadline = started + ARRIVAL_TIMEOUT_MS;
+            boolean landed = false;
+            while (!landed && System.currentTimeMillis() < deadline) {
+                Thread.sleep(100);
+                Coord2d now = playerRc(gui);
+                if (now != null && now.dist(before) > MOVE_TILE * MCache.tilesz.x) {
+                    Thread.sleep(SETTLE_MS);
+                    landed = true;
+                }
+            }
+            long elapsed = System.currentTimeMillis() - started;
+            WorldAnchor landing = WorldAnchor.capturePlayer(gui);
+            synchronized (HearthTravel.class) {
+                used++;
+            }
+            NLog.log(LOG, String.format(
+                "travel: elapsed=%dms landed=%s (%s)%s",
+                elapsed,
+                landing == null ? "?" : landing.seg + "@" + landing.sc,
+                landed ? "arrived" : "no position move seen",
+                " budget=" + remaining()));
+            return elapsed;
+        } finally {
+            botInFlight = false;
+        }
+    }
+
+    private static void startWatcher(GameUI gui) {
+        Thread t = watcher;
+        if (t == null) {
+            synchronized (HearthTravel.class) {
+                t = watcher;
+                if (t == null) {
+                    t = new Thread(() -> watch(gui), "HearthTravel-watch");
+                    t.setDaemon(true);
+                    watcher = t;
+                    t.start();
+                }
+            }
+        }
+    }
+
+    /**
+     * The passive measurement loop: samples the player's position, spots the hearth travel's
+     * landing jump, and logs channel duration + landing anchor + jump distance. Also accumulates
+     * sustained movement to give the walking-speed figure the travel-vs-walk decision needs.
+     *
+     * One daemon thread for the life of the client; it only writes when something worth recording
+     * happened, so it is normally silent.
+     */
+    private static void watch(GameUI gui) {
+        Coord2d prev = null;
+        long movedSince = System.currentTimeMillis();
+        double movedDist = 0;
+        while (true) {
+            try {
+                Thread.sleep(WATCH_PERIOD_MS);
+            } catch (InterruptedException e) {
+                return;
+            }
+            Coord2d rc = playerRc(gui);
+            if (rc == null) {
+                prev = null;
+                continue;
+            }
+            long now = System.currentTimeMillis();
+            if (prev != null) {
+                double dist = rc.dist(prev);
+                if (dist > JUMP_TILES * MCache.tilesz.x) {
+                    long actAt = travelActAt;
+                    if (actAt >= 0 && !botInFlight && (now - actAt) <= ACT_WINDOW_MS) {
+                        WorldAnchor landing = WorldAnchor.capturePlayer(gui);
+                        NLog.log(LOG, String.format(
+                            "manual travel: channel=%dms jump=%.0fu landed=%s",
+                            now - actAt, dist,
+                            landing == null ? "?" : landing.seg + "@" + landing.sc));
+                    }
+                    travelActAt = -1;
+                    prev = rc;
+                    continue;
+                }
+                double speed = dist / (WATCH_PERIOD_MS / 1000.0);
+                if (speed <= SPEED_MAX_TILES_PER_S * MCache.tilesz.x) {
+                    movedDist += dist;
+                    if ((now - movedSince) >= SPEED_WINDOW_MS) {
+                        double uPerS = movedDist / ((now - movedSince) / 1000.0);
+                        NLog.log(LOG, String.format("sustained movement: %.1fu/s over %ds", uPerS,
+                            (now - movedSince) / 1000));
+                        movedSince = now;
+                        movedDist = 0;
+                    }
+                } else {
+                    movedSince = now;
+                    movedDist = 0;
+                }
+            }
+            prev = rc;
+        }
+    }
+
+    private static Coord2d playerRc(GameUI gui) {
+        Gob me = (gui != null && gui.map != null) ? gui.map.player() : null;
+        return me == null ? null : me.rc;
+    }
+}

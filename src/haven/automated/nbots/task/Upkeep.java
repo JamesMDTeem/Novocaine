@@ -50,8 +50,7 @@ public class Upkeep implements Task {
     public Outcome run(BotCtx ctx) throws InterruptedException {
         if (ctx.health() < PANIC_HEALTH) {
             ctx.log("health critical - hearthing home");
-            ctx.gui.act("travel", "hearth");
-            Thread.sleep(8000);
+            haven.automated.helpers.HearthTravel.travel(ctx.gui);
             return Outcome.failed("health was critical");
         }
 

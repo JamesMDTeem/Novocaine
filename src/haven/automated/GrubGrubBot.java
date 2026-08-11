@@ -11,9 +11,10 @@ import haven.Window;
 
 import java.util.Objects;
 
-public class GrubGrubBot extends Window implements Runnable {
+public class GrubGrubBot extends Window implements Runnable, Stoppable {
     public static boolean transferTicks = false;
     private final GameUI gui;
+    private Thread self;
     private boolean stop = false;
     private boolean active = false;
 
@@ -40,6 +41,7 @@ public class GrubGrubBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
         try {
             while (!stop) {
                 if (!active) {
@@ -79,9 +81,8 @@ public class GrubGrubBot extends Window implements Runnable {
     public void stop() {
         stop = true;
         GrubGrubBot.transferTicks = false;
-        if (gui.grubGrubThread != null) {
-            gui.grubGrubThread.interrupt();
-            gui.grubGrubThread = null;
+        if (self != null) {
+            self.interrupt();
         }
         this.destroy();
     }
@@ -103,8 +104,9 @@ public class GrubGrubBot extends Window implements Runnable {
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if((sender == this) && (Objects.equals(msg, "close"))) {
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.grubGrubBot = null;
         } else {
             super.wdgmsg(sender, msg, args);
         }

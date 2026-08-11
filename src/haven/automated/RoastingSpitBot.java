@@ -23,10 +23,11 @@ import java.util.List;
 
 import static haven.OCache.posres;
 
-public class RoastingSpitBot extends Window implements Runnable {
+public class RoastingSpitBot extends Window implements Runnable, Stoppable {
     Button startbutton;
     private boolean active = false;
     private final GameUI gui;
+    private Thread self;
     private boolean stop;
     private Gob fireplace = null;
     private final String[] spitroastableItems = { // ND: Incomplete list
@@ -115,22 +116,21 @@ public class RoastingSpitBot extends Window implements Runnable {
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
             this.stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.roastingSpitBot = null;
-            gui.roastingSpitThread = null;
         } else
             super.wdgmsg(sender, msg, args);
     }
 
     public void stop() {
+        stop = true;
         if (ui.gui.map.pfthread != null) {
             ui.gui.map.pfthread.interrupt();
         }
-        if (gui.roastingSpitThread != null) {
-            gui.roastingSpitThread.interrupt();
-            gui.roastingSpitThread = null;
+        if (self != null) {
+            self.interrupt();
         }
-        stop = true;
     }
 
     public boolean isSpitroastableItem(String input) {
@@ -187,6 +187,7 @@ public class RoastingSpitBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
         while (!stop) {
             sleep(10);
             if (active && fireplace != null) {

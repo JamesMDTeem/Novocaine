@@ -18,9 +18,10 @@ import java.util.Objects;
 
 import static haven.OCache.posres;
 
-public class TarKilnCleanerBot extends Window implements Runnable {
+public class TarKilnCleanerBot extends Window implements Runnable, Stoppable {
     private final CheckBox activeBox;
     private GameUI gui;
+    private Thread self;
 
     private boolean stop;
     private int phase = 1;
@@ -49,6 +50,7 @@ public class TarKilnCleanerBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
         try {
             while (!stop) {
                 if (active) {
@@ -116,19 +118,22 @@ public class TarKilnCleanerBot extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
-            stop = true;
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.tarKilnCleanerBot = null;
-            gui.tarKilnCleanerThread = null;
         } else
             super.wdgmsg(sender, msg, args);
     }
 
     public void stop() {
+        stop = true;
         ui.gui.map.wdgmsg("click", Coord.z, ui.gui.map.player().rc.floor(posres), 1, 0);
         if (ui.gui.map.pfthread != null) {
             ui.gui.map.pfthread.interrupt();
+        }
+        if (self != null) {
+            self.interrupt();
         }
         this.destroy();
     }

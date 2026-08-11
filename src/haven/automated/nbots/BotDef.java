@@ -25,17 +25,24 @@ public class BotDef {
     public final String title;
     public final String description;
     public final Factory factory;
+    private final String windowKey;
 
     public BotDef(String id, String title, String description, Factory factory) {
+        this(id, title, description, null, factory);
+    }
+
+    /** A windowed bot that predates the registry may already remember its position under a custom key. */
+    public BotDef(String id, String title, String description, String windowKey, Factory factory) {
         this.id = id;
         this.title = title;
         this.description = description;
+        this.windowKey = windowKey;
         this.factory = factory;
     }
 
     /** The preference key its window position is remembered under. */
     public String windowKey() {
-        return "wndc-nbot-" + id;
+        return windowKey != null ? windowKey : "wndc-nbot-" + id;
     }
 
     public String toString() {

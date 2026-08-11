@@ -21,13 +21,14 @@ import java.util.Objects;
 import static haven.OCache.posres;
 import static java.lang.Thread.sleep;
 
-public class CleanupBot extends Window implements Runnable {
+public class CleanupBot extends Window implements Runnable, Stoppable {
     /** Give a work action up to two seconds to progress, and pause two seconds between loop passes. */
     private static final int ACTION_WAIT_MS = 2000;
     /** Stamina fraction below which the bot stops working to drink. */
     private static final double LOW_STAMINA_THRESHOLD = 0.40;
 
     private GameUI gui;
+    private Thread self;
     private boolean chopBushes;
     public boolean stop;
     private boolean chopTrees;
@@ -128,14 +129,14 @@ public class CleanupBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
         try {
             while (!stop) {
                 if ((chopBushes || chopTrees || destroyStumps || chipRocks || destroySoil) && active) {
                     if (gui.getmeters("hp").get(1).a < 0.02) {
                         System.out.println("HP IS " + gui.getmeters("hp").get(1).a + " .. PORTING HOME!");
-                        gui.act("travel", "hearth");
                         try {
-                            Thread.sleep(8000);
+                            haven.automated.helpers.HearthTravel.travel(gui);
                         } catch (InterruptedException e) {
                         }
                     }
@@ -255,22 +256,22 @@ public class CleanupBot extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
-            stop = true;
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.cleanupBot = null;
         } else
             super.wdgmsg(sender, msg, args);
     }
 
     public void stop() {
+        stop = true;
         ui.gui.map.wdgmsg("click", Coord.z, ui.gui.map.player().rc.floor(posres), 1, 0);
         if (ui.gui.map.pfthread != null) {
             ui.gui.map.pfthread.interrupt();
         }
-        if (gui.cleanupThread != null) {
-            gui.cleanupThread.interrupt();
-            gui.cleanupThread = null;
+        if (self != null) {
+            self.interrupt();
         }
         this.destroy();
     }

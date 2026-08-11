@@ -17,7 +17,7 @@ import java.util.Objects;
 import static haven.OCache.posres;
 import static java.lang.Thread.sleep;
 
-public class CellarDiggingBot extends Window implements Runnable {
+public class CellarDiggingBot extends Window implements Runnable, Stoppable {
     /** HP fraction below which the bot emergency-ports home. */
     private static final double LOW_HP_THRESHOLD = 0.02;
     /** Energy fraction below which the bot stops. */
@@ -31,6 +31,7 @@ public class CellarDiggingBot extends Window implements Runnable {
     private boolean stop;
     private boolean active;
     private final Button activeButton;
+    private Thread self;
 
     public CellarDiggingBot(GameUI gui) {
         super(UI.scale(150, 70), "Cellar Digging Bot");
@@ -56,6 +57,7 @@ public class CellarDiggingBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
         try {
             while (!stop) {
                 if (!checkVitals()) { sleep(200); continue; }
@@ -94,8 +96,7 @@ public class CellarDiggingBot extends Window implements Runnable {
             double hp = gui.getmeters("hp").get(1).a;
             if (hp < LOW_HP_THRESHOLD) {
                 System.out.println("HP IS " + hp + " .. PORTING HOME!");
-                gui.act("travel", "hearth");
-                try { Thread.sleep(8000); } catch (InterruptedException ignored) {}
+                try { haven.automated.helpers.HearthTravel.travel(gui); } catch (InterruptedException ignored) {}
                 active = false;
                 activeButton.change("Start");
                 return false;
@@ -223,17 +224,17 @@ public class CellarDiggingBot extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
-            stop = true;
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.cellarDiggingBot = null;
-            gui.cellarDiggingThread = null;
         } else {
             super.wdgmsg(sender, msg, args);
         }
     }
 
     public void stop() {
+        stop = true;
         haltActions();
         this.destroy();
     }

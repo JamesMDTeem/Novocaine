@@ -23,7 +23,7 @@ import java.util.Random;
 
 import static haven.OCache.posres;
 
-public class OceanScoutBot extends Window implements Runnable {
+public class OceanScoutBot extends Window implements Runnable, Stoppable {
     // Distances in this bot are expressed in pixel units where one tile = 11px (MCache.tilesz).
     private static final int TILE = (int) MCache.tilesz.x;
     private static final int CLICK_STEP = 44;               // px to nudge the player per click
@@ -37,6 +37,7 @@ public class OceanScoutBot extends Window implements Runnable {
 
     private int checkClock;
     private GameUI gui;
+    private Thread self;
     public volatile boolean stop;
     private MCache mcache;
     private int clockwiseDirection = 1;
@@ -85,6 +86,7 @@ public class OceanScoutBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
         try {
             while (!stop) {
                 if (!active) {
@@ -268,23 +270,23 @@ public class OceanScoutBot extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if((sender == this) && (Objects.equals(msg, "close"))) {
-            stop = true;
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.OceanScoutBot = null;
         } else {
             super.wdgmsg(sender, msg, args);
         }
     }
 
     public void stop() {
+        stop = true;
         ui.gui.map.wdgmsg("click", Coord.z, ui.gui.map.player().rc.floor(posres), 1, 0);
         if (gui.map.pfthread != null) {
             gui.map.pfthread.interrupt();
         }
-        if (gui.oceanScoutBotThread != null) {
-            gui.oceanScoutBotThread.interrupt();
-            gui.oceanScoutBotThread = null;
+        if (self != null) {
+            self.interrupt();
         }
         this.destroy();
     }

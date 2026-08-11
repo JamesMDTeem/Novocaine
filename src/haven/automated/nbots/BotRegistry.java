@@ -5,6 +5,7 @@ import haven.GameUI;
 import haven.Utils;
 import haven.Widget;
 import haven.Window;
+import haven.automated.Stoppable;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -21,6 +22,11 @@ import java.util.Map;
  * Open windows live here too rather than in a GameUI field apiece. GameUI keeps one reference to
  * this registry's map, so the per-bot field pairs are gone; the trade is that this class owns a bit
  * of window lifecycle, which is a fair price for the upstream file not knowing bots exist.
+ *
+ * The stock Bots-tab bots (the legacy windowed bots in haven.automated) were moved onto this
+ * registry in 2026-08 so the Bots-tab branch in MenuGrid is one generic toggle, exactly like the
+ * Nurgling Imports branch. They keep their own window-position keys so their remembered positions
+ * survive the move.
  */
 public class BotRegistry {
     private static final List<BotDef> DEFS = new ArrayList<>();
@@ -35,6 +41,27 @@ public class BotRegistry {
         DEFS.add(new BotDef("NWaterScoutBot", "Water Scout (crew)",
             "Follows a coastline or a river bank by boat.",
             NWaterScoutBot::new));
+        DEFS.add(new BotDef("OceanScoutBot", "Ocean Scout",
+            "Sails the ocean looking for pearls and avoiding danger.",
+            "wndc-oceanScoutBotWindow", haven.automated.OceanScoutBot::new));
+        DEFS.add(new BotDef("TarKilnEmptierBot", "Tar Kiln Emptier",
+            "Empties full tar kilns and drops the coal.",
+            "wndc-tarKilnCleanerBotWindow", haven.automated.TarKilnCleanerBot::new));
+        DEFS.add(new BotDef("FishingBot", "Fishing",
+            "Fishes with a pole and collects the catch.",
+            "wndc-fishingBotWindow", haven.automated.FishingBot::new));
+        DEFS.add(new BotDef("CleanupBot", "Cleanup",
+            "Clears bushes, trees, boulders, stumps and soil piles.",
+            "wndc-cleanupBotWindow", haven.automated.CleanupBot::new));
+        DEFS.add(new BotDef("GrubGrubBot", "Grub-Grub",
+            "Crafts grub-grub from ticks and moves the results to the belt.",
+            "wndc-grubGrubBotWindow", haven.automated.GrubGrubBot::new));
+        DEFS.add(new BotDef("CellarDiggingBot", "Cellar Digging",
+            "Digs a cellar alone: boulders, soil, and the cellar itself.",
+            "wndc-cellarDiggingBotWindow", haven.automated.CellarDiggingBot::new));
+        DEFS.add(new BotDef("RoastingSpitBot", "Roasting Spit",
+            "Roasts and carves food on a spit.",
+            "wndc-roastingSpitBotWindow", haven.automated.RoastingSpitBot::new));
     }
 
     /** Bot id -> its open window, if any. Keyed by id so a bot needs no field anywhere. */
@@ -88,8 +115,8 @@ public class BotRegistry {
         Window w = open.remove(id);
         if (w == null)
             return;
-        if (w instanceof NBot)
-            ((NBot) w).stop();
+        if (w instanceof Stoppable)
+            ((Stoppable) w).stop();
         w.reqdestroy();
     }
 

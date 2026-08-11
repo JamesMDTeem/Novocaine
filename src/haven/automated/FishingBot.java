@@ -25,8 +25,9 @@ import java.util.List;
 
 import static haven.OCache.posres;
 
-public class FishingBot extends Window implements Runnable {
+public class FishingBot extends Window implements Runnable, Stoppable {
     private final GameUI gui;
+    private Thread self;
 
     private boolean stop;
     private boolean active;
@@ -348,6 +349,7 @@ public class FishingBot extends Window implements Runnable {
 
     @Override
     public void run() {
+        self = Thread.currentThread();
 
         while (!stop) {
             if (!checkVitals()) {
@@ -392,9 +394,8 @@ public class FishingBot extends Window implements Runnable {
         try {
             double hp = gui.getmeters("hp").get(1).a;
             if (hp < 0.02) {
-                gui.act("travel", "hearth");
                 try {
-                    Thread.sleep(8000);
+                    haven.automated.helpers.HearthTravel.travel(gui);
                 } catch (InterruptedException ignored) {
                 }
                 deactivate("Fishing Bot: HP IS " + hp + " .. PORTING HOME!");
@@ -472,19 +473,22 @@ public class FishingBot extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
-            stop = true;
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.fishingBot = null;
-            gui.fishingThread = null;
         } else
             super.wdgmsg(sender, msg, args);
     }
 
     public void stop() {
+        stop = true;
         gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.floor(posres), 1, 0);
         if (gui.map.pfthread != null) {
             gui.map.pfthread.interrupt();
+        }
+        if (self != null) {
+            self.interrupt();
         }
         this.destroy();
     }

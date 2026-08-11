@@ -6,6 +6,7 @@ import haven.GameUI;
 import haven.Gob;
 import haven.Resource;
 import haven.WItem;
+import haven.automated.nbots.world.BotNav;
 
 import java.util.function.Predicate;
 
@@ -30,6 +31,9 @@ public class AddItemToDevice implements Runnable {
     private final String notEnoughError;
     private static final int TIMEOUT = 2000;
     private static final int HAND_DELAY = 8;
+    private static final int WALK_TIMEOUT = 60000;
+    private static final double REACH = 22.0;
+    private static final double STOP_SLACK = 11.0;
 
     public AddItemToDevice(GameUI gui, int count,
                            Predicate<Resource> gobMatches, String noGobError,
@@ -81,6 +85,36 @@ public class AddItemToDevice implements Runnable {
 
         for (int left = count; left > 0; left--) {
             gui.map.wdgmsg("itemact", Coord.z, device.rc.floor(posres), left == 1 ? 0 : 1, 0, (int) device.id, device.rc.floor(posres), 0, -1);
+            // The click walks us over; the hand only changes once we arrive and the
+            // action lands. Wait out the walk before judging the hand against the
+            // short window, or a far device would read as "not enough X" mid-walk.
+            int walkTimeout = 0;
+            while (true) {
+                WItem newitem = gui.vhand;
+                if (newitem != null && newitem.item != item) {
+                    item = newitem.item;
+                    break;
+                } else if (newitem == null && left == 1) {
+                    return;
+                }
+                Gob me = gui.map.player();
+                double bound = REACH + BotNav.bulk(device) + STOP_SLACK;
+                if (me != null && me.rc.dist(device.rc) > bound) {
+                    walkTimeout += HAND_DELAY;
+                    if (walkTimeout >= WALK_TIMEOUT) {
+                        gui.error(notEnoughError + " Need to add " + (left - 1) + " more.");
+                        return;
+                    }
+                    try {
+                        Thread.sleep(HAND_DELAY);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                    continue;
+                }
+                break;
+            }
+            // Arrived: the action should land inside the normal window.
             timeout = 0;
             while (true) {
                 WItem newitem = gui.vhand;

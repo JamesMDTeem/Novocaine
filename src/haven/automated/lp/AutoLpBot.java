@@ -205,12 +205,6 @@ public class AutoLpBot extends Window implements Runnable {
         NLog.log(LOG, "=== run start: radius=" + radius + " maxActions=" + maxActions
             + " (pre-existing pack items: " + preexisting.size() + ") ===");
 
-        /* One-shot, to bin/logs/menu.log. Names every action the character's menu offers, because
-         * the hearth-fire travel button's resource string cannot be read out of this tree and
-         * guessing it would fire an unknown action on a live character. Remove this call once the
-         * string is known - see MenuDump. */
-        haven.automated.helpers.MenuDump.once(gui);
-
         // Route around water for the length of the run. The client can swim, so this is opt-in
         // rather than the pathfinder's default; a bot that swims off after a shoreline mushroom
         // arrives soaked, slowed and out of reach of everything it was going to do next. Restored

@@ -181,23 +181,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public Thread oreAndStoneCounterThread;
 
 	// Bot Threads
-	public OceanScoutBot OceanScoutBot;
-	public Thread oceanScoutBotThread;
-	public TarKilnCleanerBot tarKilnCleanerBot;
-	public Thread tarKilnCleanerThread;
-	public CleanupBot cleanupBot;
-	public Thread cleanupThread;
-	public GrubGrubBot grubGrubBot;
-	public Thread grubGrubThread;
-	public CellarDiggingBot cellarDiggingBot;
-	public Thread cellarDiggingThread;
-	public RoastingSpitBot roastingSpitBot;
-	public Thread roastingSpitThread;
-	public FishingBot fishingBot;
 	public haven.automated.lp.LpAssistantManagerWindow lpAssistantManager;
 	public haven.automated.lp.AutoLpBot autoLpBot;
 	public Thread autoLpThread;
-	public Thread fishingThread;
 
 	// Nurgling-tab bots. Separate from the stock Bots-tab ones above, which they deliberately
 	// leave alone - see haven.automated.nbots.NBot.
@@ -1774,6 +1760,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     }
 
     public void wdgmsg(Widget sender, String msg, Object... args) {
+	haven.automated.helpers.HearthTravel.noteAct(this, msg, args);
 	if((sender == chrwdg) && (msg == "close")) {
 	    chrwdg.hide();
 	    return;

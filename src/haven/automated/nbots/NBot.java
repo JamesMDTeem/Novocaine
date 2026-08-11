@@ -9,6 +9,7 @@ import haven.UI;
 import haven.Utils;
 import haven.Widget;
 import haven.Window;
+import haven.automated.Stoppable;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.BotSettings;
 import haven.automated.nbots.core.NBotConfig;
@@ -44,8 +45,11 @@ import java.util.Objects;
  * rather than rewrites of them. The stock ones stay exactly as they are under the Bots tab - what a
  * player expects from that button - and leaving them untouched is also what keeps the next upstream
  * update from turning into a hand-merge.
+ *
+ * Both generations register on the same {@link BotRegistry}; the legacy bots implement
+ * {@link Stoppable} directly and the crew bots get it through this class.
  */
-public abstract class NBot extends Window implements Runnable {
+public abstract class NBot extends Window implements Runnable, Stoppable {
     protected final GameUI gui;
     protected final BotNav nav;
     protected final BotCtx ctx;
