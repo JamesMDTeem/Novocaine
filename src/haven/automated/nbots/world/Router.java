@@ -931,6 +931,58 @@ public class Router {
             return ((byte[]) o)[(in.y * MCache.cmaps.x) + in.x];
         }
 
+        /* The record-level questions below are the seam's grid adapter answering for what the
+         * RECORD says, not for what the planner decided. The planner's passable() folds gates,
+         * strict unseen, water dilation and refusals into its answer; the mover (BotNav) asks
+         * different questions - can a disc BE here, can a hop CROSS here - and its answers must
+         * not inherit planner decisions. These keep exactly the record's own semantics, so a
+         * site that moves onto the seam answers the same way it did when it read Observed and
+         * Terrain directly. */
+
+        /**
+         * Whether the record says a body stands here: SOLID, WALL or TIGHT.
+         *
+         * TIGHT included on purpose - every caller of this is asking "can we be here", and a tile
+         * with no standable middle answers no. This is exactly what {@link Observed#solid} counts.
+         * Gateway tiles are never solid.
+         */
+        public boolean recordSolid(Coord t) {
+            byte s = state(t);
+            return (s == Observed.SOLID) || (s == Observed.WALL) || (s == Observed.TIGHT);
+        }
+
+        /**
+         * Whether the record says a hop cannot cross here: SOLID or WALL, but not TIGHT.
+         *
+         * The crossing question, and it deliberately excludes TIGHT - a tight tile cannot hold a
+         * body but a line can cross it. This is the test {@link BotNav#clearSpan} blocks on.
+         */
+        public boolean recordBlocking(Coord t) {
+            byte s = state(t);
+            return (s == Observed.SOLID) || (s == Observed.WALL);
+        }
+
+        /** Whether the record says a wall stands here. */
+        public boolean recordWall(Coord t) {
+            return state(t) == Observed.WALL;
+        }
+
+        /** Whether the record says a gateway stands here. */
+        public boolean recordGate(Coord t) {
+            return state(t) == Observed.GATE;
+        }
+
+        /**
+         * Whether the map file marks this tile uncrossable water: deep, blocked, or shallow when
+         * the mover is avoiding water. This is the terrain half of {@link BotNav#clearSpan}'s
+         * block test.
+         */
+        public boolean waterBlocks(Coord t) {
+            int w = wet(t);
+            return (w == Terrain.DEEP) || (w == Terrain.BLOCKED)
+                || ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER);
+        }
+
         /**
          * Why a tile is impassable, in a word, or null when it is not.
          *

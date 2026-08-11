@@ -902,9 +902,10 @@ public class BotNav {
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
         if (here == null)
             return;
+        Router.World w = new Router.World(gui, here.seg, false, true);
         Coord2d off = here.sc.sub(from);
         Coord tile = dest.add(off).floor(MCache.tilesz);
-        if (Observed.solid(here.seg, tile) || Observed.gate(here.seg, tile))
+        if (w.recordSolid(tile) || w.recordGate(tile))
             return;   // the refusal is already explained; nothing to learn
         if (!Router.walkable(gui, here.seg, here.sc.floor(MCache.tilesz), tile))
             return;   // our record objects to the line too, so the client is not telling us anything
@@ -919,7 +920,7 @@ public class BotNav {
         int steps = Math.max(1, (int) Math.ceil((segFrom.dist(segTo) / MCache.tilesz.x) * 2));
         for (int i = 0; i <= steps; i++) {
             Coord2d at = segFrom.add(segTo.sub(segFrom).mul((double) i / steps));
-            if (Observed.gate(here.seg, at.floor(MCache.tilesz)))
+            if (w.recordGate(at.floor(MCache.tilesz)))
                 return;
         }
         Refused.note(here.seg, tile);
@@ -965,7 +966,8 @@ public class BotNav {
          * those, and from the outside it looks exactly like the bot trying to walk through the wall
          * before finding the gate. See shutGateTiles for why this is a tile test and not a box one. */
         Set<Coord> shutGates = shutGateTiles(gui, here);
-        if (!blockedThere(gobs, shutGates, here, from, aim))
+        Router.World w = (here == null) ? null : new Router.World(gui, here.seg, false, true);
+        if (!blockedThere(w, gobs, shutGates, here, from, aim))
             return aim;
         Coord2d back = from.sub(aim);
         double len = back.abs();
@@ -974,7 +976,7 @@ public class BotNav {
         back = back.div(len);
         for (double d = CLEAR_STEP; (d <= CLEAR_MAX) && (d < len); d += CLEAR_STEP) {
             Coord2d t = aim.add(back.mul(d));
-            if (!blockedThere(gobs, shutGates, here, from, t))
+            if (!blockedThere(w, gobs, shutGates, here, from, t))
                 return t;
         }
         /* Rings outward from the aim, nearest first, so the answer is the least the aim can be moved
@@ -985,7 +987,7 @@ public class BotNav {
             for (int s = -1; s <= 1; s += 2) {
                 for (double along = 0; along <= d; along += CLEAR_STEP) {
                     Coord2d t = aim.add(side.mul(d * s)).add(back.mul(along));
-                    if (!blockedThere(gobs, shutGates, here, from, t))
+                    if (!blockedThere(w, gobs, shutGates, here, from, t))
                         return t;
                 }
             }
@@ -1010,20 +1012,24 @@ public class BotNav {
      * cannot place us, leaving only the live test - the old behaviour, and the right fallback,
      * since a remembered tile we cannot locate is worse than no answer at all.
      *
-     * {@link Observed#solid} counts walls but deliberately not gateways, so this keeps the
+     * The record half is asked of the grid adapter ({@code w}) rather than read directly, which
+     * is what keeps the mover and the planner on the same record engine. {@code w} is null
+     * exactly when {@code here} is, so the fallback above still holds.
+     *
+     * The record counts walls but deliberately not gateways, so this keeps the
      * open-gate exception {@link #solids} makes rather than fighting it - except for the gateways
      * in {@code shutGates}, which are exceptions to that exception. See {@link #shutGateTiles}.
      */
-    private static boolean blockedThere(List<Gob> gobs, Set<Coord> shutGates, WorldAnchor here,
-                                        Coord2d from, Coord2d wc) {
+    private static boolean blockedThere(Router.World w, List<Gob> gobs, Set<Coord> shutGates,
+                                        WorldAnchor here, Coord2d from, Coord2d wc) {
         if (inside(gobs, wc))
             return true;
-        if (here == null)
+        if ((here == null) || (w == null))
             return false;
         Coord tile = wc.add(here.sc.sub(from)).floor(MCache.tilesz);
         if (shutGates.contains(tile))
             return true;
-        return Observed.solid(here.seg, tile);
+        return w.recordSolid(tile);
     }
 
     /**
@@ -1581,7 +1587,8 @@ public class BotNav {
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
         if (here == null)
             return true;   // cannot tell, so do not invent a failure
-        return !wallBetween(here.seg, here.sc, dest.add(here.sc.sub(me.rc)));
+        Router.World w = new Router.World(gui, here.seg, false, true);
+        return !wallBetween(w, here.sc, dest.add(here.sc.sub(me.rc)));
     }
 
     /**
@@ -1654,8 +1661,9 @@ public class BotNav {
             return false;   // cannot tell, so do not invent a detour
         Coord2d off = here.sc.sub(me.rc);
         Coord2d next = legs.get(i + 1).add(off);
-        return crossesWall(here.seg, here.sc, next)
-            && !crossesWall(here.seg, legs.get(i).add(off), next);
+        Router.World w = new Router.World(gui, here.seg, false, true);
+        return crossesWall(w, here.sc, next)
+            && !crossesWall(w, legs.get(i).add(off), next);
     }
 
     /**
@@ -1675,6 +1683,7 @@ public class BotNav {
         Gob me = player();
         if ((here == null) || (me == null))
             return span;   // cannot tell, so do not invent an obstacle
+        Router.World w = new Router.World(gui, here.seg, false, true);
         Coord2d off = here.sc.sub(me.rc);
         int steps = Math.max(1, (int) Math.ceil((span / MCache.tilesz.x) * 2));
         /* WHERE the gateway is on this line, not merely whether there is one. */
@@ -1682,7 +1691,7 @@ public class BotNav {
         for (int i = 0; i <= steps; i++) {
             double d = (span * i) / steps;
             Coord t = from.add(dir.mul(d)).add(off).floor(MCache.tilesz);
-            if (Observed.gate(here.seg, t)) {
+            if (w.recordGate(t)) {
                 if (gateFrom < 0)
                     gateFrom = d;
                 gateTo = d;
@@ -1694,20 +1703,9 @@ public class BotNav {
             double d = (span * i) / steps;
             Coord2d p = from.add(dir.mul(d));
             Coord tile = p.add(off).floor(MCache.tilesz);
-            byte obs = Observed.at(here.seg, tile);
-            // Check ALL impassable types, not just WALL
-            boolean isBlocking = (obs == Observed.WALL) || (obs == Observed.SOLID);
-            // Check water via Terrain - look up the tile's water class from the map file
-            Coord gc = Terrain.floorDiv(tile, MCache.cmaps);
-            Coord in = tile.sub(gc.mul(MCache.cmaps));
-            byte[] classes = Terrain.classes(gui, here.seg, gc);
-            if (classes != null) {
-                byte w = classes[(in.y * MCache.cmaps.x) + in.x];
-                // BLOCKED (rock/cave/nil) belongs with DEEP, not with the optional water: a hop that
-                // aims across a rock face is refused on arrival whatever the water setting says.
-                if (w == Terrain.DEEP || w == Terrain.BLOCKED || (w == Terrain.SHALLOW && Map.BLOCK_WATER))
-                    isBlocking = true;
-            }
+            // Check ALL impassable types, not just WALL - via the grid adapter, which answers from
+            // the same record and map file the planner reads.
+            boolean isBlocking = w.recordBlocking(tile) || w.waterBlocks(tile);
             if (!isBlocking)
                 continue;
             // Gateway post forgiveness - ONLY for actual gateway tiles ± 1 tile
@@ -1723,8 +1721,8 @@ public class BotNav {
     }
 
     /** Whether the straight line between two points in segment coordinates meets a wall tile. */
-    private static boolean crossesWall(long seg, Coord2d from, Coord2d to) {
-        return wallOn(seg, from, to, true);
+    private static boolean crossesWall(Router.World w, Coord2d from, Coord2d to) {
+        return wallOn(w, from, to, true);
     }
 
     /**
@@ -1735,15 +1733,15 @@ public class BotNav {
      * wrong however it got there; {@link #arrived} wants the second, because being up against a
      * palisade is where a lot of perfectly good destinations are.
      */
-    private static boolean wallBetween(long seg, Coord2d from, Coord2d to) {
-        return wallOn(seg, from, to, false);
+    private static boolean wallBetween(Router.World w, Coord2d from, Coord2d to) {
+        return wallOn(w, from, to, false);
     }
 
-    private static boolean wallOn(long seg, Coord2d from, Coord2d to, boolean ends) {
+    private static boolean wallOn(Router.World w, Coord2d from, Coord2d to, boolean ends) {
         int steps = Math.max(1, (int) Math.ceil((from.dist(to) / MCache.tilesz.x) * 2));
         for (int i = (ends ? 0 : 1); i <= (ends ? steps : (steps - 1)); i++) {
             Coord t = from.add(to.sub(from).mul((double) i / steps)).floor(MCache.tilesz);
-            if (Observed.at(seg, t) == Observed.WALL)
+            if (w.recordWall(t))
                 return true;
         }
         return false;
@@ -1908,10 +1906,11 @@ public class BotNav {
          * same question {@link #driftedIntoWall} asks one layer up, and needs no guess about which
          * waypoints are special. Verified on the logged case: keeping it, leg one crosses nothing and
          * leg two runs down the gap through both gate rows clean. */
+        Router.World w = new Router.World(gui, here.seg, false, true);
         while (!out.isEmpty() && (out.get(0).dist(me.rc) <= LEG_SLACK)) {
             Coord2d onward = (out.size() >= 2) ? out.get(1).sub(origin) : there.sc;
-            if (crossesWall(here.seg, here.sc, onward)
-                    && !crossesWall(here.seg, out.get(0).sub(origin), onward))
+            if (crossesWall(w, here.sc, onward)
+                    && !crossesWall(w, out.get(0).sub(origin), onward))
                 break;
             out.remove(0);
         }

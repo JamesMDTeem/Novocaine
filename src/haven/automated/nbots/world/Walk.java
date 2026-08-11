@@ -119,10 +119,10 @@ public class Walk {
     /**
      * Whether a straight line is safe to hand to the server.
      *
-     * Sampled every half tile against the same records the router plans on, so a line this approves
-     * is a line the router would have drawn: {@link Terrain} for ground and deep water, {@link
-     * Observed} for walls we have learned, {@link Hazards} for anything that would eat us, and the
-     * live collision boxes for whatever is standing in the way right now.
+     * Sampled every half tile against the same records the router plans on, asked through the grid
+     * adapter: {@link Router.World} for learned walls and gateways (the record half), {@link Terrain}
+     * for ground and deep water, {@link Hazards} for anything that would eat us, and the live
+     * collision boxes for whatever is standing in the way right now.
      *
      * The learned wall was missing from that list for a long time while this comment claimed it was
      * there. It matters more than any of the others, because it is the only one of them that can say
@@ -143,6 +143,7 @@ public class Walk {
             return false;
         // The player stands in both coordinate spaces at once, so one subtraction converts the rest.
         Coord2d off = here.sc.sub(me.rc);
+        Router.World w = new Router.World(gui, here.seg, false, true);
         int steps = Math.max(1, (int) Math.ceil(len / SAMPLE));
         /* A gateway anywhere on the line means this is a gate manoeuvre, and a gate manoeuvre is
          * ALLOWED to pass close to the wall its gateway stands in - squaring up and stepping through
@@ -152,7 +153,7 @@ public class Walk {
         boolean throughGateway = false;
         for (int i = 0; i <= steps; i++) {
             Coord2d p = from.add(to.sub(from).mul((double) i / steps));
-            if (Observed.gate(here.seg, p.add(off).floor(MCache.tilesz))) {
+            if (w.recordGate(p.add(off).floor(MCache.tilesz))) {
                 throughGateway = true;
                 break;
             }
@@ -176,7 +177,7 @@ public class Walk {
              * line are allowed to be against something, or nothing could ever walk up to a wall or
              * step away from one. */
             if ((i > 0) && (i < steps) && !throughGateway
-                    && (Observed.at(here.seg, tile) == Observed.WALL))
+                    && w.recordWall(tile))
                 return false;
             if (Hazards.within(gui, p, Hazards.PATH_CLEARANCE) != null)
                 return false;
