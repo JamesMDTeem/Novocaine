@@ -595,7 +595,11 @@ public class AutoLpBot extends Window implements Runnable {
                 NLog.log(LOG, "no flower menu for " + task + " (repeated) - retiring");
                 retire(task);
             } else {
-                NLog.log(LOG, "no flower menu for " + task + " - will retry");
+                // Honest about what happens next: nothing in-place - the plan rebuild re-offers
+                // the target (the counter above decides when to stop retrying it).
+                NLog.log(LOG, "no flower menu for " + task + " (attempt " + menuFails.getOrDefault(
+                    task.isItem() ? "i" + System.identityHashCode(task.item) : "g" + task.gob.id, 0)
+                    + " of " + MENU_FAIL_LIMIT + ") - leaving it for the next plan");
             }
             return false;
         }
@@ -1491,7 +1495,12 @@ public class AutoLpBot extends Window implements Runnable {
 
     private List<String> undiscoveredOf(Gob gob) {
         try {
-            return LpExplorer.allUndiscoveredProducts(gob);
+            // The LOG view, not the gob's live availability bits: a pick clears the seed/leaf bit
+            // the moment it lands, while the item-parented LpLog entry lands a beat later. Reading
+            // the bits would report "discovered something" before the record exists, letting the
+            // planner slip in one redundant walk (and, if the item never registers at all, treat a
+            // real gap as closed). See LpExplorer.logUndiscoveredProducts.
+            return LpExplorer.logUndiscoveredProducts(gob);
         } catch (Loading l) {
             return Collections.emptyList();
         }

@@ -211,6 +211,34 @@ public class LpExplorer {
         return products.isEmpty() ? null : products.get(0);
     }
 
+    /**
+     * The products the character's LOG still lacks for this gob's resource, ignoring the gob's
+     * live availability bits.
+     *
+     * <p>This is the discovery half of {@link #allUndiscoveredProducts(Gob)} and deliberately
+     * drops the gob-side gates (maturity, seed/leaf bits): those change the moment a pick lands,
+     * while the item-parented {@code LpLog} entry lands a beat later. A before/after comparison
+     * keyed off the bit view can therefore report "discovered something" for a discovery that has
+     * not actually been recorded yet (one redundant walk; only harmful if the item never registers
+     * at all). Keyed off the log view, the same comparison waits until the record has actually
+     * landed - which is exactly what the LP executor's progress check needs.
+     */
+    public static List<String> logUndiscoveredProducts(Gob gob) {
+        String name = resname(gob);
+        if (name == null)
+            return Collections.emptyList();
+        String gobResName = HarvestState.normalizeBumlingRes(name);
+        if (isFullyDiscovered(gobResName))
+            return Collections.emptyList();
+
+        List<String> products = undiscoveredProductsMatching(gobResName, product -> true);
+        if (HarvestSpecs.TREE.matches(gobResName) && hasUndiscoveredBarkProduct(gobResName)) {
+            products = new ArrayList<>(products);
+            products.add(HarvestState.getBarkProductName(gobResName));
+        }
+        return products;
+    }
+
     // Every currently-undiscovered product this gob tracks, not just the first - lets markers
     // show every still-undiscovered icon at once instead of just one at a time, matching how the
     // always-on overlay stacks leaf/seed/bough/bark simultaneously.
