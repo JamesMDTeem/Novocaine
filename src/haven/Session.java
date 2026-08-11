@@ -151,6 +151,10 @@ public class Session implements Resource.Resolver {
 	    public Resource get() {
 		if(res == null) {
 		    synchronized(CachedRes.this) {
+			/* Double-checked locking; the load runs inside the lock on
+			 * purpose. Concurrent getters on the same Res should be rare
+			 * enough that a convoy here beats two loads of the same
+			 * resource. */
 			if(res == null) {
 			    if(resnm == null)
 				throw(new LoadingIndir(CachedRes.this));

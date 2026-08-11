@@ -47,7 +47,7 @@ public class ProductListHarvestSpec implements HarvestSpec {
         // Bumlings' actual resource carries a variant-digit suffix LpSpec.object doesn't key by
         // (see normalizeBumlingRes) - a no-op for logs, which have no such suffix.
         String gobResName = HarvestState.normalizeBumlingRes(d.getres().name);
-        List<String> products = LpSpec.object.get(gobResName);
+        List<String> products = LpSpec.getObject(gobResName);
         if (products == null)
             // A resource this spec matches (a log or a stone) but with no LpSpec.object entry at
             // all - almost always a species new to the game we haven't added data for yet. Flag

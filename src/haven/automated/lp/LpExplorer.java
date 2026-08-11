@@ -49,7 +49,7 @@ public class LpExplorer {
         boolean isYesteryearVariant = product.startsWith(HarvestState.YESTERYEAR_PREFIX);
         String base = isYesteryearVariant ? product.substring(HarvestState.YESTERYEAR_PREFIX.length()) : product;
         String sibling = isYesteryearVariant ? base : (HarvestState.YESTERYEAR_PREFIX + base);
-        List<String> products = LpSpec.object.get(gobResName);
+        List<String> products = LpSpec.getObject(gobResName);
         if (products == null || !products.contains(sibling))
             return true;
         return isYesteryearVariant == HarvestState.isYesteryearSeason();
@@ -128,7 +128,7 @@ public class LpExplorer {
         LpLog info = charLog();
         if (info == null)
             return false;
-        List<String> products = LpSpec.object.get(gobResName);
+        List<String> products = LpSpec.getObject(gobResName);
         if (products != null) {
             for (String product : products) {
                 if (isCurrentSeasonProduct(gobResName, product) && !discovered(info, gobResName, product))
@@ -168,7 +168,7 @@ public class LpExplorer {
         if (!HarvestState.isTreeOrBushRes(gobResName))
             return null;  // already a log/oldtrunk/stump - nothing further to fell it into
         String log = gobResName + "log";
-        return LpSpec.object.containsKey(log) ? log : null;
+        return LpSpec.hasObject(log) ? log : null;
     }
 
     /**
@@ -273,7 +273,7 @@ public class LpExplorer {
         if (name == null || !LpConfig.on(LpConfig.Key.treeHarvestWood))
             return base;
         String derived = derivedResource(name);
-        List<String> products = (derived != null) ? LpSpec.object.get(derived) : null;
+        List<String> products = (derived != null) ? LpSpec.getObject(derived) : null;
         if (products == null)
             return base;
         List<String> result = null;
@@ -310,7 +310,7 @@ public class LpExplorer {
     // represents. Classified in one pass over the product list (used by TreeHarvestSpec/
     // BushHarvestSpec) rather than one independent rescan per category.
     public static UndiscoveredCategories undiscoveredCategories(String gobResName) {
-        if (gobResName == null || !LpSpec.object.containsKey(gobResName))
+        if (gobResName == null || !LpSpec.hasObject(gobResName))
             return NONE_UNDISCOVERED;
         if (isFullyDiscovered(gobResName))
             return NONE_UNDISCOVERED;
@@ -319,7 +319,7 @@ public class LpExplorer {
             return NONE_UNDISCOVERED;
 
         boolean seed = false, leaf = false, bough = false;
-        for (String product : LpSpec.object.get(gobResName)) {
+        for (String product : LpSpec.getObject(gobResName)) {
             if (!isCurrentSeasonProduct(gobResName, product) || discovered(info, gobResName, product))
                 continue;
             if (isLeafProduct(product)) leaf = true;
@@ -380,14 +380,14 @@ public class LpExplorer {
     }
 
     private static List<String> undiscoveredProductsMatching(String gobResName, Predicate<String> category) {
-        if (gobResName == null || !LpSpec.object.containsKey(gobResName))
+        if (gobResName == null || !LpSpec.hasObject(gobResName))
             return Collections.emptyList();
         LpLog info = charLog();
         if (info == null)
             return Collections.emptyList();
 
         List<String> result = new ArrayList<>();
-        for (String product : LpSpec.object.get(gobResName)) {
+        for (String product : LpSpec.getObject(gobResName)) {
             if (!category.test(product) || !isCurrentSeasonProduct(gobResName, product))
                 continue;
             if (!discovered(info, gobResName, product))
@@ -492,7 +492,7 @@ public class LpExplorer {
                 // bark) icon. A derived wood product - a felled log's Board/Block shown as a hint on
                 // the standing tree - isn't in the tree's own list, so it must fall through to the
                 // by-name lookup below rather than be mis-drawn as the tree's seed icon.
-                List<String> own = LpSpec.object.get(res.name);
+                List<String> own = LpSpec.getObject(res.name);
                 boolean tracksThis = (own != null && own.contains(product))
                     || product.equals(HarvestState.getBarkProductName(res.name));
                 if (tracksThis) {
@@ -524,7 +524,7 @@ public class LpExplorer {
     private static synchronized Map<String, String> productToResource() {
         if (productToResource == null) {
             Map<String, String> index = new HashMap<>();
-            for (Map.Entry<String, ArrayList<String>> e : LpSpec.object.entrySet()) {
+            for (Map.Entry<String, ArrayList<String>> e : LpSpec.objectEntries()) {
                 for (String product : e.getValue()) {
                     index.putIfAbsent(product, e.getKey());
                 }
@@ -558,7 +558,7 @@ public class LpExplorer {
     static synchronized String canonical(String name) {
         if (productAlias == null) {
             Map<String, String> alias = new HashMap<>();
-            for (ArrayList<String> products : LpSpec.object.values()) {
+            for (ArrayList<String> products : LpSpec.objectValues()) {
                 for (String product : products)
                     alias.put(product, product);
             }
@@ -608,7 +608,7 @@ public class LpExplorer {
             Map<String, String> byIcon = new HashMap<>();
             Set<String> ambiguous = new HashSet<>();
             Map<String, String> toRes = productToResource();
-            for (Map.Entry<String, String> e : LpSpec.productIcon.entrySet()) {
+            for (Map.Entry<String, String> e : LpSpec.iconEntries()) {
                 String product = e.getKey();
                 // Only products that are actually discoverable from some gob; the icon table is
                 // much broader than the harvest data and the rest would only add collisions.

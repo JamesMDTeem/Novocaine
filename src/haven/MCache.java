@@ -381,7 +381,25 @@ public class MCache implements MapSource {
 		synchronized(this) {
 		    Defer.Future<T> prev = this.def;
 		    this.def = Defer.later(new Defer.Callable<T>() {
-			    public T call() {return(build());}
+			    public T call() {
+				/* Cooperative with dispose(): don't start a build the
+				 * grid no longer wants, and dispose a value that
+				 * landed after dispose() ran so it can't leak a GPU
+				 * resource nobody will ever read. */
+				synchronized(Deferred.this) {
+				    if(disposed)
+					return(null);
+				}
+				T built = build();
+				synchronized(Deferred.this) {
+				    if(disposed) {
+					if(built instanceof Disposable)
+					    ((Disposable)built).dispose();
+					return(null);
+				    }
+				}
+				return(built);
+			    }
 			    public String toString() {return(message());}
 			});
 		    if(prev != null)

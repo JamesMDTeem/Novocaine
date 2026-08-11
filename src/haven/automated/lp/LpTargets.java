@@ -87,7 +87,7 @@ public class LpTargets {
     private static void put(String res, String... products) {
         ArrayList<String> list = new ArrayList<>(products.length);
         Collections.addAll(list, products);
-        LpSpec.object.put(res, list);
+        LpSpec.putObject(res, list);
     }
 
     private static void forage(String slug, String... products) {
@@ -310,7 +310,7 @@ public class LpTargets {
         // Count declarations across the WHOLE table, not just the rows added here, so a name shared
         // with something already in LpSpec (or added upstream later) is caught too.
         Map<String, Integer> counts = new HashMap<>();
-        for (ArrayList<String> products : LpSpec.object.values()) {
+        for (ArrayList<String> products : LpSpec.objectValues()) {
             for (String product : products)
                 counts.merge(product, 1, Integer::sum);
         }

@@ -172,8 +172,13 @@ public class Pathfinder implements Runnable {
         Gob player = mv.player();
 
         long start = System.nanoTime();
+        List<Gob> gobs;
         synchronized (oc) {
-            for (Gob gob : oc) {
+            gobs = new ArrayList<Gob>();
+            for (Gob gob : oc)
+                gobs.add(gob);
+        }
+        for (Gob gob : gobs) {
                 if (gob.isPlgob(this.mv.ui.gui))
                     continue;
                 if (this.gob != null && this.gob.id == gob.id)
@@ -199,7 +204,6 @@ public class Pathfinder implements Runnable {
                     }
                 }
                 m.analyzeGobHitBoxes(gob);
-            }
         }
 
         if (m.isOriginBlocked()) {

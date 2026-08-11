@@ -285,7 +285,7 @@ public class HarvestState {
      * rather than a separately hand-maintained species list that could drift out of sync with it.
      */
     public static boolean isYesteryearCapable(String gobResName) {
-        List<String> products = LpSpec.object.get(gobResName);
+        List<String> products = LpSpec.getObject(gobResName);
         if (products == null) return false;
         for (String product : products) {
             if (product.startsWith(YESTERYEAR_PREFIX)) return true;

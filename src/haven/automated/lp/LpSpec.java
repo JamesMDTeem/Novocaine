@@ -17,9 +17,9 @@ import java.util.List;
  * auto-LP bot chases everything in it.
  */
 public class LpSpec {
-    public static final HashMap<String, ArrayList<String>> object = new HashMap<>();
-    public static final HashMap<String, String> productIcon = new HashMap<>();
-    public static final HashMap<String, ArrayList<String>> category = new HashMap<>();
+    private static final HashMap<String, ArrayList<String>> object = new HashMap<>();
+    private static final HashMap<String, String> productIcon = new HashMap<>();
+    private static final HashMap<String, ArrayList<String>> category = new HashMap<>();
 
     private static void initObject1() {
             ArrayList<String> acaciaOp = new ArrayList<>();
@@ -2089,5 +2089,38 @@ public class LpSpec {
     public static List<String> getCategoryContent(String name) {
         ArrayList<String> r = category.get(name);
         return r == null ? new ArrayList<>() : r;
+    }
+
+    /**
+     * LP-discoverable product item names for a world resource, or {@code null} if the resource is
+     * not a known LP target. Read-only view - never mutate the returned list.
+     */
+    public static List<String> getObject(String res) {
+        return res == null ? null : object.get(res);
+    }
+
+    /** Whether a world resource is a known LP target (has any discoverable products). */
+    public static boolean hasObject(String res) {
+        return res != null && object.containsKey(res);
+    }
+
+    /** Iterate all (world resource -> product items) entries. For internal scans; not a hot path. */
+    public static Iterable<java.util.Map.Entry<String, ArrayList<String>>> objectEntries() {
+        return object.entrySet();
+    }
+
+    /** Iterate all product-item lists across every resource. For internal scans; not a hot path. */
+    public static Iterable<ArrayList<String>> objectValues() {
+        return object.values();
+    }
+
+    /** Iterate all (product item -> icon path) entries. For internal scans; not a hot path. */
+    public static Iterable<java.util.Map.Entry<String, String>> iconEntries() {
+        return productIcon.entrySet();
+    }
+
+    /** The single write path into {@code object}: LpTargets installs the non-plant targets here. */
+    static void putObject(String res, ArrayList<String> products) {
+        object.put(res, products);
     }
 }

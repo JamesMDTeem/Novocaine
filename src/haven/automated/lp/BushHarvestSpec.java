@@ -36,7 +36,7 @@ public class BushHarvestSpec implements HarvestSpec {
             return Collections.emptyList();
 
         Resource res = d.getres();
-        if (!LpSpec.object.containsKey(res.name))
+        if (!LpSpec.hasObject(res.name))
             // A species we have no data for at all - see TreeHarvestSpec's identical check for
             // why this is judged at the species level, not per-category below.
             return Collections.singletonList(new Part("unknown", HarvestState.unknownIcon(), true));

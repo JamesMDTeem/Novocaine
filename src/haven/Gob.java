@@ -1308,7 +1308,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 				// species, which the specs flag with a "?"), logs, stones, herbs, kritters.
 				String lpNorm = haven.automated.lp.HarvestState.normalizeBumlingRes(res.name);
 				if (haven.automated.lp.HarvestSpecs.forResource(lpNorm) != null
-						|| haven.automated.lp.LpSpec.object.containsKey(lpNorm)) {
+						|| haven.automated.lp.LpSpec.hasObject(lpNorm)) {
 					lpDiscoveryInfo = new GobLpDiscoveryInfo(this);
 					setattr(GobLpDiscoveryInfo.class, lpDiscoveryInfo);
 				}

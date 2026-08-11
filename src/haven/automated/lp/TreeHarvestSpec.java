@@ -38,7 +38,7 @@ public class TreeHarvestSpec implements HarvestSpec {
             return Collections.emptyList();
 
         Resource res = d.getres();
-        if (!LpSpec.object.containsKey(res.name))
+        if (!LpSpec.hasObject(res.name))
             // A species we have no data for at all (e.g. one the game added after the data was
             // last regenerated) - flag it rather than silently showing nothing. Not every KNOWN
             // species tracks every category (most have no distinct leaf product, for instance),
@@ -86,7 +86,7 @@ public class TreeHarvestSpec implements HarvestSpec {
         // LpExplorer.derivedResource) - so resolve each undiscovered one by product name.
         if (wood) {
             String derived = LpExplorer.derivedResource(res.name);
-            List<String> derivedProducts = (derived != null) ? LpSpec.object.get(derived) : null;
+            List<String> derivedProducts = (derived != null) ? LpSpec.getObject(derived) : null;
             if (derivedProducts != null) {
                 for (String product : derivedProducts) {
                     if (LpExplorer.isProductUndiscovered(derived, product)) {
