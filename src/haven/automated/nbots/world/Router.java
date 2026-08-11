@@ -781,7 +781,7 @@ public class Router {
      * turns a few milliseconds of arithmetic into a second of lock traffic. Here each grid is
      * fetched once.
      */
-    public static final class World {
+    public static final class World implements haven.automated.pathfinder.World {
         private final GameUI gui;
         private final long seg;
         /** Refuse ground nobody has seen, rather than charging extra for it. */
@@ -797,6 +797,14 @@ public class Router {
          * way to operate, each then walked at the wall until its attempt budget ran out.
          */
         private final boolean opensGates;
+        /**
+         * The player's world position relative to the segment origin, captured once at
+         * construction. The {@link haven.automated.pathfinder.World} seam asks in world
+         * coordinates; the {@link Observed} record this grid reads is keyed by segment-relative
+         * tiles, so the adapter form of every question converts through this. Null when the
+         * position cannot be told (no gui/player/anchor) - the adapter answers refused then.
+         */
+        private final Coord2d off;
         private final Map<Coord, byte[]> obs = new HashMap<>();
         private final Map<Coord, Object> water = new HashMap<>();
         /** Snapshotted once per search - see {@link Refused#snapshot}. Usually empty. */
@@ -857,35 +865,37 @@ public class Router {
             this.seg = seg;
             this.strict = strict;
             this.opensGates = opensGates;
+            this.off = offsetOf(gui);
             this.refused = Refused.snapshot(seg);
-            this.gates = gateTiles(gui);
-            this.shutGates = gateTiles(gui, true);
+            this.gates = gateTiles(false);
+            this.shutGates = gateTiles(true);
+        }
+
+        /** The player's world position relative to the segment origin, or null when it cannot be told. */
+        private static Coord2d offsetOf(GameUI gui) {
+            if ((gui == null) || (gui.map == null))
+                return null;
+            Gob me = gui.map.player();
+            WorldAnchor here = WorldAnchor.capturePlayer(gui);
+            if ((me == null) || (here == null))
+                return null;
+            return here.sc.sub(me.rc);
         }
 
         /**
          * Every loaded gate gob's tile position, in the SEGMENT-relative tile space that
-         * {@link Observed} keys by - not raw world coordinates. Empty when no gui is available or
-         * the player is off the map, which leaves the observed data as the only source.
+         * {@link Observed} keys by - not raw world coordinates. Empty when no off is known, which
+         * leaves the observed data as the only source.
          *
          * A gob's {@code rc} is a world coordinate; the Observed record for the same tile is keyed
-         * by segment-tile. Without the {@code sc - me.rc} offset applied here, this set never
-         * intersects the tiles the router asks about and the gate-passable fallback in
-         * {@link #passable(Coord)} is dead code. See {@link Observed#observe} for the same idiom.
+         * by segment-tile. Without the {@code off} offset applied here, this set never intersects
+         * the tiles the router asks about and the gate-passable fallback in {@link #passable(Coord)}
+         * is dead code. See {@link Observed#observe} for the same idiom.
          */
-        private static Set<Coord> gateTiles(GameUI gui) {
-            return gateTiles(gui, false);
-        }
-
-        /** @param shutOnly only the gateways standing shut, which are the ones that cost something. */
-        private static Set<Coord> gateTiles(GameUI gui, boolean shutOnly) {
+        private Set<Coord> gateTiles(boolean shutOnly) {
             Set<Coord> out = new HashSet<>();
-            if ((gui == null) || (gui.map == null))
+            if (off == null)
                 return out;
-            Gob me = gui.map.player();
-            WorldAnchor here = WorldAnchor.capturePlayer(gui);
-            if ((me == null) || (here == null))
-                return out;
-            Coord2d off = here.sc.sub(me.rc);
             for (Gob g : GateManager.loaded(gui)) {
                 if (shutOnly && GateManager.isOpen(g))
                     continue;
@@ -1091,6 +1101,45 @@ public class Router {
             if (s == Observed.TIGHT)
                 return TIGHT_COST;
             return (s == Observed.UNSEEN) ? UNKNOWN : 1;
+        }
+
+        /**
+         * The {@link haven.automated.pathfinder.World} seam's world-coordinate form of the tile
+         * questions. The grid above answers in segment-relative tiles, which are world coordinates
+         * shifted by {@link #off}; every question converts before delegating. When no off could be
+         * captured (no player, no anchor) the world is unlocatable and everything is refused.
+         */
+
+        /** The seam's question: may a disc centred at {@code wc} STOP here. */
+        @Override
+        public boolean standable(Coord2d wc) {
+            if (off == null)
+                return false;
+            return standable(wc.add(off).floor(MCache.tilesz));
+        }
+
+        /** The seam's question: may a route CROSS here. */
+        @Override
+        public boolean passable(Coord2d wc) {
+            if (off == null)
+                return false;
+            return passable(wc.add(off).floor(MCache.tilesz));
+        }
+
+        /** The seam's question: routing cost through here. Never called on an impassable point. */
+        @Override
+        public int cost(Coord2d wc) {
+            if (off == null)
+                return Integer.MAX_VALUE / 2;
+            return cost(wc.add(off).floor(MCache.tilesz));
+        }
+
+        /** The seam's question: why this point was refused, or null when nothing objects. */
+        @Override
+        public String why(Coord2d wc) {
+            if (off == null)
+                return "no player position";
+            return why(wc.add(off).floor(MCache.tilesz));
         }
     }
 }

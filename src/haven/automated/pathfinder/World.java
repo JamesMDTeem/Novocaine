@@ -28,8 +28,10 @@ import haven.Coord2d;
  * shallow-when-avoided, cliff, keep-out) into a single implementation both adapters consult, so the
  * planner certifies only what the mover accepts.</p>
  *
- * <p>Draft of 2026-08-06 (architecture review card 2): interface only — no callers yet. Adapters are
- * wired in the execution phase, per {@code plans/architecture-deepening-plan-2.md} phase 1.</p>
+ * <p>Draft of 2026-08-06 (architecture review card 2): the interface now has both adapters —
+ * {@link Map} and {@code Router.World} declare it (wired 2026-08-11) — but still no callers. The
+ * rules unification and the constant collapse are the execution phase, per
+ * {@code plans/architecture-deepening-plan-2.md} phase 1.</p>
  */
 public interface World {
 

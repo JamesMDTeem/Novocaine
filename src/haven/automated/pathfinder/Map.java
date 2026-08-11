@@ -20,7 +20,7 @@ import java.util.*;
  * This class defines the grid representation, cell types, and geographic parameters
  * for A* route calculation. Field naming follows the original Havend conventions.
  */
-public class Map {
+public class Map implements World {
     public final static byte CELL_FREE = 0;
     public final static byte CELL_BLK = 1 << 1;
     public final static byte CELL_WP = 1 << 2;
@@ -219,6 +219,60 @@ public class Map {
     /** What is currently standing, so a diagnostic can say whether one of these was the objection. */
     public static Keepout[] keepouts() {
         return keepouts;
+    }
+
+    /**
+     * The {@link World} seam's live-window form of the questions. This class owns the window the
+     * character actually moves on, so it answers from the same predicates {@link #initGeography}
+     * rasters: the tile's own class (deep, rock/cave/void), water when {@link #BLOCK_WATER} is on,
+     * cliffs when {@link #BLOCK_CLIFFS}, and the current keep-out circles. Gob collision boxes are
+     * deliberately NOT part of the answer here: they are carved per-search by
+     * {@link #analyzeGobHitBoxes}, which is what makes this a live window rather than a snapshot.
+     */
+    private String blockReason(Coord2d wc) {
+        Coord tc = wc.floor(MCache.tilesz);
+        int t = mcache.gettile(tc);
+        Resource res = mcache.tilesetr(t);
+        if (res == null)
+            return null;
+        String name = res.name;
+        if (isDeep(name))
+            return "deep water";
+        if (isImpassableGround(name))
+            return "rock, cave or void";
+        if (isShallow(name)) {
+            if (BLOCK_WATER)
+                return "shallow water";
+        }
+        if (BLOCK_CLIFFS && cliffAt(tc))
+            return "cliff";
+        if (keepouts.length > 0 && inKeepout(keepouts, tc))
+            return "keep-out circle";
+        return null;
+    }
+
+    /** The seam's question: may a disc centred at {@code wc} STOP here. */
+    @Override
+    public boolean standable(Coord2d wc) {
+        return blockReason(wc) == null;
+    }
+
+    /** The seam's question: may a route CROSS here. */
+    @Override
+    public boolean passable(Coord2d wc) {
+        return blockReason(wc) == null;
+    }
+
+    /** The seam's question: routing cost through here. An impassable point is never costed. */
+    @Override
+    public int cost(Coord2d wc) {
+        return blockReason(wc) == null ? 1 : Integer.MAX_VALUE / 2;
+    }
+
+    /** The seam's question: why this point was refused, or null when nothing objects. */
+    @Override
+    public String why(Coord2d wc) {
+        return blockReason(wc);
     }
 
     public Map(Coord plc, Coord endc, MCache mcache) {
