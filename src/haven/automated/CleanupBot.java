@@ -145,7 +145,7 @@ public class CleanupBot extends Window implements Runnable {
                     }
                     else if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
                         try {
-                            AUtils.drinkTillFull(gui, 0.99, 0.99);
+                            AUtils.drinkTillFull(gui, 0.99);
                         } catch (InterruptedException e) {
                         }
                     } else {

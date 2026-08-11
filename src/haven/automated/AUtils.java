@@ -16,6 +16,7 @@ import haven.WItem;
 import haven.Widget;
 import haven.Composite;
 import haven.Window;
+import haven.automated.nbots.core.Carried;
 
 import java.awt.*;
 import java.util.*;
@@ -328,21 +329,47 @@ public class AUtils {
         return gobs;
     }
 
-    /** Sleep interval in milliseconds between drink attempts. */
-    private static final long DRINK_SLEEP_MS = 490L;
+    /** Maximum sips before a drink-to-full gives up. Drinking is a timed action and each sip is a
+     * fresh iact on a vessel; bounded because the alternative is a bot standing drinking forever
+     * over a vessel that will not deliver. */
+    private static final int DRINK_SIPS_MAX = 30;
 
-    /** Sleep interval in milliseconds for stamina check loop. */
-    private static final long STAMINA_CHECK_SLEEP_MS = 10L;
+    /** Polls (of 25ms) to see a sip register on the stamina meter before calling it a miss. */
+    private static final int DRINK_SIP_WAIT_TICKS = 40;
 
-    public static void drinkTillFull(GameUI gui, double threshold, double stoplevel) throws InterruptedException {
-        while (gui.drink(threshold)) {
-            Thread.sleep(DRINK_SLEEP_MS);
-            do {
-                Thread.sleep(STAMINA_CHECK_SLEEP_MS);
-                IMeter.Meter stam = gui.getmeter("stam", 0);
-                if (stam.a >= stoplevel)
+    /** Poll interval between sip-effect checks. */
+    private static final long DRINK_SIP_WAIT_MS = 25L;
+
+    /**
+     * Drinks until the stamina meter reads at least {@code stoplevel}.
+     *
+     * Used to go through {@code GameUI.drink}, the client's own drink, which looks for a flask in
+     * the open windows but checks only equipment slots 6 and 7 and only for a {@code bucket-water} -
+     * so a Waterflask WORN anywhere else is invisible to it, it returns false, and the caller read
+     * that as "no water" and quit over a full flask on their belt. It now sips through
+     * {@link Carried#drink(GameUI)}, which reads every equipment slot.
+     *
+     * One mechanism only: drinking is a timed action and a fresh iact on a vessel cancels the drink
+     * in progress, so {@code Carried.drink} and {@code GameUI.drink} must never both run.
+     */
+    public static void drinkTillFull(GameUI gui, double stoplevel) throws InterruptedException {
+        for (int sip = 0; sip < DRINK_SIPS_MAX; sip++) {
+            IMeter.Meter stam = gui.getmeter("stam", 0);
+            if ((stam == null) || (stam.a >= stoplevel))
+                return;
+            double was = stam.a;
+            if (!Carried.drink(gui))
+                return;
+            boolean moved = false;
+            for (int i = 0; i < DRINK_SIP_WAIT_TICKS; i++) {
+                Thread.sleep(DRINK_SIP_WAIT_MS);
+                if (gui.getmeter("stam", 0).a > was) {
+                    moved = true;
                     break;
-            } while (gui.prog != null && gui.prog.prog >= 0);
+                }
+            }
+            if (!moved)
+                return;
         }
     }
 

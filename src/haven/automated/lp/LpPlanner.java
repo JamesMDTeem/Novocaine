@@ -61,23 +61,32 @@ public class LpPlanner {
     private LpPlanner() {}
 
     /**
-     * Every LP-yielding action currently visible, felling last and nearest-first otherwise.
-     * `exhausted` holds LpTask.key() values already tried without result, so a target that
-     * turned out to yield nothing new isn't retried forever.
+     * What a plan() call decided, returned as a value rather than passed out through parameters.
      */
-    public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted)
-            throws InterruptedException {
-        return plan(gui, radius, exhausted, null);
+    public static class PlanResult {
+        /** The tasks to execute, felling last and nearest-first otherwise. */
+        public final List<LpTask> tasks;
+        /** How many targets were dropped for standing inside a wall we are not inside - so a caller
+         *  that ends up with an empty list can say WHY it is empty instead of just reporting
+         *  "finished". */
+        public final int walledOff;
+
+        PlanResult(List<LpTask> tasks, int walledOff) {
+            this.tasks = tasks;
+            this.walledOff = walledOff;
+        }
     }
 
     /**
-     * @param walledOff if non-null, {@code walledOff[0]} receives how many targets were dropped for
-     *                  standing inside a wall we are not inside - so a caller that ends up with an
-     *                  empty list can say WHY it is empty instead of just reporting "finished".
+     * Every LP-yielding action currently visible, felling last and nearest-first otherwise.
+     * `exhausted` holds LpTask.key() values already tried without result, so a target that
+     * turned out to yield nothing new isn't retried forever. It is read-only input: plan() only
+     * filters against it. Only the executor can add to it, at click time, when an option is
+     * actually tried and found spent - so the set is owned by the caller, not by the planner.
      */
-    public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted, int[] walledOff)
+    public static PlanResult plan(GameUI gui, double radius, Set<String> exhausted)
             throws InterruptedException {
-        return plan(gui, radius, exhausted, walledOff, null);
+        return plan(gui, radius, exhausted, null);
     }
 
     /**
@@ -89,14 +98,12 @@ public class LpPlanner {
      *                times and retired it - at the head of the list, so it cost the first three
      *                plans and about three seconds of every single run.
      */
-    public static List<LpTask> plan(GameUI gui, double radius, Set<String> exhausted, int[] walledOff,
-                                    Set<haven.GItem> ownGear)
+    public static PlanResult plan(GameUI gui, double radius, Set<String> exhausted,
+                                  Set<haven.GItem> ownGear)
             throws InterruptedException {
         List<LpTask> tasks = new ArrayList<>();
-        if (walledOff != null)
-            walledOff[0] = 0;
         if (!LpExplorer.isEnabled() || gui == null || gui.map == null || gui.map.player() == null)
-            return tasks;
+            return new PlanResult(tasks, 0);
 
         collectInventoryTasks(gui, tasks, ownGear);
         collectWorldTasks(gui, radius, tasks);
@@ -142,8 +149,6 @@ public class LpPlanner {
                 // in and let the executor's own check decide once it can be answered.
             }
         }
-        if (walledOff != null)
-            walledOff[0] = walled;
 
         haven.Coord2d me = gui.map.player().rc;
         tasks.sort((a, b) -> {
@@ -162,7 +167,7 @@ public class LpPlanner {
             return Double.compare(da, db);
         });
         rerankByWalk(gui, tasks);
-        return tasks;
+        return new PlanResult(tasks, walled);
     }
 
     /** How many of the nearest candidates get their real walking distance measured. */

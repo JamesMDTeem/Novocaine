@@ -237,8 +237,8 @@ public class AutoLpBot extends Window implements Runnable {
                 throw new InterruptedException();
             attempt = ++attempts;
 
-            int[] walledOff = new int[1];
-            List<LpTask> tasks = LpPlanner.plan(gui, radius, exhausted, walledOff, preexisting);
+            LpPlanner.PlanResult plan = LpPlanner.plan(gui, radius, exhausted, preexisting);
+            List<LpTask> tasks = plan.tasks;
             List<LpTask> ready = new java.util.ArrayList<>(tasks.size());
             for (LpTask t : tasks) {
                 if (!isDeferred(t))
@@ -246,19 +246,19 @@ public class AutoLpBot extends Window implements Runnable {
             }
             NLog.log(LOG, "plan #" + attempts + ": " + tasks.size() + " task(s), "
                 + ready.size() + " ready"
-                + ((walledOff[0] > 0) ? (", " + walledOff[0] + " walled off") : "")
+                + ((plan.walledOff > 0) ? (", " + plan.walledOff + " walled off") : "")
                 + (ready.isEmpty() ? "" : ", next=" + ready.get(0)));
             setStatus("Actions: " + done + ", targets left: " + tasks.size());
             if (tasks.isEmpty()) {
                 /* Say WHY there is nothing left. "Finished" and "everything that is left is behind
                  * a wall I cannot open" are completely different outcomes to the person reading the
                  * status, and they used to print the same. */
-                if (walledOff[0] > 0) {
-                    NLog.log(LOG, "=== nothing reachable left: " + walledOff[0]
+                if (plan.walledOff > 0) {
+                    NLog.log(LOG, "=== nothing reachable left: " + plan.walledOff
                         + " remaining target(s) are inside walls we are not inside ===");
                     gui.msg("Auto-LP finished: the only targets left are inside walls"
                         + " this bot cannot enter.", Color.YELLOW);
-                    setStatus("Done: " + walledOff[0] + " target(s) left, all walled off.");
+                    setStatus("Done: " + plan.walledOff + " target(s) left, all walled off.");
                 }
                 break;
             }

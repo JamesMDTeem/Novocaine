@@ -113,13 +113,13 @@ public abstract class NBot extends Window implements Runnable {
                         continue;
                     } catch (Throwable t) {
                         NLog.crash(getClass().getSimpleName() + " run", t);
-                        gui.error(title() + " hit an error (logged to logs/crash.log): " + t);
+                        reportError("hit an error (logged to logs/crash.log): " + t);
                     } finally {
                         endShift();
                     }
                     stopRunning();
                     if (fatalStop != null) {
-                        gui.error(title() + ": " + fatalStop);
+                        reportError(fatalStop);
                         setStatus("Stopped: " + fatalStop);
                         fatalStop = null;
                     }
@@ -212,8 +212,26 @@ public abstract class NBot extends Window implements Runnable {
         }
     }
 
+    /**
+     * A chat line for the player, dispatched onto the UI thread.
+     *
+     * Bots run on their own threads, and {@link GameUI#msg(String, Color)} is not safe off the
+     * UI thread: the handler it funnels into renders text (textures), appends to the chat log and
+     * plays sounds, all of which live on the render loop. Posting the call to the AWT event queue
+     * is what puts it back on that loop.
+     */
     protected void report(String msg) {
-        gui.msg(title() + ": " + msg, Color.WHITE);
+        String line = title() + ": " + msg;
+        java.awt.EventQueue.invokeLater(() -> gui.msg(line, Color.WHITE));
+    }
+
+    /**
+     * An error line for the player, dispatched onto the UI thread. Same reasoning as
+     * {@link #report}, and the same thread that paints it is the only one allowed to.
+     */
+    protected void reportError(String msg) {
+        String line = title() + ": " + msg;
+        java.awt.EventQueue.invokeLater(() -> gui.error(line));
     }
 
     /**

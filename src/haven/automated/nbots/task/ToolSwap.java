@@ -155,7 +155,8 @@ public class ToolSwap {
                 spare = gui.maininv.isRoom(1, 1);
             if (spare == null) {
                 NLog.log(log, "no room to put down both held items while equipping a " + kind.label);
-                gui.error("Free one inventory slot so the bot can swap to a " + kind.label + ".");
+                java.awt.EventQueue.invokeLater(
+                    () -> gui.error("Free one inventory slot so the bot can swap to a " + kind.label + "."));
                 return false;
             }
         }

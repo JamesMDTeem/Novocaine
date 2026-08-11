@@ -155,43 +155,41 @@ public class CoracleScript implements Runnable {
 
             if (coracle != null) { // ND: If I have any coracle in my inventory at all, do the following
                 try {
-                    // ND: Check for about 4 seconds if I'm on a water tile
+                    // ND: Wait until we're on a shallow-water or bog tile before dropping.
+                    // Decided by the TILESET NAME, not the Tiler class: the tiler caches are
+                    // never cleared when the world remaps tile ids, so a WaterTile tiler can be
+                    // stale, and a name that has not resolved yet means "not water yet" either
+                    // way. tileTypeName answers null for both "undefined" and "still loading",
+                    // which is exactly the keep-waiting signal this loop needs - never drop on a
+                    // tile whose water-ness we cannot confirm.
                     MCache mcache = gui.ui.sess.glob.map;
-                    Tiler tl = mcache.tiler(mcache.gettile(gui.map.player().rc.floor(MCache.tilesz)));
-                    int id = mcache.gettile(gui.map.player().rc.floor(MCache.tilesz));
                     int timeout = 0;
-                    Resource tileRes = mcache.tilesetr(id);
-                    while (tl != null && !(tl instanceof WaterTile || bogtype.contains(tileRes.name))) {
-                        tl = mcache.tiler(mcache.gettile(gui.map.player().rc.floor(MCache.tilesz)));
-                        timeout++;
-                        // ND: I copied this from Cediner. I wonder if this is less stressful for the CPU compared to just doing something like (System.currentTimeMillis() - start > 4000)
-                        if (tl instanceof WaterTile){
-                            int t = mcache.gettile(gui.map.player().rc.floor(MCache.tilesz));
-                            Resource res = mcache.tilesetr(t);
-                            if (res != null) {
-                                if (res.name.contains("deep")){
+                    boolean onWater = false;
+                    while (!onWater) {
+                        try {
+                            String name = mcache.tileTypeName(
+                                mcache.gettile(gui.map.player().rc.floor(MCache.tilesz)));
+                            if (name != null) {
+                                if (haven.automated.pathfinder.Map.isDeep(name)) {
                                     gui.error("Coracle Script: You can't drop a Coracle while swimming in Deep Water! You must be in Shallow Water!");
                                     return;
                                 }
+                                if (haven.automated.pathfinder.Map.isShallow(name) || bogtype.contains(name)) {
+                                    onWater = true;
+                                }
                             }
+                        } catch (Loading l) {
+                            // grid still loading; try again next poll
                         }
-                        if (timeout > 300) {
-                            gui.error("Coracle Script: Timed out waiting for Water Tile to drop Coracle on.");
-                            return;
-                        }
-                        try {
-                            Thread.sleep(10);
-                        } catch (InterruptedException e) {
-    //                        e.printStackTrace();
-                            return;
-                        }
-                    }
-                    if (tl != null && tl instanceof WaterTile){
-                        int t = mcache.gettile(gui.map.player().rc.floor(MCache.tilesz));
-                        Resource res = mcache.tilesetr(t);
-                        if (res != null) {
-                            if (res.name.contains("deep")){
-                                gui.error("Coracle Script: You can't drop a Coracle while swimming in Deep Water! You must be in Shallow Water!");
+                        if (!onWater) {
+                            timeout++;
+                            if (timeout > 300) {
+                                gui.error("Coracle Script: Timed out waiting for Water Tile to drop Coracle on.");
+                                return;
+                            }
+                            try {
+                                Thread.sleep(10);
+                            } catch (InterruptedException e) {
                                 return;
                             }
                         }

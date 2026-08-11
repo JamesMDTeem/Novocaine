@@ -89,8 +89,11 @@ public class MappingClient {
     public static void destroy() {
 	synchronized (MappingClient.class) {
 	    if(INSTANCE != null) {
-	        INSTANCE.gridsUploader.shutdown();
-	        INSTANCE.scheduler.shutdown();
+		// Discard the queues, don't drain them: at logout the session is over, so anything
+		// still queued is stale private data from a session that is being torn down. A
+		// shutdownNow drops queued tasks instead of running them to completion.
+	        INSTANCE.gridsUploader.shutdownNow();
+	        INSTANCE.scheduler.shutdownNow();
 		INSTANCE = null;
 	    }
 	}
@@ -143,6 +146,10 @@ public class MappingClient {
     private static final int BACKFILL_MAX_ATTEMPTS = 3;
     /** Backoff before retrying a throttled batch. */
     private static final long BACKFILL_THROTTLE_BACKOFF_MS = 5000L;
+    /** Consecutive Loading failures before a grid image upload gives up entirely. */
+    private static final int GRID_LOADING_MAX_RETRIES = 6;
+    /** Base backoff between Loading retries (doubles each attempt). */
+    private static final long GRID_LOADING_RETRY_BACKOFF_MS = 1000L;
 
     private volatile boolean backfillRunning = false;
     private volatile String backfillStatus = "idle";
@@ -964,6 +971,8 @@ public class MappingClient {
     private class GridUploadTask implements Runnable {
 	private final String gridID;
 	private final WeakReference<MCache.Grid> grid;
+	/** Consecutive Loading failures already retried for this grid. */
+	private int loadingRetries = 0;
 	
 	GridUploadTask(String gridID, WeakReference<MCache.Grid> grid) {
 	    this.gridID = gridID;
@@ -972,6 +981,11 @@ public class MappingClient {
 	
 	@Override
 	public void run() {
+	    // The opt-in is re-checked here, not just where the task was submitted: a grid queued
+	    // while uploads were on must not go out once the player switched them off. A task that
+	    // is repeatedly resubmitted (below) would otherwise keep uploading past a toggle-off.
+	    if(!OptWnd.uploadMapTilesCheckBox.a)
+		return;
 	    try {
 		MCache.Grid g = grid.get();
 		if(g != null && glob != null) {
@@ -1018,7 +1032,20 @@ public class MappingClient {
 		    }
 		}
 	    } catch (Loading ex) {
-		gridsUploader.submit(this);
+		// The grid is not renderable yet. The old behaviour was to resubmit this task to the
+		// single-threaded uploader immediately, with no cap and no pause: a grid that never
+		// becomes renderable (weak ref collected, grid dropped from the cache while walking
+		// on) re-enqueued itself in a tight loop forever, spinning the one thread that every
+		// other grid upload shares. Retry on the scheduler instead, with backoff, and give up
+		// after a handful of tries.
+		if(loadingRetries++ >= GRID_LOADING_MAX_RETRIES)
+		    return;
+		long delay = GRID_LOADING_RETRY_BACKOFF_MS * (1L << loadingRetries);
+		try {
+		    scheduler.schedule(this, delay, TimeUnit.MILLISECONDS);
+		} catch(RejectedExecutionException e) {
+		    // The mapper was torn down (logout) while this grid was retrying; drop it.
+		}
 	    }
 	    
 	}

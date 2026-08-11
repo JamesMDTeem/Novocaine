@@ -24,10 +24,8 @@ public class CellarDiggingBot extends Window implements Runnable {
     private static final double ENERGY_THRESHOLD = 0.25;
     /** Stamina fraction below which the bot stops to drink. */
     private static final double LOW_STAMINA_THRESHOLD = 0.40;
-    /** Drink target stamina fractions. */
+    /** Drink target stamina fraction. */
     private static final double DRINK_TARGET_STAM = 0.99;
-    /** Drink target HP fraction. */
-    private static final double DRINK_TARGET_HP = 0.99;
 
     private final GameUI gui;
     private boolean stop;
@@ -63,7 +61,7 @@ public class CellarDiggingBot extends Window implements Runnable {
                 if (!checkVitals()) { sleep(200); continue; }
                 if (active) {
                     if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
-                        try { AUtils.drinkTillFull(gui, DRINK_TARGET_HP, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
+                        try { AUtils.drinkTillFull(gui, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
                         sleep(200);
                         continue;
                     }
@@ -171,7 +169,7 @@ public class CellarDiggingBot extends Window implements Runnable {
         while (active && !stop && bumlingExists(bumling)) {
             if (!checkVitals()) break;
             if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
-                try { AUtils.drinkTillFull(gui, DRINK_TARGET_HP, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
+                try { AUtils.drinkTillFull(gui, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
             }
             if (isMiningOrRunning()) {
                 idleTicks = 0;

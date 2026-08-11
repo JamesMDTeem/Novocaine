@@ -284,7 +284,7 @@ public class NCleanupBot extends NBot {
             // one, so without it none can succeed and trying each in turn is a walk apiece for
             // nothing.
             missingTools.add(t.job.tool);
-            gui.error("Cleanup: no " + t.job.tool.label + " available - skipping those jobs.");
+            reportError("no " + t.job.tool.label + " available - skipping those jobs.");
             ctx.log("no " + t.job.tool.label + "; dropping all " + t.job + " targets");
             return Outcome.blocked("no " + t.job.tool.label);
         }
