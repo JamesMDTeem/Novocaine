@@ -2,6 +2,11 @@ require 1.0
 
 command-file Play.bat
 
+# The HL launcher reads command-file args for exports and properties but manages the
+# heap itself; without heap-size the child JVM falls back to the ergonomic 1/4-RAM
+# default (multi-GB on big machines), which reads like a RAM leak in LeakDbg logs.
+heap-size 4096
+
 class-path hafen.jar
 class-path builtin-res.jar
 class-path gluegen-rt.jar

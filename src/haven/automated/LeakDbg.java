@@ -1,8 +1,10 @@
 package haven.automated;
 
+import java.lang.management.ManagementFactory;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Deque;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -50,6 +52,8 @@ public class LeakDbg {
     private static final long WATCH_REARM_MS = 10_000L;
     private static final long WATCH_ARM_MS = 30_000L;
     private static final int WATCH_ARM_TEXTURES = 500;
+    private static final long CAP_TEXTURE_BYTES = 1L << 31;
+    private static final int CAP_CONSECUTIVE = 5;
     private static final int MAP_REFRESH_PERIOD = 1024;
 
     /* GLEnvironment.MemStats pool indices: INDICES, VERTICES, TEXTURES, VAOS, FBOS. */
@@ -65,6 +69,7 @@ public class LeakDbg {
     private static volatile long lastWatchAt = 0;
     private static volatile long firstNonzeroAt = -1;
     private static volatile boolean watchArmed = false;
+    private static volatile int capStreak = 0;
     private static volatile long prevSampleFrames;
     private static volatile double prevSampleTime = -1;
     private static long[] prevTransBytes;
@@ -197,6 +202,8 @@ public class LeakDbg {
     }
 
     private static void run() {
+        List<String> args = ManagementFactory.getRuntimeMXBean().getInputArguments();
+        NLog.log(LOG, "[LEAKDBG-jvmargs] " + String.join(" ", args));
         long next = System.currentTimeMillis();
         while (!Thread.currentThread().isInterrupted()) {
             try {
@@ -320,6 +327,27 @@ public class LeakDbg {
             NLog.log(LOG, "[LEAKDBG-hist] " + topTexHist(0));
             NLog.log(LOG, "[LEAKDBG-last] " + lastAllocs());
         }
+
+        if (texObjs >= 0 && texBytes() > CAP_TEXTURE_BYTES) {
+            capStreak++;
+        } else {
+            capStreak = 0;
+        }
+        if (capStreak >= CAP_CONSECUTIVE) {
+            capStreak = 0;
+            NLog.log(LOG, String.format(
+                "[LEAKDBG-CAP] textures %,dB exceeded %,dB for %d consecutive samples — dumping ring + histogram",
+                texBytes(), CAP_TEXTURE_BYTES, CAP_CONSECUTIVE));
+            dumpRing();
+            NLog.log(LOG, "[LEAKDBG-hist] " + topTexHist(0));
+            NLog.log(LOG, "[LEAKDBG-last] " + lastAllocs());
+            System.gc();
+        }
+    }
+
+    private static long texBytes() {
+        long[] last = lastMemBytes;
+        return (last == null) ? -1 : last[I_TEXTURES];
     }
 
     private static void appendMem(StringBuilder sb, long[] mb, int[] mo) {
