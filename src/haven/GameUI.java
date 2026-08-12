@@ -2468,6 +2468,32 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		    }
 		}
 	    });
+	cmdmap.put("probe", new Console.Command() {
+		public void run(Console cons, String[] args) {
+		    try {
+			haven.Gob me = map.player();
+			haven.Coord2d centre = (me == null) ? null : me.rc;
+			int arg = 1;
+			if ((args.length > arg + 1) && args[arg].matches("-?\\d+")
+				&& args[arg + 1].matches("-?\\d+")) {
+			    centre = new haven.Coord2d(
+				Double.parseDouble(args[arg]), Double.parseDouble(args[arg + 1]));
+			    arg += 2;
+			}
+			if (centre == null)
+			    return;
+			int radius = (args.length > arg) ? Integer.parseInt(args[arg]) : 16;
+			haven.automated.nbots.core.NLog.log("probe.log",
+			    "== probe around " + centre.toString() + " (radius " + radius + ") ==");
+			haven.automated.nbots.core.NLog.log("probe.log",
+			    haven.automated.nbots.world.Probe.map(GameUI.this, centre, radius));
+			haven.automated.nbots.core.NLog.log("probe.log",
+			    haven.automated.nbots.world.Probe.objectsNear(GameUI.this, centre, radius));
+		    } catch(RuntimeException e) {
+			e.printStackTrace(Debug.log);
+		    }
+		}
+	    });
     }
     public Map<String, Console.Command> findcmds() {
 	return(cmdmap);

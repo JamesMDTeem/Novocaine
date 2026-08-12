@@ -218,8 +218,18 @@ public class HearthTravel {
         if (!canTravel())
             return false;
         double walkingDist = haven.automated.nbots.world.Router.walkingDistance(gui, target, margin);
-        if (walkingDist < 0)
-            return false;
+        if (walkingDist < 0) {
+            /* The router cannot tell - the destination's grid is not in the live cache, or it is
+             * on another segment. Its own contract says callers fall back to the straight line,
+             * which is what it would have returned had the ground been flat and empty. This is
+             * not a corner case: a destination far enough to be worth a hearth is far enough that
+             * its grid has not been streamed in, so without the fallback the optional-travel
+             * decision would die exactly on the trips it exists for. */
+            haven.Gob me = (gui == null || gui.map == null) ? null : gui.map.player();
+            if (me == null)
+                return false;
+            walkingDist = me.rc.dist(target);
+        }
         WorldAnchor home = hearth(gui);
         if (home == null)
             return false;
