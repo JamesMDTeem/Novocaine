@@ -196,6 +196,34 @@ public class Map implements World {
             this.c = c;
             this.r = r;
         }
+
+        /** Strictly inside (the planner's question: a point on the rim is not inside). */
+        public static boolean insideStrict(Keepout k, Coord2d p) {
+            double dx = p.x - k.c.x, dy = p.y - k.c.y;
+            return (dx * dx) + (dy * dy) < k.r * k.r;
+        }
+
+        /** On or inside (the diagnostic's question: touching the rim counts). */
+        public static boolean insideOrOn(Keepout k, Coord2d p) {
+            double dx = p.x - k.c.x, dy = p.y - k.c.y;
+            return (dx * dx) + (dy * dy) <= k.r * k.r;
+        }
+
+        /**
+         * Whether the segment from {@code from} to {@code to} touches this circle.
+         *
+         * The nearest point on the segment to the circle's centre, clamped to lie between the two
+         * ends rather than out along the infinite line; touching or crossing the rim counts. The
+         * {@code dest.dist(c) <= r} endpoint test is the clamped projection at {@code t = 1}.
+         */
+        public static boolean segmentTouches(Keepout k, Coord2d from, Coord2d to) {
+            Coord2d span = to.sub(from);
+            double len2 = (span.x * span.x) + (span.y * span.y);
+            Coord2d rel = k.c.sub(from);
+            double t = (len2 < 1e-6) ? 0.0
+                : Math.max(0.0, Math.min(1.0, ((rel.x * span.x) + (rel.y * span.y)) / len2));
+            return from.add(span.mul(t)).dist(k.c) <= k.r;
+        }
     }
 
     private final static Keepout[] NO_KEEPOUTS = new Keepout[0];
@@ -408,13 +436,13 @@ public class Map implements World {
     private boolean inKeepout(Keepout[] zones, Coord tc) {
         // Tile coords are TILE world units across, so this is the tile's centre in world space.
         double wx = tc.x * TILE + HALF_TILE, wy = tc.y * TILE + HALF_TILE;
+        Coord2d wc = new Coord2d(wx, wy);
         double px = plc.x, py = plc.y;
         double ddx = wx - px, ddy = wy - py;
         if ((ddx * ddx) + (ddy * ddy) < World.KEEPOUT_PLAYER_RADIUS * World.KEEPOUT_PLAYER_RADIUS)
             return false;
         for (Keepout k : zones) {
-            double kx = wx - k.c.x, ky = wy - k.c.y;
-            if ((kx * kx) + (ky * ky) < k.r * k.r)
+            if (Keepout.insideStrict(k, wc))
                 return true;
         }
         return false;

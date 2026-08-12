@@ -96,16 +96,7 @@ public class Approach {
         for (Map.Keepout k : lastKeepouts) {
             if (k == null)
                 continue;
-            if (dest.dist(k.c) <= k.r)
-                return true;
-            Coord2d span = dest.sub(from);
-            double len2 = (span.x * span.x) + (span.y * span.y);
-            Coord2d rel = k.c.sub(from);
-            /* Nearest point on the segment to the circle's middle; the clamp keeps that point
-             * between the two ends rather than out along the infinite line. */
-            double t = (len2 < 1e-6) ? 0.0
-                : Math.max(0.0, Math.min(1.0, ((rel.x * span.x) + (rel.y * span.y)) / len2));
-            if (from.add(span.mul(t)).dist(k.c) <= k.r)
+            if (Map.Keepout.segmentTouches(k, from, dest))
                 return true;
         }
         return false;

@@ -368,7 +368,7 @@ public class Probe {
 
     private static boolean inKeepout(Coord2d wc) {
         for (haven.automated.pathfinder.Map.Keepout k : haven.automated.pathfinder.Map.keepouts()) {
-            if (wc.dist(k.c) <= k.r)
+            if (haven.automated.pathfinder.Map.Keepout.insideOrOn(k, wc))
                 return true;
         }
         return false;

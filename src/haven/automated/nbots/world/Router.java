@@ -930,14 +930,14 @@ public class Router {
              * see gateTiles, which does world.add(off).floor(tilesz) the other way. */
             double wx = t.x * MCache.tilesz.x + MCache.tilesz.x / 2.0 - off.x;
             double wy = t.y * MCache.tilesz.y + MCache.tilesz.y / 2.0 - off.y;
+            Coord2d wc = new Coord2d(wx, wy);
             if (pl != null) {
                 double pdx = wx - pl.x, pdy = wy - pl.y;
                 if ((pdx * pdx) + (pdy * pdy) < haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS * haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS)
                     return false;
             }
             for (haven.automated.pathfinder.Map.Keepout k : keepout) {
-                double kx = wx - k.c.x, ky = wy - k.c.y;
-                if ((kx * kx) + (ky * ky) < k.r * k.r)
+                if (haven.automated.pathfinder.Map.Keepout.insideStrict(k, wc))
                     return true;
             }
             return false;
