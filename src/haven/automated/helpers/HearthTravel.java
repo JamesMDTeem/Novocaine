@@ -87,11 +87,19 @@ public class HearthTravel {
      * Preference key for the hearth's location. The hearth does not move, so the last landing seen
      * is remembered across sessions: an optional hearth travel on a fresh client launch must be
      * able to say "yes, hearth travel is faster" without having watched a landing yet, or it never
-     * fires on the very trips it exists for. Stored through {@link Utils} (per-install
-     * {@code Hurricane-prefs.xml}) as the flat {@link WorldAnchor#store()} string, matching the
-     * contract {@code WorldAnchor} documents for remembered anchors.
+     * fires on the very trips it exists for.
+     *
+     * The hearth is a PER-CHARACTER thing — every character places its own hearthfire — so the
+     * stored key carries the character id, the same per-character convention Hurricane's own
+     * {@code mapfile/<chrid>} pref (and {@code LpLog}'s {@code lp/<chrid>.json}) uses. The pref
+     * store itself ({@code Hurricane-prefs.xml}) is per-install; the character id makes it per
+     * character. Stored as the flat {@link WorldAnchor#store()} string, matching the contract
+     * {@code WorldAnchor} documents for remembered anchors.
      */
     private static final String PREF_HEARTH = "nova.hearth-anchor";
+
+    /** The character id the cached anchor belongs to, or null when the plain key is in use. */
+    private static volatile String hearthFor = null;
 
     private static int used = 0;
 
@@ -109,6 +117,14 @@ public class HearthTravel {
 
     private static volatile Thread watcher = null;
 
+    /**
+     * The most recent GameUI a {@code wdgmsg} act was seen on. The watcher re-resolves this each
+     * cycle rather than keeping the GameUI it started with: a character relog builds a NEW GameUI
+     * (new chrid), and the watcher lives for the whole client session, so a manual hearth travel
+     * on the second character must be recorded under THAT character's key.
+     */
+    private static volatile GameUI currentGui = null;
+
     private HearthTravel() {}
 
     /** How many hearth travels remain in the per-run budget. */
@@ -122,26 +138,43 @@ public class HearthTravel {
     }
 
     /**
-     * The known hearth location, from this session's last landing or the preference store.
-     *
-     * The preference-store read happens once, on the first query of a session, because the hearth
-     * does not move and the store is per-install not per-character; {@link #remember} rewrites it
-     * whenever a landing is actually seen, keeping the store and the session state in step.
+     * The preference key the hearth anchor is stored under, per character. The store is
+     * per-install ({@code Hurricane-prefs.xml}); the character id makes it per character, the same
+     * way {@code mapfile/<chrid>} and {@code LpLog} do it. A character id unknown (not yet on the
+     * client) falls back to the plain key, which is exactly the pre-character-key state.
      */
-    public static synchronized WorldAnchor hearth() {
-        WorldAnchor h = hearthAnchor;
-        if (h == null) {
-            h = WorldAnchor.parse(Utils.getpref(PREF_HEARTH, null));
-            hearthAnchor = h;
-        }
-        return h;
+    private static String prefKey(GameUI gui) {
+        if (gui != null && gui.chrid != null && !gui.chrid.isEmpty())
+            return PREF_HEARTH + "/" + gui.chrid;
+        return PREF_HEARTH;
     }
 
-    /** Records a landing as the hearth's location, in memory and in the preference store. */
-    private static synchronized void remember(WorldAnchor landing) {
+    /**
+     * The known hearth location for the current character, from this session's last landing or
+     * the preference store.
+     *
+     * The preference-store read happens once per character per session, because the hearth does
+     * not move; {@link #remember} rewrites it whenever a landing is actually seen, keeping the
+     * store and the session state in step. Relogging as another character reads that character's
+     * own anchor, since every character places its own hearthfire.
+     */
+    public static synchronized WorldAnchor hearth(GameUI gui) {
+        String key = prefKey(gui);
+        if (hearthFor == null || !hearthFor.equals(key)) {
+            hearthAnchor = WorldAnchor.parse(Utils.getpref(key, null));
+            hearthFor = key;
+        }
+        return hearthAnchor;
+    }
+
+    /** Records a landing as the current character's hearth, in memory and in the preference store. */
+    private static synchronized void remember(GameUI gui, WorldAnchor landing) {
+        if (landing == null)
+            return;
+        String key = prefKey(gui);
+        hearthFor = key;
         hearthAnchor = landing;
-        if (landing != null)
-            Utils.setpref(PREF_HEARTH, landing.store());
+        Utils.setpref(key, landing.store());
     }
 
     /**
@@ -187,7 +220,7 @@ public class HearthTravel {
         double walkingDist = haven.automated.nbots.world.Router.walkingDistance(gui, target, margin);
         if (walkingDist < 0)
             return false;
-        WorldAnchor home = hearth();
+        WorldAnchor home = hearth(gui);
         if (home == null)
             return false;
         haven.Coord2d hearth = home.resolve(gui);
@@ -217,7 +250,7 @@ public class HearthTravel {
     public static boolean homeBeatsWalking(GameUI gui, int margin) {
         if (!canTravel())
             return false;
-        WorldAnchor home = hearth();
+        WorldAnchor home = hearth(gui);
         if (home == null)
             return false;
         Coord2d hearth = home.resolve(gui);
@@ -242,6 +275,7 @@ public class HearthTravel {
     public static void noteAct(GameUI gui, String msg, Object... args) {
         if ((args == null) || (args.length == 0) || !(args[0] instanceof String))
             return;
+        currentGui = gui;
         startWatcher(gui);
         String a0 = (String) args[0];
         boolean hearth = "travel-hearth".equals(a0)
@@ -286,7 +320,7 @@ public class HearthTravel {
             long elapsed = System.currentTimeMillis() - started;
             WorldAnchor landing = WorldAnchor.capturePlayer(gui);
             if (landing != null)
-                remember(landing);
+                remember(gui, landing);
             synchronized (HearthTravel.class) {
                 used++;
             }
@@ -335,6 +369,9 @@ public class HearthTravel {
             } catch (InterruptedException e) {
                 return;
             }
+            gui = currentGui;
+            if (gui == null)
+                continue;
             Coord2d rc = playerRc(gui);
             if (rc == null) {
                 prev = null;
@@ -348,7 +385,7 @@ public class HearthTravel {
                     if (actAt >= 0 && !botInFlight && (now - actAt) <= ACT_WINDOW_MS) {
                         WorldAnchor landing = WorldAnchor.capturePlayer(gui);
                         if (landing != null)
-                            remember(landing);
+                            remember(gui, landing);
                         NLog.log(LOG, String.format(
                             "manual travel: channel=%dms jump=%.0fu landed=%s",
                             now - actAt, dist,
