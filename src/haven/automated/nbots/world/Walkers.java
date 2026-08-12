@@ -126,6 +126,14 @@ public class Walkers {
                 nav.stepRefusal = walk.refusal;
                 if (walk.why() != null)
                     why = walk.why();
+                /* The default `why` above says the click was thrown away before a search started,
+                 * which is only true on the OTHER branch. Here a search DID start - and if it
+                 * finished with no edges at all and no reason of its own, the honest reason is
+                 * that the destination was unreachable from the start (the near-branch click
+                 * whose target is already under us or under a just-crossed box is the usual
+                 * case). Never let the throwaway text ride along on this branch. */
+                if ((walk.mc == null) && (walk.why() == null))
+                    why = "the search ran and found no path from here";
                 /* The wait above returns on its timeout as well as on arrival, so the search can
                  * still be running here. That does not stop the finally below clearing the
                  * circles: the search reads them ONCE, at the top of pathfind - Map.initGeography

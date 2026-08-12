@@ -362,8 +362,15 @@ public class GateManager {
         }
 
         Coord2d ahead = square(gate, from);
-        if (ahead != null)
+        /* The aim step walks us square-on the near side of the gate. If we already ARE within
+         * tolerance of that point, a click would start a search that yields no edges (the just-
+         * crossed gate's open box often covers it) and every crossing would pay a thrown-away
+         * click for a step that was going to do nothing anyway - the approach below then walks
+         * us to the gate and the re-square re-aligns us. Skip it, and say so. */
+        if ((ahead != null) && (from.dist(ahead) > TILE * 1.5))
             nav.stepTo(ahead, TILE * 1.5);
+        else if (ahead != null)
+            NLog.log(log, "gate: already square to #" + id + " - skipping the aim step");
 
         if (!nav.approach(gate, REACH)) {
             NLog.log(log, "gate: couldn't get to #" + id);
