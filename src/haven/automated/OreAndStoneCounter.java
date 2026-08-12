@@ -21,7 +21,7 @@ import java.util.TreeMap;
 
 import static haven.OCache.posres;
 
-public class OreAndStoneCounter extends Window implements Runnable {
+public class OreAndStoneCounter extends Window implements Runnable, Stoppable {
     private final GameUI gui;
     private volatile boolean stop;
     private OreList oreList;
@@ -98,16 +98,17 @@ public class OreAndStoneCounter extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
-            stop = true;
             stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.oreAndStoneCounter = null;
-            gui.oreAndStoneCounterThread = null;
         } else
             super.wdgmsg(sender, msg, args);
     }
 
+    @Override
     public void stop() {
+        stop = true;
         gui.map.wdgmsg("click", Coord.z, gui.map.player().rc.floor(posres), 1, 0);
         if (gui.map.pfthread != null) {
             gui.map.pfthread.interrupt();

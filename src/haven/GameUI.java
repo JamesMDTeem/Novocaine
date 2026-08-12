@@ -163,22 +163,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public Thread interactWithNearestObjectThread;
 	public Thread enterNearestVehicleThread;
 	public Thread wagonNearestLiftableThread;
-	public Thread cloverScriptThread;
-	public Thread coracleScriptThread;
-	public Thread skisScriptThread;
-	public Thread refillWaterContainersThread;
-	public CombatDistanceTool combatDistanceTool;
-	public Thread combatDistanceToolThread;
-	public Thread harvestNearestDreamcatcherThread;
-	public Thread destroyNearestTrellisPlantScriptThread;
 	public Thread lootNearestKnockedPlayerThread;
-
-	// Tool Threads
-	public MiningSafetyAssistant miningSafetyAssistantWindow;
-	public Thread miningSafetyAssistantThread;
-	public PointerTriangulation pointerTriangulation;
-	public OreAndStoneCounter oreAndStoneCounter;
-	public Thread oreAndStoneCounterThread;
 
 	// Bot Threads
 	public haven.automated.lp.LpAssistantManagerWindow lpAssistantManager;

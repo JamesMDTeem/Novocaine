@@ -21,11 +21,12 @@ import haven.Widget;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 import static haven.OCache.posres;
 
-public class MiningSafetyAssistant extends Window implements Runnable {
+public class MiningSafetyAssistant extends Window implements Runnable, Stoppable {
     // Distances are in pixels, where one tile = 11px (MCache.tilesz).
     private static final int TILE = 11;
     private static final double HALF_TILE = TILE / 2.0;          // centre of a tile
@@ -52,6 +53,7 @@ public class MiningSafetyAssistant extends Window implements Runnable {
     ArrayList<Gob> supports = new ArrayList<>();
     ArrayList<Gob> looseRocks = new ArrayList<>();
     private int counter = 0;
+    private Thread self;
 
     public MiningSafetyAssistant(GameUI gui) {
         super(UI.scale(new Coord(220, 180)), "Mining Safety Assistant");
@@ -233,19 +235,29 @@ public class MiningSafetyAssistant extends Window implements Runnable {
 
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
-        if ((sender == this) && (msg == "close")) {
-            stop = true;
-            gui.miningSafetyAssistantThread.interrupt();
-            gui.miningSafetyAssistantThread = null;
+        if ((sender == this) && (Objects.equals(msg, "close"))) {
+            stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.miningSafetyAssistantWindow = null;
         } else {
             super.wdgmsg(sender, msg, args);
         }
     }
 
     @Override
+    public void stop() {
+        stop = true;
+        if (self != null)
+            self.interrupt();
+        if (gui.map != null && gui.map.pfthread != null)
+            gui.map.pfthread.interrupt();
+        this.destroy();
+    }
+
+    @Override
     public void run() {
+        self = Thread.currentThread();
         while (!stop) {
             if (counter == 0 && (stopUnsafeMiningCheckBox.a || stopMiningFiftyCheckBox.a || stopMiningTwentyFiveCheckBox.a)) {
                 supports = AUtils.getAllSupports(gui);

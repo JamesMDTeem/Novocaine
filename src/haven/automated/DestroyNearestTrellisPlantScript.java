@@ -49,10 +49,5 @@ public class DestroyNearestTrellisPlantScript implements Runnable {
         gui.act("destroy");
         gui.map.wdgmsg("click", Coord.z, plant.rc.floor(posres), 1, 0, 0, (int) plant.id, plant.rc.floor(posres), 0, -1);
         gui.map.wdgmsg("click", Coord.z, Coord.z, 3, 0);
-
-        if (gui.destroyNearestTrellisPlantScriptThread != null) {
-            gui.destroyNearestTrellisPlantScriptThread.interrupt();
-            gui.destroyNearestTrellisPlantScriptThread = null;
-        }
     }
 }

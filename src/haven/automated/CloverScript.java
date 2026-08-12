@@ -143,11 +143,6 @@ public class CloverScript implements Runnable {
         }
 
         gui.map.wdgmsg("itemact", Coord.z, animal.rc.floor(posres), 0, 0, (int) animal.id, animal.rc.floor(posres), 0, -1);
-
-        if (gui.cloverScriptThread != null) {
-            gui.cloverScriptThread.interrupt();
-            gui.cloverScriptThread = null;
-        }
     }
 }
 

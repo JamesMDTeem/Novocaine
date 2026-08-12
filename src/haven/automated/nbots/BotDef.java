@@ -21,23 +21,44 @@ public class BotDef {
         Window create(GameUI gui);
     }
 
+    /** A script is a bare Runnable - toggled on by a click, stopped by a second click - not a windowed bot. */
+    public interface ScriptFactory {
+        Runnable create(GameUI gui);
+    }
+
     public final String id;
     public final String title;
     public final String description;
     public final Factory factory;
+    public final ScriptFactory scriptFactory;
     private final String windowKey;
 
-    public BotDef(String id, String title, String description, Factory factory) {
-        this(id, title, description, null, factory);
-    }
-
-    /** A windowed bot that predates the registry may already remember its position under a custom key. */
-    public BotDef(String id, String title, String description, String windowKey, Factory factory) {
+    private BotDef(String id, String title, String description, String windowKey, Factory factory, ScriptFactory scriptFactory) {
         this.id = id;
         this.title = title;
         this.description = description;
         this.windowKey = windowKey;
         this.factory = factory;
+        this.scriptFactory = scriptFactory;
+    }
+
+    public static BotDef window(String id, String title, String description, Factory factory) {
+        return window(id, title, description, null, factory);
+    }
+
+    /** A windowed bot that predates the registry may already remember its position under a custom key. */
+    public static BotDef window(String id, String title, String description, String windowKey, Factory factory) {
+        return new BotDef(id, title, description, windowKey, factory, null);
+    }
+
+    /** A windowless script: toggling it starts (or stops) a thread, no window is involved. */
+    public static BotDef script(String id, String title, String description, ScriptFactory scriptFactory) {
+        return new BotDef(id, title, description, null, null, scriptFactory);
+    }
+
+    /** Whether this entry is a bare script rather than a windowed bot. */
+    public boolean isScript() {
+        return scriptFactory != null;
     }
 
     /** The preference key its window position is remembered under. */

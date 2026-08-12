@@ -19,7 +19,7 @@ import java.util.Objects;
 
 import static haven.OCache.posres;
 
-public class CombatDistanceTool extends Window implements Runnable {
+public class CombatDistanceTool extends Window implements Runnable, Stoppable {
     public static final Map<String, Double> animalDistances = Map.ofEntries(
             Map.entry("gfx/kritter/adder/adder", 17.1),
             Map.entry("gfx/kritter/ant/ant", 15.2),
@@ -215,16 +215,15 @@ public class CombatDistanceTool extends Window implements Runnable {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
-            if (gui.combatDistanceTool != null) {
-                gui.combatDistanceTool.stop();
-                gui.combatDistanceTool.reqdestroy();
-                gui.combatDistanceTool = null;
-                gui.combatDistanceToolThread = null;
-            }
+            stop();
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
+            reqdestroy();
         } else
             super.wdgmsg(sender, msg, args);
     }
 
+    @Override
     public void stop() {
         stop = true;
         if (gui.map.pfthread != null) {

@@ -141,8 +141,9 @@ public class PointerTriangulation extends Window {
     @Override
     public void wdgmsg(Widget sender, String msg, Object... args) {
         if ((sender == this) && (Objects.equals(msg, "close"))) {
+            if (gui.nbots != null)
+                gui.nbots.forget(this);
             reqdestroy();
-            gui.pointerTriangulation = null;
         } else
             super.wdgmsg(sender, msg, args);
     }
