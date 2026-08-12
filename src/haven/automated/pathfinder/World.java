@@ -42,6 +42,17 @@ public interface World {
     double TILE = 11.0;
 
     /**
+     * How close to the player a keep-out circle may come before it is ignored, in world units.
+     *
+     * <p>The tiles around the character are never blocked, however deep inside a circle they are:
+     * blocking them makes the search's own starting cell impassable, and Pathfinder reacts to that by
+     * nudging the character a few pixels and retrying — so a beast that strayed next to us would
+     * produce a twitch-in-place loop instead of a detour. Was {@code Map.KEEPOUT_PLAYER_RADIUS_TILES}
+     * × TILE (3 tiles); lives here now because both adapters need the same bubble.</p>
+     */
+    double KEEPOUT_PLAYER_RADIUS = 3.0 * TILE;
+
+    /**
      * Whether a disc centred at {@code wc} may STOP here — a goal, a waypoint, a place to stand.
      * Crossing is not enough: a TIGHT channel is passable but not standable.
      */

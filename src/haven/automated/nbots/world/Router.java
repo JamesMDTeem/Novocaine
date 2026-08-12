@@ -473,8 +473,9 @@ public class Router {
             return false;
         /* Gateways open here, unlike the reachable call this shadows: whether a tile can be stood
          * on is a fact about the tile, and has nothing to do with what we can get through to
-         * reach it. Passing false would make the answer depend on the wrong thing. */
-        World w = new World(gui, here.seg, true, true);
+         * reach it. Passing false would make the answer depend on the wrong thing. Keep-out circles
+         * are the same kind of transient, so they do not flip the answer either. */
+        World w = new World(gui, here.seg, true, true, false);
         return !standableAround(w, there.sc.floor(MCache.tilesz),
             (int) Math.ceil(margin / MCache.tilesz.x), TRIES).isEmpty();
     }
@@ -816,6 +817,22 @@ public class Router {
         private final Set<Coord> gates;
         /** The subset standing SHUT - the only gateways a route pays anything to cross. */
         private final Set<Coord> shutGates;
+        /**
+         * Whether to refuse keep-out circles as impassable. Default on - it is the whole point of
+         * {@link haven.automated.pathfinder.World#KEEPOUT_PLAYER_RADIUS} existing - and off only for
+         * callers asking about a tile in the abstract, where a transient circle must not flip the
+         * answer.
+         */
+        private final boolean avoidKeepouts;
+        /**
+         * The keep-out circles in force at construction, plus the player's world position. Sampled
+         * once, the same discipline as {@link Refused#snapshot} and {@code Map.initGeography}: the
+         * global setter can be called from another thread mid-scan, so a route either sees a circle
+         * whole or not at all. Any circle covering the bot's OWN start position is dropped, so a ring
+         * that wandered onto us can never seal our own routes out of where we are standing.
+         */
+        private final haven.automated.pathfinder.Map.Keepout[] keepout;
+        private final Coord2d pl;
         private static final Object NONE = new Object();
 
         /** Search box, or null for the whole segment. See {@link #confine}. */
@@ -861,14 +878,69 @@ public class Router {
          *                   gateway a wall, which is what it is to a caller that cannot open one.
          */
         World(GameUI gui, long seg, boolean strict, boolean opensGates) {
+            this(gui, seg, strict, opensGates, true);
+        }
+
+        /**
+         * @param avoidKeepouts whether keep-out circles are impassable. Default on; false for a
+         *                      question that must answer about a tile in the abstract.
+         */
+        World(GameUI gui, long seg, boolean strict, boolean opensGates, boolean avoidKeepouts) {
             this.gui = gui;
             this.seg = seg;
             this.strict = strict;
             this.opensGates = opensGates;
+            this.avoidKeepouts = avoidKeepouts;
             this.off = offsetOf(gui);
+            this.pl = playerPos(gui);
             this.refused = Refused.snapshot(seg);
             this.gates = gateTiles(false);
             this.shutGates = gateTiles(true);
+            this.keepout = avoidKeepouts ? snapKeepouts(this.pl) : new haven.automated.pathfinder.Map.Keepout[0];
+        }
+
+        /** The player's world position, or null when it cannot be told. */
+        private static Coord2d playerPos(GameUI gui) {
+            if ((gui == null) || (gui.map == null))
+                return null;
+            Gob me = gui.map.player();
+            return (me == null) ? null : me.rc;
+        }
+
+        /** The keep-out circles in force, minus any that cover the bot's own start position. */
+        private static haven.automated.pathfinder.Map.Keepout[] snapKeepouts(Coord2d pl) {
+            haven.automated.pathfinder.Map.Keepout[] all = haven.automated.pathfinder.Map.keepouts();
+            if ((pl == null) || (all.length == 0))
+                return all;
+            java.util.List<haven.automated.pathfinder.Map.Keepout> out = new java.util.ArrayList<>(all.length);
+            for (haven.automated.pathfinder.Map.Keepout k : all) {
+                if ((k == null) || (k.r <= 0) || (pl.dist(k.c) <= k.r + haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS))
+                    continue;
+                out.add(k);
+            }
+            return out.toArray(new haven.automated.pathfinder.Map.Keepout[0]);
+        }
+
+        /** Whether this segment tile lies inside one of the keep-out circles in force at construction. */
+        private boolean inKeepout(Coord t) {
+            if (!avoidKeepouts || (off == null) || (keepout.length == 0))
+                return false;
+            /* The tile centre in world coordinates. Segment tiles key by the same pitch as
+             * Observed, and off is what the router's world-coordinate seam adds back in -
+             * see gateTiles, which does world.add(off).floor(tilesz) the other way. */
+            double wx = t.x * MCache.tilesz.x + MCache.tilesz.x / 2.0 - off.x;
+            double wy = t.y * MCache.tilesz.y + MCache.tilesz.y / 2.0 - off.y;
+            if (pl != null) {
+                double pdx = wx - pl.x, pdy = wy - pl.y;
+                if ((pdx * pdx) + (pdy * pdy) < haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS * haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS)
+                    return false;
+            }
+            for (haven.automated.pathfinder.Map.Keepout k : keepout) {
+                double kx = wx - k.c.x, ky = wy - k.c.y;
+                if ((kx * kx) + (ky * ky) < k.r * k.r)
+                    return true;
+            }
+            return false;
         }
 
         /** The player's world position relative to the segment origin, or null when it cannot be told. */
@@ -1023,6 +1095,8 @@ public class Router {
                         return "no map file here and deep water next to it - assumed wet";
                 }
             }
+            if (inKeepout(t))
+                return "keep-out circle";
             return null;
         }
 
@@ -1131,6 +1205,8 @@ public class Router {
                         return false;
                 }
             }
+            if (inKeepout(t))
+                return false;
             return true;
         }
 
