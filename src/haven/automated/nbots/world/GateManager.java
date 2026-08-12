@@ -12,6 +12,7 @@ import haven.automated.helpers.HitBoxes;
 import haven.automated.nbots.core.NBotConfig;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.Widgets;
+import haven.automated.pathfinder.World;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,8 +40,8 @@ import static haven.OCache.posres;
  */
 public class GateManager {
 
-    /** Pixels per map tile. Every distance in this class is stated in tiles. */
-    private static final double TILE = MCache.tilesz.x;
+    /** Pixels per map tile, from the {@link World} seam. Every distance in this class is stated in tiles. */
+    private static final double TILE = World.TILE;
     /** Close enough for a right-click on the gate to land. */
     private static final double REACH = TILE * 3.5;
     /** How far from the failed leg a gateway is still worth walking to. */

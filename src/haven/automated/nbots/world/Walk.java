@@ -6,6 +6,7 @@ import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
 import haven.Moving;
+import haven.automated.pathfinder.World;
 
 import static haven.OCache.posres;
 
@@ -54,8 +55,8 @@ import static haven.OCache.posres;
 public class Walk {
     private Walk() {}
 
-    /** Pixels per map tile (MCache.tilesz). Every distance in this class is stated in tiles. */
-    private static final double TILE = MCache.tilesz.x;
+    /** Pixels per map tile, from the {@link World} seam. Every distance in this class is stated in tiles. */
+    private static final double TILE = World.TILE;
     /** How finely a straight line is sampled before it is trusted, in world units. */
     private static final double SAMPLE = TILE * 0.5;
     /**

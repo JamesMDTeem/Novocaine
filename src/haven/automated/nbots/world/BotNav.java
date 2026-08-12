@@ -10,6 +10,7 @@ import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.NBotConfig;
 import haven.automated.pathfinder.Map;
 import haven.automated.pathfinder.Pathfinder;
+import haven.automated.pathfinder.World;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -60,11 +61,11 @@ public class BotNav {
      * tiles wide, and {@link Observed} records the world a tile at a time. They were spelt
      * {@code 11 * n}, which reads as arithmetic rather than as the tile count it is.
      *
-     * Taken from {@link MCache#tilesz} rather than written out again, since the rest of this file
+     * Taken from the {@link World} seam rather than written out again, since the rest of this file
      * already divides by it to report distances in tiles - two spellings of one quantity is the
      * drift this is here to stop.
      */
-    static final double TILE = MCache.tilesz.x;
+    static final double TILE = World.TILE;
 
     /** Close enough to right-click a gob and have its menu open. About two tiles. */
     public static final double REACH = TILE * 2.0;

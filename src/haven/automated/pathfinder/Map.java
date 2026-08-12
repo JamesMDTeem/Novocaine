@@ -36,8 +36,6 @@ public class Map implements World {
     private final static int TILE = (int) World.TILE;
     /** Half a tile in world units, as a double for centre calculations. */
     private final static double HALF_TILE = TILE / 2.0;
-    /** Radius in tiles around the player that keep-out zones never block. */
-    private final static int KEEPOUT_PLAYER_RADIUS_TILES = 3;
     /** Half-height of a regular gate collision box in grid cells. */
     private final static int GATE_HALF_HEIGHT = TILE;
 
@@ -412,7 +410,7 @@ public class Map implements World {
         double wx = tc.x * TILE + HALF_TILE, wy = tc.y * TILE + HALF_TILE;
         double px = plc.x, py = plc.y;
         double ddx = wx - px, ddy = wy - py;
-        if ((ddx * ddx) + (ddy * ddy) < (KEEPOUT_PLAYER_RADIUS_TILES * TILE) * (KEEPOUT_PLAYER_RADIUS_TILES * TILE))
+        if ((ddx * ddx) + (ddy * ddy) < World.KEEPOUT_PLAYER_RADIUS * World.KEEPOUT_PLAYER_RADIUS)
             return false;
         for (Keepout k : zones) {
             double kx = wx - k.c.x, ky = wy - k.c.y;
