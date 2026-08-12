@@ -392,10 +392,20 @@ public class GateManager {
          * beyond walks through the opening on its own. Re-squared from where we are NOW rather
          * than from {@code from}: approaching the gate has moved us since. */
         Gob at = nav.player();
-        Coord2d nearside = square(use, (at == null) ? from : at.rc);
-        if (nearside != null)
+        Coord2d fromNow = (at == null) ? from : at.rc;
+        Coord2d nearside = square(use, fromNow);
+        if (nearside != null) {
+            NLog.log(log, "gate: re-square to " + fmt(nearside) + " ("
+                + (int) fromNow.dist(nearside) + "u from here)");
             nav.stepTo(nearside, TILE * 1.5);
+        } else {
+            NLog.log(log, "gate: no re-square - " + fmt(fromNow) + " is already square to #" + id);
+        }
         boolean crossed = nav.stepTo(through, TILE * 2.5);
+        if (nav.stepRefused)
+            NLog.log(log, "gate: through-step refused - "
+                + ((nav.stepRefusal == null) ? "the click was thrown away before a search started"
+                    : nav.stepRefusal.toString()));
         Gob now = nav.player();
         boolean past = (now != null) && passed(use, from, now.rc);
         double wasAcross = sideOf(use, from);
