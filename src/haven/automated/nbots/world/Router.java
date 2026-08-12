@@ -808,6 +808,8 @@ public class Router {
         private final Coord2d off;
         private final Map<Coord, byte[]> obs = new HashMap<>();
         private final Map<Coord, Object> water = new HashMap<>();
+        /** Per-grid cliff flags, cached like {@link #water}. See {@link Terrain#cliffGrid}. */
+        private final Map<Coord, Object> cliffs = new HashMap<>();
         /** Snapshotted once per search - see {@link Refused#snapshot}. Usually empty. */
         private final java.util.Set<Coord> refused;
         /**
@@ -999,6 +1001,26 @@ public class Router {
             return ((byte[]) o)[(in.y * MCache.cmaps.x) + in.x];
         }
 
+        /**
+         * Whether the map file records a cliff here, or false when it cannot say yet.
+         *
+         * The map file has the elevation and, resolved lazily, the tileset's {@code RidgeTile}
+         * break height; {@link Terrain#cliffGrid} computes the flag once per grid. Unknown answers
+         * open, the same bias as the record's water answers.
+         */
+        private boolean cliff(Coord t) {
+            Coord gc = Terrain.floorDiv(t, MCache.cmaps);
+            Object o = cliffs.get(gc);
+            if (o == null) {
+                byte[] g = Terrain.cliffGrid(gui, seg, gc);
+                cliffs.put(gc, o = (g == null) ? NONE : g);
+            }
+            if (o == NONE)
+                return false;
+            Coord in = t.sub(gc.mul(MCache.cmaps));
+            return ((byte[]) o)[(in.y * MCache.cmaps.x) + in.x] == 1;
+        }
+
         /* The record-level questions below are the seam's grid adapter answering for what the
          * RECORD says, not for what the planner decided. The planner's passable() folds gates,
          * strict unseen, water dilation and refusals into its answer; the mover (BotNav) asks
@@ -1047,8 +1069,10 @@ public class Router {
          */
         public boolean waterBlocks(Coord t) {
             int w = wet(t);
-            return (w == Terrain.DEEP) || (w == Terrain.BLOCKED)
-                || ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER);
+            if ((w == Terrain.DEEP) || (w == Terrain.BLOCKED)
+                || ((w == Terrain.SHALLOW) && haven.automated.pathfinder.Map.BLOCK_WATER))
+                return true;
+            return haven.automated.pathfinder.Map.BLOCK_CLIFFS && cliff(t);
         }
 
         /**
@@ -1091,6 +1115,8 @@ public class Router {
                         return "no map file here and deep water next to it - assumed wet";
                 }
             }
+            if (haven.automated.pathfinder.Map.BLOCK_CLIFFS && cliff(t))
+                return "cliff";
             if (inKeepout(t))
                 return "keep-out circle";
             return null;
@@ -1201,6 +1227,8 @@ public class Router {
                         return false;
                 }
             }
+            if (haven.automated.pathfinder.Map.BLOCK_CLIFFS && cliff(t))
+                return false;
             if (inKeepout(t))
                 return false;
             return true;

@@ -4,7 +4,9 @@ import haven.Coord;
 import haven.GameUI;
 import haven.MCache;
 import haven.MapFile;
+import haven.Tileset;
 import haven.automated.nbots.core.NLog;
+import haven.resutil.Ridges;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -70,6 +72,13 @@ public class Terrain {
     private static final Map<Long, Map<Coord, byte[]>> cache = new HashMap<>();
 
     /**
+     * segment -> segment grid coord -> per-tile cliff flag (1 = cliff). Parallel to {@link #cache},
+     * because a cliff is a different answer from the water class: it needs the tileset's Tiler
+     * resolved ({@code RidgeTile.breakz()}), which the water pass never does.
+     */
+    private static final Map<Long, Map<Coord, byte[]>> cliffCache = new HashMap<>();
+
+    /**
      * True if this segment tile can be walked on.
      *
      * Shallow water follows the same setting the local pathfinder does, so the two layers agree:
@@ -123,6 +132,24 @@ public class Terrain {
     }
 
     /**
+     * True if the map file records a cliff here - an elevation step too tall to climb.
+     *
+     * This needs the tileset's {@code Tiler} resolved to test for {@code RidgeTile} and read
+     * {@code breakz()}, which is the async resource resolution the water pass deliberately avoids.
+     * Unknown ground answers NOT-CLIFF, deliberately, for the same reason {@link #ground} answers
+     * unknown ground walkable: being wrong this way costs a detour, and the local pathfinder still
+     * gets its veto tile by tile when the bot actually gets there.
+     */
+    public static boolean cliff(GameUI gui, long seg, Coord segTile) {
+        Coord gc = floorDiv(segTile, MCache.cmaps);
+        byte[] g = cliffGrid(gui, seg, gc);
+        if (g == null)
+            return false;
+        Coord in = segTile.sub(gc.mul(MCache.cmaps));
+        return g[(in.y * MCache.cmaps.x) + in.x] == 1;
+    }
+
+    /**
      * Integer division that rounds towards negative infinity.
      *
      * Coord.div truncates towards zero, which is the same thing only for positive coordinates.
@@ -143,6 +170,16 @@ public class Terrain {
      */
     public static byte[] classes(GameUI gui, long seg, Coord gc) {
         return grid(gui, seg, gc);
+    }
+
+    /**
+     * One grid's per-tile cliff flags, or null if the map file cannot answer for it yet.
+     *
+     * Per-tile access through {@link #cliff} takes a lock and divides down to a grid every call;
+     * {@link Router.World} caches the array alongside the water classes for the same reason.
+     */
+    public static byte[] cliffGrid(GameUI gui, long seg, Coord gc) {
+        return cliffGrid0(gui, seg, gc);
     }
 
     private static byte[] grid(GameUI gui, long seg, Coord gc) {
@@ -235,6 +272,132 @@ public class Terrain {
     public static void forget() {
         synchronized (LOCK) {
             cache.clear();
+            cliffCache.clear();
+        }
+    }
+
+    private static byte[] cliffGrid0(GameUI gui, long seg, Coord gc) {
+        synchronized (LOCK) {
+            Map<Coord, byte[]> byseg = cliffCache.get(seg);
+            if (byseg != null) {
+                byte[] hit = byseg.get(gc);
+                if (hit != null)
+                    return hit;
+            }
+        }
+        byte[] built = buildCliff(gui, seg, gc);
+        if (built != null) {
+            synchronized (LOCK) {
+                cliffCache.computeIfAbsent(seg, k -> new HashMap<>()).put(gc, built);
+            }
+        }
+        return built;
+    }
+
+    /**
+     * Reads one grid's cliff flags out of the map file.
+     *
+     * A null return means "not known right now" and is NOT cached, exactly as in {@link #build}:
+     * resolving a tileset's Tiler is async and may throw {@code Loading}, and caching the miss
+     * would make it permanent. Edge tiles of the grid are left unmarked - {@code Ridges.brokenp}
+     * reads the four neighbours and four corners, which step outside a single grid at its border,
+     * and a grid alone cannot answer those. Unknown edge answers open, the same bias as
+     * {@link #cliff} documents.
+     */
+    private static byte[] buildCliff(GameUI gui, long seg, Coord gc) {
+        MapFile file = WorldAnchor.mapfile(gui);
+        if (file == null)
+            return null;
+        file.lock.readLock().lock();
+        try {
+            MapFile.Segment s = file.segments.get(seg);
+            if (s == null)
+                return null;
+            MapFile.Grid g = s.grid(gc).get();
+            if (g == null || g.tilesets == null)
+                return null;
+            byte[] out = new byte[MCache.cmaps.x * MCache.cmaps.y];
+            RidgeSource src = new RidgeSource(g);
+            int xlim = MCache.cmaps.x - 1, ylim = MCache.cmaps.y - 1;
+            for (int y = 1; y < ylim; y++) {
+                for (int x = 1; x < xlim; x++) {
+                    if (Ridges.brokenp(src, new Coord(x, y)))
+                        out[(y * MCache.cmaps.x) + x] = 1;
+                }
+            }
+            return out;
+        } catch (haven.Loading e) {
+            // A tileset resource is still coming off disk; try again later.
+            return null;
+        } catch (RuntimeException e) {
+            if (!cliffComplained) {
+                cliffComplained = true;
+                NLog.crash("reading cliff terrain from the map file", e);
+            }
+            return null;
+        } finally {
+            file.lock.readLock().unlock();
+        }
+    }
+
+    private static volatile boolean cliffComplained = false;
+
+    /**
+     * A {@link MapSource} over one map-file grid, for {@code Ridges.brokenp}.
+     *
+     * The tileset -> Tiler resolution is cached per tileset index so a grid of ten thousand tiles
+     * shares a handful of Tilers rather than resolving one per tile. Resolution throws
+     * {@code Loading} while the resource is still coming off disk; {@link #buildCliff} lets that
+     * propagate and returns the grid unmarked.
+     */
+    private static final class RidgeSource implements haven.MapSource {
+        private final MapFile.Grid g;
+        private final haven.Tiler[] tilers;
+        private final haven.Tileset[] sets;
+
+        RidgeSource(MapFile.Grid g) {
+            this.g = g;
+            this.tilers = new haven.Tiler[g.tilesets.length];
+            this.sets = new haven.Tileset[g.tilesets.length];
+        }
+
+        @Override
+        public int gettile(Coord tc) {
+            return g.gettile(tc);
+        }
+
+        @Override
+        public double getfz(Coord tc) {
+            return g.getfz(tc);
+        }
+
+        @Override
+        public Tileset tileset(int t) {
+            if ((t < 0) || (t >= g.tilesets.length))
+                return null;
+            haven.Tileset hit = sets[t];
+            if (hit == null) {
+                if ((g.tilesets[t] == null) || (g.tilesets[t].res == null))
+                    return null;
+                hit = g.tilesets[t].res.get().flayer(Tileset.class);
+                sets[t] = hit;
+            }
+            return hit;
+        }
+
+        @Override
+        public haven.Tiler tiler(int t) {
+            if ((t < 0) || (t >= g.tilesets.length))
+                return null;
+            haven.Tiler hit = tilers[t];
+            if (hit == null) {
+                Tileset set = tileset(t);
+                if (set == null)
+                    return null;
+                hit = set.tfac().create(t, set);
+                tilers[t] = hit;
+            }
+            return hit;
         }
     }
 }
