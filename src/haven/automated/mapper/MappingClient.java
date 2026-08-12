@@ -3,16 +3,21 @@ package haven.automated.mapper;
 import haven.BuddyWnd;
 import haven.Coord;
 import haven.Coord2d;
+import haven.GItem;
+import haven.GameUI;
 import haven.Glob;
 import haven.Gob;
 import haven.Indir;
+import haven.Inventory;
 import haven.Loading;
 import haven.MCache;
 import haven.MapFile;
 import haven.MapView;
 import haven.OptWnd;
+import haven.WItem;
 import haven.MCache.LoadingMap;
 import haven.res.ui.obj.buddy.Buddy;
+import haven.res.ui.tt.q.qbuff.QBuff;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -856,6 +861,201 @@ public class MappingClient {
 		if(connection != null)
 		    connection.disconnect();
 	    }
+	}
+    }
+
+    // --- P6: gather detection from the player's main inventory ----------------------
+    //
+    // The game's only reliable signal that a collectable was actually gathered is the
+    // item appearing in the inventory. The earlier hook watched chat for "Quality: N"
+    // on the study cursor, which fires on *inspection*, never on a real gather - so no
+    // gather was ever reported and no quality ever reached the mapper. Here we watch
+    // maininv for a collectable item arriving and read the quality from the item
+    // itself, exactly as the game shows it to the player.
+
+    /** Items whose resource basename differs from the gob they were gathered from. */
+    private static final Map<String, String> COLLECTABLE_ITEM_GOB_ALIASES = new HashMap<>();
+    static {
+	// Bat Guano is gathered from a Guano Pile.
+	COLLECTABLE_ITEM_GOB_ALIASES.put("batguano", "guanopile");
+    }
+
+    private long lastCollectablePoll = 0;
+    private static final long COLLECTABLE_POLL_INTERVAL_MS = 1000;
+    /** Number of tiles around the player we will look for the gathered gob. */
+    private static final double COLLECTABLE_GOB_RADIUS = 4 * TILE_SIZE;
+    /** How long we wait for the item's quality info to load before giving up on it. */
+    private static final long COLLECTABLE_QUALITY_TIMEOUT_MS = 30000;
+
+    /** Last observed per-key item counts in maininv; null until the first snapshot. */
+    private Map<String, Integer> collectableCounts = null;
+    /** Keys whose count increased but whose quality info is still loading. */
+    private final Map<String, PendingGather> pendingGathers = new HashMap<>();
+
+    private static class PendingGather {
+	final String key;
+	final Gob gob;
+	final long seenAt;
+	PendingGather(String key, Gob gob) {
+	    this.key = key;
+	    this.gob = gob;
+	    this.seenAt = System.currentTimeMillis();
+	}
+    }
+
+    private static String itemRes(GItem item) {
+	try {
+	    return item.getres().name;
+	} catch(Loading l) {
+	    return null;
+	}
+    }
+
+    private static String gobRes(Gob gob) {
+	try {
+	    return gob.getres().name;
+	} catch(Loading l) {
+	    return null;
+	}
+    }
+
+    /** Normalizes a resource name to the collectable key used on the mapper: basename,
+     *  lowercase, spaces/underscores/dashes stripped - mirroring the server's
+     *  CollectableTimerTable.Normalize. Bat Guano is aliased to its Guano Pile gob. */
+    private static String collectableKey(String resname) {
+	if(resname == null)
+	    return null;
+	int slash = resname.lastIndexOf('/');
+	String base = (slash >= 0) ? resname.substring(slash + 1) : resname;
+	base = base.toLowerCase(Locale.ROOT).replaceAll("[ _-]", "");
+	if(base.isEmpty())
+	    return null;
+	String alias = COLLECTABLE_ITEM_GOB_ALIASES.get(base);
+	return (alias != null) ? alias : base;
+    }
+
+    /** Called from GameUI.tick. Detects a collectable item arriving in maininv and
+     *  uploads it as the gather signal (timer reset + quality from the item). */
+    public void pollCollectableInventory(GameUI gui) {
+	try {
+	    if(gui == null || gui.maininv == null)
+		return;
+	    long now = System.currentTimeMillis();
+	    if(now - lastCollectablePoll < COLLECTABLE_POLL_INTERVAL_MS) {
+		resolvePendingGathers(gui, now);
+		return;
+	    }
+	    lastCollectablePoll = now;
+
+	    Map<String, Integer> counts = new HashMap<>();
+	    synchronized(gui.maininv.wmap) {
+		for(WItem w : gui.maininv.getAllItems()) {
+		    String key = collectableKey(itemRes(w.item));
+		    if(key == null)
+			continue;
+		    int n = (w.item.num > 1) ? w.item.num : 1;
+		    counts.merge(key, n, Integer::sum);
+		}
+	    }
+	    if(collectableCounts == null) {
+		// First snapshot: just establish the baseline, never fire on login items.
+		collectableCounts = counts;
+		return;
+	    }
+	    for(Map.Entry<String, Integer> e : counts.entrySet()) {
+		int prev = collectableCounts.getOrDefault(e.getKey(), 0);
+		if(e.getValue() > prev && !pendingGathers.containsKey(e.getKey())) {
+		    Gob gob = findCollectableGob(gui, e.getKey());
+		    if(gob != null)
+			pendingGathers.put(e.getKey(), new PendingGather(e.getKey(), gob));
+		}
+	    }
+	    collectableCounts = counts;
+	    resolvePendingGathers(gui, now);
+	} catch(Exception ignored) {
+	}
+    }
+
+    /** The gob that was just gathered: the one the player most recently inspected if it
+     *  is this type, otherwise the nearest gob of this type within gather range. */
+    private Gob findCollectableGob(GameUI gui, String key) {
+	Gob inspected = gui.lastInspectedGob;
+	if(inspected != null && key.equals(collectableKey(gobRes(inspected))))
+	    return inspected;
+	Gob pl = (gui.map != null) ? gui.map.player() : null;
+	Coord2d pc = (pl != null) ? pl.rc : null;
+	double bestD = Double.MAX_VALUE;
+	Gob best = null;
+	String fallbackKey = null;
+	synchronized(glob.oc) {
+	    for(Gob g : glob.oc) {
+		if(g == pl)
+		    continue;
+		String gkey = collectableKey(gobRes(g));
+		if(gkey == null)
+		    continue;
+		// Exact key match (normalized + aliased). Items whose gob resname differs
+		// unpredictably still report through the contains/prefix fallback below.
+		if(key.equals(gkey)) {
+		    double d = (pc != null) ? g.rc.dist(pc) : 0;
+		    if(d < bestD) {
+			bestD = d;
+			best = g;
+		    }
+		} else if(fallbackKey == null && gobRes(g) != null &&
+		    (gkey.contains(key) || key.contains(gkey)))
+		    fallbackKey = gkey;
+	    }
+	}
+	if(best != null && (pc == null || bestD <= COLLECTABLE_GOB_RADIUS))
+	    return best;
+	// No exact-key gob found: fall back to the first gob whose key overlaps the item
+	// key (e.g. item "fairy" -> gob "fairystone"), so the gather still gets reported.
+	if(fallbackKey != null) {
+	    synchronized(glob.oc) {
+		for(Gob g : glob.oc) {
+		    if(g == pl)
+			continue;
+		    String gkey = collectableKey(gobRes(g));
+		    if(fallbackKey.equals(gkey)) {
+			double d = (pc != null) ? g.rc.dist(pc) : 0;
+			if(d <= COLLECTABLE_GOB_RADIUS)
+			    return g;
+		    }
+		}
+	    }
+	}
+	return null;
+    }
+
+    /** Reads the item's quality (as shown in the inventory) for a pending gather key. */
+    private Integer findItemQuality(GameUI gui, String key) {
+	if(gui.maininv == null)
+	    return null;
+	synchronized(gui.maininv.wmap) {
+	    for(WItem w : gui.maininv.getAllItems()) {
+		String res = itemRes(w.item);
+		if(res == null || !key.equals(collectableKey(res)))
+		    continue;
+		QBuff qb = w.item.getQBuff();
+		if(qb != null)
+		    return (int) Math.round(qb.q);
+	    }
+	}
+	return null;
+    }
+
+    /** Flushes pending gathers once the item's quality has loaded (or after a timeout,
+     *  in which case the timer is still reset but quality is left null). */
+    private void resolvePendingGathers(GameUI gui, long now) {
+	Iterator<Map.Entry<String, PendingGather>> it = pendingGathers.entrySet().iterator();
+	while(it.hasNext()) {
+	    PendingGather pg = it.next().getValue();
+	    Integer quality = findItemQuality(gui, pg.key);
+	    if(quality == null && (now - pg.seenAt) < COLLECTABLE_QUALITY_TIMEOUT_MS)
+		continue;
+	    uploadCollectable(pg.gob, gobRes(pg.gob), 0L, quality, true);
+	    it.remove();
 	}
     }
 

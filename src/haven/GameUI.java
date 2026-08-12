@@ -1599,6 +1599,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	haven.automated.lp.LpContext.tick();
 	haven.automated.nbots.world.PlaceOverlay.tick(this);
 	haven.automated.nbots.world.Observed.tick(this);
+	haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
+	if(mc != null)
+	    mc.pollCollectableInventory(this);
 	double now = Utils.rtime();
 	if(now - lastwndsave > 60) {
 	    savewndpos();
@@ -2292,11 +2295,10 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			try {
 				int q = Integer.parseInt(m.group(1));
 				g.setQualityInfo(q);
-				// P6: a quality observation on a collectable is the gather signal - reset
-				// the timer to the type's max on the mapper and record the quality.
-				haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
-				if(mc != null)
-				    mc.uploadCollectable(g, gobResName(g), 0L, Integer.valueOf(q), true);
+				// NOTE: a "Quality: N" line only appears on study-cursor inspection, never
+				// on an actual gather, so it is NOT used as the mapper gather signal. The
+				// gather (timer reset + quality from the inventory item) is reported by
+				// MappingClient.pollCollectableInventory from GameUI.tick instead.
 			} catch (Exception ignored) {}
 			lastInspectedGob = null;
 		} else {
