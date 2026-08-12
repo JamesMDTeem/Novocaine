@@ -400,7 +400,21 @@ public class GateManager {
          * than from {@code from}: approaching the gate has moved us since. */
         Gob at = nav.player();
         Coord2d fromNow = (at == null) ? from : at.rc;
-        Coord2d nearside = square(use, fromNow);
+        /* Square-on the gate means ON ITS AXIS, not at any particular distance: the open-click
+         * pulls the character up to the gate to interact, and re-squaring from there walked it
+         * straight back OUT to the near-side standoff - a pure round trip every crossing when the
+         * click kept it on the gate's line. Skip the re-square when the character is already on
+         * the axis (sideways offset under half a tile) and step straight through from wherever the
+         * open-click left it. */
+        Coord2d axis = across(use);
+        boolean onAxis = (axis == null);
+        if (axis != null) {
+            Coord2d v = fromNow.sub(use.rc);
+            double along = (v.x * axis.x) + (v.y * axis.y);
+            Coord2d off = v.sub(axis.mul(along));
+            onAxis = (off.abs() <= MCache.tilesz.x / 2);
+        }
+        Coord2d nearside = onAxis ? null : square(use, fromNow);
         if (nearside != null) {
             NLog.log(log, "gate: re-square to " + fmt(nearside) + " ("
                 + (int) fromNow.dist(nearside) + "u from here)");
