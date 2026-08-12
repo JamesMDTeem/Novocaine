@@ -63,7 +63,14 @@ public class NBotConfig {
          * teleport costs 0.1 weariness and strands the character at the hearth, so it is a call the
          * player makes per install rather than a default the bots take for them.
          */
-        hearthTravel(false);
+        hearthTravel(false),
+        /**
+         * Hearth home when a shift ends and the walk home would take longer than the hearth does.
+         * Self-selecting by distance: a bot that finished near home (a cellar dug by the door)
+         * walks back as it always has; one that ended the shift a long way out teleports. Off by
+         * default, same reasoning as {@link #hearthTravel}.
+         */
+        hearthHome(false);
 
         public final boolean def;
 

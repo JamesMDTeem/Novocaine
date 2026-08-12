@@ -110,6 +110,12 @@ public abstract class NBot extends Window implements Runnable, Stoppable {
                         Outcome o = work();
                         if (o != null && !o.isOk())
                             fatalStop = o.reason;
+                        /* The shift ended on its own. This is the one point a bot can hearth home
+                         * from: the alternative exits all mean the character should stay put. A
+                         * Stop was pressed, an error was caught, or the shift died mid-wait -
+                         * hearth-travelling out of any of those would move the character away from
+                         * exactly where the player or the report needs it to be. */
+                        maybeHearthHome();
                     } catch (InterruptedException e) {
                         // Stop pressed, or the thread was interrupted on close. Not an error.
                         Thread.interrupted();
@@ -167,6 +173,26 @@ public abstract class NBot extends Window implements Runnable, Stoppable {
         Map.keepout(null);
         WorkClaims.releaseAll();
         NLog.log(log, "=== " + title() + " shift end ===");
+    }
+
+    /**
+     * Hearth home when a shift ends on its own and the walk home would take longer than the hearth.
+     *
+     * Self-selecting by distance, so it is right for every bot that ends a shift far from home
+     * (a cleanup that spent its shift on the far side of the base, a water scout that came back to
+     * report) and wrong for none that do not (a cellar digger whose door is two tiles from the
+     * hearth walks back exactly as before). Only fires when {@code hearthHome} is on, the hearth is
+     * known, the per-run budget allows it, and the router says the on-foot way home is slower than
+     * the channel. Never fires when the shift did not end on its own - the caller only runs this
+     * after {@link #work()} returned, never on Stop, error, or interrupt.
+     */
+    private void maybeHearthHome() throws InterruptedException {
+        if (!NBotConfig.on(NBotConfig.Key.hearthHome))
+            return;
+        if (HearthTravel.homeBeatsWalking(gui, (int) BotNav.REACH)) {
+            NLog.log(log, "shift over and hearth travel beats walking home - teleporting");
+            HearthTravel.travel(gui);
+        }
     }
 
     protected void stopRunning() {

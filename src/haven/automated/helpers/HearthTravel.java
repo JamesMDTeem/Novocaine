@@ -4,6 +4,7 @@ import haven.Coord2d;
 import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
+import haven.Utils;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.world.WorldAnchor;
 
@@ -82,6 +83,16 @@ public class HearthTravel {
 
     private static final String LOG = "hearth.log";
 
+    /**
+     * Preference key for the hearth's location. The hearth does not move, so the last landing seen
+     * is remembered across sessions: an optional hearth travel on a fresh client launch must be
+     * able to say "yes, hearth travel is faster" without having watched a landing yet, or it never
+     * fires on the very trips it exists for. Stored through {@link Utils} (per-install
+     * {@code Hurricane-prefs.xml}) as the flat {@link WorldAnchor#store()} string, matching the
+     * contract {@code WorldAnchor} documents for remembered anchors.
+     */
+    private static final String PREF_HEARTH = "nova.hearth-anchor";
+
     private static int used = 0;
 
     /** When the last hearth-travel act left the client (manual or bot), or -1. */
@@ -90,7 +101,10 @@ public class HearthTravel {
     /** True while {@link #travel} is doing its own measured wait, so the watcher stays quiet. */
     private static volatile boolean botInFlight = false;
 
-    /** Where the hearth is, from the last landing seen (bot travel or manual). Null until one. */
+    /**
+     * Where the hearth is, from the last landing seen (bot travel or manual). Null until one is
+     * known this session; the preference store fills it on the first query of a fresh launch.
+     */
     private static volatile WorldAnchor hearthAnchor = null;
 
     private static volatile Thread watcher = null;
@@ -105,6 +119,29 @@ public class HearthTravel {
     /** Whether an OPTIONAL hearth travel is still within the per-run budget. */
     public static synchronized boolean canTravel() {
         return used < BUDGET;
+    }
+
+    /**
+     * The known hearth location, from this session's last landing or the preference store.
+     *
+     * The preference-store read happens once, on the first query of a session, because the hearth
+     * does not move and the store is per-install not per-character; {@link #remember} rewrites it
+     * whenever a landing is actually seen, keeping the store and the session state in step.
+     */
+    public static synchronized WorldAnchor hearth() {
+        WorldAnchor h = hearthAnchor;
+        if (h == null) {
+            h = WorldAnchor.parse(Utils.getpref(PREF_HEARTH, null));
+            hearthAnchor = h;
+        }
+        return h;
+    }
+
+    /** Records a landing as the hearth's location, in memory and in the preference store. */
+    private static synchronized void remember(WorldAnchor landing) {
+        hearthAnchor = landing;
+        if (landing != null)
+            Utils.setpref(PREF_HEARTH, landing.store());
     }
 
     /**
@@ -150,7 +187,7 @@ public class HearthTravel {
         double walkingDist = haven.automated.nbots.world.Router.walkingDistance(gui, target, margin);
         if (walkingDist < 0)
             return false;
-        WorldAnchor home = hearthAnchor;
+        WorldAnchor home = hearth();
         if (home == null)
             return false;
         haven.Coord2d hearth = home.resolve(gui);
@@ -164,6 +201,30 @@ public class HearthTravel {
     /** Resets the per-run budget; call at the start of a bot's run. */
     public static synchronized void resetRun() {
         used = 0;
+    }
+
+    /**
+     * Whether hearth travel home beats walking home from where the character is now.
+     *
+     * The end-of-shift question: the shift is over, the character is wherever the last target
+     * left it, and home is the hearth. Landing is the destination, so there is no onward walk to
+     * price - the comparison is just the on-foot walk back against the channel plus the floor.
+     * Unknown hearth, or no route, answers false (walk home, as before).
+     *
+     * @param gui  the client
+     * @param margin standable-around margin for the router, in tiles' worth of units
+     */
+    public static boolean homeBeatsWalking(GameUI gui, int margin) {
+        if (!canTravel())
+            return false;
+        WorldAnchor home = hearth();
+        if (home == null)
+            return false;
+        Coord2d hearth = home.resolve(gui);
+        if (hearth == null)
+            return false;
+        double walk = haven.automated.nbots.world.Router.walkingDistance(gui, hearth, margin);
+        return beatsWalking(walk);
     }
 
     /**
@@ -225,7 +286,7 @@ public class HearthTravel {
             long elapsed = System.currentTimeMillis() - started;
             WorldAnchor landing = WorldAnchor.capturePlayer(gui);
             if (landing != null)
-                hearthAnchor = landing;
+                remember(landing);
             synchronized (HearthTravel.class) {
                 used++;
             }
@@ -287,7 +348,7 @@ public class HearthTravel {
                     if (actAt >= 0 && !botInFlight && (now - actAt) <= ACT_WINDOW_MS) {
                         WorldAnchor landing = WorldAnchor.capturePlayer(gui);
                         if (landing != null)
-                            hearthAnchor = landing;
+                            remember(landing);
                         NLog.log(LOG, String.format(
                             "manual travel: channel=%dms jump=%.0fu landed=%s",
                             now - actAt, dist,
