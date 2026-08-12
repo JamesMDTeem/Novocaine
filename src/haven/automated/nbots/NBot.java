@@ -10,6 +10,7 @@ import haven.Utils;
 import haven.Widget;
 import haven.Window;
 import haven.automated.Stoppable;
+import haven.automated.helpers.HearthTravel;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.BotSettings;
 import haven.automated.nbots.core.NBotConfig;
@@ -147,6 +148,7 @@ public abstract class NBot extends Window implements Runnable, Stoppable {
     private void beginShift() {
         UiWatchdog.ensureStarted();
         WorkClaims.identify(gui);
+        HearthTravel.resetRun();
         fatalStop = null;
         /* Route around water for the length of the shift. The client can swim, so this is opt-in
          * rather than the pathfinder's default; a bot that swims off after a shoreline stump

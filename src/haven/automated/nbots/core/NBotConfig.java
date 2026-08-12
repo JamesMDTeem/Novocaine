@@ -57,7 +57,13 @@ public class NBotConfig {
         /** Shut a gateway the bot opened once it is through. Never touches one already open. */
         closeGates(true),
         /** Draw the places tagged "show" on the ground, so you can see what a bot is aiming at. */
-        showAreas(false);
+        showAreas(false),
+        /**
+         * Offer hearth-fire travel when it beats walking to the destination. Off by default: the
+         * teleport costs 0.1 weariness and strands the character at the hearth, so it is a call the
+         * player makes per install rather than a default the bots take for them.
+         */
+        hearthTravel(false);
 
         public final boolean def;
 

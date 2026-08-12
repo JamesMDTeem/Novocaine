@@ -90,6 +90,9 @@ public class HearthTravel {
     /** True while {@link #travel} is doing its own measured wait, so the watcher stays quiet. */
     private static volatile boolean botInFlight = false;
 
+    /** Where the hearth is, from the last landing seen (bot travel or manual). Null until one. */
+    private static volatile WorldAnchor hearthAnchor = null;
+
     private static volatile Thread watcher = null;
 
     private HearthTravel() {}
@@ -126,21 +129,36 @@ public class HearthTravel {
      * Whether hearth travel beats walking to a live target, folded in beside
      * {@code Router.walkingDistance} so a caller gets the whole decision in one call.
      *
-     * This is the OPTIONAL-travel decision: it respects the per-run budget ({@link #canTravel})
-     * and the {@link #FLOOR_S} margin, and it asks the router for the on-foot distance rather than
+     * This is the OPTIONAL-travel decision: it respects the per-run budget ({@link #canTravel}),
+     * the {@link #FLOOR_S} margin, and asks the router for the on-foot distance rather than
      * guessing from the straight line. It never fires the action - callers travel only after this
      * says yes, and the emergency hearth-home paths call {@link #travel} directly, past any budget.
      *
-     * The useful shape of this is \"I want to get back to somewhere near the hearth\" (a water
-     * refill, a drop-off, the end of a run): hearth travel only goes to the hearth, so a target
-     * that is not on the hearth side of the comparison would never beat walking anyway.
+     * The comparison counts the whole cost of hearth travel, not just the channel: teleporting
+     * strands the character at the hearth, so whatever is left between the hearth and the target
+     * has to be walked there and back. The three-way comparison is therefore
+     * walk-here-to-target versus channel plus walk-hearth-to-target plus the margin. A target that
+     * is not on the hearth's side of the map (no hearth landing seen yet, or the hearth anchor is
+     * on another segment) makes the teleport's cost unknowable, and the answer is conservatively
+     * false - walk.
      *
      * @return true when hearth travel wins AND the budget allows it; false otherwise
      */
     public static boolean betterThanWalking(GameUI gui, haven.Coord2d target, int margin) {
         if (!canTravel())
             return false;
-        return beatsWalking(haven.automated.nbots.world.Router.walkingDistance(gui, target, margin));
+        double walkingDist = haven.automated.nbots.world.Router.walkingDistance(gui, target, margin);
+        if (walkingDist < 0)
+            return false;
+        WorldAnchor home = hearthAnchor;
+        if (home == null)
+            return false;
+        haven.Coord2d hearth = home.resolve(gui);
+        if (hearth == null)
+            return false;
+        double walkingS = walkingDist / WALK_U_PER_S;
+        double hearthS = (CHANNEL_MS / 1000.0) + (hearth.dist(target) / WALK_U_PER_S) + FLOOR_S;
+        return walkingS > hearthS;
     }
 
     /** Resets the per-run budget; call at the start of a bot's run. */
@@ -206,6 +224,8 @@ public class HearthTravel {
             }
             long elapsed = System.currentTimeMillis() - started;
             WorldAnchor landing = WorldAnchor.capturePlayer(gui);
+            if (landing != null)
+                hearthAnchor = landing;
             synchronized (HearthTravel.class) {
                 used++;
             }
@@ -266,6 +286,8 @@ public class HearthTravel {
                     long actAt = travelActAt;
                     if (actAt >= 0 && !botInFlight && (now - actAt) <= ACT_WINDOW_MS) {
                         WorldAnchor landing = WorldAnchor.capturePlayer(gui);
+                        if (landing != null)
+                            hearthAnchor = landing;
                         NLog.log(LOG, String.format(
                             "manual travel: channel=%dms jump=%.0fu landed=%s",
                             now - actAt, dist,

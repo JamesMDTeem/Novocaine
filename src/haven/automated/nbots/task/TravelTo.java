@@ -1,7 +1,9 @@
 package haven.automated.nbots.task;
 
 import haven.Coord2d;
+import haven.automated.helpers.HearthTravel;
 import haven.automated.nbots.core.BotCtx;
+import haven.automated.nbots.core.NBotConfig;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
 import haven.automated.nbots.world.Place;
@@ -101,11 +103,30 @@ public class TravelTo implements Task {
             if (aim == null)
                 return Outcome.failed(what + " is not on this part of the map");
             ctx.status("Travelling to " + what + ".");
-            return arrive(ctx, aim, tol);
+            return maybeHearth(ctx, aim, tol);
         }
         if (point == null)
             return Outcome.failed("no destination");
-        return arrive(ctx, point, tolerance);
+        return maybeHearth(ctx, point, tolerance);
+    }
+
+    /**
+     * Whether to hearth-travel before walking, and then walk anyway.
+     *
+     * Off by default ({@code NBotConfig.Key.hearthTravel}); when on, the decision is
+     * {@code HearthTravel.betterThanWalking} - the full three-way comparison (walk-here-to-target
+     * against channel plus walk-hearth-to-target plus margin, budget-respecting, hearth-known
+     * only). Hearth travel is never an alternative to walking, only a way of covering part of the
+     * distance faster: the journey still ends by walking to the destination from wherever the
+     * hearth dropped us.
+     */
+    private Outcome maybeHearth(BotCtx ctx, Coord2d dest, double tol) throws InterruptedException {
+        if (NBotConfig.on(NBotConfig.Key.hearthTravel)
+                && HearthTravel.betterThanWalking(ctx.gui, dest, (int) tol)) {
+            ctx.log("hearth travel beats walking to " + what + " - teleporting");
+            HearthTravel.travel(ctx.gui);
+        }
+        return arrive(ctx, dest, tol);
     }
 
     /**
