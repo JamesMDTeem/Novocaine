@@ -1079,7 +1079,7 @@ public class Walkers {
         for (Gob g : gobs) {
             try {
                 Resource res = g.getres();
-                if ((res != null) && Pathfinder.isInsideBoundBox(g.rc.floor(), g.a, res.name, p))
+                if ((res != null) && Pathfinder.isInsideBoundBox(g, p))
                     return true;
             } catch (RuntimeException e) {
                 // Includes Loading: a gob whose resource hasn't arrived cannot be tested, and

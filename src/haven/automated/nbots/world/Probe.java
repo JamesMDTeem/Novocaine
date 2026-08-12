@@ -294,7 +294,7 @@ public class Probe {
                             open.append(" (").append(x).append(',').append(y).append(')');
                     }
                 }
-                boolean destIn = Pathfinder.isInsideBoundBox(g.rc.floor(), g.a, res.name, wc.floor());
+                boolean destIn = Pathfinder.isInsideBoundBox(g, wc.floor());
                 sb.append(System.lineSeparator()).append("    real box ")
                     .append(String.format("%.1f", minx + segGob.x)).append(',')
                     .append(String.format("%.1f", miny + segGob.y)).append('-')
@@ -357,7 +357,7 @@ public class Probe {
                 if (g.isPlgob(gui))
                     continue;
                 Resource res = g.getres();
-                if ((res != null) && Pathfinder.isInsideBoundBox(g.rc.floor(), g.a, res.name, at))
+                if ((res != null) && Pathfinder.isInsideBoundBox(g, at))
                     return res.name + "#" + g.id;
             } catch (RuntimeException e) {
                 // A gob whose resource has not arrived cannot be tested; it is not the answer.

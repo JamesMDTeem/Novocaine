@@ -282,7 +282,7 @@ public class NWaterScoutBot extends NBot {
         for (Gob g : solids) {
             try {
                 Resource res = g.getres();
-                if (res != null && Pathfinder.isInsideBoundBox(g.rc.floor(), g.a, res.name, pc))
+                if (res != null && Pathfinder.isInsideBoundBox(g, pc))
                     return true;
             } catch (Loading | NullPointerException ignored) {
             }

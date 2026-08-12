@@ -216,7 +216,7 @@ public class OceanScoutBot extends Window implements Runnable, Stoppable {
     private boolean isGobCollision(Coord t) {
         for (Gob gob : nearbyGobs) {
             if (gob != null && gob.getres() != null) {
-                if (Pathfinder.isInsideBoundBox(gob.rc.floor(), gob.a, gob.getres().name, t)) {
+                if (Pathfinder.isInsideBoundBox(gob, t)) {
                     return true;
                 }
             }

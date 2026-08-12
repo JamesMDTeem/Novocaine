@@ -11,6 +11,8 @@ import haven.MCache;
 import haven.MapView;
 import haven.OCache;
 import haven.Pair;
+import haven.ResDrawable;
+import haven.Resource;
 import haven.automated.helpers.HitBoxes;
 
 import java.util.ArrayList;
@@ -183,7 +185,7 @@ public class Pathfinder implements Runnable {
                     continue;
                 if (this.gob != null && this.gob.id == gob.id)
                     continue;
-                if (gob.getres() != null && isInsideBoundBox(gob.rc.floor(), gob.a, gob.getres().name, player.rc.floor())) {
+                if (gob.getres() != null && isInsideBoundBox(gob, player.rc.floor())) {
                     HitBoxes.CollisionBoxSecondary[] collisionBoxes = HitBoxes.collisionBoxMap.get(gob.getres().name);
                     if (collisionBoxes != null) {
                         for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
@@ -354,7 +356,33 @@ public class Pathfinder implements Runnable {
         return (long)((dist / speed) * 1000.0);
     }
 
-    public static boolean isInsideBoundBox(Coord gobRc, double gobA, String resName, Coord point) {
+    /**
+     * Whether {@code point} lies inside the exact collision box of {@code gob}.
+     *
+     * Takes the gob rather than its position/resource so it can judge a gateway by its LIVE
+     * state: an open gate is passable, exactly as the pathfinder treats it (see
+     * {@link Map#analyzeGobHitBoxes}). The box map's {@code hitAble} flag cannot be trusted for
+     * gates - {@code HitBoxes.checkHitAble} freezes the gate's state at first sighting, so a
+     * gate seen shut stays solid on the bot's side even after it swings open.
+     *
+     * A gob whose resource has not arrived yet reports "not inside", never "solid": every caller
+     * asks "can a disc be here", and guessing solid would refuse ground that is almost certainly
+     * fine (the pathfinder itself cannot test such a gob either).
+     */
+    public static boolean isInsideBoundBox(Gob gob, Coord point) {
+        Resource res = gob.getres();
+        if (res == null)
+            return false;
+        String resName = res.name;
+        if (resName.contains("gate")) {
+            try {
+                ResDrawable rd = gob.getattr(ResDrawable.class);
+                if (rd != null && rd.sdt.checkrbuf(0) == 1)
+                    return false;
+            } catch (RuntimeException e) {
+                return false;
+            }
+        }
         if (HitBoxes.collisionBoxMap.get(resName) != null) {
             HitBoxes.CollisionBoxSecondary[] collisionBoxes = HitBoxes.collisionBoxMap.get(resName);
             for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
@@ -374,7 +402,7 @@ public class Pathfinder implements Runnable {
                         Coord2d topLeft = new Coord2d(minX, minY);
                         Coord2d bottomRight = new Coord2d(maxX, maxY);
 
-                        final Coordf relative = new Coordf(point.sub(gobRc)).rotate(-gobA);
+                        final Coordf relative = new Coordf(point.sub(gob.rc.floor())).rotate(-gob.a);
                         if (relative.x >= topLeft.x && relative.x <= bottomRight.x &&
                                 relative.y >= topLeft.y && relative.y <= bottomRight.y) {
                             return true;
@@ -403,7 +431,7 @@ public class Pathfinder implements Runnable {
                         }
                         Coord2d topLeft = new Coord2d(minX, minY);
                         Coord2d bottomRight = new Coord2d(maxX, maxY);
-                        final Coordf relative = new Coordf(point.sub(gobRc)).rotate(-gobA);
+                        final Coordf relative = new Coordf(point.sub(gob.rc.floor())).rotate(-gob.a);
                         if (relative.x >= topLeft.x && relative.x <= bottomRight.x &&
                                 relative.y >= topLeft.y && relative.y <= bottomRight.y) {
                             return true;
