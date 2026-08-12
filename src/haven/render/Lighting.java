@@ -539,7 +539,9 @@ public interface Lighting {
 		    buf.put(lists, 0, listlen);
 		    return(ret);
 		};
-		return(new Texture2D(tw, th, DataBuffer.Usage.STATIC, new VectorFormat(1, NumberFormat.UINT16), init));
+		Texture2D tex = new Texture2D(tw, th, DataBuffer.Usage.STATIC, new VectorFormat(1, NumberFormat.UINT16), init);
+		tex.desc = "lightgrid-list";
+		return(tex);
 	    }
 
 	    private Texture2D lighttex(Object[][] lights) {
@@ -567,7 +569,9 @@ public interface Lighting {
 		    }
 		    return(ret);
 		};
-		return(new Texture2D(tw, th, DataBuffer.Usage.STATIC, new VectorFormat(4, NumberFormat.FLOAT32), init));
+		Texture2D tex = new Texture2D(tw, th, DataBuffer.Usage.STATIC, new VectorFormat(4, NumberFormat.FLOAT32), init);
+		tex.desc = "lightgrid-light";
+		return(tex);
 	    }
 
 	    public ShaderMacro shader() {return(LightGrid.this.shader());}

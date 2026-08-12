@@ -2,6 +2,10 @@ package haven.automated;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Deque;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import haven.Coord2d;
 import haven.Gob;
@@ -70,6 +74,15 @@ public class LeakDbg {
     private static int ringHead = 0, ringLen = 0;
     private static volatile Thread sampler;
 
+    /* Per-desc texture accounting: desc -> {bytes, count}. Fed from the GL thread by
+     * GLTexture.create/delete via textureAlloc/textureFree; read by the sampler. */
+    private static final Map<String, long[]> texHist = new ConcurrentHashMap<>();
+    private static final Deque<String> texAllocLog = new ConcurrentLinkedDeque<>();
+    private static final int TEX_ALLOC_LOG = 256;
+    private static volatile long texAllocCount;
+    private static long prevTexAllocCount;
+    private static long prevTexAllocAt;
+
     private LeakDbg() {}
 
     /**
@@ -117,6 +130,70 @@ public class LeakDbg {
             prevTransObjs = mo;
         }
         NLog.log(LOG, sb.toString());
+    }
+
+    /**
+     * Accounts a GL texture alloc by its description. Called from the GL thread inside
+     * {@code GLTexture}'s prepare lambdas (create paths). desc is the texture's {@code data.desc},
+     * the same string that goes to glObjectLabel.
+     */
+    public static void textureAlloc(String desc, long bytes) {
+        String key = (desc == null || desc.isEmpty()) ? "<anon>" : desc;
+        long[] a = texHist.computeIfAbsent(key, k -> new long[2]);
+        synchronized (a) {
+            a[0] += bytes;
+            a[1]++;
+        }
+        texAllocCount++;
+        texAllocLog.addLast(key);
+        while (texAllocLog.size() > TEX_ALLOC_LOG)
+            texAllocLog.pollFirst();
+    }
+
+    /**
+     * Accounts a GL texture free. Called from the GL thread via {@code GLTexture.delete}.
+     */
+    public static void textureFree(String desc, long bytes) {
+        String key = (desc == null || desc.isEmpty()) ? "<anon>" : desc;
+        long[] a = texHist.get(key);
+        if (a != null) {
+            synchronized (a) {
+                a[0] -= bytes;
+                if (a[0] < 0)
+                    a[0] = 0;
+                a[1]--;
+                if (a[1] < 0)
+                    a[1] = 0;
+            }
+        }
+    }
+
+    private static String topTexHist(int max) {
+        StringBuilder sb = new StringBuilder();
+        java.util.List<Map.Entry<String, long[]>> live = new java.util.ArrayList<>();
+        for (Map.Entry<String, long[]> e : texHist.entrySet()) {
+            long[] a = e.getValue();
+            synchronized (a) {
+                if (a[0] > 0)
+                    live.add(e);
+            }
+        }
+        live.sort((x, y) -> Long.compare(y.getValue()[0], x.getValue()[0]));
+        for (Map.Entry<String, long[]> e : live) {
+            long[] a = e.getValue();
+            sb.append(e.getKey()).append('=').append(String.format("%,d", a[0])).append('B')
+              .append('(').append(a[1]).append(");");
+        }
+        if (max > 0 && sb.length() > max)
+            return (sb.substring(0, max));
+        return (sb.toString());
+    }
+
+    private static String lastAllocs() {
+        StringBuilder sb = new StringBuilder();
+        for (String s : texAllocLog)
+            sb.append(s).append(',');
+        return (sb.toString());
     }
 
     private static void run() {
@@ -177,6 +254,17 @@ public class LeakDbg {
           .append('/').append(String.format("%,d", rt.maxMemory()))
           .append(" fps=").append(String.format("%.1f", fps));
 
+        if (prevTexAllocAt == 0)
+            prevTexAllocAt = now;
+        long allocDelta = texAllocCount - prevTexAllocCount;
+        long allocDt = now - prevTexAllocAt;
+        prevTexAllocCount = texAllocCount;
+        prevTexAllocAt = now;
+        sb.append(" tex=").append(String.format("%d/s", allocDt <= 0 ? 0 : allocDelta * 1000L / allocDt));
+        String top = topTexHist(300);
+        if (!top.isEmpty())
+            sb.append(" top=").append(top);
+
         try {
             MapView map = mapRef;
             if (map != null) {
@@ -229,6 +317,8 @@ public class LeakDbg {
                 "[LEAKDBG-WATCH] gl total=%,d bytes, T=%d objects (session baseline=%,d) — dumping ring",
                 totalBytes, texObjs, baselineTotal));
             dumpRing();
+            NLog.log(LOG, "[LEAKDBG-hist] " + topTexHist(0));
+            NLog.log(LOG, "[LEAKDBG-last] " + lastAllocs());
         }
     }
 
