@@ -39,9 +39,6 @@ public class HearthTravel {
     /** How long to watch the player's position for the teleport to land, in milliseconds. */
     private static final long ARRIVAL_TIMEOUT_MS = 12_000L;
 
-    /** A move of more than one tile counts as the teleport landing. */
-    private static final double MOVE_TILE = 1.0;
-
     /** Settle time after the position first moves, so the recorded rc is the final one. */
     private static final long SETTLE_MS = 500L;
 
@@ -319,17 +316,32 @@ public class HearthTravel {
             gui.act("travel", "hearth");
             long deadline = started + ARRIVAL_TIMEOUT_MS;
             boolean landed = false;
+            Coord2d prev = before;
             while (!landed && System.currentTimeMillis() < deadline) {
                 Thread.sleep(100);
                 Coord2d now = playerRc(gui);
-                if (now != null && now.dist(before) > MOVE_TILE * MCache.tilesz.x) {
-                    Thread.sleep(SETTLE_MS);
-                    landed = true;
+                if (now != null) {
+                    /* A hearth travel is a TELEPORT, not a walk: the character stands at the
+                     * hearth-fire for the channel, then the position jumps a whole map. Only a
+                     * move of more than {@link #JUMP_TILES} between consecutive samples can be
+                     * that jump - walking at ~4.5 tiles/s covers a few units per sample. This
+                     * used to compare against the START position with a 1-tile threshold, which
+                     * the residual tail of the previous walk tripped a few seconds into the
+                     * channel (the run logged elapsed=3316ms on a ~4.8s channel and remembered
+                     * the pre-teleport position as the hearth - corrupting the anchor). */
+                    if (now.dist(prev) > JUMP_TILES * MCache.tilesz.x) {
+                        Thread.sleep(SETTLE_MS);
+                        landed = true;
+                    }
+                    prev = now;
                 }
             }
             long elapsed = System.currentTimeMillis() - started;
-            WorldAnchor landing = WorldAnchor.capturePlayer(gui);
-            if (landing != null)
+            /* Only a real teleport gives us the hearth. A timeout ("no position move seen")
+             * leaves the character wherever it was, and remembering that as the hearth would
+             * corrupt the anchor the travel-vs-walk decision reads. */
+            WorldAnchor landing = landed ? WorldAnchor.capturePlayer(gui) : null;
+            if (landed && (landing != null))
                 remember(gui, landing);
             synchronized (HearthTravel.class) {
                 used++;
