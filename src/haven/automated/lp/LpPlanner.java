@@ -513,23 +513,6 @@ public class LpPlanner {
     }
 
     /**
-     * The beasts' aggro rings expressed as pathfinder keep-out circles, so a route can be planned
-     * AROUND them instead of the approach simply being abandoned.
-     *
-     * Any circle the character is already inside is left out: the pathfinder's own starting cell
-     * would be inside a blocked region and no route out of it would exist. Getting clear of one is
-     * the bot's job (AutoLpBot.retreatFrom), and once it has, the ring reappears here.
-     *
-     * The radius used is DANGER_PATH_CLEARANCE, not the bigger DANGER_KEEPOUT that target selection
-     * uses - walking past a bear at range is a different proposition from standing next to one
-     * swinging an axe for half a minute, and pathing with the larger figure walls off far more
-     * ground than the risk warrants.
-     */
-    public static haven.automated.pathfinder.Map.Keepout[] keepouts(GameUI gui, haven.Coord2d from) {
-        return haven.automated.nbots.world.Hazards.keepouts(gui, from);
-    }
-
-    /**
      * Whether a gob is standing on water the character can't walk onto.
      *
      * Checked per candidate rather than left to the pathfinder because the two failures are

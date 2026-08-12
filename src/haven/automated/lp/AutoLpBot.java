@@ -20,6 +20,8 @@ import haven.automated.nbots.core.Carried;
 import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.UiWatchdog;
 import haven.automated.nbots.core.Widgets;
+import haven.automated.nbots.world.BotNav;
+import haven.automated.nbots.world.Hazards;
 
 import java.awt.Color;
 import java.util.Collections;
@@ -65,6 +67,7 @@ import static haven.OCache.posres;
  */
 public class AutoLpBot extends Window implements Runnable {
     private final GameUI gui;
+    private final BotNav nav;
 
     private volatile boolean stop = false;
     private volatile boolean active = false;
@@ -117,6 +120,7 @@ public class AutoLpBot extends Window implements Runnable {
         this.gui = gui;
         this.radius = LpConfig.radius();
         this.maxActions = 400;
+        this.nav = new BotNav(gui, () -> active && !stop, LOG, Hazards::keepouts);
 
         status = add(new Label("Idle."), UI.scale(10, 2));
         startButton = add(new Button(UI.scale(200), "Start") {
@@ -1033,293 +1037,28 @@ public class AutoLpBot extends Window implements Runnable {
         return gui.ui.sess.glob.oc.getgob(id);
     }
 
-    /** Close enough to right-click a gob and have the menu open. Roughly two tiles. */
-    private static final double REACH = 22.0;
-    /** How far a target may drift from where we aimed before the path is worth recomputing. */
-    private static final double DRIFT = 11.0;
-    /** Slop on top of REACH and the target's own bulk before a stopped walk stops being arrival. */
-    private static final double STOP_SLACK = 11 * 1.0;
-    /** Give up chasing after this many re-paths without getting closer. */
-    private static final int NO_PROGRESS_LIMIT = 10;
-
-    private boolean walking() {
-        Gob me = player();
-        return me != null && ((gui.map.pfthread != null && gui.map.pfthread.isAlive()) || me.getv() > 0);
-    }
-
-    /**
-     * Stops walking for good: kills the pathfinder as well as the current move.
-     *
-     * stopAction() alone isn't enough here - it clicks our own tile, which ends the CURRENT move,
-     * but the Pathfinder thread is still alive and simply issues the next leg of its route, so we'd
-     * keep walking towards whatever we were trying to walk away from. pfRightClick does this
-     * teardown itself before starting a new search, which is why re-pathing needs no equivalent;
-     * only the abandon case does. Same sequence GameUI uses to cancel a path.
-     */
-    private void cancelWalk() {
-        synchronized (haven.automated.pathfinder.Pathfinder.class) {
-            if (gui.map.pf != null) {
-                gui.map.pf.terminate = true;
-                if (gui.map.pfthread != null)
-                    gui.map.pfthread.interrupt();
-            }
-        }
-        stopAction();
-    }
-
     /**
      * Walks to a gob, re-pathing as it moves.
      *
-     * The old version fired one pfRightClick and blocked in AUtils.waitPf until the whole path had
-     * been walked. For a tree that's fine - it's still there when you arrive. For anything that
-     * MOVES it's useless, and produced exactly the reported silkmoth behaviour: click, moth drifts
-     * away, character dutifully finishes walking to where the moth used to be, only then looks
-     * again. With a target that moves continuously that never converges.
+     * The movement loop this bot used to carry is the seam's {@code Approach} now (BotNav.approach
+     * in haven.automated.nbots.world was split out of the very walkToward this class used to copy):
+     * the drift re-path, the keep-out rings, the retreat from a beast, the bulk-aware arrival test,
+     * and two things the copy never grew - a path that dies short of a static target is re-issued
+     * rather than waited out, and an outright refusal gets the character stepped clear first.
      *
-     * So instead of waiting out the path, this watches the target and re-issues the path whenever it
-     * has drifted more than DRIFT from the point we aimed at - i.e. it intercepts rather than
-     * follows. pfRightClick already terminates the in-flight pathfinder and cancels the current
-     * movement before starting a new search, so re-issuing mid-walk is exactly what it's built for.
-     * Static targets cost nothing extra: their drift is always zero, so the re-path never fires and
-     * this behaves like the single click it replaces.
-     *
-     * Wildlife is routed AROUND rather than run from. Every re-path publishes the beasts' aggro
-     * rings to the pathfinder as keep-out circles (LpPlanner.keepouts), so A* plans a detour; if one
-     * has already closed to within its ring, the character backs out of it first, because a search
-     * whose own starting cell sits inside a blocked region has no legal move at all. This replaces
-     * an earlier "abandon the approach the moment a beast is near" rule, which read as the bot
-     * quitting: the abandoned target got retired, the next one was equally near the same bear, and
-     * a run could retire every target it had and finish in seconds without acting once.
-     *
-     * Three bail-outs, all of which leave the target DEFERRED rather than spent (see hazardBlocked)
-     * when wildlife was the cause: the target itself ends up inside a keep-out, we can't get clear
-     * of a beast after RETREAT_LIMIT tries, or - for a fleeing critter that can outrun a walking
-     * character indefinitely - the distance stops improving over NO_PROGRESS_LIMIT re-paths.
+     * The keep-out source is the beasts-only one. The seam default adds other characters'
+     * personal space when {@code avoidOthers} is on; this bot publishes only the wildlife rings,
+     * exactly as it did before the merge - nobody has asked it to route around people.
      *
      * @return true if we ended up within reach of the target.
      */
     private boolean walkTo(Gob gob) throws InterruptedException {
         hazardBlocked = false;
         try {
-            return walkToward(gob);
+            return nav.approach(gob, BotNav.REACH);
         } finally {
-            // Never leave a keep-out standing. It's a process-wide setting and the player's own
-            // clicks go through the same pathfinder, so a leftover ring would silently reroute
-            // them long after the bot stopped caring.
-            haven.automated.pathfinder.Map.keepout(null);
+            hazardBlocked = nav.hazardBlocked;
         }
-    }
-
-    private boolean walkToward(Gob gob) throws InterruptedException {
-        long id = gob.id;
-        haven.Coord2d aimed = null;
-        double best = Double.MAX_VALUE;
-        int stalled = 0;
-        int retreats = 0;
-        /* Set when a walk ended without getting us there, which is the ONLY reason a static target
-         * ever needs a second path.
-         *
-         * Everything else in this loop that triggers a re-path is about the target MOVING - the
-         * aimed/DRIFT test, and the stall counter that hangs off it. That is the right model for a
-         * beast and no model at all for a rock: a rock's rc never drifts, so once aimed is set the
-         * re-path branch is unreachable, and because the stall counter only increments inside that
-         * branch it never counts either. The observed result is a path that draws itself around a
-         * felled log, dies before arriving, and leaves the character standing perfectly still for
-         * the rest of the sixty attempts - about half a minute - before "ran out of attempts". No
-         * second path is ever tried, and nothing is logged the whole time.
-         *
-         * A path dying short is worth retrying rather than waiting out: the search reads a world
-         * that is still loading in, and the second answer is routinely better than the first. */
-        boolean walkDied = false;
-        // The search behind the last path issued, so the arrival test below can tell a walk that
-        // ended from one that never began.
-        haven.automated.pathfinder.Pathfinder walk = null;
-
-        for (int i = 0; i < 60; i++) {
-            Gob target = findGob(id);
-            Gob me = player();
-            if (target == null || me == null)
-                return false;
-
-            double dist = me.rc.dist(target.rc);
-            if (dist <= REACH)
-                return true;
-
-            // A beast that has wandered onto the target since it was planned. Standing there to
-            // work is what the full keep-out margin exists to prevent, so stop - but defer, since
-            // beasts move and the target will be worth having again shortly.
-            Gob atTarget = LpPlanner.hazardWithin(gui, target.rc, LpTargets.DANGER_KEEPOUT);
-            if (atTarget != null) {
-                NLog.log(LOG, "deferring #" + id + ": " + LpExplorer.resname(atTarget)
-                    + " is within keep-out of it");
-                hazardBlocked = true;
-                cancelWalk();
-                return false;
-            }
-
-            // One that has closed on US. Can't be handed to the pathfinder as a no-go circle while
-            // we're inside it, so step out of it and re-path on the next pass.
-            Gob onUs = LpPlanner.hazardWithin(gui, me.rc, LpTargets.DANGER_PATH_CLEARANCE);
-            if (onUs != null) {
-                if (++retreats > RETREAT_LIMIT) {
-                    NLog.log(LOG, "deferring #" + id + ": still inside "
-                        + LpExplorer.resname(onUs) + "'s ring after " + retreats + " retreats");
-                    hazardBlocked = true;
-                    cancelWalk();
-                    return false;
-                }
-                NLog.log(LOG, "backing away from " + LpExplorer.resname(onUs) + " ("
-                    + (int) me.rc.dist(onUs.rc) + "u) before continuing to #" + id);
-                retreatFrom(onUs);
-                aimed = null;  // we've moved; whatever we aimed at is stale
-                continue;
-            }
-
-            if (dist < best - 1.0) {
-                best = dist;
-                stalled = 0;
-            }
-
-            if (aimed == null || aimed.dist(target.rc) > DRIFT || walkDied) {
-                walkDied = false;
-                if (aimed != null && ++stalled > NO_PROGRESS_LIMIT) {
-                    NLog.log(LOG, "giving up chase of #" + id + " ("
-                        + LpExplorer.resname(target) + "): " + stalled
-                        + " re-paths without closing (still " + (int) dist + "u)");
-                    cancelWalk();
-                    return false;
-                }
-                // Refreshed per re-path rather than once per walk: the beasts move too, and a stale
-                // ring would route us around where a bear used to be and through where it now is.
-                haven.automated.pathfinder.Map.keepout(LpPlanner.keepouts(gui, me.rc));
-                // clickb=1 walks without acting on arrival; the right-click is ours to time.
-                gui.map.pfRightClick(target, -1, 1, 0, null);
-                walk = gui.map.pf;
-                aimed = target.rc;
-            }
-
-            // Let a freshly-issued path actually get going first. Without this grace the check
-            // below reads the gap between the click and the pathfinder thread starting as "we've
-            // stopped walking, so we must have arrived", and the loop spins at poll speed instead
-            // of walking anywhere. (AUtils.waitPf opens with the same fixed sleep, for the same
-            // reason.) It doubles as the loop's tick rate when no re-path was needed.
-            waitUntil(() -> false, 10);
-
-            // Then wait a slice rather than the whole path, so a target that moves is noticed while
-            // we're still walking - and end the slice early once we're in reach or the walk is over.
-            waitUntil(() -> {
-                Gob g = findGob(id);
-                Gob p = player();
-                if (g == null || p == null)
-                    return true;
-                if (p.rc.dist(g.rc) <= REACH)
-                    return true;
-                return !walking();
-            }, 12);
-
-            /* The walk finished and the target is still where we aimed: as close as pathing is
-             * going to get us, so count it as arrival even though we are further out than REACH.
-             * pfRightClick paths to the edge of the gob's HITBOX and a big tree's trunk is wider
-             * than two tiles, so demanding REACH would leave the bot circling every large tree.
-             *
-             * Bounded by the target's own bulk, though, and that bound is what was missing. The
-             * walk also stops when the pathfinder can find no way at all, and the commonest reason
-             * for that is water - so a bot stood on a river bank was told it had arrived, and then
-             * did what it does on arrival: right-clicked a gob on the far side, which the SERVER
-             * walked it to, swimming. The pathfinder had refused the crossing correctly and this
-             * line went round it.
-             *
-             * And bounded by whether a walk HAPPENED at all, which is the exact form of the same
-             * test. A search that finds no way returns an empty path, so Pathfinder issues not one
-             * move and its `mc` is never set - the character has not walked and stopped, it has
-             * stood still. Distance could only ever approximate that: a tree on the far bank of a
-             * narrow river is genuinely close, so a bot facing one across the water passes any
-             * tolerance generous enough to cover a wide trunk. Then it does the thing it does on
-             * arrival - right-clicks the tree - and the SERVER walks it there, swimming. This is
-             * the same signal BotNav.stepTo now reads, for the same reason. */
-            Gob now = findGob(id);
-            Gob here = player();
-            if (!walking() && now != null && here != null && aimed != null
-                && walk != null && walk.mc != null
-                && aimed.dist(now.rc) <= DRIFT
-                && here.rc.dist(now.rc)
-                   <= (REACH + haven.automated.nbots.world.BotNav.bulk(now) + STOP_SLACK)) {
-                /* Said out loud whenever we accept a stop that is NOT within reach.
-                 *
-                 * This branch is the only way a walk can succeed while short of the target, and it
-                 * is the only candidate left for "the bot stopped early on the path" and "it got
-                 * stuck on a bush": nothing else in this method reports failure, and the logs
-                 * confirm it - no walk in a full session ever ran out of attempts or retired a
-                 * target as unreachable, while four right-clicks opened no flower menu, which is
-                 * what clicking from out of range looks like.
-                 *
-                 * The bound is deliberately generous, because pfRightClick paths to the edge of a
-                 * hitbox and demanding REACH would have the bot circling every big tree. Whether it
-                 * is TOO generous is a question about numbers nobody has measured, so print them
-                 * rather than guess: stopping four units past a wide trunk is the bound doing its
-                 * job, stopping forty because a bush was in the way is not. */
-                double gap = here.rc.dist(now.rc);
-                double bulk = haven.automated.nbots.world.BotNav.bulk(now);
-                if (gap > REACH)
-                    NLog.log(LOG, "walk to #" + id + " stopped " + (int) gap + "u out, past the "
-                        + (int) REACH + "u reach - allowed by the target's own bulk (" + (int) bulk
-                        + "u) plus slack; acting from here");
-                return true;
-            }
-            /* Got here with the walk over and no arrival accepted, so the path did not deliver -
-             * either it found no way and issued no move at all (walk.mc null), or it ran out
-             * somewhere short of the bound above. Ask for another one on the next pass.
-             *
-             * This is what makes the stall counter mean something for a target that cannot drift.
-             * Each dead path now costs one re-path and one increment, so a target the pathfinder
-             * genuinely cannot serve is given up after NO_PROGRESS_LIMIT tries with the existing
-             * "giving up chase" line - seconds, and said out loud - instead of sixty silent passes
-             * of standing still. */
-            if (!walking())
-                walkDied = true;
-        }
-        NLog.log(LOG, "walk to #" + id + " ran out of attempts");
-        Gob me = player(), target = findGob(id);
-        if (me != null && target != null && me.rc.dist(target.rc) <= REACH)
-            return true;
-        cancelWalk();
-        return false;
-    }
-
-    /** How many times one approach may stop to back out of a beast's ring before giving up. */
-    private static final int RETREAT_LIMIT = 3;
-    /** Extra distance past the ring's edge to aim for, so a step or two of drift doesn't re-trip it. */
-    private static final double RETREAT_MARGIN = 30.0;
-
-    /**
-     * Walks directly away from a beast until we're outside the ring the pathfinder needs to treat
-     * as a no-go area.
-     *
-     * Uses pfLeftClick rather than a raw move so the retreat still goes around trees and water, but
-     * it is issued while no keep-out is published - by definition we are standing in the one that
-     * matters, and blocking it would leave the search no route out of where we already are.
-     */
-    private void retreatFrom(Gob beast) throws InterruptedException {
-        Gob me = player();
-        if (me == null || beast == null)
-            return;
-        haven.Coord2d away = me.rc.sub(beast.rc);
-        double d = away.abs();
-        // Dead-centre on the beast has no "away" direction; any heading beats standing still.
-        away = (d < 1.0) ? new haven.Coord2d(1, 0) : away.div(d);
-        haven.Coord2d dest = beast.rc.add(
-            away.mul(LpTargets.DANGER_PATH_CLEARANCE + RETREAT_MARGIN));
-
-        haven.automated.pathfinder.Map.keepout(null);
-        gui.map.pfLeftClick(dest.floor(), null);
-        waitUntil(() -> {
-            Gob p = player();
-            Gob b = findGob(beast.id);
-            if (p == null || b == null)
-                return true;
-            return p.rc.dist(b.rc) > LpTargets.DANGER_PATH_CLEARANCE + RETREAT_MARGIN;
-        }, 200);
-        cancelWalk();
     }
 
     private void rclickGob(Gob gob) {
@@ -1401,7 +1140,7 @@ public class AutoLpBot extends Window implements Runnable {
             + " - walking the last gap with the pathfinder rather"
             + " than letting the click drag us there through whatever is in the way");
         gui.map.pfRightClick(gob, -1, 3, 0, null);
-        waitUntil(() -> !walking(), 60);
+        waitUntil(() -> !nav.walking(), 60);
         if (findFlowerMenuNow() == null) {
             NLog.log(LOG, "  the pathfinder approach opened no menu - falling back to a direct click");
             rclickGob(gob);
@@ -1553,7 +1292,7 @@ public class AutoLpBot extends Window implements Runnable {
          * moving. That is the pause between picking one thing and picking the next off the same
          * object, which looks exactly like the bot re-pathing to something it is standing on. */
         Gob here = player();
-        if ((here != null) && (here.rc.dist(target.rc) <= REACH))
+        if ((here != null) && (here.rc.dist(target.rc) <= BotNav.REACH))
             return null;
         try {
             /* Inside somebody's wall is refused on its own terms rather than as a routing failure,
@@ -1739,7 +1478,6 @@ public class AutoLpBot extends Window implements Runnable {
         boolean check() throws InterruptedException;
     }
 
-    private static final int POLL_MS = 25;
     /** Ticks to wait for the hand to empty or fill during a drop/pickup operation. */
     private static final int HAND_OPERATION_TICKS = 50;
 
@@ -1748,19 +1486,13 @@ public class AutoLpBot extends Window implements Runnable {
      * delay), then sleeps POLL_MS between checks, up to maxTicks. The 25ms granularity keeps the
      * bot responsive between actions - at 50ms the gaps were visibly laggier than nurgling's
      * event-driven waits.
+     *
+     * Runs through the seam's MovementCommand now: the loop, the loading tolerance and the
+     * throw-on-stop are all the same as this bot's copy, and they live in one place with the rest
+     * of the movement stack instead of beside it.
      */
     private void waitUntil(Cond cond, int maxTicks) throws InterruptedException {
-        for (int i = 0; i < maxTicks; i++) {
-            if (!active || stop)
-                throw new InterruptedException();
-            try {
-                if (cond.check())
-                    return;
-            } catch (Loading l) {
-                // keep waiting
-            }
-            Thread.sleep(POLL_MS);
-        }
+        nav.waitUntil(cond::check, maxTicks);
     }
 
     public void stop() {
