@@ -93,13 +93,7 @@ public class Approach {
      * inside a walled base ended up unreachable.
      */
     boolean ringedOff(Coord2d from, Coord2d dest) {
-        for (Map.Keepout k : lastKeepouts) {
-            if (k == null)
-                continue;
-            if (Map.Keepout.segmentTouches(k, from, dest))
-                return true;
-        }
-        return false;
+        return Map.Keepout.anySegmentTouches(lastKeepouts, from, dest);
     }
 
     /**

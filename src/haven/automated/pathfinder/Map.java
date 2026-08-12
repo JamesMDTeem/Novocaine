@@ -224,6 +224,39 @@ public class Map implements World {
                 : Math.max(0.0, Math.min(1.0, ((rel.x * span.x) + (rel.y * span.y)) / len2));
             return from.add(span.mul(t)).dist(k.c) <= k.r;
         }
+
+        /** Strictly inside any of the given circles (a point on a rim is not inside). */
+        public static boolean anyStrictInside(Keepout[] zones, Coord2d p) {
+            for (Keepout k : zones) {
+                if (k == null)
+                    continue;
+                if (insideStrict(k, p))
+                    return true;
+            }
+            return false;
+        }
+
+        /** On or inside any of the given circles (touching a rim counts). */
+        public static boolean anyInsideOrOn(Keepout[] zones, Coord2d p) {
+            for (Keepout k : zones) {
+                if (k == null)
+                    continue;
+                if (insideOrOn(k, p))
+                    return true;
+            }
+            return false;
+        }
+
+        /** Whether the segment from {@code from} to {@code to} touches any of the given circles. */
+        public static boolean anySegmentTouches(Keepout[] zones, Coord2d from, Coord2d to) {
+            for (Keepout k : zones) {
+                if (k == null)
+                    continue;
+                if (segmentTouches(k, from, to))
+                    return true;
+            }
+            return false;
+        }
     }
 
     private final static Keepout[] NO_KEEPOUTS = new Keepout[0];
@@ -441,11 +474,7 @@ public class Map implements World {
         double ddx = wx - px, ddy = wy - py;
         if ((ddx * ddx) + (ddy * ddy) < World.KEEPOUT_PLAYER_RADIUS * World.KEEPOUT_PLAYER_RADIUS)
             return false;
-        for (Keepout k : zones) {
-            if (Keepout.insideStrict(k, wc))
-                return true;
-        }
-        return false;
+        return Keepout.anyStrictInside(zones, wc);
     }
 
     public void analyzeGobHitBoxes(Gob gob) {

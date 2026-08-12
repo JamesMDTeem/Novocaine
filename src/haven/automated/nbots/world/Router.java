@@ -936,11 +936,7 @@ public class Router {
                 if ((pdx * pdx) + (pdy * pdy) < haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS * haven.automated.pathfinder.World.KEEPOUT_PLAYER_RADIUS)
                     return false;
             }
-            for (haven.automated.pathfinder.Map.Keepout k : keepout) {
-                if (haven.automated.pathfinder.Map.Keepout.insideStrict(k, wc))
-                    return true;
-            }
-            return false;
+            return haven.automated.pathfinder.Map.Keepout.anyStrictInside(keepout, wc);
         }
 
         /** The player's world position relative to the segment origin, or null when it cannot be told. */
