@@ -205,4 +205,15 @@ public class BotRegistry {
     public boolean isOpen(String id) {
         return open.containsKey(id) || scripts.containsKey(id);
     }
+
+    /** Whether a script entry's thread is actually still running. */
+    public boolean isRunning(String id) {
+        Thread t = scripts.get(id);
+        return t != null && t.isAlive();
+    }
+
+    /** The open window for a windowed entry, or null if it is closed. */
+    public Window open(String id) {
+        return open.get(id);
+    }
 }

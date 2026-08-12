@@ -28,6 +28,7 @@ package haven;
 
 import haven.automated.cookbook.FoodService;
 import haven.automated.mapper.MappingClient;
+import haven.automated.MiningSafetyAssistant;
 import haven.render.*;
 import haven.res.sfx.ambient.weather.wsound.WeatherSound;
 import haven.res.ui.pag.toggle.Toggle;
@@ -2472,8 +2473,8 @@ public class OptWnd extends Window {
 					Utils.setprefb("enableMineSweeper", val);
 					if (ui != null && ui.gui != null) {
 						ui.gui.optionInfoMsg("Mine Sweeper numbers are now " + (val ? "ENABLED" : "DISABLED") + "!", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
-						if (ui != null && ui.gui != null && ui.gui.miningSafetyAssistantWindow != null)
-							ui.gui.miningSafetyAssistantWindow.enableMineSweeperCheckBox.a = val;
+						if (MiningSafetyAssistant.enableMineSweeperCheckBox != null)
+							MiningSafetyAssistant.enableMineSweeperCheckBox.a = val;
 					}
 					a = val;
 				}
@@ -2505,8 +2506,11 @@ public class OptWnd extends Window {
 					sweeperSetDuration = sweeperDurations.indexOf(item);
 					System.out.println(sweeperSetDuration);
 					Utils.setprefi("sweeperSetDuration", sweeperDurations.indexOf(item));
-					if (ui != null && ui.gui != null && ui.gui.miningSafetyAssistantWindow != null)
-						ui.gui.miningSafetyAssistantWindow.sweeperDurationDropbox.change2(item);
+					if (ui != null && ui.gui != null && ui.gui.nbots != null) {
+						haven.Window asst = ui.gui.nbots.open("MiningSafetyAssistant");
+						if (asst instanceof MiningSafetyAssistant)
+							((MiningSafetyAssistant) asst).sweeperDurationDropbox.change2(item);
+					}
 				}
 			}, leftColumn.pos("ul").adds(160, 2));
 
