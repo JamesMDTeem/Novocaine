@@ -6,6 +6,7 @@ import haven.FlowerMenu;
 import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
+import haven.OCache;
 import haven.ResDrawable;
 import haven.Resource;
 import haven.automated.helpers.HitBoxes;
@@ -62,6 +63,21 @@ public class GateManager {
     private static final double SIDEWAYS = 0.25;
     /** How near a gateway has to be to the leg's destination to count as BEING that destination. */
     private static final double AT_DEST = TILE * 3.0;
+
+    /** How long a gate-list snapshot may serve before a re-scan, even when nothing changed. */
+    private static final long GATE_RESCAN_MS = 2000L;
+
+    /*
+     * The memoised gate list. Gates never move, so a snapshot only needs rebuilding when a gob is
+     * added or removed; a short grace re-scan also catches a gob that only became recognisable as a
+     * gate once its resource finished loading, which the OCache callback does not announce. `dirty`
+     * is written by the callback on the session thread and read under the class lock below, so it is
+     * volatile; the other three are only ever touched under that lock. See {@link #loaded}.
+     */
+    private static OCache watchedOc;
+    private static List<Gob> cachedGates;
+    private static volatile boolean gatesDirty = true;
+    private static long lastGateScan;
 
     /**
      * Information about a single gate: its gob, its tile position, and whether it is open.
@@ -122,20 +138,45 @@ public class GateManager {
 
     /**
      * Every gate gob currently loaded.
+     *
+     * Memoised: gates do not move, so the list only changes when a gob is added or removed. The
+     * OCache callback marks the snapshot dirty on both, and a short grace re-scan catches a gob
+     * that only became recognisable as a gate once its resource finished loading - there is no
+     * per-gob resource-arrival callback, so the add-time test can answer "not a gate" for a gob
+     * whose resource is still on the way. Callers only iterate the returned list, never mutate it.
      */
     public static List<Gob> loaded(GameUI gui) {
+        if ((gui == null) || (gui.map == null))
+            return Collections.emptyList();
+        OCache oc = gui.ui.sess.glob.oc;
+        synchronized (GateManager.class) {
+            if (watchedOc != oc) {
+                watchedOc = oc;
+                gatesDirty = true;
+                oc.callback(new OCache.ChangeCallback() {
+                    public void added(Gob ob) { gatesDirty = true; }
+                    public void removed(Gob ob) { gatesDirty = true; }
+                });
+            }
+            if (!gatesDirty && (cachedGates != null)
+                    && (System.currentTimeMillis() - lastGateScan) < GATE_RESCAN_MS)
+                return cachedGates;
+        }
         List<Gob> out = new ArrayList<>();
-        if (gui == null || gui.map == null)
-            return out;
         try {
-            synchronized (gui.ui.sess.glob.oc) {
-                for (Gob g : gui.ui.sess.glob.oc) {
+            synchronized (oc) {
+                for (Gob g : oc) {
                     if (isGate(g))
                         out.add(g);
                 }
             }
         } catch (RuntimeException e) {
             return out;
+        }
+        synchronized (GateManager.class) {
+            cachedGates = out;
+            gatesDirty = false;
+            lastGateScan = System.currentTimeMillis();
         }
         return out;
     }
