@@ -73,7 +73,13 @@ public class Hazards {
         return false;
     }
 
-    private static String resname(Gob gob) {
+    /**
+     * The loaded resource name of a gob, or null if it has none or is still loading.
+     *
+     * Public so the movement seam can log the same names the LP assistant does - the keeper of the
+     * beast roster - rather than inventing its own labels for the same gobs.
+     */
+    public static String resname(Gob gob) {
         if (gob == null)
             return null;
         try {

@@ -20,6 +20,7 @@ public class Approach {
 
     private final BotNav nav;
     private final String log;
+    private final KeepoutSource keepouts;
 
     /**
      * The keep-out circles {@link #publishKeepouts} last put in force, kept after they are dropped
@@ -27,9 +28,34 @@ public class Approach {
      */
     private Map.Keepout[] lastKeepouts = new Map.Keepout[0];
 
+    /**
+     * Where the keep-out circles that route the pathfinder come from.
+     *
+     * The default keeps the bot framework's notion - dangerous wildlife plus, when configured,
+     * other characters' personal space. LP predates the seam and publishes only the wildlife rings
+     * (it has its own planning around people), so it passes a source that produces just those; a
+     * custom source exists so the seam can grow a third policy without Approach changing shape.
+     */
+    public interface KeepoutSource {
+        Map.Keepout[] keepouts(GameUI gui, Coord2d from);
+    }
+
+    /** The default policy: beasts plus, when {@code avoidOthers} is on, other characters. */
+    static Map.Keepout[] defaultKeepouts(GameUI gui, Coord2d from) {
+        Map.Keepout[] beasts = Hazards.keepouts(gui, from);
+        Map.Keepout[] people = NBotConfig.on(NBotConfig.Key.avoidOthers)
+            ? Crowd.keepouts(gui, from) : new Map.Keepout[0];
+        return Crowd.merge(beasts, people);
+    }
+
     public Approach(BotNav nav, String log) {
+        this(nav, log, Approach::defaultKeepouts);
+    }
+
+    Approach(BotNav nav, String log, KeepoutSource keepouts) {
         this.nav = nav;
         this.log = log;
+        this.keepouts = keepouts;
     }
 
     // ------------------------------------------------------------------ keep-outs
@@ -43,10 +69,7 @@ public class Approach {
      * ring routes us around where a bear used to be and straight through where it is now.
      */
     void publishKeepouts(Coord2d from) {
-        Map.Keepout[] beasts = Hazards.keepouts(nav.gui, from);
-        Map.Keepout[] people = NBotConfig.on(NBotConfig.Key.avoidOthers)
-            ? Crowd.keepouts(nav.gui, from) : new Map.Keepout[0];
-        Map.Keepout[] all = Crowd.merge(beasts, people);
+        Map.Keepout[] all = keepouts.keepouts(nav.gui, from);
         /* Kept past the clear below so a refusal can be checked against the circles that were in
          * force when it happened - see learnRefusal, which must not file a tile as furniture when
          * one of our own rings is what the search actually objected to. */
@@ -138,6 +161,23 @@ public class Approach {
         int stalled = 0;
         int retreats = 0;
         int unsticks = 0;
+        /* Set when a walk ended without getting us there, which is the ONLY reason a static target
+         * ever needs a second path.
+         *
+         * Everything else in this loop that triggers a re-path is about the target MOVING - the
+         * aimed/DRIFT test, and the stall counter that hangs off it. That is the right model for a
+         * beast and no model at all for a rock: a rock's rc never drifts, so once aimed is set the
+         * re-path branch is unreachable, and because the stall counter only increments inside that
+         * branch it never counts either. The observed result is a path that draws itself around a
+         * felled log, dies before arriving, and leaves the character standing perfectly still for
+         * the rest of the sixty attempts - about half a minute - before "ran out of attempts". No
+         * second path is ever tried, and nothing is logged the whole time.
+         *
+         * A path dying short is worth retrying rather than waiting out: the search reads a world
+         * that is still loading in, and the second answer is routinely better than the first.
+         *
+         * This is LP's felled-log fix, adopted by the seam rather than the other way round. */
+        boolean walkDied = false;
         // The search behind the last path issued, so arrival can be told from never having set off.
         Pathfinder walk = null;
 
@@ -156,6 +196,8 @@ public class Approach {
             // rather than discard it, since beasts move on.
             Gob atTarget = Hazards.within(nav.gui, target.rc, Hazards.KEEPOUT);
             if (atTarget != null) {
+                NLog.log(log, "deferring #" + id + ": " + Hazards.resname(atTarget)
+                    + " is within keep-out of it");
                 nav.hazardBlocked = true;
                 nav.cancelWalk();
                 return false;
@@ -167,10 +209,14 @@ public class Approach {
             Gob onUs = Hazards.within(nav.gui, me.rc, Hazards.PATH_CLEARANCE);
             if (onUs != null) {
                 if (++retreats > BotNav.RETREAT_LIMIT) {
+                    NLog.log(log, "deferring #" + id + ": still inside "
+                        + Hazards.resname(onUs) + "'s ring after " + retreats + " retreats");
                     nav.hazardBlocked = true;
                     nav.cancelWalk();
                     return false;
                 }
+                NLog.log(log, "backing away from " + Hazards.resname(onUs) + " ("
+                    + (int) me.rc.dist(onUs.rc) + "u) before continuing to #" + id);
                 retreatFrom(onUs);
                 aimed = null;  // we've moved; whatever we aimed at is stale
                 continue;
@@ -181,7 +227,8 @@ public class Approach {
                 stalled = 0;
             }
 
-            if (aimed == null || aimed.dist(target.rc) > BotNav.DRIFT) {
+            if (aimed == null || aimed.dist(target.rc) > BotNav.DRIFT || walkDied) {
+                walkDied = false;
                 if (aimed != null && ++stalled > BotNav.NO_PROGRESS_LIMIT) {
                     NLog.log(log, "giving up approach to #" + id + ": " + stalled
                         + " re-paths without closing (still " + (int) dist + "u)");
@@ -250,8 +297,40 @@ public class Approach {
             if (!nav.walking() && now != null && here != null && aimed != null
                 && walk != null && walk.mc != null
                 && aimed.dist(now.rc) <= BotNav.DRIFT
-                && here.rc.dist(now.rc) <= (reach + BotNav.bulk(now) + BotNav.STOP_SLACK))
+                && here.rc.dist(now.rc) <= (reach + BotNav.bulk(now) + BotNav.STOP_SLACK)) {
+                /* Said out loud whenever we accept a stop that is NOT within reach.
+                 *
+                 * This branch is the only way a walk can succeed while short of the target, and it
+                 * is the only candidate left for "the bot stopped early on the path" and "it got
+                 * stuck on a bush": nothing else here reports failure, and the logs confirm it - no
+                 * walk in a full session ever ran out of attempts or retired a target as
+                 * unreachable, while four right-clicks opened no flower menu, which is what clicking
+                 * from out of range looks like.
+                 *
+                 * The bound is deliberately generous, because pfRightClick paths to the edge of a
+                 * hitbox and demanding REACH would have the bot circling every big tree. Whether it
+                 * is TOO generous is a question about numbers nobody has measured, so print them
+                 * rather than guess: stopping four units past a wide trunk is the bound doing its
+                 * job, stopping forty because a bush was in the way is not. */
+                double gap = here.rc.dist(now.rc);
+                double bulk = BotNav.bulk(now);
+                if (gap > reach)
+                    NLog.log(log, "walk to #" + id + " stopped " + (int) gap + "u out, past the "
+                        + (int) reach + "u reach - allowed by the target's own bulk (" + (int) bulk
+                        + "u) plus slack; acting from here");
                 return true;
+            }
+            /* Got here with the walk over and no arrival accepted, so the path did not deliver -
+             * either it found no way and issued no move at all (walk.mc null), or it ran out
+             * somewhere short of the bound above. Ask for another one on the next pass.
+             *
+             * This is what makes the stall counter mean something for a target that cannot drift.
+             * Each dead path now costs one re-path and one increment, so a target the pathfinder
+             * genuinely cannot serve is given up after NO_PROGRESS_LIMIT tries with the existing
+             * "giving up approach" line - seconds, and said out loud - instead of sixty silent
+             * passes of standing still. */
+            if (!nav.walking())
+                walkDied = true;
         }
         Gob me = nav.player(), target = nav.gob(id);
         if (me != null && target != null && me.rc.dist(target.rc) <= reach)

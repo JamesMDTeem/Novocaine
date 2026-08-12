@@ -262,11 +262,15 @@ public class BotNav {
     public boolean hazardBlocked = false;
 
     public BotNav(GameUI gui, Abort abort, String log) {
+        this(gui, abort, log, Approach::defaultKeepouts);
+    }
+
+    public BotNav(GameUI gui, Abort abort, String log, Approach.KeepoutSource keepouts) {
         this.gui = gui;
         this.abort = abort;
         this.log = log;
         this.cmd = new MovementCommand(gui, abort);
-        this.appr = new Approach(this, log);
+        this.appr = new Approach(this, log, keepouts);
         this.trav = new Travel(this, log);
         this.wlk = new Walkers(this, log);
     }
