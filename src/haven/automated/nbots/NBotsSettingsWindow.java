@@ -59,6 +59,7 @@ public class NBotsSettingsWindow extends Window {
         y = toggle(y, "Walk around water instead of swimming", NBotConfig.Key.avoidWater);
         y = toggle(y, "Open gates and walk through them", NBotConfig.Key.useGates);
         y = toggle(y, "Shut a gate again behind us", NBotConfig.Key.closeGates);
+        y = toggle(y, "Travel by hearth when it's faster", NBotConfig.Key.hearthTravel);
         y = below(add(new Button(UI.scale(180), "Forget remembered walls") {
             @Override
             public void click() {
