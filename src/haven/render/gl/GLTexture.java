@@ -334,7 +334,7 @@ public abstract class GLTexture extends GLObject implements BGL.ID {
 			    mem += data.ifmt.size() * img.w * img.h;
 			}
 		    }
-		    this.ldesc = String.valueOf(data.desc);
+		    this.ldesc = (data.desc == null) ? ("raw:" + data) : String.valueOf(data.desc);
 		    this.lmem = mem;
 		    LeakDbg.textureAlloc(this.ldesc, mem);
 		    setmem(GLEnvironment.MemStats.TEXTURES, mem);
@@ -426,7 +426,7 @@ public abstract class GLTexture extends GLObject implements BGL.ID {
 			    mem += data.ifmt.size() * img.w * img.h * img.d;
 			}
 		    }
-		    this.ldesc = String.valueOf(data.desc);
+		    this.ldesc = (data.desc == null) ? ("raw:" + data) : String.valueOf(data.desc);
 		    this.lmem = mem;
 		    LeakDbg.textureAlloc(this.ldesc, mem);
 		    setmem(GLEnvironment.MemStats.TEXTURES, mem);
@@ -519,7 +519,7 @@ public abstract class GLTexture extends GLObject implements BGL.ID {
 			    }
 			}
 		    }
-		    this.ldesc = String.valueOf(data.desc);
+		    this.ldesc = (data.desc == null) ? ("raw:" + data) : String.valueOf(data.desc);
 		    this.lmem = mem;
 		    LeakDbg.textureAlloc(this.ldesc, mem);
 		    setmem(GLEnvironment.MemStats.TEXTURES, mem);
@@ -605,7 +605,7 @@ public abstract class GLTexture extends GLObject implements BGL.ID {
 			gl.glObjectLabel(GL.GL_TEXTURE, this, String.valueOf(data.desc));
 		    gl.glTexImage2DMultisample(GL.GL_TEXTURE_2D_MULTISAMPLE, data.s, ifmt, data.w, data.h, data.fixed);
 		    long mem = data.ifmt.size() * data.w * data.h * data.s; // Unknown, perhaps, but best known value
-		    this.ldesc = String.valueOf(data.desc);
+		    this.ldesc = (data.desc == null) ? ("raw:" + data) : String.valueOf(data.desc);
 		    this.lmem = mem;
 		    LeakDbg.textureAlloc(this.ldesc, mem);
 		    setmem(GLEnvironment.MemStats.TEXTURES, mem);
@@ -668,7 +668,7 @@ public abstract class GLTexture extends GLObject implements BGL.ID {
 			    mem += data.ifmt.size() * data.w * data.h;
 			}
 		    }
-		    this.ldesc = String.valueOf(data.desc);
+		    this.ldesc = (data.desc == null) ? ("raw:" + data) : String.valueOf(data.desc);
 		    this.lmem = mem;
 		    LeakDbg.textureAlloc(this.ldesc, mem);
 		    setmem(GLEnvironment.MemStats.TEXTURES, mem);
