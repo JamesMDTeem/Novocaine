@@ -3,7 +3,6 @@ package haven.automated.pathfinder;
 
 import haven.Coord;
 import haven.Coord2d;
-import haven.Coordf;
 import haven.Gob;
 import haven.LinMove;
 import haven.Loading;
@@ -13,7 +12,9 @@ import haven.OCache;
 import haven.Pair;
 import haven.ResDrawable;
 import haven.Resource;
+import haven.automated.helpers.CollisionGeom;
 import haven.automated.helpers.HitBoxes;
+import haven.automated.nbots.core.NLog;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -103,6 +104,8 @@ public class Pathfinder implements Runnable {
     public volatile Refusal refusal = null;
     /** The detail behind {@link #refusal} when there is any, for the log. */
     public volatile String refusalDetail = null;
+    /** How many gobs the last {@link #pathfind} snapshotted, for the slow-search log line. */
+    private volatile int gobsSeen = 0;
 
     /** What went wrong, phrased for a log line, or null if nothing did. */
     public String why() {
@@ -155,10 +158,18 @@ public class Pathfinder implements Runnable {
          * routine condition near the edge of what is loaded, not an error, and a caller that knows
          * it happened can simply ask again in a moment. */
         try {
+            /* Timed so a slow search names itself: the walk layer waits on this thread before
+             * the click goes out, so a search that stalls is exactly the "stands there thinking"
+             * pause a player sees between the route and the first step. */
+            long startedAt = System.nanoTime();
             do {
                 moveinterupted = false;
                 pathfind(mv.player().rc.floor());
             } while (moveinterupted && !terminate);
+            long ms = (System.nanoTime() - startedAt) / 1_000_000;
+            if (ms >= 500)
+                NLog.log("pf", "client pathfind took " + ms + "ms (" + gobsSeen
+                    + " gobs in the snapshot; refusal=" + refusal + ")");
         } catch (Loading l) {
             refusal = Refusal.LOADING;
         } catch (RuntimeException e) {
@@ -180,6 +191,7 @@ public class Pathfinder implements Runnable {
             for (Gob gob : oc)
                 gobs.add(gob);
         }
+        gobsSeen = gobs.size();
         for (Gob gob : gobs) {
                 if (gob.isPlgob(this.mv.ui.gui))
                     continue;
@@ -190,17 +202,7 @@ public class Pathfinder implements Runnable {
                     if (collisionBoxes != null) {
                         for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
                             if (collisionBox.hitAble && collisionBox.coords.length > 2) {
-                                double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
-                                double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
-                                for (Coord2d coord : collisionBox.coords) {
-                                    minX = Math.min(minX, coord.x);
-                                    minY = Math.min(minY, coord.y);
-                                    maxX = Math.max(maxX, coord.x);
-                                    maxY = Math.max(maxY, coord.y);
-                                }
-                                Coord2d topLeft = new Coord2d(minX, minY);
-                                Coord2d bottomRight = new Coord2d(maxX, maxY);
-                                m.excludeGob(topLeft.floor(), bottomRight.floor(), gob);
+                                m.excludeGob(collisionBox.coords, gob);
                             }
                         }
                     }
@@ -237,17 +239,7 @@ public class Pathfinder implements Runnable {
             if (collisionBoxes != null) {
                 for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
                     if (collisionBox.hitAble && collisionBox.coords.length > 2) {
-                        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE;
-                        double maxX = Double.MIN_VALUE, maxY = Double.MIN_VALUE;
-                        for (Coord2d coord : collisionBox.coords) {
-                            minX = Math.min(minX, coord.x);
-                            minY = Math.min(minY, coord.y);
-                            maxX = Math.max(maxX, coord.x);
-                            maxY = Math.max(maxY, coord.y);
-                        }
-                        Coord2d topLeft = new Coord2d(minX, minY);
-                        Coord2d bottomRight = new Coord2d(maxX, maxY);
-                        m.excludeGob(topLeft.floor(), bottomRight.floor(), this.gob);
+                        m.excludeGob(collisionBox.coords, this.gob);
                     }
                 }
             }
@@ -386,57 +378,24 @@ public class Pathfinder implements Runnable {
         if (HitBoxes.collisionBoxMap.get(resName) != null) {
             HitBoxes.CollisionBoxSecondary[] collisionBoxes = HitBoxes.collisionBoxMap.get(resName);
             for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
-                if (collisionBox.hitAble) {
-                    if (collisionBox.coords.length > 3) {
-                        double minX = Double.MAX_VALUE;
-                        double minY = Double.MAX_VALUE;
-                        double maxX = Double.MIN_VALUE;
-                        double maxY = Double.MIN_VALUE;
-
-                        for (Coord2d coord : collisionBox.coords) {
-                            minX = Math.min(minX, coord.x);
-                            minY = Math.min(minY, coord.y);
-                            maxX = Math.max(maxX, coord.x);
-                            maxY = Math.max(maxY, coord.y);
-                        }
-                        Coord2d topLeft = new Coord2d(minX, minY);
-                        Coord2d bottomRight = new Coord2d(maxX, maxY);
-
-                        final Coordf relative = new Coordf(point.sub(gob.rc.floor())).rotate(-gob.a);
-                        if (relative.x >= topLeft.x && relative.x <= bottomRight.x &&
-                                relative.y >= topLeft.y && relative.y <= bottomRight.y) {
-                            return true;
-                        }
-
-                    }
-                    if (collisionBox.coords.length == 3) {
-                        double minX = Double.MAX_VALUE;
-                        double minY = Double.MAX_VALUE;
-                        double maxX = Double.MIN_VALUE;
-                        double maxY = Double.MIN_VALUE;
-
-                        for (Coord2d coord : collisionBox.coords) {
-                            if (coord.x < minX) {
-                                minX = coord.x;
-                            }
-                            if (coord.y < minY) {
-                                minY = coord.y;
-                            }
-                            if (coord.x > maxX) {
-                                maxX = coord.x;
-                            }
-                            if (coord.y > maxY) {
-                                maxY = coord.y;
-                            }
-                        }
-                        Coord2d topLeft = new Coord2d(minX, minY);
-                        Coord2d bottomRight = new Coord2d(maxX, maxY);
-                        final Coordf relative = new Coordf(point.sub(gob.rc.floor())).rotate(-gob.a);
-                        if (relative.x >= topLeft.x && relative.x <= bottomRight.x &&
-                                relative.y >= topLeft.y && relative.y <= bottomRight.y) {
-                            return true;
-                        }
-                    }
+                if (collisionBox.hitAble && collisionBox.coords.length >= 3) {
+                    /* Cheap reject first: rotation preserves every vertex's distance from the gob
+                     * origin, so the whole rotated box lies inside a circle of radius maxR around
+                     * gob.rc - and a query point outside that circle can never be inside. Without
+                     * this, every caller that tests a whole snapshot of gobs (standable()'s
+                     * blockedThere probes, the player-inside scan in pathfind) rotates and
+                     * allocates for every gob in the segment on every hop, and the per-hop lag
+                     * that cost came from those probes. */
+                    double maxR = 0;
+                    for (Coord2d c : collisionBox.coords)
+                        maxR = Math.max(maxR, Math.hypot(c.x, c.y));
+                    double dx = point.x - gob.rc.x;
+                    double dy = point.y - gob.rc.y;
+                    if ((dx * dx + dy * dy) > (maxR * maxR))
+                        continue;
+                    Coord2d[] world = CollisionGeom.worldPolygon(collisionBox.coords, gob.rc, gob.a);
+                    if (CollisionGeom.pointInConvex(world, point.x, point.y))
+                        return true;
                 }
             }
         }

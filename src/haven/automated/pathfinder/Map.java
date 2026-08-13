@@ -9,6 +9,7 @@ import haven.MCache;
 import haven.Pair;
 import haven.ResDrawable;
 import haven.Resource;
+import haven.automated.helpers.CollisionGeom;
 import haven.automated.helpers.HitBoxes;
 
 import java.awt.*;
@@ -489,7 +490,7 @@ public class Map implements World {
                 ResDrawable rd = gob.getattr(ResDrawable.class);
                 if (rd != null) {
                     if (res.name.endsWith("/pow") && (rd.sdt.checkrbuf(0) != 33 && rd.sdt.checkrbuf(0) != 17)) {
-                        addGobToList(new Coord(-4, -4), new Coord(4, 4), gob);
+                        addGobToList(CollisionGeom.rect(-4, -4, 4, 4), gob);
                     }
                 }
             } else if (gob.getres().name.contains("gate")){
@@ -498,9 +499,9 @@ public class Map implements World {
                 if (rd != null){
                     if (res.name.contains("gate") && (rd.sdt.checkrbuf(0) != 1)){
                         if(gob.getres().name.contains("big")){
-                            addGobToList(new Coord(-5, -16), new Coord(5, 16), gob);
+                            addGobToList(CollisionGeom.rect(-5, -16, 5, 16), gob);
                         } else {
-                            addGobToList(new Coord(-5, -GATE_HALF_HEIGHT), new Coord(5, GATE_HALF_HEIGHT), gob);
+                            addGobToList(CollisionGeom.rect(-5, -GATE_HALF_HEIGHT, 5, GATE_HALF_HEIGHT), gob);
                         }
                     }
                 }
@@ -511,75 +512,58 @@ public class Map implements World {
                     if (!collisionBox.hitAble || collisionBox.coords == null || collisionBox.coords.length < 3)
                         continue;
 
-                    {
-                        double minX = Double.MAX_VALUE;
-                        double minY = Double.MAX_VALUE;
-                        double maxX = Double.MIN_VALUE;
-                        double maxY = Double.MIN_VALUE;
-
-                        for (Coord2d coord : collisionBox.coords) {
-                            minX = Math.min(minX, coord.x);
-                            minY = Math.min(minY, coord.y);
-                            maxX = Math.max(maxX, coord.x);
-                            maxY = Math.max(maxY, coord.y);
-                        }
-                        addGobToList(new Coord2d(minX, minY).floor(), new Coord2d(maxX, maxY).floor(), gob);
-                    }
+                    addGobToList(collisionBox.coords, gob);
                 }
             }
         }
     }
 
-    public void addGobToList(Coord topLeftPoint, Coord bottomRightPoint, Gob gob) {
-        int gcx = origin - (plc.x - gob.rc.floor().x);
-        int gcy = origin - (plc.y - gob.rc.floor().y);
-
-
-        int rotadj = 0;
-        if (gob.a != 0 && gob.a != Math.PI && gob.a != Math.PI / 2.0 && gob.a != (3 * Math.PI) / 2) {
-            rotadj = 1;
+    public void addGobToList(Coord2d[] polygon, Gob gob) {
+        // The AABB of the polygon still drives the waypoint/clearance corner
+        // math and the near-edge rejection below; only the blocked-region paint
+        // switched to the exact rotated polygon.
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        for (Coord2d c : polygon) {
+            minX = Math.min(minX, c.x);
+            minY = Math.min(minY, c.y);
+            maxX = Math.max(maxX, c.x);
+            maxY = Math.max(maxY, c.y);
         }
-        Coord ca, cb, cc, cd, wa, wb, wc, wd, clra, clrb, clrc, clrd;
+        Coord topLeftPoint = new Coord2d(minX, minY).floor();
+        Coord bottomRightPoint = new Coord2d(maxX, maxY).floor();
 
-        if (Math.abs(topLeftPoint.x) + Math.abs(bottomRightPoint.x) == Math.abs(topLeftPoint.y) + Math.abs(bottomRightPoint.y) && rotadj == 0) {
-            // bounding box
-            ca = new Coord(gcx + topLeftPoint.x - plbbox, gcy + topLeftPoint.y - plbbox);
-            cb = new Coord(gcx + bottomRightPoint.x + plbbox, gcy + topLeftPoint.y - plbbox);
-            cc = new Coord(gcx + bottomRightPoint.x + plbbox, gcy + bottomRightPoint.y + plbbox);
-            cd = new Coord(gcx + topLeftPoint.x - plbbox, gcy + bottomRightPoint.y + plbbox);
-
-            // calculate waypoints located on the angular bisector of the corner
+        // The exact rotated polygon drives everything: the blocked paint (disc-
+        // inflated, below) and now the waypoint/clearance corners too, so a tight
+        // gap between two rotated logs keeps routing vertices on the true corners
+        // instead of a bloated AABB. For a 4-vertex box this reproduces the old
+        // AABB +/- way corners exactly when the gob is axis-aligned (offsetVertices
+        // lands each corner on its bisector), so the common case is unchanged.
+        Coord2d[] rasterPoly = rasterPolygon(polygon, gob);
+        Coord wa, wb, wc, wd, clra, clrb, clrc, clrd;
+        if (polygon.length == 4) {
+            Coord2d[] wayPoly = CollisionGeom.offsetVertices(rasterPoly, way);
+            Coord2d[] clrPoly = CollisionGeom.offsetVertices(rasterPoly, clr);
+            wa = wayPoly[0].floor();
+            wb = wayPoly[1].floor();
+            wc = wayPoly[2].floor();
+            wd = wayPoly[3].floor();
+            clra = clrPoly[0].floor();
+            clrb = clrPoly[1].floor();
+            clrc = clrPoly[2].floor();
+            clrd = clrPoly[3].floor();
+        } else {
+            // Unusual (>4 vertex) polygon: keep the legacy AABB corner fallback so
+            // routing never regresses on a shape the offset math was not written for.
+            int gcx = origin - (plc.x - gob.rc.floor().x);
+            int gcy = origin - (plc.y - gob.rc.floor().y);
             wa = new Coord(gcx + topLeftPoint.x - way, gcy + topLeftPoint.y - way);
             wb = new Coord(gcx + bottomRightPoint.x + way, gcy + topLeftPoint.y - way);
             wc = new Coord(gcx + bottomRightPoint.x + way, gcy + bottomRightPoint.y + way);
             wd = new Coord(gcx + topLeftPoint.x - way, gcy + bottomRightPoint.y + way);
-
-            // calculate TO clearance vertices
             clra = new Coord(gcx + topLeftPoint.x - clr, gcy + topLeftPoint.y - clr);
             clrb = new Coord(gcx + bottomRightPoint.x + clr, gcy + topLeftPoint.y - clr);
             clrc = new Coord(gcx + bottomRightPoint.x + clr, gcy + bottomRightPoint.y + clr);
             clrd = new Coord(gcx + topLeftPoint.x - clr, gcy + bottomRightPoint.y + clr);
-        } else {
-            // rotate the bounding box.
-            // Rotates around the gob origin, not the pixel centre - close enough for routing.
-            double cos = Math.cos(gob.a);
-            double sin = Math.sin(gob.a);
-            ca = Utils.rotate(gcx + topLeftPoint.x - plbbox, gcy + topLeftPoint.y - plbbox, gcx, gcy, cos, sin);
-            cb = Utils.rotate(gcx + bottomRightPoint.x + plbbox, gcy + topLeftPoint.y - plbbox, gcx, gcy, cos, sin);
-            cc = Utils.rotate(gcx + bottomRightPoint.x + plbbox, gcy + bottomRightPoint.y + plbbox, gcx, gcy, cos, sin);
-            cd = Utils.rotate(gcx + topLeftPoint.x - plbbox, gcy + bottomRightPoint.y + plbbox, gcx, gcy, cos, sin);
-
-            // calculate waypoints located on the angular bisector of the corner
-            wa = Utils.rotate(gcx + topLeftPoint.x - way - rotadj, gcy + topLeftPoint.y - way - rotadj, gcx, gcy, cos, sin);
-            wb = Utils.rotate(gcx + bottomRightPoint.x + way + rotadj, gcy + topLeftPoint.y - way - rotadj, gcx, gcy, cos, sin);
-            wc = Utils.rotate(gcx + bottomRightPoint.x + way + rotadj, gcy + bottomRightPoint.y + way + rotadj, gcx, gcy, cos, sin);
-            wd = Utils.rotate(gcx + topLeftPoint.x - way - rotadj, gcy + bottomRightPoint.y + way + rotadj, gcx, gcy, cos, sin);
-
-            // calculate TO clearance vertices
-            clra = Utils.rotate(gcx + topLeftPoint.x - clr - rotadj, gcy + topLeftPoint.y - clr - rotadj, gcx, gcy, cos, sin);
-            clrb = Utils.rotate(gcx + bottomRightPoint.x + clr - rotadj, gcy + topLeftPoint.y - clr - rotadj, gcx, gcy, cos, sin);
-            clrc = Utils.rotate(gcx + bottomRightPoint.x + clr + rotadj, gcy + bottomRightPoint.y + clr + rotadj, gcx, gcy, cos, sin);
-            clrd = Utils.rotate(gcx + topLeftPoint.x - clr - rotadj, gcy + bottomRightPoint.y + clr + rotadj, gcx, gcy, cos, sin);
         }
 
         // exclude gobs near map edges so we won't need to do bounds checks all over the place
@@ -598,38 +582,93 @@ public class Map implements World {
         if (map[wd.x][wd.y] == CELL_FREE)
             map[wd.x][wd.y] = CELL_WP;
 
-        // plot bounding box
-        HashMap<Integer, Utils.MinMax> raster = Utils.plotRect(map, ca, cb, cc, cd, CELL_BLK);
+        // Plot the exact disc-inflated polygon: a cell is blocked iff the
+        // character's disc (radius World.HALFWIDTH) centred on it touches the
+        // gob's true collision polygon. This replaces the AABB collapse plus
+        // Bresenham frame that closed tight gaps around rotated logs.
+        HashMap<Integer, Utils.MinMax> raster = paintPolygon(rasterPoly, CELL_BLK);
 
         // store traversable obstacles candidates
         if (bottomRightPoint.x <= tomaxside && bottomRightPoint.y <= tomaxside)
             tocandidates.add(new TraversableObstacle(wa, wb, wc, wd, clra, clrb, clrc, clrd, raster));
 
-        dbg.rect(ca.x, ca.y, cb.x, cb.y, cc.x, cc.y, cd.x, cd.y, Color.CYAN);
+        if (rasterPoly.length >= 4)
+            dbg.rect((int) rasterPoly[0].x, (int) rasterPoly[0].y, (int) rasterPoly[1].x, (int) rasterPoly[1].y,
+                    (int) rasterPoly[2].x, (int) rasterPoly[2].y, (int) rasterPoly[3].x, (int) rasterPoly[3].y, Color.CYAN);
     }
 
-    public void excludeGob(Coord topLeftPoint, Coord bottomRightPoint, Gob gob) {
-        int gcx = origin - (plc.x - gob.rc.floor().x);
-        int gcy = origin - (plc.y - gob.rc.floor().y);
+    public void excludeGob(Coord2d[] polygon, Gob gob) {
+        // Compute the raster polygon once and carve it FREE with the same
+        // disc-inflation paint as addGobToList, so the target carve is exactly
+        // the footprint that was blocked (a superset of nothing is fine, but a
+        // mismatch would leave the destination disc refused or a stray wall hole).
+        Coord2d[] rasterPoly = rasterPolygon(polygon, gob);
 
-        // rotate the bounding box.
-        // Rotates around the gob origin, not the pixel centre - close enough for routing.
-        double cos = Math.cos(gob.a);
-        double sin = Math.sin(gob.a);
-        Coord ca = Utils.rotate(gcx + topLeftPoint.x - plbbox, gcy + topLeftPoint.y - plbbox, gcx, gcy, cos, sin);
-        Coord cb = Utils.rotate(gcx + bottomRightPoint.x + plbbox, gcy + topLeftPoint.y - plbbox, gcx, gcy, cos, sin);
-        Coord cc = Utils.rotate(gcx + bottomRightPoint.x + plbbox, gcy + bottomRightPoint.y + plbbox, gcx, gcy, cos, sin);
-        Coord cd = Utils.rotate(gcx + topLeftPoint.x - plbbox, gcy + bottomRightPoint.y + plbbox, gcx, gcy, cos, sin);
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        for (Coord2d p : rasterPoly) {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
 
         // exclude the gob if it's near map edges so we won't need to do bounds checks all later on
-        if (ca.x - mapborder < 0 || ca.y - mapborder < 0 || ca.x + mapborder >= sz || ca.y + mapborder >= sz ||
-                cb.x - mapborder < 0 || cb.y - mapborder < 0 || cb.x + mapborder >= sz || cb.y + mapborder >= sz ||
-                cc.x - mapborder < 0 || cc.y - mapborder < 0 || cc.x + mapborder >= sz || cc.y + mapborder >= sz ||
-                cd.x - mapborder < 0 || cd.y - mapborder < 0 || cd.x + mapborder >= sz || cd.y + mapborder >= sz)
+        if (minX - plbbox - mapborder < 0 || minY - plbbox - mapborder < 0 ||
+                maxX + plbbox + mapborder >= sz || maxY + plbbox + mapborder >= sz)
             return;
 
-        Utils.plotRect(map, ca, cb, cc, cd, CELL_FREE);
-        dbg.rect(ca.x, ca.y, cb.x, cb.y, cc.x, cc.y, cd.x, cd.y, Color.PINK);
+        paintPolygon(rasterPoly, CELL_FREE);
+        if (rasterPoly.length >= 4)
+            dbg.rect((int) rasterPoly[0].x, (int) rasterPoly[0].y, (int) rasterPoly[1].x, (int) rasterPoly[1].y,
+                    (int) rasterPoly[2].x, (int) rasterPoly[2].y, (int) rasterPoly[3].x, (int) rasterPoly[3].y, Color.PINK);
+    }
+
+    /**
+     * The gob's collision polygon (gob-local, unrotated) in raster coordinates:
+     * world = rotate(local, gob.a) around the gob origin, then raster = origin + (world - plc).
+     */
+    private Coord2d[] rasterPolygon(Coord2d[] localPoly, Gob gob) {
+        Coord2d[] world = CollisionGeom.worldPolygon(localPoly, gob.rc, gob.a);
+        Coord2d[] raster = new Coord2d[world.length];
+        for (int i = 0; i < world.length; i++)
+            raster[i] = new Coord2d(origin + (world[i].x - plc.x), origin + (world[i].y - plc.y));
+        return raster;
+    }
+
+    /**
+     * Paint every cell whose centre lies within {@link World#HALFWIDTH} of the
+     * polygon — the exact Minkowski disc-inflation, sampled at pixel resolution —
+     * returning the per-row spans for the traversable-obstacle bookkeeping.
+     */
+    private HashMap<Integer, Utils.MinMax> paintPolygon(Coord2d[] rasterPoly, byte celltype) {
+        HashMap<Integer, Utils.MinMax> raster = new HashMap<Integer, Utils.MinMax>();
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        for (Coord2d p : rasterPoly) {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+        int x0 = Math.max(0, (int) Math.floor(minX - World.HALFWIDTH));
+        int x1 = Math.min(sz - 1, (int) Math.ceil(maxX + World.HALFWIDTH));
+        int y0 = Math.max(0, (int) Math.floor(minY - World.HALFWIDTH));
+        int y1 = Math.min(sz - 1, (int) Math.ceil(maxY + World.HALFWIDTH));
+
+        for (int y = y0; y <= y1; y++) {
+            Utils.MinMax mm = null;
+            for (int x = x0; x <= x1; x++) {
+                if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, World.HALFWIDTH)) {
+                    map[x][y] = celltype;
+                    if (mm == null) {
+                        mm = new Utils.MinMax();
+                        raster.put(y, mm);
+                    }
+                    if (x < mm.min) mm.min = x;
+                    if (x > mm.max) mm.max = x;
+                }
+            }
+        }
+        return raster;
     }
 
     private void sanitizeWaypoints() {
