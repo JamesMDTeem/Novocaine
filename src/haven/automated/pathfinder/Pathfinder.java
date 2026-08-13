@@ -87,6 +87,13 @@ public class Pathfinder implements Runnable {
          * it - it is a better trigger than waiting for a walk to stall, because it is available
          * before the wasted hops rather than after them.
          */
+        /** The search found a real path and sent the first move click, but the server never
+         *  started the character moving within {@link #RESPONSE_TIMEOUT}. Not STUCK - the search
+         *  served us a path, so we are not boxed in - and not NO_ROUTE - there is a path. The
+         *  client model and the server disagree at the standing spot (typically a tight fit, or a
+         *  gob the raster skipped because its resource was still loading). The caller's remedy is
+         *  the same as STUCK: move by some means other than this search. */
+        NO_MOVE("the server did not answer the move order"),
         NO_ROUTE("no way from here to there"),
         /** A grid in the window had not arrived. Nothing is wrong; ask again in a moment. */
         LOADING("part of the map is still loading"),
@@ -319,8 +326,17 @@ public class Pathfinder implements Runnable {
                 } catch (InterruptedException e1) {
                     return;
                 }
-                if (System.currentTimeMillis() - moveWaitStart > RESPONSE_TIMEOUT)
+                if (System.currentTimeMillis() - moveWaitStart > RESPONSE_TIMEOUT) {
+                    /* The move order was never answered. That is a verdict, not a stall: the
+                     * search served a real path and the server declined to take the first step
+                     * from where we are standing. Leave it silent and the caller re-paths
+                     * forever - the character pressed against a gob re-issues the same refused
+                     * click eleven times and the walk gives up without ever saying why. Name it
+                     * so a STUCK remedy (backing out with raw steps) can fire on the first pass. */
+                    refusal = Refusal.NO_MOVE;
+                    terminate = true;
                     return;
+                }
             }
 
             Coord2d destWorld = mc.mul(posres);

@@ -358,8 +358,14 @@ public class Approach {
                      * waiting for deadNoStart to reach two: a character pressed up against an
                      * object just collected from has no time to spend re-issuing clicks nothing
                      * will act on. A search that never set off (mc null) without a verdict still
-                     * feeds the deadNoStart counter, and two of those fire the same escape. */
-                    boolean stuck = (walk != null) && (walk.refusal == Pathfinder.Refusal.STUCK);
+                     * feeds the deadNoStart counter, and two of those fire the same escape. A
+                     * search that returned NO_MOVE served a real path but had its first move
+                     * click refused - the client model and server disagree where we are standing
+                     * (tight fit, or a gob the raster skipped while its resource loaded). That
+                     * has the same remedy as STUCK, so it rides the same branch and backs out on
+                     * the first refusal rather than waiting for deadNoStart to climb. */
+                    boolean stuck = (walk != null) && (walk.refusal == Pathfinder.Refusal.STUCK
+                        || walk.refusal == Pathfinder.Refusal.NO_MOVE);
                     if (stuck && unsticks < BotNav.UNSTICK_LIMIT) {
                         unsticks++;
                         NLog.log(log, "stuck next to #" + id + " (" + walk.why()
