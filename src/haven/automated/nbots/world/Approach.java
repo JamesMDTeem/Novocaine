@@ -269,7 +269,12 @@ public class Approach {
             nav.pause(10);
 
             // Then wait a slice rather than the whole path, so a target that moves is noticed while
-            // we're still walking. Ends early on arrival or when the walk is over.
+            // we're still walking. Ends early on arrival or when the walk is over AND the freshly-
+            // issued pathfinder has concluded: a search still shuffling its way out of a blocked
+            // origin (pressed up against an object, escape clicks pending) has neither a path nor a
+            // refusal yet, and judging it now reads "died for no reason" and kills a search that
+            // was about to say STUCK.
+            final Pathfinder issued = walk;
             nav.waitUntil(() -> {
                 Gob g = nav.gob(id);
                 Gob p = nav.player();
@@ -277,8 +282,10 @@ public class Approach {
                     return true;
                 if (p.rc.dist(g.rc) <= reach)
                     return true;
-                return !nav.walking();
-            }, 12);
+                if (nav.walking())
+                    return false;
+                return (issued == null) || issued.done;
+            }, 60);
 
             /* The walk finished and the target hasn't moved: as close as pathing will get us, so
              * count it as arrival even though we are further out than `reach`. pfRightClick paths
@@ -344,7 +351,21 @@ public class Approach {
                      * off (mc null) is the pathfinder saying it cannot find ONE legal first
                      * step - we are trapped, and the counter above feeds the raw-step escape. */
                     boolean neverSetOff = (walk == null) || (walk.mc == null);
-                    if (neverSetOff)
+                    /* A STUCK search has also not set off in any useful sense - it shuffled
+                     * escape clicks the server refused (see Pathfinder's MAX_ESCAPE_CLICKS) and
+                     * concluded it is wedged. STUCK is the pathfinder's verdict after it looked
+                     * and gave up, so it deserves the raw-step escape immediately rather than
+                     * waiting for deadNoStart to reach two: a character pressed up against an
+                     * object just collected from has no time to spend re-issuing clicks nothing
+                     * will act on. A search that never set off (mc null) without a verdict still
+                     * feeds the deadNoStart counter, and two of those fire the same escape. */
+                    boolean stuck = (walk != null) && (walk.refusal == Pathfinder.Refusal.STUCK);
+                    if (stuck && unsticks < BotNav.UNSTICK_LIMIT) {
+                        unsticks++;
+                        NLog.log(log, "stuck next to #" + id + " (" + walk.why()
+                            + ") - backing out with raw steps");
+                        Walk.unstick(nav, nav.gui, target.rc);
+                    } else if (neverSetOff)
                         deadNoStart++;
                     else
                         deadNoStart = 0;

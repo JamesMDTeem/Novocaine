@@ -719,21 +719,32 @@ public class Map implements World {
 
     private List<Vertex> getVertices() {
         List<Vertex> vertices = new ArrayList<Vertex>(300);
+        /* Deduplicate by raster cell. Dense clusters of obstacles (a forest, a log pile) put
+         * several waypoints on the same cell - overlapping corners and edge midpoints - and
+         * every extra vertex costs a full O(V) visibility sweep in buildVisGraph, so identical
+         * cells must collapse to one vertex (an edge between two vertices on the same cell is
+         * never useful). */
+        java.util.HashSet<Integer> seen = new java.util.HashSet<Integer>();
 
         vxstart = new Vertex(origin, origin);
         vertices.add(vxstart);
+        seen.add(origin * sz + origin);
         map[origin][origin] = CELL_SRC;
         dbg.dot(origin, origin, Color.GREEN);
 
         vxend = new Vertex(endc.x, endc.y);
-        vertices.add(vxend);
+        if (seen.add(endc.x * sz + endc.y))
+            vertices.add(vxend);
         map[endc.x][endc.y] = CELL_DST;
         dbg.dot(endc.x, endc.y, Color.BLUE);
 
         for (int i = 0; i < sz; i++) {
             for (int j = 0; j < sz; j++) {
-                if (map[i][j] == CELL_WP)
-                    vertices.add(new Vertex(i, j));
+                if (map[i][j] == CELL_WP) {
+                    int key = i * sz + j;
+                    if (seen.add(key))
+                        vertices.add(new Vertex(i, j));
+                }
             }
         }
 
@@ -960,16 +971,32 @@ public class Map implements World {
 
     // 3 pixels away from origin
     public Pair<Integer, Integer> getFreeLocation() {
-        if (map[origin + 3][origin] == CELL_FREE)
+        if (escapeClear(+1, 0))
             return new Pair<Integer, Integer>(origin + 3, origin);
-        else if (map[origin - 3][origin] == CELL_FREE)
+        else if (escapeClear(-1, 0))
             return new Pair<Integer, Integer>(origin - 3, origin);
-        else if (map[origin][origin + 3] == CELL_FREE)
+        else if (escapeClear(0, +1))
             return new Pair<Integer, Integer>(origin, origin + 3);
-        else if (map[origin][origin - 3] == CELL_FREE)
+        else if (escapeClear(0, -1))
             return new Pair<Integer, Integer>(origin, origin - 3);
 
         return null;
+    }
+
+    /* The escape click is only any good if the character can actually walk there: a cell can be
+     * raster-free while the straight line to it still crosses the gob the character is pressed
+     * against, and the server then refuses the click (the 2026-08-13 "small run forward into the
+     * object we just collected from" walk). Demand the destination cell AND the two cells on the
+     * way be passable. */
+    private boolean escapeClear(int dx, int dy) {
+        if (map[origin + 3 * dx][origin + 3 * dy] != CELL_FREE)
+            return false;
+        for (int step = 1; step <= 2; step++) {
+            int c = map[origin + step * dx][origin + step * dy];
+            if ((c & (CELL_BLK | CELL_TO)) != 0)
+                return false;
+        }
+        return true;
     }
 
 

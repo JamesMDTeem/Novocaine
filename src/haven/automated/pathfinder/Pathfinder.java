@@ -106,6 +106,19 @@ public class Pathfinder implements Runnable {
     public volatile String refusalDetail = null;
     /** How many gobs the last {@link #pathfind} snapshotted, for the slow-search log line. */
     private volatile int gobsSeen = 0;
+    /** Bound on how many escape clicks the blocked-origin shuffle may issue before it has to
+     *  have moved the character. */
+    private static final int MAX_ESCAPE_CLICKS = 4;
+    /** How far the character must have moved by the time {@link #MAX_ESCAPE_CLICKS} clicks have
+     *  been issued for the shuffle to count as working. */
+    private static final double ESCAPE_MIN_MOVE = 1.0;
+    private Coord2d escapeFrom = null;
+    private int escapeClicks = 0;
+
+    /** Set when {@link #run} returns, however it ends. Callers wait on this rather than racing a
+     *  freshly-issued search - one that is still shuffling its way out of a blocked origin has
+     *  neither a path nor a refusal yet, and judging it then reads as "died for no reason". */
+    public volatile boolean done = false;
 
     /** What went wrong, phrased for a log line, or null if nothing did. */
     public String why() {
@@ -176,6 +189,7 @@ public class Pathfinder implements Runnable {
             refusal = Refusal.FAILED;
             refusalDetail = String.valueOf(e);
         }
+        done = true;
         notifyListeners();
     }
 
@@ -230,9 +244,25 @@ public class Pathfinder implements Runnable {
                 Thread.sleep(30);
             } catch (InterruptedException ignored) {}
             moveinterupted = true;
+            /* Verify the escape click is being acted on. A character pressed up against an object
+             * can be offered escape points that all sit just inside the thing it is pressed
+             * against, and the server silently refuses every one: the do-loop above then
+             * re-clicks forever and this search never concludes - the 2026-08-13 "stuck pressed
+             * against an object" walk, where the caller watched a search that never died and
+             * never moved. Bound the shuffle and call it what it is, so the caller's step-clear
+             * machinery can react. */
+            if (escapeFrom == null)
+                escapeFrom = mv.player().rc;
+            escapeClicks++;
+            if ((escapeClicks >= MAX_ESCAPE_CLICKS) && (escapeFrom.dist(mv.player().rc) < ESCAPE_MIN_MOVE)) {
+                refusal = Refusal.STUCK;
+                terminate = true;
+            }
             m.dbgdump();
             return;
         }
+        escapeClicks = 0;
+        escapeFrom = null;
 
         if (this.gob != null) {
             HitBoxes.CollisionBoxSecondary[] collisionBoxes = HitBoxes.collisionBoxMap.get(this.gob.getres().name);
