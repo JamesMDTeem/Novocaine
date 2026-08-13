@@ -133,10 +133,12 @@ public class Probe {
         char[] letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".toCharArray();
         for (Map.Entry<Coord, String> e : Observed.objectsIn(me.seg).entrySet()) {
             Coord t = e.getKey();
-            if ((t.x >= mid.x - radius) && (t.x <= mid.x + radius)
-                && (t.y >= mid.y - radius) && (t.y <= mid.y + radius)
-                && !kinds.containsKey(e.getValue()))
-                kinds.put(e.getValue(), letters[kinds.size() % letters.length]);
+            if ((e.getValue() == null)
+                || (t.x < mid.x - radius) || (t.x > mid.x + radius)
+                || (t.y < mid.y - radius) || (t.y > mid.y + radius)
+                || kinds.containsKey(e.getValue()))
+                continue;
+            kinds.put(e.getValue(), letters[kinds.size() % letters.length]);
         }
         StringBuilder sb = new StringBuilder();
         sb.append("map around ").append(mid.x).append(',').append(mid.y)
@@ -170,7 +172,8 @@ public class Probe {
         if (s == Observed.GATE)
             return 'G';
         if ((s == Observed.WALL) || (s == Observed.SOLID)) {
-            Character k = (kinds == null) ? null : kinds.get(Observed.objectAt(seg, t));
+            String obj = Observed.objectAt(seg, t);
+            Character k = (kinds == null || obj == null) ? null : kinds.get(obj);
             if (k != null)
                 return k;
             return (s == Observed.WALL) ? 'W' : '#';

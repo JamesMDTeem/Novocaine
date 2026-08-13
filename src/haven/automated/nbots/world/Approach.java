@@ -165,6 +165,8 @@ public class Approach {
         boolean walkDied = false;
         // The search behind the last path issued, so arrival can be told from never having set off.
         Pathfinder walk = null;
+        // Deaths in a row where the search could not even find a first step - the trapped signal.
+        int deadNoStart = 0;
 
         for (int i = 0; i < 60; i++) {
             Gob target = nav.gob(id);
@@ -219,6 +221,26 @@ public class Approach {
                         + " re-paths without closing (still " + (int) dist + "u)");
                     nav.cancelWalk();
                     return false;
+                }
+                /* Trapped: two walks in a row that the pathfinder could not even start. The
+                 * search reads a quantised world, and standing wedged between two logs is
+                 * exactly where it says no while a human - or the server - walks straight out.
+                 * Back out with raw steps (the one walk that never consults the client
+                 * pathfinder) instead of spending the rest of the budget re-issuing clicks
+                 * nothing will act on. */
+                if (deadNoStart >= 2 && unsticks < BotNav.UNSTICK_LIMIT) {
+                    NLog.log(log, "trapped next to #" + id + ": the pathfinder keeps finding no "
+                        + "way from here - backing out with raw steps before re-pathing");
+                    deadNoStart = 0;
+                    if (Walk.unstick(nav, nav.gui, target.rc)) {
+                        unsticks++;
+                        NLog.log(log, "backed out of the trap; re-pathing from the new spot");
+                    } else {
+                        NLog.log(log, "could not back out (every heading blocked on the record) - "
+                            + "trying the pathfinder again");
+                    }
+                    aimed = null;
+                    continue;
                 }
                 publishKeepouts(me.rc);
                 // clickb=1 walks without acting on arrival; what to do there is the caller's call.
@@ -314,8 +336,33 @@ public class Approach {
              * genuinely cannot serve is given up after NO_PROGRESS_LIMIT tries with the existing
              * "giving up approach" line - seconds, and said out loud - instead of sixty silent
              * passes of standing still. */
-            if (!nav.walking())
+            if (!nav.walking()) {
+                if (!walkDied) {
+                    /* Say a dead walk out loud - this branch used to be silent, and "got stuck
+                     * between two logs" is what that silence looked like from outside: eleven
+                     * re-paths, zero lines, a give-up. A walk that died without ever setting
+                     * off (mc null) is the pathfinder saying it cannot find ONE legal first
+                     * step - we are trapped, and the counter above feeds the raw-step escape. */
+                    boolean neverSetOff = (walk == null) || (walk.mc == null);
+                    if (neverSetOff)
+                        deadNoStart++;
+                    else
+                        deadNoStart = 0;
+                    /* Name the reason. A search that CRASHED (refusal FAILED, e.g. the pathfinder
+                     * threw) looks identical to "no route" from the outside unless the detail is
+                     * logged - walk.why() carries the exception text, so a regression like the
+                     * triangle-hitbox AIOOBE says its own name instead of "found no way". */
+                    String why = (walk != null && walk.refusal != null)
+                        ? walk.why()
+                        : (neverSetOff ? "the search found no way from here" : String.valueOf(walk));
+                    NLog.log(log, "walk to #" + id + " died short ("
+                        + why
+                        + "; refusal=" + ((walk == null) ? "none" : String.valueOf(walk.refusal))
+                        + "; still " + (int) ((here == null || now == null) ? -1
+                            : here.rc.dist(now.rc)) + "u)");
+                }
                 walkDied = true;
+            }
         }
         Gob me = nav.player(), target = nav.gob(id);
         if (me != null && target != null && me.rc.dist(target.rc) <= reach)
