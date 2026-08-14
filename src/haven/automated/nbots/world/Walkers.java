@@ -1002,7 +1002,7 @@ public class Walkers {
         Coord tile = wc.add(here.sc.sub(from)).floor(MCache.tilesz);
         if (shutGates.contains(tile))
             return true;
-        return w.recordSolid(tile);
+        return !w.recordStandable(wc.add(here.sc.sub(from)), tile);
     }
 
     /**

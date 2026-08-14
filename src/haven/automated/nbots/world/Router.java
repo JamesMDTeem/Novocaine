@@ -1042,6 +1042,31 @@ public class Router {
         }
 
         /**
+         * Whether a body can stand at {@code segRel} (segment-relative world point), asking the
+         * record with the exact shapes of hitboxed furniture. A tile stamped SOLID only because a
+         * rotated box's bounding box clips its CENTRE is a lie the tile grid cannot correct; the
+         * stored polygon is the truth, so a point that misses every stored polygon in the tile is
+         * standable even though the tile says SOLID. WALL and TIGHT are never exempted: a wall's
+         * whole tile is deliberately over-covered and a tight tile has no standable middle by
+         * definition. This is the record half of the standable question {@code Walkers.blockedThere}
+         * asks, and it lives on the World seam's record adapter - the continuous object model
+         * answering the standable question it could not answer before.
+         */
+        public boolean recordStandable(Coord2d segRel, Coord t) {
+            byte s = state(t);
+            if ((s == Observed.WALL) || (s == Observed.TIGHT))
+                return false;
+            if (s != Observed.SOLID)
+                return true;
+            java.util.List<Coord2d[]> polys = Observed.solidPolygonsAt(seg, t);
+            if ((polys != null) && !Observed.objectsHit(seg, segRel, World.HALFWIDTH)) {
+                Observed.exemptionCount.incrementAndGet();
+                return true;
+            }
+            return false;
+        }
+
+        /**
          * Whether the record says a hop cannot cross here: SOLID or WALL, but not TIGHT.
          *
          * The crossing question, and it deliberately excludes TIGHT - a tight tile cannot hold a

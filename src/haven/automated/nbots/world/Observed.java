@@ -213,6 +213,51 @@ public class Observed {
     private static final java.util.Map<Long, java.util.Map<Coord, java.util.List<Coord2d[]>>> exactWalls = new HashMap<>();
 
     /**
+     * The exact rotated collision polygon of every remembered piece of FURNITURE (anything with a
+     * hitbox that is neither a wall nor a gate), in segment-relative world units, keyed by the gob's
+     * origin tile. Walls keep their own store ({@link #exactWalls}) because a wall's tile record is
+     * deliberately over-covered; furniture is the opposite case — a rotated log stamps a whole tile
+     * solid because its bounding box clips the tile CENTRE, while the true shape leaves a corner of
+     * that tile free to stand on. {@link #solidPolygonsAt} + {@link #objectsHit} let the standable
+     * check exempt exactly that corner instead of refusing the tile.
+     *
+     * Same session scope, sweep refill, and wipe-then-stamp rule as {@link #exactWalls}.
+     */
+    private static final java.util.Map<Long, java.util.Map<Coord, java.util.List<Coord2d[]>>> exactSolids = new HashMap<>();
+
+    /** How many times the exact shape cleared an aim the tile record had certified solid — the
+     *  over-conservatism counter, logged by the standable check so the validation run can see how
+     *  often the record had been lying. */
+    public static final java.util.concurrent.atomic.AtomicInteger exemptionCount = new java.util.concurrent.atomic.AtomicInteger();
+
+    /** Throttle for the exemption-count heartbeat, so a furniture-heavy sweep does not spam. */
+    private static volatile long lastExemptLog = 0;
+
+    /** The stored polygons on a tile, or null if the record has no exact shape there. */
+    public static java.util.List<Coord2d[]> solidPolygonsAt(long seg, Coord tile) {
+        synchronized (LOCK) {
+            java.util.Map<Coord, java.util.List<Coord2d[]>> segSolids = exactSolids.get(seg);
+            return (segSolids == null) ? null : segSolids.get(tile);
+        }
+    }
+
+    /** Whether the disc of radius {@code r} centred at {@code p} (segment-relative world units)
+     *  overlaps any remembered furniture polygon. The standable question the tile record can only
+     *  approximate. */
+    public static boolean objectsHit(long seg, Coord2d p, double r) {
+        synchronized (LOCK) {
+            java.util.Map<Coord, java.util.List<Coord2d[]>> segSolids = exactSolids.get(seg);
+            if (segSolids == null)
+                return false;
+            for (java.util.List<Coord2d[]> polys : segSolids.values())
+                for (Coord2d[] poly : polys)
+                    if (CollisionGeom.segmentHitsRadius(poly, p, p, r))
+                        return true;
+            return false;
+        }
+    }
+
+    /**
      * Whether the segment a→b (segment-relative world coords) comes within {@code r} of any
      * remembered wall polygon. This replaces the tile-quantised "does the line cross a WALL tile"
      * test: a wall tile is eleven units wide, so a character backing out next to a palisade had every
@@ -473,6 +518,7 @@ public class Observed {
         Set<Coord> tights = new HashSet<>();
         java.util.Map<Coord, String> found = new HashMap<>();
         java.util.Map<Coord, java.util.List<Coord2d[]>> newExact = new HashMap<>();
+        java.util.Map<Coord, java.util.List<Coord2d[]>> newSolids = new HashMap<>();
         Coord2d off = here.sc.sub(me.rc);
         for (Gob g : gobs) {
             try {
@@ -514,12 +560,14 @@ public class Observed {
                 // kind() is null for anything that is not part of a barrier - see HALFWIDTH.
                 Set<Coord> tiles = footprint(g, off, boxes, k == null, tights);
                 into.addAll(tiles);
-                // Remember the wall's exact shape too, for the continuous line check. Walls are the
-                // one thing the tile grid deliberately over-covers (a palisade is a whole tile), so
-                // they are the one thing whose tile record is wrong in the direction that refuses a
-                // line that reality allows. Furniture keeps its tile-only record; lineClear reads
-                // furniture live via occupied.
-                if (k == Barriers.Kind.WALL) {
+                // Remember the exact shape too, for the continuous checks. Walls are the one thing
+                // the tile grid deliberately over-covers (a palisade is a whole tile), so their tile
+                // record is wrong in the direction that refuses a line reality allows - that is the
+                // lineClear exemption. Furniture is the opposite: a rotated log stamps a tile solid
+                // because its bounding box clips the tile centre, while the true shape leaves a
+                // corner free to stand on - that is the standable exemption. Gates are never stored
+                // (their live state, not their shape, decides).
+                if (k != Barriers.Kind.GATE) {
                     Coord2d pos = g.rc.add(off);
                     java.util.List<Coord2d[]> exact = new java.util.ArrayList<>();
                     for (HitBoxes.CollisionBoxSecondary box : boxes) {
@@ -527,9 +575,13 @@ public class Observed {
                             continue;
                         exact.add(CollisionGeom.worldPolygon(box.coords, pos, g.a));
                     }
-                    if (!exact.isEmpty())
-                        newExact.computeIfAbsent(pos.floor(MCache.tilesz), t -> new java.util.ArrayList<>())
-                            .addAll(exact);
+                    if (!exact.isEmpty()) {
+                        Coord originTile = pos.floor(MCache.tilesz);
+                        if (k == Barriers.Kind.WALL)
+                            newExact.computeIfAbsent(originTile, t -> new java.util.ArrayList<>()).addAll(exact);
+                        else
+                            newSolids.computeIfAbsent(originTile, t -> new java.util.ArrayList<>()).addAll(exact);
+                    }
                 }
                 // The same tiles, remembered by WHAT put them there - see the objects registry.
                 String lbl = label(res.name);
@@ -595,6 +647,13 @@ public class Observed {
                     segExact.remove(mine.add(x, y));
             }
             segExact.putAll(newExact);
+            // Furniture's exact shapes follow the same wipe-then-stamp rule, keyed by origin tile.
+            java.util.Map<Coord, java.util.List<Coord2d[]>> segSolids = exactSolids.computeIfAbsent(here.seg, s -> new HashMap<>());
+            for (int y = -north; y <= south; y++) {
+                for (int x = -west; x <= east; x++)
+                    segSolids.remove(mine.add(x, y));
+            }
+            segSolids.putAll(newSolids);
             /* Each KIND announced once. A line per sweep would be several a second saying the same
              * thing; a line the first time a house or a storage well is ever recorded is the thing
              * actually worth having, because it says what the solid blocks in a map dump are made
@@ -603,6 +662,15 @@ public class Observed {
                 if (announced.add(e.getKey()))
                     haven.automated.nbots.core.NLog.log("observed.log", "first sighting of "
                         + e.getKey() + " - " + e.getValue() + " tile(s) in this sweep");
+            }
+            // Heartbeat for the over-conservatism counter: how often the exact shape overrode a
+            // tile the record had certified solid. Zero means the tile record never lied; a number
+            // means the exact store is doing its job and the standable check is trusting it.
+            long nowEx = System.currentTimeMillis();
+            if ((exemptionCount.get() > 0) && ((nowEx - lastExemptLog) >= 10000)) {
+                lastExemptLog = nowEx;
+                haven.automated.nbots.core.NLog.log("observed.log", "exemption count now "
+                    + exemptionCount.get() + " (exact shape overrode a solid tile record)");
             }
             /* Stamped weakest first. A wall segment's box overlaps its own gate's and a gate's
              * posts, so whichever is written last wins, and a gateway recorded as solid seals a
