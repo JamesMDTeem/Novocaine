@@ -66,6 +66,12 @@ public class Map implements World {
     // server needs a hair more than the bare disc fit, and a straight line through
     // a gap that only just fits is the one the character repeatedly dies in.
     private final static double STRAIGHT_MARGIN = 0.5;
+    /* The clearance a route must keep around an object: the disc radius plus a margin, so
+     * a corridor only barely wider than the character is not threaded (the server needs
+     * headroom the click-to-waypoint walk cannot hold at a marginal angle). The straight
+     * route uses the same figure, and excludeGob carves the same radius so a target's own
+     * footprint is never sealed by its ring. */
+    public final static double ROUTE_CLEARANCE = World.HALFWIDTH + STRAIGHT_MARGIN;
 
     private final byte[][] map = new byte[sz][sz];
     private final TraversableObstacle[][] pomap = new TraversableObstacle[sz][sz];
@@ -663,6 +669,54 @@ public class Map implements World {
     }
 
     /**
+     * Carve just the destination's disc FREE instead of the gob's whole footprint.
+     * Used when the walk aims at a point OUTSIDE the gob's own box (the face-aim in
+     * MapView): freeing the entire footprint would let the visibility graph thread
+     * a route straight through the target's trunk to reach the aim from the far
+     * side - the walk-through-a-tree behaviour. The aim's own cell would otherwise
+     * sit inside the clearance ring (CELL_BUF at exactly ROUTE_CLEARANCE) and be
+     * unreachable, so the disc must be freed. The straight-route guard entry for
+     * the target is removed the same way excludeGob does it, so the walk's own
+     * approach is never refused by the target's polygon.
+     */
+    public void excludeDestDisk(Coord dest, double radius, Coord2d[] polygon, Gob gob) {
+        double cx = dest.x + 0.5, cy = dest.y + 0.5;
+        int loX = Math.max(0, (int) Math.floor(cx - radius));
+        int hiX = Math.min(sz - 1, (int) Math.ceil(cx + radius));
+        int loY = Math.max(0, (int) Math.floor(cy - radius));
+        int hiY = Math.min(sz - 1, (int) Math.ceil(cy + radius));
+        double r2 = radius * radius;
+        for (int y = loY; y <= hiY; y++) {
+            for (int x = loX; x <= hiX; x++) {
+                double dx = (x + 0.5) - cx, dy = (y + 0.5) - cy;
+                if (dx * dx + dy * dy <= r2)
+                    map[x][y] = CELL_FREE;
+            }
+        }
+
+        Coord2d[] rasterPoly = rasterPolygon(polygon, gob);
+        double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        for (Coord2d p : rasterPoly) {
+            minX = Math.min(minX, p.x);
+            minY = Math.min(minY, p.y);
+            maxX = Math.max(maxX, p.x);
+            maxY = Math.max(maxY, p.y);
+        }
+        for (int i = paintedBboxes.size() - 1; i >= 0; i--) {
+            double[] bb = paintedBboxes.get(i);
+            if (bb[0] == minX && bb[1] == minY && bb[2] == maxX && bb[3] == maxY) {
+                paintedPolys.remove(i);
+                paintedBboxes.remove(i);
+                break;
+            }
+        }
+
+        if (rasterPoly.length >= 4)
+            dbg.rect((int) rasterPoly[0].x, (int) rasterPoly[0].y, (int) rasterPoly[1].x, (int) rasterPoly[1].y,
+                    (int) rasterPoly[2].x, (int) rasterPoly[2].y, (int) rasterPoly[3].x, (int) rasterPoly[3].y, Color.PINK);
+    }
+
+    /**
      * The gob's collision polygon (gob-local, unrotated) in raster coordinates:
      * world = rotate(local, gob.a) around the gob origin, then raster = origin + (world - plc).
      */
@@ -682,7 +736,7 @@ public class Map implements World {
      * the ring of cells whose centre is within {@link World#HALFWIDTH} of the polygon
      * but not inside it is the disc the character needs for a clean pass, painted
      * {@link #CELL_BUF}. That ring blocks every route except the one that starts at
-     * the origin — the character already standing with its disc merged into a
+     * the origin Ã¢â‚¬â€ the character already standing with its disc merged into a
      * neighbour is allowed to leave, which is what lets the search generate the
      * "step back a little" as a routed first edge instead of a blind escape click.
      * Only the true-box cells feed the returned spans (the traversable-obstacle
@@ -701,10 +755,10 @@ public class Map implements World {
             maxX = Math.max(maxX, p.x);
             maxY = Math.max(maxY, p.y);
         }
-        int x0 = Math.max(0, (int) Math.floor(minX - World.HALFWIDTH));
-        int x1 = Math.min(sz - 1, (int) Math.ceil(maxX + World.HALFWIDTH));
-        int y0 = Math.max(0, (int) Math.floor(minY - World.HALFWIDTH));
-        int y1 = Math.min(sz - 1, (int) Math.ceil(maxY + World.HALFWIDTH));
+        int x0 = Math.max(0, (int) Math.floor(minX - ROUTE_CLEARANCE));
+        int x1 = Math.min(sz - 1, (int) Math.ceil(maxX + ROUTE_CLEARANCE));
+        int y0 = Math.max(0, (int) Math.floor(minY - ROUTE_CLEARANCE));
+        int y1 = Math.min(sz - 1, (int) Math.ceil(maxY + ROUTE_CLEARANCE));
 
         for (int y = y0; y <= y1; y++) {
             Utils.MinMax mm = null;
@@ -718,11 +772,11 @@ public class Map implements World {
                         }
                         if (x < mm.min) mm.min = x;
                         if (x > mm.max) mm.max = x;
-                    } else if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, World.HALFWIDTH)) {
+                    } else if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, ROUTE_CLEARANCE)) {
                         map[x][y] = CELL_BUF;
                     }
                 } else {
-                    if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, World.HALFWIDTH)) {
+                    if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, ROUTE_CLEARANCE)) {
                         map[x][y] = celltype;
                         if (mm == null) {
                             mm = new Utils.MinMax();

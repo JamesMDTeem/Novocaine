@@ -261,9 +261,27 @@ public class Pathfinder implements Runnable {
         if (this.gob != null) {
             HitBoxes.CollisionBoxSecondary[] collisionBoxes = HitBoxes.collisionBoxMap.get(this.gob.getres().name);
             if (collisionBoxes != null) {
+                // If the destination itself is inside the gob's true box, the walk is a
+                // centre-aimed approach and the whole footprint must be freed. Otherwise
+                // (the face-aim in MapView aims OUTSIDE the box) freeing the footprint
+                // would let the graph route straight through the target's trunk, so only
+                // the destination's own disc is carved.
+                boolean destInside = false;
                 for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
                     if (collisionBox.hitAble && collisionBox.coords.length > 2) {
-                        m.excludeGob(collisionBox.coords, this.gob);
+                        Coord2d[] world = CollisionGeom.worldPolygon(collisionBox.coords, this.gob.rc, this.gob.a);
+                        if (CollisionGeom.pointInConvex(world, src.x + dest.x - Map.origin, src.y + dest.y - Map.origin)) {
+                            destInside = true;
+                            break;
+                        }
+                    }
+                }
+                for (HitBoxes.CollisionBoxSecondary collisionBox : collisionBoxes) {
+                    if (collisionBox.hitAble && collisionBox.coords.length > 2) {
+                        if (destInside)
+                            m.excludeGob(collisionBox.coords, this.gob);
+                        else
+                            m.excludeDestDisk(dest, Map.ROUTE_CLEARANCE, collisionBox.coords, this.gob);
                     }
                 }
             }

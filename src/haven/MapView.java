@@ -3350,8 +3350,8 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 						if (best != null) {
 							Coord2d dir = player.rc.sub(best);
 							double len = dir.abs();
-							if (len > haven.automated.pathfinder.World.HALFWIDTH)
-								aim = best.add(dir.mul(haven.automated.pathfinder.World.HALFWIDTH / len));
+							if (len > haven.automated.pathfinder.Map.ROUTE_CLEARANCE)
+								aim = best.add(dir.mul(haven.automated.pathfinder.Map.ROUTE_CLEARANCE / len));
 							else
 								aim = player.rc;
 						}
