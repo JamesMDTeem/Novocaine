@@ -41,6 +41,21 @@ public class BotRegistry {
         DEFS.add(BotDef.window("NWaterScoutBot", "Water Scout (crew)",
             "Follows a coastline or a river bank by boat.",
             NWaterScoutBot::new));
+        DEFS.add(BotDef.window("NSurveyBot", "Survey (crew)",
+            "Mans land surveys, drains them, removes them and moves to the next.",
+            NSurveyBot::new));
+        DEFS.add(BotDef.window("NBeeSmokerBot", "Bee Smoker (crew)",
+            "Builds a pyre under every wild beehive in sight, smokes it and raids it.",
+            NBeeSmokerBot::new));
+        DEFS.add(BotDef.window("NDragonflyBot", "Dragonfly (crew)",
+            "Rows a dugout around a swamp catching every dragonfly, then files the catch.",
+            NDragonflyBot::new));
+        DEFS.add(BotDef.window("SchedulesWindow", "Schedules",
+            "Runs bots on a timed loop - e.g. dragonfly for ten minutes, wait fifteen, repeat.",
+            haven.automated.scheduler.SchedulesWindow::new));
+        DEFS.add(BotDef.window("AltManager", "Alt Manager",
+            "Lists the accounts saved on this client and switches between them in one click.",
+            haven.automated.AltManager::new));
         DEFS.add(BotDef.window("OceanScoutBot", "Ocean Scout",
             "Sails the ocean looking for pearls and avoiding danger.",
             "wndc-oceanScoutBotWindow", haven.automated.OceanScoutBot::new));

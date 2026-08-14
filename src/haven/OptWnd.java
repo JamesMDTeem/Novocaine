@@ -3596,6 +3596,37 @@ public class OptWnd extends Window {
                 }
             }, prev.pos("bl").adds(12, 2));
 
+			prev = add(altManagerCheckBox = new CheckBox("Alt Manager (account switcher)"){
+				{a = Utils.getprefb("altManager", false);}
+				public void set(boolean val) {
+					Utils.setprefb("altManager", val);
+					a = val;
+					if (ui != null && ui.gui != null)
+						ui.gui.optionInfoMsg("Alt Manager is now " + (val ? "ENABLED" : "DISABLED") + ".", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
+				}
+			}, prev.pos("bl").adds(0, 12).x(0));
+			altManagerCheckBox.tooltip = RichText.render("Lists the accounts saved on this client and switches between them with one click.\nThe switcher is under the menu-grid Novocaine tab -> Alt Manager.", UI.scale(300));
+
+			prev = add(altKeepLoggedInCheckBox = new CheckBox("Keep current character logged in when switching"){
+				{a = Utils.getprefb("altKeepLoggedIn", false);}
+				public void set(boolean val) {
+					Utils.setprefb("altKeepLoggedIn", val);
+					a = val;
+				}
+			}, prev.pos("bl").adds(0, 2).x(0));
+			altKeepLoggedInCheckBox.tooltip = RichText.render("Not yet implemented: will leave the current character connected while switching. For now, switching always logs the current character out.", UI.scale(300));
+
+			prev = add(autoHearthOnUnknownPlayerCheckBox = new CheckBox("Auto-Hearth on Unknown Player"){
+				{a = Utils.getprefb("autoHearthOnUnknownPlayer", false);}
+				public void set(boolean val) {
+					Utils.setprefb("autoHearthOnUnknownPlayer", val);
+					a = val;
+					if (ui != null && ui.gui != null)
+						ui.gui.optionInfoMsg("Auto-Hearth is now " + (val ? "ENABLED" : "DISABLED") + ".", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
+				}
+			}, prev.pos("bl").adds(0, 2).x(0));
+			autoHearthOnUnknownPlayerCheckBox.tooltip = RichText.render("Automatically travels to your hearth fire the moment an unknown player is seen.\nParty members, kin-group members (per the per-colour \"exclude from aggro\" toggles) and village/realm members are ignored.\nFires at most once a minute, and spends hearth-travel weariness, so enable only when leaving a character unattended.", UI.scale(300));
+
 			Widget backButton;
 			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), prev.pos("bl").adds(0, 18));
 			pack();
@@ -3612,6 +3643,9 @@ public class OptWnd extends Window {
 	public static CheckBox tileCenteringCheckBox;
 	public static CheckBox clickThroughContainerDecalCheckBox;
 	public static CheckBox continuousWalkingCheckBox;
+	public static CheckBox altManagerCheckBox;
+	public static CheckBox altKeepLoggedInCheckBox;
+	public static CheckBox autoHearthOnUnknownPlayerCheckBox;
 
 	public class AlteredGameplaySettingsPanel extends Panel {
 

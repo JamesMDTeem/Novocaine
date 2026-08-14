@@ -144,6 +144,14 @@ build("OtherScriptsAndTools/AutoDropManager.res",
       "output. Bots ask for a place by role rather than being told coordinates, so one definition "
       "serves every bot and every client launched from this install.")
 
+# Account switcher: one button that lists the saved accounts and switches between them with a click.
+build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
+      "NurglingImports/AltManager.res",
+      "customclient/menugrid/NurglingImports", "Alt Manager", 0,
+      ["@", "NurglingImports", "AltManager"],
+      "Lists the accounts saved on this client and switches between them with one click. "
+      "Gated by the Alt Manager checkbox in Advanced Settings -> Gameplay Automation.")
+
 # The three crew bots. Each is a separate class from the stock Bots-tab version, which is left
 # exactly as it is - see haven.automated.nbots.NBot for why.
 build("Bots/CellarDiggingBot.res",
@@ -168,3 +176,30 @@ build("Bots/OceanScoutBot.res",
       ["@", "NurglingImports", "NWaterScoutBot"],
       "Follows a coastline or a river bank by boat, revealing map as it goes. Pick ocean or "
       "fresh water and which side to keep the deep water on.")
+
+build("Bots/CellarDiggingBot.res",
+      "NurglingImports/CrewBots/NSurveyBot.res",
+      "customclient/menugrid/NurglingImports/CrewBots", "Survey (crew)", 0,
+      ["@", "NurglingImports", "NSurveyBot"],
+      "Mans land surveys: digs each one out, removes it once drained, and moves to the next. "
+      "Several can share a field without converging on the same survey.")
+
+build("Bots/FishingBot.res",
+      "NurglingImports/CrewBots/NBeeSmokerBot.res",
+      "customclient/menugrid/NurglingImports/CrewBots", "Bee Smoker (crew)", 0,
+      ["@", "NurglingImports", "NBeeSmokerBot"],
+      "Builds a pyre under every wild beehive in sight, waits for the smoke to send the swarm "
+      "off, then raids each hive before moving on.")
+
+build("Bots/FishingBot.res",
+      "NurglingImports/CrewBots/NDragonflyBot.res",
+      "customclient/menugrid/NurglingImports/CrewBots", "Dragonfly (crew)", 0,
+      ["@", "NurglingImports", "NDragonflyBot"],
+      "Rows a dugout around a swamp, catching every dragonfly it can, then hearths home and "
+      "files the catch.")
+
+build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
+      "NurglingImports/Schedules.res",
+      "customclient/menugrid/NurglingImports", "Schedules", 0,
+      ["@", "NurglingImports", "SchedulesWindow"],
+      "Runs bots on a timed loop - e.g. dragonfly for ten minutes, wait fifteen, repeat.")

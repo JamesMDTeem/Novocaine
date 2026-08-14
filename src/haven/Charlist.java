@@ -283,6 +283,7 @@ public class Charlist extends Widget {
 		    list.change(c);
 	    }
 	    dirty = true;
+	    haven.automated.AltManager.maybeAutoPlay(this, c);
 	} else if(msg == "ava") {
 	    String cnm = (String)args[0];
 	    Object[] rawdesc = (Object[])args[1];
@@ -341,8 +342,11 @@ public class Charlist extends Widget {
 		list.change(chars.get(Math.min(chars.indexOf(list.sel) + 1, chars.size() - 1)));
 	    return(true);
 	} else if(ev.code == ev.awt.VK_ENTER) {
-	    if(list.sel != null)
+	    if(list.sel != null) {
 		wdgmsg("play", list.sel.name);
+		Config.setPlayerName(list.sel.name);
+		Config.initAutomapper(ui);
+	    }
 	    return(true);
 	}
 	return(super.keydown(ev));

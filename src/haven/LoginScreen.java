@@ -613,6 +613,16 @@ public class LoginScreen extends Widget {
 	super.wdgmsg(sender, msg, args);
     }
 
+    /**
+     * Programmatic login for the alt switcher: fills the credential box and submits it, exactly as
+     * if the player had typed the account and clicked login. See haven.automated.AltManager.
+     */
+    public void loginAsAccount(String name, String pass) {
+	((Credbox) login).user.settext2(name);
+	((Credbox) login).pass.settext(pass);
+	((Credbox) login).enter2();
+    }
+
 	public void tick(double dt) {
 		playMainTheme(themes.get(bgIndex-1));
 		if (!firstTimeWindowCreated && Utils.getprefb("firstTimeOpeningClient", true)){
@@ -637,6 +647,7 @@ public class LoginScreen extends Widget {
     public void uimsg(String msg, Object... args) {
 	if(msg == "login") {
 	    mklogin();
+	    haven.automated.AltManager.maybeAutoLogin(this);
 	} else if(msg == "error") {
 	    error((String)args[0]);
 		lastUser = "";

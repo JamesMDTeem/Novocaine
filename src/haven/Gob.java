@@ -580,6 +580,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	if (isMeKnown) {
 		setCustomPlayerName();
 		playPlayerAlarm();
+		haven.automated.AutoHearth.check(this);
 		if (OptWnd.enableSkyboxCheckBox.a && !(GameUI.backgroundSong.equals("cabin") || GameUI.backgroundSong.equals("cave")) && skyboxOverlay == null && isMe) {
 			skyboxOverlay = new Overlay(this, new SkyBoxSprite(this, null));
 			addol(skyboxOverlay);

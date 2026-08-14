@@ -872,6 +872,11 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NCellarDiggerBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NCleanupBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NWaterScoutBot");
+		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NSurveyBot");
+		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NBeeSmokerBot");
+		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NDragonflyBot");
+		makeLocal("customclient/menugrid/NurglingImports/Schedules");
+		makeLocal("customclient/menugrid/NurglingImports/AltManager");
 
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");

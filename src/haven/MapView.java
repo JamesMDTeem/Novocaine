@@ -58,6 +58,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     private Collection<Delayed> delayed2 = new LinkedList<Delayed>();
     public Camera camera = restorecam();
     private Loader.Future<Plob> placing = null;
+    public Loader.Future<Plob> placing() {return(placing);}
     private Grabber grab;
     private Selector selection;
     private Coord3f camoff = new Coord3f(Coord3f.o);
