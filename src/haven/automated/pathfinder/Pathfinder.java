@@ -298,13 +298,8 @@ public class Pathfinder implements Runnable {
             }
             NLog.log("pf", diag.toString());
         }
-        int edgeIdx = 0;
-        int pathSize = 0;
-        for (Edge ignored : path)
-            pathSize++;
         while (it.hasNext() && !moveinterupted && !terminate) {
             Edge e = it.next();
-            int edgeNo = ++edgeIdx;
             Coord2d waypoint = new Coord2d(src.x + e.dest.x - Map.origin, src.y + e.dest.y - Map.origin);
             mc = waypoint.floor(posres);
 
@@ -376,55 +371,6 @@ public class Pathfinder implements Runnable {
                      * so a STUCK remedy (backing out with raw steps) can fire on the first pass. */
                     refusal = Refusal.NO_MOVE;
                     terminate = true;
-                    /* [DEBUG-nomove] Discriminating probe for the 15:43 sandthorn freeze: is a
-                     * FlowerMenu still open (menu swallowed the click), is the char mid-move, and
-                     * which boxes sit within 12u of the char? See the NO_MOVE plan. */
-                    try {
-                        StringBuilder dbg = new StringBuilder();
-                        dbg.append("NO_MOVE edge=").append(edgeNo).append('/').append(pathSize)
-                            .append(" interaction=").append(interaction).append(" clickb=").append(clickb)
-                            .append(" gob=").append((gob == null) ? "none" : ("#" + gob.id + " " + gob.getres().name));
-                        dbg.append(" mc=").append(mc).append(" (world=").append(mc.mul(posres))
-                            .append(") char=").append(player.rc)
-                            .append(" src=").append(src);
-                        int wpn = 0;
-                        for (Coord2d wp : pathWaypoints) {
-                            if (wpn++ > 4)
-                                break;
-                            dbg.append("\n  wp").append(wpn).append("=").append(wp);
-                        }
-                        boolean menuOpen = Widgets.find(mv.ui.root, haven.FlowerMenu.class) != null;
-                        dbg.append(" flowerMenuOpen=").append(menuOpen);
-                        dbg.append(" movingAttr=").append(player.getattr(haven.Moving.class) != null);
-                        for (Gob near : gobs) {
-                            if (near.id == player.id || near.isPlgob(mv.ui.gui))
-                                continue;
-                            if (player.rc.dist(near.rc) <= 12.0) {
-                                String res = (near.getres() != null) ? near.getres().name : "<nores>";
-                                dbg.append("\n  near #").append(near.id).append(" ").append(res)
-                                    .append(" rc=").append(near.rc);
-                                HitBoxes.CollisionBoxSecondary[] boxes = (near.getres() == null)
-                                    ? null : HitBoxes.collisionBoxMap.get(near.getres().name);
-                                if (boxes != null) {
-                                    for (HitBoxes.CollisionBoxSecondary box : boxes) {
-                                        if (!box.hitAble)
-                                            continue;
-                                        double bx1 = Double.MAX_VALUE, by1 = Double.MAX_VALUE,
-                                            bx2 = -Double.MAX_VALUE, by2 = -Double.MAX_VALUE;
-                                        for (Coord2d c : box.coords) {
-                                            bx1 = Math.min(bx1, c.x); by1 = Math.min(by1, c.y);
-                                            bx2 = Math.max(bx2, c.x); by2 = Math.max(by2, c.y);
-                                        }
-                                        dbg.append(" box=").append((int) bx1).append(',').append((int) by1)
-                                            .append('-').append((int) bx2).append(',').append((int) by2);
-                                    }
-                                }
-                            }
-                        }
-                        NLog.log("pf", "[DEBUG-nomove] " + dbg);
-                    } catch (Exception dbgex) {
-                        NLog.log("pf", "[DEBUG-nomove] probe threw: " + dbgex);
-                    }
                     return;
                 }
             }
