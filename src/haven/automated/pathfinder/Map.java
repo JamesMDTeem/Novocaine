@@ -32,13 +32,6 @@ public class Map implements World {
      * already merged into a neighbour has to be able to leave it. See paintPolygon. */
     public final static byte CELL_BUF = 1 << 5;
     public final static byte CELL_TO = 1 << 6;
-    /* The ring cells the origin itself may cross: a character standing merged into a neighbour
-     * (its disc already overlapping that box) has to be able to leave it, so the ring cells in
-     * its immediate neighbourhood are grandfathered. Everything beyond this radius treats the
-     * ring as blocked, exactly like a box edge the disc must not graze. See paintExitZone. */
-    public final static byte CELL_EXIT = (byte) (1 << 7);
-    /** How far from the origin the grandfathered ring cells may reach, in raster (world) units. */
-    private final static double EXIT_RADIUS = 2.0 * World.HALFWIDTH;
 
     /** Size of one tile in world units (pixels). Matches {@code MCache.tilesz}. */
     /* int, and it must stay int: the arithmetic below relies on it. {@code TILE / 2} on lines 209-210
@@ -69,10 +62,21 @@ public class Map implements World {
     private final static int tbbay = -2;
     private final static int tbbbx = 2;
     private final static int tbbby = 2;
+    // Margin on top of the disc radius for the straight route's exact test: the
+    // server needs a hair more than the bare disc fit, and a straight line through
+    // a gap that only just fits is the one the character repeatedly dies in.
+    private final static double STRAIGHT_MARGIN = 0.5;
 
     private final byte[][] map = new byte[sz][sz];
     private final TraversableObstacle[][] pomap = new TraversableObstacle[sz][sz];
     private final ArrayList<TraversableObstacle> tocandidates = new ArrayList<TraversableObstacle>(300);
+    // The straight-route guard: the origin-to-destination line only answers the cell
+    // question (does it cross a true-box cell), so it can thread a gap the disc does
+    // not fit through or clip a true corner the cells cannot see. The exact polygons
+    // painted as obstacles are kept here (with their bounding boxes for a cheap
+    // pre-filter) and the straight route is additionally capsule-tested against them.
+    private final ArrayList<Coord2d[]> paintedPolys = new ArrayList<Coord2d[]>();
+    private final ArrayList<double[]> paintedBboxes = new ArrayList<double[]>();
     public Coord plc;
     private final Coord endc;
     private final MCache mcache;
@@ -599,6 +603,16 @@ public class Map implements World {
         // Bresenham frame that closed tight gaps around rotated logs.
         HashMap<Integer, Utils.MinMax> raster = paintPolygon(rasterPoly, CELL_BLK, true);
 
+        double pminX = Double.MAX_VALUE, pminY = Double.MAX_VALUE, pmaxX = -Double.MAX_VALUE, pmaxY = -Double.MAX_VALUE;
+        for (Coord2d p : rasterPoly) {
+            pminX = Math.min(pminX, p.x);
+            pminY = Math.min(pminY, p.y);
+            pmaxX = Math.max(pmaxX, p.x);
+            pmaxY = Math.max(pmaxY, p.y);
+        }
+        paintedPolys.add(rasterPoly);
+        paintedBboxes.add(new double[] { pminX, pminY, pmaxX, pmaxY });
+
         // store traversable obstacles candidates
         if (bottomRightPoint.x <= tomaxside && bottomRightPoint.y <= tomaxside)
             tocandidates.add(new TraversableObstacle(wa, wb, wc, wd, clra, clrb, clrc, clrd, raster));
@@ -629,6 +643,20 @@ public class Map implements World {
             return;
 
         paintPolygon(rasterPoly, CELL_FREE, false);
+
+        // The straight-route guard must not test the carved target: its disc region
+        // was just freed, so the origin-to-destination capsule would otherwise refuse
+        // every walk that aims at (or into) the target's own footprint. The same
+        // transform produced the stored entry, so the bounding boxes match exactly.
+        for (int i = paintedBboxes.size() - 1; i >= 0; i--) {
+            double[] bb = paintedBboxes.get(i);
+            if (bb[0] == minX && bb[1] == minY && bb[2] == maxX && bb[3] == maxY) {
+                paintedPolys.remove(i);
+                paintedBboxes.remove(i);
+                break;
+            }
+        }
+
         if (rasterPoly.length >= 4)
             dbg.rect((int) rasterPoly[0].x, (int) rasterPoly[0].y, (int) rasterPoly[1].x, (int) rasterPoly[1].y,
                     (int) rasterPoly[2].x, (int) rasterPoly[2].y, (int) rasterPoly[3].x, (int) rasterPoly[3].y, Color.PINK);
@@ -709,27 +737,28 @@ public class Map implements World {
         return raster;
     }
 
-    /* Grandfather the ring cells immediately around the origin: a character standing merged
-     * into a neighbour (disc already overlapping that box) is still fully mobile server-side,
-     * so the first edge out of the origin may cross the ring of the box it is touching. The
-     * whole rest of the ring stays blocked - a route must not graze closer than the disc. Only
-     * the ~2x-disc neighbourhood is grandfathered, which is exactly the merge depth the server
-     * tolerates; a box further away than that is not one we are standing inside, and crossing
-     * its ring is a clip the server would stop us on. */
-    private void paintExitZone() {
-        double r2 = EXIT_RADIUS * EXIT_RADIUS;
-        int reach = (int) Math.ceil(EXIT_RADIUS) + 1;
-        for (int i = origin - reach; i <= origin + reach; i++) {
-            for (int j = origin - reach; j <= origin + reach; j++) {
-                if (i < 0 || j < 0 || i >= sz || j >= sz)
-                    continue;
-                if (map[i][j] != CELL_BUF)
-                    continue;
-                double dx = i - origin, dy = j - origin;
-                if (dx * dx + dy * dy <= r2)
-                    map[i][j] = CELL_EXIT;
-            }
+    /**
+     * The straight origin-to-destination route answers the cell question only, so it
+     * can thread a gap the disc does not fit through or clip a true corner the cells
+     * cannot see. This exact capsule test against the painted obstacle polygons is
+     * the straight route's ring: the disc radius plus {@link #STRAIGHT_MARGIN} of
+     * server slack. Refusing here just falls back to the full graph, which keeps the
+     * ring via the cell layer - the straight route is an optimisation, not the plan.
+     */
+    private boolean straightLineClear(Coord endc) {
+        double r = World.HALFWIDTH + STRAIGHT_MARGIN;
+        Coord2d a = new Coord2d(origin, origin);
+        Coord2d b = new Coord2d(endc.x, endc.y);
+        double loX = Math.min(a.x, b.x) - r, hiX = Math.max(a.x, b.x) + r;
+        double loY = Math.min(a.y, b.y) - r, hiY = Math.max(a.y, b.y) + r;
+        for (int i = 0; i < paintedPolys.size(); i++) {
+            double[] bb = paintedBboxes.get(i);
+            if (bb[2] < loX || bb[0] > hiX || bb[3] < loY || bb[1] > hiY)
+                continue;
+            if (CollisionGeom.segmentHitsRadius(paintedPolys.get(i), a, b, r))
+                return false;
         }
+        return true;
     }
 
     private void sanitizeWaypoints() {
@@ -740,10 +769,10 @@ public class Map implements World {
 
                 // remove concave and blocked vertices
                 // Known rough edge: slightly misbehaves with rotated rectangles.
-                if ((map[i + concaveclr][j] & (CELL_BLK | CELL_TO | CELL_BUF)) != 0 ||
-                        (map[i - concaveclr][j] & (CELL_BLK | CELL_TO | CELL_BUF)) != 0 ||
-                        (map[i][j + concaveclr] & (CELL_BLK | CELL_TO | CELL_BUF)) != 0 ||
-                        (map[i][j - concaveclr] & (CELL_BLK | CELL_TO | CELL_BUF)) != 0) {
+                if ((map[i + concaveclr][j] & (CELL_BLK | CELL_TO)) != 0 ||
+                        (map[i - concaveclr][j] & (CELL_BLK | CELL_TO)) != 0 ||
+                        (map[i][j + concaveclr] & (CELL_BLK | CELL_TO)) != 0 ||
+                        (map[i][j - concaveclr] & (CELL_BLK | CELL_TO)) != 0) {
                     map[i][j] = CELL_FREE;
                     continue;
                 }
@@ -757,10 +786,10 @@ public class Map implements World {
     // the visibility scan is approximate - a flood-fill approach would be more robust.
     private void identTraversableObstacles() {
         for (TraversableObstacle sm : tocandidates) {
-            if (!Utils.isVisible(map, dbg, sm.clra.x, sm.clra.y, sm.clrb.x, sm.clrb.y, (byte) (CELL_BLK | CELL_TO | CELL_BUF)) ||
-                    !Utils.isVisible(map, dbg, sm.clrb.x, sm.clrb.y, sm.clrc.x, sm.clrc.y, (byte) (CELL_BLK | CELL_TO | CELL_BUF)) ||
-                    !Utils.isVisible(map, dbg, sm.clrc.x, sm.clrc.y, sm.clrd.x, sm.clrd.y, (byte) (CELL_BLK | CELL_TO | CELL_BUF)) ||
-                    !Utils.isVisible(map, dbg, sm.clrd.x, sm.clrd.y, sm.clra.x, sm.clra.y, (byte) (CELL_BLK | CELL_TO | CELL_BUF)))
+            if (!Utils.isVisible(map, dbg, sm.clra.x, sm.clra.y, sm.clrb.x, sm.clrb.y, (byte) (CELL_BLK | CELL_TO)) ||
+                    !Utils.isVisible(map, dbg, sm.clrb.x, sm.clrb.y, sm.clrc.x, sm.clrc.y, (byte) (CELL_BLK | CELL_TO)) ||
+                    !Utils.isVisible(map, dbg, sm.clrc.x, sm.clrc.y, sm.clrd.x, sm.clrd.y, (byte) (CELL_BLK | CELL_TO)) ||
+                    !Utils.isVisible(map, dbg, sm.clrd.x, sm.clrd.y, sm.clra.x, sm.clra.y, (byte) (CELL_BLK | CELL_TO)))
                 continue;
 
             map[sm.wa.x][sm.wa.y] = CELL_FREE;
@@ -828,8 +857,8 @@ public class Map implements World {
                  * out of the origin may cross CELL_BUF. Every other edge treats the
                  * buffer as blocked - a route must not graze closer than the disc. */
                 byte mask = ((vert1.x == origin && vert1.y == origin) || (vert2.x == origin && vert2.y == origin))
-                        ? (byte) (block | CELL_BUF)
-                        : (byte) (block | CELL_BUF | CELL_EXIT);
+                        ? block
+                        : (byte) (block | CELL_BUF);
 
                 if (Utils.isVisible(map, dbg, vert1.x, vert1.y, vert2.x, vert2.y, mask)) {
                     int dx = vert1.x - vert2.x;
@@ -941,10 +970,9 @@ public class Map implements World {
         if (map[origin + 1][origin + 1] == CELL_BLK)
             map[origin + 1][origin + 1] = CELL_FREE;
 
-        paintExitZone();
 
         // test if direct path is clear
-        if (Utils.isVisible(map, dbg, origin, origin, endc.x, endc.y, (byte) (CELL_BLK | CELL_TO | CELL_BUF))) {
+        if (Utils.isVisible(map, dbg, origin, origin, endc.x, endc.y, (byte) (CELL_BLK | CELL_TO)) && straightLineClear(endc)) {
             List<Edge> clearpath = new ArrayList<>(1);
             clearpath.add(new Edge(new Vertex(origin, origin), new Vertex(endc.x, endc.y), 0));
             if (DEBUG_TIMINGS)
@@ -953,7 +981,7 @@ public class Map implements World {
         }
 
         // test if direct path blocked only by traversable obstacles
-        if (Utils.isVisible(map, dbg, origin, origin, endc.x, endc.y, (byte) (CELL_BLK | CELL_BUF))) {
+        if (Utils.isVisible(map, dbg, origin, origin, endc.x, endc.y, CELL_BLK) && straightLineClear(endc)) {
             if (DEBUG_TIMINGS)
                 System.out.println("   !!!Only TO block!!!");
 
