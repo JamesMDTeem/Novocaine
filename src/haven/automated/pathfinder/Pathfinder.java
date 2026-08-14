@@ -116,6 +116,11 @@ public class Pathfinder implements Runnable {
     public volatile String refusalDetail = null;
     /** How many gobs the last {@link #pathfind} snapshotted, for the slow-search log line. */
     private volatile int gobsSeen = 0;
+    /** Per-phase milliseconds from the last {@link #pathfind} (map build / gob paint / search),
+     *  so a slow search names WHICH phase is slow instead of just being slow. */
+    private volatile long phaseMapMs = 0;
+    private volatile long phaseGobsMs = 0;
+    private volatile long phaseSearchMs = 0;
 
     /** Set when {@link #run} returns, however it ends. Callers wait on this rather than racing a
      *  freshly-issued search - one that is still shuffling its way out of a blocked origin has
@@ -184,7 +189,8 @@ public class Pathfinder implements Runnable {
             long ms = (System.nanoTime() - startedAt) / 1_000_000;
             if (ms >= 500)
                 NLog.log("pf", "client pathfind took " + ms + "ms (" + gobsSeen
-                    + " gobs in the snapshot; refusal=" + refusal + ")");
+                    + " gobs in the snapshot; refusal=" + refusal
+                    + "; map=" + phaseMapMs + "ms gobs=" + phaseGobsMs + "ms search=" + phaseSearchMs + "ms)");
         } catch (Loading l) {
             refusal = Refusal.LOADING;
         } catch (RuntimeException e) {
@@ -199,6 +205,7 @@ public class Pathfinder implements Runnable {
         long starttotal = System.nanoTime();
         Map m = new Map(src, dest, map);
         Gob player = mv.player();
+        phaseMapMs = (System.nanoTime() - starttotal) / 1_000_000;
 
         long start = System.nanoTime();
         List<Gob> gobs;
@@ -225,6 +232,7 @@ public class Pathfinder implements Runnable {
                 }
                 m.analyzeGobHitBoxes(gob);
         }
+        phaseGobsMs = (System.nanoTime() - start) / 1_000_000;
 
         if (m.isOriginBlocked()) {
             Pair<Integer, Integer> freeloc = m.getFreeLocation();
@@ -264,7 +272,9 @@ public class Pathfinder implements Runnable {
         if (Map.DEBUG_TIMINGS)
             System.out.println("      Gobs Processing: " + (double) (System.nanoTime() - start) / 1000000.0 + " ms.");
 
+        long searchStart = System.nanoTime();
         Iterable<Edge> path = m.main();
+        phaseSearchMs = (System.nanoTime() - searchStart) / 1_000_000;
 
         if (Map.DEBUG_TIMINGS)
             System.out.println("--------------- Total: " + (double) (System.nanoTime() - starttotal) / 1000000.0 + " ms.");
