@@ -27,6 +27,10 @@ public class Map implements World {
     public final static byte CELL_WP = 1 << 2;
     public final static byte CELL_SRC = 1 << 3;
     public final static byte CELL_DST = 1 << 4;
+    /* The disc ring around a true box, free from the origin but blocked for every other edge:
+     * a route must not graze closer than the character's disc, but the character standing
+     * already merged into a neighbour has to be able to leave it. See paintPolygon. */
+    public final static byte CELL_BUF = 1 << 5;
     public final static byte CELL_TO = 1 << 6;
 
     /** Size of one tile in world units (pixels). Matches {@code MCache.tilesz}. */
@@ -586,7 +590,7 @@ public class Map implements World {
         // character's disc (radius World.HALFWIDTH) centred on it touches the
         // gob's true collision polygon. This replaces the AABB collapse plus
         // Bresenham frame that closed tight gaps around rotated logs.
-        HashMap<Integer, Utils.MinMax> raster = paintPolygon(rasterPoly, CELL_BLK);
+        HashMap<Integer, Utils.MinMax> raster = paintPolygon(rasterPoly, CELL_BLK, true);
 
         // store traversable obstacles candidates
         if (bottomRightPoint.x <= tomaxside && bottomRightPoint.y <= tomaxside)
@@ -617,7 +621,7 @@ public class Map implements World {
                 maxX + plbbox + mapborder >= sz || maxY + plbbox + mapborder >= sz)
             return;
 
-        paintPolygon(rasterPoly, CELL_FREE);
+        paintPolygon(rasterPoly, CELL_FREE, false);
         if (rasterPoly.length >= 4)
             dbg.rect((int) rasterPoly[0].x, (int) rasterPoly[0].y, (int) rasterPoly[1].x, (int) rasterPoly[1].y,
                     (int) rasterPoly[2].x, (int) rasterPoly[2].y, (int) rasterPoly[3].x, (int) rasterPoly[3].y, Color.PINK);
@@ -636,11 +640,24 @@ public class Map implements World {
     }
 
     /**
-     * Paint every cell whose centre lies within {@link World#HALFWIDTH} of the
-     * polygon — the exact Minkowski disc-inflation, sampled at pixel resolution —
-     * returning the per-row spans for the traversable-obstacle bookkeeping.
+     * Paint the polygon in two layers when {@code buffered}, one when not.
+     *
+     * Buffered (obstacles, via addGobToList): a cell whose centre sits inside the
+     * true polygon is impassable to everyone and painted {@code celltype} (CELL_BLK);
+     * the ring of cells whose centre is within {@link World#HALFWIDTH} of the polygon
+     * but not inside it is the disc the character needs for a clean pass, painted
+     * {@link #CELL_BUF}. That ring blocks every route except the one that starts at
+     * the origin — the character already standing with its disc merged into a
+     * neighbour is allowed to leave, which is what lets the search generate the
+     * "step back a little" as a routed first edge instead of a blind escape click.
+     * Only the true-box cells feed the returned spans (the traversable-obstacle
+     * repaint must not swallow the buffer ring).
+     *
+     * Unbuffered (excludeGob): the whole disc region is carved {@code celltype}
+     * (CELL_FREE) so the target's own footprint is open for the final approach,
+     * buffer and all.
      */
-    private HashMap<Integer, Utils.MinMax> paintPolygon(Coord2d[] rasterPoly, byte celltype) {
+    private HashMap<Integer, Utils.MinMax> paintPolygon(Coord2d[] rasterPoly, byte celltype, boolean buffered) {
         HashMap<Integer, Utils.MinMax> raster = new HashMap<Integer, Utils.MinMax>();
         double minX = Double.MAX_VALUE, minY = Double.MAX_VALUE, maxX = -Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
         for (Coord2d p : rasterPoly) {
@@ -657,14 +674,28 @@ public class Map implements World {
         for (int y = y0; y <= y1; y++) {
             Utils.MinMax mm = null;
             for (int x = x0; x <= x1; x++) {
-                if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, World.HALFWIDTH)) {
-                    map[x][y] = celltype;
-                    if (mm == null) {
-                        mm = new Utils.MinMax();
-                        raster.put(y, mm);
+                if (buffered) {
+                    if (CollisionGeom.pointInConvex(rasterPoly, x + 0.5, y + 0.5)) {
+                        map[x][y] = celltype;
+                        if (mm == null) {
+                            mm = new Utils.MinMax();
+                            raster.put(y, mm);
+                        }
+                        if (x < mm.min) mm.min = x;
+                        if (x > mm.max) mm.max = x;
+                    } else if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, World.HALFWIDTH)) {
+                        map[x][y] = CELL_BUF;
                     }
-                    if (x < mm.min) mm.min = x;
-                    if (x > mm.max) mm.max = x;
+                } else {
+                    if (CollisionGeom.discHits(rasterPoly, x + 0.5, y + 0.5, World.HALFWIDTH)) {
+                        map[x][y] = celltype;
+                        if (mm == null) {
+                            mm = new Utils.MinMax();
+                            raster.put(y, mm);
+                        }
+                        if (x < mm.min) mm.min = x;
+                        if (x > mm.max) mm.max = x;
+                    }
                 }
             }
         }
@@ -762,7 +793,15 @@ public class Map implements World {
 
                 edges += 2;
 
-                if (Utils.isVisible(map, dbg, vert1.x, vert1.y, vert2.x, vert2.y, block)) {
+                /* The origin is exempt from the buffer ring: the character standing
+                 * already merged into a neighbour must be able to leave it, so edges
+                 * out of the origin may cross CELL_BUF. Every other edge treats the
+                 * buffer as blocked - a route must not graze closer than the disc. */
+                byte mask = ((vert1.x == origin && vert1.y == origin) || (vert2.x == origin && vert2.y == origin))
+                        ? block
+                        : (byte) (block | CELL_BUF);
+
+                if (Utils.isVisible(map, dbg, vert1.x, vert1.y, vert2.x, vert2.y, mask)) {
                     int dx = vert1.x - vert2.x;
                     int dy = vert1.y - vert2.y;
                     double distance = Math.sqrt(dx * dx + dy * dy);

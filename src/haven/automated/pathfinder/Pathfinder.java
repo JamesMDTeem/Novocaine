@@ -3,11 +3,13 @@ package haven.automated.pathfinder;
 
 import haven.Coord;
 import haven.Coord2d;
+import haven.FlowerMenu;
 import haven.Gob;
 import haven.LinMove;
 import haven.Loading;
 import haven.MCache;
 import haven.MapView;
+import haven.Moving;
 import haven.OCache;
 import haven.Pair;
 import haven.ResDrawable;
@@ -15,6 +17,7 @@ import haven.Resource;
 import haven.automated.helpers.CollisionGeom;
 import haven.automated.helpers.HitBoxes;
 import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.core.Widgets;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -113,14 +116,6 @@ public class Pathfinder implements Runnable {
     public volatile String refusalDetail = null;
     /** How many gobs the last {@link #pathfind} snapshotted, for the slow-search log line. */
     private volatile int gobsSeen = 0;
-    /** Bound on how many escape clicks the blocked-origin shuffle may issue before it has to
-     *  have moved the character. */
-    private static final int MAX_ESCAPE_CLICKS = 4;
-    /** How far the character must have moved by the time {@link #MAX_ESCAPE_CLICKS} clicks have
-     *  been issued for the shuffle to count as working. */
-    private static final double ESCAPE_MIN_MOVE = 1.0;
-    private Coord2d escapeFrom = null;
-    private int escapeClicks = 0;
 
     /** Set when {@link #run} returns, however it ends. Callers wait on this rather than racing a
      *  freshly-issued search - one that is still shuffling its way out of a blocked origin has
@@ -251,25 +246,9 @@ public class Pathfinder implements Runnable {
                 Thread.sleep(30);
             } catch (InterruptedException ignored) {}
             moveinterupted = true;
-            /* Verify the escape click is being acted on. A character pressed up against an object
-             * can be offered escape points that all sit just inside the thing it is pressed
-             * against, and the server silently refuses every one: the do-loop above then
-             * re-clicks forever and this search never concludes - the 2026-08-13 "stuck pressed
-             * against an object" walk, where the caller watched a search that never died and
-             * never moved. Bound the shuffle and call it what it is, so the caller's step-clear
-             * machinery can react. */
-            if (escapeFrom == null)
-                escapeFrom = mv.player().rc;
-            escapeClicks++;
-            if ((escapeClicks >= MAX_ESCAPE_CLICKS) && (escapeFrom.dist(mv.player().rc) < ESCAPE_MIN_MOVE)) {
-                refusal = Refusal.STUCK;
-                terminate = true;
-            }
             m.dbgdump();
             return;
         }
-        escapeClicks = 0;
-        escapeFrom = null;
 
         if (this.gob != null) {
             HitBoxes.CollisionBoxSecondary[] collisionBoxes = HitBoxes.collisionBoxMap.get(this.gob.getres().name);
@@ -304,23 +283,85 @@ public class Pathfinder implements Runnable {
          * loop below simply never runs, so no click is sent and the thread ends having done
          * nothing - which is why "the destination is inside a barrel" and "there is a river in
          * the way" both used to surface as an unexplained failure to set off. */
-        if (!it.hasNext())
+        if (!it.hasNext()) {
             refusal = Refusal.NO_ROUTE;
+            StringBuilder diag = new StringBuilder("NO_ROUTE src=").append(src)
+                    .append(" dest=").append(dest)
+                    .append(" gobs=").append(gobs.size());
+            List<Gob> beasts = haven.automated.nbots.world.Hazards.all(mv.ui.gui);
+            if (!beasts.isEmpty()) {
+                diag.append(" beasts=");
+                for (Gob b : beasts) {
+                    diag.append(haven.automated.nbots.world.Hazards.resname(b)).append('@')
+                            .append((int) b.rc.dist(player.rc)).append("u ");
+                }
+            }
+            NLog.log("pf", diag.toString());
+        }
+        int edgeIdx = 0;
+        int pathSize = 0;
+        for (Edge ignored : path)
+            pathSize++;
         while (it.hasNext() && !moveinterupted && !terminate) {
             Edge e = it.next();
-            mc = new Coord2d(src.x + e.dest.x - Map.origin, src.y + e.dest.y - Map.origin).floor(posres);
+            int edgeNo = ++edgeIdx;
+            Coord2d waypoint = new Coord2d(src.x + e.dest.x - Map.origin, src.y + e.dest.y - Map.origin);
+            mc = waypoint.floor(posres);
+
+            /* A waypoint on the tile we are already standing on is a no-op click: the
+             * server never answers "move to where I am", the 800ms wait times out, and
+             * the walk is declared NO_MOVE. The search's first waypoint can land here
+             * when the character is pressed against a gob (its offset corner shares the
+             * player's tile). Skip that edge - the rest of the path is still valid.
+             * Compare TILES, not posres cells: posres is 11/1024 of a tile, so the
+             * character's fractional rc (.00488 etc.) can floor onto a different posres
+             * cell than an integer waypoint on the very same tile. */
+            if (waypoint.floor(MCache.tilesz).equals(mv.player().rc.floor(MCache.tilesz)) && (gob == null || it.hasNext())) {
+                if (pathWaypoints.size() > 1) {
+                    pathWaypoints.remove(1);
+                    pathWaypoints.set(0, player.rc);
+                }
+                continue;
+            }
 
             if (action != null && !it.hasNext())
                 mv.ui.gui.act(action);
 
-            if (gob != null && !it.hasNext())
+            /* A stale FlowerMenu swallows the move click: the server is waiting on the
+             * menu's answer, so the click never becomes a move and the walk times out
+             * into NO_MOVE (see the 16:21 probe dumps, where flowerMenuOpen=true at
+             * click time). Dismiss any menu that is still up before the click so the
+             * order actually lands. */
+            long menuGuardStart = System.currentTimeMillis();
+            while (Widgets.find(mv.ui.root, haven.FlowerMenu.class) != null
+                    && System.currentTimeMillis() - menuGuardStart < 2000) {
+                haven.FlowerMenu fm = Widgets.find(mv.ui.root, haven.FlowerMenu.class);
+                if (fm != null)
+                    fm.wdgmsg("cl", -1);
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException ie) {
+                    return;
+                }
+            }
+
+            /* The last edge to a gob is an interaction click, not a move: the caller
+             * (openMenuOn) passes clickb=3 so the gob's FlowerMenu opens where we stand.
+             * The character is not supposed to move, so isMoving() must not be the test
+             * of success - the menu appearing is. (16:37 probe: menu open, char still,
+             * and the walk was declared NO_MOVE, which sent the STUCK remedy to back out
+             * with raw steps - the "small run forward into it".) */
+            boolean interaction = (gob != null && !it.hasNext());
+            if (interaction)
                 mv.wdgmsg("click", Coord.z, mc, clickb, modflags, 0, (int) gob.id, gob.rc.floor(posres), 0, meshid);
             else
                 mv.wdgmsg("click", Coord.z, mc, 1, 0);
 
-            // wait for gob to start moving
+            // wait for the click to land: a move starts the character walking, and an
+            // interaction opens the target's menu. Either is the order being answered.
             long moveWaitStart = System.currentTimeMillis();
-            while (!player.isMoving() && !terminate) {
+            while (!player.isMoving() && !terminate
+                    && !(interaction && Widgets.find(mv.ui.root, haven.FlowerMenu.class) != null)) {
                 try {
                     Thread.sleep(50);
                 } catch (InterruptedException e1) {
@@ -335,6 +376,55 @@ public class Pathfinder implements Runnable {
                      * so a STUCK remedy (backing out with raw steps) can fire on the first pass. */
                     refusal = Refusal.NO_MOVE;
                     terminate = true;
+                    /* [DEBUG-nomove] Discriminating probe for the 15:43 sandthorn freeze: is a
+                     * FlowerMenu still open (menu swallowed the click), is the char mid-move, and
+                     * which boxes sit within 12u of the char? See the NO_MOVE plan. */
+                    try {
+                        StringBuilder dbg = new StringBuilder();
+                        dbg.append("NO_MOVE edge=").append(edgeNo).append('/').append(pathSize)
+                            .append(" interaction=").append(interaction).append(" clickb=").append(clickb)
+                            .append(" gob=").append((gob == null) ? "none" : ("#" + gob.id + " " + gob.getres().name));
+                        dbg.append(" mc=").append(mc).append(" (world=").append(mc.mul(posres))
+                            .append(") char=").append(player.rc)
+                            .append(" src=").append(src);
+                        int wpn = 0;
+                        for (Coord2d wp : pathWaypoints) {
+                            if (wpn++ > 4)
+                                break;
+                            dbg.append("\n  wp").append(wpn).append("=").append(wp);
+                        }
+                        boolean menuOpen = Widgets.find(mv.ui.root, haven.FlowerMenu.class) != null;
+                        dbg.append(" flowerMenuOpen=").append(menuOpen);
+                        dbg.append(" movingAttr=").append(player.getattr(haven.Moving.class) != null);
+                        for (Gob near : gobs) {
+                            if (near.id == player.id || near.isPlgob(mv.ui.gui))
+                                continue;
+                            if (player.rc.dist(near.rc) <= 12.0) {
+                                String res = (near.getres() != null) ? near.getres().name : "<nores>";
+                                dbg.append("\n  near #").append(near.id).append(" ").append(res)
+                                    .append(" rc=").append(near.rc);
+                                HitBoxes.CollisionBoxSecondary[] boxes = (near.getres() == null)
+                                    ? null : HitBoxes.collisionBoxMap.get(near.getres().name);
+                                if (boxes != null) {
+                                    for (HitBoxes.CollisionBoxSecondary box : boxes) {
+                                        if (!box.hitAble)
+                                            continue;
+                                        double bx1 = Double.MAX_VALUE, by1 = Double.MAX_VALUE,
+                                            bx2 = -Double.MAX_VALUE, by2 = -Double.MAX_VALUE;
+                                        for (Coord2d c : box.coords) {
+                                            bx1 = Math.min(bx1, c.x); by1 = Math.min(by1, c.y);
+                                            bx2 = Math.max(bx2, c.x); by2 = Math.max(by2, c.y);
+                                        }
+                                        dbg.append(" box=").append((int) bx1).append(',').append((int) by1)
+                                            .append('-').append((int) bx2).append(',').append((int) by2);
+                                    }
+                                }
+                            }
+                        }
+                        NLog.log("pf", "[DEBUG-nomove] " + dbg);
+                    } catch (Exception dbgex) {
+                        NLog.log("pf", "[DEBUG-nomove] probe threw: " + dbgex);
+                    }
                     return;
                 }
             }

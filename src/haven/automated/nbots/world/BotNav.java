@@ -196,6 +196,11 @@ public class BotNav {
     final GameUI gui;
     final Abort abort;
     private final String log;
+
+    /** The log file name this BotNav was created with - the one place Walk can report through. */
+    public String logName() {
+        return log;
+    }
     private final MovementCommand cmd;
     final Approach appr;
     private final Travel trav;

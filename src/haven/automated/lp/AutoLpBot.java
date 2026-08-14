@@ -2,6 +2,7 @@ package haven.automated.lp;
 
 import haven.Button;
 import haven.Coord;
+import haven.Coord2d;
 import haven.Equipory;
 import haven.FlowerMenu;
 import haven.GItem;
@@ -15,6 +16,9 @@ import haven.WItem;
 import haven.Widget;
 import haven.Window;
 import haven.automated.AUtils;
+import haven.automated.helpers.CollisionGeom;
+import haven.automated.helpers.HitBoxes;
+import haven.automated.pathfinder.World;
 import haven.resutil.FoodInfo;
 import haven.automated.nbots.core.Carried;
 import haven.automated.nbots.core.NLog;

@@ -6,6 +6,7 @@ import haven.GameUI;
 import haven.Gob;
 import haven.MCache;
 import haven.Resource;
+import haven.automated.helpers.CollisionGeom;
 import haven.automated.helpers.HitBoxes;
 import haven.automated.nbots.core.NLog;
 import haven.automated.pathfinder.World;
@@ -196,6 +197,40 @@ public class Observed {
      * anything is in sight.
      */
     private static final java.util.Map<Long, java.util.Map<Coord, String>> objects = new HashMap<>();
+
+    /**
+     * The exact rotated collision polygon of every remembered WALL, in segment-relative world units,
+     * keyed by the wall gob's origin tile. This is the continuous layer that {@link #segmentHits}
+     * serves: the byte grid says a wall is somewhere on this tile, and this says precisely where, so
+     * a line that skirts a palisade by a couple of units can be pronounced clear instead of refused
+     * for crossing the wall's whole tile.
+     *
+     * Session-scoped like {@link #objects} and for the same reason: refills from the sweep the moment
+     * the wall is in sight, and a bot unstick-ing is always within sight of what it is backing away
+     * from. The byte grid keeps the persisted WALL for the router; this layer only sharpens the
+     * line-of-sight test.
+     */
+    private static final java.util.Map<Long, java.util.Map<Coord, java.util.List<Coord2d[]>>> exactWalls = new HashMap<>();
+
+    /**
+     * Whether the segment a→b (segment-relative world coords) comes within {@code r} of any
+     * remembered wall polygon. This replaces the tile-quantised "does the line cross a WALL tile"
+     * test: a wall tile is eleven units wide, so a character backing out next to a palisade had every
+     * one of its eight escape headings refused for touching a tile the wall only occupied the edge
+     * of. The exact answer lets the heading that passes a couple of units clear through.
+     */
+    public static boolean segmentHits(long seg, Coord2d a, Coord2d b, double r) {
+        synchronized (LOCK) {
+            java.util.Map<Coord, java.util.List<Coord2d[]>> segWalls = exactWalls.get(seg);
+            if (segWalls == null)
+                return false;
+            for (java.util.List<Coord2d[]> polys : segWalls.values())
+                for (Coord2d[] poly : polys)
+                    if (CollisionGeom.segmentHitsRadius(poly, a, b, r))
+                        return true;
+            return false;
+        }
+    }
 
     /** Labels already announced, so the log records each kind of thing once, not once per sweep. */
     private static final Set<String> announced = new HashSet<>();
@@ -437,6 +472,7 @@ public class Observed {
          * solids, and only where a solid did not already claim the tile. */
         Set<Coord> tights = new HashSet<>();
         java.util.Map<Coord, String> found = new HashMap<>();
+        java.util.Map<Coord, java.util.List<Coord2d[]>> newExact = new HashMap<>();
         Coord2d off = here.sc.sub(me.rc);
         for (Gob g : gobs) {
             try {
@@ -478,6 +514,23 @@ public class Observed {
                 // kind() is null for anything that is not part of a barrier - see HALFWIDTH.
                 Set<Coord> tiles = footprint(g, off, boxes, k == null, tights);
                 into.addAll(tiles);
+                // Remember the wall's exact shape too, for the continuous line check. Walls are the
+                // one thing the tile grid deliberately over-covers (a palisade is a whole tile), so
+                // they are the one thing whose tile record is wrong in the direction that refuses a
+                // line that reality allows. Furniture keeps its tile-only record; lineClear reads
+                // furniture live via occupied.
+                if (k == Barriers.Kind.WALL) {
+                    Coord2d pos = g.rc.add(off);
+                    java.util.List<Coord2d[]> exact = new java.util.ArrayList<>();
+                    for (HitBoxes.CollisionBoxSecondary box : boxes) {
+                        if ((box == null) || (box.coords == null) || (box.coords.length < 3) || !box.hitAble)
+                            continue;
+                        exact.add(CollisionGeom.worldPolygon(box.coords, pos, g.a));
+                    }
+                    if (!exact.isEmpty())
+                        newExact.computeIfAbsent(pos.floor(MCache.tilesz), t -> new java.util.ArrayList<>())
+                            .addAll(exact);
+                }
                 // The same tiles, remembered by WHAT put them there - see the objects registry.
                 String lbl = label(res.name);
                 for (Coord t : tiles)
@@ -533,6 +586,15 @@ public class Observed {
                     reg.remove(mine.add(x, y));
             }
             reg.putAll(found);
+            // The exact wall store follows the same wipe-then-stamp rule: inside the swept box our
+            // knowledge is current, so walls no longer seen there leave it; outside it nothing is
+            // touched. Keyed by the wall's origin tile so the wipe reaches the same tiles as the grid.
+            java.util.Map<Coord, java.util.List<Coord2d[]>> segExact = exactWalls.computeIfAbsent(here.seg, s -> new HashMap<>());
+            for (int y = -north; y <= south; y++) {
+                for (int x = -west; x <= east; x++)
+                    segExact.remove(mine.add(x, y));
+            }
+            segExact.putAll(newExact);
             /* Each KIND announced once. A line per sweep would be several a second saying the same
              * thing; a line the first time a house or a storage well is ever recorded is the thing
              * actually worth having, because it says what the solid blocks in a map dump are made

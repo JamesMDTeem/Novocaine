@@ -150,6 +150,29 @@ public final class CollisionGeom {
         return Math.sqrt(ex * ex + ey * ey);
     }
 
+    /** The point on the polygon's boundary closest to p (null for an empty polygon). */
+    public static Coord2d nearestBoundaryPoint(Coord2d[] poly, Coord2d p) {
+        Coord2d best = null;
+        double bestD = Double.MAX_VALUE;
+        for (int i = 0; i < poly.length; i++) {
+            Coord2d a = poly[i];
+            Coord2d b = poly[(i + 1) % poly.length];
+            double dx = b.x - a.x;
+            double dy = b.y - a.y;
+            double len2 = dx * dx + dy * dy;
+            double t = (len2 == 0) ? 0.0 : ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+            if (t < 0) t = 0;
+            else if (t > 1) t = 1;
+            Coord2d proj = new Coord2d(a.x + t * dx, a.y + t * dy);
+            double d = proj.dist(p);
+            if (d < bestD) {
+                bestD = d;
+                best = proj;
+            }
+        }
+        return best;
+    }
+
     /** True if the segment ab intersects the polygon boundary or interior. */
     public static boolean segmentHits(Coord2d[] poly, double ax, double ay, double bx, double by) {
         if (pointInConvex(poly, ax, ay) || pointInConvex(poly, bx, by))
@@ -158,6 +181,26 @@ public final class CollisionGeom {
             Coord2d c = poly[i];
             Coord2d d = poly[(i + 1) % poly.length];
             if (segmentsIntersect(ax, ay, bx, by, c.x, c.y, d.x, d.y))
+                return true;
+        }
+        return false;
+    }
+
+    /** True if the segment ab comes within {@code r} of the polygon (a capsule swept along the
+     *  line). This is the continuous-layer version of disc inflation: a character disc of radius
+     *  {@code r} travelling from a to b would touch the object. The closest pair of points between
+     *  two non-intersecting convex segments is always a vertex, so endpoint-to-segment distances
+     *  plus a crossing test is exact. */
+    public static boolean segmentHitsRadius(Coord2d[] poly, Coord2d a, Coord2d b, double r) {
+        for (int i = 0; i < poly.length; i++) {
+            Coord2d c = poly[i];
+            Coord2d d = poly[(i + 1) % poly.length];
+            if (segmentsIntersect(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y))
+                return true;
+            if (distPointSegment(c.x, c.y, a.x, a.y, b.x, b.y) <= r
+                    || distPointSegment(d.x, d.y, a.x, a.y, b.x, b.y) <= r
+                    || distPointSegment(a.x, a.y, c.x, c.y, d.x, d.y) <= r
+                    || distPointSegment(b.x, b.y, c.x, c.y, d.x, d.y) <= r)
                 return true;
         }
         return false;

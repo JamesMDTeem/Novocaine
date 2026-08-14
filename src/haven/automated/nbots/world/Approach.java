@@ -165,8 +165,6 @@ public class Approach {
         boolean walkDied = false;
         // The search behind the last path issued, so arrival can be told from never having set off.
         Pathfinder walk = null;
-        // Deaths in a row where the search could not even find a first step - the trapped signal.
-        int deadNoStart = 0;
 
         for (int i = 0; i < 60; i++) {
             Gob target = nav.gob(id);
@@ -221,26 +219,6 @@ public class Approach {
                         + " re-paths without closing (still " + (int) dist + "u)");
                     nav.cancelWalk();
                     return false;
-                }
-                /* Trapped: two walks in a row that the pathfinder could not even start. The
-                 * search reads a quantised world, and standing wedged between two logs is
-                 * exactly where it says no while a human - or the server - walks straight out.
-                 * Back out with raw steps (the one walk that never consults the client
-                 * pathfinder) instead of spending the rest of the budget re-issuing clicks
-                 * nothing will act on. */
-                if (deadNoStart >= 2 && unsticks < BotNav.UNSTICK_LIMIT) {
-                    NLog.log(log, "trapped next to #" + id + ": the pathfinder keeps finding no "
-                        + "way from here - backing out with raw steps before re-pathing");
-                    deadNoStart = 0;
-                    if (Walk.unstick(nav, nav.gui, target.rc)) {
-                        unsticks++;
-                        NLog.log(log, "backed out of the trap; re-pathing from the new spot");
-                    } else {
-                        NLog.log(log, "could not back out (every heading blocked on the record) - "
-                            + "trying the pathfinder again");
-                    }
-                    aimed = null;
-                    continue;
                 }
                 publishKeepouts(me.rc);
                 // clickb=1 walks without acting on arrival; what to do there is the caller's call.
@@ -349,32 +327,8 @@ public class Approach {
                      * between two logs" is what that silence looked like from outside: eleven
                      * re-paths, zero lines, a give-up. A walk that died without ever setting
                      * off (mc null) is the pathfinder saying it cannot find ONE legal first
-                     * step - we are trapped, and the counter above feeds the raw-step escape. */
+                     * step. */
                     boolean neverSetOff = (walk == null) || (walk.mc == null);
-                    /* A STUCK search has also not set off in any useful sense - it shuffled
-                     * escape clicks the server refused (see Pathfinder's MAX_ESCAPE_CLICKS) and
-                     * concluded it is wedged. STUCK is the pathfinder's verdict after it looked
-                     * and gave up, so it deserves the raw-step escape immediately rather than
-                     * waiting for deadNoStart to reach two: a character pressed up against an
-                     * object just collected from has no time to spend re-issuing clicks nothing
-                     * will act on. A search that never set off (mc null) without a verdict still
-                     * feeds the deadNoStart counter, and two of those fire the same escape. A
-                     * search that returned NO_MOVE served a real path but had its first move
-                     * click refused - the client model and server disagree where we are standing
-                     * (tight fit, or a gob the raster skipped while its resource loaded). That
-                     * has the same remedy as STUCK, so it rides the same branch and backs out on
-                     * the first refusal rather than waiting for deadNoStart to climb. */
-                    boolean stuck = (walk != null) && (walk.refusal == Pathfinder.Refusal.STUCK
-                        || walk.refusal == Pathfinder.Refusal.NO_MOVE);
-                    if (stuck && unsticks < BotNav.UNSTICK_LIMIT) {
-                        unsticks++;
-                        NLog.log(log, "stuck next to #" + id + " (" + walk.why()
-                            + ") - backing out with raw steps");
-                        Walk.unstick(nav, nav.gui, target.rc);
-                    } else if (neverSetOff)
-                        deadNoStart++;
-                    else
-                        deadNoStart = 0;
                     /* Name the reason. A search that CRASHED (refusal FAILED, e.g. the pathfinder
                      * threw) looks identical to "no route" from the outside unless the detail is
                      * logged - walk.why() carries the exception text, so a regression like the

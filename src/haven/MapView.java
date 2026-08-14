@@ -3317,10 +3317,50 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 				pfLeftClick(from.add(dir).floor(), null);
 				return;
 			}
-			synchronized (Pathfinder.class) {
-				Coord src = player.rc.floor();
-				int gcx = haven.automated.pathfinder.Map.origin - (src.x - gob.rc.floor().x);
-				int gcy = haven.automated.pathfinder.Map.origin - (src.y - gob.rc.floor().y);
+		synchronized (Pathfinder.class) {
+			Coord src = player.rc.floor();
+			/* Aim at the near face, not the centre. Walking to the centre of a collision box
+			 * ends with the character past the face - the search carves the target's own box,
+			 * so the path crosses it and the last few units come from the far side, which is
+			 * the "walked past the object" report. Stand off the nearest boundary point of
+			 * the gob's hitAble boxes by the disc radius instead: the walk then ends face-on,
+			 * a click away from the interaction. */
+			Coord2d aim = gob.rc;
+			try {
+				haven.Resource res = gob.getres();
+				if (res != null) {
+					haven.automated.helpers.HitBoxes.CollisionBoxSecondary[] boxes =
+						haven.automated.helpers.HitBoxes.collisionBoxMap.get(res.name);
+					if (boxes != null) {
+						Coord2d best = null;
+						double bestD = Double.MAX_VALUE;
+						for (haven.automated.helpers.HitBoxes.CollisionBoxSecondary box : boxes) {
+							if (box == null || !box.hitAble || box.coords == null || box.coords.length < 3)
+								continue;
+							Coord2d[] world = haven.automated.helpers.CollisionGeom.worldPolygon(
+								box.coords, gob.rc, gob.a);
+							Coord2d b = haven.automated.helpers.CollisionGeom.nearestBoundaryPoint(
+								world, player.rc);
+							double d = b.dist(player.rc);
+							if (d < bestD) {
+								bestD = d;
+								best = b;
+							}
+						}
+						if (best != null) {
+							Coord2d dir = player.rc.sub(best);
+							double len = dir.abs();
+							if (len > haven.automated.pathfinder.World.HALFWIDTH)
+								aim = best.add(dir.mul(haven.automated.pathfinder.World.HALFWIDTH / len));
+							else
+								aim = player.rc;
+						}
+					}
+				}
+			} catch (RuntimeException ignored) {
+			}
+			int gcx = haven.automated.pathfinder.Map.origin - (src.x - aim.floor().x);
+			int gcy = haven.automated.pathfinder.Map.origin - (src.y - aim.floor().y);
 				/* Answered before the running search is killed, for the reason given in pfLeftClick. */
 				if (gcx < 0 || gcx >= haven.automated.pathfinder.Map.sz || gcy < 0 || gcy >= haven.automated.pathfinder.Map.sz) {
 					pfrefusal = "gob outside the search window";

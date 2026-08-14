@@ -7,6 +7,7 @@ import haven.Gob;
 import haven.MCache;
 import haven.Moving;
 import haven.automated.pathfinder.World;
+import haven.automated.nbots.core.NLog;
 
 import static haven.OCache.posres;
 
@@ -135,13 +136,28 @@ public class Walk {
      * and the cost of allowing is a character swimming an ocean because nothing could say no.
      */
     public static boolean lineClear(GameUI gui, Coord2d from, Coord2d to) {
+        return lineClear(gui, from, to, null);
+    }
+
+    /**
+     * As {@link #lineClear(GameUI, haven.Coord2d, haven.Coord2d)}, but when {@code why} is
+     * non-null and the line is refused, appends what refused it - for a caller that fans out
+     * over several lines and wants to say why none of them worked.
+     */
+    public static boolean lineClear(GameUI gui, Coord2d from, Coord2d to, StringBuilder why) {
         Gob me = player(gui);
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
-        if ((me == null) || (here == null) || (from == null) || (to == null))
+        if ((me == null) || (here == null) || (from == null) || (to == null)) {
+            if (why != null)
+                why.append("no player or segment");
             return false;
+        }
         double len = from.dist(to);
-        if (len > MAX_DIRECT)
+        if (len > MAX_DIRECT) {
+            if (why != null)
+                why.append("too long");
             return false;
+        }
         // The player stands in both coordinate spaces at once, so one subtraction converts the rest.
         Coord2d off = here.sc.sub(me.rc);
         Router.World w = new Router.World(gui, here.seg, false, true);
@@ -159,33 +175,42 @@ public class Walk {
                 break;
             }
         }
+        /* The WALL we have learned, tested exactly rather than by tile. A wall tile is eleven units
+         * wide, so the tile test refused every heading of a character backing out next to a palisade
+         * - the wall occupied one edge of a tile and the test blocked the whole tile. The exact
+         * capsule test lets a line that passes a couple of units clear of the wall through. The ends
+         * are inset one sample, like the tile test's i>0 && i<steps exemption: a line is allowed to
+         * start and end against a wall, or nothing could ever leave one. */
+        if (!throughGateway && (steps >= 2)) {
+            Coord2d seg = to.sub(from);
+            Coord2d a = from.add(seg.mul(1.0 / steps)).add(off);
+            Coord2d b = from.add(seg.mul((steps - 1.0) / steps)).add(off);
+            if (Observed.segmentHits(here.seg, a, b, World.HALFWIDTH)) {
+                if (why != null)
+                    why.append("remembered wall");
+                return false;
+            }
+        }
         for (int i = 0; i <= steps; i++) {
             Coord2d p = from.add(to.sub(from).mul((double) i / steps));
             Coord tile = p.add(off).floor(MCache.tilesz);
-            if (!Terrain.walkable(gui, here.seg, tile))
+            if (!Terrain.walkable(gui, here.seg, tile)) {
+                if (why != null)
+                    why.append("ground");
                 return false;
-            /* The WALL we have learned, which this never asked about and its own doc claimed it did.
-             *
-             * Everything else here is either live or about the ground: `occupied` reads collision
-             * boxes, which exist only for gobs that are currently LOADED. So a palisade a few tiles
-             * beyond the objects the server has sent is invisible here - the line is pronounced clear,
-             * the server is handed it, and server movement is LINEAR, so the character walks into the
-             * wall. That is exactly "it doesn't see it as invalid because it is just outside render",
-             * and the wall being remembered all along did not help because nothing on this path was
-             * reading the memory.
-             *
-             * Intermediate samples only, like `occupied` below and for the same reason: the ends of a
-             * line are allowed to be against something, or nothing could ever walk up to a wall or
-             * step away from one. */
-            if ((i > 0) && (i < steps) && !throughGateway
-                    && w.recordWall(tile))
+            }
+            if (Hazards.within(gui, p, Hazards.PATH_CLEARANCE) != null) {
+                if (why != null)
+                    why.append("beast within ").append((int) Hazards.PATH_CLEARANCE).append("u");
                 return false;
-            if (Hazards.within(gui, p, Hazards.PATH_CLEARANCE) != null)
-                return false;
+            }
             // The first and last samples are where we already are and where we mean to end up;
             // both are allowed to be against something, or nothing could ever leave a barrel.
-            if ((i > 0) && (i < steps) && BotNav.occupied(gui, p))
+            if ((i > 0) && (i < steps) && BotNav.occupied(gui, p)) {
+                if (why != null)
+                    why.append("object box");
                 return false;
+            }
         }
         return true;
     }
@@ -223,8 +248,12 @@ public class Walk {
         for (int i = 0; i < NUDGE_HEADINGS; i++) {
             double a = bias + ((i * 2 * Math.PI) / NUDGE_HEADINGS);
             Coord2d to = me.rc.add(new Coord2d(Math.cos(a), Math.sin(a)).mul(NUDGE));
-            if (!lineClear(gui, me.rc, to))
+            StringBuilder why = new StringBuilder();
+            if (!lineClear(gui, me.rc, to, why)) {
+                if (i == NUDGE_HEADINGS - 1)
+                    NLog.log(nav.logName(), "could not back out - every heading refused (" + why + ")");
                 continue;
+            }
             if (straightTo(nav, gui, to, TILE * 1.0))
                 return true;
             // Moved at all? Even a partial step is out of whatever we were inside.
