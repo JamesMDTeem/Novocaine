@@ -781,9 +781,21 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 	return((h == null) ? null : h.bind);
     }
 
+	/* A missing custom .res used to throw straight out of the MenuGrid constructor, which the
+	 * client cannot survive - no menu grid, no session, "error during ui command-handling" at
+	 * login. That turns any skew between the jar and the res tree into an unstartable client,
+	 * and skew is normal: under Steam, Client.gameDir resolves res/ to the WORKSHOP ITEM, so a
+	 * jar built after the item was last uploaded is looking at older resources by definition.
+	 * A button that isn't there is worth losing; the client is not. */
 	private void makeLocal(String path) {
+		Resource.Named res;
+		try {
+			res = Resource.local().loadwait(path).indir();
+		} catch(RuntimeException e) {
+			haven.automated.nbots.core.NLog.crash("menu-grid resource missing: " + path, e);
+			return;
+		}
 		customButtonPaths.add(path); // ND: Add the paths to this list, to check against them when we load the action bars in GameUI -> loadLocal().
-		Resource.Named res = Resource.local().loadwait(path).indir();
 		Pagina pagina = new Pagina(this, null, res);
 		synchronized (pmap) { pmap.put(res, pagina); }
 		synchronized (paginae) { paginae.add(pagina); }

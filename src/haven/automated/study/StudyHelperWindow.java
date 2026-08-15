@@ -275,14 +275,31 @@ public class StudyHelperWindow extends Window {
             super(UI.scale(TABLE_W, 40));
         }
 
+        /**
+         * Rebuilds the table only once the contents have stopped moving.
+         *
+         * Sorting a container takes every item to the cursor and puts it back, one at a time. Each
+         * of those two steps changes the item set, so a redraw-on-every-change rebuilds the whole
+         * table texture twice per item moved — sixty rebuilds to sort a thirty-slot cupboard, each
+         * one a fresh BufferedImage and a fresh GL texture, while the sorter is already saturating
+         * things. Requiring the same plan twice in a row rides out the churn: during a sort nothing
+         * is redrawn, and the finished layout is drawn once when it settles.
+         */
         void update(StudyPlanner.Plan plan) {
             this.plan = plan;
             String sig = signature(plan);
             if (sig.equals(signature))
                 return;
+            if (!sig.equals(candidate)) {
+                candidate = sig;
+                return;
+            }
             signature = sig;
             render(plan);
         }
+
+        /** The signature seen last refresh, still waiting to be confirmed by a second one. */
+        private String candidate = null;
 
         /**
          * Several open containers can turn up more kinds of curiosity than fit on a screen. Every
