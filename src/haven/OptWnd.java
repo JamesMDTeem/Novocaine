@@ -798,6 +798,7 @@ public class OptWnd extends Window {
 	public static CheckBox transparentQuestsObjectivesWindowCheckBox;
 	public static HSlider mapZoomSpeedSlider;
 	public static CheckBox alwaysOpenMiniStudyOnLoginCheckBox;
+	public static CheckBox studyHelperCheckBox;
 	public static HSlider mapIconsSizeSlider;
 	public static CheckBox simplifiedMapColorsCheckBox;
 	public static ColorOptionWidget sprintLandsColorWidget;
@@ -981,6 +982,15 @@ public class OptWnd extends Window {
 				Utils.setprefb("alwaysOpenMiniStudyOnLogin", val);
 			}
 		}, leftColumn.pos("bl").adds(0, 2));
+
+		leftColumn = add(studyHelperCheckBox = new CheckBox("LP Helper (study plan from open containers)"){
+			{a = (Utils.getprefb("studyHelper", false));}
+			public void set(boolean val) {
+				Utils.setprefb("studyHelper", val);
+				a = val;
+			}
+		}, leftColumn.pos("bl").adds(0, 2));
+		studyHelperCheckBox.tooltip = studyHelperTooltip;
 
 		leftColumn = add(alwaysShowCombatUIStaminaBarCheckBox = new CheckBox("Always Show Combat UI Stamina Bar"){
 			{a = (Utils.getprefb("alwaysShowCombatUIStaminaBar", false));}
@@ -5399,6 +5409,10 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[185,185,185]{It doesn't work with Gems. Don't ask me why.}", UI.scale(300));
 	static final Object lockStudyReportTooltip = RichText.render("This will prevent grabbing or dropping items from the Study Report", UI.scale(300));
+	public static final Object studyHelperTooltip = RichText.render("While any container is open, works out which of the curiosities inside would earn the most LP per hour within your Attention, and how they pack into your study grid." +
+			"\nThe list is in the order to grab them: take from the top until the red line." +
+			"\n" +
+			"\n$col[185,185,185]{The plan assumes an empty study grid, and spends your whole Intelligence - clear the grid before following it.}", UI.scale(300));
 	public static final Object soundAlertForFinishedCuriositiesTooltip = RichText.render("A violin sound will be played every time a curiosity is finished." +
 			"\n" +
 			"\n$col[218,163,0]{Preview:}$col[185,185,185]{Enable this to hear the sound!", UI.scale(300));

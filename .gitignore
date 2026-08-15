@@ -40,9 +40,17 @@ steamicon.gif
 # for Claude Code), and ai-docs/ which holds the knowledge base, the RAG tooling
 # and the work plans. Per-tool runtime dirs (.claude/, .reasonix/) stay at the
 # root because those tools require them there.
+#
+# CONTEXT.md, docs/adr/ and docs/agents/ are a third, unavoidable home: the
+# engineering skills hard-code those paths at the repo root, so they cannot move
+# into ai-docs/. They are still agent material, so they are still unpublished.
 AGENTS.md
 CLAUDE.md
+/CONTEXT.md
+/docs/adr/
+/docs/agents/
 /ai-docs/
+/.logs/
 .claude/
 .reasonix/
 reasonix.toml

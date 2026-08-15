@@ -198,6 +198,16 @@ build("Bots/FishingBot.res",
       "Rows a dugout around a swamp, catching every dragonfly it can, then hearths home and "
       "files the catch.")
 
+# The LP Helper toggle. A toggle rather than a window launcher because the window is not something
+# you open - it appears on its own whenever a container is open and the toggle is on.
+build("OtherScriptsAndTools/OreAndStoneCounter.res",
+      "NurglingImports/StudyHelper.res",
+      "customclient/menugrid/NurglingImports", "LP Helper", 0,
+      ["@", "NurglingImports", "StudyHelper"],
+      "While a container is open, ranks the curiosities inside by LP/Hour per Mental Weight and "
+      "shows which ones fit your Attention and study grid. Grab from the top of the list down to "
+      "the red line.")
+
 build("OtherScriptsAndTools/FlowerMenuAutoSelectManager.res",
       "NurglingImports/Schedules.res",
       "customclient/menugrid/NurglingImports", "Schedules", 0,

@@ -125,6 +125,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public static boolean showUI = true;
 	public static long leaderTargetPing = -1;
 	public MiniStudy miniStudy;
+	public haven.automated.study.StudyHelperWindow studyHelper;
 	public static String backgroundSong = "";
 	public static long delayedMusicStopTime;
 	static public final Resource caveTheme = Resource.local().loadwait("customclient/sfx/cavetheme");
@@ -503,6 +504,11 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	opts.hide();
 	zerg = add(new Zergwnd(), Utils.getprefc("wndc-zerg", UI.scale(new Coord(187, 50))));
 	zerg.hide();
+	/* The LP Helper decides for itself when to be on screen - see StudyHelperWindow.tick. It is
+	 * created once and hidden; nothing else here has to know about it. */
+	studyHelper = add(new haven.automated.study.StudyHelperWindow(this),
+			  Utils.getprefc("wndc-studyHelper", UI.scale(new Coord(400, 100))));
+	studyHelper.hide();
 	questhelper = new QuestHelper();
 	questhelper.hide();
 	add(questhelper, Utils.getprefc("wndc-autoDropManagerWindow", UI.unscale(new Coord(187, 50))));

@@ -877,6 +877,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NDragonflyBot");
 		makeLocal("customclient/menugrid/NurglingImports/Schedules");
 		makeLocal("customclient/menugrid/NurglingImports/AltManager");
+		makeLocal("customclient/menugrid/NurglingImports/StudyHelper");
 
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");
@@ -1018,6 +1019,12 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 					gui.nBotsSettings.reqdestroy();
 					gui.nBotsSettings = null;
 				}
+			} else if (ad[2].equals("StudyHelper")) {
+				/* The checkbox in Advanced Settings is the state; the window watches it and puts
+				 * itself on screen whenever a container is open. Nothing to create here. */
+				boolean on = !OptWnd.studyHelperCheckBox.a;
+				OptWnd.studyHelperCheckBox.set(on);
+				gui.msg("LP Helper is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? Color.GREEN : Color.RED);
 			} else if (ad[2].equals("NBotPlaces")) {
 				if (gui.nbotPlaces == null) {
 					gui.nbotPlaces = new haven.automated.nbots.PlacesWindow(gui);
