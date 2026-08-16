@@ -80,8 +80,8 @@ public class LpSpec {
             checkerOp.add("Checker Tree Fruits");
             object.put("gfx/terobjs/trees/checkertree", checkerOp);
             ArrayList<String> cherryOp = new ArrayList<>();
-            cherryOp.add("Cherries");
-            cherryOp.add("Yesteryear's Cherries");
+            cherryOp.add("Cherry");
+            cherryOp.add("Yesteryear's Cherry");
             object.put("gfx/terobjs/trees/cherry", cherryOp);
             ArrayList<String> chestnutOp = new ArrayList<>();
             chestnutOp.add("Chestnut");
@@ -129,7 +129,7 @@ public class LpSpec {
             kingsoakOp.add("King's Acorn");
             object.put("gfx/terobjs/trees/kingsoak", kingsoakOp);
             ArrayList<String> larchOp = new ArrayList<>();
-            larchOp.add("Larch Cones");
+            larchOp.add("Larch Cone");
             object.put("gfx/terobjs/trees/larch", larchOp);
             ArrayList<String> laurelOp = new ArrayList<>();
             laurelOp.add("Laurel Leaves");
@@ -286,7 +286,7 @@ public class LpSpec {
             trumpetchantrelleOp.add("Trombone Chantrelle Spore");
             object.put("gfx/terobjs/trees/trombonechantrelle", trumpetchantrelleOp);
             ArrayList<String> crabappleOp = new ArrayList<>();
-            crabappleOp.add("Crabapples");
+            crabappleOp.add("Crabapple");
             crabappleOp.add("Yesteryear's Crabapple");
             object.put("gfx/terobjs/trees/crabappletree", crabappleOp);
             ArrayList<String> dwarfpineOp = new ArrayList<>();
@@ -950,7 +950,7 @@ public class LpSpec {
         productIcon.put("Turnip Seeds", "gfx/invobjs/seed-turnip");
         productIcon.put("Sprouted Wheat", "gfx/invobjs/seed-wheatgerm");
         productIcon.put("Sprouted Barley", "gfx/invobjs/seed-barleygerm");
-        productIcon.put("Head of Lettuce", "gfx/invobjs/herbs/lettucehead");
+        productIcon.put("Head of Lettuce", "gfx/invobjs/lettucehead");
         productIcon.put("Pumpkin Flesh", "gfx/invobjs/pumpkinflesh");
         productIcon.put("Pumpkin", "gfx/invobjs/pumpkin");
         productIcon.put("Bullfinch Egg", "gfx/invobjs/egg-bullfinch");
@@ -1038,7 +1038,7 @@ public class LpSpec {
         productIcon.put("Yesteryear's Redcurrant Seed", "gfx/invobjs/seed-redcurrant-yester");
         productIcon.put("Yesteryear's Seaberry Seed", "gfx/invobjs/seed-sandthorn-yester");
         productIcon.put("Yesteryear's Wood Strawberry", "gfx/invobjs/woodstrawberry-yester");
-        productIcon.put("Yesteryear's Seaberries", "gfx/invobjs/sandthorn-yester");
+        productIcon.put("Yesteryear's Seaberries", "gfx/invobjs/seed-sandthorn-yester");
         productIcon.put("Yesteryear's Redcurrant", "gfx/invobjs/seed-redcurrant-yester");
         productIcon.put("Dog Rose Hips", "gfx/invobjs/seed-dogrose");
         productIcon.put("Yesteryear's Blackberry", "gfx/invobjs/seed-blackberry-yester");
