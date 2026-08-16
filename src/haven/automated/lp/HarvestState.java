@@ -129,11 +129,14 @@ public class HarvestState {
         BARKS_MAP = Collections.unmodifiableMap(barks);
 
         // The Yesteryear's icon is simply the normal seed icon's resource path with a "-yester"
-        // suffix appended - except for these two, confirmed (via the VSpec data) to use a
-        // differently-named resource instead of following that convention.
+        // suffix appended - except for these, confirmed (via the VSpec data) to use a
+        // differently-named resource instead of following that convention. Only add an entry
+        // here after checking the path against VSpec: sandthorn was listed as
+        // "gfx/invobjs/sandthorn-yester", which does not exist - VSpec names it
+        // "gfx/invobjs/seed-sandthorn-yester", which is exactly what the default rule already
+        // produces, so the override only ever turned a working icon into a cached miss.
         Map<String, String> yesterOverrides = new HashMap<>();
         yesterOverrides.put("blackberrybush", "gfx/invobjs/seed-blackberry-yester");
-        yesterOverrides.put("sandthorn", "gfx/invobjs/sandthorn-yester");
         YESTERYEAR_ICON_OVERRIDE = Collections.unmodifiableMap(yesterOverrides);
 
         // The bark item name a species yields, keyed by the same per-species icon path BARKS_MAP
