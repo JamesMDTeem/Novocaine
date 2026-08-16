@@ -1102,7 +1102,7 @@ public class Utils {
 	return(ret.toArray(new String[0]));
     }
 
-    static int atoi(String a) {
+    public static int atoi(String a) {
 	try {
 	    return(Integer.parseInt(a));
 	} catch(NumberFormatException e) {
