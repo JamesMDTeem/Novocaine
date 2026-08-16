@@ -342,6 +342,21 @@ public class Client implements Console.Directory {
 		    }
 		}
 	    });
+	cmdmap.put("window", new Console.Command() {
+		public void run(Console cons, String[] args) throws Exception {
+		    if(!Client.this.tk.sharedenvs())
+			throw(new Exception("Toolkit does not support multiple windows."));
+		    Client cl = new Client(Client.this.tk);
+		    Thread th = new HackThread(() -> {
+			    try {
+				cl.run(cl.new Main());
+			    } finally {
+				cl.dispose();
+			    }
+			}, "Haven alt-window thread");
+		    th.start();
+		}
+	    });
     }
     public Map<String, Console.Command> findcmds() {
 	return(cmdmap);
