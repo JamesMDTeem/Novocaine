@@ -798,6 +798,8 @@ public class Router {
          * way to operate, each then walked at the wall until its attempt budget ran out.
          */
         private final boolean opensGates;
+        /** Shut gateway tiles known not to open from the side this route starts on. */
+        private final Set<Coord> oneWay;
         /**
          * The player's world position relative to the segment origin, captured once at
          * construction. The {@link haven.automated.pathfinder.World} seam asks in world
@@ -898,6 +900,7 @@ public class Router {
             this.refused = Refused.snapshot(seg);
             this.gates = gateTiles(false);
             this.shutGates = gateTiles(true);
+            this.oneWay = oneWayTiles();
             this.keepout = avoidKeepouts ? snapKeepouts(this.pl) : new haven.automated.pathfinder.Map.Keepout[0];
         }
 
@@ -962,6 +965,35 @@ public class Router {
          * the tiles the router asks about and the gate-passable fallback in {@link #passable(Coord)}
          * is dead code. See {@link Observed#observe} for the same idiom.
          */
+        /**
+         * Gateway tiles that will not open for a character standing where this route starts.
+         *
+         * Many gateways here are one-directional: a slave key opens them from the inside and
+         * closes them from either side, but from the outside the gate asks for a master key and
+         * does not budge. To the router such a gate is a WALL on the way in and an ordinary
+         * gateway on the way out, and until this existed it was neither - gate tiles are passable
+         * by default, so every route into a walled compound was planned straight through the gate,
+         * the bot walked the whole way there, failed to open it, and then wandered while travel
+         * retried the same impossible leg.
+         *
+         * Only gates that have actually refused are listed, and only from the side they refused
+         * on: nothing here guesses which gates are one-way. See GateManager.lockedFrom.
+         */
+        private Set<Coord> oneWayTiles() {
+            Set<Coord> out = new HashSet<>();
+            if ((off == null) || (pl == null))
+                return out;
+            for (Gob g : GateManager.loaded(gui)) {
+                /* A gate standing open is passable whatever it did last time it was shut - walking
+                 * through an open gate needs no key at all. */
+                if (GateManager.isOpen(g))
+                    continue;
+                if (GateManager.lockedFrom(g, pl))
+                    out.add(g.rc.add(off).floor(MCache.tilesz));
+            }
+            return out;
+        }
+
         private Set<Coord> gateTiles(boolean shutOnly) {
             Set<Coord> out = new HashSet<>();
             if (off == null)
@@ -1169,6 +1201,10 @@ public class Router {
          * until the attempt budget dies.
          */
         private boolean openTo(Coord t) {
+            /* Before the gate layer gets any say: this one has already refused to open for
+             * somebody standing on our side of it, so having a gate layer does not help. */
+            if (oneWay.contains(t))
+                return false;
             if (opensGates)
                 return true;
             return gates.contains(t) && !shutGates.contains(t);

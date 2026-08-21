@@ -278,7 +278,7 @@ public abstract class NBot extends Window implements Runnable, Stoppable {
      * for a bot being tried out for the first time, and refusing to work over it would be a worse
      * answer than working until thirsty.
      */
-    private void stock() throws InterruptedException {
+    protected void stock() throws InterruptedException {
         if (!NBotConfig.on(NBotConfig.Key.autoRefillWater) || !FillWater.thirsty(ctx))
             return;
         report("topping up water before starting");

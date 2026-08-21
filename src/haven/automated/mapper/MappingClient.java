@@ -485,7 +485,12 @@ public class MappingClient {
 
 			if(md.m instanceof MapFile.SMarker) {
 			    o.put("type", "shared");
-			    o.put("id", ((MapFile.SMarker) md.m).oid);
+			    /* String.valueOf, because SMarker.oid is a UID and UID extends Number: org.json
+			     * writes any Number verbatim and unquoted, and UID.toString() is unsigned
+			     * base-16. That put a bare 531a9f2e44c81b07 in the payload, which is not JSON
+			     * at all - so the whole batch was rejected, not just this field, and every
+			     * shared marker silently failed to upload to any strict parser. */
+			    o.put("id", String.valueOf(((MapFile.SMarker) md.m).oid));
 			    o.put("image", ((MapFile.SMarker) md.m).res.name);
 			} else if(md.m instanceof MapFile.PMarker) {
 			    o.put("type", "player");
@@ -1273,7 +1278,8 @@ public class MappingClient {
 			obj.put("x", offset.x);
 			obj.put("y", offset.y);
 			obj.put("type", "shared");
-			obj.put("id", marker.oid);
+			// Quoted for the same reason as in ProcessMap above: a bare UID is not JSON.
+			obj.put("id", String.valueOf(marker.oid));
 			obj.put("image", marker.res.name);
 
 			// .put(obj), not new JSONArray(List.of(obj)): the bundled org.json only has a

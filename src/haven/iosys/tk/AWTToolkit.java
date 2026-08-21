@@ -980,12 +980,14 @@ public abstract class AWTToolkit implements Toolkit {
 	    return(dev.getDisplayMode().getRefreshRate());
 	}
 
-	public double density() {
+	/* userdpi, not density: what AWT reports is the DPI the desktop is being treated as,
+	 * which is a user-scaling figure and not the panel's physical density. */
+	public double userdpi() {
 	    return(java.awt.Toolkit.getDefaultToolkit().getScreenResolution());
 	}
 
 	public String toString() {
-	    return(dev.toString());
+	    return(String.format("#<awt-monitor %s %s %.2fdpi>", dev.toString(), resolution(), userdpi()));
 	}
     }
 

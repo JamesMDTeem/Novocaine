@@ -89,6 +89,16 @@ public class FoodService {
         cachedToken = (tk != null) ? tk.trim() : "";
     }
 
+    /** The endpoint {@link #refreshEndpointCache()} last snapshotted, or null if unconfigured. */
+    public static String cachedEndpoint() {
+        return cachedEndpoint;
+    }
+
+    /** The token {@link #refreshEndpointCache()} last snapshotted (may be empty). */
+    public static String cachedToken() {
+        return cachedToken;
+    }
+
     public static void checkFood(List<ItemInfo> ii, Resource res, String genus) {
         List<ItemInfo> infoList = new ArrayList<>(ii);
         Defer.later(() -> {

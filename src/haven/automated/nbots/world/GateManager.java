@@ -16,7 +16,9 @@ import haven.automated.pathfinder.World;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -270,7 +272,7 @@ public class GateManager {
                 continue;
             if (shutOnly && isOpen(g))
                 continue;
-            if (locked(g.id))
+            if (lockedFrom(g, me.rc))
                 continue;
             double toGate = me.rc.dist(g.rc);
             if (toGate > (strict ? NEAR : SEARCH))
@@ -378,9 +380,10 @@ public class GateManager {
         }
 
         if (!toggle(nav, gui, id, true, log)) {
-            lock(id);
-            NLog.log(log, "gate: #" + id + " wouldn't open - locked, most likely;"
-                + " leaving it alone for the rest of the session");
+            lock(id, from);
+            NLog.log(log, "gate: #" + id + " wouldn't open from this side"
+                + " - one-directional or locked; leaving it alone from here"
+                + " for the rest of the session");
             return refuse(skip, id);
         }
 
@@ -666,16 +669,51 @@ public class GateManager {
         return false;
     }
 
-    /** Gateways that would not open, remembered for the rest of the session. */
-    private static final Set<Long> lockedGates =
-        Collections.synchronizedSet(new HashSet<>());
+    /**
+     * Gateways that would not open, and where we were standing when they refused.
+     *
+     * The position is the whole point, and storing only the id was a trap. Many gateways here are
+     * one-directional: a slave key opens them from the inside and closes them from either side,
+     * but will not open them from the outside, where the gate answers that it wants a master key.
+     * Remembering "this gate is locked" full stop meant that one refusal on the way IN also
+     * stopped the bot opening the same gate on the way OUT - so a character that hearthed into a
+     * compound, or was let in by someone else, could not get itself out again for the rest of the
+     * session.
+     *
+     * So what is remembered is the side. {@link #lockedFrom} answers for one approach only, and a
+     * gate refused from outside stays perfectly operable from inside.
+     */
+    private static final Map<Long, Coord2d> lockedGates =
+        Collections.synchronizedMap(new HashMap<>());
 
-    private static void lock(long id) {
-        lockedGates.add(id);
+    private static void lock(long id, Coord2d from) {
+        if (from != null)
+            lockedGates.put(id, from);
     }
 
-    private static boolean locked(long id) {
-        return lockedGates.contains(id);
+    /**
+     * Whether this gateway has already refused to open for someone standing where {@code from} is.
+     *
+     * Sides are told apart by the sign of the projection onto the gate's own through-axis, the
+     * same vector the step-through uses ({@link #across}). A gate whose axis cannot be read - no
+     * collision box, resource not in yet - falls back to "locked from anywhere", because the
+     * alternative is walking at it again on every journey, and one gate wrongly avoided is much
+     * cheaper than a route that never stops retrying.
+     */
+    public static boolean lockedFrom(Gob gate, Coord2d from) {
+        if ((gate == null) || (from == null))
+            return false;
+        Coord2d refusedAt = lockedGates.get(gate.id);
+        if (refusedAt == null)
+            return false;
+        Coord2d axis = across(gate);
+        if (axis == null)
+            return true;
+        Coord2d a = refusedAt.sub(gate.rc);
+        Coord2d b = from.sub(gate.rc);
+        double sa = (a.x * axis.x) + (a.y * axis.y);
+        double sb = (b.x * axis.x) + (b.y * axis.y);
+        return (sa * sb) > 0;
     }
 
     /**
@@ -706,7 +744,7 @@ public class GateManager {
                 why = "given up on earlier this journey";
             else if (shutOnly && isOpen(g))
                 why = "already open - it is a gap, not an obstacle, so there is nothing to pass";
-            else if (locked(g.id))
+            else if (lockedFrom(g, me.rc))
                 why = "would not open earlier this session";
             else if (toGate > SEARCH)
                 why = String.format("%.0ft away, past the %.0ft search radius",

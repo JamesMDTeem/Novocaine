@@ -268,6 +268,7 @@ public class FlowerMenu extends Widget {
 //	new Opening().ntick(0);
 	resize(contentsz().add(new Coord(UI.scale(3), UI.scale(3))));
 	tryAutoSelect();
+	haven.automated.eat.EatObserver.onFlowerMenuOpened(this);
     }
 
     public boolean mousedown(MouseDownEvent ev) {
@@ -284,7 +285,9 @@ public class FlowerMenu extends Widget {
 	    mg.remove();
 	    kg.remove();
 	} else if(msg == "act") {
-	    new Chosen(opts[Utils.iv(args[0])]);
+	    Petal chosen = opts[Utils.iv(args[0])];
+	    new Chosen(chosen);
+	    haven.automated.eat.EatObserver.onFlowerMenuChosen(this, chosen.name);
 	    mg.remove();
 	    kg.remove();
 	}

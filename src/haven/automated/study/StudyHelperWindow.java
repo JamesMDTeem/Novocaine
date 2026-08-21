@@ -16,6 +16,7 @@ import haven.Utils;
 import haven.WItem;
 import haven.Widget;
 import haven.Window;
+import haven.res.ui.stackinv.ItemStack;
 import haven.resutil.Curiosity;
 
 import java.awt.Color;
@@ -196,8 +197,32 @@ public class StudyHelperWindow extends Window {
     }
 
     private void collect(WItem wi, List<StudyPlanner.Curio> into) {
+        collect(wi, wi.sz, into);
+    }
+
+    /**
+     * A stacked curiosity is not the item it looks like. The slot holds a wrapper item - named
+     * "&lt;item&gt;, stack of" - whose own info carries no {@link Curiosity} at all; the real items
+     * are the GItems inside its {@link ItemStack} contents. Stopping at the top level therefore
+     * reads a chest full of stacked leeches as an empty chest, so a stack is descended into and
+     * counted one entry per copy, exactly as loose items are.
+     *
+     * {@code fallbackSz} is the enclosing slot's footprint, used when a stack member's own sprite
+     * has not arrived yet: the wrapper is drawn at the item's footprint, so it is the right answer
+     * for the members, and better than silently calling a 2x1 curiosity one slot wide.
+     */
+    private void collect(WItem wi, Coord fallbackSz, List<StudyPlanner.Curio> into) {
         try {
             GItem item = wi.item;
+            if (item.contents instanceof ItemStack) {
+                ItemStack stack = (ItemStack) item.contents;
+                for (GItem gi : stack.order) {
+                    WItem member = stack.wmap.get(gi);
+                    if (member != null)
+                        collect(member, wi.sz, into);
+                }
+                return;
+            }
             Curiosity ci = ItemInfo.find(Curiosity.class, item.info());
             if (ci == null)
                 return;
@@ -205,10 +230,11 @@ public class StudyHelperWindow extends Window {
             if (name == null || name.isEmpty())
                 return;
             /* WItem.sz is already snapped to whole slots by WItem.tick, and both it and sqsz are in
-             * scaled pixels, so this is the Footprint the game itself uses. A WItem whose sprite
-             * hasn't loaded is still one slot wide, which is the documented fallback. */
-            int slotsWide = Math.max(1, wi.sz.x / Inventory.sqsz.x);
-            int slotsHigh = Math.max(1, wi.sz.y / Inventory.sqsz.y);
+             * scaled pixels, so this is the footprint the game itself uses. A WItem whose sprite
+             * hasn't loaded yet is not yet a slot wide, and falls back to the enclosing slot. */
+            Coord isz = (wi.sz.x >= Inventory.sqsz.x && wi.sz.y >= Inventory.sqsz.y) ? wi.sz : fallbackSz;
+            int slotsWide = Math.max(1, isz.x / Inventory.sqsz.x);
+            int slotsHigh = Math.max(1, isz.y / Inventory.sqsz.y);
             /* Curiosity.time is server time; lph already carries the speed multiplier. Convert the
              * one that doesn't so every number in the window is in the player's hours. */
             int realTime = (int) (ci.time / GameUI.gameTimeSpeedMultiplier);

@@ -373,7 +373,7 @@ public class AutoLpBot extends Window implements Runnable {
     }
 
     private static final double FELL_DRINK_STAMINA = 0.45;
-    private static final double FELL_EAT_ENERGY = 0.35;
+    private static final double FELL_EAT_ENERGY = 0.25;
 
     /**
      * Below this fraction of what the carried vessels hold, the water really has run out.

@@ -799,6 +799,8 @@ public class OptWnd extends Window {
 	public static HSlider mapZoomSpeedSlider;
 	public static CheckBox alwaysOpenMiniStudyOnLoginCheckBox;
 	public static CheckBox studyHelperCheckBox;
+	public static CheckBox eatObserverCheckBox;
+	public static CheckBox eatHelperCheckBox;
 	public static HSlider mapIconsSizeSlider;
 	public static CheckBox simplifiedMapColorsCheckBox;
 	public static ColorOptionWidget sprintLandsColorWidget;
@@ -991,6 +993,23 @@ public class OptWnd extends Window {
 			}
 		}, leftColumn.pos("bl").adds(0, 2));
 		studyHelperCheckBox.tooltip = studyHelperTooltip;
+
+		leftColumn = add(eatObserverCheckBox = new CheckBox("Log eating data (Eating Helper calibration)"){
+			{a = (Utils.getprefb("eatObserver", false));}
+			public void changed(boolean val) {
+				Utils.setprefb("eatObserver", val);
+			}
+		}, leftColumn.pos("bl").adds(0, 2));
+		eatObserverCheckBox.tooltip = eatObserverTooltip;
+
+		leftColumn = add(eatHelperCheckBox = new CheckBox("Eating Helper (plan foods toward a goal)"){
+			{a = (Utils.getprefb("eatHelper", false));}
+			public void set(boolean val) {
+				Utils.setprefb("eatHelper", val);
+				a = val;
+			}
+		}, leftColumn.pos("bl").adds(0, 2));
+		eatHelperCheckBox.tooltip = eatHelperTooltip;
 
 		leftColumn = add(alwaysShowCombatUIStaminaBarCheckBox = new CheckBox("Always Show Combat UI Stamina Bar"){
 			{a = (Utils.getprefb("alwaysShowCombatUIStaminaBar", false));}
@@ -5413,6 +5432,14 @@ public class OptWnd extends Window {
 			"\nThe list is in the order to grab them: take from the top until the red line." +
 			"\n" +
 			"\n$col[185,185,185]{The plan assumes an empty study grid, and spends your whole Intelligence - clear the grid before following it.}", UI.scale(300));
+	public static final Object eatObserverTooltip = RichText.render("Logs FEP/hunger/satiation state before and after every food you eat, to a local file (eatlog/<character>.jsonl)." +
+			"\nUsed to calibrate the Eating Helper's numbers - the variety bonus, satiation formulas, and FEP tiers - against what actually happens in play, instead of trusting the wiki." +
+			"\n" +
+			"\n$col[185,185,185]{Off by default. Nothing is sent anywhere; the log stays on this machine.}", UI.scale(300));
+	public static final Object eatHelperTooltip = RichText.render("Enter target attribute points and it works out which foods from your cookbook catalog get you there, ranked by hunger cost." +
+			"\n" +
+			"\n$col[185,185,185]{Advise only - nothing is eaten automatically. Requires the Cookbook Endpoint/Token above to be configured.}" +
+			"\n$col[185,185,185]{Satiation and the variety bonus are approximations - see the window's status line.}", UI.scale(300));
 	public static final Object soundAlertForFinishedCuriositiesTooltip = RichText.render("A violin sound will be played every time a curiosity is finished." +
 			"\n" +
 			"\n$col[218,163,0]{Preview:}$col[185,185,185]{Enable this to hear the sound!", UI.scale(300));

@@ -38,6 +38,11 @@ public class TravelTo implements Task {
      * enough that the circle it describes stays inside any place worth having drawn.
      */
     private static final double ARRIVE_TOL = 11 * 2.0;
+    /**
+     * How much nearer the hearth has to land before hearthing in is worth a travel, in world
+     * units (ten tiles). Only consulted once walking has already failed - see hearthReaches.
+     */
+    private static final double HEARTH_MARGIN = 11 * 10.0;
 
     public TravelTo(Place place) {
         this(place, null, null, DEFAULT_TOL, place == null ? "nowhere" : place.name);
@@ -153,6 +158,24 @@ public class TravelTo implements Task {
             return Outcome.ok();
         if (r.isAborted())
             return Outcome.blocked("stopped on the way to " + what);
+        /* No walking route, but the hearth might be on the far side of whatever is in the way.
+         *
+         * This is the one-directional gate case above all: a slave key will not open a gate from
+         * outside, so the router correctly reports that a walled compound cannot be entered on
+         * foot - and hearthing lands us inside it regardless. Unreachable by road is not the same
+         * as unreachable, and retiring the destination here would have a bot give up on its own
+         * base. Deliberately only on isFailed(): a BLOCKED leg is a transient obstacle that will
+         * clear on its own, and burning a hearth travel on it would be waste. */
+        if (r.isFailed() && hearthReaches(ctx, dest)) {
+            ctx.log("no walking route to " + what + " - hearthing in and walking from there");
+            HearthTravel.travel(ctx.gui);
+            TravelResult again = ctx.nav.travelTo(dest, tol);
+            if (again.isArrived())
+                return Outcome.ok();
+            if (again.isAborted())
+                return Outcome.blocked("stopped on the way to " + what);
+            r = again;
+        }
         // Blocked is a transient obstacle and worth another go later; failed means no route exists,
         // which retrying from the same spot cannot mend. Passing the distinction on rather than
         // flattening both to "couldn't walk there" is what lets a caller tell "try again in a
@@ -160,6 +183,30 @@ public class TravelTo implements Task {
         String why = (r.reason() == null) ? "couldn't walk to " + what
             : "couldn't walk to " + what + ": " + r.reason();
         return r.isBlocked() ? Outcome.blocked(why) : Outcome.failed(why);
+    }
+
+    /**
+     * Whether hearthing would put us meaningfully nearer the destination than we are now.
+     *
+     * Distance is the only test available and it is the right one here. The pre-walk comparison
+     * ({@link HearthTravel#betterThanWalking}) weighs a teleport against a walk that WORKS; by the
+     * time this is asked there is no such walk, so anything that lands closer is strictly better
+     * than failing. The margin keeps a hearth that is barely nearer from spending one of the
+     * run's travels for a few tiles.
+     *
+     * Still behind the hearthTravel setting: a player who has told the crew not to teleport means
+     * it whether or not walking has run out.
+     */
+    private boolean hearthReaches(BotCtx ctx, Coord2d dest) {
+        if (!NBotConfig.on(NBotConfig.Key.hearthTravel) || !HearthTravel.canTravel())
+            return false;
+        WorldAnchor h = HearthTravel.hearth(ctx.gui);
+        if (h == null)
+            return false;
+        Coord2d at = h.resolve(ctx.gui);
+        if ((at == null) || (ctx.player() == null))
+            return false;
+        return at.dist(dest) + HEARTH_MARGIN < ctx.player().rc.dist(dest);
     }
 
     @Override

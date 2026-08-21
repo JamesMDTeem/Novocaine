@@ -433,6 +433,27 @@ public class PlacesWindow extends Window {
         }
         y += ((roles.size() + cols - 1) / cols) * UI.scale(18) + UI.scale(8);
 
+        /* Two states in the UI for a three-state field, and that is currently enough: every role
+         * defaults to shared, so "unticked" (no opinion) already resolves to shared and an
+         * explicit FALSE would say nothing extra. If a role ever starts defaulting to exclusive
+         * this has to become a three-way control so the player can say "share it anyway".
+         *
+         * Ticking this holds the area whoever is working it. It is not how the survey bot gets its
+         * exclusivity - that bot claims regardless, because it cannot share at all - so leaving
+         * this unticked does not make surveying unsafe. See Places.claim. */
+        detail.add(new CheckBox("Only one bot at a time") {
+            {
+                a = Boolean.TRUE.equals(p.exclusive);
+            }
+
+            public void set(boolean val) {
+                p.exclusive = val ? Boolean.TRUE : null;
+                Places.add(p);
+                a = val;
+            }
+        }, new Coord(0, y));
+        y += UI.scale(22);
+
         /* Spelled out because the two are easy to confuse, and getting it wrong is what made
          * "water" look broken: a role is the whole answer for water, food, tools and work, and the
          * item rules below only matter for places bots put things into or take things out of. */

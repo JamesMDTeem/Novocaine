@@ -890,11 +890,13 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NCleanupBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NWaterScoutBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NSurveyBot");
+		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NPlowBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NBeeSmokerBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NDragonflyBot");
 		makeLocal("customclient/menugrid/NurglingImports/Schedules");
 		makeLocal("customclient/menugrid/NurglingImports/AltManager");
 		makeLocal("customclient/menugrid/NurglingImports/StudyHelper");
+		makeLocal("customclient/menugrid/NurglingImports/EatHelper");
 
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");
@@ -1042,6 +1044,11 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 				boolean on = !OptWnd.studyHelperCheckBox.a;
 				OptWnd.studyHelperCheckBox.set(on);
 				gui.msg("LP Helper is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? Color.GREEN : Color.RED);
+			} else if (ad[2].equals("EatHelper")) {
+				/* Same pattern as StudyHelper: the checkbox is the state, the window watches it. */
+				boolean on = !OptWnd.eatHelperCheckBox.a;
+				OptWnd.eatHelperCheckBox.set(on);
+				gui.msg("Eating Helper is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? Color.GREEN : Color.RED);
 			} else if (ad[2].equals("NBotPlaces")) {
 				if (gui.nbotPlaces == null) {
 					gui.nbotPlaces = new haven.automated.nbots.PlacesWindow(gui);

@@ -65,10 +65,12 @@ public class NSurveyBot extends NBot {
     /** A fallback for windows that phrase it differently; tracked the same way. */
     private static final String SOIL_REQ = "Units of soil req";
 
-    /** How long (in 25ms ticks) to wait for a Dig to show up in the label before calling it drained. */
+    /** How long (in 25ms ticks) to wait for the soil label to tick down before checking again. */
     private static final int DIG_TICKS = 120;
     /** How long to wait for the survey to vanish after Remove before giving up on it. */
     private static final int REMOVE_TICKS = 120;
+    /** Consecutive stalls (each {@link #DIG_TICKS} long) tolerated before giving up on a survey. */
+    private static final int MAX_STALLS = 20;
 
     /** Surveys given up on this shift, so one broken object cannot stall the whole run. */
     private final Set<Long> retired = new HashSet<>();
@@ -97,6 +99,24 @@ public class NSurveyBot extends NBot {
         retired.clear();
         String pinned = settings.place("area");
         area = (pinned == null || pinned.isEmpty()) ? null : Places.byName(pinned);
+        /* Surveying is the one job in the crew that two bots genuinely cannot share. A second
+         * character manning the same survey does not halve the work - it drains soil the first one
+         * is still counting, and both come away with readings that are wrong. So the area is held
+         * for the whole shift, and a bot that cannot get the claim stops instead of joining in.
+         *
+         * Asked for by the bot rather than configured on the place, because a survey area and a
+         * cleanup area are both tagged WORK and only this one minds company. See Places.claim. */
+        if (!Places.claim(area, true))
+            return Outcome.blocked("another bot is already working " + area.name);
+        try {
+            return survey();
+        } finally {
+            Places.releaseClaim(area, true);
+        }
+    }
+
+    /** The shift proper, with {@link #area} already resolved and claimed. */
+    private Outcome survey() throws InterruptedException {
         if (area != null) {
             Outcome there = new TravelTo(area).run(ctx);
             if (!there.isOk())
@@ -107,6 +127,8 @@ public class NSurveyBot extends NBot {
         int attempts = 0;
         while (running() && attempts < 1000) {
             attempts++;
+            // The claim lapses after WorkClaims.TTL_MS; one survey can easily outlast that.
+            Places.renewClaim(area, true);
             Gob survey = findSurvey();
             if (survey == null)
                 break;   // nothing left in reach; the shift is over
@@ -162,13 +184,28 @@ public class NSurveyBot extends NBot {
         return found.get(0);
     }
 
-    /** Works one survey through its window until it is drained and removed. */
+    /**
+     * Works one survey through its window until it is drained and removed.
+     *
+     * Dig is a start/resume button, not a per-unit action: one click sets the character digging
+     * and the soil count then ticks down on its own. Clicking it again while a cycle is already
+     * running gets rejected by the server, so it is pressed once up front and only re-pressed
+     * after the count has genuinely stalled - never on every poll. Remove ends the survey and is
+     * only pressed once the soil count actually reads zero; treating a mere pause between ticks
+     * as "drained" was what made this bot bail out on live surveys.
+     */
     private Outcome man(Gob survey, TakeWorkSlot slot) throws InterruptedException {
         Window wnd = open(survey);
         if (wnd == null)
             return Outcome.blocked("couldn't open the survey window");
 
         try {
+            Button dig = button("Dig");
+            if (dig == null)
+                return Outcome.failed("survey window has no Dig button");
+            dig.click();
+
+            int stalls = 0;
             while (running() && ctx.gob(survey.id) != null) {
                 slot.renew();
 
@@ -179,6 +216,11 @@ public class NSurveyBot extends NBot {
                     wnd = open(survey);
                     if (wnd == null)
                         return Outcome.blocked("survey window lost after upkeep");
+                    dig = button("Dig");
+                    if (dig == null)
+                        return Outcome.failed("survey window has no Dig button");
+                    dig.click();   // the work cycle drops when the window closes; resume it
+                    stalls = 0;
                     continue;
                 }
 
@@ -186,21 +228,24 @@ public class NSurveyBot extends NBot {
                 if (before == null)
                     return Outcome.blocked("couldn't read the survey's soil state");
 
-                Button dig = button("Dig");
-                if (dig == null)
-                    return Outcome.failed("survey window has no Dig button");
-                dig.click();
+                Integer left = parseSoil(before);
+                if (left != null && left <= 0) {
+                    Button remove = button("Remove");
+                    if (remove == null)
+                        return Outcome.failed("soil is drained but the window has no Remove button");
+                    remove.click();
+                    ctx.nav.waitUntil(() -> ctx.gob(survey.id) == null, REMOVE_TICKS);
+                    return (ctx.gob(survey.id) == null) ? Outcome.ok() : Outcome.blocked("Remove didn't clear the survey");
+                }
 
-                if (awaitSoilChange(before) != null)
-                    continue;   // the dig registered; keep going
+                if (awaitSoilChange(before) != null) {
+                    stalls = 0;
+                    continue;   // still ticking down on its own
+                }
 
-                Button remove = button("Remove");
-                if (remove == null)
-                    return Outcome.failed("dig isn't progressing and the window has no Remove button");
-
-                remove.click();
-                ctx.nav.waitUntil(() -> ctx.gob(survey.id) == null, REMOVE_TICKS);
-                return Outcome.ok();   // drained and removed
+                if (++stalls > MAX_STALLS)
+                    return Outcome.failed("soil count stopped moving and won't resume");
+                dig.click();   // the cycle looks like it dropped; try resuming it
             }
             return (ctx.gob(survey.id) == null) ? Outcome.ok() : Outcome.blocked("stopped");
         } finally {
@@ -208,6 +253,17 @@ public class NSurveyBot extends NBot {
             if (cur != null)
                 cur.wdgmsg("close");
         }
+    }
+
+    /** The trailing number in a soil label (e.g. "Units of soil left: 42" -> 42), or null. */
+    private static Integer parseSoil(String text) {
+        if (text == null)
+            return null;
+        java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\d+").matcher(text);
+        Integer last = null;
+        while (m.find())
+            last = Integer.parseInt(m.group());
+        return last;
     }
 
     /** Right-clicks the survey and waits for its window to appear. */

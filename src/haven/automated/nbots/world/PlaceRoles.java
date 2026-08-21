@@ -51,5 +51,26 @@ public class PlaceRoles {
     public static final List<String> KNOWN =
         Arrays.asList(WATER, FOOD, TOOLS, DUMP, STORE, WORK);
 
+    /**
+     * Whether a place carrying this role is one-bot-at-a-time purely by virtue of the role.
+     *
+     * Every role shipped so far says no, and that is a decision rather than an oversight. Sharing
+     * is the common case and the one that degrades gracefully: two bots at the same water barrel
+     * queue for it, two bots clearing one big area simply cover it faster, and the pathfinder
+     * already keeps them out of each other's way. Locking those by default would idle a crew for
+     * no gain.
+     *
+     * The cases that genuinely break under two workers - surveying is the one we have - are a
+     * property of the BOT, not of the area, which is why {@link Places#claim} takes the bot's own
+     * requirement as well. WORK in particular cannot carry the answer: a survey area and a cleanup
+     * area are both tagged WORK, and only one of them minds company.
+     *
+     * A player who wants a specific area held by one bot regardless sets the per-place override
+     * ({@link Place#exclusive}), which beats this either way.
+     */
+    public static boolean exclusiveByDefault(String role) {
+        return false;
+    }
+
     private PlaceRoles() {}
 }

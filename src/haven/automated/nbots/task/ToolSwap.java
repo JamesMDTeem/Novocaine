@@ -34,11 +34,13 @@ import java.util.Map;
  * one exact resource - a wooden, tinker's or metal shovel are all a shovel as far as a stump is
  * concerned.
  *
- * The swap itself is a straight exchange: take the tool, drop it on the hand slot, and put whatever
- * was displaced into the space the tool just left. That is 1:1 and needs no free space, which is
- * the common case here since every tool involved is two-handed. Two one-handers being displaced by
- * a two-hander needs one extra free slot, and if there isn't one the swap is refused with a message
- * rather than something being dropped on the floor.
+ * The swap itself is: take the tool, drop it on the hand slot, and stow whatever was displaced in
+ * the first free space its own footprint fits. It is NOT put back where the incoming tool used to
+ * sit - the two can be different sizes (a 1x1 axe and a 2x1 shovel, say), and reusing the old spot
+ * on the assumption they match silently dropped the displaced tool on the ground instead of
+ * stowing it whenever the sizes actually differed. Two one-handers being displaced by a two-hander
+ * needs one extra free slot, and if there isn't one the swap is refused with a message rather than
+ * something being dropped on the floor.
  */
 public class ToolSwap {
     /** Left hand. Equipping a two-hander here fills both hands. */
@@ -168,15 +170,15 @@ public class ToolSwap {
         equipory.wdgmsg("drop", HAND);
         nav.pause(3);
 
-        // Whatever came off the hands is now on the cursor. Put it where the tool used to be, and
-        // any second item in the spare slot found above.
+        // Whatever came off the hands is now on the cursor. found.at is only known to fit the tool
+        // that used to sit there - the displaced item can be a different footprint (a 1x1 axe
+        // swapped in over a 2x1 shovel, say), so it needs its own free spot rather than reusing
+        // found.at on the assumption the two are the same size.
         if (gui.vhand != null) {
-            found.inv.wdgmsg("drop", found.at);
-            nav.waitUntil(() -> gui.vhand == null, 20);
+            stow(gui.vhand, found.inv);
         }
         if (gui.vhand != null && spareInv != null) {
-            spareInv.wdgmsg("drop", spare);
-            nav.waitUntil(() -> gui.vhand == null, 20);
+            stow(gui.vhand, spareInv);
         }
         if (gui.vhand != null) {
             // Should not happen given the checks above, but leaving an item stuck on the cursor
@@ -200,24 +202,46 @@ public class ToolSwap {
         return gui.vhand != null;
     }
 
+    /**
+     * Finds room in {@code preferred} for the item currently on the cursor, by its own footprint,
+     * and drops it there. Falls back to the main inventory if {@code preferred} has no room.
+     */
+    private boolean stow(WItem item, Inventory preferred) throws InterruptedException {
+        Coord cell = cellSize(item);
+        Inventory inv = preferred;
+        Coord at = (inv == null) ? null : inv.isRoom(cell.x, cell.y);
+        if (at == null && gui.maininv != null && gui.maininv != preferred) {
+            inv = gui.maininv;
+            at = inv.isRoom(cell.x, cell.y);
+        }
+        if (at == null)
+            return false;
+        inv.wdgmsg("drop", at);
+        nav.waitUntil(() -> gui.vhand == null, 20);
+        return gui.vhand == null;
+    }
+
+    /** An item's footprint in inventory grid cells, from its on-screen pixel size. */
+    private static Coord cellSize(WItem wi) {
+        Coord cells = wi.sz.div(Inventory.sqsz);
+        return new Coord(Math.max(1, cells.x), Math.max(1, cells.y));
+    }
+
     // ------------------------------------------------------------------ finding a tool
 
     private static final class Found {
         final WItem item;
         final Inventory inv;
-        final Coord at;
 
-        Found(WItem item, Inventory inv, Coord at) {
+        Found(WItem item, Inventory inv) {
             this.item = item;
             this.inv = inv;
-            this.at = at;
         }
     }
 
     /**
      * The first tool of this kind anywhere the character can reach it, together with which
-     * container it's in and the grid position it occupies - both needed so the displaced tool can
-     * be put back in exactly the space this one vacates.
+     * container it's in.
      *
      * Belt first, then the pack, then anything else open: the belt is where tools are normally
      * kept, and preferring it means the two tools keep trading the same slot instead of slowly
@@ -229,7 +253,7 @@ public class ToolSwap {
                 try {
                     if (!kind.matches(e.getKey().getres().name))
                         continue;
-                    return new Found(e.getValue(), inv, gridpos(e.getValue()));
+                    return new Found(e.getValue(), inv);
                 } catch (Loading | NullPointerException ignored) {
                 }
             }
@@ -270,17 +294,5 @@ public class ToolSwap {
         synchronized (inv.wmap) {
             return new java.util.HashMap<>(inv.wmap);
         }
-    }
-
-    /**
-     * An item's position in inventory GRID coordinates.
-     *
-     * WItem.c is in pixels, offset by the one-pixel inventory border, and every "drop into this
-     * slot" message wants grid coordinates - so this is the inverse of the mapping the inventory
-     * uses to lay items out. (EquipFromBelt arrives at the same thing by scanning every grid
-     * position and comparing pixel coordinates; this is the same conversion done directly.)
-     */
-    private Coord gridpos(WItem wi) {
-        return wi.c.sub(1, 1).div(Inventory.sqsz);
     }
 }

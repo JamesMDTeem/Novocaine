@@ -41,6 +41,9 @@ public class BotRegistry {
         DEFS.add(BotDef.window("NWaterScoutBot", "Water Scout (crew)",
             "Follows a coastline or a river bank by boat.",
             NWaterScoutBot::new));
+        DEFS.add(BotDef.window("NPlowBot", "Plower (crew)",
+            "Ploughs a field furrow by furrow, one bot to a field.",
+            NPlowBot::new));
         DEFS.add(BotDef.window("NSurveyBot", "Survey (crew)",
             "Mans land surveys, drains them, removes them and moves to the next.",
             NSurveyBot::new));

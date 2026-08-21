@@ -41,8 +41,14 @@ public class Upkeep implements Task {
      * more of the shift walking, which costs more stamina, which keeps the cap down.
      */
     private static final int WANT_SPEED = 3;
-    /** Below this fraction of energy, go and eat. */
-    public static final double EAT_BELOW = 0.35;
+    /**
+     * Below this fraction of energy, go and eat.
+     *
+     * 0.25 rather than 0.35 because stopping a shift at 3500% threw away a third of the
+     * working range for no reason - the legacy single-character bots have always used 0.25
+     * (see CellarDiggingBot, CleanupBot, FishingBot) and nothing goes wrong down there.
+     */
+    public static final double EAT_BELOW = 0.25;
     /** Below this fraction of health, nothing is worth continuing for. */
     public static final double PANIC_HEALTH = 0.02;
 
@@ -124,8 +130,14 @@ public class Upkeep implements Task {
         return (s != null) && (s.max < WANT_SPEED);
     }
 
-    /** Puts the selected speed back up to whatever is now allowed. Free when nothing changed. */
-    static void resume(BotCtx ctx) {
+    /**
+     * Puts the selected speed back up to whatever is now allowed. Free when nothing changed.
+     *
+     * Public because a bot that does not run the full upkeep step still needs it: the client
+     * drops the speed selection on its own, and without this the character walks the rest of the
+     * shift at whatever gear it happened to land in. NBeeSmokerBot is the case in point.
+     */
+    public static void resume(BotCtx ctx) {
         Speedget s = speed(ctx);
         if ((s != null) && (s.cur < Math.min(WANT_SPEED, s.max)))
             s.set(Math.min(WANT_SPEED, s.max));

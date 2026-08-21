@@ -60,6 +60,35 @@ public class Place {
     public boolean show = false;
 
     /**
+     * Whether only one bot at a time may work this place - or null to let the roles decide.
+     *
+     * Three states on purpose. Null is "no opinion", and is what every place has unless the player
+     * says otherwise, so the answer can keep coming from {@link PlaceRoles#exclusiveByDefault} and
+     * from whether the bot itself minds company. TRUE holds the place for one bot whatever is
+     * working it; FALSE says the player has considered it and wants it shared.
+     *
+     * FALSE does not override a bot that cannot share at all: a survey bot claims regardless,
+     * because two of them in one area corrupt the survey rather than merely duplicating work. See
+     * {@link Places#claim}.
+     */
+    public Boolean exclusive = null;
+
+    /**
+     * Whether this place is held for one bot by policy, ignoring what any particular bot needs.
+     *
+     * The player's override first, the roles' defaults after it.
+     */
+    public boolean exclusiveByPolicy() {
+        if (exclusive != null)
+            return exclusive;
+        for (String r : roles) {
+            if (PlaceRoles.exclusiveByDefault(r))
+                return true;
+        }
+        return false;
+    }
+
+    /**
      * What was last SEEN inside this place - full resource name to how many of them.
      *
      * Gobs are not in the map file, so a place a hundred tiles away can report nothing standing in
@@ -94,6 +123,18 @@ public class Place {
      * either the map file doesn't know where we are yet, or the place is in a different map segment
      * and there is no offset between the two to apply.
      */
+    /**
+     * The north-west corner in live world coordinates, or null when this part of the map is not
+     * where we are.
+     *
+     * For the callers that have to walk the rectangle tile by tile rather than aim at a point in
+     * it - ploughing is the one that exists - since {@link #centre} and {@link #destination} both
+     * answer "somewhere in here", which is the wrong question when the ORDER matters.
+     */
+    public Coord2d nw(GameUI gui) {
+        return (anchor == null) ? null : anchor.resolve(gui);
+    }
+
     public Coord2d centre(GameUI gui) {
         Coord2d nw = (anchor == null) ? null : anchor.resolve(gui);
         if (nw == null)
@@ -245,7 +286,9 @@ public class Place {
             memory.clear();
             memory.putAll(now);
         }
-        Places.save();
+        // touch(), not save(): several clients share this file, and a save that does not know
+        // WHICH place changed cannot tell ours from theirs. See Places.
+        Places.touch(this);
     }
 
     /** How many things matching {@code pattern} this place is known to hold, seen or remembered. */
@@ -309,6 +352,11 @@ public class Place {
         o.put("accepts", accepts.store());
         o.put("provides", provides.store());
         o.put("show", show);
+        /* Written only when the player has actually chosen. Leaving "no opinion" absent keeps it
+         * answerable by the current defaults, rather than freezing whatever they happened to say
+         * on the day the place was saved. */
+        if (exclusive != null)
+            o.put("exclusive", exclusive.booleanValue());
         /* Built key by key rather than handed the map: the bundled org.json's JSONObject(Map) is
          * declared Map<String,Object>, and generics are invariant, so a Map<String,Integer> misses
          * it and falls through to JSONObject(Object) - the bean constructor, which silently writes
@@ -335,6 +383,7 @@ public class Place {
         p.accepts = Alias.parse("accepts", o.optString("accepts", ""));
         p.provides = Alias.parse("provides", o.optString("provides", ""));
         p.show = o.optBoolean("show", false);
+        p.exclusive = o.has("exclusive") ? Boolean.valueOf(o.optBoolean("exclusive")) : null;
         JSONObject mem = o.optJSONObject("memory");
         if (mem != null) {
             for (String k : mem.keySet())

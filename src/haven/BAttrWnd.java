@@ -270,6 +270,7 @@ public class BAttrWnd extends Widget {
 		els.add(new El(t, a));
 	    }
 	    oels.update();
+	    haven.automated.eat.EatObserver.onSatiation(t, a);
 	}
     }
 
@@ -412,11 +413,13 @@ public class BAttrWnd extends Widget {
 		enew.add(new El(res, a));
 	    }
 	    this.enew = enew;
+	    haven.automated.eat.EatObserver.onFoodBar(this.cap, enew);
 	}
 
 	public void trig(Indir<Resource> ev) {
 	    etr = (enew != null)?enew:els;
 	    trev = ev;
+	    haven.automated.eat.EatObserver.onFoodTrig(ev);
 	}
 
 	private Tex rtip = null;
@@ -472,6 +475,7 @@ public class BAttrWnd extends Widget {
 	    this.bg = (Color)args[a++];
 	    this.fg = (Color)args[a++];
 	    rtip = null;
+	    haven.automated.eat.EatObserver.onGlut(this.glut, this.lglut, this.gmod);
 	}
 
 	private Tex rtip = null;

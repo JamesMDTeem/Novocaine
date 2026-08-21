@@ -31,5 +31,11 @@ import haven.*;
 public interface Monitor {
     public Coord resolution();
     public int refresh();
-    public double density();
+    /* Three separate questions, because a monitor can answer some and not others, and
+     * conflating them is what made scaling wrong on Windows: the OS-chosen scaling factor,
+     * the DPI the user is treated as having, and the panel's actual physical density are
+     * different numbers. Defaulted so a toolkit only implements what it can really tell. */
+    public default double scaling() {return(0);}
+    public default double userdpi() {return(0);}
+    public default double density() {return(0);}
 }

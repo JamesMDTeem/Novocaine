@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <g stroke-linejoin="round" stroke-linecap="round">
+    
+    <path d="M56.00 6.00 L67.76 35.82 L99.75 37.79 L75.02 58.18 L83.04 89.21 L56.00 72.00 L28.96 89.21 L36.98 58.18 L12.25 37.79 L44.24 35.82 Z" fill="#ffd23f" stroke="#1b120a" stroke-width="5.5"/>
+    <path d="M56.00 25.00 L63.05 42.29 L81.68 43.66 L67.41 55.71 L71.87 73.84 L56.00 64.00 L40.13 73.84 L44.59 55.71 L30.32 43.66 L48.95 42.29 Z" fill="#e08b1a" opacity="0.55" stroke="none"/>
+    <circle cx="92" cy="94" r="32" fill="#2fa84f" stroke="#1b120a" stroke-width="5.5"/>
+    <path d="M81 78 L112 94 L81 110 Z" fill="#eaffe8" stroke="#1b120a" stroke-width="4.5"/>
+  </g>
+</svg>

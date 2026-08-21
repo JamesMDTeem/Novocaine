@@ -8,14 +8,19 @@ import haven.automated.nbots.core.NLog;
 import org.json.JSONArray;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -25,18 +30,50 @@ import java.util.Set;
  * therefore the piece that makes new bots cheap: a bot needing somewhere to put its output asks
  * for a place that accepts it, rather than growing its own setting and its own manager UI.
  *
- * Shared across every client launched from one install (the file sits in the working directory
- * beside logs/ and the claim registry), which is what you want for a crew: define the water place
- * once and all of them know it.
+ * <h2>Several clients share this file, and none of them owns it</h2>
  *
- * Loaded lazily and cached; writes go through a temp file and an atomic move, so a client killed
- * mid-save leaves the previous list intact rather than a half-written one.
+ * One character is one client is one JVM, so a crew is several processes writing one file in the
+ * working directory. The shape this replaces - load once into a static cache, write the cache out
+ * whole - is wrong in both directions at once, and both were being hit daily:
+ *
+ * <ul>
+ *   <li><b>Outwards.</b> A whole-file write from a stale cache silently deletes every place the
+ *       other clients have defined since this one started. It is not a shutdown-ordering problem:
+ *       the write happens on any edit at all, including a checkbox, a keystroke in a rule field,
+ *       and {@link Place#observe} firing from a running bot with no user action whatsoever. The
+ *       last client to touch anything won, and the rest lost their areas.</li>
+ *   <li><b>Inwards.</b> {@link #reload} existed and had no callers, and {@code load()} was guarded
+ *       by {@code cache == null}, so a client never re-read the file after startup. A place drawn
+ *       in one client was invisible to every other one - and to their bots, which is why two of
+ *       them would happily work the same area.</li>
+ * </ul>
+ *
+ * So the cache is now a cache rather than the truth. Reads re-read the file when its timestamp has
+ * moved ({@link #all}), and writes take a cross-process lock, re-read, apply only what THIS client
+ * changed, and write the merged result ({@link #save}). The authority rule is deliberately narrow:
+ * a client asserts only the places it has actually created, edited or deleted since its last save,
+ * and takes the file's word for everything else. Same shape as {@link Observed}, and as XmlPrefs
+ * on the client side.
  */
 public class Places {
     private static final String FILE = "botplaces.json";
     private static final Object LOCK = new Object();
+    /** Attempts at the cross-process lock before a save gives up, at {@link #LOCK_WAIT_MS} apart. */
+    private static final int LOCK_TRIES = 50;
+    private static final long LOCK_WAIT_MS = 20;
 
     private static List<Place> cache = null;
+    /** Names this client has created or changed and not yet written out. Lower-cased. */
+    private static final Set<String> dirty = new LinkedHashSet<>();
+    /** Names this client has deleted and not yet written out. Lower-cased. */
+    private static final Set<String> removed = new LinkedHashSet<>();
+    /**
+     * The file's last-modified time as this client last saw it.
+     *
+     * The guard that makes re-reading cheap: an untouched file is a timestamp comparison rather
+     * than a parse, so {@link #all} can afford to be called from the middle of a bot loop.
+     */
+    private static long fileAt = -1;
 
     private Places() {}
 
@@ -44,11 +81,30 @@ public class Places {
         return Paths.get(System.getProperty("novocaine.placesfile", FILE));
     }
 
+    private static String key(String name) {
+        return (name == null) ? "" : name.toLowerCase(Locale.ROOT);
+    }
+
     public static List<Place> all() {
         synchronized (LOCK) {
-            if (cache == null)
-                cache = load();
+            long now = stamp();
+            if ((cache == null) || (now != fileAt)) {
+                cache = merge(load(), cache);
+                fileAt = now;
+            }
             return new ArrayList<>(cache);
+        }
+    }
+
+    // ------------------------------------------------------------------ persistence
+
+    /** The file's modification time, or -1 when it cannot be read at all. */
+    private static long stamp() {
+        try {
+            Path p = file();
+            return Files.exists(p) ? Files.getLastModifiedTime(p).toMillis() : 0;
+        } catch (IOException | RuntimeException e) {
+            return -1;
         }
     }
 
@@ -73,26 +129,70 @@ public class Places {
         return out;
     }
 
-    public static void save() {
+    /**
+     * What is on disk, with this client's own unflushed changes laid over the top.
+     *
+     * Only names in {@link #dirty} and {@link #removed} are taken from us; everything else comes
+     * from the file. That is the whole of the authority rule - a client that has not touched a
+     * place has no opinion about it, and in particular no opinion that it should stop existing.
+     */
+    private static List<Place> merge(List<Place> disk, List<Place> mine) {
+        List<Place> out = new ArrayList<>();
+        for (Place p : disk) {
+            String k = key(p.name);
+            if (removed.contains(k) || dirty.contains(k))
+                continue;
+            out.add(p);
+        }
+        if (mine != null) {
+            for (Place p : mine) {
+                if (dirty.contains(key(p.name)))
+                    out.add(p);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Writes this client's changes into the shared file without losing anyone else's.
+     *
+     * Runs under a sidecar lock file so two clients cannot interleave a read-modify-write, and
+     * re-reads inside that lock so what gets merged is what is actually on disk right now rather
+     * than what was there when this client started.
+     *
+     * A save that cannot get the lock is abandoned rather than forced. The deltas stay pending, so
+     * the next edit - or the next {@link #all} that notices the file moved - carries them; forcing
+     * it is how the whole-file overwrite got here in the first place.
+     *
+     * Private: a caller that mutates a place and then asks for a save has not said which place it
+     * changed, and this cannot merge safely without that. {@link #add}, {@link #remove} and
+     * {@link #touch} are the ways in, and each records the name before getting here.
+     */
+    private static void save() {
         synchronized (LOCK) {
             if (cache == null)
                 return;
-            /* Serialising is inside the try, and RuntimeException is caught alongside IOException,
-             * to match load() above. Both matter more here than they look: this runs on the UI
+            if (dirty.isEmpty() && removed.isEmpty())
+                return;
+            /* RuntimeException is caught alongside IOException on purpose: this runs on the UI
              * thread from a button press, and an exception that escapes it kills that thread and
              * takes the whole client with it - a bad place to learn a value would not serialise. */
-            try {
-                JSONArray arr = new JSONArray();
-                for (Place p : cache)
-                    arr.put(p.toJson());
-                Path dst = file();
-                Path tmp = dst.resolveSibling(dst.getFileName() + ".tmp");
-                Files.write(tmp, arr.toString(2).getBytes(StandardCharsets.UTF_8));
+            try (FileChannel lock = FileChannel.open(lockFile(),
+                     StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                FileLock held = grab(lock);
+                if (held == null) {
+                    NLog.log("nbot-places.log", "couldn't lock " + FILE + " to save; will retry on the next change");
+                    return;
+                }
                 try {
-                    Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE);
-                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-                    Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
+                    List<Place> merged = merge(load(), cache);
+                    write(merged);
+                    cache = merged;
+                    dirty.clear();
+                    removed.clear();
+                    fileAt = stamp();
+                } finally {
+                    held.release();
                 }
             } catch (IOException | RuntimeException e) {
                 NLog.crash("saving " + FILE, e);
@@ -100,12 +200,71 @@ public class Places {
         }
     }
 
+    private static Path lockFile() {
+        Path f = file();
+        return f.resolveSibling(f.getFileName() + ".lock");
+    }
+
+    private static FileLock grab(FileChannel ch) {
+        for (int i = 0; i < LOCK_TRIES; i++) {
+            try {
+                FileLock l = ch.tryLock();
+                if (l != null)
+                    return l;
+            } catch (IOException | RuntimeException e) {
+                // Another process holds it, or the filesystem refused; both mean "wait and retry".
+            }
+            try {
+                Thread.sleep(LOCK_WAIT_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Temp file, forced to disk, then renamed over the target.
+     *
+     * The force matters as much as the rename: without it the rename can be published while the
+     * bytes behind it are still in the page cache, so a machine that loses power between the two
+     * leaves a file that exists, is the right size, and is full of zeroes. Same reasoning as the
+     * client's own preference writer.
+     *
+     * AccessDeniedException is caught with AtomicMoveNotSupportedException because Windows raises
+     * it when anything has the destination open - a real and routine outcome with several clients
+     * running, and one that used to escape as an IOException and lose the save entirely.
+     */
+    private static void write(List<Place> list) throws IOException {
+        JSONArray arr = new JSONArray();
+        for (Place p : list)
+            arr.put(p.toJson());
+        Path dst = file();
+        Path tmp = dst.resolveSibling(dst.getFileName() + ".tmp");
+        try (FileChannel ch = FileChannel.open(tmp, StandardOpenOption.CREATE,
+                 StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            ch.write(ByteBuffer.wrap(arr.toString(2).getBytes(StandardCharsets.UTF_8)));
+            ch.force(true);
+        }
+        try {
+            Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.nio.file.AtomicMoveNotSupportedException | java.nio.file.AccessDeniedException e) {
+            Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
+        }
+    }
+
+    // ------------------------------------------------------------------ editing
+
     public static void add(Place p) {
         synchronized (LOCK) {
             if (cache == null)
                 cache = load();
             cache.removeIf(e -> e.name.equalsIgnoreCase(p.name));
             cache.add(p);
+            dirty.add(key(p.name));
+            removed.remove(key(p.name));
         }
         save();
     }
@@ -115,8 +274,65 @@ public class Places {
             if (cache == null)
                 cache = load();
             cache.removeIf(e -> e.name.equalsIgnoreCase(name));
+            removed.add(key(name));
+            dirty.remove(key(name));
         }
         save();
+    }
+
+    /**
+     * Records that a place already in the list has been changed in place, and writes it out.
+     *
+     * Needed because not every edit goes through {@link #add}: {@link Place#observe} mutates a
+     * place's memory directly from a bot thread, and a save that did not know which place had
+     * changed could not tell "mine, keep it" from "someone else's, leave it alone".
+     */
+    public static void touch(Place p) {
+        if (p == null)
+            return;
+        synchronized (LOCK) {
+            dirty.add(key(p.name));
+            removed.remove(key(p.name));
+        }
+        save();
+    }
+
+    // ------------------------------------------------------------------ working one at a time
+
+    /**
+     * Takes exclusive use of a place, when either the place or the bot says it should be exclusive.
+     *
+     * Two independent reasons to hold an area, and they are deliberately OR-ed rather than folded
+     * into one flag on either side:
+     *
+     * <ul>
+     *   <li>{@code needsAlone} is the bot's own answer. Surveying is the case it exists for - two
+     *       bots surveying one area do not merely duplicate the work, they corrupt it - and no
+     *       amount of configuring the PLACE can know which bot is about to be pointed at it.</li>
+     *   <li>{@link Place#exclusiveByPolicy} is the player's answer, for "I want one bot in here"
+     *       regardless of who is asking.</li>
+     * </ul>
+     *
+     * True when nothing needs claiming at all, so a caller can use it unconditionally. Also true
+     * when claiming is switched off or the registry is unusable - {@link WorkClaims} fails open on
+     * purpose, and a crew that cannot coordinate is better than a crew that will not work.
+     */
+    public static boolean claim(Place p, boolean needsAlone) {
+        if ((p == null) || !(needsAlone || p.exclusiveByPolicy()))
+            return true;
+        return WorkClaims.claim(WorkClaims.placeKey(p.name));
+    }
+
+    /** Keeps a claim from {@link #claim} alive. Free when the place was never claimed. */
+    public static void renewClaim(Place p, boolean needsAlone) {
+        if ((p != null) && (needsAlone || p.exclusiveByPolicy()))
+            WorkClaims.renew(WorkClaims.placeKey(p.name));
+    }
+
+    /** Hands a claimed place back. Free when the place was never claimed. */
+    public static void releaseClaim(Place p, boolean needsAlone) {
+        if ((p != null) && (needsAlone || p.exclusiveByPolicy()))
+            WorkClaims.release(WorkClaims.placeKey(p.name));
     }
 
     public static Place byName(String name) {
@@ -221,10 +437,17 @@ public class Places {
         return null;
     }
 
-    /** Drops the cache so an edit made in another client is picked up. */
+    /**
+     * Drops the cache so the next read comes from the file.
+     *
+     * Rarely needed now that {@link #all} re-reads on its own when the file moves; kept for the
+     * case where the file is replaced wholesale underneath a running client without its timestamp
+     * being trustworthy. Pending changes are NOT discarded - they are still owed to the file.
+     */
     public static void reload() {
         synchronized (LOCK) {
             cache = null;
+            fileAt = -1;
         }
     }
 }

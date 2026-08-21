@@ -63,7 +63,6 @@ public class UI {
     public final ActAudio.Root audio;
     public final Loader loader;
     public final CommandQueue queue = new CommandQueue();
-    public static final double scalef;
 	public GameUI gui = null;
 	private final Object guiLock = new Object();
 	public int lastWidgetID = 0;
@@ -1001,11 +1000,11 @@ public class UI {
     }
 
     public static double scale(double v) {
-	return(v * scalef);
+	return(v * scalef());
     }
 
     public static float scale(float v) {
-	return(v * (float)scalef);
+	return(v * (float)scalef());
     }
 
     public static int scale(int v) {
@@ -1013,11 +1012,11 @@ public class UI {
     }
 
     public static int rscale(double v) {
-	return((int)Math.round(v * scalef));
+	return((int)Math.round(v * scalef()));
     }
 
     public static Coord scale(Coord v) {
-	return(v.mul(scalef));
+	return(v.mul(scalef()));
     }
 
     public static Coord scale(int x, int y) {
@@ -1029,7 +1028,7 @@ public class UI {
     }
 
     public static Coord2d scale(Coord2d v) {
-	return(v.mul(scalef));
+	return(v.mul(scalef()));
     }
 
     static public Font scale(Font f, float size) {
@@ -1045,11 +1044,11 @@ public class UI {
     }
 
     public static double unscale(double v) {
-	return(v / scalef);
+	return(v / scalef());
     }
 
     public static float unscale(float v) {
-	return(v / (float)scalef);
+	return(v / (float)scalef());
     }
 
     public static int unscale(int v) {
@@ -1057,7 +1056,7 @@ public class UI {
     }
 
     public static Coord unscale(Coord v) {
-	return(v.div(scalef));
+	return(v.div(scalef()));
     }
 
     private static double maxscale = -1;
@@ -1073,9 +1072,15 @@ public class UI {
 		    Toolkit tk = Toolkit.instance();
 		    for(Monitor dev : tk.monitors()) {
 			Coord res = dev.resolution();
-			double scale = Math.min(res.x / 800.0, res.y / 600.0);
-			fscale = Math.max(fscale, scale);
-			sscale = Math.max(sscale, Math.rint(dev.density() / 5.0) * 0.05);
+			fscale = Math.max(fscale, Math.min(res.x / 800.0, res.y / 600.0));
+			/* Best answer first. The OS-chosen scaling factor is what the user actually
+			 * asked for; user DPI against the 96dpi baseline is the next best thing; the
+			 * panel's physical density is a last resort, and inferring the whole figure
+			 * from it (as this did) reads a dense panel as a request to scale up. */
+			double prefscale = dev.scaling();
+			if(prefscale == 0) prefscale = (dev.userdpi() / 96.0);
+			if(prefscale == 0) prefscale = (dev.density() / 100.0);
+			sscale = Math.max(sscale, Math.rint(prefscale / 0.05) * 0.05);
 		    }
 		} catch(Exception exc) {
 		    new Warning(exc, "could not determine maximum scaling factor").issue();
@@ -1101,8 +1106,18 @@ public class UI {
 	return(scale);
     }
 
-    static {
-	scalef = loadscale();
+    /* Not a static initialiser. Reading this opens the toolkit and enumerates monitors,
+     * and as a static final that happened the instant anything touched UI at all -
+     * including tools and headless paths that never draw anything. */
+    private static double scalef = 0;
+    public static double scalef() {
+	if(scalef == 0) {
+	    synchronized(UI.class) {
+		if(scalef == 0)
+		    scalef = loadscale();
+	    }
+	}
+	return(scalef);
     }
 
 	public void setGUI(GameUI gui) {

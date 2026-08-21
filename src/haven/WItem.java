@@ -301,6 +301,7 @@ public class WItem extends Widget implements DTarget {
 			if (itemname.equals("Head of Lettuce")) { // ND: Don't eat it, rather split it.
 				option = 1;
 			}
+			haven.automated.eat.EatObserver.onIact(item);
 			item.wdgmsg("iact", ev.c, ui.modflags());
 			ui.rcvr.rcvmsg(ui.lastWidgetID + 1, "cl", option, 0);
 		}
@@ -320,6 +321,7 @@ public class WItem extends Widget implements DTarget {
 				}
 			}
 		}
+	    haven.automated.eat.EatObserver.onIact(item);
 	    item.wdgmsg("iact", ev.c, ui.modflags());
 	    return(true);
 	}

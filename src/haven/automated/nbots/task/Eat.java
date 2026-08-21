@@ -60,6 +60,20 @@ public class Eat implements Task {
         if (eatFromPack(ctx) && ctx.energy() >= TARGET_ENERGY)
             return Outcome.ok();
 
+        /* Whatever is already open, before considering a walk. Most often that is a table the
+         * player has right-clicked - which is exactly where a meal is supposed to happen, and
+         * carries the table's own FEP bonus - but any open container will do.
+         *
+         * This used to be reachable only AFTER travelling to a food place and opening a container
+         * from the inside, so a bot standing at a laid table with the window open in front of it
+         * would walk across the map to a cupboard, or fail outright when no food place was
+         * defined. The scan is free; the window is already there. */
+        if (takeFoodFromOpenContainers(ctx)) {
+            eatFromPack(ctx);
+            if (ctx.energy() >= TARGET_ENERGY)
+                return Outcome.ok();
+        }
+
         Place place = Places.nearest(ctx.gui, PlaceRoles.FOOD);
         if (place == null)
             return Outcome.failed("nothing edible carried and no place tagged for food");
@@ -103,6 +117,7 @@ public class Eat implements Task {
     }
 
     private boolean eatOne(BotCtx ctx, WItem food) throws InterruptedException {
+        haven.automated.eat.EatObserver.onIact(food.item);
         food.item.wdgmsg("iact", food.c, 0);
         FlowerMenu fm = awaitMenu(ctx);
         if (fm == null)

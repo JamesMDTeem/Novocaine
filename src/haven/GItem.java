@@ -570,8 +570,32 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 		    }
 		}
 		chstate("hover");
-		move(hover.parentpos(parent, hover.sz.sub(overlap).sub(HoverDeco.hovermarg)));
+		move(hoverpos(hover));
 	    }
+	}
+
+	/**
+	 * Where the hover menu goes, folded back inside the parent when it would fall off.
+	 *
+	 * It always opened down and to the right of the item, so an item near the bottom or
+	 * right edge of the screen put half its menu outside the window where it could not be
+	 * read or clicked. Flipping to the other side of the item is tried first because that
+	 * keeps the menu attached to what it belongs to; clamping to the edge is the fallback
+	 * for when neither side fits.
+	 */
+	private Coord hoverpos(Widget hover) {
+	    Coord anchor = hover.parentpos(parent);
+	    Coord tc = anchor.add(hover.sz).sub(overlap).sub(HoverDeco.hovermarg);
+	    Coord lim = parent.sz;
+	    if(tc.y + sz.y > lim.y) {
+		int up = anchor.y + overlap.y + HoverDeco.hovermarg.y - sz.y;
+		tc.y = (up >= 0) ? up : Math.max(0, lim.y - sz.y);
+	    }
+	    if(tc.x + sz.x > lim.x) {
+		int left = anchor.x + overlap.x + HoverDeco.hovermarg.x - sz.x;
+		tc.x = (left >= 0) ? left : Math.max(0, lim.x - sz.x);
+	    }
+	    return(tc);
 	}
 
 	private void ckunhover() {
@@ -760,6 +784,9 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
 	@Override
 	public void wdgmsg(String msg, Object... args) {
 		if (msg.equals("take")) {
+			if (ui.checkCursorImage("gfx/hud/curs/eat")) {
+				haven.automated.eat.EatObserver.onFeastEat(this);
+			}
 			if (OptWnd.preventTablewareFromBreakingCheckBox.a && ui.checkCursorImage("gfx/hud/curs/eat")) { // ND: Only when using the table's Feast button
 				Window feastingWindow = null;
 				outerLoop:
