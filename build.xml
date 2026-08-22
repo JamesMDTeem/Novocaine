@@ -96,8 +96,7 @@ git-dirty-flag = ${git-dirty-flag}
       <javaversion atleast="21" />
     </condition>
     <javac srcdir="src" destdir="build/classes" debug="on"
-	   source="17" target="17" includeantruntime="no"
-	   bootclasspath="${boot-classpath}">
+	   release="17" includeantruntime="no">
       <classpath>
 	<pathelement path="lib/ext/jogl/jogl-all.jar" />
 	<pathelement path="lib/ext/jogl/gluegen-rt.jar" />

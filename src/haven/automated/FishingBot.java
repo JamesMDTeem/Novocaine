@@ -230,7 +230,7 @@ public class FishingBot extends Window implements Runnable, Stoppable {
         }
 
         Collections.shuffle(candidates);
-        WItem chosen = candidates.getFirst();
+        WItem chosen = candidates.get(0);
 
         chosen.item.wdgmsg("take", Coord.z);
 
@@ -264,7 +264,7 @@ public class FishingBot extends Window implements Runnable, Stoppable {
         }
 
         Collections.shuffle(candidates);
-        WItem chosen = candidates.getFirst();
+        WItem chosen = candidates.get(0);
 
         chosen.item.wdgmsg("take", Coord.z);
 
@@ -299,7 +299,7 @@ public class FishingBot extends Window implements Runnable, Stoppable {
         }
 
         Collections.shuffle(candidates);
-        WItem chosen = candidates.getFirst();
+        WItem chosen = candidates.get(0);
 
         chosen.item.wdgmsg("take", Coord.z);
 
@@ -333,7 +333,7 @@ public class FishingBot extends Window implements Runnable, Stoppable {
         }
 
         Collections.shuffle(candidates);
-        WItem chosen = candidates.getFirst();
+        WItem chosen = candidates.get(0);
 
         chosen.item.wdgmsg("take", Coord.z);
 
