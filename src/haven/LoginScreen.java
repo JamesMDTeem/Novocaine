@@ -723,7 +723,7 @@ public class LoginScreen extends Widget {
 		firstTimeUseWindow = new Window(Coord.z, "Hey!", true) {
 			{
 				Widget prev;
-				prev = add(new Label("This is your first time launching Hurricane!"), UI.scale(new Coord(34, 3)));
+				prev = add(new Label("This is your first time launching Novocaine!"), UI.scale(new Coord(34, 3)));
 				prev = add(new Label("Please make sure to set up your Keybindings and Settings!"), prev.pos("bl").adds(0, 8).xs(0));
 				prev = add(new Label("The default ones are what Nightdawg uses."), prev.pos("bl").adds(0, 8).xs(34));
 				Button close = new Button(UI.scale(120), "Okay!", false) {
