@@ -44,7 +44,7 @@ public class Config {
     public static final Variable<Boolean> exp = Variable.propb("haven.experimental", false);
     public static final boolean windows = System.getProperty("os.name", "").startsWith("Windows");
     public final Properties localprops = getlocalprops(), userprops = getuserprops();
-	public static final String clientVersion = "v1.67";
+	public static final String clientVersion = "v1.69";
 	public static String githubLatestVersion = "Loading...";
 
 	/**
@@ -434,11 +434,9 @@ public class Config {
     }
 
     static {
-	Console.setscmd("par", new Console.Command() {
-		public void run(Console cons, String[] args) {
-		    par.set(Utils.parsebool(args[1]));
-		}
-	    });
+	Console.setscmd("par", (cons, args) -> {
+	    par.set(Utils.parsebool(args[1]));
+	});
     }
 
 	public static final LinkedHashMap<String, String> properKeyNames = new LinkedHashMap<String, String>(){{

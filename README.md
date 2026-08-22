@@ -1,7 +1,7 @@
 # Novocaine
 
 A custom Haven & Hearth client, built on
-[Nightdawg/Hurricane](https://github.com/Nightdawg/Hurricane) (currently v1.67) with our own
+[Nightdawg/Hurricane](https://github.com/Nightdawg/Hurricane) (currently v1.69) with our own
 features layered on top. All credit for the base client goes to Nightdawg and the Hurricane
 project, and to Loftar's Vanilla client under that — Loftar's own README is preserved here as
 [`README_Vanilla-Client`](README_Vanilla-Client).
