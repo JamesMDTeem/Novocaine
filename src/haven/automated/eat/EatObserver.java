@@ -4,6 +4,7 @@ import haven.BAttrWnd;
 import haven.FlowerMenu;
 import haven.GItem;
 import haven.GameUI;
+import haven.Glob;
 import haven.Indir;
 import haven.ItemInfo;
 import haven.Loading;
@@ -12,17 +13,24 @@ import haven.Resource;
 import haven.automated.cookbook.FoodService;
 import haven.res.ui.tt.q.qbuff.QBuff;
 import haven.resutil.FoodInfo;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -63,9 +71,36 @@ import java.util.concurrent.TimeUnit;
  * hypothetical - see the plan) looks identical, from the "eat" record alone, to a hook that silently
  * captured nothing. The raw stream is what settles which one actually happened: replaying it against
  * an eat's timestamp shows the true sequence of pushes in between.
+ *
+ * "eat", "trig", and "satiation" records - not "food" or "glut", the two purely-local diagnostic
+ * streams - are additionally queued and uploaded in batches to the mapper server's
+ * {@code /client/{token}/eatlog}, tagged with the character that produced them. The server pools
+ * these across every character and tenant member into IEatLogService's calibration: the same
+ * variety-coefficient and satiation-category measurements this class's own doc above describes,
+ * done once centrally with far more samples than any one character's local log can supply, and
+ * served back to {@code EatHelperWindow} instead of the hardcoded wiki fallback. Uploads reuse the
+ * cookbook endpoint/token already configured for food uploads - nothing new to set up - and simply
+ * don't happen while that's unconfigured, same as {@link CookbookClient}.
  */
 public class EatObserver {
     private static volatile String chrid;
+    private static volatile GameUI gui;
+
+    /** Same 9-entry mapping {@code EatHelperWindow} keeps its own copy of - small and static
+     *  enough (a naming table, not a formula) that duplicating it beats threading a dependency
+     *  between the measurement side and the planning side for its sake. */
+    private static final Map<String, String> STAT_TO_GLOB = new LinkedHashMap<>();
+    static {
+        STAT_TO_GLOB.put("STR", "str");
+        STAT_TO_GLOB.put("AGI", "agi");
+        STAT_TO_GLOB.put("INT", "int");
+        STAT_TO_GLOB.put("CON", "con");
+        STAT_TO_GLOB.put("PER", "prc");
+        STAT_TO_GLOB.put("CHA", "csm");
+        STAT_TO_GLOB.put("DEX", "dex");
+        STAT_TO_GLOB.put("WILL", "wil");
+        STAT_TO_GLOB.put("PSY", "psy");
+    }
 
     private static final Object lock = new Object();
 
@@ -134,11 +169,118 @@ public class EatObserver {
     private static Path logFile;
 
     public static synchronized void bind(GameUI g) {
+        gui = g;
         chrid = (g != null) ? g.chrid : null;
         logFile = null;
         synchronized (lock) {
             pendingClick = null;
             menuOwners.clear();
+        }
+    }
+
+    /** Highest current base (equipment-unmodified) attribute, or -1 if the character sheet isn't
+     *  available yet. The "new hunger system reducing once a week" is exactly the kind of change
+     *  this exists for: stamped on every record rather than inferred after the fact, so working
+     *  out its formula doesn't depend on the same settled-cap heuristic that found the old one. */
+    private static int computeTopStat() {
+        try {
+            GameUI g = gui;
+            if (g == null || g.ui == null || g.ui.sess == null || g.ui.sess.glob == null)
+                return -1;
+            int best = -1;
+            for (String glob : STAT_TO_GLOB.values()) {
+                Glob.CAttr a = g.ui.sess.glob.getcattr(glob);
+                if (a != null)
+                    best = Math.max(best, a.base);
+            }
+            return best;
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    // ------------------------------------------------------------------ server upload
+
+    /** Record types that go to the server, alongside the local file. Deliberately excludes
+     *  "food" and "glut" - see the class doc on why those stay local-only. */
+    private static final Set<String> UPLOAD_TYPES = new HashSet<>(java.util.Arrays.asList("eat", "trig", "satiation"));
+
+    /** Splitting the user's "10-30s" preference down the middle. */
+    private static final long UPLOAD_INTERVAL_SECONDS = 15;
+
+    /** Backstop against unbounded growth if uploads keep failing (endpoint down, misconfigured,
+     *  offline) for a long time - old records are dropped rather than the queue growing forever.
+     *  Well above what one flush interval could plausibly produce even during fast eating. */
+    private static final int MAX_UPLOAD_QUEUE = 5000;
+
+    private static final class QueuedRecord {
+        final String chrid;
+        final JSONObject rec;
+        QueuedRecord(String chrid, JSONObject rec) { this.chrid = chrid; this.rec = rec; }
+    }
+
+    private static final ConcurrentLinkedQueue<QueuedRecord> uploadQueue = new ConcurrentLinkedQueue<>();
+
+    static {
+        FoodService.scheduler.scheduleAtFixedRate(EatObserver::flushUpload,
+                UPLOAD_INTERVAL_SECONDS, UPLOAD_INTERVAL_SECONDS, TimeUnit.SECONDS);
+    }
+
+    private static void enqueueForUpload(JSONObject rec) {
+        String id = chrid;
+        if (id == null || id.isEmpty())
+            return;
+        while (uploadQueue.size() >= MAX_UPLOAD_QUEUE)
+            uploadQueue.poll();
+        uploadQueue.add(new QueuedRecord(id, rec));
+    }
+
+    /** One HTTP POST per character with queued records, same auth as {@link CookbookClient}. A
+     *  character switch mid-queue splits cleanly since every record already carries its own
+     *  chrid from the moment it was enqueued, not the character live at flush time. */
+    private static void flushUpload() {
+        if (uploadQueue.isEmpty())
+            return;
+        String endpoint = FoodService.cachedEndpoint();
+        if (endpoint == null || !endpoint.endsWith("/food"))
+            return; // not configured, or doesn't look like a food-upload URL - nothing to send to
+
+        Map<String, JSONArray> byChar = new LinkedHashMap<>();
+        QueuedRecord q;
+        while ((q = uploadQueue.poll()) != null)
+            byChar.computeIfAbsent(q.chrid, k -> new JSONArray()).put(q.rec);
+
+        String uploadUrl = endpoint.substring(0, endpoint.length() - "/food".length()) + "/eatlog";
+        for (Map.Entry<String, JSONArray> e : byChar.entrySet())
+            postBatch(uploadUrl, e.getKey(), e.getValue());
+    }
+
+    private static void postBatch(String uploadUrl, String characterId, JSONArray records) {
+        HttpURLConnection connection = null;
+        try {
+            JSONObject body = new JSONObject();
+            body.put("characterId", characterId);
+            body.put("records", records);
+
+            connection = (HttpURLConnection) URI.create(uploadUrl).toURL().openConnection();
+            connection.setRequestMethod("POST");
+            connection.setRequestProperty("Content-Type", "application/json");
+            connection.setRequestProperty("User-Agent", "H&H Client");
+            connection.setDoOutput(true);
+            String token = FoodService.cachedToken();
+            if (token != null && !token.isEmpty())
+                connection.setRequestProperty("Authorization", "Bearer " + token);
+
+            try (OutputStream out = connection.getOutputStream()) {
+                out.write(body.toString().getBytes(StandardCharsets.UTF_8));
+            }
+            connection.getResponseCode(); // drain the response; failures are silent, matching FoodService
+        } catch (Exception e) {
+            // Best-effort upload; a failed batch must never surface to the player, and the local
+            // file already has this data regardless of whether the server got it.
+        } finally {
+            if (connection != null)
+                connection.disconnect();
         }
     }
 
@@ -236,32 +378,44 @@ public class EatObserver {
         }
     }
 
+    /**
+     * The same key {@code onSatiation} logs a reading under, and so the same key the server's
+     * calibration's satiation-category map is keyed by - callers matching live
+     * {@code BAttrWnd.Constipations.El} entries against that map (see {@code EatHelperWindow})
+     * must derive it identically, which is the whole reason this is a shared method rather than
+     * logic duplicated at both call sites: two hand-written copies of a hex-disambiguation rule
+     * are two chances for them to quietly drift apart.
+     */
+    public static String resolveSatiationKey(ResData t) {
+        String resName;
+        try {
+            resName = t.res.get().name;
+        } catch (Loading l) {
+            return "?loading";
+        } catch (Exception e) {
+            return "?unknown";
+        }
+        // Two logically distinct satiation groups can share one representative icon (observed:
+        // "gfx/invobjs/meat" carrying more than one live penalty value at once), so the resource
+        // name alone isn't always a unique key. sdt is the rest of what the server actually sent
+        // for this group - append it (hex, since it's arbitrary binary) whenever it's non-empty
+        // so two same-icon groups don't collide into one entry here the way they would upstream.
+        try {
+            byte[] sdt = t.sdt.fin();
+            if (sdt.length > 0)
+                return resName + "#" + toHex(sdt);
+        } catch (Exception e) {
+            // sdt inspection is a best-effort disambiguator, not load-bearing - fall back to the
+            // resource name alone rather than lose the sample.
+        }
+        return resName;
+    }
+
     public static void onSatiation(ResData t, double a) {
         if (!enabled())
             return;
         try {
-            String resName;
-            try {
-                resName = t.res.get().name;
-            } catch (Loading l) {
-                resName = "?loading";
-            } catch (Exception e) {
-                resName = "?unknown";
-            }
-            // Two logically distinct satiation groups can share one representative icon (observed:
-            // "gfx/invobjs/meat" carrying more than one live penalty value at once), so the resource
-            // name alone isn't always a unique key. sdt is the rest of what the server actually sent
-            // for this group - append it (hex, since it's arbitrary binary) whenever it's non-empty
-            // so two same-icon groups don't collide into one entry here the way they would upstream.
-            String name = resName;
-            try {
-                byte[] sdt = t.sdt.fin();
-                if (sdt.length > 0)
-                    name = resName + "#" + toHex(sdt);
-            } catch (Exception e) {
-                // sdt inspection is a best-effort disambiguator, not load-bearing - fall back to the
-                // resource name alone rather than lose the sample.
-            }
+            String name = resolveSatiationKey(t);
             // a is the server's raw value; FoodInfo.tipimg treats (1 - el.a), itself 1 - a again,
             // as the FEP/hunger multiplier - so the penalty this log wants is 1 - a directly. See
             // the plan's satiation section for the derivation.
@@ -418,7 +572,36 @@ public class EatObserver {
         return logFile;
     }
 
-    private static synchronized void write(JSONObject rec) {
+    private static void write(JSONObject rec) {
+        stamp(rec);
+        writeLocal(rec);
+        String type = rec.optString("type", null);
+        if (type != null && UPLOAD_TYPES.contains(type))
+            enqueueForUpload(rec);
+    }
+
+    /**
+     * Every record - not just "eat" - gets the character's current unmodified top stat, FEP
+     * multiplier, and satiety (glut) stamped on at write time. "eat" records already carry gmod/
+     * glut nested inside before/after (the transition across that one bite); these are the
+     * unconditional "state right now" reading every record gets, including "trig" and
+     * "satiation", which previously had no hunger-state context at all. One choke point rather
+     * than repeating this at all five call sites.
+     */
+    private static void stamp(JSONObject rec) {
+        try {
+            int topStat = computeTopStat();
+            if (topStat >= 0)
+                rec.put("topStat", topStat);
+            State s = state;
+            rec.put("gmod", s.gmod);
+            rec.put("glut", s.glut);
+        } catch (Exception e) {
+            // Best-effort context; missing it must not cost the record itself.
+        }
+    }
+
+    private static synchronized void writeLocal(JSONObject rec) {
         try {
             Path file = logFile();
             Files.createDirectories(file.getParent());

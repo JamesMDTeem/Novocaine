@@ -5437,9 +5437,9 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[185,185,185]{The plan assumes an empty study grid, and spends your whole Intelligence - clear the grid before following it.}", UI.scale(300));
 	public static final Object eatObserverTooltip = RichText.render("Logs FEP/hunger/satiation state before and after every food you eat, to a local file (eatlog/<character>.jsonl)." +
-			"\nUsed to calibrate the Eating Helper's numbers - the variety bonus, satiation formulas, and FEP tiers - against what actually happens in play, instead of trusting the wiki." +
+			"\nUsed to calibrate the Eating Helper's numbers - the variety bonus and satiation categories - against what actually happens in play, instead of trusting the wiki." +
 			"\n" +
-			"\n$col[185,185,185]{Off by default. Nothing is sent anywhere; the log stays on this machine.}", UI.scale(300));
+			"\n$col[185,185,185]{Off by default. The eat/level-up/satiation records (not the food-bar or hunger-decay ticks) are also uploaded in small batches to your configured Cookbook Endpoint, tagged with this character, so the calibration can pool everyone's data - see the Cookbook Endpoint/Token fields above.}", UI.scale(300));
 	public static final Object eatHelperTooltip = RichText.render("Enter target attribute points and it works out which foods from your cookbook catalog get you there, ranked by hunger cost." +
 			"\n" +
 			"\n$col[185,185,185]{Advise only - nothing is eaten automatically. Requires the Cookbook Endpoint/Token above to be configured.}" +

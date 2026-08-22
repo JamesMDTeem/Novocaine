@@ -1,5 +1,6 @@
 package haven.automated.eat;
 
+import haven.BAttrWnd;
 import haven.Button;
 import haven.CheckBox;
 import haven.Coord;
@@ -32,13 +33,16 @@ import java.util.Map;
  * The plan itself is {@link EatPlanner#plan}; a wrong answer is a planner bug, a wrong-looking one
  * is a bug in here, and the two stay separable.
  *
- * Two simplifications versus the full plan design, both called out in the status readout rather
- * than hidden: satiation isn't wired to live per-category state yet (BAttrWnd's satiation entries
- * are keyed by an arbitrary resource, not a clean category name - see EatObserver's "First real
- * session" notes on why that mapping isn't trivial), so every dish plans as unsatiated; and the
- * variety-reduction coefficient is the wiki's table, nearest-tier by current hunger level, not a
- * runtime-measured value - EatObserver's calibration log exists precisely to eventually replace it,
- * but wiring that persistence up is follow-on work, not done here.
+ * Both the variety coefficient and satiation now prefer {@link CalibrationClient}'s
+ * server-measured values (pooled from every character's uploaded {@code EatObserver} log - see
+ * that class and {@code IEatLogService}) over the wiki. Both still have a real coverage
+ * dependency, called out in the status readout rather than hidden: the variety coefficient falls
+ * back to the wiki's table for any hunger-level bucket with fewer than
+ * {@link #MIN_CALIBRATION_SAMPLES} measurements, and satiation can only price a live
+ * {@code Constipations} entry whose resource key the server has resolved to a category from at
+ * least two agreeing samples - an entry with no match yet plans as unsatiated for that one
+ * category, not for the whole dish. Both gaps close themselves the more this window (and
+ * EatObserver) gets used across the tenant; there is nothing to configure.
  */
 public class EatHelperWindow extends Window {
     private static final String[] STATS = {"STR", "AGI", "INT", "CON", "PER", "CHA", "DEX", "WILL", "PSY"};
@@ -74,6 +78,43 @@ public class EatHelperWindow extends Window {
             }
         }
         return WIKI_COEFS[best];
+    }
+
+    /** Below this many pooled samples in its bucket, a measured coefficient isn't meaningfully
+     *  better than the wiki guess it would replace - fall back rather than trust a thin sample. */
+    private static final int MIN_CALIBRATION_SAMPLES = 3;
+
+    /** Nearest measured bucket within this much gmod is close enough to use; further than that,
+     *  the bucket is answering a different hunger level and the wiki's nearest-tier guess is the
+     *  more honest fallback. Half the wiki table's own tightest gap (Full 0.9 to Stuffed 0.75). */
+    private static final double MAX_CALIBRATION_GMOD_DIST = 0.1;
+
+    /** True if {@link #resolveVarietyCoef} is currently backed by a measured sample. Drives the
+     *  status line's "(measured, N samples)" vs "(wiki estimate)" wording. */
+    private boolean varietyIsMeasured = false;
+    private int varietySamplesUsed = 0;
+
+    private double resolveVarietyCoef(double gmod) {
+        varietyIsMeasured = false;
+        varietySamplesUsed = 0;
+        CalibrationClient.Calibration cal = CalibrationClient.cached();
+        if (cal != null) {
+            CalibrationClient.VarietySample best = null;
+            double bestDist = Double.MAX_VALUE;
+            for (CalibrationClient.VarietySample s : cal.variety) {
+                double dist = Math.abs(s.gmod - gmod);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    best = s;
+                }
+            }
+            if (best != null && best.samples >= MIN_CALIBRATION_SAMPLES && bestDist <= MAX_CALIBRATION_GMOD_DIST) {
+                varietyIsMeasured = true;
+                varietySamplesUsed = best.samples;
+                return best.coefficient;
+            }
+        }
+        return wikiVarietyCoef(gmod);
     }
 
     private final GameUI gui;
@@ -151,6 +192,7 @@ public class EatHelperWindow extends Window {
             shown = true;
             show();
             CookbookClient.refreshIfStale();
+            CalibrationClient.refreshIfStale();
         }
         refreshStatus();
     }
@@ -207,8 +249,11 @@ public class EatHelperWindow extends Window {
         try {
             double cap = gui.chrwdg.battr.feps.cap;
             double gmod = gui.chrwdg.battr.glut.gmod;
-            sb.append(String.format("Cap: %.1f  ·  FEP mult: %.2fx  ·  variety coef: %.3f (wiki estimate)",
-                    cap, gmod, wikiVarietyCoef(gmod)));
+            double coef = resolveVarietyCoef(gmod);
+            String coefSrc = varietyIsMeasured
+                    ? String.format("measured, %d samples", varietySamplesUsed) : "wiki estimate";
+            sb.append(String.format("Cap: %.1f  ·  FEP mult: %.2fx  ·  variety coef: %.3f (%s)",
+                    cap, gmod, coef, coefSrc));
         } catch (Exception e) {
             sb.append("Character sheet not loaded yet.");
         }
@@ -220,6 +265,9 @@ public class EatHelperWindow extends Window {
             sb.append("  ·  cookbook: ").append(err);
         else
             sb.append("  ·  cookbook: loading…");
+        CalibrationClient.Calibration cal = CalibrationClient.cached();
+        if (cal != null)
+            sb.append(String.format("  ·  %d satiation categories known", cal.satiationCategoryMap.size()));
         status.settext(sb.toString());
     }
 
@@ -271,11 +319,9 @@ public class EatHelperWindow extends Window {
 
             double cap = gui.chrwdg.battr.feps.cap;
             double gmod = gui.chrwdg.battr.glut.gmod;
-            double variety = wikiVarietyCoef(gmod);
+            double variety = resolveVarietyCoef(gmod);
 
-            // Satiation isn't wired to live per-category state yet - see the class doc. Plans run
-            // as if unsatiated, which is optimistic; real hunger cost may run somewhat higher.
-            Map<String, Double> satiation = new LinkedHashMap<>();
+            Map<String, Double> satiation = readLiveSatiation();
 
             ModifierContext mods = ModifierContext.resolve(ui);
             double accountMult = mods != null ? mods.accountMult : 1.0;
@@ -288,6 +334,35 @@ public class EatHelperWindow extends Window {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    /**
+     * Live {@code Constipations} entries keyed the same way {@code EatObserver.onSatiation}
+     * already logs them, resolved to a wiki category name via the server's calibration map so
+     * {@code EatPlanner}'s {@code satMod} (keyed by category, since that's what the cookbook
+     * catalog's dishes carry) can actually use them. An entry with no resolved category yet is
+     * simply absent from the result - {@code satMod} treats a missing group as unsatiated, which
+     * is the honest answer for "this game state exists but we don't know its name yet", not a bug
+     * to work around.
+     */
+    private Map<String, Double> readLiveSatiation() {
+        Map<String, Double> satiation = new LinkedHashMap<>();
+        CalibrationClient.Calibration cal = CalibrationClient.cached();
+        if (cal == null || cal.satiationCategoryMap.isEmpty())
+            return satiation;
+        if (gui.chrwdg == null || gui.chrwdg.battr == null || gui.chrwdg.battr.cons == null)
+            return satiation;
+        for (BAttrWnd.Constipations.El el : gui.chrwdg.battr.cons.els) {
+            try {
+                String key = EatObserver.resolveSatiationKey(el.t);
+                String category = cal.satiationCategoryMap.get(key);
+                if (category != null)
+                    satiation.merge(category, el.a, Math::max);
+            } catch (Exception e) {
+                // One unresolved entry must not cost the rest of the satiation picture.
+            }
+        }
+        return satiation;
     }
 
     // -- results table --------------------------------------------------------------------------
