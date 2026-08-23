@@ -103,7 +103,7 @@ public class Equipory extends Widget implements DTarget {
 	public boolean isMannequin = false;
 	public static CheckBox autoDropLeechesCheckBox;
 	public static CheckBox autoDropTicksCheckBox;
-	public static CheckBox autoEquipBunnySlippersPlateBootsCheckBox;
+	public static CheckBox autoSwitchBootsCheckBox;
 	boolean checkForLeeches = false;
 	boolean checkForTicks = false;
 
@@ -173,15 +173,15 @@ public class Equipory extends Widget implements DTarget {
 				a = val;
 			}
 		}, UI.scale(10), isz.y + UI.scale(12));
-		prev = add(autoEquipBunnySlippersPlateBootsCheckBox = new CheckBox("Auto-Equip Bunny Slippers/Plate Boots"){
-			{a = OptWnd.autoEquipBunnySlippersPlateBootsCheckBox.a;}
+		prev = add(autoSwitchBootsCheckBox = new CheckBox("Auto-Switch Bunny Slippers/Armor Boots"){
+			{a = OptWnd.autoSwitchBootsCheckBox.a;}
 			public void set(boolean val) {
-				if (OptWnd.autoEquipBunnySlippersPlateBootsCheckBox != null)
-					OptWnd.autoEquipBunnySlippersPlateBootsCheckBox.set(val);
+				if (OptWnd.autoSwitchBootsCheckBox != null)
+					OptWnd.autoSwitchBootsCheckBox.set(val);
 				a = val;
 			}
 		}, prev.pos("ur").adds(10, 0));
-		autoEquipBunnySlippersPlateBootsCheckBox.tooltip = OptWnd.autoEquipBunnySlippersPlateBootsCheckBox.tooltip;
+		autoSwitchBootsCheckBox.tooltip = OptWnd.autoSwitchBootsCheckBox.tooltip;
 		prev = add(autoDropTicksCheckBox = new CheckBox("Auto-Drop Ticks"){
 			{a = Utils.getprefb("autoDropTicks", true);}
 			public void set(boolean val) {

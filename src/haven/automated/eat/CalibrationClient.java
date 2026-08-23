@@ -60,6 +60,9 @@ public class CalibrationClient {
     private static volatile boolean fetching = false;
     private static volatile String lastError = null;
 
+    /** World the cached calibration was fetched for - see {@link #refreshIfStale()}. */
+    private static volatile String cachedWorld = null;
+
     public static Calibration cached() {
         return cached;
     }
@@ -68,10 +71,15 @@ public class CalibrationClient {
         return lastError;
     }
 
+    /**
+     * Calibration is pooled per world - the satiation-category half of it is derived from that
+     * world's foods - so a calibration fetched for another world is stale however fresh it is.
+     */
     public static void refreshIfStale() {
         if (fetching)
             return;
-        if (cached != null && System.currentTimeMillis() - cachedAt < CACHE_TTL_MS)
+        boolean sameWorld = java.util.Objects.equals(cachedWorld, FoodService.worldTag());
+        if (cached != null && sameWorld && System.currentTimeMillis() - cachedAt < CACHE_TTL_MS)
             return;
         fetch(null);
     }
@@ -82,8 +90,10 @@ public class CalibrationClient {
         fetching = true;
         FoodService.scheduler.execute(() -> {
             try {
+                String world = FoodService.worldTag();
                 Calibration result = fetchNow();
                 cached = result;
+                cachedWorld = world;
                 cachedAt = System.currentTimeMillis();
                 lastError = null;
                 if (onDone != null)
@@ -102,9 +112,9 @@ public class CalibrationClient {
         String endpoint = FoodService.cachedEndpoint();
         if (endpoint == null)
             throw new IllegalStateException("Cookbook endpoint not configured");
-        if (!endpoint.endsWith("/food"))
+        String url = FoodService.endpointFor("eatcalibration");
+        if (url == null)
             throw new IllegalStateException("Configured endpoint doesn't look like a food-upload URL: " + endpoint);
-        String url = endpoint.substring(0, endpoint.length() - "/food".length()) + "/eatcalibration";
 
         HttpURLConnection connection = null;
         try {

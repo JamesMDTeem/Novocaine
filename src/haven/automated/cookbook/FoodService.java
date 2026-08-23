@@ -11,6 +11,7 @@ import org.json.JSONArray;
 import java.io.OutputStream;
 import java.math.BigInteger;
 import java.net.HttpURLConnection;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -99,6 +100,89 @@ public class FoodService {
         return cachedToken;
     }
 
+    /** The path segment a configured cookbook endpoint ends in. */
+    private static final String FOOD_SEGMENT = "/food";
+
+    /**
+     * Rewrites the configured food-upload endpoint into one of its siblings under the same
+     * {@code /client/{token}/} path, carrying any query string across: {@code .../food?world=W16}
+     * plus {@code "cookbook"} gives {@code .../cookbook?world=W16}.
+     *
+     * The query string is the part that matters. The server namespaces the cookbook by world
+     * and takes the world as {@code ?world=}, so a player with clients in two live worlds
+     * points each install's endpoint at a different one - and every sibling call has to land
+     * on the same world the uploads did, or the Eating Helper plans against the wrong catalog.
+     *
+     * @return the sibling URL, or null when the configured value is not a food-upload URL.
+     */
+    public static String siblingEndpoint(String endpoint, String segment) {
+        if (endpoint == null) {
+            return null;
+        }
+        int q = endpoint.indexOf('?');
+        String path = (q < 0) ? endpoint : endpoint.substring(0, q);
+        String query = (q < 0) ? "" : endpoint.substring(q);
+        if (!path.endsWith(FOOD_SEGMENT)) {
+            return null;
+        }
+        return path.substring(0, path.length() - FOOD_SEGMENT.length()) + "/" + segment + query;
+    }
+
+    /**
+     * The URL for one client endpoint segment ("cookbook", "eatcalibration", ...), tagged with
+     * the world of the character being played. Null when no usable endpoint is configured.
+     */
+    public static String endpointFor(String segment) {
+        return withWorld(siblingEndpoint(cachedEndpoint, segment));
+    }
+
+    /** The food-upload URL, tagged with the world of the character being played. */
+    public static String uploadUrl() {
+        return withWorld(cachedEndpoint);
+    }
+
+    /**
+     * The world of the character being played, or null when it isn't known (see
+     * {@link WorldTag}). Callers cache per-world data against this.
+     */
+    public static String worldTag() {
+        return WorldTag.current();
+    }
+
+    /**
+     * Appends the session's world as a query tag, so the server files this upload under the
+     * world it was actually observed in rather than whichever one the tenant is configured for.
+     *
+     * A world already present in the configured endpoint is left alone: it was typed there
+     * deliberately, and an explicit override should beat auto-detection - not least so a
+     * misdetected world can be corrected without a client change.
+     */
+    private static String withWorld(String url) {
+        if (url == null) {
+            return null;
+        }
+        String world = WorldTag.current();
+        if (world == null || hasWorldParam(url)) {
+            return url;
+        }
+        String sep = (url.indexOf('?') < 0) ? "?" : "&";
+        return url + sep + "world=" + URLEncoder.encode(world, StandardCharsets.UTF_8);
+    }
+
+    /** Whether the URL's query string already carries a world parameter. */
+    private static boolean hasWorldParam(String url) {
+        int q = url.indexOf('?');
+        if (q < 0) {
+            return false;
+        }
+        for (String param : url.substring(q + 1).split("&")) {
+            if (param.equals("world") || param.startsWith("world=")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void checkFood(List<ItemInfo> ii, Resource res, String genus) {
         List<ItemInfo> infoList = new ArrayList<>(ii);
         Defer.later(() -> {
@@ -176,8 +260,9 @@ public class FoodService {
             return;
         }
 
-        final String endpoint = cachedEndpoint;
-        if (endpoint == null || !isValidEndpoint()) return;
+        if (cachedEndpoint == null || !isValidEndpoint()) return;
+        final String endpoint = uploadUrl();
+        if (endpoint == null) return;
         final java.net.URI apiBase = java.net.URI.create(endpoint.trim());
 
         List<ParsedFoodInfo> toSend = new ArrayList<>();
@@ -236,10 +321,19 @@ public class FoodService {
         }
     }
 
+    /**
+     * Content hash used to skip re-sending a dish already uploaded this session.
+     *
+     * The world is part of the key. Without it, inspecting a dish on a character in one world
+     * would suppress the upload of the identical dish seen on a character in another - the
+     * second world would silently never learn a recipe, and the gap would look like the server
+     * dropping data rather than the client never sending it.
+     */
     private static String generateHash(ParsedFoodInfo foodInfo) {
         try {
             StringBuilder stringBuilder = new StringBuilder();
-            stringBuilder.append(foodInfo.itemName).append(";")
+            stringBuilder.append(WorldTag.current()).append(";")
+                    .append(foodInfo.itemName).append(";")
                     .append(foodInfo.resourceName).append(";");
             foodInfo.ingredients.forEach(it -> stringBuilder.append(it.name).append(";").append(it.percentage).append(";"));
 

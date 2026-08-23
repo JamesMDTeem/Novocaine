@@ -483,16 +483,44 @@ public class WItem extends Widget implements DTarget {
 		g.chcolor();
 	}
 
-	private void drawadhocicon(GOut g, String resname, int offsetX, int offsetY) {
+	/**
+	 * Seasoning icons, uploaded once each instead of once per item per frame.
+	 *
+	 * g.image(BufferedImage, ...) is not a cheap call: it builds a TexI, uploads it, draws it and
+	 * disposes it, every time. There are only four of these icons in the whole client, so a
+	 * handful of entries covers them for the session.
+	 */
+	private static final TexCache<String> adhocIcons = new TexCache<>(64, resname -> {
 		Resource res = Resource.remote().load(resname).get();
-		BufferedImage bufferedimage = res.layer(Resource.imgc).img;
-		g.image(bufferedimage, new Coord(UI.scale(offsetX), sz.y-UI.scale(16+offsetY)), new Coord(UI.scale(16),UI.scale(16)));
+		return new TexI(res.layer(Resource.imgc).img);
+	});
+
+	private void drawadhocicon(GOut g, String resname, int offsetX, int offsetY) {
+		// Still inside the caller's try/catch: a resource that has not finished loading throws
+		// Loading out of here, nothing is cached, and the next frame asks again.
+		Tex tex = adhocIcons.get(resname);
+		if(tex != null)
+			g.image(tex, new Coord(UI.scale(offsetX), sz.y-UI.scale(16+offsetY)), new Coord(UI.scale(16),UI.scale(16)));
 	}
+
+	/**
+	 * Stack-count textures, rendered once per distinct count rather than once per frame.
+	 *
+	 * quantityFoundry and quantityColor are static and the string is the whole of the input, so
+	 * one texture per number serves every item in every open container. Rendering it inline -
+	 * which is what this used to do - cost two BufferedImages and one undisposed GL texture per
+	 * countable item per frame; with a cellar open that measured ~50 texture uploads a frame and
+	 * took the client from 128 fps to 30. Note that the item.num < 0 branch below already went
+	 * through a cache (heurnum); only this one did not.
+	 */
+	private static final TexCache<Integer> quantityTex =
+		new TexCache<>(4096, num -> PUtils.strokeTex(
+			quantityFoundry.renderstroked2(Integer.toString(num), quantityColor, Color.BLACK)));
 
 	private void drawnum(GOut g, Coord sz) {
 		Tex tex;
 		if(item.num >= 0) {
-			tex = PUtils.strokeTex(quantityFoundry.renderstroked2(Integer.toString(item.num), quantityColor, Color.BLACK));
+			tex = quantityTex.get(item.num);
 		} else {
 			tex = chainattr(heurnum);
 		}

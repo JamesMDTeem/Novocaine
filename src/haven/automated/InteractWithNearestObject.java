@@ -163,8 +163,8 @@ public class InteractWithNearestObject implements Runnable {
                 }
             } catch (Exception ignored) {}
         } else {
-            if (OptWnd.autoEquipBunnySlippersPlateBootsCheckBox.a) {
-                gui.map.switchBunnySlippersAndPlateBoots(theObject);
+            if (OptWnd.autoSwitchBootsCheckBox.a) {
+                gui.map.switchBunnySlippersAndArmorBoots(theObject);
             }
             gui.map.wdgmsg("click", Coord.z, theObject.rc.floor(posres), 3, 0, 0, (int) theObject.id, theObject.rc.floor(posres), 0, -1);
             if (gui.interactWithNearestObjectThread != null) {

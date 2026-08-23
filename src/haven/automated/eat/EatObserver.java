@@ -241,8 +241,8 @@ public class EatObserver {
     private static void flushUpload() {
         if (uploadQueue.isEmpty())
             return;
-        String endpoint = FoodService.cachedEndpoint();
-        if (endpoint == null || !endpoint.endsWith("/food"))
+        String uploadUrl = FoodService.endpointFor("eatlog");
+        if (uploadUrl == null)
             return; // not configured, or doesn't look like a food-upload URL - nothing to send to
 
         Map<String, JSONArray> byChar = new LinkedHashMap<>();
@@ -250,7 +250,6 @@ public class EatObserver {
         while ((q = uploadQueue.poll()) != null)
             byChar.computeIfAbsent(q.chrid, k -> new JSONArray()).put(q.rec);
 
-        String uploadUrl = endpoint.substring(0, endpoint.length() - "/food".length()) + "/eatlog";
         for (Map.Entry<String, JSONArray> e : byChar.entrySet())
             postBatch(uploadUrl, e.getKey(), e.getValue());
     }

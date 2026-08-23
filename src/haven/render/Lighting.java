@@ -142,6 +142,8 @@ public interface Lighting {
 	public int maxlights = defmax;
 	private final int lswb;
 	private GridLights last;
+	private Object[][] lastlights;
+	private Matrix4f lastproj;
 
 	public LightGrid(int w, int h, int d) {
 	    if(w != Integer.highestOneBit(w)) throw(new IllegalArgumentException("not a power of two: " + w));
@@ -402,6 +404,13 @@ public interface Lighting {
 	}
 
 	public State compile(Object[][] lights, Projection proj) {
+	    /* The light grid is rebuilt from scratch on every draw otherwise,
+	     * churning two texture uploads per frame even in a fully static
+	     * scene. Reuse the previous grid while both the light params and
+	     * the projection are bit-identical to what it was built from. */
+	    Matrix4f pm = proj.fin(Matrix4f.id);
+	    if((last != null) && (lastlights != null) && Arrays.deepEquals(lastlights, lights) && lastproj.equals(pm))
+		return(last);
 	    Compiler c = new Compiler(proj);
 	    int n = Math.min(lights.length, 65535);
 	    for(int i = 0; i < n; i++)
@@ -412,6 +421,8 @@ public interface Lighting {
 		last.dispose();
 		last = null;
 	    }
+	    lastlights = lights;
+	    lastproj = pm;
 	    return(last = new GridLights(lights, c.bbox, c.grid, c.listbuf, c.lboff));
 	}
 

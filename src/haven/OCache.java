@@ -535,6 +535,24 @@ public class OCache implements Iterable<Gob> {
 
     private final Map<Long, GobInfo> netinfo = new HashMap<>();
 
+    /* [LEAKDBG] Size probes for the heap-leak hunt, read once a second by the sampler.
+     *
+     * netremove below only sets nremoved - the XXX on the next line is upstream's own note - so an
+     * entry survives until the SAME gob id comes back. If netinfo climbs while objs stays flat,
+     * this map is retaining every object the character has ever walked past, and that is the leak.
+     * Two numbers settle it; without them the class histogram is the only way to ask. */
+    public int netinfosz() {
+	synchronized(netinfo) {
+	    return(netinfo.size());
+	}
+    }
+
+    public int objsz() {
+	synchronized(this) {
+	    return(objs.size());
+	}
+    }
+
     private GobInfo netremove(long id, int frame) {
 	synchronized(netinfo) {
 	    GobInfo ng = netinfo.get(id);

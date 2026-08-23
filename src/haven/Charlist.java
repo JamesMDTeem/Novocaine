@@ -105,6 +105,7 @@ public class Charlist extends Widget {
         add(new Button(UI.scale(60), "Play"), pos("cbl").adds(100, -36)).action(() -> {
             Charlist.this.wdgmsg("play", chr.name);
             Config.setPlayerName(chr.name);
+            haven.automated.cookbook.WorldTag.set(chr.disc);
             Config.initAutomapper(ui);
         });
 	}
@@ -345,6 +346,7 @@ public class Charlist extends Widget {
 	    if(list.sel != null) {
 		wdgmsg("play", list.sel.name);
 		Config.setPlayerName(list.sel.name);
+		haven.automated.cookbook.WorldTag.set(list.sel.disc);
 		Config.initAutomapper(ui);
 	    }
 	    return(true);

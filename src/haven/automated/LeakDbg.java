@@ -56,8 +56,58 @@ public class LeakDbg {
     private static final int CAP_CONSECUTIVE = 5;
     private static final int MAP_REFRESH_PERIOD = 1024;
 
+    /**
+     * GL texture allocations per frame that count as a draw path leaking, and how many consecutive
+     * seconds of it to tolerate before saying so.
+     *
+     * A healthy frame allocates almost nothing: two, for the light grid, which are disposed. The
+     * friend's log sat at 3-6 and collapsed to 30 fps at fifty, so sixteen is comfortably above
+     * anything legitimate and well below the level that hurts. This is the line that would have
+     * named the bug on day one instead of after a 45 MB log and a per-frame reconstruction, which
+     * is the whole reason it exists.
+     */
+    private static final long CHURN_PER_FRAME = 16;
+    private static final int CHURN_CONSECUTIVE = 10;
+
     /* GLEnvironment.MemStats pool indices: INDICES, VERTICES, TEXTURES, VAOS, FBOS. */
     private static final int I_TEXTURES = 2;
+
+    /**
+     * Heap class histogram cadence, in seconds, from {@code -Dleakdbg.heaphist=<seconds>}.
+     * Zero or absent disables it. Off by default on purpose: the dump forces a full GC, so it
+     * hitches, and every released client writes to this same log.
+     */
+    private static final long HEAP_HIST_MS = heapHistPeriod();
+    private static final int HEAP_HIST_LINES = 40;
+
+    /**
+     * Process identity. Several clients run out of one install directory and share
+     * {@code logs/vmem.log}, and separating the friend's two interleaved sessions by hand took a
+     * nearest-neighbour tracker over texture bytes. This makes it a grep.
+     */
+    private static final String PID = pid();
+
+    private static String pid() {
+        try {
+            return (" p" + ProcessHandle.current().pid());
+        } catch (Throwable t) {
+            return ("");
+        }
+    }
+
+    private static long heapHistPeriod() {
+        try {
+            long s = Long.parseLong(System.getProperty("leakdbg.heaphist", "0").trim());
+            return ((s <= 0) ? 0 : s * 1000L);
+        } catch (RuntimeException e) {
+            return (0);
+        }
+    }
+
+    /** One tag builder, so the pid cannot get left off a site. */
+    private static String tag(String name) {
+        return ("[LEAKDBG-" + name + PID + "]");
+    }
 
     private static volatile UI ui;
     private static volatile long frames;
@@ -70,10 +120,12 @@ public class LeakDbg {
     private static volatile long firstNonzeroAt = -1;
     private static volatile boolean watchArmed = false;
     private static volatile int capStreak = 0;
+    private static volatile int churnStreak = 0;
     private static volatile long prevSampleFrames;
     private static volatile double prevSampleTime = -1;
-    private static long[] prevTransBytes;
-    private static int[] prevTransObjs;
+    /* Volatile: transition() runs on the Connection worker and on the UI thread. */
+    private static volatile long[] prevTransBytes;
+    private static volatile int[] prevTransObjs;
     private static final long[] ringT = new long[RING];
     private static final String[] ringL = new String[RING];
     private static int ringHead = 0, ringLen = 0;
@@ -116,10 +168,26 @@ public class LeakDbg {
      * Tags a GL-heavy transition (map switch, grid trim, light rebuild). Thread-safe: reads the
      * latest sampler snapshot and logs through NLog's lock. Cheap enough for invalblob's rate.
      */
-    public static void transition(String tag) {
-        StringBuilder sb = new StringBuilder("[LEAKDBG-").append(tag).append(']');
-        long[] mb = lastMemBytes;
-        int[] mo = lastMemObjs;
+    public static void transition(String name) {
+        StringBuilder sb = new StringBuilder(tag(name));
+        /* Read the GL counters HERE rather than reusing the sampler's snapshot. invalblob and trim
+         * fire in the same millisecond, so both used to see the identical once-per-second array and
+         * every delta printed "+0B/+0T" - all 42 trimall lines in the friend's log were zero, which
+         * looked like a finding and was an artefact. memBytes/memObjects are plain field reads and
+         * are safe off the GL thread. */
+        long[] mb = null;
+        int[] mo = null;
+        UI u = ui;
+        Environment env = (u == null) ? null : u.getenv();
+        if (env instanceof GLEnvironment) {
+            GLEnvironment gl = (GLEnvironment) env;
+            mb = gl.memBytes();
+            mo = gl.memObjects();
+        }
+        if (mb == null) {
+            mb = lastMemBytes;
+            mo = lastMemObjs;
+        }
         if (mb == null) {
             sb.append(" (no sample yet)");
         } else {
@@ -143,14 +211,17 @@ public class LeakDbg {
      * the same string that goes to glObjectLabel.
      */
     public static void textureAlloc(String desc, long bytes) {
-        String key = (desc == null || desc.isEmpty()) ? "<anon>" : desc;
+        String key = histkey(desc);
         long[] a = texHist.computeIfAbsent(key, k -> new long[2]);
         synchronized (a) {
             a[0] += bytes;
             a[1]++;
         }
         texAllocCount++;
-        texAllocLog.addLast(key);
+        /* The ring keeps the FULL desc, not the collapsed key: telling "one cached texture
+         * re-uploaded over and over" from "a new object every frame" needs the identity hash,
+         * and 256 entries cannot leak. Only the histogram collapses. */
+        texAllocLog.addLast((desc == null || desc.isEmpty()) ? "<anon>" : desc);
         while (texAllocLog.size() > TEX_ALLOC_LOG)
             texAllocLog.pollFirst();
     }
@@ -159,9 +230,10 @@ public class LeakDbg {
      * Accounts a GL texture free. Called from the GL thread via {@code GLTexture.delete}.
      */
     public static void textureFree(String desc, long bytes) {
-        String key = (desc == null || desc.isEmpty()) ? "<anon>" : desc;
+        String key = histkey(desc);
         long[] a = texHist.get(key);
         if (a != null) {
+            boolean empty;
             synchronized (a) {
                 a[0] -= bytes;
                 if (a[0] < 0)
@@ -169,25 +241,76 @@ public class LeakDbg {
                 a[1]--;
                 if (a[1] < 0)
                     a[1] = 0;
+                empty = (a[0] == 0) && (a[1] == 0);
             }
+            /* Drop the entry once nothing of its kind is live. Without this the map only ever
+             * grows, which is how the sampler became a suspect in its own heap histogram. */
+            if (empty)
+                texHist.remove(key, a);
+        }
+    }
+
+    /**
+     * Histogram key for a texture description.
+     *
+     * A texture with no descriptor of its own is labelled by its wrapper's {@code toString()}, and
+     * the common wrappers do not override it - so every single {@code TexI} arrives as a distinct
+     * {@code haven.TexI@1a2b3c4d}. Keyed raw, the histogram grew one permanent entry per texture
+     * ever created (tens of thousands per minute at the observed churn), leaked ~1-2 MB/min, and
+     * was rescanned in full every second. Collapsing a trailing bare identity hash to
+     * {@code haven.TexI@} bounds the map by KIND of texture, which is the question the histogram
+     * is actually asked, and makes the count column read as "how many of these are live".
+     *
+     * Only a tail that is genuinely a bare hex identity hash is collapsed; resource descriptors
+     * such as {@code #<texr gfx/tiles/thicket-tex(1)>} contain no '@' and survive intact.
+     */
+    private static String histkey(String desc) {
+        if (desc == null || desc.isEmpty())
+            return ("<anon>");
+        int at = desc.lastIndexOf('@');
+        if ((at < 0) || (at == desc.length() - 1))
+            return (desc);
+        for (int i = at + 1; i < desc.length(); i++) {
+            char c = desc.charAt(i);
+            if (((c < '0') || (c > '9')) && ((c < 'a') || (c > 'f')))
+                return (desc);
+        }
+        return (desc.substring(0, at + 1));
+    }
+
+    /** One entry's byte/count reading, taken before any sorting happens. */
+    private static final class Snap {
+        final String key;
+        final long bytes, count;
+
+        Snap(String key, long bytes, long count) {
+            this.key = key;
+            this.bytes = bytes;
+            this.count = count;
         }
     }
 
     private static String topTexHist(int max) {
         StringBuilder sb = new StringBuilder();
-        java.util.List<Map.Entry<String, long[]>> live = new java.util.ArrayList<>();
+        /* Snapshot every value BEFORE sorting. Sorting a list whose comparator re-reads the live
+         * long[] lets the GL thread move the keys mid-merge, and TimSort answers that with
+         * "Comparison method violates its general contract!" - which cost us ten whole samples in
+         * the friend's log, each one thrown away by the catch in run(). */
+        java.util.List<Snap> live = new java.util.ArrayList<>();
         for (Map.Entry<String, long[]> e : texHist.entrySet()) {
             long[] a = e.getValue();
+            long bytes, count;
             synchronized (a) {
-                if (a[0] > 0)
-                    live.add(e);
+                bytes = a[0];
+                count = a[1];
             }
+            if (bytes > 0)
+                live.add(new Snap(e.getKey(), bytes, count));
         }
-        live.sort((x, y) -> Long.compare(y.getValue()[0], x.getValue()[0]));
-        for (Map.Entry<String, long[]> e : live) {
-            long[] a = e.getValue();
-            sb.append(e.getKey()).append('=').append(String.format("%,d", a[0])).append('B')
-              .append('(').append(a[1]).append(");");
+        live.sort((x, y) -> Long.compare(y.bytes, x.bytes));
+        for (Snap s : live) {
+            sb.append(s.key).append('=').append(String.format("%,d", s.bytes)).append('B')
+              .append('(').append(s.count).append(");");
         }
         if (max > 0 && sb.length() > max)
             return (sb.substring(0, max));
@@ -201,17 +324,60 @@ public class LeakDbg {
         return (sb.toString());
     }
 
+    /**
+     * Dumps a live-object class histogram into the log.
+     *
+     * The sampler reports totals - {@code totalMemory() - freeMemory()} and the GL pool bytes -
+     * which is enough to see a heap leak and useless for naming it. This is the probe that names
+     * it: HotSpot's own {@code GC.class_histogram}, reached through the DiagnosticCommand MBean so
+     * it needs no JDK, no jcmd, and no cooperation from the person running the client. Diffing two
+     * dumps taken half an hour apart points straight at the growing class.
+     *
+     * It forces a full GC, which is exactly what makes the numbers mean "live" rather than
+     * "allocated", and also why it is off unless {@code -Dleakdbg.heaphist=<seconds>} asks for it.
+     */
+    private static void heapHistogram() {
+        try {
+            Object out = ManagementFactory.getPlatformMBeanServer().invoke(
+                new javax.management.ObjectName("com.sun.management:type=DiagnosticCommand"),
+                "gcClassHistogram",
+                new Object[] {new String[0]},
+                new String[] {String[].class.getName()});
+            String all = String.valueOf(out);
+            StringBuilder sb = new StringBuilder(tag("heapclass"))
+                .append(" live objects after a forced GC, top ").append(HEAP_HIST_LINES)
+                .append(" by retained bytes\n");
+            int n = 0;
+            for (String ln : all.split("\n")) {
+                sb.append("  ").append(ln.strip()).append('\n');
+                /* Two of these are the column header and its underline, so keep two extra. */
+                if (++n > HEAP_HIST_LINES + 2)
+                    break;
+            }
+            NLog.log(LOG, sb.toString());
+        } catch (Throwable t) {
+            /* An unsupported JVM, a security manager, or a renamed MBean. Report once-ish and
+             * carry on - the rest of the sampler is still worth having. */
+            NLog.log(LOG, tag("heapclass") + " unavailable: " + t);
+        }
+    }
+
     private static void run() {
         List<String> args = ManagementFactory.getRuntimeMXBean().getInputArguments();
-        NLog.log(LOG, "[LEAKDBG-jvmargs] " + String.join(" ", args));
+        NLog.log(LOG, tag("jvmargs") + " " + String.join(" ", args));
         long next = System.currentTimeMillis();
+        long nextHeapHist = (HEAP_HIST_MS > 0) ? System.currentTimeMillis() : Long.MAX_VALUE;
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 sample();
+                if (System.currentTimeMillis() >= nextHeapHist) {
+                    heapHistogram();
+                    nextHeapHist = System.currentTimeMillis() + HEAP_HIST_MS;
+                }
             } catch (Throwable t) {
                 StringWriter sw = new StringWriter();
                 t.printStackTrace(new PrintWriter(sw));
-                NLog.log(LOG, "[LEAKDBG-err] " + sw);
+                NLog.log(LOG, tag("err") + " " + sw);
             }
             next += SAMPLE_MS;
             long delay = next - System.currentTimeMillis();
@@ -229,16 +395,17 @@ public class LeakDbg {
         UI u = ui;
         long now = System.currentTimeMillis();
         long f = frames;
+        long framesDelta = f - prevSampleFrames;
         double fps = 0.0;
         if (prevSampleTime >= 0) {
             double dt = (now - prevSampleTime) / 1000.0;
             if (dt > 0.0)
-                fps = (f - prevSampleFrames) / dt;
+                fps = framesDelta / dt;
         }
         prevSampleTime = now;
         prevSampleFrames = f;
 
-        StringBuilder sb = new StringBuilder("[LEAKDBG-samp]");
+        StringBuilder sb = new StringBuilder(tag("samp"));
         long totalBytes = -1;
         int texObjs = -1;
         Environment env = (u == null) ? null : u.getenv();
@@ -268,6 +435,13 @@ public class LeakDbg {
         prevTexAllocCount = texAllocCount;
         prevTexAllocAt = now;
         sb.append(" tex=").append(String.format("%d/s", allocDt <= 0 ? 0 : allocDelta * 1000L / allocDt));
+        /* Per FRAME, not per second, because that is the number that actually tracks the damage:
+         * in the friend's log it predicted framerate monotonically (0-4/frame at 128 fps, 50+ at
+         * 30) while allocations per second did not, being a product of the rate and the framerate
+         * it was destroying. */
+        long perFrame = (framesDelta > 0) ? (allocDelta / framesDelta) : 0;
+        sb.append(" tex/f=").append(perFrame);
+        appendProbes(sb, u);
         String top = topTexHist(300);
         if (!top.isEmpty())
             sb.append(" top=").append(top);
@@ -300,6 +474,24 @@ public class LeakDbg {
         pushRing(now, line);
         NLog.log(LOG, line);
 
+        /* A draw path building textures instead of reusing them. Named separately from the VRAM
+         * watchdog because it is a different bug with a different fix: the watchdog asks "is too
+         * much resident", this asks "is something re-uploading every frame", and a client can fail
+         * the second while comfortably passing the first. lastAllocs() is the payload - the descs
+         * in it are the allocator. */
+        if ((framesDelta > 0) && (perFrame >= CHURN_PER_FRAME)) {
+            if (++churnStreak >= CHURN_CONSECUTIVE) {
+                churnStreak = 0;
+                NLog.log(LOG, String.format(
+                    "%s %d GL texture allocs/frame for %d s (fps %.1f) — a draw path is building "
+                    + "textures per frame instead of caching them; last allocs name it",
+                    tag("CHURN"), perFrame, CHURN_CONSECUTIVE, fps));
+                NLog.log(LOG, tag("last") + " " + lastAllocs());
+            }
+        } else {
+            churnStreak = 0;
+        }
+
         if (totalBytes <= 0)
             return;
         if (firstNonzeroAt < 0)
@@ -321,11 +513,11 @@ public class LeakDbg {
             lastWatchTotal = totalBytes;
             lastWatchAt = now;
             NLog.log(LOG, String.format(
-                "[LEAKDBG-WATCH] gl total=%,d bytes, T=%d objects (session baseline=%,d) — dumping ring",
+                tag("WATCH") + " gl total=%,d bytes, T=%d objects (session baseline=%,d) — dumping ring",
                 totalBytes, texObjs, baselineTotal));
             dumpRing();
-            NLog.log(LOG, "[LEAKDBG-hist] " + topTexHist(0));
-            NLog.log(LOG, "[LEAKDBG-last] " + lastAllocs());
+            NLog.log(LOG, tag("hist") + " " + topTexHist(0));
+            NLog.log(LOG, tag("last") + " " + lastAllocs());
         }
 
         if (texObjs >= 0 && texBytes() > CAP_TEXTURE_BYTES) {
@@ -336,13 +528,50 @@ public class LeakDbg {
         if (capStreak >= CAP_CONSECUTIVE) {
             capStreak = 0;
             NLog.log(LOG, String.format(
-                "[LEAKDBG-CAP] textures %,dB exceeded %,dB for %d consecutive samples — dumping ring + histogram",
+                tag("CAP") + " textures %,dB exceeded %,dB for %d consecutive samples — dumping ring + histogram",
                 texBytes(), CAP_TEXTURE_BYTES, CAP_CONSECUTIVE));
             dumpRing();
-            NLog.log(LOG, "[LEAKDBG-hist] " + topTexHist(0));
-            NLog.log(LOG, "[LEAKDBG-last] " + lastAllocs());
+            NLog.log(LOG, tag("hist") + " " + topTexHist(0));
+            NLog.log(LOG, tag("last") + " " + lastAllocs());
             System.gc();
         }
+    }
+
+    /**
+     * Sizes of the collections that grow for the whole session, appended to every sample as
+     * {@code probe=gobs:N,netinfo:N,rescache:N,seen:N,botmap:N}.
+     *
+     * Cheap enough to run every second (five field reads), and between them they turn a heap slope
+     * into a named suspect without waiting on a class histogram. The pair that matters is
+     * {@code gobs} against {@code netinfo}: the first is what is live, the second is what OCache
+     * still holds, and a gap that widens all session is the leak.
+     */
+    private static void appendProbes(StringBuilder sb, UI u) {
+        StringBuilder p = new StringBuilder();
+        try {
+            if ((u != null) && (u.sess != null) && (u.sess.glob != null) && (u.sess.glob.oc != null)) {
+                p.append("gobs:").append(u.sess.glob.oc.objsz());
+                p.append(",netinfo:").append(u.sess.glob.oc.netinfosz());
+            }
+            if ((u != null) && (u.sess != null))
+                p.append(",rescache:").append(u.sess.rescachesz());
+        } catch (Throwable ignore) {
+            // Mid-teardown or not connected yet; the probes are context, never fatal.
+        }
+        try {
+            haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
+            if (mc != null)
+                p.append(",seen:").append(mc.seenmasksz());
+        } catch (Throwable ignore) {
+            // Mapper never initialised in this session.
+        }
+        try {
+            p.append(",botmap:").append(haven.automated.nbots.world.Observed.gridsz());
+        } catch (Throwable ignore) {
+            // Botmap not loaded.
+        }
+        if (p.length() > 0)
+            sb.append(" probe=").append(p);
     }
 
     private static long texBytes() {
@@ -369,7 +598,7 @@ public class LeakDbg {
     }
 
     private static void dumpRing() {
-        StringBuilder sb = new StringBuilder("[LEAKDBG-ring] last samples:\n");
+        StringBuilder sb = new StringBuilder(tag("ring") + " last samples:\n");
         for (int i = 0; i < ringLen; i++) {
             int idx = (ringHead - ringLen + i + RING) % RING;
             sb.append("  ").append(ringT[idx]).append(' ').append(ringL[idx]).append('\n');

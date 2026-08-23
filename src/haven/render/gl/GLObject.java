@@ -30,7 +30,22 @@ import haven.*;
 import java.util.*;
 
 public abstract class GLObject implements Disposable {
-    public static final boolean LEAK_CHECK = true;
+    /**
+     * Warn when a GL object is collected without ever having been disposed.
+     *
+     * This is a debugging facility and upstream ships it on. On a client that genuinely leaks GL
+     * objects it does not merely report the leak, it multiplies it: the first collected leak sets
+     * Finalizer's static `leaking` flag, after which EVERY GLObject constructor below captures a
+     * `new Throwable()` that is then retained for the lifetime of the object, and every subsequent
+     * leak prints that captured stack to System.err through Warning.issue - synchronised, flushed,
+     * once per leak. A draw path leaking a texture per frame therefore pays for it in retained
+     * heap and in hundreds of blocking stderr writes a second, which is its own reason for a
+     * client to stop responding.
+     *
+     * So: off unless asked for, with `-Dhaven.leakcheck=1`. Instrumented builds want it on; the
+     * released client should not be paying a diagnostic's costs to nobody's benefit.
+     */
+    public static final boolean LEAK_CHECK = Utils.getprop("haven.leakcheck", "0").equals("1");
     public final GLEnvironment env;
     private boolean del = false, disp = false;
     private GLEnvironment.MemStats pool = null;

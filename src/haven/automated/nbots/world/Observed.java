@@ -9,6 +9,7 @@ import haven.Resource;
 import haven.automated.helpers.CollisionGeom;
 import haven.automated.helpers.HitBoxes;
 import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.core.SharedFile;
 import haven.automated.pathfinder.World;
 
 import org.json.JSONArray;
@@ -19,7 +20,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
@@ -318,6 +318,22 @@ public class Observed {
     }
 
     private static final int GRID = MCache.cmaps.x * MCache.cmaps.y;
+
+    /**
+     * [LEAKDBG] Grids held in memory, for the heap-leak hunt. This one is expected to grow - the
+     * botmap is a record of everywhere the crew has been - so the point of logging it is to
+     * establish how fast, and to take it off the suspect list rather than leave it there.
+     */
+    public static int gridsz() {
+        synchronized (LOCK) {
+            if (map == null)
+                return (0);
+            int n = 0;
+            for (Map<Coord, byte[]> seg : map.values())
+                n += seg.size();
+            return (n);
+        }
+    }
 
     /** segment -> segment grid coord -> one byte per tile, row-major. */
     private static Map<Long, Map<Coord, byte[]>> map;
@@ -1133,29 +1149,36 @@ public class Observed {
             if (!dirty && (stamp != UNKNOWN) && (stamp == fileAt))
                 return;
 
-            Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
-            if (!read(disk))
-                return;    // cannot see what we would be overwriting, so do not. Still dirty.
-            fileAt = stamp;
-            for (Map.Entry<Long, Map<Coord, byte[]>> se : disk.entrySet()) {
-                Map<Coord, byte[]> ours = map.computeIfAbsent(se.getKey(), k -> new HashMap<>());
-                for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
-                    byte[] theirs = ge.getValue();
-                    byte[] mine = ours.get(ge.getKey());
-                    if (mine == null) {
-                        ours.put(ge.getKey(), theirs);
-                        continue;
-                    }
-                    BitSet seen = mask(se.getKey(), ge.getKey());
-                    for (int i = 0; i < mine.length; i++) {
-                        if (!seen.get(i))
-                            mine[i] = theirs[i];
-                    }
+            if (!dirty) {
+                /* Nothing of ours to say - we only came to adopt what a crewmate wrote. A reader
+                 * cannot corrupt anybody, so it does not queue behind the lock. */
+                Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
+                if (read(disk)) {
+                    fileAt = stamp;
+                    adopt(disk);
                 }
+                return;
             }
-            if (!dirty)
-                return;    // we came to listen; there was nothing of ours to say
-            try {
+
+            /* We are going to write, so the read-merge-write has to be atomic against the other
+             * clients doing exactly the same thing every few seconds. Two clients out of one
+             * install directory is the normal case for a crew, and without the lock their merges
+             * interleave: each reads before the other's write lands, and whichever renames last
+             * silently drops the other's exploration. The AccessDeniedException that turned up in
+             * a friend's crash.log was the loud half of that same race - Windows refusing the
+             * rename while the other process had the file open. */
+            try (SharedFile.Held held = SharedFile.lock(file())) {
+                if (held == null) {
+                    NLog.log("observed.log", "couldn't lock " + FILE
+                        + " to save; still dirty, retrying on the next pass");
+                    return;
+                }
+                Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
+                if (!read(disk))
+                    return;    // cannot see what we would be overwriting, so do not. Still dirty.
+                fileAt = stamp;
+                adopt(disk);
+
                 JSONArray segs = new JSONArray();
                 for (Map.Entry<Long, Map<Coord, byte[]>> se : map.entrySet()) {
                     JSONArray grids = new JSONArray();
@@ -1173,20 +1196,38 @@ public class Observed {
                 JSONObject root = new JSONObject();
                 root.put("v", VERSION);
                 root.put("segs", segs);
-                Path dst = file();
-                Path tmp = dst.resolveSibling(dst.getFileName() + ".tmp");
-                Files.write(tmp, root.toString().getBytes(StandardCharsets.UTF_8));
-                try {
-                    Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
-                        StandardCopyOption.ATOMIC_MOVE);
-                } catch (java.nio.file.AtomicMoveNotSupportedException e) {
-                    Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
-                }
+                SharedFile.writeAtomic(file(), root.toString().getBytes(StandardCharsets.UTF_8));
                 dirty = false;
                 // Our own write moved it on; without this every pass would re-read what we wrote.
                 fileAt = stamp();
             } catch (IOException | RuntimeException e) {
                 NLog.crash("saving " + FILE, e);
+            }
+        }
+    }
+
+    /**
+     * Folds what is on disk into what we hold, letting our own observations win.
+     *
+     * A tile this run has actually looked at is ours to state; every other tile we defer to the
+     * file on, which is how a crewmate's discovery reaches this client without a protocol. Caller
+     * holds {@link #LOCK}, and - if it intends to write - the cross-process lock too.
+     */
+    private static void adopt(Map<Long, Map<Coord, byte[]>> disk) {
+        for (Map.Entry<Long, Map<Coord, byte[]>> se : disk.entrySet()) {
+            Map<Coord, byte[]> ours = map.computeIfAbsent(se.getKey(), k -> new HashMap<>());
+            for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
+                byte[] theirs = ge.getValue();
+                byte[] mine = ours.get(ge.getKey());
+                if (mine == null) {
+                    ours.put(ge.getKey(), theirs);
+                    continue;
+                }
+                BitSet seen = mask(se.getKey(), ge.getKey());
+                for (int i = 0; i < mine.length; i++) {
+                    if (!seen.get(i))
+                        mine[i] = theirs[i];
+                }
             }
         }
     }

@@ -500,7 +500,7 @@ public class PlacesWindow extends Window {
             }
 
             protected void drawitem(GOut g, String item, int i) {
-                g.aimage(Text.renderstroked(item).tex(),
+                g.aimage(Text.strokedtex(item),
                     Coord.of(UI.scale(3), g.sz().y / 2), 0.0, 0.5);
             }
 

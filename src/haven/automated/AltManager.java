@@ -171,6 +171,11 @@ public class AltManager extends Window {
             clearPending();
             cl.wdgmsg("play", c.name);
             Config.setPlayerName(c.name);
+            // c.disc may still be null here: auto-play fires from the "add" message, and the
+            // per-character world arrives in its own later "srv" message. WorldTag treats that
+            // as unknown and the upload falls back to the server's configured world, rather
+            // than tagging this character with whichever world we happened to log in from last.
+            haven.automated.cookbook.WorldTag.set(c.disc);
             Config.initAutomapper(cl.ui);
         }
     }

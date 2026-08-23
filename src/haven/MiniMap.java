@@ -1011,6 +1011,20 @@ public class MiniMap extends Widget {
 	}
     }
 
+    /**
+     * Kin-name labels for party members, rendered once per name rather than once per frame.
+     *
+     * drawparty runs every frame for every member, and Text.renderstroked(...).tex() builds a new
+     * TexI and uploads it each time with nothing to dispose it - so a party of eight cost eight
+     * abandoned GL textures a frame for as long as the minimap was open. Keyed on the name, so a
+     * kin who gets renamed simply misses the cache and renders again.
+     *
+     * Its own cache rather than Text.strokedtex because this uses a different foundry and colours;
+     * sharing a cache keyed on the string alone would hand back the wrong rendering.
+     */
+    private static final TexCache<String> kinNameTex = new TexCache<>(512,
+	    nm -> Text.renderstroked(nm, Color.white, Color.BLACK, Text.num12boldFnd).tex());
+
     public void drawparty(GOut g) {
 	for(Party.Member m : ui.sess.glob.party.memb.values()) {
 	    try {
@@ -1025,7 +1039,7 @@ public class MiniMap extends Widget {
 				String name;
 				if (GameUI.gobIdToKinName.containsKey(m.gobid)) {
 					name = GameUI.gobIdToKinName.get(m.gobid);
-					g.image(Text.renderstroked(name, Color.white, Color.BLACK, Text.num12boldFnd).tex(),p2cppc.add(-name.length()*4,-30));
+					g.image(kinNameTex.get(name),p2cppc.add(-name.length()*4,-30));
 				} else if (m.getgob() != null) {
 					Buddy buddyInfo = m.getgob().getattr(Buddy.class);
 					if (buddyInfo != null) {
@@ -1503,8 +1517,8 @@ public class MiniMap extends Widget {
 					}
 				}
 			}
-			if (OptWnd.autoEquipBunnySlippersPlateBootsCheckBox.a) {
-				ui.gui.map.switchToPlateBoots();
+			if (OptWnd.autoSwitchBootsCheckBox.a) {
+				ui.gui.map.switchToArmorBoots();
 			}
 			if(mv.checkpointManager != null && mv.checkpointManagerThread != null && button == 1){
 				if (!ui.modmeta)
@@ -1527,11 +1541,11 @@ public class MiniMap extends Widget {
                     ui.gui.map.pfthread.interrupt();
                 }
             }
-			if (OptWnd.autoEquipBunnySlippersPlateBootsCheckBox.a) {
+			if (OptWnd.autoSwitchBootsCheckBox.a) {
 				if (button == 3)
-					ui.gui.map.switchBunnySlippersAndPlateBoots(gob);
+					ui.gui.map.switchBunnySlippersAndArmorBoots(gob);
 				if (button == 1)
-					ui.gui.map.switchToPlateBoots();
+					ui.gui.map.switchToArmorBoots();
 			}
 		Object[] args = {mc, loc.tc.sub(sessloc.tc).mul(tilesz).add(tilesz.div(2)).floor(posres), button, ui.modflags(), 0, (int) gob.id, gob.rc.floor(posres), 0, -1};
 			if (button == 3 && OptWnd.autoSelect1stFlowerMenuCheckBox.a) {

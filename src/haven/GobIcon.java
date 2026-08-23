@@ -1055,7 +1055,7 @@ public class GobIcon extends GAttrib {
 			}
 			@Override
 			protected void drawitem(GOut g, String item, int i) {
-				g.aimage(Text.renderstroked(item).tex(), Coord.of(UI.scale(3), g.sz().y / 2), 0.0, 0.5);
+				g.aimage(Text.strokedtex(item), Coord.of(UI.scale(3), g.sz().y / 2), 0.0, 0.5);
 			}
 			@Override
 			public void change(String item) {

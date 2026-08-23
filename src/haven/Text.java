@@ -449,6 +449,32 @@ public class Text implements Disposable {
 		return renderstroked(text, Color.WHITE, Color.BLACK, fnd);
 	}
 
+	/**
+	 * A cached texture of {@code renderstroked(text)}, for code that draws the same label
+	 * every frame.
+	 *
+	 * {@code Text.renderstroked(s).tex()} looks like formatting and behaves like a GPU upload:
+	 * the Line is new every call, so {@code tex()} builds a fresh TexI, uploads it on the next
+	 * draw, and nothing disposes it. Inside a {@code drawitem} - which is where nearly every
+	 * caller of this shape was - that is one abandoned GL texture per visible row per frame,
+	 * for as long as the widget is on screen. A friend's client was measured at ~50 texture
+	 * allocations a frame from this class of bug, and framerate fell with it: 128 fps at four
+	 * a frame, 30 fps at fifty.
+	 *
+	 * Row labels come from a small fixed vocabulary, so caching by string turns that into one
+	 * upload per distinct label. UI thread only, like everything else that draws.
+	 *
+	 * Only the default foundry and colours are cached here. A caller wanting a different style
+	 * needs its own cache, because the string alone would no longer identify the rendering -
+	 * see MiniMap's kin-name labels.
+	 */
+	public static Tex strokedtex(String text) {
+		return (strokedcache.get(text));
+	}
+
+	private static final TexCache<String> strokedcache =
+		new TexCache<>(2048, s -> renderstroked(s).tex());
+
     public static Line render(String text) {
 	return(render(text, Color.WHITE));
     }

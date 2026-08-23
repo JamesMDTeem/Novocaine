@@ -5,18 +5,14 @@ import haven.GameUI;
 import haven.Gob;
 import haven.automated.nbots.core.Alias;
 import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.core.SharedFile;
 import org.json.JSONArray;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -58,9 +54,6 @@ import java.util.Set;
 public class Places {
     private static final String FILE = "botplaces.json";
     private static final Object LOCK = new Object();
-    /** Attempts at the cross-process lock before a save gives up, at {@link #LOCK_WAIT_MS} apart. */
-    private static final int LOCK_TRIES = 50;
-    private static final long LOCK_WAIT_MS = 20;
 
     private static List<Place> cache = null;
     /** Names this client has created or changed and not yet written out. Lower-cased. */
@@ -177,82 +170,28 @@ public class Places {
             /* RuntimeException is caught alongside IOException on purpose: this runs on the UI
              * thread from a button press, and an exception that escapes it kills that thread and
              * takes the whole client with it - a bad place to learn a value would not serialise. */
-            try (FileChannel lock = FileChannel.open(lockFile(),
-                     StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
-                FileLock held = grab(lock);
+            try (SharedFile.Held held = SharedFile.lock(file())) {
                 if (held == null) {
                     NLog.log("nbot-places.log", "couldn't lock " + FILE + " to save; will retry on the next change");
                     return;
                 }
-                try {
-                    List<Place> merged = merge(load(), cache);
-                    write(merged);
-                    cache = merged;
-                    dirty.clear();
-                    removed.clear();
-                    fileAt = stamp();
-                } finally {
-                    held.release();
-                }
+                List<Place> merged = merge(load(), cache);
+                write(merged);
+                cache = merged;
+                dirty.clear();
+                removed.clear();
+                fileAt = stamp();
             } catch (IOException | RuntimeException e) {
                 NLog.crash("saving " + FILE, e);
             }
         }
     }
 
-    private static Path lockFile() {
-        Path f = file();
-        return f.resolveSibling(f.getFileName() + ".lock");
-    }
-
-    private static FileLock grab(FileChannel ch) {
-        for (int i = 0; i < LOCK_TRIES; i++) {
-            try {
-                FileLock l = ch.tryLock();
-                if (l != null)
-                    return l;
-            } catch (IOException | RuntimeException e) {
-                // Another process holds it, or the filesystem refused; both mean "wait and retry".
-            }
-            try {
-                Thread.sleep(LOCK_WAIT_MS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return null;
-            }
-        }
-        return null;
-    }
-
-    /**
-     * Temp file, forced to disk, then renamed over the target.
-     *
-     * The force matters as much as the rename: without it the rename can be published while the
-     * bytes behind it are still in the page cache, so a machine that loses power between the two
-     * leaves a file that exists, is the right size, and is full of zeroes. Same reasoning as the
-     * client's own preference writer.
-     *
-     * AccessDeniedException is caught with AtomicMoveNotSupportedException because Windows raises
-     * it when anything has the destination open - a real and routine outcome with several clients
-     * running, and one that used to escape as an IOException and lose the save entirely.
-     */
     private static void write(List<Place> list) throws IOException {
         JSONArray arr = new JSONArray();
         for (Place p : list)
             arr.put(p.toJson());
-        Path dst = file();
-        Path tmp = dst.resolveSibling(dst.getFileName() + ".tmp");
-        try (FileChannel ch = FileChannel.open(tmp, StandardOpenOption.CREATE,
-                 StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            ch.write(ByteBuffer.wrap(arr.toString(2).getBytes(StandardCharsets.UTF_8)));
-            ch.force(true);
-        }
-        try {
-            Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
-        } catch (java.nio.file.AtomicMoveNotSupportedException | java.nio.file.AccessDeniedException e) {
-            Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
-        }
+        SharedFile.writeAtomic(file(), arr.toString(2).getBytes(StandardCharsets.UTF_8));
     }
 
     // ------------------------------------------------------------------ editing

@@ -1,15 +1,14 @@
 package haven.automated.scheduler;
 
 import haven.automated.nbots.core.NLog;
+import haven.automated.nbots.core.SharedFile;
 import org.json.JSONArray;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -69,14 +68,19 @@ public class Schedules {
             return;
         }
         Path f = file();
-        Path tmp = f.resolveSibling(f.getFileName() + ".tmp");
-        try {
-            Files.write(tmp, arr.toString(2).getBytes(StandardCharsets.UTF_8));
-            try {
-                Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(tmp, f, StandardCopyOption.REPLACE_EXISTING);
+        /* Same cross-process discipline as Places and Observed: this file is shared by every
+         * client launched from one install, so an unlocked rename here either loses the other
+         * client's edit or fails outright, because Windows will not rename over a file another
+         * process has open. Unlike those two this is a whole-file overwrite of an in-memory list
+         * rather than a merge, so the lock is what keeps last-writer-wins from meaning
+         * last-writer-wins-a-race. */
+        try (SharedFile.Held held = SharedFile.lock(f)) {
+            if (held == null) {
+                NLog.crash("Couldn't lock " + f + " to save",
+                    new IOException("cross-process lock held by another client"));
+                return;
             }
+            SharedFile.writeAtomic(f, arr.toString(2).getBytes(StandardCharsets.UTF_8));
         } catch (IOException | RuntimeException e) {
             NLog.crash("Couldn't save " + f, e);
         }

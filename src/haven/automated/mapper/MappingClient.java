@@ -79,6 +79,20 @@ public class MappingClient {
 	/** Grids whose mask gained bits since the last flush. */
 	private final Set<Long> dirtySeenGrids = new LinkedHashSet<>();
 
+	/**
+	 * [LEAKDBG] Size probe for the heap-leak hunt. One 1250-byte mask per grid ever rendered,
+	 * never dropped, so this grows with exploration whenever tile upload is enabled - which is
+	 * exactly the shape being hunted, and reason enough to log the number rather than assume.
+	 *
+	 * Read without a lock on purpose. seenMasks is confined to the scheduler thread (see
+	 * markSeenRegion), which does not synchronise on it, so locking here would only look like a
+	 * discipline that does not exist. size() is one field read; a stale count in a diagnostic
+	 * line costs nothing.
+	 */
+	public int seenmasksz() {
+	    return (seenMasks.size());
+	}
+
     private Glob glob;
     
     public static void init(Glob glob) {

@@ -9,6 +9,7 @@ public class CraftWindow extends Window {
 	private final Map<MenuGrid.Pagina, TabStrip.Button<MenuGrid.Pagina>> tabs = new HashMap<MenuGrid.Pagina, TabStrip.Button<MenuGrid.Pagina>>();
 	public Makewindow makeWidget;
 	private MenuGrid.Pagina lastAction;
+	private MenuGrid.Pagina currentAction;
 
 	public CraftWindow() {
 		super(Coord.z, "Crafting");
@@ -18,6 +19,7 @@ public class CraftWindow extends Window {
 					MenuGrid.Pagina pagina = entry.getKey();
 					if (entry.getValue().equals(button) && pagina != lastAction) {
 						ui.gui.wdgmsg("act", (Object[])pagina.button().act().ad);
+						currentAction = pagina;
 						lastAction = null;
 						break;
 					}
@@ -29,6 +31,17 @@ public class CraftWindow extends Window {
 
 	public void setLastAction(MenuGrid.Pagina value) {
 		lastAction = value;
+		currentAction = value;
+	}
+
+	public void toggleVisibility() {
+		if (visible) {
+			hide();
+		} else if (makeWidget != null) {
+			show();
+		} else if (currentAction != null) {
+			ui.gui.wdgmsg("act", (Object[])currentAction.button().act().ad);
+		}
 	}
 
 	@Override

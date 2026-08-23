@@ -64,6 +64,7 @@ public class MapWnd extends Window implements Console.Directory {
     private GroupSelector colsel;
     private CheckBox onmapbtn;
     private Button mremove;
+    private MarkerRenameWindow mrename;
     private Predicate<Marker> mflt = pmarkers;
     private Comparator<ListMarker> mcmp = namecmp;
     private List<ListMarker> markers = Collections.emptyList();
@@ -273,6 +274,10 @@ public class MapWnd extends Window implements Console.Directory {
 	super.remove();
 	if(!alwaysBig)
 	    mvmarks.remove();
+	if(mrename != null) {
+	    mrename.reqdestroy();
+	    mrename = null;
+	}
     }
 
     public void toggleol(String tag, boolean a) {
@@ -521,7 +526,10 @@ public class MapWnd extends Window implements Console.Directory {
 	public void mark(Location loc, boolean onmap) {
 	    Marker nm = new PMarker(file, loc.seg.id, loc.tc, "New marker", BuddyWnd.gc[new Random().nextInt(BuddyWnd.gc.length)], onmap);
 	    file.add(nm);
-	    focus(nm);
+	    if(compact() && OptWnd.renameMapMarkersOnPlacementCheckBox.a)
+		rename(nm);
+	    else
+		focus(nm);
 	}
 
 	private boolean ungrab() {
@@ -581,6 +589,45 @@ public class MapWnd extends Window implements Console.Directory {
 	    return(ev.grabbed ? ev.set(markcurs) : false);
 	}
 
+    }
+
+    private class MarkerRenameWindow extends Window {
+	private final Marker mark;
+	private final TextEntry name;
+
+	private MarkerRenameWindow(Marker mark) {
+	    super(UI.scale(220, 70), "Rename marker");
+	    this.mark = mark;
+	    name = add(new TextEntry(UI.scale(200), mark.nm) {
+		    {dshow = true;}
+		    public void activate(String text) {
+			save();
+		    }
+		}, UI.scale(10, 10));
+	    add(new Button(UI.scale(90), "Save", false, this::save), UI.scale(10, 40));
+	    add(new Button(UI.scale(90), "Cancel", false, this::reqdestroy), UI.scale(120, 40));
+	}
+
+	private void save() {
+	    mark.nm = name.text();
+	    view.file.update(mark);
+	    reqdestroy();
+	}
+
+	public void destroy() {
+	    if(mrename == this)
+		mrename = null;
+	    super.destroy();
+	}
+    }
+
+    private void rename(Marker mark) {
+	if(mrename != null)
+	    mrename.reqdestroy();
+	mrename = new MarkerRenameWindow(mark);
+	ui.gui.add(mrename, ui.gui.sz.sub(mrename.sz).div(2));
+	mrename.setfocus(mrename.name);
+	mrename.name.buf.select(0, mark.nm.length());
     }
 
     public void tick(double dt) {

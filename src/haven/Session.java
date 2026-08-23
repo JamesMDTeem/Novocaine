@@ -203,6 +203,15 @@ public class Session implements Resource.Resolver {
 	}
     }
 
+    /* [LEAKDBG] Size probe for the heap-leak hunt: rescache is never pruned. Expected to be small
+     * (bounded by distinct resource ids in a session) - logged so it can be ruled out by a number
+     * instead of by argument. */
+    public int rescachesz() {
+	synchronized(rescache) {
+	    return(rescache.size());
+	}
+    }
+
     private CachedRes cachedres(int id) {
 	synchronized(rescache) {
 	    CachedRes ret = rescache.get(id);

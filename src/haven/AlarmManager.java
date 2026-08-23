@@ -26,12 +26,15 @@ public class AlarmManager {
 	public static boolean play(String resname, Gob gob) {
 		Alarm al = alarms.get(resname);
 		if (al != null && al.enabled) {
+			UI ui = gob.glob.sess.ui;
+			if(ui == null)
+				return(false); // UI not attached yet (deferred Gob.init); report not-played so init retries later
 			if (gob.knocked == null) {
-				al.play(gob.glob.sess.ui);
+				al.play(ui);
 				return true;
 			}
 			if (al.knocked || gob.knocked != true) {
-				al.play(gob.glob.sess.ui);
+				al.play(ui);
 				return true;
 			}
 		}

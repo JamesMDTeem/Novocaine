@@ -64,6 +64,8 @@ public class TileHighlight {
 			add("gfx/tiles/lichenwold");
 			add("gfx/tiles/lushcave");
 			add("gfx/tiles/lushfield");
+			add("gfx/tiles/marsh");
+			add("gfx/tiles/marshwater");
 			add("gfx/tiles/mine");
 			add("gfx/tiles/moor");
 			add("gfx/tiles/mossbrush");
@@ -457,7 +459,7 @@ public class TileHighlight {
 		g.chcolor(((i % 2) == 0) ? every : other);
 		g.frect(Coord.z, g.sz());
 		g.chcolor();
-		g.aimage(Text.renderstroked(item).tex(), new Coord(UI.scale(3), elh / 2), 0, 0.5);
+		g.aimage(Text.strokedtex(item), new Coord(UI.scale(3), elh / 2), 0, 0.5);
 	    }
 	}
 		@Override
