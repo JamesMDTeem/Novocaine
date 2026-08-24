@@ -802,6 +802,7 @@ public class OptWnd extends Window {
 	public static CheckBox studyHelperCheckBox;
 	public static CheckBox eatObserverCheckBox;
 	public static CheckBox eatHelperCheckBox;
+	public static CheckBox alchemyHelperCheckBox;
 	public static HSlider mapIconsSizeSlider;
 	public static CheckBox simplifiedMapColorsCheckBox;
 	public static ColorOptionWidget sprintLandsColorWidget;
@@ -1011,6 +1012,15 @@ public class OptWnd extends Window {
 			}
 		}, leftColumn.pos("bl").adds(0, 2));
 		eatHelperCheckBox.tooltip = eatHelperTooltip;
+
+		leftColumn = add(alchemyHelperCheckBox = new CheckBox("Alchemy Helper (elixirs you can brew now)"){
+			{a = (Utils.getprefb("alchemyHelper", false));}
+			public void set(boolean val) {
+				Utils.setprefb("alchemyHelper", val);
+				a = val;
+			}
+		}, leftColumn.pos("bl").adds(0, 2));
+		alchemyHelperCheckBox.tooltip = alchemyHelperTooltip;
 
 		leftColumn = add(alwaysShowCombatUIStaminaBarCheckBox = new CheckBox("Always Show Combat UI Stamina Bar"){
 			{a = (Utils.getprefb("alwaysShowCombatUIStaminaBar", false));}
@@ -5493,6 +5503,11 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[185,185,185]{Advise only - nothing is eaten automatically. Requires the Cookbook Endpoint/Token above to be configured.}" +
 			"\n$col[185,185,185]{Satiation and the variety bonus are approximations - see the window's status line.}", UI.scale(300));
+	public static final Object alchemyHelperTooltip = RichText.render("Ranks the elixirs worth brewing next from the ingredients you can actually reach, using your mapper's pooled Alchemy Book knowledge." +
+			"\nYour inventory and belt are always counted, and every container you open stays counted after you close it - so chests can be opened one at a time." +
+			"\n" +
+			"\n$col[185,185,185]{Right-click the window to forget containers you have closed. Everything is forgotten when you switch this off.}" +
+			"\n$col[185,185,185]{Advise only - nothing is brewed automatically. Requires the Cookbook Endpoint/Token above to be configured.}", UI.scale(300));
 	public static final Object soundAlertForFinishedCuriositiesTooltip = RichText.render("A violin sound will be played every time a curiosity is finished." +
 			"\n" +
 			"\n$col[218,163,0]{Preview:}$col[185,185,185]{Enable this to hear the sound!", UI.scale(300));

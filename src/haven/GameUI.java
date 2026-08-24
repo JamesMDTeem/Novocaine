@@ -127,6 +127,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public MiniStudy miniStudy;
 	public haven.automated.study.StudyHelperWindow studyHelper;
 	public haven.automated.eat.EatHelperWindow eatHelper;
+	public haven.automated.alchemy.AlchemyHelperWindow alchemyHelper;
 	public static String backgroundSong = "";
 	public static long delayedMusicStopTime;
 	static public final Resource caveTheme = Resource.local().loadwait("customclient/sfx/cavetheme");
@@ -514,6 +515,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	eatHelper = add(new haven.automated.eat.EatHelperWindow(this),
 			  Utils.getprefc("wndc-eatHelper", UI.scale(new Coord(400, 100))));
 	eatHelper.hide();
+	alchemyHelper = add(new haven.automated.alchemy.AlchemyHelperWindow(this),
+			  Utils.getprefc("wndc-alchemyHelper", UI.scale(new Coord(400, 100))));
+	alchemyHelper.hide();
 	questhelper = new QuestHelper();
 	questhelper.hide();
 	add(questhelper, Utils.getprefc("wndc-autoDropManagerWindow", UI.unscale(new Coord(187, 50))));

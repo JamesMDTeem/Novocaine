@@ -219,6 +219,14 @@ build("NurglingImports/EatHelper.res",
       "Enter target attribute points and it works out which foods from your cookbook catalog get "
       "you there, ranked by hunger cost. Advise only - nothing is eaten automatically.")
 
+# The Alchemy Helper toggle - same shape again: the checkbox is the state, the window watches it.
+build("NurglingImports/AlchemyHelper.res",
+      "customclient/menugrid/NurglingImports", "Alchemy Helper", 0,
+      ["@", "NurglingImports", "AlchemyHelper"],
+      "Ranks the elixirs worth brewing next from the ingredients you can actually reach, using "
+      "your mapper's pooled Alchemy Book knowledge. Your inventory and belt always count, and "
+      "every container you open keeps counting after you close it.")
+
 build("NurglingImports/Schedules.res",
       "customclient/menugrid/NurglingImports", "Schedules", 0,
       ["@", "NurglingImports", "SchedulesWindow"],
