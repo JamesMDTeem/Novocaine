@@ -429,6 +429,20 @@ public class Window extends Widget {
 		return (parent instanceof Window) && ((Window) parent).shouldHaveInventoryButtons();
 	}
 
+	/**
+	 * Study desks are excluded from the inventory buttons as a group, because stacking or
+	 * transferring their contents is not something anyone wants by accident. Sorting is the
+	 * exception: a desk holds a dozen kinds of curiosity in whatever order they were dropped in,
+	 * and tidying that is exactly what the button is for.
+	 */
+	private boolean sortableDespiteExclusion() {
+		Widget p = parent;
+		if (!(p instanceof Window))
+			return false;
+		String cap = ((Window) p).cap;
+		return cap != null && cap.contains("Study Desk");
+	}
+
 	private void refreshInventoryButtons() {
 		boolean visible = shouldShowInventoryButtons();
 		boolean hasInventory = findInventory() != null;
@@ -439,7 +453,7 @@ public class Window extends Widget {
 		if (unstackbtn != null)
 			unstackbtn.visible = visible && hasInventory;
 		if (sortbtn != null)
-			sortbtn.visible = visible && hasInventory;
+			sortbtn.visible = (visible || sortableDespiteExclusion()) && hasInventory;
 		if (extlistbtn != null)
 			extlistbtn.visible = visible && hasExtInventory;
 	}

@@ -16,6 +16,7 @@ import haven.Utils;
 import haven.WItem;
 import haven.Widget;
 import haven.Window;
+import haven.automated.invpool.ContainerPool;
 import haven.res.ui.stackinv.ItemStack;
 import haven.resutil.Curiosity;
 
@@ -64,6 +65,14 @@ public class StudyHelperWindow extends Window {
 
     private final GameUI gui;
     private final Body body;
+    /**
+     * Containers the player has opened while this was on, remembered after they close. Curiosities
+     * are usually spread over a row of chests, and holding all of them open at once to get one plan
+     * is not a thing anyone wants to do.
+     */
+    private final ContainerPool<StudyPlanner.Curio> pool = new ContainerPool<StudyPlanner.Curio>();
+    /** Last scan's curiosities, kept because visibility is decided from them every tick. */
+    private List<StudyPlanner.Curio> curios = new ArrayList<>();
     private double sinceRefresh = REFRESH_INTERVAL;
     /**
      * What this window has asked to be, which is not the same as {@link #visible} — Window.hide()
@@ -84,23 +93,49 @@ public class StudyHelperWindow extends Window {
     @Override
     public void tick(double dt) {
         super.tick(dt);
-        boolean wanted = OptWnd.studyHelperCheckBox != null && OptWnd.studyHelperCheckBox.a
-                && anyContainerOpen();
+        if (OptWnd.studyHelperCheckBox == null || !OptWnd.studyHelperCheckBox.a) {
+            if (shown) {
+                shown = false;
+                savePos();
+                hide();
+            }
+            /* Everything the pool remembers was true only while the helper was on. Keeping it
+             * across a disable would mean re-enabling in another region silently plans against
+             * chests half a map away. */
+            pool.clear();
+            curios = new ArrayList<>();
+            StudyHighlight.clear();
+            return;
+        }
+
+        sinceRefresh += dt;
+        if (sinceRefresh >= REFRESH_INTERVAL)
+            rescan();
+
+        /* Still gated on a real container, not on having any curiosity at all: the inventory is now
+         * counted, and anyone who carries a curiosity would otherwise have this window up for the
+         * whole session. Counting the backpack should change the numbers, not the visibility. A
+         * container that has been closed still counts -- that is what the remembering is for. */
+        boolean wanted = pool.hasExternal() && !curios.isEmpty();
         if (!wanted) {
             if (shown) {
                 shown = false;
                 savePos();
                 hide();
             }
+            /* No plan on screen, so nothing may be ringed. The green means "the plan wants this",
+             * and there is no plan. */
+            StudyHighlight.clear();
             return;
         }
         if (!shown) {
             shown = true;
             show();
         }
-        sinceRefresh += dt;
-        if (sinceRefresh < REFRESH_INTERVAL)
-            return;
+    }
+
+    /** Rereads the containers and rebuilds the plan; guarded, see below. */
+    private void rescan() {
         sinceRefresh = 0;
         /* Nothing this window does is worth taking the client down for. Reading item info touches
          * resource loading, which throws more than Loading - a broken or half-arrived resource
@@ -110,7 +145,10 @@ public class StudyHelperWindow extends Window {
          * silently is how the bug stays. */
         try {
             Coord grid = studyGrid();
-            body.update(StudyPlanner.plan(scan(), attentionBudget(), grid.x, grid.y));
+            curios = scan();
+            StudyPlanner.Plan plan = StudyPlanner.plan(curios, attentionBudget(), grid.x, grid.y);
+            publishHighlight(plan);
+            body.update(plan, pool);
         } catch (RuntimeException e) {
             if (!loggedFailure) {
                 loggedFailure = true;
@@ -120,6 +158,20 @@ public class StudyHelperWindow extends Window {
                             + "(details in logs/crash.log).");
             }
         }
+    }
+
+    /**
+     * Tells the containers which curiosities to ring in green: the ones above the cut line, the
+     * same rows the table highlights. Below-the-cut rows are deliberately left plain — a colour
+     * that means "you own this" rather than "take this" is a colour that has to be read twice.
+     */
+    private void publishHighlight(StudyPlanner.Plan plan) {
+        List<String> take = new ArrayList<>();
+        for (StudyPlanner.Group g : plan.groups) {
+            if (g.selected)
+                take.add(g.curio.name);
+        }
+        StudyHighlight.set(take);
     }
 
     /** One report per session — a refresh that fails once usually fails every 0.4s after that. */
@@ -139,6 +191,9 @@ public class StudyHelperWindow extends Window {
     @Override
     public void destroy() {
         savePos();
+        /* The highlight set is static and would otherwise outlive the session that published it,
+         * ringing items in the next character's containers against a plan that no longer exists. */
+        StudyHighlight.clear();
         super.destroy();
     }
 
@@ -152,52 +207,42 @@ public class StudyHelperWindow extends Window {
                 OptWnd.studyHelperCheckBox.set(false);
             shown = false;
             hide();
+            pool.clear();
+            curios = new ArrayList<>();
+            StudyHighlight.clear();
             return;
         }
         super.wdgmsg(sender, msg, args);
     }
 
-    // -- reading the world ---------------------------------------------------------------------
-
-    /** Any window that isn't one of the player's own inventories and does hold an inventory. */
-    private boolean anyContainerOpen() {
-        for (Window w : gui.getAllWindows()) {
-            if (w == this || w.cap == null || !w.visible)
-                continue;
-            if (Inventory.PLAYER_INVENTORY_NAMES.contains(w.cap))
-                continue;
-            for (Widget child : w.children()) {
-                if (Inventory.fromWidget(child) != null)
-                    return true;
-            }
+    /**
+     * Right-clicking the plan forgets every container that is no longer open, keeping the live
+     * ones. Reopening a chest you have taken from cannot be told from opening a second identical
+     * one (see {@link ContainerPool}), so the drift that causes needs a way out that is not
+     * "turn the helper off and start again".
+     */
+    @Override
+    public boolean mousedown(MouseDownEvent ev) {
+        if (ev.b == 3 && body != null && ev.c.isect(body.c, body.sz)) {
+            pool.forget();
+            sinceRefresh = REFRESH_INTERVAL;
+            return true;
         }
-        return false;
+        return super.mousedown(ev);
     }
 
+    // -- reading the world ---------------------------------------------------------------------
+
     /**
-     * Every curiosity in every open container, one entry per physical copy. Items still loading are
+     * Every curiosity the player can reach, one entry per physical copy.
+     *
+     * The pool does the walking: it counts the inventory and belt live, every container still open
+     * live, and every container opened earlier in this enable from memory. Items still loading are
      * skipped for this pass rather than guessed at — the next refresh is 0.4s away.
      */
     private List<StudyPlanner.Curio> scan() {
-        List<StudyPlanner.Curio> found = new ArrayList<>();
-        for (Window w : gui.getAllWindows()) {
-            if (w == this || w.cap == null || !w.visible)
-                continue;
-            if (Inventory.PLAYER_INVENTORY_NAMES.contains(w.cap))
-                continue;
-            for (Widget child : w.children()) {
-                Inventory inv = Inventory.fromWidget(child);
-                if (inv == null)
-                    continue;
-                for (WItem wi : inv.getAllItems())
-                    collect(wi, found);
-            }
-        }
-        return found;
-    }
-
-    private void collect(WItem wi, List<StudyPlanner.Curio> into) {
-        collect(wi, wi.sz, into);
+        pool.refresh(gui, (wi, into) -> collect(wi, wi.sz, into));
+        return pool.items();
     }
 
     /**
@@ -296,6 +341,8 @@ public class StudyHelperWindow extends Window {
         private StudyPlanner.Plan plan;
         private Tex table;
         private String signature = null;
+        /** Where the curiosities came from, drawn above the plan. */
+        private String sources = "";
 
         Body() {
             super(UI.scale(TABLE_W, 40));
@@ -311,9 +358,10 @@ public class StudyHelperWindow extends Window {
          * things. Requiring the same plan twice in a row rides out the churn: during a sort nothing
          * is redrawn, and the finished layout is drawn once when it settles.
          */
-        void update(StudyPlanner.Plan plan) {
+        void update(StudyPlanner.Plan plan, ContainerPool<StudyPlanner.Curio> pool) {
             this.plan = plan;
-            String sig = signature(plan);
+            this.sources = sourceLine(pool);
+            String sig = signature(plan) + sources;
             if (sig.equals(signature))
                 return;
             if (!sig.equals(candidate)) {
@@ -322,6 +370,25 @@ public class StudyHelperWindow extends Window {
             }
             signature = sig;
             render(plan);
+        }
+
+        /** Which containers the plan drew on, and which of them are only remembered. */
+        private String sourceLine(ContainerPool<StudyPlanner.Curio> pool) {
+            List<ContainerPool.Source> open = pool.sources();
+            if (open.isEmpty())
+                return "No containers open.";
+            int remembered = 0;
+            List<String> names = new ArrayList<>();
+            for (ContainerPool.Source s : open) {
+                if (!s.open)
+                    remembered++;
+                if (names.size() < 4)
+                    names.add(s.open ? s.name : s.name + "*");
+            }
+            String head = String.join(", ", names);
+            if (open.size() > names.size())
+                head += " +" + (open.size() - names.size());
+            return remembered > 0 ? head + "  ·  * remembered, right-click to forget" : head;
         }
 
         /** The signature seen last refresh, still waiting to be confirmed by a second one. */
@@ -358,7 +425,7 @@ public class StudyHelperWindow extends Window {
 
         private void render(StudyPlanner.Plan p) {
             int rowh = UI.scale(ROW_H);
-            int headerRows = 2;
+            int headerRows = 3;
             int shownRows = rowsToShow(p);
             boolean truncated = shownRows < p.groups.size();
             int tableH = rowh * (headerRows + 1 + Math.max(1, shownRows) + (truncated ? 1 : 0))
@@ -367,6 +434,8 @@ public class StudyHelperWindow extends Window {
             Graphics2D g2 = img.createGraphics();
 
             int y = 0;
+            drawText(g2, sources, 0, y, LP_COLOR);
+            y += rowh;
             /* Used, left, and the pool it came out of. The planner never admits a copy that would
              * exceed the budget, so "used" is a number that cannot go over - no warning state. */
             drawText(g2, String.format("Attention: %s used  ·  %s free  ·  %s Int",
@@ -385,7 +454,7 @@ public class StudyHelperWindow extends Window {
             y += rowh;
 
             if (p.groups.isEmpty()) {
-                drawText(g2, "No curiosities in the open containers.", 0, y, DIMMED_COLOR);
+                drawText(g2, "No curiosities in reach.", 0, y, DIMMED_COLOR);
             } else {
                 boolean cutDrawn = false;
                 for (int i = 0; i < shownRows; i++) {

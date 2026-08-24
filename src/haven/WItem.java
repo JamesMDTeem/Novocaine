@@ -37,6 +37,7 @@ import java.util.List;
 
 import haven.Fuzzy;
 import haven.ItemInfo.AttrCache;
+import haven.automated.study.StudyHighlight;
 import haven.res.ui.stackinv.ItemStack;
 import haven.resutil.Curiosity;
 
@@ -58,6 +59,8 @@ public class WItem extends Widget implements DTarget {
 	private int searchItemColorValue = 0;
 	public static final Text.Foundry quantityFoundry = new Text.Foundry(Text.dfont, 10);
 	private static final Color quantityColor = new Color(255, 255, 255, 255);
+	/** The LP Helper's "take this one" ring. Opaque green, drawn over every other overlay. */
+	private static final Color studyHighlightColor = new Color(60, 240, 90, 255);
 	public static final Coord TEXT_PADD_BOT = new Coord(1, 2);
 	public final AttrCache<Tex> heurnum = new AttrCache<Tex>(this::info, AttrCache.cache(info -> {
 		String num = ItemInfo.getCount(info);
@@ -264,10 +267,54 @@ public class WItem extends Widget implements DTarget {
 			g.aimage(item.stackQualityTex, new Coord(g.sz().x, 0), 0.95, 0.2);
 		}
 		drawDurabilityBars(g, sz);
+		drawStudyHighlight(g, sz);
 	} else {
 	    g.image(missing.layer(Resource.imgc).tex(), Coord.z, sz);
 	}
     }
+
+	/**
+	 * Rings the curiosities the LP Helper's plan wants taken, so they can be found by eye across a
+	 * row of open chests instead of by reading names off the plan and hunting for them.
+	 *
+	 * Drawn last, over every other overlay, because being coverable by a quality number or a
+	 * durability bar would defeat the point. A frame rather than a tint (as the inventory search
+	 * uses) so the item art stays readable and the two highlights cannot be mistaken for each other.
+	 *
+	 * Nothing is highlighted unless a study plan is on screen, and the check behind
+	 * {@link StudyHighlight#idle()} is one volatile read in that case -- this runs for every item in
+	 * every open container on every frame.
+	 */
+	private void drawStudyHighlight(GOut g, Coord sz) {
+		if (StudyHighlight.idle())
+			return;
+		/* A curiosity already in the study grid is not one to go and fetch. The plan is built for
+		 * an empty grid, so ringing what is already in it reads as "take this" about the one thing
+		 * that is already taken. */
+		if (parent instanceof StudyInventory)
+			return;
+		try {
+			String name;
+			if (item.contents instanceof ItemStack) {
+				/* A stack is homogeneous, and its wrapper is named "<item>, stack of" rather than
+				 * the thing it holds, so the name has to come from a member. */
+				ItemStack stack = (ItemStack) item.contents;
+				name = stack.order.isEmpty() ? null : stack.order.get(0).getname();
+			} else {
+				name = item.getname();
+			}
+			if (!StudyHighlight.wants(name))
+				return;
+			g.chcolor(studyHighlightColor);
+			g.rect(new Coord(1, 1), sz.sub(2, 2));
+			g.rect(new Coord(2, 2), sz.sub(4, 4));
+			g.chcolor();
+		} catch (Loading l) {
+			/* Still arriving; it will be ringed on a later frame. */
+		} catch (RuntimeException e) {
+			/* A broken resource must not take the whole inventory's drawing down with it. */
+		}
+	}
 
     public boolean mousedown(MouseDownEvent ev) {
 	boolean inv = Inventory.fromWidget(parent) != null;
