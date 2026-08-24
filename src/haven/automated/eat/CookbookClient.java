@@ -36,7 +36,11 @@ public class CookbookClient {
 
     private static volatile List<EatPlanner.Dish> cached = null;
     private static volatile long cachedAt = 0;
-    private static volatile boolean fetching = false;
+    /** Guards against two concurrent fetches. An AtomicBoolean rather than a volatile flag
+     *  because the check-then-set on a volatile is not atomic: two callers arriving together
+     *  both read false and both fetch. */
+    private static final java.util.concurrent.atomic.AtomicBoolean fetching =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
     private static volatile String lastError = null;
 
     /** World the cached catalog was fetched for - see {@link #refreshIfStale()}. */
@@ -60,7 +64,7 @@ public class CookbookClient {
      * one before it.
      */
     public static void refreshIfStale() {
-        if (fetching)
+        if (fetching.get())
             return;
         boolean sameWorld = java.util.Objects.equals(cachedWorld, FoodService.worldTag());
         if (cached != null && sameWorld && System.currentTimeMillis() - cachedAt < CACHE_TTL_MS)
@@ -70,9 +74,8 @@ public class CookbookClient {
 
     /** Forces a fetch regardless of cache age. {@code onDone} (may be null) runs on the scheduler thread. */
     public static void fetch(Consumer<List<EatPlanner.Dish>> onDone) {
-        if (fetching)
+        if (!fetching.compareAndSet(false, true))
             return;
-        fetching = true;
         FoodService.scheduler.execute(() -> {
             try {
                 String world = FoodService.worldTag();
@@ -88,7 +91,7 @@ public class CookbookClient {
                 if (onDone != null)
                     onDone.accept(null);
             } finally {
-                fetching = false;
+                fetching.set(false);
             }
         });
     }
@@ -156,16 +159,22 @@ public class CookbookClient {
             }
         }
 
-        List<String> satiationGroups = new ArrayList<>();
-        JSONArray satArr = o.optJSONArray("satiationGroups");
-        if (satArr != null) {
-            for (int i = 0; i < satArr.length(); i++)
-                satiationGroups.add(satArr.getString(i));
+        // satiationKeys, not satiationTypes: the types are the tooltip's thirteen display
+        // categories (gfx/invobjs/food/*) and cannot be matched against live satiation state,
+        // which is keyed by a representative dish icon instead. Only the keys join.
+        List<String> satiationKeys = new ArrayList<>();
+        JSONArray keyArr = o.optJSONArray("satiationKeys");
+        if (keyArr != null) {
+            for (int i = 0; i < keyArr.length(); i++) {
+                String key = keyArr.optString(i, null);
+                if (key != null && !key.isEmpty())
+                    satiationKeys.add(key);
+            }
         }
 
         Double maxQualitySeen = o.isNull("maxQualitySeen") || !o.has("maxQualitySeen")
                 ? null : o.getDouble("maxQualitySeen");
 
-        return new EatPlanner.Dish(name, feps, hunger, satiationGroups, maxQualitySeen);
+        return new EatPlanner.Dish(name, feps, hunger, satiationKeys, maxQualitySeen);
     }
 }

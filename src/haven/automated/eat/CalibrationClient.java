@@ -57,7 +57,11 @@ public class CalibrationClient {
 
     private static volatile Calibration cached = null;
     private static volatile long cachedAt = 0;
-    private static volatile boolean fetching = false;
+    /** Guards against two concurrent fetches. An AtomicBoolean rather than a volatile flag
+     *  because the check-then-set on a volatile is not atomic: two callers arriving together
+     *  both read false and both fetch. */
+    private static final java.util.concurrent.atomic.AtomicBoolean fetching =
+            new java.util.concurrent.atomic.AtomicBoolean(false);
     private static volatile String lastError = null;
 
     /** World the cached calibration was fetched for - see {@link #refreshIfStale()}. */
@@ -76,7 +80,7 @@ public class CalibrationClient {
      * world's foods - so a calibration fetched for another world is stale however fresh it is.
      */
     public static void refreshIfStale() {
-        if (fetching)
+        if (fetching.get())
             return;
         boolean sameWorld = java.util.Objects.equals(cachedWorld, FoodService.worldTag());
         if (cached != null && sameWorld && System.currentTimeMillis() - cachedAt < CACHE_TTL_MS)
@@ -85,9 +89,8 @@ public class CalibrationClient {
     }
 
     public static void fetch(Consumer<Calibration> onDone) {
-        if (fetching)
+        if (!fetching.compareAndSet(false, true))
             return;
-        fetching = true;
         FoodService.scheduler.execute(() -> {
             try {
                 String world = FoodService.worldTag();
@@ -103,7 +106,7 @@ public class CalibrationClient {
                 if (onDone != null)
                     onDone.accept(null);
             } finally {
-                fetching = false;
+                fetching.set(false);
             }
         });
     }
