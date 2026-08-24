@@ -374,6 +374,9 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	this.genus = genus;
 	haven.automated.lp.LpContext.bind(this);
 	haven.automated.eat.EatObserver.bind(this);
+	/* The remembered feasting-table bonus belongs to a table this character stood at, so it
+	 * must not follow the player onto the next one. */
+	haven.automated.eat.ModifierContext.reset();
 	haven.automated.nbots.core.NLog.installUncaughtHandler();
 	setcanfocus(true);
 	setfocusctl(true);

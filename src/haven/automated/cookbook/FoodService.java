@@ -1,9 +1,13 @@
 package haven.automated.cookbook;
 
+import haven.BAttrWnd;
 import haven.Defer;
+import haven.GItem;
 import haven.ItemInfo;
 import haven.OptWnd;
 import haven.Resource;
+import haven.UI;
+import haven.automated.eat.EatObserver;
 import haven.res.ui.tt.q.qbuff.QBuff;
 import haven.resutil.FoodInfo;
 import org.json.JSONArray;
@@ -185,6 +189,11 @@ public class FoodService {
 
     public static void checkFood(List<ItemInfo> ii, Resource res, String genus) {
         List<ItemInfo> infoList = new ArrayList<>(ii);
+        // Taken here, not inside the Defer below: this method runs on the UI thread (GItem.info()),
+        // and BAttrWnd.Constipations.els is a plain ArrayList the UI thread appends to and removes
+        // from. Reading it off a worker would be a straight data race, and the index FoodInfo.types
+        // carries is only meaningful against the list as it stands right now anyway.
+        List<String> satiationKeys = snapshotSatiationKeys(infoList);
         Defer.later(() -> {
             try {
                 String resName = res.name;
@@ -198,6 +207,14 @@ public class FoodService {
                     ParsedFoodInfo parsedFoodInfo = new ParsedFoodInfo();
                     parsedFoodInfo.resourceName = resName;
                     parsedFoodInfo.genus = genus;
+                    // The observed quality, sent alongside the q10-normalized numbers rather than
+                    // instead of them. The server keeps a running max per variant and the Eating
+                    // Helper's "% of highest quality seen" mode is built entirely on it; without
+                    // this field that mode has never had a single value to work with. Null when
+                    // the item carries no QBuff, because the 10.0 default above is a normalization
+                    // fallback, not an observation, and uploading it would poison the max.
+                    parsedFoodInfo.quality = (qBuff != null) ? round2Dig(quality) : null;
+                    readSatiationKeys(foodInfo, satiationKeys, parsedFoodInfo);
                     parsedFoodInfo.energy = (int) (Math.round(foodInfo.end * PERCENT_SCALE));
                     parsedFoodInfo.hunger = round2Dig(foodInfo.glut * HUNGER_SCALE / multiplier2);
 
@@ -224,6 +241,8 @@ public class FoodService {
                             String name = (String) info.getClass().getField("name").get(info);
                             Double value = (Double) info.getClass().getField("val").get(info);
                             parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * PERCENT_SCALE)));
+                        } else if (info.getClass().getName().contains("FoodTypes")) {
+                            readFoodTypes(info, parsedFoodInfo);
                         }
                     }
                     checkAndSend(parsedFoodInfo);
@@ -241,13 +260,172 @@ public class FoodService {
         return Math.round(value * ROUND_2DP_SCALE) / ROUND_2DP_SCALE;
     }
 
+    /**
+     * The character's live satiation entries, in list order, keyed exactly as
+     * {@code EatObserver.resolveSatiationKey} keys them - so entry {@code i} here is what
+     * {@code FoodInfo.types[i']} means when it holds the value {@code i}.
+     *
+     * <h2>Why this exists at all</h2>
+     *
+     * The tooltip's "Food types:" line and the character's satiation list are two different
+     * things, which is not obvious and cost a wrong turn to find out. The type resources are
+     * thirteen stable categories ({@code gfx/invobjs/food/veg}, {@code .../food/shrooms}); the
+     * satiation entries are keyed by a representative dish icon instead
+     * ({@code gfx/invobjs/steaktuber}, {@code .../applepie}), and the two namespaces do not
+     * overlap at all. Joining a catalog dish to a live satiation penalty by type resource
+     * therefore never matches anything, and the planner silently prices every dish as unsatiated.
+     *
+     * {@code FoodInfo.types} is the game's own pointer from a food to the satiation entries it
+     * drains, and it is what {@code FoodInfo.tipimg} uses for the Food Efficiency percentage the
+     * player already reads. The index is safe to trust despite the list being mutable: the server
+     * computes it against its own view, and {@code Constipations.update} mirrors that view's
+     * semantics exactly - append on first sight, remove at full decay - so both sides stay in the
+     * same order.
+     *
+     * @return keys by index, or an empty list when the character sheet isn't available yet.
+     */
+    private static List<String> snapshotSatiationKeys(List<ItemInfo> infoList) {
+        try {
+            UI ui = null;
+            for (ItemInfo info : infoList) {
+                if (info.owner instanceof GItem) {
+                    ui = ((GItem) info.owner).ui;
+                    break;
+                }
+            }
+            if (ui == null || ui.gui == null || ui.gui.chrwdg == null
+                    || ui.gui.chrwdg.battr == null || ui.gui.chrwdg.battr.cons == null) {
+                return java.util.Collections.emptyList();
+            }
+            List<BAttrWnd.Constipations.El> els = ui.gui.chrwdg.battr.cons.els;
+            List<String> keys = new ArrayList<>(els.size());
+            for (BAttrWnd.Constipations.El el : els) {
+                keys.add(EatObserver.resolveSatiationKey(el.t));
+            }
+            return keys;
+        } catch (Exception e) {
+            // A food is still worth uploading without its satiation keys; the next hover, once the
+            // sheet is up, fills them in (see improvesOnCached).
+            return java.util.Collections.emptyList();
+        }
+    }
+
+    /**
+     * The satiation entries this food drains, resolved through {@code FoodInfo.types} against the
+     * snapshot taken on the UI thread. Out-of-range indices are dropped rather than guessed at -
+     * that only happens if the list moved between the snapshot and here, in which case the index
+     * no longer means anything.
+     */
+    private static void readSatiationKeys(FoodInfo foodInfo, List<String> snapshot,
+                                           ParsedFoodInfo out) {
+        if (foodInfo.types == null || snapshot.isEmpty()) {
+            return;
+        }
+        for (int type : foodInfo.types) {
+            if (type < 0 || type >= snapshot.size()) {
+                continue;
+            }
+            String key = snapshot.get(type);
+            if (key == null || key.startsWith("?") || out.satiationKeys.contains(key)) {
+                continue;
+            }
+            out.satiationKeys.add(key);
+        }
+    }
+
+    /**
+     * The food's satiation types - the "Food types:" line on the hover tooltip - pulled off the
+     * resource-side {@code FoodTypes} item info.
+     *
+     * This is the exact join the Eating Helper needs and could not previously get. The character's
+     * live satiation list ({@code BAttrWnd.Constipations}) is keyed by these same resources, so a
+     * food's own types say precisely which entries eating it drains. The server was instead trying
+     * to <i>infer</i> that join from eat history, voting a satiation resource onto a wiki category;
+     * that cannot work, because the single most common resource - {@code gfx/invobjs/meat}, 524 of
+     * 1042 readings in the local logs - is shared by dishes the wiki files under Fish, Game and
+     * Meat separately. Reading the answer off the item beats inferring it from behaviour.
+     *
+     * Reflective because {@code FoodTypes} lives in the game's resource tree, not in this source
+     * tree, exactly like the {@code Ingredient} and {@code Smoke} infos handled beside it. Its
+     * {@code types} field is a {@code Resource[]} - not the {@code int[]} on {@link FoodInfo},
+     * which is a positional index into a client-side list that reorders and drops entries as
+     * satiation decays, and so is not a stable identity for anything.
+     *
+     * Any failure here is swallowed: a missing class, a renamed field or a resource still loading
+     * costs this one food its types, and must not cost the upload its FEP and hunger numbers.
+     */
+    private static void readFoodTypes(ItemInfo info, ParsedFoodInfo out) {
+        try {
+            java.lang.reflect.Field typesField = info.getClass().getDeclaredField("types");
+            typesField.setAccessible(true);
+            Object raw = typesField.get(info);
+            if (!(raw instanceof Object[])) {
+                return;
+            }
+            for (Object entry : (Object[]) raw) {
+                if (!(entry instanceof Resource)) {
+                    continue;
+                }
+                Resource res = (Resource) entry;
+                String display = null;
+                try {
+                    Resource.Tooltip tt = res.layer(Resource.tooltip);
+                    if (tt != null) {
+                        display = tt.t;
+                    }
+                } catch (Exception e) {
+                    // A type with no readable tooltip is still worth recording by resource -
+                    // the resource is the identity, the name is only for display.
+                }
+                out.foodTypes.add(new FoodType(res.name, display));
+            }
+        } catch (Exception e) {
+            if (cookbookDebug) {
+                System.out.println("Cannot read food types: " + e);
+            }
+        }
+    }
+
     private static void checkAndSend(ParsedFoodInfo info) {
         String hash = generateHash(info);
         if (hash == null) return;
-        if (cachedItems.containsKey(hash)) {
+        if (!improvesOnCached(hash, info)) {
             return;
         }
         sendQueue.add(new HashedFoodInfo(hash, info));
+    }
+
+    /**
+     * Whether this sighting is worth uploading: the dish is new this session, or it has been seen
+     * at a strictly higher quality than the copy already sent.
+     *
+     * The quality clause is what makes the server's running max mean anything. The hash covers
+     * name, resource and ingredients but deliberately not quality - putting quality in the key
+     * would upload a fresh row for every quality point of every dish - so a plain
+     * already-seen check silently threw away every sighting after the first. Inspect a q10 pie in
+     * the morning and a q80 one in the afternoon and the server would only ever hear about the
+     * q10, leaving "% of highest quality seen" planning against a number that never grows.
+     */
+    private static boolean improvesOnCached(String hash, ParsedFoodInfo info) {
+        ParsedFoodInfo seen = cachedItems.get(hash);
+        if (seen == null) {
+            return true;
+        }
+        // Satiation types can arrive late: the first sighting of a dish may land while its
+        // FoodTypes resource is still loading, and without this the session cache would pin that
+        // typeless copy in place for as long as the client runs.
+        if (!info.foodTypes.isEmpty() && seen.foodTypes.isEmpty()) {
+            return true;
+        }
+        // Same for the satiation keys, which additionally need the character sheet to be up - the
+        // first hover of a session routinely lands before it is.
+        if (!info.satiationKeys.isEmpty() && seen.satiationKeys.isEmpty()) {
+            return true;
+        }
+        if (info.quality == null) {
+            return false;
+        }
+        return seen.quality == null || info.quality > seen.quality;
     }
 
     public static boolean isValidEndpoint() {
@@ -265,13 +443,14 @@ public class FoodService {
         if (endpoint == null) return;
         final java.net.URI apiBase = java.net.URI.create(endpoint.trim());
 
+        List<HashedFoodInfo> batch = new ArrayList<>();
         List<ParsedFoodInfo> toSend = new ArrayList<>();
         while (!sendQueue.isEmpty()) {
             HashedFoodInfo info = sendQueue.poll();
-            if (cachedItems.containsKey(info.hash)) {
+            if (!improvesOnCached(info.hash, info.foodInfo)) {
                 continue;
             }
-            cachedItems.put(info.hash, info.foodInfo);
+            batch.add(info);
             toSend.add(info.foodInfo);
         }
 
@@ -296,6 +475,19 @@ public class FoodService {
                 }
 
                 int code = connection.getResponseCode();
+
+                // Only remember a dish once the server has actually acknowledged it. Caching on
+                // the way *out* meant a batch the server rejected - or, worse, one it accepted
+                // while silently ignoring a field it was too old to understand - was recorded as
+                // delivered, and that dish could then never be re-sent for the rest of the
+                // session. Restarting the client was the only way to retry, which is a confusing
+                // thing to have to discover. On a non-200 nothing is cached, so the next sighting
+                // of the same dish queues again.
+                if (code == HTTP_OK) {
+                    for (HashedFoodInfo sent : batch) {
+                        cachedItems.put(sent.hash, sent.foodInfo);
+                    }
+                }
 
                 if (code != HTTP_OK) {
                     if (cookbookDebug) {
@@ -402,6 +594,29 @@ public class FoodService {
         }
     }
 
+    /**
+     * One satiation type a food drains, as the tooltip's "Food types:" line lists it. The resource
+     * is the identity - it is what {@code BAttrWnd.Constipations} keys its live entries by - and
+     * the name is for display only, so a type whose tooltip has not loaded still joins correctly.
+     */
+    public static class FoodType {
+        public String resource;
+        public String name;
+
+        public FoodType(String resource, String name) {
+            this.resource = resource;
+            this.name = name;
+        }
+
+        public String getResource() {
+            return resource;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
+
     /** Holds parsed food information for cookbook submission. Fields are initialized with default values in constructor. */
     public static class ParsedFoodInfo {
         public String itemName;
@@ -409,14 +624,22 @@ public class FoodService {
         public String genus;
         public Integer energy;
         public double hunger;
+        /** Observed item quality, or null when the item had no quality buff to read. */
+        public Double quality;
         public ArrayList<FoodIngredient> ingredients;
         public ArrayList<FoodFEP> feps;
+        /** Satiation types read off the tooltip - see {@link FoodService#readFoodTypes}. */
+        public ArrayList<FoodType> foodTypes;
+        /** Live satiation entry keys this food drains - see {@link FoodService#snapshotSatiationKeys}. */
+        public ArrayList<String> satiationKeys;
 
         public ParsedFoodInfo() {
             this.itemName = "";
             this.resourceName = "";
             this.ingredients = new ArrayList<>();
             this.feps = new ArrayList<>();
+            this.foodTypes = new ArrayList<>();
+            this.satiationKeys = new ArrayList<>();
         }
 
         public String getItemName() {
@@ -437,6 +660,18 @@ public class FoodService {
 
         public double getHunger() {
             return hunger;
+        }
+
+        public Double getQuality() {
+            return quality;
+        }
+
+        public ArrayList<FoodType> getFoodTypes() {
+            return foodTypes;
+        }
+
+        public ArrayList<String> getSatiationKeys() {
+            return satiationKeys;
         }
 
         public ArrayList<FoodIngredient> getIngredients() {
