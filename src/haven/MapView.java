@@ -2038,9 +2038,14 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	wdgmsg("initload", time);
     }
 
+    /* Records how plgob resolves, so a report of "the camera locked where I came in" arrives
+     * with the one fact that tells the possible causes apart. See PlgobWatch. */
+    private final haven.automated.PlgobWatch plgobwatch = new haven.automated.PlgobWatch();
+
     public void tick(double dt) {
 	super.tick(dt);
 	checkload();
+	plgobwatch.tick(this);
 	camload = null;
 	try {
 	    if((shake = shake * Math.pow(100, -dt)) < 0.01)

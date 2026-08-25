@@ -30,6 +30,9 @@
 /midiFiles/
 /MapIconsPresets/
 /.updater-backup/
+# Written by NLog at runtime, relative to whatever the client's working directory is -
+# the repo root when it is run from a checkout. Player logs, not source.
+/logs/
 *.db
 steamicon.gif
 

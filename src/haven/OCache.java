@@ -85,6 +85,35 @@ public class OCache implements Iterable<Gob> {
 	cbs.remove(cb);
     }
 
+    /* A listener that throws must not take the object cache's bookkeeping down with it.
+     *
+     * These callbacks run inside GobInfo.apply on the loader thread, and apply is deferred
+     * with capex=false, so an escaping exception both kills the loader thread and leaves the
+     * GobInfo holding a non-null applier that nothing ever clears - which means the outgoing
+     * gob is never unregistered. Objects are keyed by id in a MultiMap whose get() returns
+     * null for an ambiguous key, so once that happens to the player's id, MapView.player()
+     * reads null for the rest of the session and the camera, the click-to-move origin and
+     * every range check fall back to wherever the map instance was entered. One misbehaving
+     * listener is not worth that, so report it and carry on down the list.
+     *
+     * Loading is control flow here rather than a fault: let it out so the loader parks the
+     * task and retries it, the way every other loading path in this class relies on. */
+    private void fire(Collection<ChangeCallback> cbs, Gob ob, boolean added) {
+	for(ChangeCallback cb : cbs) {
+	    try {
+		if(added)
+		    cb.added(ob);
+		else
+		    cb.removed(ob);
+	    } catch(Loading l) {
+		throw(l);
+	    } catch(RuntimeException e) {
+		new Warning(e, String.format("gob %s callback failed for object %d",
+					     added ? "added" : "removed", ob.id)).issue();
+	    }
+	}
+    }
+
     public void add(Gob ob) {
 	synchronized(ob) {
 	    Collection<ChangeCallback> cbs;
@@ -92,8 +121,7 @@ public class OCache implements Iterable<Gob> {
 		cbs = new ArrayList<>(this.cbs);
 		objs.put(ob.id, ob);
 	    }
-	    for(ChangeCallback cb : cbs)
-		cb.added(ob);
+	    fire(cbs, ob, true);
 	}
     }
 
@@ -108,10 +136,25 @@ public class OCache implements Iterable<Gob> {
 	}
 	if(old != null) {
 	    synchronized(old) {
-		old.removed();
-		for(ChangeCallback cb : cbs)
-		    cb.removed(old);
+		/* Same reasoning as fire(): the object is already out of the map by this
+		 * point, so failing here would only strand the loader task. */
+		try {
+		    old.removed();
+		} catch(Loading l) {
+		    throw(l);
+		} catch(RuntimeException e) {
+		    new Warning(e, String.format("object %d failed its own removal", old.id)).issue();
+		}
+		fire(cbs, old, false);
 	    }
+	}
+    }
+
+    /** Every object currently registered under an id. More than one means the id is
+     *  ambiguous and {@link #getgob} will read null for it. */
+    public Collection<Gob> getgobs(long id) {
+	synchronized(this) {
+	    return(new ArrayList<>(objs.getall(id)));
 	}
     }
 
