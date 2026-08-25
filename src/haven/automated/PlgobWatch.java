@@ -118,6 +118,11 @@ public class PlgobWatch {
     private boolean stuckreported = false;
     private long lastbeat = 0;
 
+    /* Peaks carried between beats. Reset when a beat prints them, never by the window logic -
+     * the whole point is that they outlive the once-a-second sample. */
+    private double pvpeak = 0;
+    private int camjumps = 0;
+
     /**
      * Stamped as the very first thing {@link MapView#tick} does, before anything that could throw.
      *
@@ -270,12 +275,14 @@ public class PlgobWatch {
             }
         }
         NLog.log(LOG, String.format(
-            "beat id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s pv=%s getcc=%s"
-                + " entered=%d reached=%d drawn=%d bodies=%s",
+            "beat id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s pv=%s"
+                + " pvpeak=%.1f camjumps=%d getcc=%s entered=%d reached=%d drawn=%d bodies=%s",
             mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
-            eye, pv, where(mv), entered, reached, drawnat, bodies(mv)));
+            eye, pv, pvpeak, camjumps, where(mv), entered, reached, drawnat, bodies(mv)));
+        pvpeak = 0;
+        camjumps = 0;
     }
 
     /**
@@ -371,6 +378,16 @@ public class PlgobWatch {
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
+        /* Counted before the discontinuity check below returns, or the snaps this is meant to
+         * count would be exactly the ones discarded. */
+        if (dcam > SNAP_UNITS)
+            camjumps++;
+        if (view != null) {
+            double off = Math.hypot(view.x, view.y);
+            if (off > pvpeak)
+                pvpeak = off;
+        }
+
         if ((drc > SNAP_UNITS) || (dcam > SNAP_UNITS) || (dworld > SNAP_UNITS)
             || (dview > SNAP_UNITS)) {
             reset();
@@ -380,6 +397,7 @@ public class PlgobWatch {
         worldmoved += dworld;
         cammovedby += dcam;
         viewmoved += dview;
+
 
         if (rcmoved < MOVED_ENOUGH)
             return;
