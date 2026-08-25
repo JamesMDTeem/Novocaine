@@ -75,6 +75,9 @@ public class PlgobWatch {
      *  Matches the threshold the cameras themselves snap at. */
     private static final double SNAP_UNITS = 250.0;
 
+    /** How often the unconditional state line is printed. */
+    private static final long BEAT_MS = 15000;
+
     /** How long the client may go without reaching the camera before that is worth a line. */
     private static final long TICK_GAP_MS = 2000;
 
@@ -92,10 +95,8 @@ public class PlgobWatch {
 
     private Coord2d prevrc = null;
     private Coord3f prevworld = null;
-    private Coord3f prevview = null;
     private double rcmoved = 0;
     private double worldmoved = 0;
-    private double viewmoved = 0;
     private Matrix4f prevcam = null;
     private boolean cammoved = false;
     private Coord3f anchor = null;
@@ -103,6 +104,7 @@ public class PlgobWatch {
     private double cammovedby = 0;
     private long windowstart = 0;
     private boolean stuckreported = false;
+    private long lastbeat = 0;
 
     /**
      * Stamped as the very first thing {@link MapView#tick} does, before anything that could throw.
@@ -177,12 +179,61 @@ public class PlgobWatch {
 
     private void check(MapView mv) {
         Gob pl = mv.player();
+        heartbeat(mv, pl);
         if (pl != null) {
             resolved(mv, pl);
             follow(mv, pl);
             return;
         }
         unresolved(mv);
+    }
+
+    /**
+     * One unconditional line of raw state every {@link #BEAT_MS}, whatever else is or is not
+     * happening.
+     *
+     * Every other check here is behind a threshold or a guard, and twice now a report of a broken
+     * camera has come back with an empty log - once because the check only started measuring after
+     * the player had covered ground the client no longer believed they were covering, and once
+     * because a position that throws while loading looks the same as a position that is not moving.
+     * A quiet log was then consistent with the client being fine and with it being thoroughly
+     * broken, which is the one thing a diagnostic may not be.
+     *
+     * So this samples and prints regardless. It is the only line here that cannot be reasoned away,
+     * and at four lines a minute it costs nothing to leave on.
+     */
+    private void heartbeat(MapView mv, Gob pl) {
+        long now = System.currentTimeMillis();
+        if ((lastbeat != 0) && (now - lastbeat < BEAT_MS))
+            return;
+        lastbeat = now;
+
+        String rc = "-";
+        String got = "-";
+        if (pl != null) {
+            Coord2d prc = pl.rc;
+            rc = (prc == null) ? "null" : String.format("(%.1f, %.1f)", prc.x, prc.y);
+            /* What getc() does is the single most useful fact in here: it is what the camera and
+             * click-to-move read, and it can return a position, sit frozen on one, or spend the
+             * whole episode throwing while it waits for map data. Those look identical on screen
+             * and want telling apart. */
+            try {
+                Coord3f c = pl.getc();
+                got = (c == null) ? "null" : String.format("(%.1f, %.1f)", c.x, c.y);
+            } catch (Loading l) {
+                got = "<loading: " + l.getMessage() + ">";
+            } catch (RuntimeException e) {
+                got = "<" + e + ">";
+            }
+        }
+        Matrix4f cam = camxf(mv);
+        NLog.log(LOG, String.format(
+            "beat id=%d player=%s rc=%s getc=%s camera=%s cam=%s getcc=%s"
+                + " entered=%d reached=%d drawn=%d",
+            mv.plgob, (pl == null) ? "NULL" : "ok", rc, got,
+            (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
+            (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
+            where(mv), entered, reached, drawnat));
     }
 
     /**
@@ -221,7 +272,6 @@ public class PlgobWatch {
         if ((rc == null) || (cam == null)) {
             prevrc = null;
             prevworld = null;
-            prevview = null;
             prevanchor = null;
             return;
         }
@@ -312,7 +362,6 @@ public class PlgobWatch {
     private void reset() {
         rcmoved = 0;
         worldmoved = 0;
-        viewmoved = 0;
         cammovedby = 0;
         cammoved = false;
         anchor = null;
