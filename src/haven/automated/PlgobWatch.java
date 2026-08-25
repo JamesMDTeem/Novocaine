@@ -71,6 +71,10 @@ public class PlgobWatch {
      *  camera sits near 0. */
     private static final double KEEPUP_RATIO = 0.3;
 
+    /** Drift across the view per unit of player travel above which the player is genuinely
+     *  sliding out of frame. A pinned camera reads near 1. */
+    private static final double DRIFT_RATIO = 0.5;
+
     /** A one-frame view jump this large is a deliberate camera snap, not a tracking failure.
      *  Matches the threshold the cameras themselves snap at. */
     private static final double SNAP_UNITS = 250.0;
@@ -101,8 +105,10 @@ public class PlgobWatch {
 
     private Coord2d prevrc = null;
     private Coord3f prevworld = null;
+    private Coord3f prevview = null;
     private double rcmoved = 0;
     private double worldmoved = 0;
+    private double viewmoved = 0;
     private Matrix4f prevcam = null;
     private boolean cammoved = false;
     private Coord3f anchor = null;
@@ -277,6 +283,7 @@ public class PlgobWatch {
         if ((rc == null) || (cam == null)) {
             prevrc = null;
             prevworld = null;
+            prevview = null;
             prevanchor = null;
             return;
         }
@@ -302,6 +309,7 @@ public class PlgobWatch {
         if (anchor == null)
             anchor = new Coord3f((float)rc.x, (float)rc.y, 0);
         Coord3f anchorview = cam.mul4(new Coord3f(anchor.x, -anchor.y, anchor.z));
+        Coord3f view = (world == null) ? null : cam.mul4(new Coord3f(world.x, -world.y, world.z));
 
         /* A transform that never changes at all is exact: the camera is not being ticked. */
         if ((prevcam != null) && !cam.equals(prevcam))
@@ -318,30 +326,54 @@ public class PlgobWatch {
         double dcam = Math.hypot(anchorview.x - prevanchor.x, anchorview.y - prevanchor.y);
         double dworld = ((world != null) && (prevworld != null))
             ? Math.hypot(world.x - prevworld.x, world.y - prevworld.y) : 0;
+        double dview = ((view != null) && (prevview != null))
+            ? Math.hypot(view.x - prevview.x, view.y - prevview.y) : 0;
         prevrc = rc;
         prevanchor = anchorview;
         if (world != null)
             prevworld = world;
+        if (view != null)
+            prevview = view;
 
         /* Cameras jump on purpose: every one of them snaps outright when the player ends up more
          * than 250 units away, which is what teleporting, hearthing and changing map instance all
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
-        if ((drc > SNAP_UNITS) || (dcam > SNAP_UNITS) || (dworld > SNAP_UNITS)) {
+        if ((drc > SNAP_UNITS) || (dcam > SNAP_UNITS) || (dworld > SNAP_UNITS)
+            || (dview > SNAP_UNITS)) {
             reset();
             return;
         }
         rcmoved += drc;
         worldmoved += dworld;
         cammovedby += dcam;
+        viewmoved += dview;
 
         if (rcmoved < MOVED_ENOUGH)
             return;
         double keepup = cammovedby / rcmoved;
         double tracks = worldmoved / rcmoved;
+        double drift = viewmoved / rcmoved;
         boolean posfrozen = (tracks < KEEPUP_RATIO);
-        if ((keepup >= KEEPUP_RATIO) && !posfrozen && cammoved) {
+
+        /* Both numbers have to agree before this says anything, because each one alone is fooled
+         * by a player pacing back and forth - and in opposite directions.
+         *
+         * Camera travel is fooled low: the camera smooths an oscillation, so its path is genuinely
+         * shorter than the player's even while tracking perfectly. A real run showed keepup 0.25
+         * for a camera that was holding the player 15 units from where it started over 200 units of
+         * walking, which is excellent tracking, and it was reported as a failure.
+         *
+         * Drift across the view is fooled high: pacing banks path length in the difference between
+         * player and camera, so a lagging-but-fine camera reads a mid-range ratio.
+         *
+         * A camera that has actually stopped fails both at once - the player slides across the view
+         * in step with their own movement while the camera goes nowhere - so requiring both is what
+         * separates the real thing from someone walking in circles indoors. */
+        boolean drifting = (drift > DRIFT_RATIO);
+        boolean stuck = (keepup < KEEPUP_RATIO) && drifting;
+        if (!stuck && !posfrozen && cammoved) {
             /* Tracking normally. Start a fresh window rather than letting good frames bank
              * credit against a stall that begins later. */
             reset();
@@ -352,11 +384,11 @@ public class PlgobWatch {
             stuckreported = true;
             NLog.log(LOG, String.format(
                 "camera is not following: server moved the player %.0f units, the client's own"
-                    + " position moved %.0f (%s), the camera moved %.0f (keepup %.2f),"
-                    + " transform %s - id %d (%s), camera %s, entered=%d reached=%d drawn=%d,"
-                    + " position reads %s",
+                    + " position moved %.0f (%s), the camera moved %.0f (keepup %.2f), the player"
+                    + " drifted %.0f across the view (drift %.2f), transform %s"
+                    + " - id %d (%s), camera %s, entered=%d reached=%d drawn=%d, position reads %s",
                 rcmoved, worldmoved, posfrozen ? "POSITION FROZEN" : "tracking",
-                cammovedby, keepup, cammoved ? "moving" : "FROZEN",
+                cammovedby, keepup, viewmoved, drift, cammoved ? "moving" : "FROZEN",
                 mv.plgob, resname(pl),
                 (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
                 entered, reached, drawnat, where(mv)));
@@ -367,6 +399,7 @@ public class PlgobWatch {
     private void reset() {
         rcmoved = 0;
         worldmoved = 0;
+        viewmoved = 0;
         cammovedby = 0;
         cammoved = false;
         anchor = null;
