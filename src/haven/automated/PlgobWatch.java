@@ -151,6 +151,23 @@ public class PlgobWatch {
     private double lag = 0;
     private double lagpeak = 0;
 
+    /* Where the character is DRAWN, against where the client says it is.
+     *
+     * Everything above measures the camera against getc() - the logical position - and by that
+     * measure the camera tracks tightly. But the screen shows the drawn character, and Gob.Placed
+     * builds that from its own Placement, which autotick abandons whenever it throws Loading:
+     *
+     *     try { np = new Placement(); } catch(Loading l) { return; }
+     *
+     * so a Placement waiting on tile data leaves the character rendered at a stale spot while
+     * getc() carries on. The camera then follows getc() perfectly - lag stays near zero, nothing
+     * snaps, every number here looks healthy - while what is actually on screen is a character
+     * sliding away from the centre and jumping back when the placement finally catches up. That
+     * is indistinguishable, to someone watching, from the camera failing to track and snapping. */
+    private double dgap = 0;
+    private double dgappeak = 0;
+    private double pvdrawnpeak = 0;
+
     /**
      * Stamped as the very first thing {@link MapView#tick} does, before anything that could throw.
      *
@@ -310,16 +327,20 @@ public class PlgobWatch {
         }
         NLog.log(LOG, String.format(
             "beat mv#%d id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
-                + " lag=%.1f lagpeak=%.1f pv=%s pvpeak=%.1f camjumps=%d"
+                + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
+                + " pv=%s pvpeak=%.1f pvdrawnpeak=%.1f camjumps=%d"
                 + " dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
                 + " bodies=%s",
             serial, mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
-            eye, fmt(camtarget(mv)), lag, lagpeak, pv, pvpeak, camjumps,
+            eye, fmt(camtarget(mv)), lag, lagpeak, fmt(drawnpos(pl)), dgap, dgappeak,
+            pv, pvpeak, pvdrawnpeak, camjumps,
             (dtmin == Double.MAX_VALUE) ? 0 : dtmin, (dtn == 0) ? 0 : dtsum / dtn, dtmax, dtn,
             camparams(mv), input(mv), where(mv), entered, reached, drawnat, bodies(mv)));
         pvpeak = 0;
+        pvdrawnpeak = 0;
+        dgappeak = 0;
         camjumps = 0;
         lagpeak = 0;
         dtmin = Double.MAX_VALUE;
@@ -421,6 +442,19 @@ public class PlgobWatch {
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
+        /* The gap between drawn and logical position, and how far off centre the DRAWN character
+         * actually is - which is what a person watching the screen is reporting. */
+        Coord3f drawn = drawnpos(pl);
+        if ((drawn != null) && (world != null)) {
+            dgap = Math.hypot(world.x - drawn.x, world.y - drawn.y);
+            if (dgap > dgappeak)
+                dgappeak = dgap;
+            Coord3f dv = cam.mul4(new Coord3f(drawn.x, -drawn.y, drawn.z));
+            double off = Math.hypot(dv.x, dv.y);
+            if (off > pvdrawnpeak)
+                pvdrawnpeak = off;
+        }
+
         /* How far the camera's centre trails what it is chasing - the exact quantity every camera
          * snaps on at 250 units. Sampled every frame, since the snap cycle is faster than a beat. */
         Coord3f tgt = camtarget(mv);
@@ -690,6 +724,16 @@ public class PlgobWatch {
             return "<loading>";
         } catch (RuntimeException e) {
             return "<" + e + ">";
+        }
+    }
+
+    /** Where the character is actually rendered - the Placement the render tree is using, which is
+     *  not the same thing as getc() whenever the placement is stalled waiting on map data. */
+    private static Coord3f drawnpos(Gob pl) {
+        try {
+            return((pl == null) ? null : pl.placed.getc());
+        } catch (RuntimeException e) {
+            return(null);
         }
     }
 
