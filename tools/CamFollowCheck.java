@@ -405,6 +405,40 @@ public class CamFollowCheck {
 		  firstline(tail(log, was2), "camera is not following"));
 	}
 
+
+	System.out.println("9. the client's own position freezes while the server keeps moving them");
+	{
+	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
+	    long was = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    haven.automated.PlgobWatch pw = new haven.automated.PlgobWatch();
+	    settle(mv);
+
+	    /* rc advances - the server keeps saying where the character is - while getc() stays
+	     * put. The camera then tracks a point that never moves, which is a static scene with
+	     * the character still walking about in it. Nothing in the old measurement noticed:
+	     * it only counted getc() travel, so a frozen position looked like standing still. */
+	    double x = pl.rc.x, y = pl.rc.y;
+	    for(int i = 0; i < 300; i++) {
+		x += 4;
+		pl.rc = Coord2d.of(x, y);
+		pw.enter();
+		pw.tick(mv);
+		try {
+		    mv.camera.tick(1.0 / 60.0);
+		} catch(Loading l) {}
+		pw.drawn(mv);
+	    }
+
+	    String out = tail(log, was);
+	    check("reports the frozen position", out.contains("POSITION FROZEN"),
+		  firstline(out, "camera is not following"));
+	}
+
 	System.out.println(failures == 0 ? "PASS" : failures + " FAILURE(S)");
 	System.exit(failures == 0 ? 0 : 1);
     }

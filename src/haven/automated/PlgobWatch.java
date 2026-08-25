@@ -1,5 +1,6 @@
 package haven.automated;
 
+import haven.Coord2d;
 import haven.Coord3f;
 import haven.Gob;
 import haven.Loading;
@@ -89,8 +90,10 @@ public class PlgobWatch {
     private long lastreached = -1;
     private boolean gapreported = false;
 
+    private Coord2d prevrc = null;
     private Coord3f prevworld = null;
     private Coord3f prevview = null;
+    private double rcmoved = 0;
     private double worldmoved = 0;
     private double viewmoved = 0;
     private Matrix4f prevcam = null;
@@ -188,17 +191,35 @@ public class PlgobWatch {
      * the reason. Reported once per episode with everything needed to tell the causes apart.
      */
     private void follow(MapView mv, Gob pl) {
-        Coord3f world;
+        /* Two positions, deliberately. rc is what the server says - it is written straight from
+         * the movement deltas and keeps advancing whatever else is wrong. getc() is what the
+         * client computes from it, and it is what the camera, click-to-move and every range check
+         * actually read.
+         *
+         * Gating on rc rather than getc() is the whole point of measuring both. If getc() ever
+         * froze while the character kept running, an earlier version of this check would have gone
+         * completely silent - it only accumulated getc() travel, so a frozen position looked
+         * identical to standing still, and standing still is not worth reporting. That is exactly
+         * the shape of "the camera is locked and the client thinks I am the mine hole": the
+         * character runs around on screen because it is drawn from its own placement, while
+         * everything that asks where the player is gets the stale answer. */
+        Coord2d rc = pl.rc;
+        Coord3f world = null;
         Matrix4f cam;
         try {
             world = pl.getc();
-            cam = camxf(mv);
         } catch (Loading l) {
-            return;
+            // A position that is still loading is not a frozen one; just do not count this frame.
+        } catch (RuntimeException e) {
+            // As above.
+        }
+        try {
+            cam = camxf(mv);
         } catch (RuntimeException e) {
             return;
         }
-        if ((world == null) || (cam == null)) {
+        if ((rc == null) || (cam == null)) {
+            prevrc = null;
             prevworld = null;
             prevview = null;
             prevanchor = null;
@@ -221,46 +242,51 @@ public class PlgobWatch {
          * camera travel against player travel is indifferent to that, because an oscillating player
          * makes an oscillating camera and the two cancel. Following reads near 1, pinned reads
          * near 0. */
+        /* The anchor is taken from rc so it exists even on a frame where getc() would not give
+         * one. It is a fixed world point either way, which is all this needs. */
         if (anchor == null)
-            anchor = world;
+            anchor = new Coord3f((float)rc.x, (float)rc.y, 0);
         Coord3f anchorview = cam.mul4(new Coord3f(anchor.x, -anchor.y, anchor.z));
-        Coord3f view = cam.mul4(new Coord3f(world.x, -world.y, world.z));
 
         /* A transform that never changes at all is exact: the camera is not being ticked. */
         if ((prevcam != null) && !cam.equals(prevcam))
             cammoved = true;
         prevcam = cam;
 
-        if ((prevworld == null) || (prevview == null) || (prevanchor == null)) {
+        if ((prevrc == null) || (prevanchor == null)) {
+            prevrc = rc;
             prevworld = world;
-            prevview = view;
             prevanchor = anchorview;
             return;
         }
-        double dworld = Math.hypot(world.x - prevworld.x, world.y - prevworld.y);
-        double dview = Math.hypot(view.x - prevview.x, view.y - prevview.y);
+        double drc = Math.hypot(rc.x - prevrc.x, rc.y - prevrc.y);
         double dcam = Math.hypot(anchorview.x - prevanchor.x, anchorview.y - prevanchor.y);
-        prevworld = world;
-        prevview = view;
+        double dworld = ((world != null) && (prevworld != null))
+            ? Math.hypot(world.x - prevworld.x, world.y - prevworld.y) : 0;
+        prevrc = rc;
         prevanchor = anchorview;
+        if (world != null)
+            prevworld = world;
 
         /* Cameras jump on purpose: every one of them snaps outright when the player ends up more
          * than 250 units away, which is what teleporting, hearthing and changing map instance all
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
-        if ((dview > SNAP_UNITS) || (dcam > SNAP_UNITS)) {
+        if ((drc > SNAP_UNITS) || (dcam > SNAP_UNITS) || (dworld > SNAP_UNITS)) {
             reset();
             return;
         }
+        rcmoved += drc;
         worldmoved += dworld;
-        viewmoved += dview;
         cammovedby += dcam;
 
-        if (worldmoved < MOVED_ENOUGH)
+        if (rcmoved < MOVED_ENOUGH)
             return;
-        double keepup = cammovedby / worldmoved;
-        if ((keepup >= KEEPUP_RATIO) && cammoved) {
+        double keepup = cammovedby / rcmoved;
+        double tracks = worldmoved / rcmoved;
+        boolean posfrozen = (tracks < KEEPUP_RATIO);
+        if ((keepup >= KEEPUP_RATIO) && !posfrozen && cammoved) {
             /* Tracking normally. Start a fresh window rather than letting good frames bank
              * credit against a stall that begins later. */
             reset();
@@ -270,10 +296,12 @@ public class PlgobWatch {
         if (!stuckreported) {
             stuckreported = true;
             NLog.log(LOG, String.format(
-                "camera is not following: player travelled %.0f units, camera travelled %.0f"
-                    + " (keepup %.2f), player drifted %.0f across the view, transform %s"
-                    + " - id %d (%s), camera %s, entered=%d reached=%d drawn=%d, position reads %s",
-                worldmoved, cammovedby, keepup, viewmoved, cammoved ? "moving" : "FROZEN",
+                "camera is not following: server moved the player %.0f units, the client's own"
+                    + " position moved %.0f (%s), the camera moved %.0f (keepup %.2f),"
+                    + " transform %s - id %d (%s), camera %s, entered=%d reached=%d drawn=%d,"
+                    + " position reads %s",
+                rcmoved, worldmoved, posfrozen ? "POSITION FROZEN" : "tracking",
+                cammovedby, keepup, cammoved ? "moving" : "FROZEN",
                 mv.plgob, resname(pl),
                 (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
                 entered, reached, drawnat, where(mv)));
@@ -282,6 +310,7 @@ public class PlgobWatch {
     }
 
     private void reset() {
+        rcmoved = 0;
         worldmoved = 0;
         viewmoved = 0;
         cammovedby = 0;
