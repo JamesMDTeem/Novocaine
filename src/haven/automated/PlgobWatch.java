@@ -270,12 +270,12 @@ public class PlgobWatch {
             }
         }
         NLog.log(LOG, String.format(
-            "beat id=%d player=%s rc=%s getc=%s camera=%s cam=%s eye=%s pv=%s getcc=%s"
-                + " entered=%d reached=%d drawn=%d",
-            mv.plgob, (pl == null) ? "NULL" : "ok", rc, got,
+            "beat id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s pv=%s getcc=%s"
+                + " entered=%d reached=%d drawn=%d bodies=%s",
+            mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
-            eye, pv, where(mv), entered, reached, drawnat));
+            eye, pv, where(mv), entered, reached, drawnat, bodies(mv)));
     }
 
     /**
@@ -506,6 +506,60 @@ public class PlgobWatch {
         }
         sb.append("; position now reads ").append(where(mv));
         NLog.log(LOG, sb.toString());
+    }
+
+    /**
+     * The player object id the GameUI was created with, which the server sends separately from the
+     * one the MapView is told to follow.
+     *
+     * Two independent answers to "which object am I", and they should never disagree. If they do,
+     * the camera is anchored to something that is not the character - which is the one shape of
+     * this failure that every check so far would call healthy, because it is perfectly consistent:
+     * the wrong object has a position, the camera follows it faithfully, and nothing is frozen or
+     * null anywhere.
+     */
+    private static String plid(MapView mv) {
+        try {
+            if ((mv.ui == null) || (mv.ui.gui == null))
+                return("-");
+            long plid = mv.ui.gui.plid;
+            return((plid == mv.plgob) ? String.valueOf(plid) : (plid + " MISMATCH"));
+        } catch (RuntimeException e) {
+            return("-");
+        }
+    }
+
+    /**
+     * Every player body in the object cache, with the one the camera is following marked.
+     *
+     * A log showing the followed object standing perfectly still proves the camera is tracking it
+     * correctly; it does not prove it is the right object. If another body is walking about while
+     * the followed one stands still, the client is watching the wrong character - and a resource
+     * name cannot tell them apart, because every player shares gfx/borka/body.
+     */
+    private static String bodies(MapView mv) {
+        try {
+            StringBuilder sb = new StringBuilder("[");
+            int n = 0;
+            synchronized (mv.glob.oc) {
+                for (Gob g : mv.glob.oc) {
+                    if (!"gfx/borka/body".equals(resname(g)))
+                        continue;
+                    if (n++ > 0)
+                        sb.append(' ');
+                    if (n > 6) {
+                        sb.append("...");
+                        break;
+                    }
+                    Coord2d c = g.rc;
+                    sb.append(String.format("%s%d@(%.0f,%.0f)", (g.id == mv.plgob) ? "*" : "",
+                        g.id, (c == null) ? 0.0 : c.x, (c == null) ? 0.0 : c.y));
+                }
+            }
+            return(sb.append(']').toString());
+        } catch (RuntimeException e) {
+            return("<" + e + ">");
+        }
     }
 
     /** Where the client currently believes the player is - the value the camera and clicks use. */
