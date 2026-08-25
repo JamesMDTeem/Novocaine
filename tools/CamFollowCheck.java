@@ -150,6 +150,41 @@ public class CamFollowCheck {
 	System.out.println("     (loader never produced a gob " + what + ")");
     }
 
+
+    /* Drives the probe the way MapView does: enter, tick, draw. With track=false the camera is
+     * never ticked, which is what a frozen camera looks like from the probe's side. */
+    static void walk(haven.automated.PlgobWatch pw, MapView mv, Gob pl, int steps, boolean track) {
+	double x = pl.rc.x, y = pl.rc.y;
+	for(int i = 0; i < steps; i++) {
+	    x += 4;
+	    move(pl, x, y);
+	    pw.enter();
+	    pw.tick(mv);
+	    if(track) {
+		try {
+		    mv.camera.tick(1.0 / 60.0);
+		} catch(Loading l) {}
+	    }
+	    pw.drawn(mv);
+	}
+    }
+
+    static String tail(java.nio.file.Path log, long from) throws Exception {
+	if(!java.nio.file.Files.exists(log))
+	    return("");
+	byte[] all = java.nio.file.Files.readAllBytes(log);
+	int off = (int)Math.min(from, all.length);
+	return(new String(all, off, all.length - off, java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    static String firstline(String hay, String needle) {
+	for(String l : hay.split("\r?\n")) {
+	    if(l.contains(needle))
+		return(l.trim());
+	}
+	return("(not logged)");
+    }
+
     static MapView mkview(Glob glob) {
 	return(new MapView(new Coord(1280, 720), glob, Coord2d.of(100, 100), PLID));
     }
@@ -264,6 +299,56 @@ public class CamFollowCheck {
 				 : snap);
 	    check("the loader survived the throwing listener", snap == null,
 		  "a dead loader thread leaves the id stuck");
+	}
+
+
+	System.out.println("6. every registered camera type must track the player");
+	{
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+
+	    /* Built directly rather than through setcam, which writes the real client's
+	     * camera preference as a side effect. */
+	    MapView.Camera[] cams = {
+		mv.new FollowCam(), mv.new SimpleCam(), mv.new FreeCam(), mv.new SOrthoCam(new String[0]),
+	    };
+	    for(MapView.Camera cam : cams) {
+		mv.camera = cam;
+		move(pl, 100, 100);
+		double d = drift(mv, pl);
+		check(cam.getClass().getSimpleName() + " tracks the player", d < 5.0,
+		      String.format("drift=%.1fpx", d));
+	    }
+	}
+
+
+	System.out.println("7. the follow detector fires when the camera is pinned, and not before");
+	{
+	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
+	    long was = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    haven.automated.PlgobWatch pw = new haven.automated.PlgobWatch();
+	    settle(mv);
+
+	    /* A healthy client: the camera is ticked every frame, so the player stays put on
+	     * screen however far they walk. */
+	    walk(pw, mv, pl, 300, true);
+	    check("stays quiet while the camera tracks",
+		  !tail(log, was).contains("camera is not following"), "no complaint logged");
+
+	    /* The reported symptom: the player covers ground while the camera does not move. */
+	    walk(pw, mv, pl, 300, false);
+	    String out = tail(log, was);
+	    check("reports a pinned camera", out.contains("camera is not following"),
+		  firstline(out, "camera is not following"));
+	    check("and names the camera and the id", out.contains("FreeCam") && out.contains("id " + PLID),
+		  "detail present");
 	}
 
 	System.out.println(failures == 0 ? "PASS" : failures + " FAILURE(S)");

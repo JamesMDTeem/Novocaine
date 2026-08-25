@@ -146,6 +146,12 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	public abstract float angle();
 	public abstract void tick(double dt);
 
+	/** The view transform as it currently stands. A value that never changes while the
+	 *  player is moving is a camera that has stopped being ticked at all. */
+	public Matrix4f viewxf() {
+	    return(view.fin(Matrix4f.id));
+	}
+
 	public String stats() {return("N/A");}
     }
     
@@ -1933,6 +1939,9 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
     private Loading camload = null, lastload = null;
     public void draw(GOut g) {
+	/* Drawing keeps going when ticking does not, so this is the only vantage point from
+	 * which a stalled tick can be seen at all. */
+	plgobwatch.drawn(this);
 	Loader.Future<Plob> placing = this.placing;
 	if((placing != null) && placing.done())
 	    placing.get().gtick(g.out);
@@ -2043,6 +2052,9 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     private final haven.automated.PlgobWatch plgobwatch = new haven.automated.PlgobWatch();
 
     public void tick(double dt) {
+	/* Stamped before anything that can throw, so a tick that dies on the way to the camera
+	 * is distinguishable from one that never started. */
+	plgobwatch.enter();
 	super.tick(dt);
 	checkload();
 	plgobwatch.tick(this);
