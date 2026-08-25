@@ -32,16 +32,26 @@ import java.util.Collection;
  *       {@link MapView#tick} before the camera, while drawing carries on - so the world still
  *       renders around a camera that has stopped. Counted by {@link #enter} against {@link #tick}
  *       and noticed from {@link #drawn}, since drawing is the only thing still running.</li>
- *   <li><b>The camera ticks but tracks the wrong thing.</b> Caught by the drift measurement
- *       below, which is indifferent to the cause.</li>
+ *   <li><b>The camera ticks but does not keep up.</b> Caught by the travel measurement below,
+ *       which is indifferent to the cause.</li>
  * </ul>
  *
- * The drift measurement is the load-bearing part: the player's position is projected through the
- * camera's own transform, and a camera that is tracking holds them near one spot in its view however
- * far they walk. Ground covered versus drift across the view therefore separates "following" from
- * "not following" without needing to know why. It is deliberately measured in view space rather
- * than screen space - screen coordinates carry a perspective divide, and a point near the near
- * plane produces garbage that swamps an accumulated total.
+ * The travel measurement is the load-bearing part, and it compares how far the camera moved against
+ * how far the player moved. Camera travel is read by watching a fixed world point slide through the
+ * view: the anchor does not move, so everything that happens to it is the camera's own motion. A
+ * camera that is following goes wherever the player goes, so the ratio sits near 1; a pinned one
+ * sits near 0.
+ *
+ * It is worth knowing why it is not the more obvious measurement. The first version compared the
+ * player's drift across the view against the ground they covered - which cannot tell a stuck camera
+ * from a player pacing back and forth, because walking A-B-A banks path length in both numbers while
+ * the camera smoothly lags. That reads as a mid-range ratio on a perfectly healthy client, and
+ * pacing indoors is exactly the situation this was being reported from. Comparing camera travel to
+ * player travel is immune: an oscillating player produces an oscillating camera and the two cancel.
+ *
+ * Everything here is measured in view space rather than screen space - screen coordinates carry a
+ * perspective divide, and a point near the near plane produces garbage that swamps an accumulated
+ * total.
  *
  * Cost is a field compare per frame in the common case, and a log line only when an answer changes
  * or stops arriving - never per frame, or a stuck client would bury its own evidence.
@@ -55,11 +65,10 @@ public class PlgobWatch {
     /** How far the player must travel before the camera's stillness means anything. */
     private static final double MOVED_ENOUGH = 200.0;
 
-    /** View-space drift per unit of world travel above which the camera is not keeping up.
-     *  A camera that tracks holds the player near one spot in its own view however far they
-     *  walk, so this ratio sits near zero; a pinned camera lets them drift roughly in step
-     *  with their own movement, which measures about 0.87 in the harness. */
-    private static final double SLIDE_RATIO = 0.3;
+    /** Camera travel per unit of player travel below which the camera is not keeping up.
+     *  A camera that tracks goes wherever the player goes, so this sits near 1; a pinned
+     *  camera sits near 0. */
+    private static final double KEEPUP_RATIO = 0.3;
 
     /** A one-frame view jump this large is a deliberate camera snap, not a tracking failure.
      *  Matches the threshold the cameras themselves snap at. */
@@ -86,6 +95,9 @@ public class PlgobWatch {
     private double viewmoved = 0;
     private Matrix4f prevcam = null;
     private boolean cammoved = false;
+    private Coord3f anchor = null;
+    private Coord3f prevanchor = null;
+    private double cammovedby = 0;
     private long windowstart = 0;
     private boolean stuckreported = false;
 
@@ -189,50 +201,66 @@ public class PlgobWatch {
         if ((world == null) || (cam == null)) {
             prevworld = null;
             prevview = null;
+            prevanchor = null;
             return;
         }
 
-        /* Measured in view space rather than screen space on purpose. Screen coordinates go
+        /* All of this is in view space rather than screen space on purpose. Screen coordinates go
          * through the perspective divide, so a point near or behind the near plane produces
-         * enormous garbage that swamps an accumulated total - the first version of this check
-         * read a ratio of 640 on a camera that was tracking perfectly well. View space is the
-         * same measurement without the division, and it is well behaved everywhere. */
+         * enormous garbage that swamps an accumulated total - an early version of this check read
+         * a ratio of 640 on a camera that was tracking perfectly well. */
+
+        /* How far the CAMERA travelled, measured by watching a fixed world point slide through the
+         * view. The anchor does not move, so all of this motion is the camera's own.
+         *
+         * This is the measurement that matters, and it replaced a comparison of the player's drift
+         * across the view against the ground they covered. That earlier one could not tell a stuck
+         * camera from a player pacing back and forth: walking A-B-A banks path length in both
+         * numbers while the camera smoothly lags, which reads as a mid-range ratio on a perfectly
+         * healthy client - and pacing indoors is exactly when this was being reported. Comparing
+         * camera travel against player travel is indifferent to that, because an oscillating player
+         * makes an oscillating camera and the two cancel. Following reads near 1, pinned reads
+         * near 0. */
+        if (anchor == null)
+            anchor = world;
+        Coord3f anchorview = cam.mul4(new Coord3f(anchor.x, -anchor.y, anchor.z));
         Coord3f view = cam.mul4(new Coord3f(world.x, -world.y, world.z));
 
-        /* The camera's own transform standing still while the player walks is exact: it means the
-         * camera is not being ticked at all. Kept alongside the drift ratio because a camera that
-         * ticks but tracks the wrong thing shows one and not the other. */
+        /* A transform that never changes at all is exact: the camera is not being ticked. */
         if ((prevcam != null) && !cam.equals(prevcam))
             cammoved = true;
         prevcam = cam;
 
-        if ((prevworld == null) || (prevview == null)) {
+        if ((prevworld == null) || (prevview == null) || (prevanchor == null)) {
             prevworld = world;
             prevview = view;
+            prevanchor = anchorview;
             return;
         }
         double dworld = Math.hypot(world.x - prevworld.x, world.y - prevworld.y);
         double dview = Math.hypot(view.x - prevview.x, view.y - prevview.y);
+        double dcam = Math.hypot(anchorview.x - prevanchor.x, anchorview.y - prevanchor.y);
         prevworld = world;
         prevview = view;
+        prevanchor = anchorview;
 
         /* Cameras jump on purpose: every one of them snaps outright when the player ends up more
          * than 250 units away, which is what teleporting, hearthing and changing map instance all
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
-        if (dview > SNAP_UNITS) {
+        if ((dview > SNAP_UNITS) || (dcam > SNAP_UNITS)) {
             reset();
             return;
         }
         worldmoved += dworld;
         viewmoved += dview;
+        cammovedby += dcam;
 
         if (worldmoved < MOVED_ENOUGH)
             return;
-        double ratio = viewmoved / worldmoved;
-        boolean drifting = (ratio > SLIDE_RATIO);
-        if (!drifting && cammoved) {
+        double keepup = cammovedby / worldmoved;
+        if ((keepup >= KEEPUP_RATIO) && cammoved) {
             /* Tracking normally. Start a fresh window rather than letting good frames bank
              * credit against a stall that begins later. */
             reset();
@@ -242,10 +270,10 @@ public class PlgobWatch {
         if (!stuckreported) {
             stuckreported = true;
             NLog.log(LOG, String.format(
-                "camera is not following: player moved %.0f units and drifted %.0f across the view"
-                    + " (ratio %.2f), camera transform %s - id %d (%s), camera %s,"
-                    + " entered=%d reached=%d drawn=%d, position reads %s",
-                worldmoved, viewmoved, ratio, cammoved ? "moving" : "FROZEN",
+                "camera is not following: player travelled %.0f units, camera travelled %.0f"
+                    + " (keepup %.2f), player drifted %.0f across the view, transform %s"
+                    + " - id %d (%s), camera %s, entered=%d reached=%d drawn=%d, position reads %s",
+                worldmoved, cammovedby, keepup, viewmoved, cammoved ? "moving" : "FROZEN",
                 mv.plgob, resname(pl),
                 (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
                 entered, reached, drawnat, where(mv)));
@@ -256,7 +284,10 @@ public class PlgobWatch {
     private void reset() {
         worldmoved = 0;
         viewmoved = 0;
+        cammovedby = 0;
         cammoved = false;
+        anchor = null;
+        prevanchor = null;
     }
 
     private static Matrix4f camxf(MapView mv) {

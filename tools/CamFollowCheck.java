@@ -169,6 +169,30 @@ public class CamFollowCheck {
 	}
     }
 
+
+    /* Walks the player back and forth rather than in a straight line. This is what a character
+     * does indoors, and it is what made the first detector cry wolf: A-B-A banks path length in
+     * both the player's travel and their drift across the view, so comparing those two reads as
+     * a failure on a camera that is tracking perfectly. */
+    static void pace(haven.automated.PlgobWatch pw, MapView mv, Gob pl, int steps, boolean track) {
+	double x = pl.rc.x, y = pl.rc.y;
+	int dir = 1;
+	for(int i = 0; i < steps; i++) {
+	    if((i % 20) == 0)
+		dir = -dir;
+	    x += 4 * dir;
+	    move(pl, x, y);
+	    pw.enter();
+	    pw.tick(mv);
+	    if(track) {
+		try {
+		    mv.camera.tick(1.0 / 60.0);
+		} catch(Loading l) {}
+	    }
+	    pw.drawn(mv);
+	}
+    }
+
     static String tail(java.nio.file.Path log, long from) throws Exception {
 	if(!java.nio.file.Files.exists(log))
 	    return("");
@@ -191,6 +215,10 @@ public class CamFollowCheck {
 
     public static void main(String[] args) throws Exception {
 	stubOptWnd();
+	/* NLog trims a log to its last few launches the first time it writes to it in a run,
+	 * which can make the file shorter than an offset taken before that. Starting clean
+	 * keeps the byte offsets these scenarios read back by meaningful. */
+	java.nio.file.Files.deleteIfExists(java.nio.file.Paths.get("logs", "plgob.log"));
 
 	System.out.println("1. baseline: one player gob, camera should track it");
 	{
@@ -349,6 +377,32 @@ public class CamFollowCheck {
 		  firstline(out, "camera is not following"));
 	    check("and names the camera and the id", out.contains("FreeCam") && out.contains("id " + PLID),
 		  "detail present");
+	}
+
+
+	System.out.println("8. a player pacing indoors is not a stuck camera");
+	{
+	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
+	    long was = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    haven.automated.PlgobWatch pw = new haven.automated.PlgobWatch();
+	    settle(mv);
+
+	    pace(pw, mv, pl, 400, true);
+	    check("stays quiet while the camera tracks a pacing player",
+		  !tail(log, was).contains("camera is not following"),
+		  firstline(tail(log, was), "camera is not following"));
+
+	    /* And still catches a genuinely pinned camera under the same movement. */
+	    long was2 = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+	    pace(pw, mv, pl, 400, false);
+	    check("still reports a pinned camera while pacing",
+		  tail(log, was2).contains("camera is not following"),
+		  firstline(tail(log, was2), "camera is not following"));
 	}
 
 	System.out.println(failures == 0 ? "PASS" : failures + " FAILURE(S)");
