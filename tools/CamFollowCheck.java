@@ -159,7 +159,7 @@ public class CamFollowCheck {
 	    x += 4;
 	    move(pl, x, y);
 	    pw.enter();
-	    pw.tick(mv);
+	    pw.tick(mv, 1.0 / 60.0);
 	    if(track) {
 		try {
 		    mv.camera.tick(1.0 / 60.0);
@@ -183,7 +183,7 @@ public class CamFollowCheck {
 	    x += 4 * dir;
 	    move(pl, x, y);
 	    pw.enter();
-	    pw.tick(mv);
+	    pw.tick(mv, 1.0 / 60.0);
 	    if(track) {
 		try {
 		    mv.camera.tick(1.0 / 60.0);
@@ -448,7 +448,7 @@ public class CamFollowCheck {
 		x += 4;
 		pl.rc = Coord2d.of(x, y);
 		pw.enter();
-		pw.tick(mv);
+		pw.tick(mv, 1.0 / 60.0);
 		try {
 		    mv.camera.tick(1.0 / 60.0);
 		} catch(Loading l) {}

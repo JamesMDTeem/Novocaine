@@ -60,6 +60,14 @@ import java.util.Collection;
 public class PlgobWatch {
     private static final String LOG = "plgob.log";
 
+    /* One serial per MapView ever built this run. If two views ever coexist - the old one
+     * surviving an instance change while a new one is created - their beats interleave under
+     * different serials, and the one being watched need not be the one on screen. That has been
+     * a live theory throughout and nothing so far could confirm or kill it. */
+    private static final java.util.concurrent.atomic.AtomicInteger SERIAL =
+        new java.util.concurrent.atomic.AtomicInteger();
+    private final int serial = SERIAL.incrementAndGet();
+
     /** How long the player id may be unresolvable before it stops being an ordinary handover. */
     private static final long GRACE_MS = 2000;
 
@@ -90,6 +98,10 @@ public class PlgobWatch {
 
     /** How long the client may go without reaching the camera before that is worth a line. */
     private static final long TICK_GAP_MS = 2000;
+
+    /** Snaps detailed per beat interval. A handful shows the shape; a whole run of them would
+     *  bury everything else. */
+    private static final int SNAP_DETAIL = 3;
 
     private long lastid = Long.MIN_VALUE;
     private String lastres = null;
@@ -123,6 +135,22 @@ public class PlgobWatch {
     private double pvpeak = 0;
     private int camjumps = 0;
 
+    /* Frame timing as the camera actually sees it. Every camera here eases toward its target by
+     * a factor derived from dt, so a dt that does not match real elapsed time starves the
+     * convergence and the camera falls behind until it snaps - which is what "lags, then
+     * re-centres in jumps" looks like from the inside. Kept as min/mean/max because an average
+     * alone hides the stalls. */
+    private double dtmin = Double.MAX_VALUE;
+    private double dtmax = 0;
+    private double dtsum = 0;
+    private int dtn = 0;
+
+    /* How far the camera's own centre trails the point it is chasing. This is the quantity the
+     * cameras themselves snap on at 250 units, so its peak says whether the snap is being reached
+     * or the camera is merely trailing. */
+    private double lag = 0;
+    private double lagpeak = 0;
+
     /**
      * Stamped as the very first thing {@link MapView#tick} does, before anything that could throw.
      *
@@ -139,8 +167,14 @@ public class PlgobWatch {
      *
      * @param mv the map view being watched
      */
-    public void tick(MapView mv) {
+    public void tick(MapView mv, double dt) {
         reached++;
+        if (dt > 0) {
+            dtmin = Math.min(dtmin, dt);
+            dtmax = Math.max(dtmax, dt);
+            dtsum += dt;
+            dtn++;
+        }
         /* This runs on the UI thread inside MapView.tick. A diagnostic that can break a frame is
          * worse than the bug it was added to find, so nothing in here is allowed out. */
         try {
@@ -275,14 +309,22 @@ public class PlgobWatch {
             }
         }
         NLog.log(LOG, String.format(
-            "beat id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s pv=%s"
-                + " pvpeak=%.1f camjumps=%d getcc=%s entered=%d reached=%d drawn=%d bodies=%s",
-            mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
+            "beat mv#%d id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
+                + " lag=%.1f lagpeak=%.1f pv=%s pvpeak=%.1f camjumps=%d"
+                + " dt=%.4f/%.4f/%.4f n=%d [%s] getcc=%s entered=%d reached=%d drawn=%d bodies=%s",
+            serial, mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
-            eye, pv, pvpeak, camjumps, where(mv), entered, reached, drawnat, bodies(mv)));
+            eye, fmt(camtarget(mv)), lag, lagpeak, pv, pvpeak, camjumps,
+            (dtmin == Double.MAX_VALUE) ? 0 : dtmin, (dtn == 0) ? 0 : dtsum / dtn, dtmax, dtn,
+            camparams(mv), where(mv), entered, reached, drawnat, bodies(mv)));
         pvpeak = 0;
         camjumps = 0;
+        lagpeak = 0;
+        dtmin = Double.MAX_VALUE;
+        dtmax = 0;
+        dtsum = 0;
+        dtn = 0;
     }
 
     /**
@@ -378,10 +420,31 @@ public class PlgobWatch {
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
+        /* How far the camera's centre trails what it is chasing - the exact quantity every camera
+         * snaps on at 250 units. Sampled every frame, since the snap cycle is faster than a beat. */
+        Coord3f tgt = camtarget(mv);
+        if ((tgt != null) && (world != null)) {
+            lag = Math.hypot(world.x - tgt.x, world.y - tgt.y);
+            if (lag > lagpeak)
+                lagpeak = lag;
+        }
+
         /* Counted before the discontinuity check below returns, or the snaps this is meant to
-         * count would be exactly the ones discarded. */
-        if (dcam > SNAP_UNITS)
+         * count would be exactly the ones discarded. Logged as they happen too: a snap is a
+         * discrete event and its surrounding numbers are what say why the camera got that far
+         * behind, which a per-second average would smear away. */
+        if (dcam > SNAP_UNITS) {
             camjumps++;
+            if (camjumps <= SNAP_DETAIL) {
+                NLog.log(LOG, String.format(
+                    "camera SNAP: jumped %.0f in one frame, was trailing %.0f (peak %.0f)"
+                        + " - dt %.4f/%.4f/%.4f min/mean/max over %d frames, camera %s %s",
+                    dcam, lag, lagpeak, dtmin == Double.MAX_VALUE ? 0 : dtmin,
+                    (dtn == 0) ? 0 : dtsum / dtn, dtmax, dtn,
+                    (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
+                    camparams(mv)));
+            }
+        }
         if (view != null) {
             double off = Math.hypot(view.x, view.y);
             if (off > pvpeak)
@@ -453,6 +516,26 @@ public class PlgobWatch {
         cammoved = false;
         anchor = null;
         prevanchor = null;
+    }
+
+    /** The point the camera is currently centred on, or null for cameras that keep no such state. */
+    private static Coord3f camtarget(MapView mv) {
+        try {
+            MapView.Camera cam = mv.camera;
+            return((cam == null) ? null : cam.target());
+        } catch (RuntimeException e) {
+            return(null);
+        }
+    }
+
+    /** The camera's own eased state - distances and angles - as it reports it. */
+    private static String camparams(MapView mv) {
+        try {
+            MapView.Camera cam = mv.camera;
+            return((cam == null) ? "" : cam.params());
+        } catch (RuntimeException e) {
+            return("");
+        }
     }
 
     private static Matrix4f camxf(MapView mv) {
@@ -590,6 +673,10 @@ public class PlgobWatch {
         } catch (RuntimeException e) {
             return "<" + e + ">";
         }
+    }
+
+    private static String fmt(Coord3f c) {
+        return((c == null) ? "-" : String.format("(%.1f, %.1f)", c.x, c.y));
     }
 
     /** Null while the resource has not loaded yet, which is not the same as having no resource. */

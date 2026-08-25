@@ -152,6 +152,18 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    return(view.fin(Matrix4f.id));
 	}
 
+	/** The point this camera is currently centred on, in world coordinates, or null if it
+	 *  keeps no such state. Cameras ease toward getcc() rather than jumping to it, so the
+	 *  gap between the two is the lag that eventually trips the snap. */
+	public Coord3f target() {
+	    return(null);
+	}
+
+	/** Free-form internal state for diagnostics - distance, angles, whatever the camera eases. */
+	public String params() {
+	    return("");
+	}
+
 	public String stats() {return("N/A");}
     }
     
@@ -239,7 +251,15 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	public float angle() {
 	    return(angl);
 	}
-	
+
+	public Coord3f target() {
+	    return((curc == null) ? null : new Coord3f(curc.x, -curc.y, curc.z));
+	}
+
+	public String params() {
+	    return(String.format("elev=%.3f angl=%.3f dist=%.1f", elev, angl, dist(elev)));
+	}
+
 	private static final float maxang = (float)(Math.PI / 2 - 0.1);
 	private static final float mindist = 50.0f;
 	public boolean wheel(MouseWheelEvent ev) {
@@ -332,6 +352,15 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
 	public float angle() {
 	    return(angl);
+	}
+
+	public Coord3f target() {
+	    return((cc == null) ? null : new Coord3f(cc.x, -cc.y, cc.z));
+	}
+
+	public String params() {
+	    return(String.format("dist=%.1f/%.1f elev=%.3f/%.3f angl=%.3f/%.3f",
+				 dist, tdist, elev, telev, angl, tangl));
 	}
 
 	public boolean click(Coord c) {
@@ -435,6 +464,14 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
 	public float angle() {
 	    return(angl);
+	}
+
+	public Coord3f target() {
+	    return((cc == null) ? null : new Coord3f(cc.x, -cc.y, cc.z));
+	}
+
+	public String params() {
+	    return(String.format("dist=%.1f elev=%.3f angl=%.3f field=%.1f", dist, elev, angl, field));
 	}
 
 	public boolean click(Coord c) {
@@ -2057,7 +2094,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	plgobwatch.enter();
 	super.tick(dt);
 	checkload();
-	plgobwatch.tick(this);
+	plgobwatch.tick(this, dt);
 	camload = null;
 	try {
 	    if((shake = shake * Math.pow(100, -dt)) < 0.01)
