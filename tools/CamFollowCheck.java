@@ -193,6 +193,27 @@ public class CamFollowCheck {
 	}
     }
 
+
+    /* The player's view-space position out of the beat line - the field that says whether the
+     * camera is pointed at them, as opposed to merely being updated. */
+    static java.util.List<double[]> pvs(String log) {
+	java.util.List<double[]> out = new java.util.ArrayList<>();
+	java.util.regex.Matcher m = java.util.regex.Pattern
+	    .compile("pv=\\((-?[\\d.]+), (-?[\\d.]+)\\)").matcher(log);
+	while(m.find())
+	    out.add(new double[] {Double.parseDouble(m.group(1)), Double.parseDouble(m.group(2))});
+	return(out);
+    }
+
+    static double spread(java.util.List<double[]> pts) {
+	double lo0 = 1e9, hi0 = -1e9, lo1 = 1e9, hi1 = -1e9;
+	for(double[] p : pts) {
+	    lo0 = Math.min(lo0, p[0]); hi0 = Math.max(hi0, p[0]);
+	    lo1 = Math.min(lo1, p[1]); hi1 = Math.max(hi1, p[1]);
+	}
+	return(Math.hypot(hi0 - lo0, hi1 - lo1));
+    }
+
     static String tail(java.nio.file.Path log, long from) throws Exception {
 	if(!java.nio.file.Files.exists(log))
 	    return("");
@@ -437,6 +458,39 @@ public class CamFollowCheck {
 	    String out = tail(log, was);
 	    check("reports the frozen position", out.contains("POSITION FROZEN"),
 		  firstline(out, "camera is not following"));
+	}
+
+
+	System.out.println("10. the beat's own fields say whether the camera is pointed at the player");
+	{
+	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
+
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    haven.automated.PlgobWatch pw = new haven.automated.PlgobWatch();
+	    settle(mv);
+
+	    /* Beats are rate-limited to one a second, so drive real time by walking in bursts
+	     * with a pause between them rather than faking the clock. */
+	    long was = java.nio.file.Files.size(log);
+	    for(int burst = 0; burst < 4; burst++) {
+		walk(pw, mv, pl, 40, true);
+		Thread.sleep(1050);
+	    }
+	    double tracking = spread(pvs(tail(log, was)));
+	    check("pv holds still while the camera tracks", tracking < 40.0,
+		  String.format("pv spread=%.1f over %d beats", tracking, pvs(tail(log, was)).size()));
+
+	    was = java.nio.file.Files.size(log);
+	    for(int burst = 0; burst < 4; burst++) {
+		walk(pw, mv, pl, 40, false);
+		Thread.sleep(1050);
+	    }
+	    double pinned = spread(pvs(tail(log, was)));
+	    check("pv slides away while the camera is pinned", pinned > 200.0,
+		  String.format("pv spread=%.1f over %d beats", pinned, pvs(tail(log, was)).size()));
 	}
 
 	System.out.println(failures == 0 ? "PASS" : failures + " FAILURE(S)");

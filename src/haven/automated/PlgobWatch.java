@@ -237,14 +237,45 @@ public class PlgobWatch {
                 got = "<" + e + ">";
             }
         }
+        /* Where the camera actually is, and where the player sits in its view.
+         *
+         * The hash alone was not enough, and reading a clean-looking log without these cost a
+         * round trip: it showed the transform changing on every frame the player moved, which
+         * says the camera is being updated but says nothing at all about what it is pointed at.
+         * A camera can update every frame and still not be following anyone.
+         *
+         * eye is the camera's own world position, from inverting the view transform. Held against
+         * getcc() it says whether the camera is anywhere near where it is supposed to be looking.
+         * pv is the player's position in view space, which is the symptom itself: a camera that
+         * tracks holds this near one value however far the player walks, and one that does not
+         * lets it slide away in step with them. Neither needs a threshold to read. */
         Matrix4f cam = camxf(mv);
+        String eye = "-";
+        String pv = "-";
+        if (cam != null) {
+            try {
+                Coord3f e = cam.invert().mul4(Coord3f.o);
+                eye = String.format("(%.1f, %.1f, %.1f)", e.x, -e.y, e.z);
+            } catch (RuntimeException e) {
+                eye = "<" + e + ">";
+            }
+            if ((pl != null) && got.startsWith("(")) {
+                try {
+                    Coord3f c = pl.getc();
+                    Coord3f v = cam.mul4(new Coord3f(c.x, -c.y, c.z));
+                    pv = String.format("(%.1f, %.1f)", v.x, v.y);
+                } catch (RuntimeException e) {
+                    pv = "<" + e + ">";
+                }
+            }
+        }
         NLog.log(LOG, String.format(
-            "beat id=%d player=%s rc=%s getc=%s camera=%s cam=%s getcc=%s"
+            "beat id=%d player=%s rc=%s getc=%s camera=%s cam=%s eye=%s pv=%s getcc=%s"
                 + " entered=%d reached=%d drawn=%d",
             mv.plgob, (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
-            where(mv), entered, reached, drawnat));
+            eye, pv, where(mv), entered, reached, drawnat));
     }
 
     /**
