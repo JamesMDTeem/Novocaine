@@ -2557,7 +2557,24 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     
     private UI.Grab camdrag = null;
 
+    /* Input-path counters, read by PlgobWatch. Camera rotation is a middle-mouse drag, so an
+     * angle that never changes can mean the drag never arrived rather than the camera ignoring
+     * it - and those want telling apart. */
+    public int inmdown, inmdown2, inmmove, incamdrag;
+
+    /** What the mouse path looks like from in here: events arrived, whether the camera holds the
+     *  drag grab, and who else holds a grab that could be intercepting. */
+    public String inputstate() {
+	return(String.format("down=%d mid=%d move=%d camdrag=%d held=%s grabs=%s",
+			     inmdown, inmdown2, inmmove, incamdrag,
+			     (camdrag == null) ? "no" : "yes",
+			     (ui == null) ? "-" : ui.grabstate()));
+    }
+
     public boolean mousedown(MouseDownEvent ev) {
+	inmdown++;
+	if(ev.b == 2)
+	    inmdown2++;
 	parent.setfocus(this);
 	Loader.Future<Plob> placing_l = this.placing;
 	if (ev.b == 1 && areaSelect) {
@@ -2600,11 +2617,13 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     }
     
     public void mousemove(MouseMoveEvent ev) {
+	inmmove++;
 	currentCursorLocation = ev.c;
 	if(grab != null)
 	    grab.mmousemove(ev.c);
 	Loader.Future<Plob> placing_l = this.placing;
 	if(camdrag != null) {
+	    incamdrag++;
 	    camera.drag(ev.c);
 	} else if((placing_l != null) && placing_l.done()) {
 	    Plob placing = placing_l.get();

@@ -311,13 +311,14 @@ public class PlgobWatch {
         NLog.log(LOG, String.format(
             "beat mv#%d id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f pv=%s pvpeak=%.1f camjumps=%d"
-                + " dt=%.4f/%.4f/%.4f n=%d [%s] getcc=%s entered=%d reached=%d drawn=%d bodies=%s",
+                + " dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
+                + " bodies=%s",
             serial, mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
             eye, fmt(camtarget(mv)), lag, lagpeak, pv, pvpeak, camjumps,
             (dtmin == Double.MAX_VALUE) ? 0 : dtmin, (dtn == 0) ? 0 : dtsum / dtn, dtmax, dtn,
-            camparams(mv), where(mv), entered, reached, drawnat, bodies(mv)));
+            camparams(mv), input(mv), where(mv), entered, reached, drawnat, bodies(mv)));
         pvpeak = 0;
         camjumps = 0;
         lagpeak = 0;
@@ -525,6 +526,23 @@ public class PlgobWatch {
             return((cam == null) ? null : cam.target());
         } catch (RuntimeException e) {
             return(null);
+        }
+    }
+
+    /**
+     * The state of the mouse path into the map view.
+     *
+     * Camera rotation is a middle-mouse drag, so an angle that never moves has two very different
+     * explanations: the player did not rotate, or they did and the drag never arrived. A grab held
+     * by another widget intercepts pointer events before they reach whatever is under the cursor,
+     * and nothing else in this log would show that. The original report opened with someone
+     * guessing their middle mouse button had broken, which is what this looks like from the outside.
+     */
+    private static String input(MapView mv) {
+        try {
+            return(mv.inputstate());
+        } catch (RuntimeException e) {
+            return("<" + e + ">");
         }
     }
 

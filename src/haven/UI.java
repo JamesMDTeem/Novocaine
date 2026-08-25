@@ -607,6 +607,25 @@ public class UI {
 	return(grab(wdg, PointerEvent.class, new PointerGrab<>(wdg, new EventHandler.Filter<>(new WidgetGrab(wdg), sel))));
     }
 
+    /** Which widgets currently hold event grabs, for diagnostics. A grab intercepts pointer
+     *  events before they reach the widget under the cursor, so a stale one is invisible to
+     *  everything except a listing like this. */
+    public String grabstate() {
+	StringBuilder sb = new StringBuilder();
+	int n = 0;
+	for(Grab g : grabs) {
+	    if(n++ > 0)
+		sb.append(' ');
+	    if(n > 6) {
+		sb.append("...");
+		break;
+	    }
+	    Widget o = g.owner;
+	    sb.append((o == null) ? "null" : o.getClass().getSimpleName());
+	}
+	return((n == 0) ? "none" : sb.toString());
+    }
+
     public Grab grabkeys(Widget wdg) {
 	Predicate<Event> sel = ev -> ((ev instanceof KeyDownEvent) || (ev instanceof KeyUpEvent));
 	return(grab(wdg, KbdEvent.class, new EventHandler.Filter<>(new WidgetGrab(wdg), sel)));
