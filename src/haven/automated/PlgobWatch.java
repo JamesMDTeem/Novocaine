@@ -75,8 +75,14 @@ public class PlgobWatch {
      *  Matches the threshold the cameras themselves snap at. */
     private static final double SNAP_UNITS = 250.0;
 
-    /** How often the unconditional state line is printed. */
-    private static final long BEAT_MS = 15000;
+    /** How often the unconditional state line is printed.
+     *
+     *  One second, because the failure this is chasing is usually there the moment the character
+     *  logs in and a test run is over in ten or twenty. Anything slower turns a quick check into
+     *  one or two samples, which is not enough to see whether a value is frozen or merely slow.
+     *  It costs roughly 60 lines a minute; NLog keeps the last few launches and drops the rest,
+     *  so a long session does not grow without bound. */
+    private static final long BEAT_MS = 1000;
 
     /** How long the client may go without reaching the camera before that is worth a line. */
     private static final long TICK_GAP_MS = 2000;
@@ -199,8 +205,7 @@ public class PlgobWatch {
      * A quiet log was then consistent with the client being fine and with it being thoroughly
      * broken, which is the one thing a diagnostic may not be.
      *
-     * So this samples and prints regardless. It is the only line here that cannot be reasoned away,
-     * and at four lines a minute it costs nothing to leave on.
+     * So this samples and prints regardless. It is the only line here that cannot be reasoned away.
      */
     private void heartbeat(MapView mv, Gob pl) {
         long now = System.currentTimeMillis();
