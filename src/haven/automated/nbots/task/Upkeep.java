@@ -28,10 +28,18 @@ public class Upkeep implements Task {
     /** Below this fraction of stamina, break off and drink. */
     public static final double DRINK_BELOW = 0.40;
     /**
-     * The speed we want to keep: {@code Speedget}'s four are crawl, walk, run, sprint.
+     * The speed every crew bot travels at. {@code Speedget}'s four are crawl, walk, run, sprint,
+     * indexed from zero - so this is RUN, and deliberately not sprint.
+     *
+     * Sprinting is not a faster version of running, it is a different trade: it burns stamina the
+     * whole time it is on, and a bot's stamina is not free - it is a walk to a water place and back
+     * every time it runs out. A crew that sprints everywhere spends a visible fraction of its shift
+     * fetching water to pay for the sprinting, and arrives at each job with less in hand for the
+     * job itself. Running costs nothing to hold and is quick enough for a bot that is never in a
+     * hurry about anything.
      *
      * Kept by watching the game rather than by guessing a stamina figure. The server decides when
-     * sprinting stops being allowed and says so by lowering the speed widget's MAX - so the moment
+     * a speed stops being allowed and says so by lowering the speed widget's MAX - so the moment
      * the cap drops is observable exactly, and no threshold has to be assumed. Which is just as
      * well: the threshold is the server's and nothing in this client states it, so a number written
      * here would be folklore, and would go stale the first time it was rebalanced.
@@ -39,8 +47,12 @@ public class Upkeep implements Task {
      * Worth keeping rather than tolerating, because it is not a small loss. Every journey a bot
      * makes is longer at a lower speed, so a character that slips a gear stays slipped - it spends
      * more of the shift walking, which costs more stamina, which keeps the cap down.
+     *
+     * This one constant is the whole of it: {@link #resume} is the only thing in the nbots tree
+     * that sets a speed, and every bot reaches it either through the shared upkeep step or by
+     * calling it directly.
      */
-    private static final int WANT_SPEED = 3;
+    private static final int WANT_SPEED = 2;
     /**
      * Below this fraction of energy, go and eat.
      *
@@ -124,6 +136,12 @@ public class Upkeep implements Task {
      * CUR below what we want used to be lumped in with it and must not be: that is only the client
      * having dropped the selection, which {@link #resume} puts back for nothing, and treating it as
      * thirst sent a bot at full stamina off to a barrel.
+     *
+     * Note this fires LATER than it used to, and should. It is measured against
+     * {@link #WANT_SPEED}, which is now run rather than sprint - and the server withdraws sprint a
+     * long way above the point at which it withdraws running. Asking "can I still sprint?" was
+     * asking a question about a gear the bots no longer use, and answering it with a trip to a
+     * barrel. {@link #DRINK_BELOW} remains the primary trigger either way.
      */
     private static boolean capped(BotCtx ctx) {
         Speedget s = speed(ctx);
@@ -139,8 +157,19 @@ public class Upkeep implements Task {
      */
     public static void resume(BotCtx ctx) {
         Speedget s = speed(ctx);
-        if ((s != null) && (s.cur < Math.min(WANT_SPEED, s.max)))
-            s.set(Math.min(WANT_SPEED, s.max));
+        if (s == null)
+            return;
+        int want = Math.min(WANT_SPEED, s.max);
+        /* Settles ON the wanted gear rather than merely raising towards it.
+         *
+         * It used to be `cur < want`, which only ever shifts UP - correct while the target was the
+         * top gear, since there was nothing above it to come down from. With the target at run,
+         * that test silently does nothing for the case that matters most: a character left on
+         * sprint by the player, or by a previous build, reads cur=3 against want=2, fails the
+         * comparison, and sprints for the whole shift - paying for it in water trips - while this
+         * method sits there believing it has set the speed. */
+        if (s.cur != want)
+            s.set(want);
     }
 
     private static Speedget speed(BotCtx ctx) {

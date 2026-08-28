@@ -44,8 +44,15 @@ import java.util.Set;
  */
 public class Place {
     public String name;
-    /** North-west corner, anchored so it survives the area not being rendered. */
-    public WorldAnchor anchor;
+    /**
+     * North-west corner, anchored so it survives the area not being rendered.
+     *
+     * Volatile because it is written from more than one thread: the UI thread when a place is
+     * drawn or re-drawn, and now a bot thread too, when {@link #upgradeAnchor} repairs an old one
+     * mid-scan. The value itself is immutable, so the only hazard is a reader not seeing the new
+     * reference - which volatile settles for a word.
+     */
+    public volatile WorldAnchor anchor;
     /** Extent from the anchor, in tiles. A 0x0 place is a point - legal, and useful for a barrel. */
     public int w, h;
     public final Set<String> roles = new LinkedHashSet<>();
@@ -265,6 +272,7 @@ public class Place {
     public void observe(GameUI gui, List<Gob> live) {
         if (!observable(gui))
             return;
+        boolean upgraded = upgradeAnchor(gui);
         java.util.Map<String, Integer> now = new java.util.LinkedHashMap<>();
         for (Gob g : live) {
             try {
@@ -281,7 +289,7 @@ public class Place {
             }
         }
         synchronized (memory) {
-            if (memory.equals(now))
+            if (memory.equals(now) && !upgraded)
                 return;
             memory.clear();
             memory.putAll(now);
@@ -289,6 +297,34 @@ public class Place {
         // touch(), not save(): several clients share this file, and a save that does not know
         // WHICH place changed cannot tell ours from theirs. See Places.
         Places.touch(this);
+    }
+
+    /**
+     * Fills in the grid id on an anchor that was saved before grid ids were recorded.
+     *
+     * Places written by the old code carry only a map SEGMENT id, which is a random number private
+     * to the client that drew them - so the other clients in a crew could list the place and not
+     * resolve it. See {@link WorldAnchor}. New places get a grid id at capture, but the ones
+     * already in botplaces.json would stay broken forever without this.
+     *
+     * The repair can only be done by a client that can still resolve the place, which is the one
+     * that drew it - and only while standing in it, which is what {@link #observable} has just
+     * established. So it rides along with observation rather than being a migration step: the
+     * first time any client visits an old place, it is fixed for every client.
+     *
+     * @return whether the anchor changed and so needs writing out
+     */
+    private boolean upgradeAnchor(GameUI gui) {
+        if ((anchor == null) || (anchor.gid != 0))
+            return false;
+        Coord2d nw = anchor.resolve(gui);
+        if (nw == null)
+            return false;
+        WorldAnchor fresh = WorldAnchor.capture(gui, nw);
+        if ((fresh == null) || (fresh.gid == 0))
+            return false;
+        anchor = fresh;
+        return true;
     }
 
     /** How many things matching {@code pattern} this place is known to hold, seen or remembered. */
@@ -340,7 +376,14 @@ public class Place {
     public JSONObject toJson() {
         JSONObject o = new JSONObject();
         o.put("name", name);
-        o.put("anchor", (anchor == null) ? "" : anchor.store());
+        /* The anchor is written as two keys rather than one string, so that a crewmate still on an
+         * older build reads this place instead of dropping it. That build parses "anchor" exactly
+         * as it always has and ignores "grid" - it just doesn't get the cross-client resolution.
+         * A crew does not update every client at once, and an unparseable anchor makes fromJson
+         * return null, which makes the place vanish from that client's list. */
+        o.put("anchor", (anchor == null) ? "" : anchor.segpart());
+        if ((anchor != null) && !anchor.gridpart().isEmpty())
+            o.put("grid", anchor.gridpart());
         o.put("w", w);
         o.put("h", h);
         /* toArray() rather than passing the set: the bundled org.json declares its collection
@@ -371,7 +414,7 @@ public class Place {
     }
 
     public static Place fromJson(JSONObject o) {
-        WorldAnchor a = WorldAnchor.parse(o.optString("anchor", ""));
+        WorldAnchor a = WorldAnchor.parse(o.optString("anchor", ""), o.optString("grid", ""));
         if (a == null)
             return null;
         Place p = new Place(o.optString("name", "?"), a, o.optInt("w", 0), o.optInt("h", 0));

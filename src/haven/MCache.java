@@ -1027,6 +1027,23 @@ public class MCache implements MapSource {
 	}
     }
 
+    /* A loaded grid found by its SERVER-assigned id rather than by its session grid coord.
+     *
+     * Grid ids are the one handle on a position that several clients agree on: grid coords are
+     * relative to a session's floating origin, and map-file segment ids are picked at random by
+     * whichever client first walked onto unmapped ground, so neither survives being written down
+     * by one client and read by another. Null when that grid is not currently loaded - this
+     * deliberately does NOT request it, since the caller is asking where something already is. */
+    public Grid gridbyid(long id) {
+	synchronized(grids) {
+	    for(Grid g : grids.values()) {
+		if((g.id == id) && !g.removed)
+		    return(g);
+	    }
+	}
+	return(null);
+    }
+
     public Grid getgridt(Coord tc) {
 	return(getgrid(tc.div(cmaps)));
     }

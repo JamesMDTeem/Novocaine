@@ -91,7 +91,9 @@ The in-game ones all live under a single menu-grid folder:
 
 - **Crew bots** (`src/haven/automated/nbots/`, menu: | Novocaine | → | Crew Bots |) — bots
   written for several characters working one site at once rather than one character working
-  alone: **Cellar Digger**, **Cleanup** and **Water Scout**, all "(crew)". They coordinate
+  alone: **Cellar Digger**, **Cleanup**, **Water Scout**, **Plower**, **Survey**,
+  **Bee Smoker**, **Dragonfly**, **Stockpile Mover** and **Survey Planner**, all "(crew)".
+  They coordinate
   across client processes so two characters never walk to the same working spot, share the
   areas you draw in **Bot Places**, and route over terrain they have actually seen rather than
   guessing. Shared behaviour is under **Custom Settings**.

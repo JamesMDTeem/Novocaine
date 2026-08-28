@@ -28,17 +28,58 @@ import haven.MapWnd;
  * segment and applying the difference. Only the player's own grid has to be loaded for that, never
  * the anchor's.
  *
+ * <h2>Segment ids are private to one client, so the grid id is recorded too</h2>
+ *
+ * A segment id is {@code rnd.nextLong()}, picked by whichever client first walked onto unmapped
+ * ground ({@link MapFile} "creating new segment"). It identifies a stretch of world only inside
+ * the map file that invented it. That is fine while an anchor stays in the client that captured
+ * it, and wrong the moment one is written to a file a CREW shares: a place drawn by one character
+ * carried a segment id the other characters' map files had never heard of, {@link #resolve}
+ * compared it against their own and returned null, and {@link Places#nearest} skips a place it
+ * cannot resolve - so the area showed up in everyone's Bot Places list, with its roles ticked,
+ * and every bot but the one that drew it reported there was nowhere tagged for water. A real
+ * botplaces.json had "Water" on segment 508e650b14c823d1 and everything else on
+ * f41511251cc75885, two coordinate spaces in one shared file.
+ *
+ * So an anchor also records the GRID it sits in, by the id the SERVER assigns, plus the offset
+ * within that grid. Grid ids are the same number in every client connected to the world, which
+ * makes them the one durable name for a position across a crew. Resolution then asks the LOCAL
+ * map file which segment that grid is in, instead of trusting the segment the anchor was written
+ * with - so it no longer matters which client drew the place.
+ *
  * Anchors are immutable and safe to hand between the bot threads and the UI thread.
  */
 public class WorldAnchor {
-    /** The map segment (continent) this position belongs to. */
+    /**
+     * The map segment (continent) this position belongs to, AS THE CAPTURING CLIENT NAMED IT.
+     *
+     * Still carried because the {@link Observed} terrain layer is keyed by it and because
+     * {@link #offsetTo} works in segment space, but it is no longer the primary way an anchor is
+     * resolved - see the class notes. Never compare one client's segment id with another's.
+     */
     public final long seg;
     /** Position within the segment, in world units (tiles * MCache.tilesz), not tiles. */
     public final Coord2d sc;
+    /**
+     * The server's id for the grid this position sits in, or 0 when it isn't known.
+     *
+     * Zero for anchors from {@link #offsetTo} (which never sees a live grid) and for anchors read
+     * back from files written before this was recorded. Those fall back to the old segment
+     * comparison, which is right within one client and no worse than it was across several.
+     */
+    public final long gid;
+    /** Position within {@link #gid}'s grid, in world units. Meaningless when {@code gid} is 0. */
+    public final Coord2d off;
 
     public WorldAnchor(long seg, Coord2d sc) {
+        this(seg, sc, 0, Coord2d.z);
+    }
+
+    public WorldAnchor(long seg, Coord2d sc, long gid, Coord2d off) {
         this.seg = seg;
         this.sc = sc;
+        this.gid = gid;
+        this.off = (off == null) ? Coord2d.z : off;
     }
 
     /**
@@ -75,7 +116,11 @@ public class WorldAnchor {
             // not merely on the right tile.
             Coord segtile = info.sc.mul(MCache.cmaps).add(tc.sub(gc.mul(MCache.cmaps)));
             Coord2d intra = wc.sub(tc.mul(MCache.tilesz));
-            return new WorldAnchor(info.seg, segtile.mul(MCache.tilesz).add(intra));
+            // Where in the GRID the point sits, alongside where in the segment. The grid id is
+            // what another client can look up; the segment part is what this one resolves fastest
+            // from, and what the Observed terrain layer is keyed by.
+            Coord2d ingrid = wc.sub(gc.mul(MCache.cmaps).mul(MCache.tilesz));
+            return new WorldAnchor(info.seg, segtile.mul(MCache.tilesz).add(intra), gridid, ingrid);
         } catch (Loading | NullPointerException e) {
             return null;
         }
@@ -134,10 +179,85 @@ public class WorldAnchor {
         haven.Gob me = gui.map.player();
         if (me == null)
             return null;
+        // Ask OUR map file where the anchor's grid is, rather than believing the segment id the
+        // anchor was written with - which belongs to whichever client drew it. See class notes.
+        //
+        // First because it is the cheap one: two hash lookups against a grid id, where the loaded-
+        // grid scan below walks every streamed-in grid. That matters more than it looks - contains()
+        // resolves the anchor once per GOB when a place is scanned, so a linear scan here is a
+        // per-frame cost multiplied by the population of the base.
+        Coord2d live = byGridinfo(gui, me);
+        if (live != null)
+            return live;
+        // Then the anchor's own grid, if it happens to be streamed in: exact rather than inferred,
+        // and the one path that needs no map file at all - so it still answers on a client whose
+        // map file has never recorded this ground.
+        live = byLoadedGrid(gui);
+        if (live != null)
+            return live;
+        // Anchors written before grid ids were recorded, and anchors from offsetTo. Correct within
+        // the client that made them; across a crew it fails exactly as it always did. Reached with
+        // a grid id too, since a map file that has lost the grid's entry can still be right about
+        // the segment the anchor named.
         WorldAnchor here = capture(gui, me.rc);
         if (here == null || here.seg != seg)
             return null;
         return me.rc.add(sc.sub(here.sc));
+    }
+
+    /**
+     * This anchor's position via its own grid, when that grid happens to be loaded.
+     *
+     * Linear over the loaded grids, which is why {@link #resolve} tries the map file first.
+     */
+    private Coord2d byLoadedGrid(GameUI gui) {
+        if (gid == 0)
+            return null;
+        try {
+            MCache.Grid g = gui.ui.sess.glob.map.gridbyid(gid);
+            return (g == null) ? null : g.ul.mul(MCache.tilesz).add(off);
+        } catch (Loading | NullPointerException e) {
+            return null;
+        }
+    }
+
+    /**
+     * This anchor's position via the LOCAL map file's opinion of where its grid sits.
+     *
+     * Both grids - the anchor's and the player's - are looked up in the same map file, so the two
+     * segment ids being compared were assigned by the same client and the comparison means
+     * something. That is the whole difference from the old path, which compared a stored id
+     * against a local one. Null when this client has never mapped the anchor's grid, or when the
+     * two grids really are in different segments (separate continents, or two halves of a map that
+     * have not been stitched together yet) - there is genuinely no offset to apply then.
+     */
+    private Coord2d byGridinfo(GameUI gui, haven.Gob me) {
+        if (gid == 0)
+            return null;
+        MapFile file = mapfile(gui);
+        if (file == null)
+            return null;
+        try {
+            MCache mcache = gui.ui.sess.glob.map;
+            Coord mygc = me.rc.floor(MCache.tilesz).div(MCache.cmaps);
+            long mygid = mcache.getgrid(mygc).id;
+            MapFile.GridInfo mine, theirs;
+            file.lock.readLock().lock();
+            try {
+                mine = file.gridinfo.get(mygid);
+                theirs = file.gridinfo.get(gid);
+            } finally {
+                file.lock.readLock().unlock();
+            }
+            if ((mine == null) || (theirs == null) || (mine.seg != theirs.seg))
+                return null;
+            // Grid coords within one segment, so the difference is exact and distance-independent.
+            Coord dg = theirs.sc.sub(mine.sc);
+            Coord2d myul = mygc.mul(MCache.cmaps).mul(MCache.tilesz);
+            return myul.add(dg.mul(MCache.cmaps).mul(MCache.tilesz)).add(off);
+        } catch (Loading | NullPointerException e) {
+            return null;
+        }
     }
 
     /** True if this anchor is in the same segment as the player and so can be resolved at all. */
@@ -180,27 +300,76 @@ public class WorldAnchor {
     }
 
     // Persisted into the client's preference store by the bots that remember a source across
-    // sessions. Deliberately a flat string rather than anything structured - it's two numbers and a
-    // point, and a hand-editable pref is easier to reason about than a serialized blob.
+    // sessions, and into botplaces.json by Place. Deliberately a flat string rather than anything
+    // structured - it's a few numbers and a point, and a hand-editable value is easier to reason
+    // about than a serialized blob.
+    //
+    // Six fields when the grid is known, three when it isn't. Values written by the older
+    // three-field code are read here unchanged.
+    //
+    // It does NOT go the other way - the old parse required exactly three fields and rejects a
+    // six-field value outright - which is why {@link Place} does not use this for the file a CREW
+    // shares. See segpart()/gridpart(): botplaces.json keeps the two halves in separate JSON keys
+    // so a client on an older build reads the places instead of dropping them.
     public String store() {
+        String head = segpart();
+        return (gid == 0) ? head : (head + ":" + gridpart());
+    }
+
+    /**
+     * Just the segment half, in the three-field form every build of this client has ever read.
+     *
+     * For files several clients share: a crew does not update every client in the same minute, and
+     * a place an older client cannot PARSE is a place it silently drops from the list entirely -
+     * which would be a worse bug than the one this all exists to fix. Written on its own, the
+     * worst an old build does is behave exactly as it does today.
+     */
+    public String segpart() {
         return Long.toHexString(seg) + ":" + sc.x + ":" + sc.y;
+    }
+
+    /** Just the grid half, for storing alongside {@link #segpart}. Empty when there is no grid. */
+    public String gridpart() {
+        return (gid == 0) ? "" : (Long.toHexString(gid) + ":" + off.x + ":" + off.y);
+    }
+
+    /** Rebuilds an anchor from the two halves, tolerating a missing or unparseable grid half. */
+    public static WorldAnchor parse(String segpart, String gridpart) {
+        WorldAnchor a = parse(segpart);
+        if ((a == null) || (gridpart == null) || gridpart.isEmpty())
+            return a;
+        String[] p = gridpart.split(":");
+        if (p.length != 3)
+            return a;
+        try {
+            return new WorldAnchor(a.seg, a.sc, Long.parseUnsignedLong(p[0], 16),
+                new Coord2d(Double.parseDouble(p[1]), Double.parseDouble(p[2])));
+        } catch (NumberFormatException e) {
+            return a;
+        }
     }
 
     public static WorldAnchor parse(String s) {
         if (s == null || s.isEmpty())
             return null;
         String[] p = s.split(":");
-        if (p.length != 3)
+        if ((p.length != 3) && (p.length != 6))
             return null;
         try {
-            return new WorldAnchor(Long.parseUnsignedLong(p[0], 16),
-                new Coord2d(Double.parseDouble(p[1]), Double.parseDouble(p[2])));
+            long seg = Long.parseUnsignedLong(p[0], 16);
+            Coord2d sc = new Coord2d(Double.parseDouble(p[1]), Double.parseDouble(p[2]));
+            if (p.length == 3)
+                return new WorldAnchor(seg, sc);
+            return new WorldAnchor(seg, sc, Long.parseUnsignedLong(p[3], 16),
+                new Coord2d(Double.parseDouble(p[4]), Double.parseDouble(p[5])));
         } catch (NumberFormatException e) {
             return null;
         }
     }
 
     public String toString() {
-        return "anchor(seg " + Long.toHexString(seg) + " @ " + (int) sc.x + "," + (int) sc.y + ")";
+        return "anchor(seg " + Long.toHexString(seg) + " @ " + (int) sc.x + "," + (int) sc.y
+            + ((gid == 0) ? ", no grid" : (", grid " + Long.toHexString(gid)
+                + " +" + (int) off.x + "," + (int) off.y)) + ")";
     }
 }

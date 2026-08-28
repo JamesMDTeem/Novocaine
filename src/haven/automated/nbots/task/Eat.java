@@ -76,7 +76,8 @@ public class Eat implements Task {
 
         Place place = Places.nearest(ctx.gui, PlaceRoles.FOOD);
         if (place == null)
-            return Outcome.failed("nothing edible carried and no place tagged for food");
+            return Outcome.failed("nothing edible carried and "
+                + Places.whyNothing(ctx.gui, PlaceRoles.FOOD));
 
         Outcome t = new TravelTo(place).run(ctx);
         if (!t.isOk())

@@ -36,12 +36,24 @@ import java.util.Map;
  */
 public class Carried {
     /**
-     * Vessels worth looking inside. The same list the client's own drink uses, since it is these
-     * names the game gives them; matched as substrings because the item name carries a quality and
-     * sometimes a maker.
+     * Vessels worth looking inside, by the name the game puts on the item.
+     *
+     * Matched as substrings, because the item name carries a quality and sometimes a maker -
+     * which is also why "Kuksa" is enough for a Birchbark Kuksa and "Jug" for a Glass Jug.
+     *
+     * It was the client's own list, and the client's own list has no cups in it. A character
+     * whose only vessel was a Wooden Cup therefore reported "carrying no drinking vessel the
+     * client can see", walked to a barrel, filled the cup - the refill scan goes by RESOURCE name
+     * and has known about cups all along - came back, still could not see it, and went again.
+     * That loop is the whole bug: not a failure to fetch water, a failure to notice the thing
+     * the water went into.
+     *
+     * The cups are spelled out in full rather than matched on "Cup", which is inside Cupboard -
+     * furniture a bot may well be carrying, and a vessel that holds no water but reads as one is
+     * how {@link #describe} starts lying about what is on the character.
      */
     private static final String[] VESSELS =
-        {"Waterskin", "Waterflask", "Kuksa", "Bucket", "Jug", "glassjug"};
+        {"Waterskin", "Waterflask", "Kuksa", "Bucket", "Jug", "Wooden Cup", "Leaf Cup"};
 
     /** Polls (of 25ms) to wait for one drink to take effect. */
     private static final int SIP_TICKS = 60;

@@ -193,8 +193,8 @@ public class NCleanupBot extends NBot {
             if (workPlace == null)
                 workPlace = Places.nearest(gui, PlaceRoles.WORK);
             if (workPlace == null)
-                return Outcome.failed("no place is tagged for work - press \"Draw work area\", "
-                    + "or switch this bot back to Nearest first");
+                return Outcome.failed(Places.whyNothing(gui, PlaceRoles.WORK)
+                    + " - or press \"Draw work area\", or switch this bot back to Nearest first");
             ctx.log("area mode: working \"" + workPlace.name + "\" ("
                 + workPlace.w + "x" + workPlace.h + " tiles)");
             Outcome t = new TravelTo(workPlace).run(ctx);

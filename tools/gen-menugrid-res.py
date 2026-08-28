@@ -196,6 +196,20 @@ build("NurglingImports/CrewBots/NBeeSmokerBot.res",
       "Builds a pyre under every wild beehive in sight, waits for the smoke to send the swarm "
       "off, then raids each hive before moving on.")
 
+build("NurglingImports/CrewBots/NStockpileBot.res",
+      "customclient/menugrid/NurglingImports/CrewBots", "Stockpile Mover (crew)", 0,
+      ["@", "NurglingImports", "NStockpileBot"],
+      "Empties one area of stockpiles into another, a pack at a time, and starts a new pile "
+      "beside the full ones when they run out of room. Several can work the same yard: a pile "
+      "that empties or fills under one of them is the next pile, not an error.")
+
+build("NurglingImports/CrewBots/SurveyPlanner.res",
+      "customclient/menugrid/NurglingImports/CrewBots", "Survey Planner (crew)", 0,
+      ["@", "NurglingImports", "SurveyPlanner"],
+      "Works out which surveys to draw to level a grid flat, what height to set them all to, "
+      "and which surplus feeds which shortfall. Shares the list so several characters can work "
+      "different surveys at once.")
+
 build("NurglingImports/CrewBots/NDragonflyBot.res",
       "customclient/menugrid/NurglingImports/CrewBots", "Dragonfly (crew)", 0,
       ["@", "NurglingImports", "NDragonflyBot"],

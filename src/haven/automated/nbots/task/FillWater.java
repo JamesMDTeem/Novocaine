@@ -69,7 +69,7 @@ public class FillWater implements Task {
     public Outcome run(BotCtx ctx) throws InterruptedException {
         Place place = Places.nearest(ctx.gui, PlaceRoles.WATER);
         if (place == null)
-            return Outcome.failed("no place is tagged for water - define one in Bot Places");
+            return Outcome.failed(Places.whyNothing(ctx.gui, PlaceRoles.WATER));
 
         Outcome t = new TravelTo(place).run(ctx);
         if (!t.isOk())

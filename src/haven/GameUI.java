@@ -2516,6 +2516,11 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		    }
 		}
 	    });
+	cmdmap.put("surv", new Console.Command() {
+		public void run(Console cons, String[] args) {
+		    haven.automated.survey.SurveyProbe.run(GameUI.this, args);
+		}
+	    });
     }
     public Map<String, Console.Command> findcmds() {
 	return(cmdmap);

@@ -48,8 +48,25 @@ public class PlaceRoles {
      */
     public static final String WORK = "work";
 
+    /**
+     * A yard of stockpiles to empty. The stockpile mover takes from the piles standing here and
+     * leaves nothing behind - a pile it empties disappears, which is the point.
+     *
+     * Its own role rather than {@link #DUMP} or {@link #WORK} because the mover needs to tell its
+     * two ends apart, and a bot that read one area as both would carry a load of soil out of a pile
+     * and put it straight back into the pile beside it. Roles are free strings precisely so a bot
+     * with a distinction of its own to draw can draw it - see the class comment.
+     */
+    public static final String PILES_FROM = "piles-from";
+
+    /**
+     * Where those stockpiles are being moved TO. New piles are started here as the existing ones
+     * fill up, so it wants free ground in it as well as the piles already standing there.
+     */
+    public static final String PILES_TO = "piles-to";
+
     public static final List<String> KNOWN =
-        Arrays.asList(WATER, FOOD, TOOLS, DUMP, STORE, WORK);
+        Arrays.asList(WATER, FOOD, TOOLS, DUMP, STORE, WORK, PILES_FROM, PILES_TO);
 
     /**
      * Whether a place carrying this role is one-bot-at-a-time purely by virtue of the role.

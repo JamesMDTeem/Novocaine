@@ -181,6 +181,27 @@ public class WorkClaims {
         }
     }
 
+    /**
+     * Whether somebody else currently holds this key.
+     *
+     * Read-only, and deliberately not the inverse of {@link #claim}: it neither takes the claim
+     * nor extends one. It exists so a window can show a crew which work is already spoken for
+     * without that glance stealing the slot out from under whoever holds it.
+     *
+     * <p>False when the registry is off or broken, matching {@link #claim} returning true in
+     * that case: with nothing to conflict against, nothing is taken.
+     */
+    public static boolean taken(String k) {
+        if (!NBotConfig.on(NBotConfig.Key.shareClaims) || broken)
+            return false;
+        synchronized (held) {
+            if (held.contains(k))
+                return false;   // ours, not somebody else's
+        }
+        Holder cur = read(file(k));
+        return (cur != null) && !cur.owner.equals(identity) && (cur.expires > System.currentTimeMillis());
+    }
+
     /** Drops every slot this process holds. Called when a bot stops, and at JVM shutdown. */
     public static void releaseAll() {
         List<String> keys;

@@ -320,6 +320,50 @@ public class Places {
         return best;
     }
 
+    /** Every defined place carrying this role, whether or not it can be resolved from here. */
+    public static List<Place> withRole(String role) {
+        List<Place> out = new ArrayList<>();
+        for (Place p : all()) {
+            if (p.hasRole(role))
+                out.add(p);
+        }
+        return out;
+    }
+
+    /**
+     * Why {@link #nearest} came back empty, phrased for a bot's failure message.
+     *
+     * Worth its own method because the two reasons need completely different things done about
+     * them and used to be reported identically. "No place is tagged for water - define one in Bot
+     * Places" was printed at a player who had defined one, could see it listed with its Water box
+     * ticked, and had no way to tell from the message that the bot was skipping it because it
+     * could not place it on the map. Telling them apart is the difference between a two-second fix
+     * and an afternoon.
+     */
+    public static String whyNothing(GameUI gui, String role) {
+        List<Place> tagged = withRole(role);
+        if (tagged.isEmpty())
+            return "no place is tagged for " + role + " - define one in Bot Places";
+        StringBuilder names = new StringBuilder();
+        StringBuilder detail = new StringBuilder();
+        for (Place p : tagged) {
+            if (names.length() > 0) {
+                names.append(", ");
+                detail.append("; ");
+            }
+            names.append(p.name);
+            detail.append(p.name).append(" ")
+                .append((p.anchor == null) ? "(no anchor)" : p.anchor.toString());
+        }
+        // The anchors go to the log rather than into the failure line: which segment and grid each
+        // place is on is what you need to diagnose it, and none of what you need to read it in a
+        // chat window.
+        NLog.log("nbot-places.log", "no reachable " + role + " place; tagged: " + detail);
+        return tagged.size() + " place(s) tagged for " + role + " (" + names + ") but this client"
+            + " cannot place any of them on the map. Walk a character into one so its position is"
+            + " recorded in a form every client shares, or re-draw it here.";
+    }
+
     /**
      * The nearest place that will take this item - one whose `accepts` rule matches, preferred over
      * a general dump with no rule at all.

@@ -50,6 +50,12 @@ public class BotRegistry {
         DEFS.add(BotDef.window("NBeeSmokerBot", "Bee Smoker (crew)",
             "Builds a pyre under every wild beehive in sight, smokes it and raids it.",
             NBeeSmokerBot::new));
+        DEFS.add(BotDef.window("NStockpileBot", "Stockpile Mover (crew)",
+            "Carries one yard of stockpiles into another, starting new piles as they fill up.",
+            NStockpileBot::new));
+        DEFS.add(BotDef.window("SurveyPlanner", "Survey Planner (crew)",
+            "Plans the surveys that level a grid flat, and shares the work list with the crew.",
+            haven.automated.survey.SurveyPlanWindow::new));
         DEFS.add(BotDef.window("NDragonflyBot", "Dragonfly (crew)",
             "Rows a dugout around a swamp catching every dragonfly, then files the catch.",
             NDragonflyBot::new));

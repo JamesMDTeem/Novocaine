@@ -893,6 +893,8 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NPlowBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NBeeSmokerBot");
 		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NDragonflyBot");
+		makeLocal("customclient/menugrid/NurglingImports/CrewBots/NStockpileBot");
+		makeLocal("customclient/menugrid/NurglingImports/CrewBots/SurveyPlanner");
 		makeLocal("customclient/menugrid/NurglingImports/Schedules");
 		makeLocal("customclient/menugrid/NurglingImports/AltManager");
 		makeLocal("customclient/menugrid/NurglingImports/StudyHelper");

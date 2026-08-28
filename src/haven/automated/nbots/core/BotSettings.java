@@ -117,6 +117,39 @@ public class BotSettings {
     }
 
     /**
+     * A line of free text, persisted as itself.
+     *
+     * For the settings a list cannot express because the values are the game's rather than ours -
+     * "only piles of THIS kind", where the kinds are however many stockpile resources the server
+     * happens to have. A {@link Choice} would need that list written out here and would be wrong
+     * the first time one was added; a blank line meaning "no filter" is both the sensible default
+     * and the whole of the ceremony.
+     */
+    private static class Line extends Entry {
+        final String def;
+        final int width;
+
+        Line(String key, String label, String def, int width) {
+            super(key, label);
+            this.def = def;
+            this.width = width;
+        }
+
+        Widget widget(BotSettings owner) {
+            return new TextEntry(UI.scale(width), owner.str(key)) {
+                @Override
+                public void changed() {
+                    owner.set(key, text());
+                }
+            };
+        }
+
+        int height() {
+            return UI.scale(40);
+        }
+    }
+
+    /**
      * One of several named alternatives, persisted by INDEX.
      *
      * By index rather than by label so that renaming an option in the source - "Work an area" to
@@ -280,6 +313,12 @@ public class BotSettings {
         return this;
     }
 
+    /** A line of free text. Read with {@link #str}. */
+    public BotSettings line(String key, String label, String def, int width) {
+        entries.add(new Line(key, label, def, width));
+        return this;
+    }
+
     public BotSettings choice(String key, String label, int def, String... options) {
         entries.add(new Choice(key, label, def, options));
         return this;
@@ -317,6 +356,15 @@ public class BotSettings {
                 return Utils.getprefi(prefkey(key), ((Number) e).def);
         }
         return 0;
+    }
+
+    /** What is typed into a {@link #line} setting, trimmed. Empty when it has been left blank. */
+    public String str(String key) {
+        for (Entry e : entries) {
+            if (e.key.equals(key) && e instanceof Line)
+                return Utils.getpref(prefkey(key), ((Line) e).def).trim();
+        }
+        return "";
     }
 
     /**
@@ -422,9 +470,10 @@ public class BotSettings {
                 // A number needs its own label, since a text field has nowhere to put one.
                 parent.add(new Label(e.label), new Coord(x, y + UI.scale(3)));
                 parent.add(e.widget(this), new Coord(x + labelWidth(e.label), y));
-            } else if (e instanceof Choice || e instanceof PlacePick) {
+            } else if (e instanceof Choice || e instanceof PlacePick || e instanceof Line) {
                 // A dropbox is as wide as its widest option, so its label goes ABOVE it rather
                 // than beside it - side by side, a long option name pushes the box off the window.
+                // A text line goes the same way for the same reason: it wants the column's width.
                 parent.add(new Label(e.label), new Coord(x, y));
                 parent.add(e.widget(this), new Coord(x, y + UI.scale(16)));
             } else {

@@ -58,8 +58,10 @@ public class ISBox extends Widget implements DTarget {
     private Text label;
     private Value value;
     private Button take;
-    private int rem;
-    private int av;
+    /* Volatile because the bots read these off their own threads while the UI thread writes them
+     * from a "chnum" message. The values are ints, so volatile is the whole of what is needed. */
+    private volatile int rem;
+    private volatile int av;
 
     @RName("isbox")
     public static class $_ implements Factory {
@@ -74,10 +76,43 @@ public class ISBox extends Widget implements DTarget {
     }
 
     private void setlabel(int rem, int av, int bi) {
+	/* The counts are this widget's STATE, not just something to draw with. They used to be
+	 * assigned in the constructor and nowhere else, so after the first "chnum" the fields held
+	 * whatever the pile contained at the moment it was opened - which is what the Take button
+	 * below reads to clamp its amount, and what anything else asking the widget how full it is
+	 * would read too. A pile taken down to two and then asked for "all" clamped against the
+	 * count from when the window opened. */
+	this.rem = rem;
+	this.av = av;
 	if(bi < 0)
 	    label = lf.renderf("%d/%d", rem, av);
 	else
 	    label = lf.renderf("%d/%d/%d", rem, av, bi);
+    }
+
+    /** How many items are in the pile right now. */
+    public int count() {
+	return(rem);
+    }
+
+    /** How many it holds when full. */
+    public int capacity() {
+	return(av);
+    }
+
+    /** How many more it will take. Never negative, whatever the server last said. */
+    public int free() {
+	return(Math.max(0, av - rem));
+    }
+
+    /**
+     * The resource of the item this pile is made of.
+     *
+     * Which is how a caller identifies what a pile holds without a name table: the pile gob's own
+     * resource says "stockpile-ore", and only this says which ore.
+     */
+    public Indir<Resource> contents() {
+	return(res);
     }
 
     public ISBox(Indir<Resource> res, int rem, int av, int bi) {

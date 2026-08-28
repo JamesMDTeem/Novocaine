@@ -368,7 +368,12 @@ public class PlacesWindow extends Window {
 
     private String label(Place p) {
         String extent = (p.w <= 1 && p.h <= 1) ? "point" : (p.w + "x" + p.h);
-        return p.name + " (" + extent + ")";
+        /* A place this client cannot put on the map says so in the list, because otherwise it
+         * looks identical to one that works - which is how a water area drawn by one character sat
+         * in every crew member's list, roles ticked, while their bots reported there was nowhere
+         * tagged for water. Listed but unusable is the state worth naming. */
+        String where = (p.reachable(gui)) ? "" : ", elsewhere";
+        return p.name + " (" + extent + where + ")";
     }
 
     // ------------------------------------------------------------------ the editor
@@ -591,7 +596,11 @@ public class PlacesWindow extends Window {
     private static String display(String role) {
         if (role == null || role.isEmpty())
             return role;
-        return Character.toUpperCase(role.charAt(0)) + role.substring(1);
+        // Hyphens are how a multi-word role stays one token in the data ("piles-from"), which is
+        // what keeps it usable as a filename-safe claim key and a JSON value. On a checkbox it is
+        // just a word break, and "Piles-from" reads like a typo.
+        String words = role.replace('-', ' ');
+        return Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }
 
     // ------------------------------------------------------------------ lifecycle
