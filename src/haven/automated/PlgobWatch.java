@@ -131,6 +131,9 @@ public class PlgobWatch {
     private boolean stuckreported = false;
     private long lastbeat = 0;
 
+    /** Written once per launch by the first beat. See {@link #logenv}. */
+    private static volatile boolean envlogged = false;
+
     /* Peaks carried between beats. Reset when a beat prints them, never by the window logic -
      * the whole point is that they outlive the once-a-second sample. */
     private double pvpeak = 0;
@@ -270,8 +273,59 @@ public class PlgobWatch {
      *
      * So this samples and prints regardless. It is the only line here that cannot be reasoned away.
      */
+    /**
+     * Where this client is actually installed and running from, written once per launch.
+     *
+     * Three logs in a row came back built from a revision that had been superseded days earlier,
+     * including one launched after two intervening restarts, so the builds carrying the newer
+     * diagnostics were never running. Nothing in the log said which copy of the client produced
+     * it beyond the git revision in the banner, and that cannot distinguish "did not update" from
+     * "updated, but a second install is the one being launched".
+     *
+     * It matters beyond the update problem. The reported fault appears only on alt accounts, and a
+     * separate install would be a plain explanation: a different directory means a different
+     * Workshop item id and potentially an older client carrying bugs already fixed here. gameDir
+     * is the one that settles it, because under Steam it is walked up from the working directory
+     * into the Workshop item and so names the item actually supplying resources.
+     *
+     * Preferences are NOT part of that story, which is worth recording so it is not re-guessed:
+     * Config.localdir() resolves to %APPDATA%\Haven and Hearth on Windows, so Hurricane-prefs.xml
+     * is shared by every install under one Windows user. Two installs cannot disagree about a
+     * setting unless they run as different users. It is logged anyway, to show that rather than
+     * assert it.
+     */
+    private static void logenv(MapView mv) {
+        if (envlogged)
+            return;
+        envlogged = true;
+        String jar;
+        try {
+            java.security.CodeSource cs = PlgobWatch.class.getProtectionDomain().getCodeSource();
+            jar = (cs == null) ? "-" : String.valueOf(cs.getLocation());
+        } catch (RuntimeException e) {
+            jar = "<" + e + ">";
+        }
+        String local;
+        try {
+            java.nio.file.Path p = haven.Config.localdir();
+            local = (p == null) ? "-" : p.toString();
+        } catch (RuntimeException e) {
+            local = "<" + e + ">";
+        }
+        NLog.log(LOG, String.format(
+            "env cwd=%s | gameDir=%s | localdir=%s | prefs=%s | jar=%s | steam=%s | java=%s",
+            System.getProperty("user.dir", "-"),
+            (haven.Client.gameDir == null) ? "null" : ("".equals(haven.Client.gameDir)
+                                                       ? "<empty - not under Steam>"
+                                                       : haven.Client.gameDir),
+            local, "-".equals(local) ? "<system node>" : (local + java.io.File.separator
+                                                          + "Hurricane-prefs.xml"),
+            jar, haven.Client.runningThroughSteam, System.getProperty("java.version", "-")));
+    }
+
     private void heartbeat(MapView mv, Gob pl) {
         long now = System.currentTimeMillis();
+        logenv(mv);
         if ((lastbeat != 0) && (now - lastbeat < BEAT_MS))
             return;
         lastbeat = now;
