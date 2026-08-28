@@ -1976,6 +1976,10 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	super.maindraw(out);
     }
 
+    /* What the composed pipe state was last rebuilt for. See the note in tick(). */
+    private Camera lastcam = null;
+    private Matrix4f lastcamxf = null;
+
     private Loading camload = null, lastload = null;
     public void draw(GOut g) {
 	/* Drawing keeps going when ticking does not, so this is the only vantage point from
@@ -2109,7 +2113,26 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    e.boostprio(5);
 	    camload = e;
 	}
-	basic(Camera.class, camera);
+	/* The camera object is the same instance on every frame while the transform inside it
+	 * changes on every frame, and PView.basic only rebuilds the composed pipe state when the
+	 * op it is handed compares unequal to the one before. Handing it the camera therefore never
+	 * rebuilt anything, and the state was refreshed only when some other op changed - in
+	 * practice the light op, which is composed by value and so compares equal for as long as
+	 * lighting is static. Indoors it is static. Nothing then invalidated the state, and the
+	 * frame carried on being drawn with whatever camera transform had last been captured:
+	 * measured frozen for fifteen seconds across two thousand frames at 142fps while the
+	 * character walked around inside it, with the camera object itself tracking perfectly the
+	 * whole time. That is what "the camera is not locked onto the character" turned out to be,
+	 * and it is why every camera-side measurement always read healthy.
+	 *
+	 * Hand it a distinct op whenever the transform has actually moved, so the state is rebuilt
+	 * then rather than on every frame regardless of whether anything changed. */
+	Matrix4f camxf = camera.viewxf();
+	if((camera != lastcam) || !Utils.eq(camxf, lastcamxf)) {
+	    lastcam = camera;
+	    lastcamxf = camxf;
+	    basic(Camera.class, p -> camera.apply(p));
+	}
 	amblight();
 	updsmap(amblight);
 	updweather();
