@@ -399,7 +399,7 @@ public class PlgobWatch {
         NLog.log(LOG, String.format(
             "beat mv#%d chr=%s id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
-                + " scroff=%.0fpx scroffpeak=%.0fpx vp=%s"
+                + " scroff=%.0fpx scroffpeak=%.0fpx vp=%s pipecam=%s pipeproj=%s"
                 + " pv=%s pvpeak=%.1f pvdrawnpeak=%.1f camjumps=%d"
                 + " isMe=%s culled=%s cullopt=%s dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
                 + " bodies=%s",
@@ -408,6 +408,7 @@ public class PlgobWatch {
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
             eye, fmt(camtarget(mv)), lag, lagpeak, fmt(drawnpos(pl)), dgap, dgappeak,
             scroff, scroffpeak, (mv.sz == null) ? "-" : (mv.sz.x + "x" + mv.sz.y),
+            pipecamsame(mv, cam), pipeproj(mv),
             pv, pvpeak, pvdrawnpeak, camjumps,
             (pl == null) ? "-" : String.valueOf(pl.isMe),
             (pl == null) ? "-" : String.valueOf(pl.culled), cullopt(),
@@ -673,6 +674,17 @@ public class PlgobWatch {
         }
     }
 
+    /** Whether the pipe's view transform matches the camera object's, and its hash either way. */
+    private static String pipecamsame(MapView mv, Matrix4f cam) {
+        Matrix4f p = pipecamxf(mv);
+        if (p == null)
+            return("-");
+        String h = Integer.toHexString(java.util.Arrays.hashCode(p.m));
+        if ((cam != null) && !p.equals(cam))
+            return(h + "-DIFFERS");
+        return(h);
+    }
+
     /** The camera's own eased state - distances and angles - as it reports it. */
     private static String camparams(MapView mv) {
         try {
@@ -680,6 +692,36 @@ public class PlgobWatch {
             return((cam == null) ? "" : cam.params());
         } catch (RuntimeException e) {
             return("");
+        }
+    }
+
+    /**
+     * The view transform resolved out of the render pipe state, rather than off the camera field.
+     *
+     * These two should be the same transform. A long alt session says they are not: with distance,
+     * elevation and the player's view-space position all constant and the character standing still,
+     * the pixels-per-view-unit ratio held a rock-steady 6.3 for most of the run and then sat at 19.1
+     * for fourteen seconds. Only the projection or the view behind screenxf can do that, and both
+     * come from here. Logging the two side by side turns "they disagree" from an inference off a
+     * ratio into something a single line states outright.
+     */
+    private static Matrix4f pipecamxf(MapView mv) {
+        try {
+            haven.render.Camera c = mv.basic.state().get(haven.render.Homo3D.cam);
+            return((c == null) ? null : c.fin(Matrix4f.id));
+        } catch (RuntimeException e) {
+            return(null);
+        }
+    }
+
+    /** The projection the frame is drawn with, which scales view-space offsets into pixels. */
+    private static String pipeproj(MapView mv) {
+        try {
+            haven.render.Projection p = mv.basic.state().get(haven.render.Homo3D.prj);
+            return((p == null) ? "-"
+                   : Integer.toHexString(java.util.Arrays.hashCode(p.fin(Matrix4f.id).m)));
+        } catch (RuntimeException e) {
+            return("-");
         }
     }
 
