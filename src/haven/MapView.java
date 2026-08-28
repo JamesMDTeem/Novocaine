@@ -2125,8 +2125,19 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	 * whole time. That is what "the camera is not locked onto the character" turned out to be,
 	 * and it is why every camera-side measurement always read healthy.
 	 *
+	 * Graphics settings decide how bad it gets, which is worth knowing before trying to
+	 * reproduce it. With shadows on, updsmap hands basic() a fresh ShadowMap at least every
+	 * 0.1s, so the state is rebuilt ten times a second and the staleness is capped around a
+	 * frame or two - visible as a slight lag at worst. With shadows off that branch is skipped
+	 * entirely after the one basic(ShadowMap.class, null), so nothing there ever rebuilds
+	 * again, and with static indoor lighting nothing else does either. The transform can then
+	 * freeze indefinitely. Two people on the same build and the same map can therefore see
+	 * completely different severity, which is the likeliest reason this was never reproducible
+	 * on the machine it was being debugged from.
+	 *
 	 * Hand it a distinct op whenever the transform has actually moved, so the state is rebuilt
-	 * then rather than on every frame regardless of whether anything changed. */
+	 * then rather than on every frame regardless of whether anything changed - and rebuilt on
+	 * the camera's own account, so it no longer depends on shadows or lighting at all. */
 	Matrix4f camxf = camera.viewxf();
 	if((camera != lastcam) || !Utils.eq(camxf, lastcamxf)) {
 	    lastcam = camera;
