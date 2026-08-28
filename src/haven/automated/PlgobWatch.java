@@ -188,6 +188,16 @@ public class PlgobWatch {
     private double scroff = 0;
     private double scroffpeak = 0;
 
+    /* The gap between the server's position and the one the client interpolates toward it.
+     *
+     * rc is written straight from the movement deltas; getc() is what LinMove eases toward it, and
+     * what the camera then follows. A camera that visibly trails the character outdoors while
+     * turning works normally is the other reported symptom, and it would show up here as getc()
+     * falling behind rc - which is upstream of the camera entirely, and invisible to every
+     * camera-side measurement in this file. */
+    private double rcgap = 0;
+    private double rcgappeak = 0;
+
     /**
      * Stamped as the very first thing {@link MapView#tick} does, before anything that could throw.
      *
@@ -399,7 +409,9 @@ public class PlgobWatch {
         NLog.log(LOG, String.format(
             "beat mv#%d chr=%s id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
+                + " rcgap=%.1f rcgappeak=%.1f"
                 + " scroff=%.0fpx scroffpeak=%.0fpx vp=%s pipecam=%s pipeproj=%s"
+                + " depth=%s camdist=%s projsc=%s"
                 + " pv=%s pvpeak=%.1f pvdrawnpeak=%.1f camjumps=%d"
                 + " isMe=%s culled=%s cullopt=%s dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
                 + " bodies=%s",
@@ -407,8 +419,10 @@ public class PlgobWatch {
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
             eye, fmt(camtarget(mv)), lag, lagpeak, fmt(drawnpos(pl)), dgap, dgappeak,
+            rcgap, rcgappeak,
             scroff, scroffpeak, (mv.sz == null) ? "-" : (mv.sz.x + "x" + mv.sz.y),
             pipecamsame(mv, cam), pipeproj(mv),
+            depth(cam, pl), camdist(mv, pl), projscale(mv),
             pv, pvpeak, pvdrawnpeak, camjumps,
             (pl == null) ? "-" : String.valueOf(pl.isMe),
             (pl == null) ? "-" : String.valueOf(pl.culled), cullopt(),
@@ -418,6 +432,7 @@ public class PlgobWatch {
         pvdrawnpeak = 0;
         dgappeak = 0;
         scroffpeak = 0;
+        rcgappeak = 0;
         camjumps = 0;
         lagpeak = 0;
         dtmin = Double.MAX_VALUE;
@@ -519,6 +534,13 @@ public class PlgobWatch {
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
+        /* How far the client's own position trails the server's. */
+        if (world != null) {
+            rcgap = Math.hypot(rc.x - world.x, rc.y - world.y);
+            if (rcgap > rcgappeak)
+                rcgappeak = rcgap;
+        }
+
         /* Pixels from the middle of the viewport, which is the form the report takes. */
         Coord3f scr = screenpos(mv, (drawnpos(pl) != null) ? drawnpos(pl) : world);
         if ((scr != null) && (mv.sz != null)) {
@@ -671,6 +693,70 @@ public class PlgobWatch {
             return(mv.inputstate());
         } catch (RuntimeException e) {
             return("<" + e + ">");
+        }
+    }
+
+    /**
+     * How far in front of the camera the frame actually puts the player, in view space.
+     *
+     * On-screen offset scales as pv * sz.x / (2 * field * depth). The healthy ratio measures 6.4
+     * pixels per view-unit at sz.x=2560, field=0.5 and depth=400, and it has been observed sitting
+     * at 19.1 with dist, elev and pv all constant. Something in that denominator is a third of what
+     * the camera believes. Depth is half of it: a value far short of dist means the transform being
+     * drawn with puts the camera much nearer the player than the camera thinks it is.
+     */
+    private static String depth(Matrix4f cam, Gob pl) {
+        try {
+            if ((cam == null) || (pl == null))
+                return("-");
+            Coord3f w = pl.getc();
+            if (w == null)
+                return("-");
+            Coord3f v = cam.mul4(new Coord3f(w.x, -w.y, w.z));
+            return(String.format("%.0f", -v.z));
+        } catch (Loading l) {
+            return("-");
+        } catch (RuntimeException e) {
+            return("-");
+        }
+    }
+
+    /** The camera's own distance to the player in world units, against what dist claims. */
+    private static String camdist(MapView mv, Gob pl) {
+        try {
+            Matrix4f cam = camxf(mv);
+            if ((cam == null) || (pl == null))
+                return("-");
+            Coord3f w = pl.getc();
+            if (w == null)
+                return("-");
+            Coord3f e = cam.invert().mul4(Coord3f.o);
+            double dx = e.x - w.x, dy = (-e.y) - w.y, dz = e.z - w.z;
+            return(String.format("%.0f", Math.sqrt((dx * dx) + (dy * dy) + (dz * dz))));
+        } catch (Loading l) {
+            return("-");
+        } catch (RuntimeException e) {
+            return("-");
+        }
+    }
+
+    /**
+     * The projection's horizontal and vertical scale, straight off the matrix the frame is drawn
+     * with - the other half of that denominator.
+     *
+     * These cameras build a symmetric frustum with a near plane of 1, so the two values are
+     * 1/field and 1/(aspect*field). Anything other than the usual pair says the projection itself
+     * changed, which no camera field would show.
+     */
+    private static String projscale(MapView mv) {
+        try {
+            haven.render.Projection p = mv.basic.state().get(haven.render.Homo3D.prj);
+            if (p == null)
+                return("-");
+            Matrix4f m = p.fin(Matrix4f.id);
+            return(String.format("%.3f/%.3f", m.m[0], m.m[5]));
+        } catch (RuntimeException e) {
+            return("-");
         }
     }
 
