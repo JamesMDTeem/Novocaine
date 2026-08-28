@@ -2591,7 +2591,18 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		}
 	}
 	if(ev.b == 2 || (OptWnd.allowMouse4CamDragCheckBox.a && ev.b == 4) || (OptWnd.allowMouse5CamDragCheckBox.a && ev.b == 5)) {
-		new Click(ev.c, ev.b).run();
+		/* The hit-test is incidental to a middle-click; taking hold of the camera is the
+		 * point of one. It ran first and unguarded, so anything it threw skipped the grab
+		 * below and left the camera unable to turn at all - and Hittest.run draws the map
+		 * click-list, which throws Loading while cuts are still arriving. That is the normal
+		 * state just after stepping indoors, which is where turning was reported dead. */
+		try {
+		    new Click(ev.c, ev.b).run();
+		} catch(Loading l) {
+		    /* Nothing to click on yet. Not a reason to lose the camera. */
+		} catch(RuntimeException e) {
+		    new Warning(e, "map click hit-test failed on a camera-drag press").issue();
+		}
         if((camdrag == null) && ((Camera)camera).click(ev.c)) {
 		camdrag = ui.grabmouse(this);
 	    }

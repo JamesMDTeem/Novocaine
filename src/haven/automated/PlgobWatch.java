@@ -172,6 +172,22 @@ public class PlgobWatch {
     private double dgappeak = 0;
     private double pvdrawnpeak = 0;
 
+    /* Where the character lands ON SCREEN, in pixels, and how far that is from the middle.
+     *
+     * This is the measurement the complaint is actually phrased in - "the character should never
+     * leave the middle of the screen" - and it is the one thing that was never logged. View space
+     * was used everywhere instead, after an early version read nonsense from the perspective
+     * divide; that was an over-correction. The divide only misbehaves for a point at or behind the
+     * near plane, and the player sits hundreds of units in front of the camera, so for this one
+     * point it is perfectly well conditioned.
+     *
+     * It is not a restatement of the view-space numbers either. screenxf goes through
+     * basic.state() - the render pipe state that the frame is actually drawn with - rather than
+     * the camera object read straight off the field, and it applies the projection. If those ever
+     * disagree, only this sees it. */
+    private double scroff = 0;
+    private double scroffpeak = 0;
+
     /**
      * Stamped as the very first thing {@link MapView#tick} does, before anything that could throw.
      *
@@ -383,6 +399,7 @@ public class PlgobWatch {
         NLog.log(LOG, String.format(
             "beat mv#%d id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
+                + " scroff=%.0fpx scroffpeak=%.0fpx vp=%s"
                 + " pv=%s pvpeak=%.1f pvdrawnpeak=%.1f camjumps=%d"
                 + " isMe=%s culled=%s cullopt=%s dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
                 + " bodies=%s",
@@ -390,6 +407,7 @@ public class PlgobWatch {
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
             eye, fmt(camtarget(mv)), lag, lagpeak, fmt(drawnpos(pl)), dgap, dgappeak,
+            scroff, scroffpeak, (mv.sz == null) ? "-" : (mv.sz.x + "x" + mv.sz.y),
             pv, pvpeak, pvdrawnpeak, camjumps,
             (pl == null) ? "-" : String.valueOf(pl.isMe),
             (pl == null) ? "-" : String.valueOf(pl.culled), cullopt(),
@@ -398,6 +416,7 @@ public class PlgobWatch {
         pvpeak = 0;
         pvdrawnpeak = 0;
         dgappeak = 0;
+        scroffpeak = 0;
         camjumps = 0;
         lagpeak = 0;
         dtmin = Double.MAX_VALUE;
@@ -499,6 +518,23 @@ public class PlgobWatch {
          * look like. A single frame of that is not the camera failing to follow, but accumulated
          * blind it would look exactly like it, so treat it as the discontinuity it is and start
          * measuring again on the far side. */
+        /* Pixels from the middle of the viewport, which is the form the report takes. */
+        Coord3f scr = screenpos(mv, (drawnpos(pl) != null) ? drawnpos(pl) : world);
+        if ((scr != null) && (mv.sz != null)) {
+            double ox = scr.x - (mv.sz.x / 2.0), oy = scr.y - (mv.sz.y / 2.0);
+            double off = Math.hypot(ox, oy);
+            /* A point at or behind the near plane projects to nonsense. The player never is, so a
+             * reading many screens away is the startup frame before the camera has been ticked, or
+             * a view with no render state behind it - not a character that has wandered off. Bound
+             * it against the viewport rather than a fixed number, so the limit means something. */
+            double sane = 10.0 * Math.max(mv.sz.x, mv.sz.y);
+            if ((off < sane) && !Double.isNaN(off)) {
+                scroff = off;
+                if (off > scroffpeak)
+                    scroffpeak = off;
+            }
+        }
+
         /* The gap between drawn and logical position, and how far off centre the DRAWN character
          * actually is - which is what a person watching the screen is reporting. */
         Coord3f drawn = drawnpos(pl);
@@ -799,6 +835,22 @@ public class PlgobWatch {
                    : String.valueOf(OptWnd.onlyRenderCameraVisibleObjectsCheckBox.a));
         } catch (RuntimeException e) {
             return("?");
+        }
+    }
+
+    /**
+     * The character's position on screen in pixels, through the same path the client draws with.
+     *
+     * screenxf resolves the camera from basic.state(), the render pipe state, rather than from the
+     * camera field - so this reflects what was rendered even if the two ever disagree.
+     */
+    private static Coord3f screenpos(MapView mv, Coord3f world) {
+        try {
+            return((world == null) ? null : mv.screenxf(world));
+        } catch (Loading l) {
+            return(null);
+        } catch (RuntimeException e) {
+            return(null);
         }
     }
 
