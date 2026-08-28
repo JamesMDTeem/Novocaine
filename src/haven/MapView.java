@@ -152,6 +152,13 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    return(view.fin(Matrix4f.id));
 	}
 
+	/** The projection as it currently stands. Separate from the view because they change
+	 *  independently: resized() rebuilds this one alone, and the ortho cameras ease their
+	 *  field without the view moving at all. */
+	public Matrix4f projxf() {
+	    return(proj.fin(Matrix4f.id));
+	}
+
 	/** The point this camera is currently centred on, in world coordinates, or null if it
 	 *  keeps no such state. Cameras ease toward getcc() rather than jumping to it, so the
 	 *  gap between the two is the lag that eventually trips the snap. */
@@ -1976,9 +1983,27 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	super.maindraw(out);
     }
 
-    /* What the composed pipe state was last rebuilt for. See the note in tick(). */
+    /* What the composed pipe state was last rebuilt for. See the note in tick(). Both halves of
+     * the camera are tracked because they move independently: resized() rebuilds the projection
+     * on its own, and the ortho cameras ease their field while the view sits still. Watching only
+     * the view would leave a window resize serving the old projection until the camera happened
+     * to move - the same staleness this guard exists to prevent. */
     private Camera lastcam = null;
     private Matrix4f lastcamxf = null;
+    private Matrix4f lastcamprj = null;
+
+    /** Re-registers the camera with the render pipe when, and only when, it has actually changed.
+     *  Split out of tick() so it can be tested without standing up a frame - see scenarios 11-13
+     *  in tools/CamFollowCheck.java, which drive this method rather than a copy of it. */
+    void updcam() {
+	Matrix4f camxf = camera.viewxf(), camprj = camera.projxf();
+	if((camera != lastcam) || !Utils.eq(camxf, lastcamxf) || !Utils.eq(camprj, lastcamprj)) {
+	    lastcam = camera;
+	    lastcamxf = camxf;
+	    lastcamprj = camprj;
+	    basic(Camera.class, p -> camera.apply(p));
+	}
+    }
 
     private Loading camload = null, lastload = null;
     public void draw(GOut g) {
@@ -2138,12 +2163,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	 * Hand it a distinct op whenever the transform has actually moved, so the state is rebuilt
 	 * then rather than on every frame regardless of whether anything changed - and rebuilt on
 	 * the camera's own account, so it no longer depends on shadows or lighting at all. */
-	Matrix4f camxf = camera.viewxf();
-	if((camera != lastcam) || !Utils.eq(camxf, lastcamxf)) {
-	    lastcam = camera;
-	    lastcamxf = camxf;
-	    basic(Camera.class, p -> camera.apply(p));
-	}
+	updcam();
 	amblight();
 	updsmap(amblight);
 	updweather();

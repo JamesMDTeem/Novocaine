@@ -235,6 +235,20 @@ public class CamFollowCheck {
 
 
     /* The view transform the render pipe would actually draw with. */
+
+    /* The real registration MapView.tick performs. Calling MapView.updcam rather than a copy of
+     * it is the point: a test that reimplements the guard would pass even if the guard were
+     * removed from the client. */
+    static void regcam(MapView mv) {
+	mv.updcam();
+    }
+
+    /* The projection the render pipe would actually draw with. */
+    static Matrix4f pipeproj(MapView mv) {
+	haven.render.Projection p = mv.basic.state().get(haven.render.Homo3D.prj);
+	return((p == null) ? null : p.fin(Matrix4f.id));
+    }
+
     static Matrix4f pipeview(MapView mv) {
 	try {
 	    haven.render.Camera c = mv.basic.state().get(haven.render.Homo3D.cam);
@@ -542,6 +556,53 @@ public class CamFollowCheck {
 	    check("a distinct op DOES refresh it",
 		  (afterFresh != null) && afterFresh.equals(moved),
 		  "pipe now matches the camera");
+	}
+
+
+	System.out.println("12. screenxf must follow the camera - every consumer of it depends on this");
+	{
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    settle(mv);
+	    regcam(mv);
+
+	    /* screenxf resolves the camera out of basic.state(), so combat UI placement, the player
+	     * marker, cave-in warnings, pathfinder lines and both gob-culling predicates all read
+	     * whatever this reads. They were all wrong together while that state was stale, and they
+	     * are all correct together now - which is worth asserting once rather than trusting. */
+	    Coord3f before = mv.screenxf(pl.getc());
+	    move(pl, 900, 900);
+	    settle(mv);
+	    regcam(mv);
+	    Coord3f after = mv.screenxf(pl.getc());
+	    double moved = Math.hypot(after.x - before.x, after.y - before.y);
+	    check("the player stays put on screen after walking",
+		  moved < 40.0, String.format("screen position moved %.0fpx", moved));
+	}
+
+	System.out.println("13. a projection change alone must refresh the pipe");
+	{
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    settle(mv);
+	    regcam(mv);
+	    Matrix4f prj0 = mv.camera.projxf();
+
+	    /* resized() rebuilds the projection and nothing else. Watching only the view would leave
+	     * the pipe serving the old one until the camera happened to move, which for a player
+	     * standing still while resizing the window is indefinitely. */
+	    mv.resize(new Coord(800, 1400));
+	    Matrix4f prj1 = mv.camera.projxf();
+	    check("resizing actually changed the projection", !prj1.equals(prj0),
+		  "projection rebuilt by resized()");
+
+	    regcam(mv);
+	    check("and the pipe picked the new one up", pipeproj(mv).equals(prj1),
+		  "pipe projection matches the camera");
 	}
 
 	System.out.println(failures == 0 ? "PASS" : failures + " FAILURE(S)");
