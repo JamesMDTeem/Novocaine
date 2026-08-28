@@ -230,6 +230,17 @@ public class CamFollowCheck {
 	return("(not logged)");
     }
 
+
+    /* The view transform the render pipe would actually draw with. */
+    static Matrix4f pipeview(MapView mv) {
+	try {
+	    haven.render.Camera c = mv.basic.state().get(haven.render.Homo3D.cam);
+	    return((c == null) ? null : c.fin(Matrix4f.id));
+	} catch(RuntimeException e) {
+	    return(null);
+	}
+    }
+
     static MapView mkview(Glob glob) {
 	return(new MapView(new Coord(1280, 720), glob, Coord2d.of(100, 100), PLID));
     }
@@ -491,6 +502,43 @@ public class CamFollowCheck {
 	    double pinned = spread(pvs(tail(log, was)));
 	    check("pv slides away while the camera is pinned", pinned > 200.0,
 		  String.format("pv spread=%.1f over %d beats", pinned, pvs(tail(log, was)).size()));
+	}
+
+
+	System.out.println("11. the render pipe must follow the camera, not some unrelated op");
+	{
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+
+	    /* What MapView.tick does when it registers the camera. */
+	    mv.basic(MapView.Camera.class, mv.camera);
+	    Matrix4f first = pipeview(mv);
+	    check("the pipe picks up the camera at all", first != null,
+		  (first == null) ? "no camera in basic.state()" : "present");
+
+	    /* Move it somewhere clearly different. */
+	    move(pl, 4000, 4000);
+	    settle(mv);
+	    Matrix4f moved = mv.camera.viewxf();
+	    check("the camera itself moved", !moved.equals(first), "camera transform changed");
+
+	    /* Handing basic() the same object again is what the bug was: PView.basic only rebuilds
+	     * the composed state when the op compares unequal, so this refreshes nothing. Asserted
+	     * rather than assumed, because the whole shape of the fix depends on it staying true. */
+	    mv.basic(MapView.Camera.class, mv.camera);
+	    Matrix4f afterSame = pipeview(mv);
+	    check("re-registering the same object does NOT refresh it",
+		  (afterSame != null) && afterSame.equals(first),
+		  "pipe still holds the stale transform, as PView.basic intends");
+
+	    /* A distinct op does, which is what the fix hands it. */
+	    mv.basic(MapView.Camera.class, p -> mv.camera.apply(p));
+	    Matrix4f afterFresh = pipeview(mv);
+	    check("a distinct op DOES refresh it",
+		  (afterFresh != null) && afterFresh.equals(moved),
+		  "pipe now matches the camera");
 	}
 
 	System.out.println(failures == 0 ? "PASS" : failures + " FAILURE(S)");
