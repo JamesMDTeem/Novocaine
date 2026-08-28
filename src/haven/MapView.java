@@ -735,7 +735,9 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
         if (OptWnd.onlyRenderCameraVisibleObjectsCheckBox.a) {
             if (ob == null || ob.virtual)
                 return false;
-            if (ob.isMe)
+            /* plgob as well as the flag: isMe latches once and stays wrong if the gob happened to
+             * tick before plgob named it. See the note in OCache.shouldCullGob. */
+            if (ob.isMe || (ob.id == plgob))
                 return false;
             try {
                 Coord3f gc = ob.getc();

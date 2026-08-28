@@ -6,6 +6,7 @@ import haven.Gob;
 import haven.Loading;
 import haven.Matrix4f;
 import haven.MapView;
+import haven.OptWnd;
 import haven.Resource;
 import haven.automated.nbots.core.NLog;
 
@@ -329,13 +330,15 @@ public class PlgobWatch {
             "beat mv#%d id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
                 + " pv=%s pvpeak=%.1f pvdrawnpeak=%.1f camjumps=%d"
-                + " dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
+                + " isMe=%s culled=%s cullopt=%s dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
                 + " bodies=%s",
             serial, mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
             eye, fmt(camtarget(mv)), lag, lagpeak, fmt(drawnpos(pl)), dgap, dgappeak,
             pv, pvpeak, pvdrawnpeak, camjumps,
+            (pl == null) ? "-" : String.valueOf(pl.isMe),
+            (pl == null) ? "-" : String.valueOf(pl.culled), cullopt(),
             (dtmin == Double.MAX_VALUE) ? 0 : dtmin, (dtn == 0) ? 0 : dtsum / dtn, dtmax, dtn,
             camparams(mv), input(mv), where(mv), entered, reached, drawnat, bodies(mv)));
         pvpeak = 0;
@@ -724,6 +727,24 @@ public class PlgobWatch {
             return "<loading>";
         } catch (RuntimeException e) {
             return "<" + e + ">";
+        }
+    }
+
+    /**
+     * Whether the experimental camera-visibility culling is switched on.
+     *
+     * It drops any object more than 50px outside the viewport from the render tree, and until
+     * this build neither copy of the predicate reliably exempted the player - so with it on, the
+     * character itself could stop being drawn whenever it left frame, and reappear on the way
+     * back. It is a per-install preference, which is one of the few things that can differ
+     * between a main and an alt run from separate directories.
+     */
+    private static String cullopt() {
+        try {
+            return((OptWnd.onlyRenderCameraVisibleObjectsCheckBox == null) ? "?"
+                   : String.valueOf(OptWnd.onlyRenderCameraVisibleObjectsCheckBox.a));
+        } catch (RuntimeException e) {
+            return("?");
         }
     }
 

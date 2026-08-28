@@ -279,6 +279,18 @@ public class OCache implements Iterable<Gob> {
     private boolean shouldCullGob(Gob ob, MapView mapView, Coord viewportSize) {
         if (OptWnd.onlyRenderCameraVisibleObjectsCheckBox.a) {
             try {
+                /* Never the player. MapView.Gobs.shouldCullGobOnAdd - the same predicate, applied
+                 * when a gob joins the render tree - has always exempted them, and this copy did
+                 * not, so with the option on the character could be dropped from rendering the
+                 * moment it drifted off screen and put back when it returned.
+                 *
+                 * Compared against plgob rather than the isMe flag on purpose: isMe latches once
+                 * and permanently the first time the gob ticks, so a gob that ticks while plgob
+                 * still holds the previous character's id - which happens on a character switch,
+                 * and while plgob briefly reads -1 during a handover - latches false for the rest
+                 * of the session and never recovers. The id comparison cannot go stale. */
+                if (ob.id == mapView.plgob)
+                    return false;
                 Coord3f gc = ob.getc();
                 if (gc == null) {
                     return false;
