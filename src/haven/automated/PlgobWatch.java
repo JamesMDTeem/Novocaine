@@ -397,13 +397,13 @@ public class PlgobWatch {
             }
         }
         NLog.log(LOG, String.format(
-            "beat mv#%d id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
+            "beat mv#%d chr=%s id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
                 + " scroff=%.0fpx scroffpeak=%.0fpx vp=%s"
                 + " pv=%s pvpeak=%.1f pvdrawnpeak=%.1f camjumps=%d"
                 + " isMe=%s culled=%s cullopt=%s dt=%.4f/%.4f/%.4f n=%d [%s] in{%s} getcc=%s entered=%d reached=%d drawn=%d"
                 + " bodies=%s",
-            serial, mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
+            serial, chr(mv), mv.plgob, plid(mv), (pl == null) ? "NULL" : "ok", rc, got,
             (mv.camera == null) ? "null" : mv.camera.getClass().getSimpleName(),
             (cam == null) ? "null" : Integer.toHexString(java.util.Arrays.hashCode(cam.m)),
             eye, fmt(camtarget(mv)), lag, lagpeak, fmt(drawnpos(pl)), dgap, dgappeak,
@@ -717,7 +717,7 @@ public class PlgobWatch {
         if (res == null)
             return;
         lastres = res;
-        NLog.log(LOG, String.format("player id %d -> %s", mv.plgob, res));
+        NLog.log(LOG, String.format("player id %d -> %s  chr=%s", mv.plgob, res, chr(mv)));
     }
 
     private void unresolved(MapView mv) {
@@ -764,6 +764,25 @@ public class PlgobWatch {
      * the wrong object has a position, the camera follows it faithfully, and nothing is frozen or
      * null anywhere.
      */
+    /**
+     * The character name this session is playing, from GameUI.
+     *
+     * Without it a log cannot say which character produced it, and the whole report turns on that:
+     * the main works and the alts do not. A session read as evidence that the camera tracks fine
+     * may simply have been the character where it does. Every measurement in this file is
+     * ambiguous until the name is beside it.
+     */
+    private static String chr(MapView mv) {
+        try {
+            if ((mv.ui == null) || (mv.ui.gui == null))
+                return("-");
+            String n = mv.ui.gui.chrid;
+            return(((n == null) || n.isEmpty()) ? "-" : n);
+        } catch (RuntimeException e) {
+            return("-");
+        }
+    }
+
     private static String plid(MapView mv) {
         try {
             if ((mv.ui == null) || (mv.ui.gui == null))
