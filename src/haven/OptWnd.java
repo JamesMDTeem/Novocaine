@@ -4527,6 +4527,14 @@ public class OptWnd extends Window {
             }, rightColumn.pos("bl").adds(0, 34));
             onlyRenderCameraVisibleObjectsCheckBox.tooltip = onlyRenderCameraVisibleObjectsTooltip;
 
+            rightColumn = add(cameraDiagnosticsCheckBox = new CheckBox("Log Camera Diagnostics"){
+                {a = (Utils.getprefb("cameraDiagnostics", false));}
+                public void changed(boolean val) {
+                    Utils.setprefb("cameraDiagnostics", val);
+                }
+            }, rightColumn.pos("bl").adds(0, 2));
+            cameraDiagnosticsCheckBox.tooltip = cameraDiagnosticsTooltip;
+
 
 			Widget backButton;
 			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), leftColumn.pos("bl").adds(0, 38));
@@ -4535,6 +4543,7 @@ public class OptWnd extends Window {
 		}
 	}
 
+	public static CheckBox cameraDiagnosticsCheckBox;
 	public static CheckBox toggleGobHidingCheckBox;
 	public static CheckBox alsoFillTheHidingBoxesCheckBox;
 	public static CheckBox dontHideObjectsThatHaveTheirMapIconEnabledCheckBox;
@@ -5824,6 +5833,12 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[185,185,185]{I have no idea why this disgusting effect exists at all. " +
 			"\nThe vanilla client does not warn you about it in any way, shape or form.}", UI.scale(280));
+    private static final Object cameraDiagnosticsTooltip = RichText.render(
+        "Writes a line a second to $col[218,163,32]{logs/plgob.log} describing what the camera is doing - " +
+        "where it is, where it thinks you are, and what the renderer was actually handed.\n\n" +
+        "Off by default. Only worth turning on if you are reporting a camera problem and have been " +
+        "asked for the log, since it costs a little work every frame and writes about a megabyte an hour.", 300);
+
     private static final Object onlyRenderCameraVisibleObjectsTooltip = RichText.render("Render only objects within the camera’s view frustum. Objects behind the camera are not rendered, reducing GPU load and potentially improving performance." +
             "\n" +
             "\n$col[218,163,0]{This is an experimental feature. It should work fine, but I wouldn't trust it with my life.}", UI.scale(300));

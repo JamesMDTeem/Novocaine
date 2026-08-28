@@ -214,8 +214,30 @@ public class PlgobWatch {
      *
      * @param mv the map view being watched
      */
+    /**
+     * Whether the player has asked for this at all.
+     *
+     * It was built to chase a specific fault, that fault is fixed, and leaving it on costs every
+     * player a little work every frame plus about a megabyte of log an hour. It is kept rather
+     * than deleted because it is the only thing that could see the bug - every client-side number
+     * read healthy throughout, and only the comparison against what the renderer was actually
+     * handed found it - so the next camera report should not have to rebuild it from scratch.
+     *
+     * The frame counters stay unconditional: they are two increments, and a log that says nothing
+     * about whether ticking even happened was one of the things that cost a round trip here.
+     */
+    private static boolean on() {
+        try {
+            return((OptWnd.cameraDiagnosticsCheckBox != null) && OptWnd.cameraDiagnosticsCheckBox.a);
+        } catch (RuntimeException e) {
+            return(false);
+        }
+    }
+
     public void tick(MapView mv, double dt) {
         reached++;
+        if(!on())
+            return;
         if (dt > 0) {
             dtmin = Math.min(dtmin, dt);
             dtmax = Math.max(dtmax, dt);
@@ -238,6 +260,8 @@ public class PlgobWatch {
      */
     public void drawn(MapView mv) {
         drawnat++;
+        if(!on())
+            return;
         try {
             gapcheck();
         } catch (RuntimeException e) {

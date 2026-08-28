@@ -51,6 +51,9 @@ public class CamFollowCheck {
 	    else if(f.getType() == HSlider.class)
 		f.set(null, new HSlider(200, 10, 300, 150));
 	}
+	/* The camera diagnostics are off by default for players, and several scenarios below assert
+	 * on what they write, so turn them on for the harness. */
+	OptWnd.cameraDiagnosticsCheckBox.a = true;
     }
 
     static Gob mkgob(Glob glob, long id, double x, double y) {
