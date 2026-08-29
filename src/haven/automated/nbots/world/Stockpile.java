@@ -176,6 +176,79 @@ public class Stockpile {
         return (at != null) && (g.sdt() >= at.intValue());
     }
 
+    // ------------------------------------------------------------------ retire: known-full until TTL
+
+    private static final long RETIRE_TTL_MS = 5 * 60 * 1000;
+
+    private static final class RetireEntry {
+        final long expireMs;
+        final int capacity;
+        RetireEntry(long expireMs, int capacity) {
+            this.expireMs = expireMs;
+            this.capacity = capacity;
+        }
+        boolean expired(long now) {
+            return now >= expireMs;
+        }
+    }
+
+    private static final ConcurrentHashMap<Long, RetireEntry> RETIRED_BY_GOB = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, RetireEntry> RETIRED_BY_SPOT = new ConcurrentHashMap<>();
+
+    /** Retire a pile gob so acceptors skip it until TTL expires. Reuses FULL_AT via learnFull. */
+    public static void retire(Gob gob, int capacity) {
+        if (gob == null)
+            return;
+        String res = resname(gob);
+        if (res != null)
+            learnFull(res, gob.sdt());
+        long now = System.currentTimeMillis();
+        RETIRED_BY_GOB.put(gob.id, new RetireEntry(now + RETIRE_TTL_MS, capacity));
+    }
+
+    /** Retire a placement spot (spotKey from {@link #spotKey}) until TTL expires. */
+    public static void retire(String spotKey, int capacity) {
+        if (spotKey == null)
+            return;
+        long now = System.currentTimeMillis();
+        RETIRED_BY_SPOT.put(spotKey, new RetireEntry(now + RETIRE_TTL_MS, capacity));
+    }
+
+    /** Whether this gob is currently retired (lazy-expires on check). */
+    public static boolean isRetired(Gob gob) {
+        if (gob == null)
+            return false;
+        RetireEntry e = RETIRED_BY_GOB.get(gob.id);
+        if (e == null)
+            return false;
+        if (e.expired(System.currentTimeMillis())) {
+            RETIRED_BY_GOB.remove(gob.id, e);
+            return false;
+        }
+        return true;
+    }
+
+    /** Whether this spotKey is currently retired (lazy-expires on check). */
+    public static boolean isRetiredSpot(String spotKey) {
+        if (spotKey == null)
+            return false;
+        RetireEntry e = RETIRED_BY_SPOT.get(spotKey);
+        if (e == null)
+            return false;
+        if (e.expired(System.currentTimeMillis())) {
+            RETIRED_BY_SPOT.remove(spotKey, e);
+            return false;
+        }
+        return true;
+    }
+
+    /** Removes expired entries from both retire maps. */
+    public static void expireSweep() {
+        long now = System.currentTimeMillis();
+        RETIRED_BY_GOB.entrySet().removeIf(en -> en.getValue().expired(now));
+        RETIRED_BY_SPOT.entrySet().removeIf(en -> en.getValue().expired(now));
+    }
+
     // ------------------------------------------------------------------ opening one
 
     /**
