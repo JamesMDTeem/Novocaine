@@ -4134,6 +4134,28 @@ public class OptWnd extends Window {
 					ui.gui.map.setGroundRenderDistance(2);
 			}), leftColumn.pos("bl").adds(210, -20));
 			groundRenderDistanceResetButton.tooltip = resetButtonTooltip;
+			leftColumn = add(new Label("GL disposes per frame:"), leftColumn.pos("bl").adds(0, 8));
+			leftColumn.tooltip = "Maximum GL resources disposed per frame. Lower values smooth out stalls when many objects are deleted; 0 = unlimited.";
+			{
+			    Label dpy = new Label("");
+			    String[] dnames = {"Unlimited", "16", "32", "64", "128", "256"};
+			    int[] dvals = {0, 16, 32, 64, 128, 256};
+			    int curval = Utils.getprefi("perf.gl_dispose_per_frame", 64);
+			    int curidx = 3;
+			    for(int i = 0; i < dvals.length; i++) { if(dvals[i] == curval) {curidx = i; break;} }
+			    addhlp(leftColumn.pos("bl").adds(0, 4), UI.scale(5),
+				   leftColumn = new HSlider(UI.scale(200), 0, dnames.length - 1, curidx) {
+				       protected void added() {dpy();}
+				       void dpy() {dpy.settext(dnames[this.val]);}
+				       public void changed() {
+					   int v = dvals[this.val];
+					   Utils.setprefi("perf.gl_dispose_per_frame", v);
+					   haven.render.gl.GLEnvironment.cachedDisposeCap = v;
+					   dpy();
+				       }
+				   },
+				   dpy);
+			}
 			leftColumn = add(flatWorldCheckBox = new CheckBox("Flat World"){
 				{a = Utils.getprefb("flatWorld", false);}
 				public void changed(boolean val) {
