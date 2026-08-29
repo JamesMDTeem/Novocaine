@@ -456,6 +456,9 @@ public class NStockpileBot extends NBot {
                 if (o.isBlocked())
                     continue;
                 done.add(pile.id);
+                if (fill.moved() == 0 && carrying() > 0) {
+                    Stockpile.retire(pile, 0);
+                }
                 if (fill.moved() > 0) {
                     delivered += fill.moved();
                     lastFilled = pile.rc;
