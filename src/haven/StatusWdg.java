@@ -72,6 +72,8 @@ public class StatusWdg extends Widget {
             ping = "?";
 
         synchronized (this) {
+            if(pingtime != null)
+                pingtime.dispose();
             pingtime = Text.renderstroked(String.format("Ping: %s ms", ping)).tex();
         }
     }
@@ -81,6 +83,8 @@ public class StatusWdg extends Widget {
                 return;
             }
             if (stat.status == "up") {
+                if(players != null)
+                    players.dispose();
                 players = Text.renderstroked(String.format("Players Online: %s", stat.users)).tex();
             }
         }
