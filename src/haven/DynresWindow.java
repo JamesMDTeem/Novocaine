@@ -579,14 +579,14 @@ public class DynresWindow extends Window {
 	    }
 	}
 
-    public static class View extends PView implements Sprite.Owner {
-	public final Spec spec;
-	private final Indir<Resource> vres;
-	private Sprite spr;
-	private RenderTree.Slot slot;
+	public static class View extends PView implements Sprite.Owner {
+	    public final Spec spec;
+	    private final Indir<Resource> vres;
+	    private Sprite spr;
+	    private RenderTree.Slot slot;
 	private Text error = null;
-	private float field, elev, angl;
-	private float tfield = Float.NaN, telev, tangl;
+	    private float field, elev, angl;
+	    private float tfield = Float.NaN, telev, tangl;
 
 	    public View(Coord sz, Spec spec, Indir<Resource> vres) {
 		super(sz);
@@ -646,21 +646,21 @@ public class DynresWindow extends Window {
 		}
 	    }
 
-	public void tick(double dt) {
-	    super.tick(dt);
+	    public void tick(double dt) {
+		super.tick(dt);
 	    if((slot == null) && (error == null)) {
-		try {
-		    if(spr == null)
-			spr = spec.create(this, vres);
-		    Volume3f bnd = getbounds(spr);
-		    Coord3f mid = bnd.p.add(bnd.n).div(2);
-		    RenderTree.Node n  = Pipe.Op.compose(spec.st, Location.xlate(mid.neg())).apply(spr, false);
-		    slot = basic.add(Pipe.Op.nil.apply(n, false));
+		    try {
+			if(spr == null)
+			    spr = spec.create(this, vres);
+			Volume3f bnd = getbounds(spr);
+			Coord3f mid = bnd.p.add(bnd.n).div(2);
+			RenderTree.Node n  = Pipe.Op.compose(spec.st, Location.xlate(mid.neg())).apply(spr, false);
+			slot = basic.add(Pipe.Op.nil.apply(n, false));
 		} catch(Loading l) {
 		} catch(RuntimeException e) {
 		    error = Text.render("Could not load preview", Color.RED);
 		}
-	    }
+		}
 		if(spr != null)
 		    spr.tick(dt);
 		updatecam(dt);
