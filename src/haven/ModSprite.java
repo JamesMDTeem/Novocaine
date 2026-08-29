@@ -422,7 +422,10 @@ public class ModSprite extends Sprite implements Sprite.CUpd, EquipTarget {
     }
 
     public void removed(RenderTree.Slot slot) {
-	slots.remove(slot);
+	try {
+		slots.remove(slot);
+	} catch (RenderTree.SlotRemoved ignored) {
+	}
     }
 
     public Supplier<? extends Pipe.Op> eqpoint(String nm, Message dat) {

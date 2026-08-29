@@ -270,7 +270,10 @@ public class SkelSprite extends Sprite implements Sprite.CUpd, EquipTarget, Spri
     }
 
     public void removed(RenderTree.Slot slot) {
-	slots.remove(slot);
+	try {
+		slots.remove(slot);
+	} catch (RenderTree.SlotRemoved ignored) {
+	}
     }
     
     public void age() {
