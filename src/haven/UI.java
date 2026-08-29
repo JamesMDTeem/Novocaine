@@ -739,7 +739,7 @@ public class UI {
 		    dispatch(wdg, new Widget.MessageEvent(msg, args));
 		}
 	    } else {
-		throw(new UIException("Uimsg to non-existent widget " + id, msg, args));
+		Warning.warn("Uimsg to non-existent widget %d (%s, %s)", id, msg, Arrays.deepToString(args));
 	    }
 	}
 
