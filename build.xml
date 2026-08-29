@@ -95,7 +95,7 @@ git-dirty-flag = ${git-dirty-flag}
     <condition property="explicit-annotations">
       <javaversion atleast="21" />
     </condition>
-    <javac srcdir="src" destdir="build/classes" debug="on"
+    <javac srcdir="src" destdir="build/classes" debug="on" encoding="UTF-8"
 	   release="17" includeantruntime="no">
       <classpath>
 	<pathelement path="lib/ext/jogl/jogl-all.jar" />
@@ -127,7 +127,7 @@ git-dirty-flag = ${git-dirty-flag}
 
   <target name="opt/panama" if="has-panama" depends="build-env, hafen-client">
     <mkdir dir="build/opt/panama" />
-    <javac srcdir="opt/panama" destdir="build/opt/panama" release="22"
+    <javac srcdir="opt/panama" destdir="build/opt/panama" release="22" encoding="UTF-8"
 	   debug="on" includeantruntime="no">
       <classpath>
 	<pathelement path="build/classes" />
