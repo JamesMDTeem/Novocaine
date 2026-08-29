@@ -158,9 +158,10 @@ public class NStockpileBot extends NBot {
         settings.places("to", "Put into", PlaceRoles.PILES_TO);
         settings.action("drawto", "Draw target area", this::armTarget);
         settings.line("kind", "Only this kind (blank = any)", "", 132);
+        settings.line("retire_ttl", "Retire TTL (min)", "5", 32);
         settings.layout(this, UI.scale(10, 22), 2, UI.scale(155));
         pack();
-        chatHook = new StockpileChatHook(() -> lastAttempted);
+        chatHook = new StockpileChatHook(() -> lastAttempted, this::syncRetireTtl);
         if (gui != null && gui.chat != null)
             gui.chat.addSyslogHook(chatHook);
     }
@@ -217,6 +218,7 @@ public class NStockpileBot extends NBot {
 
     @Override
     protected Outcome work() throws InterruptedException {
+        syncRetireTtl();
         retired.clear();
         warnedOverlap = false;
         cargoItems.clear();
@@ -470,7 +472,19 @@ public class NStockpileBot extends NBot {
                     continue;
                 done.add(pile.id);
                 if (fill.moved() == 0 && carrying() > 0) {
-                    Stockpile.retire(pile, 0);
+                    // 0-move ok is full (bulkFill returns ok for full, not failed — do not
+                    // change PileTransfer semantics). Promote to retired so remaining
+                    // DELIVERY_PASSES in this deliver() skip it via acceptors() isRetired.
+                    // Capacity from Open/FULL_AT when available; 0 handled gracefully by
+                    // Stockpile.retire which still learns sdt via learnFull.
+                    int cap = 0;
+                    try {
+                        // Future: if PileTransfer exposes open capacity, use it here.
+                        // For bulk path no window was opened, so cap stays 0 and retire
+                        // still records sdt TTL via learnFull(res, sdt).
+                    } catch (RuntimeException ignored) {}
+                    syncRetireTtl();
+                    Stockpile.retire(pile, cap);
                 }
                 if (fill.moved() > 0) {
                     delivered += fill.moved();
@@ -603,6 +617,7 @@ public class NStockpileBot extends NBot {
      * bot start a new pile beside a half-empty one.
      */
     private List<Gob> acceptors() {
+        syncRetireTtl();
         Stockpile.expireSweep();
         List<Gob> out = new ArrayList<>();
         Gob me = ctx.player();
@@ -661,6 +676,22 @@ public class NStockpileBot extends NBot {
 
     private String filter() {
         return settings.str("kind").toLowerCase();
+    }
+
+    private int retireTtlMinutes() {
+        String raw = settings.str("retire_ttl");
+        try {
+            int v = Integer.parseInt(raw.trim());
+            if (v < 1) return 1;
+            if (v > 30) return 30;
+            return v;
+        } catch (Exception e) {
+            return 5;
+        }
+    }
+
+    private void syncRetireTtl() {
+        Stockpile.setRetireTtlMinutes(retireTtlMinutes());
     }
 
     /** The cargo still worth trying to deliver - everything learned, less what has been refused. */

@@ -178,7 +178,25 @@ public class Stockpile {
 
     // ------------------------------------------------------------------ retire: known-full until TTL
 
-    private static final long RETIRE_TTL_MS = 5 * 60 * 1000;
+    /** How long a retired pile/spot stays retired without being re-proven full. Default 5 min, configurable 1-30 via NStockpileBot retire_ttl. */
+    private static volatile long RETIRE_TTL_MS = 5 * 60 * 1000;
+
+    /** Current retire TTL in ms (default 5m if never set). */
+    public static long retireTtlMs() {
+        return RETIRE_TTL_MS;
+    }
+
+    /** Set retire TTL from minutes, clamped 1-30. */
+    public static void setRetireTtlMinutes(int minutes) {
+        int clamped = Math.max(1, Math.min(30, minutes));
+        RETIRE_TTL_MS = clamped * 60L * 1000L;
+    }
+
+    /** Set retire TTL directly in ms, clamped to 1-30 minutes. */
+    public static void setRetireTtlMs(long ms) {
+        long clamped = Math.max(1 * 60 * 1000L, Math.min(30 * 60 * 1000L, ms));
+        RETIRE_TTL_MS = clamped;
+    }
 
     private static final class RetireEntry {
         final long expireMs;

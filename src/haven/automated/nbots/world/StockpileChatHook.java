@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 public class StockpileChatHook implements java.util.function.Consumer<String> {
 
     private final Supplier<Gob> lastAttempted;
+    private final Runnable ttlSync;
 
     private static final Pattern P_FULL = Pattern.compile(
         "That stockpile is already full", Pattern.CASE_INSENSITIVE);
@@ -31,7 +32,12 @@ public class StockpileChatHook implements java.util.function.Consumer<String> {
         "gstockpile.*?full", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
 
     public StockpileChatHook(Supplier<Gob> lastAttempted) {
+        this(lastAttempted, null);
+    }
+
+    public StockpileChatHook(Supplier<Gob> lastAttempted, Runnable ttlSync) {
         this.lastAttempted = lastAttempted;
+        this.ttlSync = ttlSync;
     }
 
     /**
@@ -52,6 +58,7 @@ public class StockpileChatHook implements java.util.function.Consumer<String> {
             return;
         Gob g = (lastAttempted != null) ? lastAttempted.get() : null;
         if (g != null) {
+            if (ttlSync != null) ttlSync.run();
             Stockpile.retire(g, 0);
         }
     }
