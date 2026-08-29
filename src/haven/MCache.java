@@ -1074,20 +1074,9 @@ public class MCache implements MapSource {
 	return(g.getz(tc.sub(g.ul)));
     }
 
+    /* Coordinate-free form. getgrid still needs a Coord to key its map, but that is one
+     * allocation per lookup rather than one per height sample. */
     public double getfz(int tx, int ty) {
-	Grid g = getgrid(Coord.of(Utils.floordiv(tx, cmaps.x), Utils.floordiv(ty, cmaps.y)));
-	return(g.getz(tx - g.ul.x, ty - g.ul.y));
-    }
-
-    public double getfz2(Coord tc) {
-	Grid g = getgridt(tc);
-	return(g.getz(tc.sub(g.ul)));
-    }
-
-    /* Same as above without building a Coord for the tile or for the
-     * grid-relative offset. getgrid still needs one to key its map, but that
-     * is one allocation per lookup rather than one per sample. */
-    public double getfz2(int tx, int ty) {
 	Grid g = getgrid(Coord.of(Utils.floordiv(tx, cmaps.x), Utils.floordiv(ty, cmaps.y)));
 	return(g.getz(tx - g.ul.x, ty - g.ul.y));
     }
