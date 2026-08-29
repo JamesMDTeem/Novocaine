@@ -577,6 +577,8 @@ public class QuestWnd extends Widget {
 			public boolean valid(String text) {
 			    return(sd == q.ndcond);
 			}
+
+			protected boolean stroked() {return(true);}
 		    };
 		    add(this.conds, sz.x - this.conds.sz.x, (sz.y - this.conds.sz.y) / 2);
 		    sz = Coord.of(this.conds.c.x, sz.y);

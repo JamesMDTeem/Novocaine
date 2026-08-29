@@ -588,6 +588,7 @@ public class Config {
 			"gfx/kritter/moonmoth/moonmoth",
 			"gfx/kritter/opiumdragon/opiumdragon",
 			"gfx/kritter/ptarmigan/ptarmigan",
+			"gfx/kritter/puffin/puffin",
 			"gfx/kritter/quail/quail",
 			"gfx/kritter/rat/rat",
 			"gfx/kritter/rockdove/rockdove",
