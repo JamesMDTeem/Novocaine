@@ -567,6 +567,21 @@ public class Stockpile {
     }
 
     /**
+     * Spot key for the tile a gob occupies, reusing the same WorldAnchor for segment+tile.
+     * Returns null if the anchor or player is unavailable.
+     */
+    public static String spotKeyFor(GameUI gui, Gob gob) {
+        if (gui == null || gob == null || gob.rc == null)
+            return null;
+        WorldAnchor here = WorldAnchor.capturePlayer(gui);
+        Gob me = (gui.map == null) ? null : gui.map.player();
+        if (here == null || me == null)
+            return null;
+        Coord tile = gob.rc.add(here.sc.sub(me.rc)).floor(MCache.tilesz);
+        return spotKey(here.seg, tile);
+    }
+
+    /**
      * Somewhere inside {@code place} to stand a new pile, in live world coordinates.
      *
      * Ordered rather than picked, so the caller can walk down the list claiming each in turn: the

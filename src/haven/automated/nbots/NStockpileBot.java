@@ -586,6 +586,7 @@ public class NStockpileBot extends NBot {
      * bot start a new pile beside a half-empty one.
      */
     private List<Gob> acceptors() {
+        Stockpile.expireSweep();
         List<Gob> out = new ArrayList<>();
         Gob me = ctx.player();
         List<Gob> others = Crowd.others(gui);
@@ -593,6 +594,10 @@ public class NStockpileBot extends NBot {
             if (retired.contains(g.id) || bothEnds(g))
                 continue;
             if ((cargoPile != null) && !cargoPile.equals(Stockpile.resname(g)))
+                continue;
+            if (Stockpile.isRetired(g) || Stockpile.isRetiredSpot(Stockpile.spotKeyFor(gui, g)))
+                continue;
+            if (Stockpile.fullHint(g))
                 continue;
             if (Crowd.workersOn(others, g.rc) >= WorkSlots.around(g).count)
                 continue;
