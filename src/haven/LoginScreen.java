@@ -629,7 +629,7 @@ public class LoginScreen extends Widget {
 			createFirstTimeUseWindow();
 		}
 		if (!githubVersionChecked && !Config.githubLatestVersion.equals("Loading...") && !Config.githubLatestVersion.equals("Failed")){
-			if ((Config.novaVersion() != null) && !Config.novaVersion().equals(Config.githubLatestVersion)) {
+			if ((Config.novaVersion() != null) && Config.isNewer(Config.githubLatestVersion, Config.novaVersion())) { // semver compare: only nag when remote newer
 				adda(updateWindow, 0.5, 0);
 			}
 			githubVersionChecked = true;

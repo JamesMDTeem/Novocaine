@@ -47,6 +47,68 @@ public class Config {
 	public static final String clientVersion = "v1.69";
 	public static String githubLatestVersion = "Loading...";
 
+	/* Whether the published version is actually ahead of the one being
+	 * run. A plain inequality also fires on unreleased builds, which are
+	 * newer than the latest release rather than older, and would nag about
+	 * -- and, with auto-updates on, download -- an update that goes
+	 * backwards. Versions look like "v1.85" or "nova-0.1.9"/"nova-2026.08.28.5",
+	 * occasionally with a letter suffix, as in "v1.64a"; anything that
+	 * doesn't parse falls back to the old any-difference behaviour. */
+	private static final java.util.regex.Pattern versionpat = java.util.regex.Pattern.compile("v?(\\d+)\\.(\\d+)([a-z]?)");
+	public static boolean isNewer(String version, String than) {
+		// semver compare: only treat as newer when version > than
+		int[] a = versionParts(version), b = versionParts(than);
+		if((a == null) || (b == null))
+			return((version != null) && !version.equals(than));
+		int len = Math.max(a.length, b.length);
+		for(int i = 0; i < len; i++) {
+			int av = (i < a.length) ? a[i] : 0;
+			int bv = (i < b.length) ? b[i] : 0;
+			if(av != bv)
+				return(av > bv);
+		}
+		return(false);
+	}
+
+	private static int[] versionParts(String version) {
+		if(version == null)
+			return(null);
+		// strip leading non-digit prefix like "nova-" or "v"
+		int s = 0;
+		while(s < version.length() && !Character.isDigit(version.charAt(s)))
+			s++;
+		if(s >= version.length())
+			return(null);
+		String core = version.substring(s);
+		String[] toks = core.split("[\\.\\-]");
+		if(toks.length == 0)
+			return(null);
+		java.util.List<Integer> parts = new java.util.ArrayList<>();
+		for(int i = 0; i < toks.length; i++) {
+			String t = toks[i];
+			if(t.isEmpty())
+				return(null);
+			if((i == toks.length - 1) && (t.length() > 1) && Character.isLetter(t.charAt(t.length() - 1))) {
+				String num = t.substring(0, t.length() - 1);
+				char c = t.charAt(t.length() - 1);
+				if(!num.matches("\\d+"))
+					return(null);
+				if((c < 'a') || (c > 'z'))
+					return(null);
+				parts.add(Integer.parseInt(num));
+				parts.add(c - 'a' + 1);
+			} else {
+				if(!t.matches("\\d+"))
+					return(null);
+				parts.add(Integer.parseInt(t));
+			}
+		}
+		int[] res = new int[parts.size()];
+		for(int i = 0; i < res.length; i++)
+			res[i] = parts.get(i);
+		return(res);
+	}
+
 	/**
 	 * Which Novocaine release this install came from, as the release tag ("nova-0.1.9"), or
 	 * null for a build run straight out of bin\.
