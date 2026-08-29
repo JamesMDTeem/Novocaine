@@ -418,7 +418,7 @@ public class DynresWindow extends Window {
 
 	public boolean mousehover(MouseHoverEvent ev, boolean hovering) {
 	    boolean menuhover = (menu != null) && (menu.parent != null) && menu.rootarea().contains(ui.mc);
-	    if((hovering || menuhover) && (menu == null)) {
+	    if(!othermenu() && (hovering || menuhover) && (menu == null)) {
 		menu = SListMenu.of(UI.scale(250, 200), null,
 				    Arrays.asList(SListMenu.Action.of("Paint Sketch", () -> craft(false)),
 						  SListMenu.Action.of("Paint Masterpiece", () -> craft(true)),
@@ -430,6 +430,14 @@ public class DynresWindow extends Window {
 		menu = null;
 	    }
 	    return(true);
+	}
+
+	private boolean othermenu() {
+	    for(Image img : imgs) {
+		if((img.menu != null) && (img.menu.parent != null))
+		    return(true);
+	    }
+	    return(false);
 	}
 
 	public void setinfo(int fields, float outline) {
@@ -571,13 +579,14 @@ public class DynresWindow extends Window {
 	    }
 	}
 
-	public static class View extends PView implements Sprite.Owner {
-	    public final Spec spec;
-	    private final Indir<Resource> vres;
-	    private Sprite spr;
-	    private RenderTree.Slot slot;
-	    private float field, elev, angl;
-	    private float tfield = Float.NaN, telev, tangl;
+    public static class View extends PView implements Sprite.Owner {
+	public final Spec spec;
+	private final Indir<Resource> vres;
+	private Sprite spr;
+	private RenderTree.Slot slot;
+	private Text error = null;
+	private float field, elev, angl;
+	private float tfield = Float.NaN, telev, tangl;
 
 	    public View(Coord sz, Spec spec, Indir<Resource> vres) {
 		super(sz);
@@ -637,21 +646,30 @@ public class DynresWindow extends Window {
 		}
 	    }
 
-	    public void tick(double dt) {
-		super.tick(dt);
-		if(slot == null) {
-		    try {
-			if(spr == null)
-			    spr = spec.create(this, vres);
-			Volume3f bnd = getbounds(spr);
-			Coord3f mid = bnd.p.add(bnd.n).div(2);
-			RenderTree.Node n  = Pipe.Op.compose(spec.st, Location.xlate(mid.neg())).apply(spr, false);
-			slot = basic.add(Pipe.Op.nil.apply(n, false));
-		    } catch(Loading l) {}
+	public void tick(double dt) {
+	    super.tick(dt);
+	    if((slot == null) && (error == null)) {
+		try {
+		    if(spr == null)
+			spr = spec.create(this, vres);
+		    Volume3f bnd = getbounds(spr);
+		    Coord3f mid = bnd.p.add(bnd.n).div(2);
+		    RenderTree.Node n  = Pipe.Op.compose(spec.st, Location.xlate(mid.neg())).apply(spr, false);
+		    slot = basic.add(Pipe.Op.nil.apply(n, false));
+		} catch(Loading l) {
+		} catch(RuntimeException e) {
+		    error = Text.render("Could not load preview", Color.RED);
 		}
+	    }
 		if(spr != null)
 		    spr.tick(dt);
 		updatecam(dt);
+	    }
+
+	    public void draw(GOut g) {
+		super.draw(g);
+		if(error != null)
+		    g.image(error.tex(), Coord.z, sz.sub(error.sz()).div(2));
 	    }
 
 	    public void gtick(Render out) {
