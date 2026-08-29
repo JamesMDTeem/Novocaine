@@ -42,6 +42,8 @@ public class Composited implements RenderTree.Node, EquipTarget {
     public List<MD> cmod = new LinkedList<MD>();
     public List<ED> cequ = new LinkedList<ED>();
     private final Collection<RenderTree.Slot> slots = new ArrayList<>(1);
+    public static int animTickFrame = 0;
+    public static volatile int cachedAnimSkip = Utils.getprefi("perf.anim_frame_skip", 0);
 
     public class Poses {
 	public final PoseMod[] mods;
@@ -158,6 +160,7 @@ public class Composited implements RenderTree.Node, EquipTarget {
 	public final int id;
 	private final Collection<RenderTree.Slot> slots = new ArrayList<>(1);
 	private int z = 0, lz = 0;
+	private Pipe.Op lastMorphState = null;
 
 	public class Layer implements RenderTree.Node {
 	    public final Material mat;
@@ -199,7 +202,12 @@ public class Composited implements RenderTree.Node, EquipTarget {
 
 	public TickList.Ticking ticker() {return(this);}
 	public void autotick(double dt) {
+	    if(cachedAnimSkip > 0 && (animTickFrame % (cachedAnimSkip + 1) != 0))
+		return;
 	    Pipe.Op nst = morph.state();
+	    if(nst == lastMorphState)
+		return;
+	    lastMorphState = nst;
 	    for(RenderTree.Slot slot : slots)
 		slot.ostate(nst);
 	}

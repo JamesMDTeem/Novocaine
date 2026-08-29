@@ -4156,6 +4156,46 @@ public class OptWnd extends Window {
 				   },
 				   dpy);
 			}
+			leftColumn = add(new Label("Animation frame skip:"), leftColumn.pos("bl").adds(0, 8));
+			leftColumn.tooltip = "Skip animation ticks to reduce CPU. 0 = every frame, higher = more skipped frames.";
+			{
+			    Label adpy = new Label("");
+			    String[] anames = {"Off", "Skip 1", "Skip 2", "Skip 3", "Skip 4", "Skip 5"};
+			    int curval = Utils.clip(Utils.getprefi("perf.anim_frame_skip", 0), 0, 5);
+			    addhlp(leftColumn.pos("bl").adds(0, 4), UI.scale(5),
+				   leftColumn = new HSlider(UI.scale(200), 0, anames.length - 1, curval) {
+				       protected void added() {dpy();}
+				       void dpy() {adpy.settext(anames[this.val]);}
+				       public void changed() {
+					   Utils.setprefi("perf.anim_frame_skip", this.val);
+					   haven.Composited.cachedAnimSkip = this.val;
+					   dpy();
+				       }
+				   },
+				   adpy);
+			}
+			leftColumn = add(new Label("Gob info tick interval:"), leftColumn.pos("bl").adds(0, 8));
+			leftColumn.tooltip = "Throttle auxiliary gob info updates. Lower = more frequent, higher = less CPU.";
+			{
+			    Label idpy = new Label("");
+			    String[] inames = {"Off", "4/sec", "2/sec", "1/sec"};
+			    double[] ivals = {0.0, 0.25, 0.5, 1.0};
+			    int curidx = 1;
+			    double curval2 = Utils.getprefd("perf.gob_info_tick_interval", 0.25);
+			    for(int i = 0; i < ivals.length; i++) { if(Math.abs(ivals[i] - curval2) < 0.01) {curidx = i; break;} }
+			    int curi = Utils.clip(Utils.getprefi("perf.gob_info_tick_idx", curidx), 0, inames.length - 1);
+			    addhlp(leftColumn.pos("bl").adds(0, 4), UI.scale(5),
+				   leftColumn = new HSlider(UI.scale(200), 0, inames.length - 1, curi) {
+				       protected void added() {dpy();}
+				       void dpy() {idpy.settext(inames[this.val]);}
+				       public void changed() {
+					   Utils.setprefi("perf.gob_info_tick_idx", this.val);
+					   Utils.setprefd("perf.gob_info_tick_interval", ivals[this.val]);
+					   dpy();
+				       }
+				   },
+				   idpy);
+			}
 			leftColumn = add(flatWorldCheckBox = new CheckBox("Flat World"){
 				{a = Utils.getprefb("flatWorld", false);}
 				public void changed(boolean val) {

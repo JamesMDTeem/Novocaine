@@ -29,6 +29,7 @@ package haven.render;
 import java.util.*;
 import java.util.function.*;
 import haven.Config;
+import haven.Composited;
 
 public class TickList implements RenderList<TickList.TickNode> {
     private final Map<Ticking, Entry> cur = new HashMap<>();
@@ -123,6 +124,7 @@ public class TickList implements RenderList<TickList.TickNode> {
     public void update(Pipe group, int[] statemask) {}
 
     public void tick(double dt) {
+	Composited.animTickFrame++;
 	List<Entry> copy;
 	synchronized(cur) {
 	    copy = new ArrayList<>(cur.values());

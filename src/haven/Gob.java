@@ -63,10 +63,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     private Collection<RenderTree.Slot> culledSlots = null;
     public final Glob glob;
 	public ConcurrentHashMap<Class<? extends GAttrib>, GAttrib> attr = new ConcurrentHashMap<>(); // ND: Make this ConcurrentHashMap to prevent concurrent modification exceptions. It doesn't seem to affect performance
+    private volatile GAttrib[] attrSnapshot = null;
+    private volatile boolean stateDirty = true;
     public final Collection<Overlay> ols = new CopyOnWriteArrayList<>(); // ND: Make this COW to prevent concurrent modification exceptions. It doesn't seem to affect performance
     public final Collection<RenderTree.Slot> slots = new CopyOnWriteArrayList<>(); // ND: Make this COW to prevent concurrent modification exceptions. It doesn't seem to affect performance
     public int updateseq = 0, lastolid = 0;
-    public final Collection<SetupMod> setupmods = new CopyOnWriteArrayList<SetupMod>();
+    public final Collection<SetupMod> setupmods = new CopyOnWriteArrayList<SetupMod>() {
+	public boolean add(SetupMod e) { stateDirty = true; if(placed != null) placed.dirty = true; return super.add(e); }
+	public boolean remove(Object o) { stateDirty = true; if(placed != null) placed.dirty = true; return super.remove(o); }
+    };
     private final LinkedList<Runnable> deferred = new LinkedList<>();
     private Loader.Future<?> deferral = null;
 	public Boolean isComposite = false;
@@ -548,8 +553,22 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	this(glob, c, -1);
     }
 
+    private GAttrib[] getAttrSnapshot() {
+	GAttrib[] snap = attrSnapshot;
+	if(snap == null) {
+	    synchronized (this.attr) {
+		snap = attrSnapshot;
+		if(snap == null) {
+		    snap = this.attr.values().toArray(new GAttrib[0]);
+		    attrSnapshot = snap;
+		}
+	    }
+	}
+	return snap;
+    }
+
     public void ctick(double dt) {
-	for(GAttrib a : attr.values()){
+	for(GAttrib a : getAttrSnapshot()){
 	    a.ctick(dt);
 	}
 	List<Overlay> toRemove = new ArrayList<>();
@@ -780,6 +799,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 	this.rc = c;
 	this.a = a;
+	placed.dirty = true;
     }
 
     public Placer placer() {
@@ -827,6 +847,9 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
 
     private void setattr(Class<? extends GAttrib> ac, GAttrib a) {
+	attrSnapshot = null;
+	stateDirty = true;
+	if(placed != null) placed.dirty = true;
 	GAttrib prev = attr.remove(ac);
 	if(prev != null) {
 	    if((prev instanceof RenderTree.Node) && (prev.slots != null))
@@ -983,6 +1006,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     }
 
     private void updstate() {
+	if(!stateDirty)
+	    return;
 	GobState nst;
 	try {
 	    nst = new GobState();
@@ -995,8 +1020,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		    slot.ostate(nst);
 		this.curstate = nst;
 	    } catch(Loading l) {
+		return;
 	    }
 	}
+	stateDirty = false;
     }
 
     public void added(RenderTree.Slot slot) {
@@ -1107,6 +1134,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	 * is in fact more general. */
 	private final Collection<RenderTree.Slot> slots = new java.util.concurrent.CopyOnWriteArrayList<>();
 	private Placement cur;
+	volatile boolean dirty = true;
 
 	private Placed() {}
 
@@ -1198,6 +1226,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 
 	public void autotick(double dt) {
+	    if(!dirty && getattr(Moving.class) == null)
+		return;
 	    synchronized(Gob.this) {
 		Placement np;
 		try {
@@ -1207,6 +1237,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 		if(!Utils.eq(this.cur, np))
 		    update(np);
+		dirty = false;
 	    }
 	}
 
@@ -1239,6 +1270,8 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	public TickList.Ticking ticker() {return(this);}
     }
     public final Placed placed = new Placed();
+
+    public void placementDirty() {placed.dirty = true;}
 
     public String toString() {
 	return(String.format("#<ob %d %s>", id, getattr(Drawable.class)));
