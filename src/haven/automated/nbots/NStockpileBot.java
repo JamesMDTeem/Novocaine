@@ -16,6 +16,7 @@ import haven.automated.nbots.world.Place;
 import haven.automated.nbots.world.PlaceRoles;
 import haven.automated.nbots.world.Places;
 import haven.automated.nbots.world.Stockpile;
+import haven.automated.nbots.world.StockpileChatHook;
 import haven.automated.nbots.world.WorkSlots;
 
 import java.util.ArrayList;
@@ -135,6 +136,11 @@ public class NStockpileBot extends NBot {
     /** Where the last pile we put something into was, so a new one is started beside it. */
     private Coord2d lastFilled;
 
+    /** The pile last attempted to fill, so a "That stockpile is already full" refusal can retire it. */
+    private Gob lastAttempted;
+
+    private final StockpileChatHook chatHook;
+
     /** Items actually put into piles during the current delivery. See the counter's use in haul(). */
     private int delivered;
 
@@ -154,6 +160,9 @@ public class NStockpileBot extends NBot {
         settings.line("kind", "Only this kind (blank = any)", "", 132);
         settings.layout(this, UI.scale(10, 22), 2, UI.scale(155));
         pack();
+        chatHook = new StockpileChatHook(() -> lastAttempted);
+        if (gui != null && gui.chat != null)
+            gui.chat.addSyslogHook(chatHook);
     }
 
     private void armSource() {
@@ -194,6 +203,8 @@ public class NStockpileBot extends NBot {
             drawFrom.cancel();
         if (drawTo != null)
             drawTo.cancel();
+        if (chatHook != null && gui != null && gui.chat != null)
+            gui.chat.removeSyslogHook(chatHook);
         super.reqdestroy();
     }
 
@@ -213,6 +224,7 @@ public class NStockpileBot extends NBot {
         cargoPrimary = null;
         cargoPile = null;
         lastFilled = null;
+        lastAttempted = null;
 
         from = pick("from", PlaceRoles.PILES_FROM);
         if (from == null)
@@ -443,6 +455,7 @@ public class NStockpileBot extends NBot {
                     throw new InterruptedException();
                 if (carrying() == 0)
                     return Outcome.ok();
+                lastAttempted = pile;
                 PileTransfer fill = PileTransfer.fill(pile, deliverable(), cargoPrimary);
                 Outcome o = fill.run(ctx);
                 if (o.isFailed()) {
@@ -505,6 +518,7 @@ public class NStockpileBot extends NBot {
              * items. */
             if (carrying() == 0)
                 return Outcome.ok();
+            lastAttempted = pile;
             PileTransfer fill = PileTransfer.fill(pile, deliverable(), cargoPrimary);
             Outcome f = fill.run(ctx);
             if (f.isFailed())

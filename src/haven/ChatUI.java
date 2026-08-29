@@ -66,6 +66,15 @@ public class ChatUI extends Widget {
     private QuickLine qline = null;
     private final LinkedList<Notification> notifs = new LinkedList<Notification>();
     private UI.Grab qgrab;
+    private final java.util.List<java.util.function.Consumer<String>> syslogHooks = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addSyslogHook(java.util.function.Consumer<String> hook) {
+	syslogHooks.add(hook);
+    }
+
+    public void removeSyslogHook(java.util.function.Consumer<String> hook) {
+	syslogHooks.remove(hook);
+    }
 
     public ChatUI() {
 	super(Coord.z);
@@ -1703,6 +1712,18 @@ public class ChatUI extends Widget {
 
     private static final Resource notifsfx = Resource.local().loadwait("sfx/hud/chat");
     public void notify(Channel chan, Channel.Message msg, int urgency) {
+	if(chan != null && "System".equals(chan.name()) && msg != null && !syslogHooks.isEmpty()) {
+	    String txt = null;
+	    if(msg instanceof Channel.SimpleMessage)
+		txt = ((Channel.SimpleMessage)msg).text;
+	    else
+		txt = msg.toString();
+	    if(txt != null) {
+		for(java.util.function.Consumer<String> h : syslogHooks) {
+		    try { h.accept(txt); } catch(Exception ignored) {}
+		}
+	    }
+	}
 	if(urgency > 0) {
 	    synchronized(notifs) {
 		notifs.addFirst(new Notification(chan, msg));
