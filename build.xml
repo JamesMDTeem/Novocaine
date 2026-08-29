@@ -225,6 +225,7 @@ git-dirty-flag = ${git-dirty-flag}
     <copy file="Play_Linux.sh" todir="bin"/>
     <copy file="Play_WithSteam.bat" todir="bin"/>
     <copy file="Play_WithSteam_NoConsole.bat" todir="bin"/>
+    <copy file="Play_ZGC.bat" todir="bin"/>
     <copy file="workshop-client.properties" todir="bin"/>
     <copy file="steamicon.gif" todir="bin"/>
     <copy file="steam_appid.txt" todir="bin"/>
