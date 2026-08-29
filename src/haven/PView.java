@@ -48,6 +48,7 @@ public abstract class PView extends Widget {
     private final TickList ticklist = new TickList();
     private Sampler fragsamp;
     private PostProcessor tonemap = null;
+    private boolean rdisposed = false;
 
     public PView(Coord sz) {
 	super(sz);
@@ -318,6 +319,8 @@ public abstract class PView extends Widget {
     }
 
     public void draw(GOut g) {
+	if(rdisposed)
+	    return;
 	if((back == null) || !g.out.env().compatible(back)) {
 	    if(env != null) {
 		envdispose();
@@ -342,6 +345,7 @@ public abstract class PView extends Widget {
     }
 
     public void dispose() {
+	rdisposed = true;
 	if(audio != null) {
 	    audio.clear();
 	}
