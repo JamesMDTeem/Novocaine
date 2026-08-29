@@ -37,6 +37,7 @@ public class StackAllItems implements Runnable {
             //Find a list of items of things we have at least 2 of
             Map<String, List<WItem>> itemsExisting = new HashMap<>();
             for (WItem wItem : inventory.getAllItems()) {
+                if (wItem.item == null || wItem.item.spr == null) continue;
                 String name = wItem.item.getname(); // ND: Matias was using the res name, but stuff like different types of meat use the same res path
 
                 // ND: If you try to click while the script is running, you MIGHT drop the last item you have on your cursor on the floor.

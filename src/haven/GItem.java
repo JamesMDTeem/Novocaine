@@ -52,7 +52,7 @@ public class GItem extends AWidget implements ItemInfo.SpriteOwner, GSprite.Owne
     private Widget hovering;
     private boolean hoverset;
     private boolean lpChecked = false;
-    private GSprite spr;
+    public GSprite spr;
 	private ItemInfo.Raw rawinfo = ItemInfo.Raw.nil;;
     public List<ItemInfo> info = Collections.emptyList();
 	public boolean sendttupdate = false;
