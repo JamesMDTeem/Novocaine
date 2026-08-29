@@ -63,7 +63,7 @@
     .\tools\merge-upstream.ps1 -List
     .\tools\merge-upstream.ps1 -Diff v1.67
     .\tools\merge-upstream.ps1 -Import v1.68 -Commit
-    .\tools\merge-upstream.ps1 -Pick hafen abc1234
+    .\tools\merge-upstream.ps1 -Pick abc1234 -Remote hafen
     .\tools\merge-upstream.ps1 -ForkDiff
 #>
 
@@ -73,7 +73,7 @@ param(
     [Parameter(ParameterSetName='Diff', Mandatory=$true)][string]$Diff,
     [Parameter(ParameterSetName='Import', Mandatory=$true)][string]$Import,
     [Parameter(ParameterSetName='Pick', Mandatory=$true)][string]$Pick,
-    [Parameter(ParameterSetName='Pick', Mandatory=$true)][ValidateSet('hafen','nurgling')][string]$Remote,
+    [Parameter(ParameterSetName='Pick', Mandatory=$true)][ValidateSet('hafen','nurgling','apricot','kami')][string]$Remote,
     [Parameter(ParameterSetName='Import')][switch]$Commit,
     [Parameter(ParameterSetName='ForkDiff')][switch]$ForkDiff
 )
