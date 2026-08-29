@@ -113,8 +113,9 @@ public class LoginScreen extends Widget {
 	private Window firstTimeUseWindow = null;
 	private Window firstTimeUseExtraBackgroundWindow = null; // ND: Do an extra window to have a solid background, no transparency.
 	private boolean firstTimeWindowCreated = false;
-	private final Window updateWindow;
+	private final Window fallbackUpdateWindow;
 	private boolean githubVersionChecked = false;
+	private UpdateWindow updaterWindow = null;
 
     private String getpref(String name, String def) {
 	return(Utils.getpref(name + "@" + confname, def));
@@ -210,7 +211,7 @@ public class LoginScreen extends Widget {
 	Gob.nightQueenDefeated = false;
     Gob.caveHermitAcquired = false;
 	Gob.alarmPlayed.clear();
-	updateWindow = new Window(Coord.z, "Update Available!", true) {
+	fallbackUpdateWindow = new Window(Coord.z, "Update Available!", true) {
 		{
 			Widget prev;
 			prev = add(new Label("A new Novocaine version is available!"), UI.scale(new Coord(74, 3)));
@@ -218,24 +219,14 @@ public class LoginScreen extends Widget {
 			prev = add(new Label("It downloads the update and starts the game for you."), prev.pos("bl").adds(0, 8).x(0));
 			Button close = new Button(UI.scale(120), "Close", false) {
 				@Override
-				public void click() {
-					parent.reqdestroy();
-				}
+				public void click() { parent.reqdestroy(); }
 			};
 			add(close, prev.pos("bl").adds(0, 10).adds(92, 10));
 			pack();
 		}
-
-		@Override
-		public void drag(Coord off) {
-			// ND: Don't do anything
-		}
-		@Override
-		public void wdgmsg(Widget sender, String msg, Object... args) {
-			if (msg.equals("close"))
-				reqdestroy();
-			else
-				super.wdgmsg(sender, msg, args);
+		@Override public void drag(Coord off) {}
+		@Override public void wdgmsg(Widget sender, String msg, Object... args) {
+			if(msg.equals("close")) reqdestroy(); else super.wdgmsg(sender, msg, args);
 		}
 	};
 	/* Our releases, not Hurricane's. This used to ask Nightdawg/Hurricane for its latest tag
@@ -625,13 +616,24 @@ public class LoginScreen extends Widget {
 
 	public void tick(double dt) {
 		playMainTheme(themes.get(bgIndex-1));
-		if (!firstTimeWindowCreated && Utils.getprefb("firstTimeOpeningClient", true)){
-			createFirstTimeUseWindow();
-		}
-		if (!githubVersionChecked && !Config.githubLatestVersion.equals("Loading...") && !Config.githubLatestVersion.equals("Failed")){
-			if ((Config.novaVersion() != null) && Config.isNewer(Config.githubLatestVersion, Config.novaVersion())) { // semver compare: only nag when remote newer
-				adda(updateWindow, 0.5, 0);
+		if(!firstTimeWindowCreated && Utils.getprefb("firstTimeOpeningClient", true)) createFirstTimeUseWindow();
+		if(!githubVersionChecked && !Config.githubLatestVersion.equals("Loading...") && !Config.githubLatestVersion.equals("Failed")) {
+			if(Config.novaVersion() != null && Config.isNewer(Config.githubLatestVersion, Config.novaVersion())) {
+				/* Nightly stamp fast path: if we already checked this tag within 24h, don't nag again. */
+				if(!Updater.isStampFresh(Config.githubLatestVersion)) {
+					if(Updater.possible() && Updater.enabled() && !Updater.skipped()) {
+						if(updaterWindow == null) updaterWindow = new UpdateWindow(Config.githubLatestVersion);
+						adda(updaterWindow, 0.5, 0);
+					} else {
+						adda(fallbackUpdateWindow, 0.5, 0);
+					}
+				} else {
+					/* Still mark stamp as fresh by touching? no -- leave as-is. */
+				}
 			}
+			/* If up-to-date, write stamp so next launch fast-paths. */
+			if(Config.novaVersion() != null && !Config.isNewer(Config.githubLatestVersion, Config.novaVersion()) && !Updater.isStampFresh(Config.githubLatestVersion))
+				Updater.writeStamp(Config.githubLatestVersion);
 			githubVersionChecked = true;
 		}
 		super.tick(dt);
