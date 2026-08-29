@@ -1005,7 +1005,16 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    }
 	    if(tab == null) {
 		TButton tb = add(new TButton(name));
-		tab = ntab(new Category(name, tb.upimg.getres().flayer(Resource.tooltip).t), tb);
+		Resource.Tooltip tt = tb.upimg.getres().layer(Resource.tooltip);
+		String tnm;
+		if(tt != null)
+		    tnm = tt.t;
+		else {
+		    String rn = tb.upimg.getres().name;
+		    int p = rn.lastIndexOf('/');
+		    tnm = (p >= 0) ? rn.substring(p + 1) : rn;
+		}
+		tab = ntab(new Category(name, tnm), tb);
 		types.add(tab);
 	    }
 	    return(tab);
