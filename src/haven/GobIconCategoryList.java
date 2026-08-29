@@ -278,32 +278,53 @@ public class GobIconCategoryList extends OldListBox<GobIconCategoryList.GobCateg
             return categorize(icon.conf);
         }
 
+        /* Called for every gob carrying an icon on every minimap tick, so the
+         * stream pipelines this used to build -- up to four per call, each
+         * with its own spliterator, lambda and match sink -- made this one of
+         * the largest allocators in the client. Plain loops do the same
+         * substring matching without allocating. */
+        private static boolean matchany(String[] paths, String name) {
+            for(String path : paths) {
+                if(name.contains(path))
+                    return(true);
+            }
+            return(false);
+        }
+
         public static GobCategory categorize(GobIcon.Setting conf) {
             String name = conf.res.name;
             if(name.contains("mm/trees/")) {
                 return GobCategory.TREE;
-            } else if(Arrays.stream(ANIMAL_PATHS).anyMatch(name::contains)) {
+            } else if(matchany(ANIMAL_PATHS, name)) {
                 return GobCategory.ANIMALS;
-            } else if(Arrays.stream(ROCK_PATHS).anyMatch(name::contains)) {
+            } else if(matchany(ROCK_PATHS, name)) {
                 return GobCategory.ROCKS;
-            } else if(Arrays.stream(ORE_PATHS).anyMatch(name::contains)) {
+            } else if(matchany(ORE_PATHS, name)) {
                 return GobCategory.ORES;
-            } else if(Arrays.stream(HERB_PATHS).anyMatch(name::contains)) {
+            } else if(matchany(HERB_PATHS, name)) {
                 return GobCategory.HERBS;
             } else if(name.contains("mm/bushes/")) {
                 return GobCategory.BUSHES;
-            } else if(Arrays.stream(LOCALRESOURCES_PATH).anyMatch(name::contains)) {
+            } else if(matchany(LOCALRESOURCES_PATH, name)) {
                 return GobCategory.LOCALRESOURCES;
             } else if(name.contains("/invobjs/clue-")) {
                 return GobCategory.CRIMESCENTS;
-            } else if(Arrays.stream(TRANSPORTATION_PATH).anyMatch(name::contains)) {
+            } else if(matchany(TRANSPORTATION_PATH, name)) {
                 return GobCategory.TRANSPORTATION;
-            } else if(Arrays.stream(TOOLS_PATH).anyMatch(name::contains)) {
+            } else if(matchany(TOOLS_PATH, name)) {
                 return GobCategory.TOOLS;
-            } else if(Arrays.stream(SIEGEENGINES_PATH).anyMatch(name::contains)) {
+            } else if(matchany(SIEGEENGINES_PATH, name)) {
                 return GobCategory.SIEGEENGINES;
             }
             return GobCategory.OTHER;
+        }
+
+        public static boolean isOre(String res) {
+            return(matchany(ORE_PATHS, res));
+        }
+
+        public static boolean isRock(String res) {
+            return(matchany(ROCK_PATHS, res));
         }
     }
 

@@ -226,6 +226,15 @@ public abstract class Tiler {
 			return 0;
 	    return(m.map.getfz(tc));
 	}
+
+	/* This is the surface gobs land on, so it has to carry the
+	 * coordinate-free form too -- otherwise the default would build the
+	 * Coord this exists to avoid. */
+	public double getz(int tx, int ty) {
+		if (OptWnd.flatWorldCheckBox.a)
+			return 0;
+	    return(m.map.getfz(tx, ty));
+	}
     }
 
     public MCache.ZSurface getsurf(MapMesh m, MCache.SurfaceID id) {
