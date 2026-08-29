@@ -30,19 +30,25 @@ import java.util.*;
 import java.util.function.*;
 import haven.Config;
 import haven.Composited;
+import haven.Utils;
 
 public class TickList implements RenderList<TickList.TickNode> {
+    private static volatile boolean cachedHideTrees = Utils.getprefb("hideTrees", true);
     private final Map<Ticking, Entry> cur = new HashMap<>();
+    private List<Entry> snapshot = new ArrayList<>();
+    private boolean snapshotDirty = true;
 
     private static class Entry {
 	final Ticking tick;
 	final Object mon;
+	final boolean isAnimFlare;
 	int rc = 0;
 	Object users = null;
 
 	public Entry(Ticking tick, Object mon) {
 	    this.tick = tick;
 	    this.mon = mon;
+	    this.isAnimFlare = tick.getClass().getName().contains("AnimFlare");
 	}
 
 	public void get(TickNode user) {
@@ -108,6 +114,7 @@ public class TickList implements RenderList<TickList.TickNode> {
 		    throw(new RuntimeException("cannot specify different monitors for one tick"));
 	    }
 	    ent.get(slot.obj());
+	    snapshotDirty = true;
 	}
     }
 
@@ -117,6 +124,7 @@ public class TickList implements RenderList<TickList.TickNode> {
 	    Entry ent = cur.get(tick);
 	    if(ent.put(slot.obj()))
 		cur.remove(tick);
+	    snapshotDirty = true;
 	}
     }
 
@@ -125,16 +133,21 @@ public class TickList implements RenderList<TickList.TickNode> {
 
     public void tick(double dt) {
 	Composited.animTickFrame++;
+	cachedHideTrees = Utils.getprefb("hideTrees", true);
 	List<Entry> copy;
 	synchronized(cur) {
-	    copy = new ArrayList<>(cur.values());
+	    if(snapshotDirty) {
+		snapshot = new ArrayList<>(cur.values());
+		snapshotDirty = false;
+	    }
+	    copy = snapshot;
 	}
 	Consumer<Entry> task = ent -> {
         try {
 	    if(ent.mon == null) {
 		ent.tick.autotick(dt);
 	    } else {
-		synchronized(ent.mon) {
+		if(!ent.isAnimFlare || !cachedHideTrees) synchronized(ent.mon) {
 		    ent.tick.autotick(dt);
 		}
 	    }
@@ -151,7 +164,11 @@ public class TickList implements RenderList<TickList.TickNode> {
     public void gtick(Render g) {
 	List<Entry> copy;
 	synchronized(cur) {
-	    copy = new ArrayList<>(cur.values());
+	    if(snapshotDirty) {
+		snapshot = new ArrayList<>(cur.values());
+		snapshotDirty = false;
+	    }
+	    copy = snapshot;
 	}
 	BiConsumer<Entry, Render> task = (ent, out) -> {
         try {
