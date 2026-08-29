@@ -73,13 +73,16 @@ if (-not (Test-Path (Join-Path $bin 'hafen.jar'))) {
 $java = Get-Command java -ErrorAction SilentlyContinue
 if (-not $java) { Die 'java not found on PATH.' }
 
-# Play.bat is one line: `java <flags> -jar hafen.jar`. Take everything after the
-# executable and hand it straight to Start-Process, so the flags have exactly one home.
+# Play.bat is: `"%JAVA%" <flags> -jar hafen.jar` (console) or `start "Novocaine" "%JAVA%" <flags> -jar hafen.jar` (no-console).
+# Take everything after the executable and hand it straight to Start-Process, so the flags have exactly one home.
 $playBat = Join-Path $bin 'Play.bat'
 if (-not (Test-Path $playBat)) { Die "No Play.bat in $bin." }
-$line = Get-Content $playBat | Where-Object { $_ -match '^\s*java(\.exe)?["]?\s' } | Select-Object -First 1
+$line = Get-Content $playBat | Where-Object { $_ -match 'hafen\.jar' -and $_ -notmatch '^\s*REM' -and $_ -notmatch '^\s*@' } | Select-Object -First 1
 if (-not $line) { Die "Couldn't find the java command line in $playBat." }
-$jvmArgs = ($line -replace '^\s*java(\.exe)?["]?\s+', '').Trim()
+$jvmArgs = $line.Trim() -replace '^start\s+"[^"]*"\s+', ''
+$jvmArgs = $jvmArgs -replace '^\s*"?%JAVA%?"?\s+', ''
+$jvmArgs = $jvmArgs -replace '^\s*java(\.exe)?"?\s+', ''
+$jvmArgs = $jvmArgs.Trim()
 if (-not $jvmArgs) { Die "Parsed an empty argument list out of $playBat." }
 
 # A heads-up rather than a limit: -Xms is COMMITTED per process, so the floor is real

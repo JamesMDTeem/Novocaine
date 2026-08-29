@@ -65,7 +65,7 @@ function Warn($m) { Write-Host "    $m" -ForegroundColor Yellow }
 $shipPatterns = @(
     '*.jar'                     # the client and every Class-Path entry, incl. hafen-panama
     '*.hl'                      # hafen.hl / launcher.hl launcher descriptors
-    'Play.bat', 'Play_Linux.sh', 'Play_WithSteam.bat'
+    'Play.bat', 'Play_NoConsole.bat', 'Play_Linux.sh', 'Play_WithSteam.bat', 'Play_WithSteam_NoConsole.bat'
     'res', 'AlarmSounds', 'midiFiles', 'MapIconsPresets'
     'haven-config.properties'
     'workshop-client.properties', 'steam_appid.txt', 'steamicon.gif'
