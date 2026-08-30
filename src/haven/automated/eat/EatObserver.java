@@ -9,6 +9,7 @@ import haven.Indir;
 import haven.ItemInfo;
 import haven.Loading;
 import haven.ResData;
+import haven.Widget;
 import haven.Resource;
 import haven.automated.cookbook.FoodService;
 import haven.res.ui.tt.q.qbuff.QBuff;
@@ -24,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -72,19 +74,26 @@ import java.util.concurrent.TimeUnit;
  * captured nothing. The raw stream is what settles which one actually happened: replaying it against
  * an eat's timestamp shows the true sequence of pushes in between.
  *
- * "eat", "trig", and "satiation" records - not "food" or "glut", the two purely-local diagnostic
- * streams - are additionally queued and uploaded in batches to the mapper server's
+ * "eat", "trig", "satiation" and "glut" records - not "food", which stays purely local - are
+ * additionally queued and uploaded in batches to the mapper server's
  * {@code /client/{token}/eatlog}, tagged with the character that produced them. The server pools
  * these across every character and tenant member into IEatLogService's calibration: the same
  * variety-coefficient and satiation-category measurements this class's own doc above describes,
  * done once centrally with far more samples than any one character's local log can supply, and
  * served back to {@code EatHelperWindow} instead of the hardcoded wiki fallback. Uploads reuse the
  * cookbook endpoint/token already configured for food uploads - nothing new to set up - and simply
- * don't happen while that's unconfigured, same as {@link CookbookClient}.
+ * don't happen while that's unconfigured, same as {@link CookbookClient}. "glut" uploads only at
+ * change-points, which is what makes shipping it affordable: satiety is flat between events, so
+ * the changes are the whole curve.
+ *
+ * <p>All per-character state lives in {@link Session}, keyed by {@link GameUI}. It used to be
+ * static, which is fine for one client but wrong for this fork, which multi-boxes: every client
+ * in the process called the same static hooks and the most recent push won. Uploaded data showed
+ * both failure modes - one character's satiety stamped onto another's records, and satiety
+ * reading 0 for everything written before that process's first glut push, since bind() never
+ * reset it. Anything added here that holds character state belongs in Session, not in a field.
  */
 public class EatObserver {
-    private static volatile String chrid;
-    private static volatile GameUI gui;
 
     /** Same 9-entry mapping {@code EatHelperWindow} keeps its own copy of - small and static
      *  enough (a naming table, not a formula) that duplicating it beats threading a dependency
@@ -101,8 +110,6 @@ public class EatObserver {
         STAT_TO_GLOB.put("WILL", "wil");
         STAT_TO_GLOB.put("PSY", "psy");
     }
-
-    private static final Object lock = new Object();
 
     /** Copy-on-write snapshot of everything BAttrWnd has last reported. Replaced, never mutated. */
     private static final class State {
@@ -130,13 +137,58 @@ public class EatObserver {
         }
     }
 
-    private static volatile State state =
+    private static final State EMPTY_STATE =
             new State(0, new LinkedHashMap<>(), new LinkedHashMap<>(), 0, 0);
 
-    /** Most recent {@code ftrig} - a level-up firing - so a pending eat can tell if one landed
-     *  inside its before/after window. */
-    private static volatile String lastTrigName = null;
-    private static volatile long lastTrigTs = 0;
+    /**
+     * Everything that used to live in static fields, scoped to one character instead.
+     *
+     * The previous layout kept {@code state}, {@code gui}, {@code chrid} and the pending-click
+     * bookkeeping as process-wide singletons. That is correct for a single client, but this
+     * fork multi-boxes: several {@link GameUI}s share one JVM, every one of them calls the same
+     * static hooks, and whichever pushed most recently won. Two things went wrong as a result -
+     * satiety got stamped onto a different character's records, and it read 0 for every record
+     * written before that process's first glut push, since {@code bind} never reset it. Both
+     * were measured in uploaded data before this was fixed. Keying on the GameUI removes the
+     * shared mutable cell entirely; nothing is shared between characters any more.
+     */
+    private static final class Session {
+        final GameUI gui;
+        final Object lock = new Object();
+        volatile State state = EMPTY_STATE;
+        volatile String lastTrigName = null;
+        volatile long lastTrigTs = 0;
+        volatile long lastGlutLogTs = 0;
+        /** Last (glut, gmod) actually queued for upload, so the stream uploads change-points
+         *  rather than one record per sample - see {@link #onGlut}. */
+        volatile double lastUpGlut = Double.NaN, lastUpGmod = Double.NaN;
+        PendingClick pendingClick = null;
+        final WeakHashMap<FlowerMenu, PendingClick> menuOwners = new WeakHashMap<>();
+        Path logFile;
+
+        Session(GameUI gui) { this.gui = gui; }
+
+        String chrid() { return (gui != null) ? gui.chrid : null; }
+    }
+
+    /** Weak-keyed so a logged-out character's session goes away with its GameUI. */
+    private static final Map<GameUI, Session> sessions =
+            Collections.synchronizedMap(new WeakHashMap<>());
+
+    /** The session owning a widget, creating it if this is the first hook seen for that client.
+     *  Null when the widget is not attached to a GameUI yet - the caller then does nothing. */
+    private static Session session(Widget w) {
+        try {
+            if (w == null || w.ui == null)
+                return null;
+            GameUI g = w.ui.gui;
+            if (g == null)
+                return null;
+            return sessions.computeIfAbsent(g, Session::new);
+        } catch (Exception e) {
+            return null;
+        }
+    }
 
     private static final class PendingClick {
         final String name;
@@ -162,29 +214,19 @@ public class EatObserver {
      *  captured rather than missed. */
     private static final long AFTER_CAPTURE_DELAY_MS = 300;
 
-    private static PendingClick pendingClick = null;
-
-    private static final WeakHashMap<FlowerMenu, PendingClick> menuOwners = new WeakHashMap<>();
-
-    private static Path logFile;
-
-    public static synchronized void bind(GameUI g) {
-        gui = g;
-        chrid = (g != null) ? g.chrid : null;
-        logFile = null;
-        synchronized (lock) {
-            pendingClick = null;
-            menuOwners.clear();
-        }
+    public static void bind(GameUI g) {
+        if (g == null)
+            return;
+        sessions.computeIfAbsent(g, Session::new);
     }
 
     /** Highest current base (equipment-unmodified) attribute, or -1 if the character sheet isn't
      *  available yet. The "new hunger system reducing once a week" is exactly the kind of change
      *  this exists for: stamped on every record rather than inferred after the fact, so working
      *  out its formula doesn't depend on the same settled-cap heuristic that found the old one. */
-    private static int computeTopStat() {
+    private static int computeTopStat(Session sn) {
         try {
-            GameUI g = gui;
+            GameUI g = (sn != null) ? sn.gui : null;
             if (g == null || g.ui == null || g.ui.sess == null || g.ui.sess.glob == null)
                 return -1;
             int best = -1;
@@ -201,9 +243,12 @@ public class EatObserver {
 
     // ------------------------------------------------------------------ server upload
 
-    /** Record types that go to the server, alongside the local file. Deliberately excludes
-     *  "food" and "glut" - see the class doc on why those stay local-only. */
-    private static final Set<String> UPLOAD_TYPES = new HashSet<>(java.util.Arrays.asList("eat", "trig", "satiation"));
+    /** Record types that go to the server, alongside the local file. "glut" is included but
+     *  uploaded only at change-points (see {@link #onGlut}): satiety is piecewise-constant, so
+     *  the change-points carry the whole curve at a fraction of the volume, and they are what a
+     *  weekly-reduction measurement actually needs - the value going into the tick and the value
+     *  coming out of it. "food" stays local-only, as the class doc describes. */
+    private static final Set<String> UPLOAD_TYPES = new HashSet<>(java.util.Arrays.asList("eat", "trig", "satiation", "glut"));
 
     /** Splitting the user's "10-30s" preference down the middle. */
     private static final long UPLOAD_INTERVAL_SECONDS = 15;
@@ -226,8 +271,8 @@ public class EatObserver {
                 UPLOAD_INTERVAL_SECONDS, UPLOAD_INTERVAL_SECONDS, TimeUnit.SECONDS);
     }
 
-    private static void enqueueForUpload(JSONObject rec) {
-        String id = chrid;
+    private static void enqueueForUpload(Session sn, JSONObject rec) {
+        String id = (sn != null) ? sn.chrid() : null;
         if (id == null || id.isEmpty())
             return;
         while (uploadQueue.size() >= MAX_UPLOAD_QUEUE)
@@ -289,8 +334,9 @@ public class EatObserver {
 
     // ------------------------------------------------------------------ BAttrWnd hooks
 
-    public static void onFoodBar(double cap, List<BAttrWnd.FoodMeter.El> els) {
-        if (!enabled())
+    public static void onFoodBar(Widget src, double cap, List<BAttrWnd.FoodMeter.El> els) {
+        Session sn = session(src);
+        if (!enabled() || sn == null)
             return;
         try {
             Map<String, Double> bar = new LinkedHashMap<>();
@@ -298,15 +344,15 @@ public class EatObserver {
                 String name = resolveEventName(el);
                 bar.merge(name, el.a, Double::sum);
             }
-            synchronized (lock) {
-                state = new State(cap, bar, state.satiation, state.glut, state.gmod);
+            synchronized (sn.lock) {
+                sn.state = new State(cap, bar, sn.state.satiation, sn.state.glut, sn.state.gmod);
             }
             JSONObject raw = new JSONObject();
             raw.put("type", "food");
             raw.put("ts", System.currentTimeMillis());
             raw.put("cap", cap);
             raw.put("bar", new JSONObject(bar));
-            write(raw);
+            write(sn, raw);
         } catch (Exception e) {
             // Never let a logging hook break the real FEP bar it's piggybacking on.
         }
@@ -322,8 +368,9 @@ public class EatObserver {
         }
     }
 
-    public static void onFoodTrig(Indir<Resource> ev) {
-        if (!enabled())
+    public static void onFoodTrig(Widget src, Indir<Resource> ev) {
+        Session sn = session(src);
+        if (!enabled() || sn == null)
             return;
         try {
             String name;
@@ -334,13 +381,13 @@ public class EatObserver {
             } catch (Exception e) {
                 name = ev.get().name;
             }
-            lastTrigName = name;
-            lastTrigTs = System.currentTimeMillis();
+            sn.lastTrigName = name;
+            sn.lastTrigTs = System.currentTimeMillis();
             JSONObject raw = new JSONObject();
             raw.put("type", "trig");
-            raw.put("ts", lastTrigTs);
+            raw.put("ts", sn.lastTrigTs);
             raw.put("stat", name);
-            write(raw);
+            write(sn, raw);
         } catch (Exception e) {
             // ditto
         }
@@ -353,25 +400,36 @@ public class EatObserver {
      *  doesn't need sub-second resolution to be useful and the alternative drowns the eat-relevant
      *  lines this stream exists to make checkable. */
     private static final long GLUT_LOG_INTERVAL_MS = 5000;
-    private static volatile long lastGlutLogTs = 0;
 
-    public static void onGlut(double glut, double lglut, double gmod) {
-        if (!enabled())
+    public static void onGlut(Widget src, double glut, double lglut, double gmod) {
+        Session sn = session(src);
+        if (!enabled() || sn == null)
             return;
         try {
-            synchronized (lock) {
-                state = new State(state.cap, state.bar, state.satiation, glut, gmod);
+            synchronized (sn.lock) {
+                sn.state = new State(sn.state.cap, sn.state.bar, sn.state.satiation, glut, gmod);
             }
             long now = System.currentTimeMillis();
-            if (now - lastGlutLogTs < GLUT_LOG_INTERVAL_MS)
+            // The value changing is the event worth keeping: satiety is flat between eats and the
+            // weekly tick, so every change-point is either a bite or the reduction itself. Those
+            // upload however recently the last one went; unchanged samples keep the old fixed
+            // interval locally, so the file still shows the client was alive and watching.
+            boolean changed = (glut != sn.lastUpGlut) || (gmod != sn.lastUpGmod);
+            if (!changed && now - sn.lastGlutLogTs < GLUT_LOG_INTERVAL_MS)
                 return;
-            lastGlutLogTs = now;
+            sn.lastGlutLogTs = now;
             JSONObject raw = new JSONObject();
             raw.put("type", "glut");
             raw.put("ts", now);
             raw.put("glut", glut);
             raw.put("gmod", gmod);
-            write(raw);
+            stamp(sn, raw);
+            writeLocal(sn, raw);
+            if (changed) {
+                sn.lastUpGlut = glut;
+                sn.lastUpGmod = gmod;
+                enqueueForUpload(sn, raw);
+            }
         } catch (Exception e) {
             // ditto
         }
@@ -410,8 +468,9 @@ public class EatObserver {
         return resName;
     }
 
-    public static void onSatiation(ResData t, double a) {
-        if (!enabled())
+    public static void onSatiation(Widget src, ResData t, double a) {
+        Session sn = session(src);
+        if (!enabled() || sn == null)
             return;
         try {
             String name = resolveSatiationKey(t);
@@ -419,13 +478,13 @@ public class EatObserver {
             // as the FEP/hunger multiplier - so the penalty this log wants is 1 - a directly. See
             // the plan's satiation section for the derivation.
             double penalty = 1.0 - a;
-            synchronized (lock) {
-                Map<String, Double> satiation = new LinkedHashMap<>(state.satiation);
+            synchronized (sn.lock) {
+                Map<String, Double> satiation = new LinkedHashMap<>(sn.state.satiation);
                 if (a >= 1.0)
                     satiation.remove(name);
                 else
                     satiation.put(name, penalty);
-                state = new State(state.cap, state.bar, satiation, state.glut, state.gmod);
+                sn.state = new State(sn.state.cap, sn.state.bar, satiation, sn.state.glut, sn.state.gmod);
             }
             JSONObject raw = new JSONObject();
             raw.put("type", "satiation");
@@ -433,7 +492,7 @@ public class EatObserver {
             raw.put("res", name);
             raw.put("raw", a);
             raw.put("penalty", penalty);
-            write(raw);
+            write(sn, raw);
         } catch (Exception e) {
             // ditto
         }
@@ -443,16 +502,17 @@ public class EatObserver {
 
     /** Call at every site that sends an item's "iact" click - see WItem.java and nbots Eat.java. */
     public static void onIact(GItem item) {
-        if (!enabled() || item == null)
+        Session sn = session(item);
+        if (!enabled() || item == null || sn == null)
             return;
         try {
-            PendingClick p = capture(item);
+            PendingClick p = capture(sn, item);
             if (p == null)
                 return;
-            synchronized (lock) {
+            synchronized (sn.lock) {
                 // A second click before the first resolved is exactly the ambiguity the plan says
                 // to discard rather than guess through - drop both, don't queue.
-                pendingClick = p;
+                sn.pendingClick = p;
             }
         } catch (Loading l) {
             // Info not ready this pass - same as Eat.java's own isFood(): reconsidered next time.
@@ -467,13 +527,14 @@ public class EatObserver {
      * there is no "act"/"Eat" confirmation to wait for. The click itself is the confirmed eat.
      */
     public static void onFeastEat(GItem item) {
-        if (!enabled() || item == null)
+        Session sn = session(item);
+        if (!enabled() || item == null || sn == null)
             return;
         try {
-            PendingClick p = capture(item);
+            PendingClick p = capture(sn, item);
             if (p == null)
                 return;
-            FoodService.scheduler.schedule(() -> finish(p), AFTER_CAPTURE_DELAY_MS, TimeUnit.MILLISECONDS);
+            FoodService.scheduler.schedule(() -> finish(sn, p), AFTER_CAPTURE_DELAY_MS, TimeUnit.MILLISECONDS);
         } catch (Loading l) {
             // Info not ready this pass - nothing to do; this click just goes unlogged.
         } catch (Exception e) {
@@ -483,14 +544,14 @@ public class EatObserver {
 
     /** Shared by {@link #onIact} and {@link #onFeastEat}: null if the item isn't (yet, resolvably)
      *  food, otherwise a snapshot of it and the "before" state at this exact moment. */
-    private static PendingClick capture(GItem item) throws Loading {
+    private static PendingClick capture(Session sn, GItem item) throws Loading {
         List<ItemInfo> infos = item.info();
         FoodInfo fi = ItemInfo.find(FoodInfo.class, infos);
         if (fi == null)
             return null; // not food (or not resolved yet) - nothing worth tracking this click for
         QBuff qb = ItemInfo.find(QBuff.class, infos);
         double quality = (qb != null) ? qb.q : 10.0;
-        return new PendingClick(item.getname(), quality, state, System.currentTimeMillis());
+        return new PendingClick(item.getname(), quality, sn.state, System.currentTimeMillis());
     }
 
     private static String toHex(byte[] b) {
@@ -503,17 +564,18 @@ public class EatObserver {
     /** Call from FlowerMenu.added() - pairs the just-opened menu with the most recent unresolved
      *  click, if one exists and is still within the correlation window. */
     public static void onFlowerMenuOpened(FlowerMenu menu) {
-        if (!enabled() || menu == null)
+        Session sn = session(menu);
+        if (!enabled() || menu == null || sn == null)
             return;
         try {
-            synchronized (lock) {
-                PendingClick p = pendingClick;
+            synchronized (sn.lock) {
+                PendingClick p = sn.pendingClick;
                 if (p == null)
                     return;
-                pendingClick = null; // consumed either way - one menu per click
+                sn.pendingClick = null; // consumed either way - one menu per click
                 if (System.currentTimeMillis() - p.ts > CORRELATION_WINDOW_MS)
                     return;
-                menuOwners.put(menu, p);
+                sn.menuOwners.put(menu, p);
             }
         } catch (Exception e) {
             // Never let a logging hook break the real menu.
@@ -522,26 +584,27 @@ public class EatObserver {
 
     /** Call from FlowerMenu.uimsg's "act" branch with the resolved petal's name. */
     public static void onFlowerMenuChosen(FlowerMenu menu, String petalName) {
-        if (!enabled() || menu == null)
+        Session sn = session(menu);
+        if (!enabled() || menu == null || sn == null)
             return;
         try {
             PendingClick p;
-            synchronized (lock) {
-                p = menuOwners.remove(menu);
+            synchronized (sn.lock) {
+                p = sn.menuOwners.remove(menu);
             }
             if (p == null || !"Eat".equals(petalName))
                 return;
             if (System.currentTimeMillis() - p.ts > CORRELATION_WINDOW_MS)
                 return;
-            FoodService.scheduler.schedule(() -> finish(p), AFTER_CAPTURE_DELAY_MS, TimeUnit.MILLISECONDS);
+            FoodService.scheduler.schedule(() -> finish(sn, p), AFTER_CAPTURE_DELAY_MS, TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             // Never let a logging hook break the real menu.
         }
     }
 
-    private static void finish(PendingClick p) {
+    private static void finish(Session sn, PendingClick p) {
         try {
-            State after = state;
+            State after = sn.state;
             JSONObject rec = new JSONObject();
             rec.put("type", "eat");
             rec.put("ts", p.ts);
@@ -549,11 +612,11 @@ public class EatObserver {
             rec.put("quality", p.quality);
             rec.put("before", p.before.toJson());
             rec.put("after", after.toJson());
-            if (lastTrigTs >= p.ts && lastTrigTs <= System.currentTimeMillis())
-                rec.put("levelup", lastTrigName);
+            if (sn.lastTrigTs >= p.ts && sn.lastTrigTs <= System.currentTimeMillis())
+                rec.put("levelup", sn.lastTrigName);
             else
                 rec.put("levelup", JSONObject.NULL);
-            write(rec);
+            write(sn, rec);
         } catch (Exception e) {
             // Best-effort logging; a failed write here must never surface to the player.
         }
@@ -561,22 +624,24 @@ public class EatObserver {
 
     // ------------------------------------------------------------------ persistence
 
-    private static synchronized Path logFile() {
-        if (logFile == null) {
-            String id = chrid;
-            String name = (id == null || id.isEmpty())
-                    ? "unknown" : id.replaceAll("[^A-Za-z0-9._-]", "_");
-            logFile = Paths.get("eatlog", name + ".jsonl");
+    private static Path logFile(Session sn) {
+        synchronized (sn.lock) {
+            if (sn.logFile == null) {
+                String id = sn.chrid();
+                String name = (id == null || id.isEmpty())
+                        ? "unknown" : id.replaceAll("[^A-Za-z0-9._-]", "_");
+                sn.logFile = Paths.get("eatlog", name + ".jsonl");
+            }
+            return sn.logFile;
         }
-        return logFile;
     }
 
-    private static void write(JSONObject rec) {
-        stamp(rec);
-        writeLocal(rec);
+    private static void write(Session sn, JSONObject rec) {
+        stamp(sn, rec);
+        writeLocal(sn, rec);
         String type = rec.optString("type", null);
         if (type != null && UPLOAD_TYPES.contains(type))
-            enqueueForUpload(rec);
+            enqueueForUpload(sn, rec);
     }
 
     /**
@@ -587,12 +652,12 @@ public class EatObserver {
      * "satiation", which previously had no hunger-state context at all. One choke point rather
      * than repeating this at all five call sites.
      */
-    private static void stamp(JSONObject rec) {
+    private static void stamp(Session sn, JSONObject rec) {
         try {
-            int topStat = computeTopStat();
+            int topStat = computeTopStat(sn);
             if (topStat >= 0)
                 rec.put("topStat", topStat);
-            State s = state;
+            State s = sn.state;
             rec.put("gmod", s.gmod);
             rec.put("glut", s.glut);
         } catch (Exception e) {
@@ -600,9 +665,9 @@ public class EatObserver {
         }
     }
 
-    private static synchronized void writeLocal(JSONObject rec) {
+    private static void writeLocal(Session sn, JSONObject rec) {
         try {
-            Path file = logFile();
+            Path file = logFile(sn);
             Files.createDirectories(file.getParent());
             Files.write(file, (rec.toString() + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
                     StandardOpenOption.CREATE, StandardOpenOption.APPEND);
