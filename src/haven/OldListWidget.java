@@ -42,15 +42,31 @@ public abstract class OldListWidget<T> extends Widget {
 
     public int find(T item) {
 	for(int i = 0; i < listitems(); i++) {
-	    if(listitem(i) == item)
+	    if(same(listitem(i), item))
 		return(i);
 	}
 	return(-1);
     }
 
+    /* By VALUE, not by identity.
+     *
+     * Both lookups below compared with ==, which works for the case they were written for - an
+     * item handed back out of listitem(i) by a click - and silently fails for the one that
+     * matters just as much: restoring a selection from somewhere else. A value read out of
+     * preferences, parsed from a file, or built from a name is an equal object and never the
+     * same object, so indexof returned -1, change() set sel to null, and the widget drew EMPTY
+     * while holding a perfectly good stored value. A dropdown that forgets what it is set to
+     * every time its window is reopened is indistinguishable from one that was never set.
+     *
+     * Identity is still checked first, so an item type whose equals() is identity - and every
+     * caller that was relying on == - behaves exactly as before. */
+    private static boolean same(Object a, Object b) {
+	return((a == b) || ((a != null) && a.equals(b)));
+    }
+
     public void change(T item) {
-    selindex = indexof(item);
-    sel = (selindex != -1) ? item : null;
+	selindex = indexof(item);
+	sel = (selindex != -1) ? item : null;
     }
 
     public void change(int index) {
@@ -68,9 +84,10 @@ public abstract class OldListWidget<T> extends Widget {
     }
 
     public int indexof(T item) {
-        for (int i = 0; i < listitems(); i++)
-            if (listitem(i) == item)
-                return i;
-        return -1;
+	for(int i = 0; i < listitems(); i++) {
+	    if(same(listitem(i), item))
+		return(i);
+	}
+	return(-1);
     }
 }
