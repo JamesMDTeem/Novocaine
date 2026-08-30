@@ -428,6 +428,20 @@ public static boolean occupied(GameUI gui, Coord2d wc) {
     return Walkers.occupied(gui, wc);
 }
 
+/**
+ * The same test against a snapshot, for a caller probing many points in one sweep.
+ *
+ * @see Walkers#occupied(List, Coord2d)
+ */
+public static boolean occupied(List<Gob> solids, Coord2d wc) {
+    return Walkers.occupied(solids, wc);
+}
+
+/** One object-cache snapshot to hand to {@link #occupied(List, Coord2d)} repeatedly. */
+public static List<Gob> solids(GameUI gui) {
+    return Walkers.solidsNow(gui);
+}
+
 /** Whether the straight line between two points in segment coordinates meets a wall tile. */
 static boolean crossesWall(Router.World w, Coord2d from, Coord2d to) {
     return Walkers.crossesWall(w, from, to);

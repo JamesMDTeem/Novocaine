@@ -116,6 +116,19 @@ public class PileTransfer implements Task {
     private int moved;
     private String item;
     private boolean vanished;
+    /**
+     * Set only when an OPEN pile reported no free space. The one honest answer to "is it full".
+     *
+     * Nothing else may set it, and in particular a transfer that moved nothing may not. A bulk
+     * gesture moves nothing when the pile is full, when the pile holds something else, when the
+     * pack's remaining cargo is a byproduct no pile takes, and when the item never reached the
+     * cursor - four situations with four different right answers, and the gesture reports the same
+     * thing for all of them. Treating that silence as "full" is what taught the yard-wide
+     * {@link Stockpile#fullHint} threshold that a nearly empty pile was full.
+     */
+    private boolean full;
+    /** The slot held for the length of the transfer, renewed by the loops. See {@link #run}. */
+    private TakeWorkSlot spot;
 
     /** Pack contents by resource when the transfer began, for working out what actually shifted. */
     private Map<String, Integer> before = java.util.Collections.emptyMap();
@@ -175,6 +188,15 @@ public class PileTransfer implements Task {
     /** Whether the pile ceased to exist during the transfer - i.e. we emptied the last of it. */
     public boolean vanished() {
         return vanished;
+    }
+
+    /**
+     * Whether the pile was OPENED and found to have no room. See {@link #full}.
+     *
+     * The only thing a caller may retire a pile on. {@code moved() == 0} is not this.
+     */
+    public boolean full() {
+        return full;
     }
 
     /** What the pack holds, counted by item resource. The basis of {@link #touched}. */
@@ -253,7 +275,16 @@ public class PileTransfer implements Task {
          * one at a cupboard: a crew all told to work the same yard converges on the same pile
          * within a second of each other, and whoever arrives second parks against whoever arrived
          * first. Which side each takes can only be settled BEFORE the walk. */
-        TakeWorkSlot spot = new TakeWorkSlot(pile, Reach.toActOn(pile));
+        /* Held for the whole transfer and RENEWED by the loops, which is the half that was missing.
+         *
+         * A claim stands 25 seconds unrenewed ({@link WorkClaims#TTL_MS}) and this is by a wide
+         * margin the longest-running task that takes one: a bulk gesture waits up to eleven
+         * seconds, and the window fallback opens, reads, and then runs up to forty batches of a
+         * three-second settle each - minutes, on a pile that is being worked from both ends. The
+         * walk to get here is on top of that. So the reservation routinely expired while we were
+         * standing in it, a crewmate claimed the same side of the same pile, and walked into us.
+         * Every other task that holds a slot across real work renews it; this one did not. */
+        spot = new TakeWorkSlot(pile, Reach.toActOn(pile));
         before = census(ctx);
         try {
             Outcome got = spot.run(ctx);
@@ -344,10 +375,16 @@ public class PileTransfer implements Task {
      * undeliverable. The bot then believed it was empty, could not fetch (the pack was full), and
      * ended the shift on the first full pile it met.
      *
-     * A REFUSAL IS AN ANSWER. The server replies to this gesture on a full pile - "That stockpile
-     * is already full" - so nothing moving is not the gesture failing to apply, it is the pile
-     * being full, and opening its window to confirm what we have already been told costs a walk
-     * and the risk of the window path itself. So this reports no room rather than falling through.
+     * A REFUSAL IS NOT AN ANSWER, and this used to assume it was. The reasoning was that the
+     * server replies to the gesture on a full pile, so nothing moving means full; but the client
+     * never reads that reply here, and nothing moving is equally what a pile of the wrong thing
+     * does, what a pack holding only an earthworm does, and what a pickup that did not land does.
+     * Reporting "full" for all four taught the caller to retire piles that were empty.
+     *
+     * So a bulk fill that measurably moved nothing now falls through to the window, which is the
+     * only thing that can tell the four apart - exactly as the class comment says. The cost is one
+     * right-click and a read on a pile we are already standing at with its slot reserved; the
+     * alternative was a guess that could not be checked and was usually wrong.
      */
     private Outcome bulkFill(BotCtx ctx) throws InterruptedException {
         List<WItem> hold = carried(ctx, wantItems);
@@ -368,9 +405,11 @@ public class PileTransfer implements Task {
         moved = fromPack + (handWent ? 1 : 0);
         vanished = (ctx.gob(pile.id) == null);
         if (moved <= 0) {
-            ctx.log("pile #" + pile.id + " took nothing - full, or it does not want "
-                + shortName(requireItem));
-            return Outcome.ok();       // no room. Not a failure, and not worth a window to confirm.
+            if (vanished)
+                return Outcome.ok();   // emptied out from under us; there is nothing left to open
+            // No log line here: run() announces the fall-through for both directions, and a busy
+            // yard would otherwise get two lines per full pile.
+            return null;               // let the window say why. See the method comment.
         }
         ctx.status("Filling " + moved + ".");
         return Outcome.ok();
@@ -411,8 +450,12 @@ public class PileTransfer implements Task {
              *
              * Nothing to do is Outcome.ok with nothing moved. The caller already knows what to do
              * with that: try the next pile, and start a new one when they are all like this. */
-            if ((dir > 0) && (open.free() <= 0))
+            if ((dir > 0) && (open.free() <= 0)) {
+                // Read off the open pile, so this is the one place entitled to say "full". The
+                // caller retires on THIS and not on a transfer that happened to move nothing.
+                full = true;
                 return Outcome.ok();
+            }
 
             if (!accepts(item)) {
                 // Failed, not blocked: this pile will never take what we are carrying, so the
@@ -488,6 +531,7 @@ public class PileTransfer implements Task {
         int last = packSize(ctx);
         int stable = 0;
         for (int i = 0; (i < BULK_SETTLE_TICKS) && (stable < BULK_STABLE); i++) {
+            renewSlot();
             ctx.nav.pause(2);
             int now = packSize(ctx);
             if (now == last) {
@@ -498,6 +542,18 @@ public class PileTransfer implements Task {
             }
         }
         return Math.abs(last - start);
+    }
+
+    /**
+     * Tells the claim registry we are still standing in our slot.
+     *
+     * Cheap to call on every poll - {@link TakeWorkSlot#renew} rate-limits itself to one write per
+     * {@link haven.automated.nbots.world.WorkClaims#RENEW_MS} - so it goes at the top of every loop
+     * that can run longer than a claim's life rather than at some place chosen to be often enough.
+     */
+    private void renewSlot() {
+        if (spot != null)
+            spot.renew();
     }
 
     /**
@@ -512,6 +568,9 @@ public class PileTransfer implements Task {
         for (int round = 0; round < MAX_ROUNDS; round++) {
             if (!ctx.running())
                 throw new InterruptedException();
+            // Each round is up to a three-second settle, so the reservation has to be told we are
+            // still standing in it or a crewmate takes this side of the pile out from under us.
+            renewSlot();
             if (!open.alive()) {
                 vanished = (ctx.gob(open.id()) == null);
                 break;
@@ -545,11 +604,16 @@ public class PileTransfer implements Task {
         for (int round = 0; round < MAX_ROUNDS; round++) {
             if (!ctx.running())
                 throw new InterruptedException();
+            renewSlot();
             if (!open.alive())
                 break;
             int room = open.free();
-            if (room <= 0)
-                break;   // somebody else filled it while we were walking, or during the last batch
+            if (room <= 0) {
+                // Somebody else filled it while we were walking, or during the last batch. Still
+                // an authoritative reading off an open pile, so it counts as full.
+                full = true;
+                break;
+            }
             int have = carrying(ctx, wantItems);
             if (have <= 0)
                 break;

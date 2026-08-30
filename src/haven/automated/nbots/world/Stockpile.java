@@ -198,12 +198,18 @@ public class Stockpile {
         RETIRE_TTL_MS = clamped;
     }
 
+    /**
+     * One retirement, which is a deadline and nothing else.
+     *
+     * It carried a {@code capacity} as well, and no reader ever looked at it - the one caller that
+     * had to supply a number passed a literal zero under a comment saying a real one might be
+     * available later. A field nobody reads is not a placeholder, it is a thing every call site has
+     * to invent a value for.
+     */
     private static final class RetireEntry {
         final long expireMs;
-        final int capacity;
-        RetireEntry(long expireMs, int capacity) {
+        RetireEntry(long expireMs) {
             this.expireMs = expireMs;
-            this.capacity = capacity;
         }
         boolean expired(long now) {
             return now >= expireMs;
@@ -213,23 +219,38 @@ public class Stockpile {
     private static final ConcurrentHashMap<Long, RetireEntry> RETIRED_BY_GOB = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, RetireEntry> RETIRED_BY_SPOT = new ConcurrentHashMap<>();
 
-    /** Retire a pile gob so acceptors skip it until TTL expires. Reuses FULL_AT via learnFull. */
-    public static void retire(Gob gob, int capacity) {
+    /**
+     * Retire a pile gob so acceptors skip it until TTL expires.
+     *
+     * DELIBERATELY does not touch {@link #FULL_AT}. It used to, and that was the single most
+     * damaging line in this class: {@code FULL_AT} is global, keyed on the pile RESOURCE, merged
+     * with {@code min} and never reset, so one retire wrote a threshold that applied to every pile
+     * of that kind for the rest of the session and could only ever get stricter. Retiring from a
+     * transfer that merely moved nothing - which happens for a pile that is full, a pile that wants
+     * something else, and a pack holding only a byproduct - then taught the client that a nearly
+     * EMPTY pile's sprite state meant full, and {@link #fullHint} began refusing the whole yard.
+     *
+     * The threshold has exactly one honest source and it is still the only one: {@link Open#free}
+     * reading zero off an open pile. See {@link #FULL_AT}.
+     */
+    public static void retire(Gob gob) {
         if (gob == null)
             return;
-        String res = resname(gob);
-        if (res != null)
-            learnFull(res, gob.sdt());
-        long now = System.currentTimeMillis();
-        RETIRED_BY_GOB.put(gob.id, new RetireEntry(now + RETIRE_TTL_MS, capacity));
+        RETIRED_BY_GOB.put(gob.id, new RetireEntry(System.currentTimeMillis() + RETIRE_TTL_MS));
     }
 
-    /** Retire a placement spot (spotKey from {@link #spotKey}) until TTL expires. */
-    public static void retire(String spotKey, int capacity) {
+    /**
+     * Retire a placement SQUARE (a {@link #spotKey}) until TTL expires.
+     *
+     * For ground the server refused to stand a pile on. Nothing the client can see says why - the
+     * refusal is simply no pile appearing - so there is nothing to re-derive and nothing that would
+     * make the next attempt go differently. {@link #spotsIn} is deterministic and sorted, so
+     * without this the same refused square comes back first on every trip and is walked to again.
+     */
+    public static void retireSpot(String spotKey) {
         if (spotKey == null)
             return;
-        long now = System.currentTimeMillis();
-        RETIRED_BY_SPOT.put(spotKey, new RetireEntry(now + RETIRE_TTL_MS, capacity));
+        RETIRED_BY_SPOT.put(spotKey, new RetireEntry(System.currentTimeMillis() + RETIRE_TTL_MS));
     }
 
     /** Whether this gob is currently retired (lazy-expires on check). */
@@ -585,21 +606,6 @@ public class Stockpile {
     }
 
     /**
-     * Spot key for the tile a gob occupies, reusing the same WorldAnchor for segment+tile.
-     * Returns null if the anchor or player is unavailable.
-     */
-    public static String spotKeyFor(GameUI gui, Gob gob) {
-        if (gui == null || gob == null || gob.rc == null)
-            return null;
-        WorldAnchor here = WorldAnchor.capturePlayer(gui);
-        Gob me = (gui.map == null) ? null : gui.map.player();
-        if (here == null || me == null)
-            return null;
-        Coord tile = gob.rc.add(here.sc.sub(me.rc)).floor(MCache.tilesz);
-        return spotKey(here.seg, tile);
-    }
-
-    /**
      * Somewhere inside {@code place} to stand a new pile, in live world coordinates.
      *
      * Ordered rather than picked, so the caller can walk down the list claiming each in turn: the
@@ -636,6 +642,14 @@ public class Stockpile {
                 like.add(g);
         }
         List<Gob> crowd = Crowd.others(gui);
+        /* ONE object-cache snapshot for the whole sweep.
+         *
+         * The per-point form of this test rebuilds the snapshot on every call, and this loop runs
+         * once per TILE of a storage area: a fifteen-by-fifteen yard took the cache lock and copied
+         * every loaded gob two hundred and twenty-five times to place one pile, and again for each
+         * of the four a trip may start. On the bot thread that reads as a hitch, and it leaves the
+         * positions the rest of the sweep is comparing against already out of date. */
+        List<Gob> solids = BotNav.solids(gui);
 
         List<Scored> found = new ArrayList<>();
         for (int ty = 0; ty < Math.max(place.h, 1); ty++) {
@@ -646,8 +660,14 @@ public class Stockpile {
                 Coord tile = at.add(off).floor(MCache.tilesz);
                 if (Observed.solid(here.seg, tile) || !Terrain.ground(gui, here.seg, tile))
                     continue;
+                /* Ground the server has already refused a pile on, within the retire TTL. Nothing
+                 * observable changed when it refused - no pile appeared, and that is the whole of
+                 * the reply - so this list, being deterministic and sorted, would otherwise offer
+                 * the same square first on every trip and walk to it again each time. */
+                if (isRetiredSpot(spotKey(here.seg, tile)))
+                    continue;
                 // Something is already there - another pile, a cart, a wall we have not recorded.
-                if (BotNav.occupied(gui, at))
+                if (BotNav.occupied(solids, at))
                     continue;
                 if (Crowd.occupied(crowd, at, Crowd.PERSONAL_SPACE))
                     continue;

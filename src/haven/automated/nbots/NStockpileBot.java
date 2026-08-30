@@ -161,7 +161,7 @@ public class NStockpileBot extends NBot {
         settings.line("retire_ttl", "Retire TTL (min)", "5", 32);
         settings.layout(this, UI.scale(10, 22), 2, UI.scale(155));
         pack();
-        chatHook = new StockpileChatHook(() -> lastAttempted, this::syncRetireTtl);
+        chatHook = new StockpileChatHook(() -> lastAttempted, ctx::log);
         if (gui != null && gui.chat != null)
             gui.chat.addSyslogHook(chatHook);
     }
@@ -227,6 +227,16 @@ public class NStockpileBot extends NBot {
         cargoPile = null;
         lastFilled = null;
         lastAttempted = null;
+
+        /* A pin that no longer resolves stops the shift instead of quietly meaning "automatic".
+         * Automatic is "the area I am standing in, else the nearest one", so a stale pin used to
+         * send the bot to work a DIFFERENT yard with nothing said about it. */
+        if (settings.pinnedMissing("from"))
+            return Outcome.failed("\"" + settings.place("from") + "\" no longer exists"
+                + " - pick a source area again");
+        if (settings.pinnedMissing("to"))
+            return Outcome.failed("\"" + settings.place("to") + "\" no longer exists"
+                + " - pick a target area again");
 
         from = pick("from", PlaceRoles.PILES_FROM);
         if (from == null)
@@ -365,12 +375,9 @@ public class NStockpileBot extends NBot {
      * character happens to be standing in when its shift begins.
      */
     private Place pick(String key, String role) {
-        String pinned = settings.place(key);
-        if (!pinned.isEmpty()) {
-            Place p = Places.byName(pinned);
-            if (p != null)
-                return p;
-        }
+        Place pinned = settings.pinnedPlace(key);
+        if (pinned != null)
+            return pinned;
         Place p = Places.containing(gui, role);
         return (p != null) ? p : Places.nearest(gui, role);
     }
@@ -459,7 +466,19 @@ public class NStockpileBot extends NBot {
                     return Outcome.ok();
                 lastAttempted = pile;
                 PileTransfer fill = PileTransfer.fill(pile, deliverable(), cargoPrimary);
-                Outcome o = fill.run(ctx);
+                Outcome o;
+                try {
+                    o = fill.run(ctx);
+                } finally {
+                    /* Cleared the moment the attempt is over, on every path.
+                     *
+                     * This field exists so a chat refusal can name the pile it refers to, and it is
+                     * only about the pile we are AT. Left set, it goes on naming a pile we walked
+                     * away from ten minutes ago - so a "full" line arriving from anywhere, up to
+                     * and including the player working a pile by hand in another corner of the
+                     * base, retires whatever we happened to touch last. */
+                    lastAttempted = null;
+                }
                 if (o.isFailed()) {
                     // The pile holds something else, or cannot be read. Either way it will never
                     // take this, so cross it off for the shift rather than coming back to it.
@@ -471,21 +490,15 @@ public class NStockpileBot extends NBot {
                 if (o.isBlocked())
                     continue;
                 done.add(pile.id);
-                if (fill.moved() == 0 && carrying() > 0) {
-                    // 0-move ok is full (bulkFill returns ok for full, not failed — do not
-                    // change PileTransfer semantics). Promote to retired so remaining
-                    // DELIVERY_PASSES in this deliver() skip it via acceptors() isRetired.
-                    // Capacity from Open/FULL_AT when available; 0 handled gracefully by
-                    // Stockpile.retire which still learns sdt via learnFull.
-                    int cap = 0;
-                    try {
-                        // Future: if PileTransfer exposes open capacity, use it here.
-                        // For bulk path no window was opened, so cap stays 0 and retire
-                        // still records sdt TTL via learnFull(res, sdt).
-                    } catch (RuntimeException ignored) {}
-                    syncRetireTtl();
-                    Stockpile.retire(pile, cap);
-                }
+                /* Retired on the pile having been OPENED and found full, and on nothing else.
+                 *
+                 * It used to retire on `fill.moved() == 0`, which is a different and much weaker
+                 * claim: a fill moves nothing when the pile is full, when it holds something else,
+                 * and - the case that did the damage - when the only cargo left in the pack is a
+                 * byproduct like an earthworm that no pile will take. One worm therefore retired
+                 * every pile in the yard, one per pass, and the trip ended making new ones. */
+                if (fill.full())
+                    Stockpile.retire(pile);
                 if (fill.moved() > 0) {
                     delivered += fill.moved();
                     lastFilled = pile.rc;
@@ -534,11 +547,20 @@ public class NStockpileBot extends NBot {
                 return Outcome.ok();
             lastAttempted = pile;
             PileTransfer fill = PileTransfer.fill(pile, deliverable(), cargoPrimary);
-            Outcome f = fill.run(ctx);
+            Outcome f;
+            try {
+                f = fill.run(ctx);
+            } finally {
+                lastAttempted = null;
+            }
             if (f.isFailed())
                 return f;
             if (fill.moved() > 0)
                 delivered += fill.moved();
+            // Filled to the brim on creation, which a pack bigger than one pile does. Recorded so
+            // the next trip's acceptors do not walk back to it.
+            if (fill.full())
+                Stockpile.retire(pile);
             if (!fill.touched().isEmpty())
                 noteRefusals(fill.touched());
             if (fill.moved() == 0 && carrying() > 0) {
@@ -617,7 +639,6 @@ public class NStockpileBot extends NBot {
      * bot start a new pile beside a half-empty one.
      */
     private List<Gob> acceptors() {
-        syncRetireTtl();
         Stockpile.expireSweep();
         List<Gob> out = new ArrayList<>();
         Gob me = ctx.player();
@@ -627,9 +648,12 @@ public class NStockpileBot extends NBot {
                 continue;
             if ((cargoPile != null) && !cargoPile.equals(Stockpile.resname(g)))
                 continue;
-            if (Stockpile.isRetired(g) || Stockpile.isRetiredSpot(Stockpile.spotKeyFor(gui, g)))
-                continue;
-            if (Stockpile.fullHint(g))
+            /* Proven full within the TTL, from an open pile. A HINT never belongs in this list -
+             * see the method comment - and for a while one was: `fullHint` was a `continue` here
+             * rather than a sort key, so a single wrong entry in the yard-wide threshold table
+             * emptied this list on every trip and sent every delivery straight to startNew(). The
+             * threshold is a guess about a sprite; this is a reading off the pile itself. */
+            if (Stockpile.isRetired(g))
                 continue;
             if (Crowd.workersOn(others, g.rc) >= WorkSlots.around(g).count)
                 continue;

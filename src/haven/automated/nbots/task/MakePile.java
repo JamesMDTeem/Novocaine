@@ -8,8 +8,11 @@ import haven.WItem;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
+import haven.automated.nbots.world.BotNav;
+import haven.automated.nbots.world.Crowd;
 import haven.automated.nbots.world.Place;
 import haven.automated.nbots.world.Stockpile;
+import haven.automated.nbots.world.Walk;
 import haven.automated.nbots.world.WorkClaims;
 
 import java.util.List;
@@ -73,6 +76,18 @@ public class MakePile implements Task {
     private static final double PLACED_NEAR = MCache.tilesz.x * 1.2;
     /** How many squares to try before giving up on this trip. */
     private static final int MAX_SPOTS = 6;
+    /** How far back from the square to stand while placing on it. See {@link #approachFrom}. */
+    private static final double STAND_BACK = MCache.tilesz.x * 1.2;
+    /** How many headings around the square to consider standing on, and how far apart they are. */
+    private static final int STAND_HEADINGS = 8;
+    private static final double STAND_FAN = Math.PI / 4;
+    /**
+     * How near the square counts as standing ON it, for picking a direction to step back in.
+     *
+     * A third of a tile, not a hair: {@code norm()} on a near-zero vector is NaN, and an aim of
+     * NaN is a walk to nowhere that fails silently.
+     */
+    private static final double ON_SQUARE = MCache.tilesz.x * 0.34;
 
     private final Place place;
     private final String itemRes;
@@ -119,16 +134,23 @@ public class MakePile implements Task {
         for (Coord2d spot : spots) {
             if (!ctx.running())
                 throw new InterruptedException();
-            if (tried++ >= MAX_SPOTS)
+            if (tried >= MAX_SPOTS)
                 break;
             Coord tile = Stockpile.tileOf(ctx.gui, spot);
             if (tile == null)
                 continue;
             String key = Stockpile.spotKey(seg, tile);
+            /* Counted only once we are actually going to walk somewhere.
+             *
+             * The increment used to happen before this, so a square a crewmate had already claimed
+             * spent one of the six attempts without a step being taken - and claimed squares come
+             * in runs, since both bots sort the same candidate list the same way. Six of those and
+             * the trip reported "couldn't find ground" standing in an empty yard. */
             if (!WorkClaims.claim(key))
                 continue;   // another client is already on its way to this square
+            tried++;
             try {
-                Outcome o = placeAt(ctx, spot);
+                Outcome o = placeAt(ctx, spot, key);
                 if (o.isOk())
                     return o;
                 ctx.log("couldn't start a pile at " + tile + ": " + o.reason);
@@ -140,28 +162,80 @@ public class MakePile implements Task {
     }
 
     /**
+     * Somewhere to stand while placing on {@code spot}, with a clear straight line to it.
+     *
+     * Three things have to hold and only the first was ever checked. The standing position must be
+     * off the square - a character inside a pile's footprint has its placement refused with nothing
+     * said - it must be ground we could actually be on, and THE LINE BETWEEN THE TWO MUST BE CLEAR.
+     *
+     * The last is the one that was missing, and it is the one that cannot be recovered from.
+     * {@link Stockpile#spotsIn} validates the square a pile is going ON and says nothing about the
+     * ground beside it or what lies between; the old code took a single position one tile back
+     * along the way we had come and committed to it. When something was in the way - the pile we
+     * had just filled, a crewmate, a fence corner - the walk stopped short, the distance gate
+     * refused, and the square was written off although it was perfectly good. When something was
+     * in the way but the walk still finished, worse: the toggle happened, the placement was
+     * refused through the obstacle, and the character was left in stockpile form, which is the one
+     * state it cannot walk out of.
+     *
+     * So the standing position is chosen rather than derived. Straight back the way we came first,
+     * because that is the shortest walk and usually right, then fanning to either side. Each
+     * candidate is tested for something standing on it and for a clear line to the square, and the
+     * first that passes both is the one we walk to.
+     *
+     * Null - no side of the square is usable - is BLOCKED and not a retirement. Every reason for it
+     * is something that moves: a crewmate on one side and the pile we just filled on the other is a
+     * yard doing exactly what it should, and it will read differently in a minute. Only the server
+     * refusing the placement itself says anything durable about the ground.
+     */
+    private static Coord2d approachFrom(BotCtx ctx, Coord2d spot) {
+        Gob me = ctx.player();
+        if (me == null)
+            return null;
+        /* The way we came, or due east when we are standing on the square itself. norm() on a
+         * near-zero vector is NaN, and an aim of NaN is a walk to nowhere that fails silently. */
+        Coord2d back = me.rc.sub(spot);
+        back = (back.abs() < ON_SQUARE) ? new Coord2d(STAND_BACK, 0) : back.norm(STAND_BACK);
+        List<Gob> solids = BotNav.solids(ctx.gui);
+        List<Gob> crowd = Crowd.others(ctx.gui);
+        for (int i = 0; i < STAND_HEADINGS; i++) {
+            // Turns of 0, -45, +45, -90, +90 ... so the way we came is tried first, either side
+            // of it next, and the far side of the square last.
+            double turn = ((i + 1) / 2) * STAND_FAN * (((i % 2) == 0) ? 1 : -1);
+            Coord2d at = spot.add(back.rot(turn));
+            if (BotNav.occupied(solids, at))
+                continue;
+            if (Crowd.occupied(crowd, at, Crowd.PERSONAL_SPACE))
+                continue;
+            if (!Walk.lineClear(ctx.gui, at, spot))
+                continue;
+            return at;
+        }
+        return null;
+    }
+
+    /**
      * Walks onto one square and tries to stand a pile there.
      *
      * The item goes to the cursor AFTER the walk, not before. Walking with a full hand is what
      * makes an interrupted trip messy - a right-click anywhere on the way drops it - and the walk
      * is by far the longest part of this.
      */
-    private Outcome placeAt(BotCtx ctx, Coord2d spot) throws InterruptedException {
+    private Outcome placeAt(BotCtx ctx, Coord2d spot, String key) throws InterruptedException {
         ctx.status("Starting a new pile.");
-        /* Aim BESIDE the square rather than at it. A character standing where a pile is going is
-         * standing in its footprint, and the placement is refused with nothing to say why - which
-         * from here is indistinguishable from any other refusal, so it would cost a walk per
-         * square and end with "no free ground". nurgling2's PileMaker gets this right by pathing
-         * to a dummy gob wearing the pile's own hitbox, i.e. to the edge of where the pile goes;
-         * one tile back along the way we came is the same idea without needing the hitbox. */
-        Gob me = ctx.player();
-        Coord2d stand = spot;
-        // A third of a tile, not a hair: norm() on a near-zero vector is NaN, and an aim of NaN is
-        // a walk to nowhere that fails silently.
-        if ((me != null) && (me.rc.dist(spot) > MCache.tilesz.x * 0.34))
-            stand = spot.add(me.rc.sub(spot).norm(MCache.tilesz.x * 1.2));
+        /* Stand BESIDE the square, on ground with a clear line to it. A character standing where a
+         * pile is going is standing in its footprint, and the placement is refused with nothing to
+         * say why - which from here is indistinguishable from any other refusal, so it would cost a
+         * walk per square and end with "no free ground". nurgling2's PileMaker gets this right by
+         * pathing to a dummy gob wearing the pile's own hitbox, i.e. to the edge of where the pile
+         * goes; a tile back from it is the same idea without needing the hitbox. Which tile back is
+         * {@link #approachFrom}'s to choose - see there for why it is a choice and not a formula. */
+        Coord2d stand = approachFrom(ctx, spot);
+        if (stand == null)
+            return Outcome.blocked("nowhere clear to stand beside the square");
         ctx.nav.stepTo(stand, MCache.tilesz.x);
-        me = ctx.player();
+        WorkClaims.renew(key);
+        Gob me = ctx.player();
         double gap = (me == null) ? -1 : me.rc.dist(spot);
         /* BE THERE BEFORE TOUCHING THE CURSOR, and be strict about it.
          *
@@ -184,6 +258,17 @@ public class MakePile implements Task {
             ctx.log("not close enough to start a pile: " + (int) gap + "u from the square"
                 + " (need " + (int) (MCache.tilesz.x * 2) + "u) - leaving the cursor alone");
             return Outcome.blocked("couldn't get to the spot");
+        }
+        /* Re-checked from WHERE WE ACTUALLY ARE, not from where we meant to be.
+         *
+         * The line was cleared for the position approachFrom() picked, and a walk does not always
+         * finish on it: it can stop a little short, or be nudged around a crewmate who arrived
+         * while we were coming. Both leave us inside the distance gate above with something now
+         * between us and the square. This is the last moment that can be checked, because the next
+         * gesture takes movement away for good. */
+        if (!Walk.lineClear(ctx.gui, me.rc, spot)) {
+            ctx.log("something moved between us and the square - not toggling from here");
+            return Outcome.blocked("the line to the spot isn't clear");
         }
 
         List<WItem> have = PileTransfer.carried(ctx, itemRes);
@@ -211,6 +296,7 @@ public class MakePile implements Task {
              * ever. The distance gate above is what earns the right to be here. */
             ctx.gui.map.wdgmsg("itemact", Coord.z, spot.floor(posres), 0);
             ctx.nav.waitUntil(() -> StowHand.armed(ctx), ARM_TICKS);
+            WorkClaims.renew(key);
             if (!StowHand.armed(ctx))
                 return Outcome.blocked("the game didn't offer to place anything");
 
@@ -222,15 +308,26 @@ public class MakePile implements Task {
              * build and the fill into the one click. */
             Stockpile.placeAll(ctx, spot);
             ctx.nav.waitUntil(() -> found(ctx, spot) != null, PLACE_TICKS);
+            WorkClaims.renew(key);
             Gob pile = found(ctx, spot);
-            if (pile == null)
+            if (pile == null) {
+                /* The server said no by saying nothing, and there is no reading of that to act on.
+                 * Nothing the client can see about this ground has changed, so the next trip's
+                 * candidate list - which is deterministic and sorted the same way - would offer
+                 * this square first again and walk to it again. Remembering the refusal for the
+                 * retire TTL is the only thing that makes the next attempt different. */
+                Coord tile = Stockpile.tileOf(ctx.gui, spot);
+                if (tile != null)
+                    Stockpile.retireSpot(Stockpile.spotKey(Stockpile.segment(ctx.gui), tile));
                 return Outcome.blocked("the placement was refused");
+            }
             made = pile;
             /* Let the fill that shift just started finish before anyone reads the pack again. The
              * caller decides what to do next from how much is still carried, and reading that
              * mid-transfer would have it building a second pile for soil already on its way into
              * this one. */
             ctx.nav.waitUntil(() -> PileTransfer.carrying(ctx, itemRes) <= 0, FILL_TICKS);
+            WorkClaims.renew(key);
             ctx.log("started a new " + Stockpile.kind(pile) + " pile in " + place.name
                 + "; " + PileTransfer.carrying(ctx, itemRes) + " left in the pack");
             return Outcome.ok();

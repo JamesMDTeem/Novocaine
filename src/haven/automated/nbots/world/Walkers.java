@@ -1049,6 +1049,29 @@ public class Walkers {
     }
 
     /**
+     * The same test against a snapshot the caller took, for probing MANY points at once.
+     *
+     * {@link #occupied(GameUI, Coord2d)} rebuilds the snapshot per call, which is right for the
+     * one-off question and ruinous for the sweep {@link Stockpile#spotsIn} does: that asks about
+     * every tile of a storage area, so a fifteen-by-fifteen yard took the object-cache lock and
+     * copied every loaded gob two hundred and twenty-five times for one placement - and did it
+     * again for each of the four piles a trip may start. The lock is held on the bot thread, so the
+     * cost lands as a visible hitch and as gob positions that are already stale by the time the
+     * sweep finishes reading them.
+     *
+     * The snapshot is what {@link #solids} always promised in its own comment ("Snapshotted, so a
+     * probe of several points locks once") and had no public way to deliver.
+     */
+    public static boolean occupied(List<Gob> solids, Coord2d wc) {
+        return (wc != null) && (solids != null) && inside(solids, wc);
+    }
+
+    /** A reusable snapshot for {@link #occupied(List, Coord2d)}. Locks the object cache once. */
+    public static List<Gob> solidsNow(GameUI gui) {
+        return solids(gui);
+    }
+
+    /**
      * Everything loaded that is not us and is not an OPEN gateway. Snapshotted, so a probe of
      * several points locks once.
      *
