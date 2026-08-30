@@ -59,7 +59,7 @@ public class Drink implements Task {
         if (ctx.stamina() >= target)
             return Outcome.ok();
 
-        sip(ctx);
+        boolean drank = sip(ctx);
         if (ctx.stamina() >= enough())
             return Outcome.ok();
 
@@ -78,9 +78,28 @@ public class Drink implements Task {
         if (Carried.holdingWater(ctx.gui).isEmpty() && !Carried.vessels(ctx.gui).isEmpty()) {
             ctx.nav.waitUntil(() -> !Carried.holdingWater(ctx.gui).isEmpty(), CONTENTS_TICKS);
             if (!Carried.holdingWater(ctx.gui).isEmpty())
-                sip(ctx);
+                drank |= sip(ctx);
         }
         if (ctx.stamina() >= enough())
+            return Outcome.ok();
+
+        /* Drinking WORKED. It just did not finish, and that is not an errand.
+         *
+         * The trip is triggered below {@link Upkeep#DRINK_BELOW}, two fifths, and judged against
+         * {@link #ENOUGH}, nine tenths, and the gap between those two numbers is where this lived:
+         * a character that drank itself from a third up to three quarters has plainly got water
+         * out of a vessel, fails the nine-tenths test, and walks to a barrel - which is a bot
+         * setting off to fetch water with a waterskin two thirds full, and it is the complaint.
+         *
+         * A mouthful is not a barrel. Coming back round next cycle and drinking again costs
+         * seconds, converges, and never leaves the work site; the errand costs the walk twice and
+         * does not converge at all when the reason for stopping short was a slow-arriving item
+         * info rather than an empty skin.
+         *
+         * A vessel that has genuinely run dry still reaches the trip below, because a sip from an
+         * empty one moves nothing and this is then false. That is the whole test, and it is the
+         * honest one: not "am I full", but "is there anything left to drink". */
+        if (drank)
             return Outcome.ok();
 
         if (!Carried.holdingWater(ctx.gui).isEmpty())
