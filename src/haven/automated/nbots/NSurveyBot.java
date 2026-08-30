@@ -97,8 +97,10 @@ public class NSurveyBot extends NBot {
             return Outcome.blocked("no character");
 
         retired.clear();
-        String pinned = settings.place("area");
-        area = (pinned == null || pinned.isEmpty()) ? null : Places.byName(pinned);
+        if (settings.pinnedMissing("area"))
+            return Outcome.failed("\"" + settings.place("area") + "\" no longer exists"
+                + " - pick a survey area again");
+        area = settings.pinnedPlace("area");
         /* Surveying is the one job in the crew that two bots genuinely cannot share. A second
          * character manning the same survey does not halve the work - it drains soil the first one
          * is still counting, and both come away with readings that are wrong. So the area is held

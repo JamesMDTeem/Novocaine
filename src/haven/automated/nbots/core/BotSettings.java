@@ -393,15 +393,35 @@ public class BotSettings {
     /**
      * The place name pinned for a {@link #places} setting, or "" for automatic.
      *
-     * A name that no longer answers to anything is reported as automatic rather than as itself:
-     * the place it referred to has been deleted or renamed, and a bot that refused to run because
-     * of that would be failing over a setting the player cannot even see is stale.
+     * REPORTED AS PINNED WHETHER OR NOT IT STILL RESOLVES. It used to answer "" for a name nothing
+     * answered to any more, on the reasoning that a bot should not fail over a stale setting the
+     * player cannot see - but "" is the code for AUTOMATIC, and automatic means "the area you are
+     * standing in, else the nearest one". So a pin that failed to resolve for any reason at all did
+     * not degrade to doing nothing; it degraded to WORKING A DIFFERENT AREA, silently, and the only
+     * symptom was a bot that went off to the wrong end of the base.
+     *
+     * "Pinned but missing" is now its own answer - {@link #pinnedMissing} - so a bot can say so
+     * instead of guessing. See {@link #pinnedPlace}.
      */
     public String place(String key) {
-        String name = Utils.getpref(prefkey(key), "");
-        if (name.isEmpty())
-            return "";
-        return (Places.byName(name) == null) ? "" : name;
+        return Utils.getpref(prefkey(key), "");
+    }
+
+    /** The place a picker is pinned to, or null when nothing is pinned or the pin is stale. */
+    public Place pinnedPlace(String key) {
+        String name = place(key);
+        return name.isEmpty() ? null : Places.byName(name);
+    }
+
+    /**
+     * True when a name IS pinned and nothing answers to it any more.
+     *
+     * The case a bot has to refuse rather than route around: the player named an area, so working
+     * some other one is not a lenient reading of the instruction, it is a different instruction.
+     */
+    public boolean pinnedMissing(String key) {
+        String name = place(key);
+        return !name.isEmpty() && (Places.byName(name) == null);
     }
 
     public void set(String key, boolean value) {

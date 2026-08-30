@@ -82,7 +82,28 @@ public class Places {
         synchronized (LOCK) {
             long now = stamp();
             if ((cache == null) || (now != fileAt)) {
-                cache = merge(load(), cache);
+                List<Place> disk = load();
+                /* A READ THAT FAILED IS NOT AN EMPTY FILE, and conflating the two poisoned every
+                 * bot in the client for as long as the file then sat still.
+                 *
+                 * load() used to answer with an empty list for an unreadable or unparseable file -
+                 * a torn read while another client in the crew was replacing it, a moment when
+                 * Windows had the path locked, anything. all() cached that emptiness AND stamped
+                 * fileAt with the timestamp it had just seen, so nothing would re-read until the
+                 * file next changed. Until then every place in the world had ceased to exist as
+                 * far as this client was concerned.
+                 *
+                 * Which is very quiet, because almost nothing asks "did that work". Places.byName
+                 * returns null, a bot's pinned area therefore does not resolve, and the pin reads
+                 * as AUTOMATIC - so the bot goes off and works whichever area is nearest, with no
+                 * message anywhere. One failed read, and the whole crew is working the wrong end
+                 * of the base.
+                 *
+                 * So a failure keeps whatever we already had and leaves fileAt alone, which means
+                 * the very next call tries again. */
+                if (disk == null)
+                    return (cache == null) ? new ArrayList<>() : new ArrayList<>(cache);
+                cache = merge(disk, cache);
                 fileAt = now;
             }
             return new ArrayList<>(cache);
@@ -101,23 +122,34 @@ public class Places {
         }
     }
 
+    /**
+     * What is on the disk, or NULL if it could not be read.
+     *
+     * The distinction is the whole point - see {@link #all}. An absent file is a real, empty
+     * answer: nobody has defined a place yet. A file that would not open or would not parse is
+     * not an answer at all, and returning an empty list for it told every caller that the
+     * player's areas had been deleted.
+     *
+     * One unparseable ENTRY is still dropped rather than failing the load, which is the opposite
+     * trade and the right one at that level: a single corrupt record should not cost the player
+     * every other place they have defined.
+     */
     private static List<Place> load() {
         List<Place> out = new ArrayList<>();
         Path p = file();
-        if (!Files.exists(p))
-            return out;
         try {
+            if (!Files.exists(p))
+                return out;
             String body = new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
             JSONArray arr = new JSONArray(body);
             for (int i = 0; i < arr.length(); i++) {
                 Place place = Place.fromJson(arr.getJSONObject(i));
-                // A place whose anchor won't parse is dropped rather than failing the whole load:
-                // one corrupt entry should not cost the player every other place they defined.
                 if (place != null)
                     out.add(place);
             }
         } catch (IOException | RuntimeException e) {
             NLog.crash("loading " + FILE, e);
+            return null;
         }
         return out;
     }
@@ -175,7 +207,14 @@ public class Places {
                     NLog.log("nbot-places.log", "couldn't lock " + FILE + " to save; will retry on the next change");
                     return;
                 }
-                List<Place> merged = merge(load(), cache);
+                List<Place> disk = load();
+                if (disk == null) {
+                    // Merging a failed read would write out a file with everyone ELSE'S places
+                    // missing. The deltas stay pending for the next change to carry.
+                    NLog.log("nbot-places.log", "couldn't read " + FILE + " to merge into; not saving over it");
+                    return;
+                }
+                List<Place> merged = merge(disk, cache);
                 write(merged);
                 cache = merged;
                 dirty.clear();
@@ -196,11 +235,26 @@ public class Places {
 
     // ------------------------------------------------------------------ editing
 
+    /**
+     * The cache, loaded if it has not been yet, and never null.
+     *
+     * For the EDITING paths, which are about to mutate the list and cannot work with "the file
+     * could not be read". An empty list is safe for them in a way it is not for {@link #all}: the
+     * edit is recorded in {@link #dirty}, {@link #save} refuses to write over a file it could not
+     * read first, and {@code fileAt} is left alone - so the next {@link #all} re-reads and the
+     * pending change is carried then.
+     */
+    private static List<Place> cached() {
+        if (cache == null) {
+            List<Place> disk = load();
+            cache = (disk == null) ? new ArrayList<>() : disk;
+        }
+        return cache;
+    }
+
     public static void add(Place p) {
         synchronized (LOCK) {
-            if (cache == null)
-                cache = load();
-            cache.removeIf(e -> e.name.equalsIgnoreCase(p.name));
+            cached().removeIf(e -> e.name.equalsIgnoreCase(p.name));
             cache.add(p);
             dirty.add(key(p.name));
             removed.remove(key(p.name));
@@ -210,9 +264,7 @@ public class Places {
 
     public static void remove(String name) {
         synchronized (LOCK) {
-            if (cache == null)
-                cache = load();
-            cache.removeIf(e -> e.name.equalsIgnoreCase(name));
+            cached().removeIf(e -> e.name.equalsIgnoreCase(name));
             removed.add(key(name));
             dirty.remove(key(name));
         }

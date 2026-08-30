@@ -88,6 +88,11 @@ public class NPlowBot extends NBot {
 
     @Override
     protected Outcome work() throws InterruptedException {
+        /* Named a field that has since gone? Say so. Falling through to field() would pick
+         * "the one I am standing in, else the nearest", which is a different field. */
+        if (settings.pinnedMissing("field"))
+            return Outcome.failed("\"" + settings.place("field") + "\" no longer exists"
+                + " - pick a field again");
         Place field = field();
         if (field == null)
             return Outcome.failed("no field to plough - draw an area, tag it 'work', and pick it above");
@@ -282,12 +287,9 @@ public class NPlowBot extends NBot {
 
     /** The field to work: the pinned one, else the one we are standing in, else the nearest. */
     private Place field() {
-        String pinned = settings.place("field");
-        if ((pinned != null) && !pinned.isEmpty()) {
-            Place p = Places.byName(pinned);
-            if (p != null)
-                return p;
-        }
+        Place pinned = settings.pinnedPlace("field");
+        if (pinned != null)
+            return pinned;
         Place here = Places.containing(gui, PlaceRoles.WORK);
         return (here != null) ? here : Places.nearest(gui, PlaceRoles.WORK);
     }

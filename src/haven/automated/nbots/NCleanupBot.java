@@ -180,9 +180,10 @@ public class NCleanupBot extends NBot {
             /* A pinned area wins outright: naming one is an explicit instruction, and a crew
              * whose bots each have one posted must not have that quietly overridden by whichever
              * area a character happens to be standing in when its shift begins. */
-            String pinned = settings.place("area");
-            if (!pinned.isEmpty())
-                workPlace = Places.byName(pinned);
+            if (settings.pinnedMissing("area"))
+                return Outcome.failed("\"" + settings.place("area") + "\" no longer exists"
+                    + " - pick a work area again");
+            workPlace = settings.pinnedPlace("area");
             /* Otherwise the one we are standing in, so a crew can be posted to adjacent areas and
              * each bot takes the one it was left in; failing that the nearest, and walk to it.
              * Failing outright when none is defined is right here in a way it would not be for
