@@ -76,6 +76,27 @@ public class ChatUI extends Widget {
 	syslogHooks.remove(hook);
     }
 
+    /* Called from GameUI.msg with the server's own text, NOT from notify().
+     *
+     * notify() only runs for messages that reach a channel, and a system message reaches the
+     * system log through a condition that has nothing to do with it: GameUI.msg withholds every
+     * append until both of the login toggle handshakes ("Party permissions are now...",
+     * "Stacking is now...") have completed, and returns earlier still for any notice a widget
+     * handles itself. So a hook hung on notify() sees nothing at all for the first part of a
+     * session and possibly nothing ever, which is not a thing a listener can be debugged out of.
+     *
+     * Hooks are read-only observers of text. One throwing must not cost the message. */
+    public void notifySyslogHooks(String text) {
+	if((text == null) || syslogHooks.isEmpty())
+	    return;
+	for(java.util.function.Consumer<String> h : syslogHooks) {
+	    try {
+		h.accept(text);
+	    } catch(Exception ignored) {
+	    }
+	}
+    }
+
     public ChatUI() {
 	super(Coord.z);
 	chansel = add(new Selector(new Coord(selw, sz.y - marg.y)), marg);
@@ -1712,18 +1733,6 @@ public class ChatUI extends Widget {
 
     private static final Resource notifsfx = Resource.local().loadwait("sfx/hud/chat");
     public void notify(Channel chan, Channel.Message msg, int urgency) {
-	if(chan != null && "System".equals(chan.name()) && msg != null && !syslogHooks.isEmpty()) {
-	    String txt = null;
-	    if(msg instanceof Channel.SimpleMessage)
-		txt = ((Channel.SimpleMessage)msg).text;
-	    else
-		txt = msg.toString();
-	    if(txt != null) {
-		for(java.util.function.Consumer<String> h : syslogHooks) {
-		    try { h.accept(txt); } catch(Exception ignored) {}
-		}
-	    }
-	}
 	if(urgency > 0) {
 	    synchronized(notifs) {
 		notifs.addFirst(new Notification(chan, msg));

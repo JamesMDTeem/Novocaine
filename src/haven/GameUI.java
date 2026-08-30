@@ -2275,6 +2275,13 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     }
 
     public boolean msg(UI.Notice msg) {
+	/* Every server notice reaches the listeners, before anything can swallow it.
+	 *
+	 * Below this point a message can be handled by a widget and returned on, or held back
+	 * from the system log by the login toggle handshakes, and a bot listening for a specific
+	 * refusal - "that stockpile is already full" - has to see it either way. */
+	if(chat != null)
+	    chat.notifySyslogHooks(msg.message());
 	if(msg.handler(this))
 	    return(true);
 	Color color = msg.color();
