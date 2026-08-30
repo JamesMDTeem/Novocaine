@@ -220,12 +220,12 @@ git-dirty-flag = ${git-dirty-flag}
       </fileset>
     </copy>
     <copy file="etc/ansgar-config.properties" tofile="bin/haven-config.properties" />
+    <!-- Novocaine.bat/.ps1 is the launcher; Play.bat is the JVM flag list both it and the
+         Steam HL launcher (hafen.hl: command-file Play.bat) read the flags out of. -->
+    <copy file="Novocaine.bat" todir="bin"/>
+    <copy file="Novocaine.ps1" todir="bin"/>
     <copy file="Play.bat" todir="bin"/>
-    <copy file="Play_NoConsole.bat" todir="bin"/>
     <copy file="Play_Linux.sh" todir="bin"/>
-    <copy file="Play_WithSteam.bat" todir="bin"/>
-    <copy file="Play_WithSteam_NoConsole.bat" todir="bin"/>
-    <copy file="Play_ZGC.bat" todir="bin"/>
     <copy file="workshop-client.properties" todir="bin"/>
     <copy file="steamicon.gif" todir="bin"/>
     <copy file="steam_appid.txt" todir="bin"/>
@@ -270,7 +270,7 @@ git-dirty-flag = ${git-dirty-flag}
     <exec dir="bin/" executable="cmd">
       <arg value="/c"/>
       <arg value = "start"/>
-      <arg value="Play.bat"/>
+      <arg value="Novocaine.bat"/>
     </exec>
   </target>
 

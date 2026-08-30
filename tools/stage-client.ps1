@@ -65,7 +65,8 @@ function Warn($m) { Write-Host "    $m" -ForegroundColor Yellow }
 $shipPatterns = @(
     '*.jar'                     # the client and every Class-Path entry, incl. hafen-panama
     '*.hl'                      # hafen.hl / launcher.hl launcher descriptors
-    'Play.bat', 'Play_NoConsole.bat', 'Play_Linux.sh', 'Play_WithSteam.bat', 'Play_WithSteam_NoConsole.bat'
+    'Novocaine.bat', 'Novocaine.ps1'   # the launcher/updater; Update.bat is added by make-release
+    'Play.bat', 'Play_Linux.sh' # the JVM flag list, read by Novocaine.ps1 and by Steam's HL launcher
     'res', 'AlarmSounds', 'midiFiles', 'MapIconsPresets'
     'haven-config.properties'
     'workshop-client.properties', 'steam_appid.txt', 'steamicon.gif'
@@ -112,7 +113,7 @@ foreach ($entry in Get-ChildItem -LiteralPath $bin -Force) {
 # --- the client must still be runnable --------------------------------------
 # The allowlist can only drop something needed if build.xml grows a file this script has
 # not been told about, so check the pieces without which the zip is not a client at all.
-$required = @('hafen.jar', 'builtin-res.jar', 'hafen-res.jar', 'Play.bat', 'res')
+$required = @('hafen.jar', 'builtin-res.jar', 'hafen-res.jar', 'Novocaine.bat', 'Novocaine.ps1', 'Play.bat', 'res')
 $missing = @($required | Where-Object { -not (Test-Path -LiteralPath (Join-Path $Destination $_)) })
 if ($missing.Count -gt 0) {
     throw "Staging dropped files the client cannot run without: $($missing -join ', '). " +

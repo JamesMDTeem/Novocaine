@@ -61,3 +61,6 @@ reasonix.toml
 # Loose scratch text at the repo root (session prompts, error dumps). Durable
 # notes belong in ai-docs/plans/ instead.
 /*.txt
+
+# Agent runtime scratch (evidence, notepads, run state), same category as .claude/.
+.omo/

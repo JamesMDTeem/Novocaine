@@ -143,7 +143,7 @@ $probe = & (Join-Path $outPath 'bin\java.exe') --version | Select-Object -First 
 Write-Host "    $probe"
 
 Write-Host ""
-Write-Host "Done. The launchers pick this up automatically - Play.bat prefers"
+Write-Host "Done. The launcher picks this up automatically - Novocaine.ps1 prefers"
 Write-Host "%~dp0jre\bin\java.exe over system Java with no further changes."
 Write-Host "Note that bin\ is gitignored, so this runtime is a build artifact, not"
 Write-Host "something to commit; regenerate it as part of packaging."

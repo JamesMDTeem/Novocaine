@@ -9,13 +9,21 @@ project, and to Loftar's Vanilla client under that — Loftar's own README is pr
 ## Just want to play?
 
 Grab the newest zip from [Releases](https://github.com/JamesMDTeem/Novocaine/releases),
-extract it, and run `Play.bat`. You need a JRE, nothing else — no clone, no build.
+extract it, and run **`Novocaine.bat`**. You need a JRE, nothing else — no clone, no build.
 
-After that, run **`Update.bat`** instead of `Play.bat`: it checks GitHub for a newer release,
-downloads the small delta rather than the ~170 MB full zip where it can, verifies every file
-against the release manifest, and then launches. Your settings live in the registry and
-`%APPDATA%\Haven and Hearth`, so they are never touched, and anything you dropped into the
-install folder yourself is left alone.
+That one file is also the updater: every launch checks GitHub for a newer release, downloads
+the small delta rather than the ~170 MB full zip where it can, verifies every file against the
+release manifest, and then starts the game with no console window attached. Your settings live
+in the registry and `%APPDATA%\Haven and Hearth`, so they are never touched, and anything you
+dropped into the install folder yourself is left alone.
+
+```
+Novocaine.bat              update, then play
+Novocaine.bat -Check       is there a newer release? (installs nothing)
+Novocaine.bat -Count 4     four clients at once, for a crew
+Novocaine.bat -Console     keep a console window attached
+Novocaine.bat -ZGC         generational ZGC instead of G1
+```
 
 ## Getting started (building from source)
 
@@ -30,7 +38,7 @@ install folder yourself is left alone.
    extract it.
 4. **Run the launcher** from the repo folder in PowerShell:
    ```powershell
-   .\build-and-play.ps1
+   .\Novocaine.ps1
    ```
    The first run downloads JOGL/LWJGL/Steamworks jars and the game resources
    (~300 MB) from the Hurricane CDN, builds, and launches. That first run takes a
@@ -70,12 +78,24 @@ To bring in upstream changes:
 .\tools\merge-upstream.ps1 -ForkDiff
 ```
 
-The daily build/launch script is `build-and-play.ps1`:
+The daily build/launch script is `Novocaine.ps1` — the same one that ships in a release,
+which builds instead of updating when it finds a `build.xml` next to it:
 
 ```powershell
-.\build-and-play.ps1          # build + launch
-.\build-and-play.ps1 -NoLaunch  # build only
+.\Novocaine.ps1                    # build + launch
+.\Novocaine.ps1 -NoLaunch          # build only (the typecheck gate)
+.\Novocaine.ps1 -Count 8           # build once, launch a crew of eight
+.\Novocaine.ps1 -Count 2 -NoBuild  # two more clients against the build you have
+.\Novocaine.ps1 -ZGC -Console      # ZGC, with a console to read GC logs in
 ```
+
+`build-and-play.ps1` is kept as a shim that forwards to it, so old habits and the packaging
+scripts keep working.
+
+The JVM flags are **not** written out in `Novocaine.ps1`. They live in `Play.bat`, which has
+to exist anyway — `hafen.hl` names it as the Steam launcher's `command-file` and the HL
+launcher parses the `--add-exports` and `-D` properties out of it. `Novocaine.ps1` reads the
+same line, so heap sizes and exports have exactly one home.
 
 ## Custom features
 
@@ -133,7 +153,7 @@ Two distribution channels, each a one-command script:
   ```
   Builds a clean client, zips `bin\` into `dist\Novocaine-<version>.zip`, and creates/updates
   the GitHub Release with it attached. Friends download the zip, extract, and run
-  `Novocaine\Play.bat`. Needs the [GitHub CLI](https://cli.github.com/) (`gh auth login`).
+  `Novocaine\Novocaine.bat`. Needs the [GitHub CLI](https://cli.github.com/) (`gh auth login`).
 
 - **Steam Workshop** (friends-only visibility): see [`steam/README.md`](steam/README.md).
   ```powershell
@@ -158,12 +178,12 @@ pushed state.
 
 ## Building & playing
 
-Requires JDK 17–21 and Apache Ant (see "Getting started" above). `.\build-and-play.ps1`
-resolves both, builds with Ant, and launches via `bin\Play.bat`.
+Requires JDK 17–21 and Apache Ant (see "Getting started" above). `.\Novocaine.ps1`
+resolves both, builds with Ant, and launches out of `bin\`.
 
 A note on `bin\`: it is the **live game install**, not build output. Alongside the jars it
 holds the crew-bot state and the alchemy dump. `ant clean` deletes it — use
-`.\build-and-play.ps1` instead unless you actually mean to start over.
+`.\Novocaine.ps1` instead unless you actually mean to start over.
 
 For base-client details, see [`README_Vanilla-Client`](README_Vanilla-Client) (Loftar's own
 README) and the [Hurricane](https://github.com/Nightdawg/Hurricane) repo.

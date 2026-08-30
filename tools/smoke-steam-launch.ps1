@@ -4,11 +4,11 @@
     report whether the client survives startup.
 
 .DESCRIPTION
-    A client that runs fine from bin\Play.bat can still be dead on arrival under Steam,
+    A client that runs fine from bin\Novocaine.bat can still be dead on arrival under Steam,
     because the two launch paths differ in every way that matters:
 
-      * Play.bat runs `java -jar hafen.jar` with the item directory as the working
-        directory, so bare relative paths happen to resolve.
+      * Novocaine.bat runs `javaw -jar hafen.jar` (flags read out of Play.bat) with the
+        item directory as the working directory, so bare relative paths happen to resolve.
       * The Steam launcher copies each jar into
         %LOCALAPPDATA%\Haven Launcher\cache\file\<percent-encoded item path>\ and runs
         the child JVM from the GAME INSTALL directory with that cache on the classpath.
