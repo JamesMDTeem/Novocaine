@@ -13,6 +13,7 @@ import parse_gear
 import parse_creatures
 import parse_animal_moves
 import parse_player_moves
+import build_datapack
 
 failures = 0
 
@@ -184,12 +185,50 @@ def player_moves():
           any(r["openings_target"] is None for r in allrows), True)
 
 
+def constants_and_crosscheck():
+    print("\nconstants + cross-checks")
+    import json as _json
+    consts = _json.loads((wiki.DATA / "constants.json").read_text(encoding="utf8"))
+    check("tick seconds", consts["tick_seconds"]["value"], 0.06)
+    check("opening exponent flagged disputed", consts["opening_exponent"]["status"], "disputed")
+    check("mu curve unknown", consts["mu_curve"]["value"], None)
+    check("damage exponent", consts["opening_damage_exponent"]["value"], 2)
+    # Every constant must declare a status, so nothing reads as settled when it is not.
+    missing = [k for k, v in consts.items() if "status" not in v]
+    check("all constants declare status", missing, [])
+    # The client is authoritative for opening resource names.
+    check("client cross-check clean", build_datapack.cross_check(), [])
+
+    # Every move a creature references must exist as an animal_moves.json record, and every
+    # animal_moves.json record must be referenced by at least one creature -- both directions,
+    # not just a subset check in one direction.
+    recs, _noinfo, _malformed = parse_creatures.parse()
+    animal, _unparsed, _anmalformed, _mismatches = parse_animal_moves.parse()
+    creature_moves = {m for c in recs for m in c["moves"]}
+    animal_names = {r["name"] for r in animal}
+    check("creature moves all present in animal_moves.json",
+          sorted(creature_moves - animal_names), [])
+    check("animal_moves.json records all referenced by a creature",
+          sorted(animal_names - creature_moves), [])
+
+    # School vocabulary: no stray names in either catalogue, and both actually use all four.
+    player, _pbad = parse_player_moves.parse()
+    moves_schools = build_datapack.schools_used(sum(player.values(), []))
+    animal_schools = build_datapack.schools_used(animal)
+    canon = build_datapack.SCHOOLS
+    check("moves.json schools have no stray names", sorted(moves_schools - canon), [])
+    check("animal_moves.json schools have no stray names", sorted(animal_schools - canon), [])
+    check("moves.json uses all four schools", sorted(canon - moves_schools), [])
+    check("animal_moves.json uses all four schools", sorted(canon - animal_schools), [])
+
+
 def main():
     primitives()
     gear()
     creatures()
     animal_moves()
     player_moves()
+    constants_and_crosscheck()
     print("\nALL CHECKS PASSED" if failures == 0 else "\n%d CHECK(S) FAILED" % failures)
     sys.exit(0 if failures == 0 else 1)
 

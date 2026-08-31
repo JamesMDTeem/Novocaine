@@ -1,0 +1,15 @@
+{
+  "tick_seconds": {"value": 0.06, "status": "confirmed",
+                   "source": "Combat moves wiki; matches Fightview atkc handling"},
+  "opening_exponent": {"value": 3, "status": "disputed",
+                       "source": "wiki states cube root; its worked example computes a fourth root",
+                       "resolve_with": "sparring Experiment A"},
+  "mu_min": {"value": 1.0, "status": "confirmed", "source": "jorb quote on the Combat moves page"},
+  "mu_max": {"value": 1.5, "status": "confirmed", "source": "jorb quote on the Combat moves page"},
+  "mu_curve": {"value": null, "status": "unknown",
+               "resolve_with": "sparring Experiment B"},
+  "agility_cooldown_band": {"value": 0.1, "status": "confirmed",
+                            "source": "Combat moves wiki: at most 10% either way, capping at a factor-2 gap"},
+  "opening_damage_exponent": {"value": 2, "status": "confirmed",
+                              "source": "Fightsess.java damage prediction: openingMul = opening^2"}
+}
