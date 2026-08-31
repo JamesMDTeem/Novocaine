@@ -2,6 +2,7 @@ package haven.automated.combat;
 
 import haven.Client;
 import haven.OptWnd;
+import haven.combat.log.CombatEvent;
 import haven.combat.log.CombatLogWriter;
 
 import java.nio.file.Path;
@@ -61,6 +62,16 @@ public final class CombatRecorder {
         CombatLogWriter w = writer;
         if(w != null)
             w.offer(line);
+    }
+
+    public static void onMove(String actor, String moveRes, double cooldownTicks) {
+        if(!active())
+            return;
+        try {
+            log(CombatEvent.move(now(), actor, moveRes, cooldownTicks));
+        } catch(Exception e) {
+            /* never propagate into the message loop */
+        }
     }
 
     public static synchronized void stop(String outcome) {

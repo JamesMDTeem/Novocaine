@@ -97,6 +97,10 @@ public class Fightview extends Widget {
 	}
 
 	public void use(Indir<Resource> act) {
+	    try {
+		if(act != null && act.get() != null)
+		    haven.automated.combat.CombatRecorder.onMove("foe", act.get().name, 0.0);
+	    } catch(Loading l) {}
 	    lastact = act;
 	    lastuse = Utils.rtime();
 		try {
@@ -257,6 +261,10 @@ public class Fightview extends Widget {
     }
 
     public void use(Indir<Resource> act) {
+	try {
+	    if(act != null && act.get() != null)
+		haven.automated.combat.CombatRecorder.onMove("me", act.get().name, lastMoveCooldown);
+	} catch(Loading l) {}
 	lastact = act;
 	lastuse = Utils.rtime();
 	playCombatSoundEffect(lastact);
@@ -411,6 +419,8 @@ public class Fightview extends Widget {
             Relation rel = getrel(Utils.uiv(args[0]));
 	    rel.remove();
             lsrel.remove(rel);
+	    if(lsrel.isEmpty())
+		haven.automated.combat.CombatRecorder.stop("ended");
 	    if(rel == current) {
             setcur(null);
             if (rel.autogive != null && rel.autogive.state == 1 && ui != null && ui.gui != null) {
@@ -441,6 +451,15 @@ public class Fightview extends Widget {
                 lsrel.remove(rel);
                 lsrel.addFirst(rel);
 		setcur(rel);
+		if(rel != null) {
+		    String foeRes = null;
+		    try {
+			Gob g = ui.sess.glob.oc.getgob(rel.gobid);
+			if((g != null) && (g.getres() != null))
+			    foeRes = g.getres().name;
+		    } catch(Exception e) {}
+		    haven.automated.combat.CombatRecorder.start(Config.playername, rel.gobid, foeRes);
+		}
             } catch(Notfound e) {
 		setcur(null);
 	    }
