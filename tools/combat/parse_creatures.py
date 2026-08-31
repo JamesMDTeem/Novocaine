@@ -25,6 +25,17 @@ OUT = wiki.DATA
 MOVE_RE = re.compile(r"\{\{:([^}|]+)\}\}")
 
 
+def _norm_move(name):
+    """MediaWiki title resolution is case-insensitive on the FIRST character only (the rest
+    is case-sensitive). Some pages transclude moves in lowercase (Lynx: {{:bristle}} instead
+    of {{:Bristle}}); normalise the captured name the same way MediaWiki resolves it, so an
+    exact-string join against the canonical Animal Moves catalogue does not silently miss.
+    Deliberately NOT .title() / .capitalize() -- both would mangle the rest of multi-word
+    names like "Go for the Jugular" or "Raven's Bite"."""
+    name = name.strip()
+    return name[:1].upper() + name[1:] if name else name
+
+
 def _optnum(f, key):
     return wiki.num(f[key]) if key in f else None
 
@@ -54,7 +65,7 @@ def parse():
             "armor": _optnum(f, "armor"),
             "baseq": _optnum(f, "baseq"),
             "deadly": f.get("deadly", "").strip().lower() == "yes",
-            "moves": [m.strip() for m in MOVE_RE.findall(text)],
+            "moves": [_norm_move(m) for m in MOVE_RE.findall(text)],
             "ua": None, "mc": None, "str": None, "agi": None,
         })
     records.sort(key=lambda r: r["name"])

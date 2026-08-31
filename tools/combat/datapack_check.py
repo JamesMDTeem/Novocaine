@@ -91,6 +91,16 @@ def creatures():
     # Only 20 of 81 creature infoboxes carry armour; the rest must be null, not 0.
     with_armor = [c for c in recs if c["armor"] is not None]
     check("creatures with armor field", len(with_armor), 20)
+    # Some pages transclude a move in lowercase (Lynx: {{:bristle}}); MediaWiki resolves that
+    # to the same page as "Bristle" since only the first title character is case-insensitive.
+    # Without first-character normalisation this count is 42, one too many, because "bristle"
+    # and "Bristle" would be counted as distinct moves -- and this would silently break an
+    # exact-string join against the canonical Animal Moves catalogue (41 entries) later.
+    unique_moves = {m for c in recs for m in c["moves"]}
+    check("unique move names across all creatures", len(unique_moves), 41)
+    lynx = [c for c in recs if c["name"] == "Lynx"][0]
+    check("lynx move normalised to Bristle", "Bristle" in lynx["moves"], True)
+    check("lynx move not left lowercase", "bristle" in lynx["moves"], False)
 
 
 def main():
