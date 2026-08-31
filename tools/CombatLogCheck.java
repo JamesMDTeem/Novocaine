@@ -72,9 +72,12 @@ public class CombatLogCheck {
                                 2, 3, 875, 0.5, 0.9, 12.25),
               "{\"ev\":\"state\",\"t\":1000,\"mine\":[5,0,0,0],\"foe\":[0,0,0,9],"
               + "\"myip\":2,\"foeip\":3,\"hp\":875,\"stam\":0.5000,\"energy\":0.9000,\"dist\":12.2500}");
-        check("move",
-              CombatEvent.move(1001L, "me", "paginae/atk/cleave", 80.0),
-              "{\"ev\":\"move\",\"t\":1001,\"actor\":\"me\",\"move\":\"paginae/atk/cleave\",\"cd\":80.0000}");
+        check("move (own, no foe gob)",
+              CombatEvent.move(1001L, "me", "paginae/atk/cleave", 80.0, -1L),
+              "{\"ev\":\"move\",\"t\":1001,\"actor\":\"me\",\"gob\":-1,\"move\":\"paginae/atk/cleave\",\"cd\":80.0000}");
+        check("move (foe, with gob)",
+              CombatEvent.move(1003L, "foe", "paginae/atk/bite", 45.5, 77L),
+              "{\"ev\":\"move\",\"t\":1003,\"actor\":\"foe\",\"gob\":77,\"move\":\"paginae/atk/bite\",\"cd\":45.5000}");
         check("damage",
               CombatEvent.damage(1002L, 55L, "ARM", 37),
               "{\"ev\":\"dmg\",\"t\":1002,\"gob\":55,\"ch\":\"ARM\",\"v\":37}");

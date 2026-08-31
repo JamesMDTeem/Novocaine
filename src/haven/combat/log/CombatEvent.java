@@ -29,11 +29,12 @@ public final class CombatEvent {
                .end());
     }
 
-    public static String move(long t, String actor, String moveRes, double cooldownTicks) {
+    public static String move(long t, String actor, String moveRes, double cooldownTicks, long gobId) {
         return(new JsonObj()
                .put("ev", "move")
                .put("t", t)
                .put("actor", actor)
+               .put("gob", gobId)
                .put("move", moveRes)
                .put("cd", cooldownTicks)
                .end());

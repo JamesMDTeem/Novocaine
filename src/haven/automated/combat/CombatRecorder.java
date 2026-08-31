@@ -64,11 +64,11 @@ public final class CombatRecorder {
             w.offer(line);
     }
 
-    public static void onMove(String actor, String moveRes, double cooldownTicks) {
+    public static void onMove(String actor, String moveRes, double cooldownTicks, long gobId) {
         if(!active())
             return;
         try {
-            log(CombatEvent.move(now(), actor, moveRes, cooldownTicks));
+            log(CombatEvent.move(now(), actor, moveRes, cooldownTicks, gobId));
         } catch(Exception e) {
             /* never propagate into the message loop */
         }

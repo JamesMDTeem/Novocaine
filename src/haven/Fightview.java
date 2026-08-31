@@ -99,7 +99,7 @@ public class Fightview extends Widget {
 	public void use(Indir<Resource> act) {
 	    try {
 		if(act != null && act.get() != null)
-		    haven.automated.combat.CombatRecorder.onMove("foe", act.get().name, 0.0);
+		    haven.automated.combat.CombatRecorder.onMove("foe", act.get().name, 0.0, gobid);
 	    } catch(Loading l) {}
 	    lastact = act;
 	    lastuse = Utils.rtime();
@@ -263,7 +263,7 @@ public class Fightview extends Widget {
     public void use(Indir<Resource> act) {
 	try {
 	    if(act != null && act.get() != null)
-		haven.automated.combat.CombatRecorder.onMove("me", act.get().name, lastMoveCooldown);
+		haven.automated.combat.CombatRecorder.onMove("me", act.get().name, lastMoveCooldown, -1);
 	} catch(Loading l) {}
 	lastact = act;
 	lastuse = Utils.rtime();
@@ -389,6 +389,11 @@ public class Fightview extends Widget {
 	}
     }
 
+    public void destroy() {
+	haven.automated.combat.CombatRecorder.stop("teardown");
+	super.destroy();
+    }
+
     public static class Notfound extends RuntimeException {
         public final long id;
 
@@ -412,8 +417,18 @@ public class Fightview extends Widget {
 	    rel.give(Utils.iv(args[1]));
 	    rel.ip = Utils.iv(args[2]);
 	    rel.oip = Utils.iv(args[3]);
+	    boolean firstFoe = lsrel.isEmpty();
             lsrel.addFirst(rel);
 	    updrel();
+	    if(firstFoe) {
+		String foeRes = null;
+		try {
+		    Gob g = ui.sess.glob.oc.getgob(rel.gobid);
+		    if((g != null) && (g.getres() != null))
+			foeRes = g.getres().name;
+		} catch(Exception e) {}
+		haven.automated.combat.CombatRecorder.start(Config.playername, rel.gobid, foeRes);
+	    }
             return;
         } else if(msg == "del") {
             Relation rel = getrel(Utils.uiv(args[0]));
@@ -451,15 +466,6 @@ public class Fightview extends Widget {
                 lsrel.remove(rel);
                 lsrel.addFirst(rel);
 		setcur(rel);
-		if(rel != null) {
-		    String foeRes = null;
-		    try {
-			Gob g = ui.sess.glob.oc.getgob(rel.gobid);
-			if((g != null) && (g.getres() != null))
-			    foeRes = g.getres().name;
-		    } catch(Exception e) {}
-		    haven.automated.combat.CombatRecorder.start(Config.playername, rel.gobid, foeRes);
-		}
             } catch(Notfound e) {
 		setcur(null);
 	    }
