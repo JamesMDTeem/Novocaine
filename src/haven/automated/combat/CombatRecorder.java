@@ -100,7 +100,7 @@ public final class CombatRecorder {
     }
 
     public static void sample(Openings mine, Openings foe, int myIp, int foeIp,
-                              int hp, double stam, double energy, double dist) {
+                              int hp, double stam, double energy, double dist, long gobId) {
         if(!active())
             return;
         try {
@@ -111,12 +111,14 @@ public final class CombatRecorder {
              * re-engage. During that withdrawal openings/IP/HP are all static, so without distance
              * in the key no sample would fire at all and the range trace - the signal that
              * actually explains the animal's behaviour - would be unrecoverable. The emitted event
-             * still carries full-precision dist; only the gate key is quantised. */
-            String key = mine.toJson() + foe.toJson() + myIp + ":" + foeIp + ":" + hp + ":" + (long)dist;
+             * still carries full-precision dist; only the gate key is quantised. The foe gob id is
+             * also part of the key so a target switch always emits a fresh sample instead of being
+             * suppressed as an unchanged state. */
+            String key = gobId + ":" + mine.toJson() + foe.toJson() + myIp + ":" + foeIp + ":" + hp + ":" + (long)dist;
             if(key.equals(lastSample))
                 return;
             lastSample = key;
-            log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist));
+            log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId));
         } catch(Exception e) {
             /* never propagate into tick() */
         }

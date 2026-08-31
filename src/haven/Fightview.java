@@ -392,7 +392,8 @@ public class Fightview extends Widget {
 			(hpm == null) ? -1 : (int)Math.round(hpm.a * 10000),
 			(stm == null) ? -1 : stm.a,
 			(enm == null) ? -1 : enm.a,
-			dist);
+			dist,
+			rel.gobid);
 		} catch(Exception e) {
 		    /* telemetry must never break the tick loop */
 		}

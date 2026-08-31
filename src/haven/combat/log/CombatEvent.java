@@ -14,10 +14,11 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     public static String state(long t, Openings mine, Openings foe, int myIp, int foeIp,
-                               int hp, double stam, double energy, double dist) {
+                               int hp, double stam, double energy, double dist, long gobId) {
         return(new JsonObj()
                .put("ev", "state")
                .put("t", t)
+               .put("gob", gobId)
                .raw("mine", mine.toJson())
                .raw("foe", foe.toJson())
                .put("myip", myIp)

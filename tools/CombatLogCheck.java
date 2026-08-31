@@ -69,9 +69,14 @@ public class CombatLogCheck {
         System.out.println("\nCombatEvent");
         check("state",
               CombatEvent.state(1000L, new Openings(5, 0, 0, 0), new Openings(0, 0, 0, 9),
-                                2, 3, 875, 0.5, 0.9, 12.25),
-              "{\"ev\":\"state\",\"t\":1000,\"mine\":[5,0,0,0],\"foe\":[0,0,0,9],"
+                                2, 3, 875, 0.5, 0.9, 12.25, 42L),
+              "{\"ev\":\"state\",\"t\":1000,\"gob\":42,\"mine\":[5,0,0,0],\"foe\":[0,0,0,9],"
               + "\"myip\":2,\"foeip\":3,\"hp\":875,\"stam\":0.5000,\"energy\":0.9000,\"dist\":12.2500}");
+        check("state (different foe gob)",
+              CombatEvent.state(1004L, new Openings(0, 3, 0, 0), new Openings(1, 0, 2, 0),
+                                4, 1, 620, 0.75, 0.2, 6.5, 99L),
+              "{\"ev\":\"state\",\"t\":1004,\"gob\":99,\"mine\":[0,3,0,0],\"foe\":[1,0,2,0],"
+              + "\"myip\":4,\"foeip\":1,\"hp\":620,\"stam\":0.7500,\"energy\":0.2000,\"dist\":6.5000}");
         check("move (own, no foe gob)",
               CombatEvent.move(1001L, "me", "paginae/atk/cleave", 80.0, -1L),
               "{\"ev\":\"move\",\"t\":1001,\"actor\":\"me\",\"gob\":-1,\"move\":\"paginae/atk/cleave\",\"cd\":80.0000}");
