@@ -1,0 +1,49 @@
+{{infobox creature
+| xobst = {{#expr:(3/11)-(-3/11)round6}}
+| yobst = {{#expr:(7/11)-(-7/11)round6}}
+|
+| baseq = 40
+|
+| armor = 50
+| hp    = 1000
+| fhp   = 300
+|
+| loot  = [[Cave Louse Chitin]] x2-5, [[Cave Louse Leg]] x0-5, [[Intestines]] x2, [[Entrails]] x3, [[Cave Louse Meat]] x4
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Cave lice are large and tough creatures lurking in caves. They normally spawn in groups of around 5 to 12, though group sizes may be as low as 1 depending on how tight the space around the spawn area is.
+
+==Combat==
+Cave Louse are slow but have very strength, agility, and HP. They hit for 50 damage with only 30% openings and like to spam Fell Scratch and Bear Down to gain IP, and then use Bristle.
+
+Due to their numbers, massive HP and high damage fighting them should be avoided at all costs as their only loot is chitin, which has no use other than [[Scarab Talisman]], and high quality chitin is easily acquired from ant or bee dungeons.
+
+===Behaviour===
+
+Cave lice are rarely aggressive, though initiating an attack on a louse will also get the attention of other nearby lice. Due to their numbers, a group of them can knock a player out very quickly. Lice start to flee at 300 HP, but may return to combat immediately if other lice continue to be attacked.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:5</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Bear Down}} {{:Sudden Charge}} {{:Blood & Gore}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+Use extreme caution when fighting a group of lice. It is recommended to fight them using a horse. They can destroy [[Mine Support|mine supports]] in their path, possibly triggering a [[Mining#Safety_and_Cave-ins|cave-in]].
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be broken for [[Cave Louse Chitin]] and [[Cave Louse Leg]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Cave Louse Meat]].<br>
+
+==Notes==
+
+*To get to their target, lice will destroy any objects obstructing their path with lower than 25 [[Glossary#Soak|soak]].
+
+{{Game Development}}

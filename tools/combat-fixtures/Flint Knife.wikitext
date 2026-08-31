@@ -1,0 +1,17 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Stone Working]], [[requires::The Will to Power]]
+| objectsreq = [[requires::Flint]], [[requires::Block of Wood]], [[requires::String]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 40
+| armorpen   = 15
+| range      = 1
+}}
+
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Fli$nt Knife}}

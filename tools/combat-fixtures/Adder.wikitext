@@ -1,0 +1,53 @@
+{{infobox creature
+| ptext1 = Nasty creepy crawlies with a fairly vicious venom.
+|
+| xobst  = {{#expr:(1/11)-(-1/11)round6}}
+| yobst  = {{#expr:(2/11)-(-2/11)round6}}
+|
+| baseq  = 10
+|
+| hp     = 70
+| fhp    = 30
+|
+| loot   = [[Dead Adder]]: [[Raw Adder]], [[Fresh Adder Hide]], [[Adder Fang]], [[Adder Skeleton]], [[Entrails]], [[Tiny Brain]], [[Adder's Lying Tongue]] (10%)
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+[[Adder|Adders]] are snakes, occasionally seen in certain [[Forest|Forests]] and common in [[Mountain|Mountains]]. Their fangs carry potent venom, so keep a wide berth. Fighting them like other animals is almost pointless. (See Strategy section below.) Their fangs and skins can be made into useful equipment like a [[Snakeskin Belt|belt]], [[Snakeskin Boots|boots]], [[Snakeskin Stripes|lacing]], an [[Adderfang Amulet|amulet]], and their fangs can make an [[Snake Juice|antivenom]] if you do end up getting nommed on.
+
+=Combat=
+
+==Behaviour==
+They are highly aggressive critters. They'll attack unprovoked. 
+
+===Combat Moves===
+{| class="wikitable mw-collapsible mw-collapsed"
+! '''Attacks'''
+! '''Restorations'''
+|-
+|
+{{:Serpent's Strike}}{{:Chomp}}
+|
+{{:Careful Approach}}
+|}
+
+==Strategy==
+Adders can enter [[Water Terrain|Shallow Water]] freely. ''(They used to be unable to do so. Out-of-date guides may tell you to simply flee into the water.)''
+
+Unlike other small creatures, adders cannot be trampled by [[Horse]]s. They can be trampled by [[Cart]]s, however, so drag a Cart with or without a Horse to kill them easily.
+
+There's no real reason to try to fight them, just use the method above. If you for some reason want to or got attacked by one at an inopportune time, use a lot of yellow Sweeping defenses, as their yellow attack Serpent's Strike is what applies the venom. Keep your yellow opening low at all times or suffer the consequences.
+
+==Venom==
+[[Adder Bite]] wounds, increases in severity over time and come with a hefty -15 STR per wound. Eventually, the wound will start healing and dissipate. There is a chance that [[Nerve Damage]] occurs with adder bites, and it is speculated that it's either from the frequency or amount of adder bites a character has.<sup>[//www.havenandhearth.com/forum/viewtopic.php?f=39&t=57510&start=50#p739374]</sup>
+
+[[Snake Juice]] is an effective treatment.
+
+=Notes=
+*You can use a wild or tame horse to pull a cart around mountains and rack up many adders easily. There's still risk of drawing the ire of other mountain denizens, or simply having an unfortunate mishap with the adders themselves. You may want to use an "alt" character to collect snakes. Cart method does Not apply Survival hardcap.
+*1x2 [[Fresh Adder Hide]]s yields only 1x1 [[Adder Hide]]s, making it less efficient as generic hide. However they have specific use in [[Adderfang Amulet]] and [[Snakeskin Belt]].
+*Adders go after small animals like rabbit or squirrel. Which can be used to get them off your tail. (''Saw a snake getting killed by a Wood Grouse Cock, but don't know who started the fight'')
+*As of update Whitemetal Rain you can now be a Snake Eater and walk through the rain and feast on a tree frog.
+
+{{Game Development|1}}

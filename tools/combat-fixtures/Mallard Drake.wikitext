@@ -1,0 +1,40 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Mallard]]: [[Mallard Feather]], [[Entrails]], [[Mallard Meat]], [[Bone Material]] or [[Wishbone]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+It's a male duck. Its female counterpart is the [[Mallard Hen]]. Can be domesticated into [[Duck]]s.
+
+==Hunting==
+Mallards almost excursively hang around in water. Anything dropped into a body of water used to instantly disappear, but (since "Fluid Incline" -patch) items now persist in [[Water Terrain|shallow water]] until they de-spawn, same as if dropped on dry land. This makes it viable to hunt mallards with a Sling. (Requires [[Archery]] to unlock 'Shoot' and 3 [[Marksmanship]] to deal enough damage to one-shot.
+
+==Catching==
+
+It can be necessary to catch Mallards alive, to complete a [[Credo]] or to acquire domesticated waterfowl.
+
+"Catching" as a quest objective means you need to grab a live one (from the wild, releasing already grabbed one won't work.) Fisherman and Hunter, very least, are relevant Credos.
+
+You simply right-click a mallard to chase it, but their speed and flight means a strategy is required:
+
+====Horseback====
+Horse is faster than a mallard at (3 or 4?) speed. Approach the mallard from a direction that doesn't make it flee to deep water.
+
+====Snekkja====
+Faster than a mallard. Opposite to the horse, startle them into open waters. Snekkja might "squash" a mallard if you directly ram into one and it has no time to startle and flee.
+
+====Friend====
+Another player can startle a mallard into your direction, they don't seem to have the ability to change direction like some other birds (or prioritize fleeing the first player who startled them.)
+
+====Solo====
+There might be a trial-and-error way to catch a mallard with just a rowboat. Get as close as possible before it flees, then right-click. May require frame/pixel perfect execution or just dumb luck.
+
+{{Game Development}}

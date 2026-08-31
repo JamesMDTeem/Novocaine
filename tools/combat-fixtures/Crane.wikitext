@@ -1,0 +1,37 @@
+{{infobox creature
+| xobst = 0.37
+| yobst = 0.891
+| xitem      = 1
+| yitem      = 4
+| baseq = 30
+|
+| hp    = 150
+| fhp   = ~100
+|
+| loot  = [[Dead Crane]]: [[Crane Feather]] x2, [[Entrails]] x2, [[Tiny Brain]], [[Bones]] x2, [[Crane Meat]] x2
+}}
+
+Cranes are creatures found in [[Swamp]], [[Fen]] or [[Bog]]. If you kill them, you can pick them up like a small animal that was trampled. [[Dead Crane]] takes 1x1 slots in the inventory.
+
+
+==Combat==
+
+===Behaviour===
+
+Passive.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Feather Flurry}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+Roughly slightly stronger than [[Swan]]. With 35-40 combat stats spamming punch or sideswipe works fine. You'll need to be on a horse to catch it when it flees, unless you deal a high enough damage move to kill it before it begins to.
+
+{{Game Development}}

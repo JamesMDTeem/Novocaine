@@ -1,0 +1,48 @@
+{{infobox creature
+| xitem = 2
+| yitem = 2
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp = 10
+| fhp = 10
+|
+| loot = [[Dead Chicken]]: [[Chicken Feather]] x3, [[Raw Chicken Meat]], [[Entrails]], [[Tiny Brain]], [[Bone Material]] or [[Wishbone]](Rarely)
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+Cocks are the male equivalent of [[Hen]]s, and are required for producing fertilized [[Chicken Egg]]s.
+
+==How to Acquire==
+
+There are two possibilities:
+
+*Wild flocks of Chicken may randomly spawn on [[Grassland]], and [[Moor]]. Right-clicking a Cock will cause your character to chase it. Once caught, it will appear in your inventory.
+
+*Build a [[Chicken Coop]] for breeding Chickens and Cocks. When a [[Chick]] is placed inside a Chicken Coop with sufficient fodder, it will turn into a [[Hen]] or Cock.
+
+==How to Use==
+
+*[[Animal Husbandry]] enables you to breed Chickens. A [[Chicken Coop]], a Cock and a [[Hen]] are required to produce fertile [[Chicken Egg]]s, that will hatch into [[Chick]]s.
+
+*A Cock can be slaughtered via the "Wring Its Neck" option which will convert it into a [[Dead Chicken|Dead Cock]].
+
+*If killed via combat, it will leave a [[Dead Chicken|Dead Cock]] as its corpse.
+
+*Cocks require food, and if left in your inventory/storage will die, leaving a low quality [[Dead Chicken|Dead Cock]].  This will occur within 24 hours
+
+==Notes==
+
+*If you do not have a [[Chicken Coop]] or fodder, you can keep your chickens alive longer than 3 days by releasing them and catching them again.
+
+==Gallery==
+
+<gallery widths=160px heights=120px>
+Cockingame.png
+</gallery>
+
+{{Game Development}}

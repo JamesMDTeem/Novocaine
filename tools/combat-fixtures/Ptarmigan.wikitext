@@ -1,0 +1,26 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = unknown
+| fhp   = unknown
+|
+| loot  = [[Dead Ptarmigan]]: [[Ptarmigan Feather]], [[Entrails]], [[Ptarmigan meat]], [[Wishbone]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Ptarmigan are one of the flying creatures, including [[Mallard Hen|Mallards]], [[Magpie]]s and [[Swan]]s, that can be picked up by right-clicking them.
+
+== How to Acquire ==
+
+Ptarmigan may be found on any [[Mountain]].
+
+==Gallery==
+<gallery>
+Ptarmiganingame.jpg | {{PAGENAME}} (<i>in{{Nbh}}game</i>).
+</gallery>
+
+{{Game Development}}

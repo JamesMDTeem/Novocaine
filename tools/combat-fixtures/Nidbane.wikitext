@@ -1,0 +1,51 @@
+{{infobox creature
+| terrain = (''All'')
+|
+| hp = ?
+| fhp = None
+|
+| loot = None
+}}
+
+Nidbanes are vengeful spirits which can be sent against criminals in attempts to '''kill''' them.
+
+Craft and place a [[Nidbane Fetter]] on a [[Runed Dolmen]], using a scent -- Vandalism, Battery, Murder and Theft are applicable -- left by the criminal you wish to target and a Nidbane will appear and begin seeking out said target.
+
+Nidbanes scale in power with their target, the quality of their fetter, and the severity of the crime. The Nidbane has the target's stats, times a factor per crime -- 
+
+0.3 for theft
+0.5 for vandalism
+0.6 for battery 
+1.2 for murder 
+
+-- softcapped by the Fetter's qualities.
+
+It is important to note that Nidbanes can only be summoned using scents left by characters possessing the [[Rage]] skill. If you anticipate using a Nidbane in the future, it is advisable to purchase Rage on all your characters.
+
+As of the "Bench Crab" update dated January 26, 2017, character-specific [[Scent|scents]] from characters that do not have [[Rage]] cannot be used to summon a Nidbane. This is an attempt to fix nidbane spam between various PvP factions to stop players from throwing unskilled alts out to be killed by the other side just to get more murder scents.
+
+== Behavior ==
+
+[[File:Nidbane_Waiting_Target_For_Online.png]]
+
+The Nidbanes move slowly at first but pick up speed gradually. As soon as the spirit overtakes its quarry, it will initiate combat. If the target is not logged in when the Nidbane reaches it, the spirit will lie in waiting for when the target does log in (or until it has waited for 24 RL hours, whichever occurs the sooner), and then attack.
+
+Nidbanes are never blocked by objects, but rather move relentlessly toward their target until they reach it.
+
+If a Nidbane is destroyed, its Fetter will shatter to indicate this. Otherwise if a Nidbane kills its target, it will instantly return the skull of its target to the Runed Dolmen.
+
+At any given time there can be one Nidbane per crime scent. A Nidbane persists even if the scent it is tracking expires. Once let loose the Nidbane always needs to be either destroyed in combat, or undone at the Runed Dolmen, by removing the Fetter from the Dolmen.
+
+Nidbanes can be summoned inside (e.g. a house or a cave level) and will take approximately 12 to 24 hour to begin slowly moving. Starting as per when it has been summoned. Note: this is a margin of time in between which has been observed they do start moving.
+
+== Combat Behavior ==
+
+*If Nidbane has arrived at his target and is attacked by anyone else he will instantly attack his target that he was sent towards for vengeance, even if the target is offline.
+*Nidbane attacks ignore armor.
+*Anyone may attack a Nidbane as it moves across the map, but perhaps best be careful with that, what with Nidbanes being of unknown power and lethal, and whatnot. Nidbanes will themselves only attack their intended target.
+
+== Notes ==
+
+* It's seems that Nidebane can sometimes lose visual model.
+
+{{Game Development}}

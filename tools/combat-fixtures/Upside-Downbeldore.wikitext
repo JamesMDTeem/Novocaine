@@ -1,0 +1,27 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = [[requires::Dumbledore]]
+| specific     = Bug, Bait
+|
+| lpgain       = 3000
+| studytime    = 9:07
+| mentalweight = 26
+| expdrain     = 7
+}}
+
+[[Category:Creatures]]
+
+'''{{PAGENAME}}''' is a very rare, superior version of an [[Dumbledore]].
+This is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+==How to Acquire==
+
+See [[Dumbledore]].
+
+==Notes==
+*Since the regular Dumbledore - and Upside-Downbeldore are separate entities, you can study both at once, for a hefty gain!
+*Can be Flip Over to become a regular Dumbledore.
+{{Game Development}}

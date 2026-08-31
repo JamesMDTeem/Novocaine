@@ -1,0 +1,53 @@
+{{infobox creature
+| xitem = 2
+| yitem = 2
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Chicken]]: [[Chicken Feather]] x3, [[Raw Chicken Meat]], [[Entrails]], [[Tiny Brain]], [[Bone Material]] or [[Wishbone]](Rarely)
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+==How to Acquire/Use (Domestic)==
+
+*Build a [[chicken coop]] for breeding hens and cocks. When a [[chick]] is placed inside a chicken coop with sufficient fodder, it will turn into a Hen or [[Cock]].
+
+*[[Animal Husbandry]] enables you to breed chickens. A chicken coop, a cock and a hen are required to produce fertile [[Chicken Egg]], that will hatch into chicks.
+
+*Hens require food to produce eggs.
+*Hens hold outside claimed areas require food to not degrade and die. Inside claimed area's they will go dormant.
+
+*A hen can be slaughtered via the "Wring Its Neck" option to convert it into a [[Dead Chicken|Dead Hen]].
+
+==How to Acquire/Use (Wild)==
+
+* You need [[Hunting]] skill to pick up wild chickens.
+
+*For the longest time, Chickens stood placid while you picked them up one by one. However after {{Patch|Chicken Run}} the entire flock will start fleeing from you when you come close enough, meaning you can usually only catch one or two by sprinting.
+
+*You can try spooking the flock into a direction of a [[Fox]] in hopes that it will start chasing and killing the chickens (they will stay on the ground to be picked up. '''Caution:''' Fox can aggro you for stealing it's prey. [[Badger]] and [[Wolverine]] can also aggro and kill chickens {{verify|Do Badger/Wolverine aggro/kill chickens}} but they can also aggro you!
+
+*You can use a [[Clover]] to temporarily tame a [[Wildhorse]] to ride and easily trample chickens.
+
+*If killed via combat, it will leave a [[Dead Chicken|Dead Hen]] as its corpse. This means using a [[sling]] might be viable way to kill some wild chickens.
+
+*A hen can be slaughtered via the "Wring Its Neck" option to convert it into a [[Dead Chicken|Dead Hen]].
+
+==Notes==
+
+*Hunting wild chickens is viable source of [[Feather]]s, [[Entrails]], and [[Bone]]s in the early game. Pick them up, wring their necks, return to your camp/base when inventory is full and pluck/clean them there. All products except meat can be [[stockpile]]d for easy storage.
+
+==Gallery==
+
+<gallery widths=160px heights=120px>
+Heningame.png
+</gallery>
+
+{{Game Development}}

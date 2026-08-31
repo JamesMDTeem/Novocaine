@@ -1,0 +1,47 @@
+{{verify|loot:Bone Material (<i>should not be a general item name</i>)}}
+{{infobox creature
+| caption = Kid &raquo; Nanny &raquo; Billy
+|
+| xobst   = {{#expr:(2/11)-(-2/11)round6}}
+| yobst   = {{#expr:(4/11)-(-3/11)round6}}
+|
+| terrain = (''None, Domestic Areas'')
+|
+| baseq   = 10
+|
+| hp      = 200
+| fhp     = 100
+|
+| loot    = [[Goat's Milk]], [[Mohair]], [[Fresh Goat Hide]], [[Intestines]] x2, [[Entrails]] x2, [[Tiny Brain]],  [[Raw Chevon]] x2, [[Bone Material]] x6, [[Billygoat Horn]] x0-2 from males, [[Suckling's Maw]] from youngs.
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+Goats are tamed from [[Wildgoat]]s. See [[Taming]] for more information.
+
+Goats produce [[Mohair]], a type of wool, but they can only 'store' a maximum of 3 Mohair at a time. Since they also produce [[Goat's Milk|milk]], raising Goats can be a direct alternative to herding [[Sheep]]. Of the two, Goats are somewhat more difficult to obtain.
+
+==Animals==
+
+*A billy is a male goat. They can impregnate female goats.
+*An nanny is a female goat. After being impregnated they give birth to a kid in 4.5 days, and then start producing milk, of which they can store a maximum of 25L.
+*A kid is an adolescent goat. They will grow into either a billy or an nanny in 10 real life days. In addition to the regular products, kids give you a [[Suckling's Maw]] when butchered.
+
+===Wool===
+
+Goats produce [[Mohair]] at a rate of 1 every 8 hours RL at Wool Quantity 5. The speed of growth can be increased by breeding for Wool Quantity. The quality can be increased by breeding for Wool Quality.
+
+See [[Animal Qualities]] for more information.
+
+==Tips & Tricks==
+
+It is recommended to separate billy goats from nanny goats, to ensure only the highest quality billy impregnates the nanny goats. Also, lower quality billy goats may be castrated to stop them from mating. Castration produces one [[bollocks|Bollock]].
+
+==Gallery==
+
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Chevon]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

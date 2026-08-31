@@ -1,0 +1,47 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(4/11)-(-3/11)round6}}
+|
+| baseq = 30
+|
+| hp    = 300
+| fhp   = 200
+|
+| loot  = [[Fresh Wildgoat Hide]], [[Intestines]] OR [[Entrails]] x1-4, [[Small Brain]], [[Raw Wildgoat]] x4, [[Bone Material]] x4, [[Wildgoat Horn]] x0-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Wildgoat can be tamed to become a [[Goat]]. See [[Taming|this page]] for more info about taming wild animals.
+You can feed them a clover. When doing so you gain the ability to leash them with a rope and, if desired, take either 1 wool from them, whose quality will be equal to the clover's.
+
+Spawn in herds, weaker but slightly more agile than a [[Boar]].
+
+==Combat==
+
+===Behaviour===
+
+Wildgoats are extremely aggressive, and will likely engage in combat with nearby players. Aggro all as one.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:5</small>
+! Restorations<small>:3</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Low Horn Swipe}} {{:Mule Kick}} {{:Thunder Over}} {{:Bear Down}} {{:Blood & Gore}}
+| {{:Rampant Rage}} {{:Careful Approach}} {{:Bristle}}
+|}
+
+===Strategy===
+
+Not strong creatures, the problem is numbers, to avoid massfight - aggro and kill goats one by one away from herd.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Wildgoat]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Wildgoat Horn]] and [[Bone Material]].<br>
+
+[[File:Wildgoatherd.jpg|200px]] {{PAGENAME}} Herd.
+
+{{Game Development}}

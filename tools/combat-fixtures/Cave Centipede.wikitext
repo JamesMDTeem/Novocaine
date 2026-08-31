@@ -1,0 +1,30 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = {{none}}
+| producedby   = [[requires::Dust Pile]]
+| specific     = Bug
+|
+| lpgain       = 1400
+| studytime    = 5:28
+| mentalweight = 12
+| expdrain     = 12
+}}
+
+[[Category:Creatures]]
+
+The '''{{PAGENAME}}''' is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+== How to Acquire ==
+
+Can be found in the [[Cave]].
+Picked by Right-Сlick.
+
+==Gallery==
+
+<gallery>
+Cave Centipede 2.jpg | Roaming Cave Centipede.
+</gallery>
+
+{{Game Development}}

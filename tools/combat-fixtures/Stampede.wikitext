@@ -1,0 +1,11 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Stampede.png]]
+| Stampede
+|
+*Attack type: {{RoB color|sweeping|Sweeping}}, {{RoB color|oppressive|Oppressive}}
+*Openings: {{RoB color|oppressive| Cornered}}
+*IP -4
+*Very '''HIGH''' damage.
+|}</onlyinclude>

@@ -1,0 +1,42 @@
+{{infobox creature
+| image   = file:Tame Reindeer.png
+| caption = Bull &raquo; Calf &raquo; Cow
+|
+| xobst   = {{#expr:(2/11)-(-2/11)round6}}
+| yobst   = {{#expr:(12/11)-(-6/11)round6}}
+|
+| terrain = (''None, Domestic Areas'')
+|
+| hp      = (<i>unknown</i>)
+|
+| loot    = [[Raw Tame Reindeer]] x5, [[Animal Fat]] x1, [[Intestines]] x1,  [[Entrails]] x1, [[Tiny Brain]], [[Fresh Tame Reindeer Hide]] x2, [[Bone Material]] x6, [[Reindeer Antlers]] from bulls, [[Suckling's Maw]] from calfs.
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+{{PAGENAME}} are tamed [[Reindeer]]s. See [[Taming]] for more information about taming. 
+
+==Animals==
+*'''Bull''' is a male reindeer that can impregnate(indicated through a mating animation) female reindeer. Also can pull [[Sleigh]]s.
+*'''Cow''' is a female reindeer. After being impregnated, they give birth to a calf(can have twins and triples on usual occasions) in 4.5 days. Also can pull [[Sleigh]]s.
+*'''Calf''' is an adolescent reindeer . They will grow either into a bock or doe(indicated in the top left side of their respective information windows) in 10 days. In addition to regular products, calves give you a [[Suckling's Maw]] when butchered.
+
+==Stats & Quality==
+*The quality of an animal or any of stat is the one of parent quality\stat, +20 -> -5, and then [[softcap|softcapped]] by the breeding quality of the male involved and quality of eaten [[Swill]].
+**See [[Animal Qualities]] for more information.
+===Meat===
+*Adult reindeer produce 5 [[Raw Tame Reindeer]] at Meat Quantity 10, modified by Meat Quantity stat. 
+*Meat quality equal to reindeer's quality and modified by Meat Quality stat.
+===Hide===
+*Reindeer produce 2 [[Tame Reindeer Hide]] and quality equal to reindeer's quality, modified by Hide Quality stat.
+
+==Tips & Tricks==
+*It is a good idea to seperate your bulls from your cows , to ensure that you can select the highest quality buck to mate with your does when you want calves. You can additionally castrate your lower quality bulls to stop them from breeding and to acquire [[Bollock]].
+
+==Gallery==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead Deer. Can be skinned for [[Fresh Tame Reindeer Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned Deer. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Tame Reindeer]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] Deer Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

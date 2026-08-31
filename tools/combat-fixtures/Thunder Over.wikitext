@@ -1,0 +1,13 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Thunder Over
+  | rowspan = 2
+  | inf1 = Green
+  | inf2 = Red
+  | opn1 = Green
+  | opn2 = Red
+  | note = IP+2
+  }}<nowiki />
+</onlyinclude>

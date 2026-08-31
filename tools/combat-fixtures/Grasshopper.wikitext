@@ -1,0 +1,26 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+| xobst      = {{#expr:(1/11)-(0/11)round6}}
+| yobst      = {{#expr:(1/11)-(0/11)round6}}
+|
+| skillreq   = [[requires::Hunting]]
+| producedby = Hand
+| specific   = Bug, Bait
+}}
+
+[[Category:Creatures]]
+[[Category:Tmp_xyobj(neg)]]
+
+Grasshoppers are insects that may be used as [[Bait]], or cooked to make [[Roasthopper]].
+
+== How to Acquire ==
+
+Grasshoppers may be found in the [[Grassland]] during the morning and dusk, as well as during the night on occasion.
+
+==Gallery==
+<gallery>
+Asshopper.png | {{PAGENAME}} (<i>in{{Nbh}}game</i>).
+</gallery>
+
+{{Game Development}}

@@ -1,0 +1,9 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Dark Heart Move.png]]
+| Dark Heart 
+|
+*IP +1
+*Low cd, can be spammed to gain large amount of IP.
+|}</onlyinclude>

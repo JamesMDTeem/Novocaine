@@ -1,0 +1,24 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+| producedby   = Hand
+| specific     = Bug, Bait
+|
+| lpgain       = 400
+| studytime    = 3:00
+| mentalweight = 3
+| expdrain     = 3
+}}
+
+[[Category:Creatures]]
+
+'''Ladybugs''' are a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+==How to Acquire==
+
+You can acquire a ladybug by right-clicking them while they are flying around, just like [[Silkmoth]]s. They appear in [[Grassland]]s, [[Forest Terrain]]s, [[Moor]]s and possibly other areas.
+
+{{Game Development}}

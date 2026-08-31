@@ -1,0 +1,33 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 30
+| fhp   = 30
+|
+| loot  = [[Dead Rabbit]]: [[Fresh Rabbit Fur]], [[Entrails]], [[Tiny Brain]], [[Raw Rabbit]] x2, [[Bone Material]], [[Lucky Rabbit's Foot]](Very Rarely)
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+A live male rabbit. You can Right-click on it when in your inventory, then select "Wring Neck" to kill it and receive a [[Dead Rabbit]].
+
+==How to Acquire==
+
+{{PAGENAME}}s can be found in both deciduous and pine forests.
+
+To catch a rabbit, Right-click on it to pick it up from the ground. You can attempt to Right-click its icon on the minimap as well. It is recommended to be next to the rabbit before doing so as Right-clicking it will cause it to flee from you at running speed. If you have space for a 2x2 item, the rabbit will appear in your inventory upon catching it. 
+
+==How to Use==
+
+*[[Animal Husbandry|Animal Husbandry]] enables you to breed rabbits. A [[Rabbit Hutch]], a [[Rabbit Doe]] and a [[{{PAGENAME}}]] are required to breed rabbits.
+*If killed via combat, it will leave a [[Dead Rabbit|Dead Rabbit]] as its corpse.
+*Rabbits hold outside claimed areas require food to not degrade and die. Inside claimed area's they will go dormant.
+
+==Gallery==
+
+[[File:Family1.png|200px|thumb|left|A rabbit family.]]
+[[File:Rabbitsmmo.png|thumb|This is the ideal [[Rabbit Hutch|Hutch]] setup. Babies will be born on the side of the adult hutch and should be moved to a hutch for babies to give them space to grow. They breed fast, so make sure to check on them every day!]]

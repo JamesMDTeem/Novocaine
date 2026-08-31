@@ -1,0 +1,35 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{none}}
+| objectsreq = {{none}}
+| specific   = Bug, Bait
+|
+| medicine=
+}}
+
+[[Category:Creatures]]
+[[Category:Equipment]]
+
+Ticks will attach themselves to your Hearthling in their Equipment slots as they traverse forest debris and suck their blood, decreasing [[Hitpoints|SHP]] slowly and dealing [[Tick'd Off]] wound. The amount of SHP drained depends on the quality of the Tick, with q10 Tick doing 1 SHP damage and q40 doing 3 damage. Each time a Tick drains your SHP, its quality will increase or decrease by 1 towards your [[Constitution]] (base, unaffected by equipment or wounds.)
+
+Once a Tick becomes bloated it will no longer have any effect on you, but Bloated Ticks will return to normal after sitting in your inventory or a container for eight real hours. 
+
+
+==How to Acquire==
+
+Walk around or stand in a [[Thicket]] biome with empty equipment slots, and Ticks will soon attach themselves to you.
+
+==Warning==
+
+If your SHP goes down to 0 you will then become unconscious and will continue to lose HHP slowly until the ticks become bloated. Be careful not to let them drain all of your SHP, it is not likely, but your character could die if not given the chance to pick them off while conscious.
+
+Also keep in mind that when mass-transferring ticks from your inventory to some container, the surplus ticks will be equipped on empty body slots when the container becomes full.
+
+==Notes==
+
+*When bloated, ticks can be used as fishing bait.
+*If you have 0 SHP, Ticks will deal HHP damage to you.
+
+{{Game Development}}

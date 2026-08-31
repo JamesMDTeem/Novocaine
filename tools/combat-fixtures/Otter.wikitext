@@ -1,0 +1,47 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(2/11)-(-2/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 100
+| fhp   = 60
+|
+| loot  = [[Fresh Otter Hide]], [[Intestines]] 0-1x, [[Entrails]], [[Small Brain]], [[Raw Otter]] 2x, [[Bone Material]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Otters are carnivorous mammals, and distant relatives to [[Badger|Badgers]] and [[Wolverine]]s.
+
+=Combat=
+
+==Behaviour==
+Passive until you attack them.
+
+===Combat Moves===
+{| class="wikitable mw-collapsible mw-collapsed"
+! '''Attacks'''
+! '''Restorations'''
+|-
+|
+{{:Fell Scratch}}{{:Chomp}}
+|
+{{:Bristle}}
+|}
+
+==Strategy==
+They are extremely weak, with less health and lower damage output than a fox. Simply punching them will suffice.
+
+=In-Game Example(s)=
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Entrails]] and [[Raw Otter]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+=Notes=
+
+*Spawn in groups ranging sizes 1-5 in shallow water.
+*Very easy to fight, weaker than a fox.
+*Run with 3rd speed on water, and 2nd on land.
+
+{{Game Development|1}}

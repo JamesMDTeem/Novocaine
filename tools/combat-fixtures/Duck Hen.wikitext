@@ -1,0 +1,28 @@
+{{infobox creature
+| xitem = 2
+| yitem = 2
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Duck Hen]]: [[Duck Feather]], [[Raw Duck Meat]], [[Entrails]], [[Tiny Brain]], [[Bone Material]] or [[Wishbone]](Rarely)
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+==How to Acquire/Use (Domestic)==
+
+*Build a [[chicken coop]] for breeding hens and drakes. When a [[Mallard]]s drake and hen is placed inside a chicken coop with sufficient fodder, it will occasionally lay [[Duck Egg]] that will hutch into [[Duckling]] and then turn into a [[Duck Hen]] or [[Duck Drake]].
+
+*[[Animal Husbandry]] enables you to breed ducks.
+
+*Hens require food to produce eggs.
+*Hens hold outside claimed areas require food to not degrade and die. Inside claimed area's they will go dormant.
+
+
+{{Game Development}}

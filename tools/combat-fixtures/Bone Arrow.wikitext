@@ -1,0 +1,26 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Archery]]
+| objectsreq = [[requires::Bone Material]], [[requires::String]], [[requires::Branch]] x2
+| producedby = Hand
+|
+| basedmg    = 15
+| armorpen   = 10
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|B$one Arrow}}
+
+A {{PAGENAME}} is ammunition for the [[Hunter's Bow]]. You can keep up to 30 arrows in a [[Hunter's Quiver]] by picking up the arrows and right clicking them onto the quiver, or opening the quiver inventory by right-clicking on the quiver.
+
+''See also [[Stone Arrow]] and [[Metal Arrow]]''
+
+==Notes==
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Bone+ _{q}String+ _{q}Branch}{3}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Survival}</math>.
+
+* [[{{PAGENAME}}]] damage at any given quality is <math>15*\sqrt{Quality_{Arrow}/10}</math>
+
+[[Bear Tooth|Bear teeth]], [[Deer Antlers|deer antlers]], [[Boar Tusk|boar tusks]], and [[Wishbone|wishbones]] all count as [[Bone Material|bone material]], so make sure you don't accidently use them up if you need them for other recipes.
+
+{{Game Development}}

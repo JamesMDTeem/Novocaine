@@ -1,0 +1,55 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Hunting]], [[requires::Mining]]
+| objectsreq = [[requires::Boreworm Beak]], [[requires::String]] x2
+| producedby = Hand
+|
+| slot       = 1R 
+| ahp        = 60
+| absorbX    = 2
+| absorbY    = 1
+|
+| statSTR    = 2
+|
+| statMAS    = 5
+}}
+
+[[Category:Clothing]]
+[[Category:Facewear]]
+[[Category:Rings And Accessories]]
+
+{{GM|$Craft|$Clothes & Equipment|$Hats & Headwear|$Boreworm Mask}}
+
+Boreworm Mask is unique armorpiece that can equipped onto 1R slot. Giving good bonus at [[Strength]] and [[Masonry]]
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Boreworm Beak+ _{q}String}{2}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity *Survival}</math>
+
+* Bonuses = <math>_{q10}Bonuses*\sqrt{\frac{_{q}Mask }{10}}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 7.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|-
+|Strength
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Masonry
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|}
+
+{{Game Development}}

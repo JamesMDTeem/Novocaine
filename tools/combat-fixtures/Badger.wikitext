@@ -1,0 +1,59 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(5/11)-(-5/11)round6}}
+|
+| baseq = 30
+|
+| hp    = 250
+| fhp   = 150
+|
+| loot  = [[Fresh Badger Hide]], [[Intestines]] x2, [[Entrails]], [[Brain]], [[Raw Badger]] x4, [[Bone Material]] x3, [[Scent Gland]] x0-1
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Badgers are short-legged omnivores, distant relative to [[Otter]] and [[Wolverine]]. Found wandering in forests as well as within [[Badger Sett]]s.
+
+Badger Setts are mini-dungeons inhabited by Badgers as well as large mini-boss badgers named [[Denmother]]s.
+
+==Combat==
+
+===Behaviour===
+
+Very aggressive in a certain radius to everyone, including other animals.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Sudden Charge}} {{:Badgering}}
+| {{:Careful Approach}}
+|}
+
+===Strategy===
+
+Badgers are slightly tougher than [[Fox]]es, between them and [[Wolverine]]s. The easiest method to kill one, is to use a sling on the badger while on the other side of a large cliff. Make sure the cliff is wide enough so that the badger will not pathfind around it. Then, after hitting the badger until it runs from low health, break combat with it. Let the badger run away, then find it again. Make sure the move speed is set to sprint, and finish the badger off with unarmed or a few more hits of the sling.
+
+If you can take on a badger you can also take on an [[otter]], [[stoat]] and [[beaver]], and probably a [[mouflon]] (though be ready for their very fast attacks), but you'll want to strengthen up a bit before you take on bigger game like [[Aurochsen]] or [[Boar]]s due to high HP and armor.
+
+If a badger and a fox fight you can help out the fox and kill the badger as the badger is a bit tougher, and then kill the wounded fox afterwards if you want.
+
+==In-Game Example(s)==
+
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Badger]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+==Notes==
+
+*If a [[Badger]] and a fox are in close proximity, they will initiate combat and begin to fight one another. Invariably, the Badger will kill the fox. This can be useful for newbies to get an early source of fox materials. It is also possible to initiate combat with the badger while it is fighting the fox, if you start the fight early enough you and the fox together can quite easily kill it.
+
+==Gallery==
+
+<gallery>
+Badger Sett.jpg | [[Badger Sett]] entrance.
+</gallery>
+
+{{Game Development}}

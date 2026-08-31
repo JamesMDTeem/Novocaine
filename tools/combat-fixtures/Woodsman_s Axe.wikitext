@@ -1,0 +1,42 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]], [[requires::Woodsmanship]], [[requires::Forestry]]
+| objectsreq = [[requires::Bar of Hard Metal]] x2, [[requires::Bar of Tin]], [[requires::Oak Tree|Block of Oak]] x2
+| producedby = [[requires::Smithy's Hammer]] and [[requires::Anvil]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 55
+| armorpen   = 20
+| range      = 1.2
+| cskill     = Melee Combat
+}}
+
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Tools|$Axes|W$oodsman's Axe}}
+
+==Primary Function==
+
+The '''Woodsman's Axe''' is the fastest axe for chopping [[tree]]s. It consumes only a single stamina bar per tree and gives the same yield from chopping blocks per log as [[Metal Axe]].
+
+==As Sharp Tool==
+
+{{PAGENAME}} can be used for actions like shearing a [[sheep]], skinning and butchering a [[Creatures|creature]]. Applies its quality as [[softcap]] to the [[wool]], [[intestines]], [[entrails]], and raw meats.
+
+==As Weapon==
+
+Counts as "Any edged weapon" which allows use of certain [[Combat moves]] like Chop and Sideswipe. 20% Armor Penetration
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Tin+ _{q}Hard Metal+ _{q}Oak Block}{3} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 55*\sqrt{\sqrt{Strength*{q}Axe}/10}</math>.
+
+{{Game Development}}

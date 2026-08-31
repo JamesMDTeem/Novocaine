@@ -1,0 +1,241 @@
+{{infobox metaobj
+| skillreq   = [[requires::Mining]]
+| objectsreq = {{#ask:[[Specific::Stone]]}}
+| producedby = [[requires::Boulder]], [[requires::Ore smelter]], [[requires::Cave]], [[requires::Mine Hole]]
+| specific   = Sculptable Material
+|
+| basedmg    = 0
+}}
+
+[[Category:Crafting and Building Material]]
+[[Category:GenericTypePage]]
+
+{{Specific-property-text|i2=3}}
+
+{{PAGENAME}}s are used in the making of various items, as well as in the construction of many objects. <!-- Also, chipped stones are used as ammunition for [[Sling]]s. -->
+
+For information on laying stone and the resultant colors of paved tiles, see: [[Paving]].
+
+==How to Acquire==
+
+Right-click a [[boulder]] and hit "Chip Stone". <!-- Furthermore, you can dig in mountain terrain to get stones. -->
+
+All stone types can essentially be found as surface boulders, but these are "while supplies last" as they currently do not respawn. Depending on how close you are to a populated area like the spawn zone, you may have to rely on caves for your stone, which also hold all different stone types in veins. This requires the [[Mining]] [[Skills|skill]].
+
+Most stones have a [[quality]] of 10, but higher quality stones can be found by <!-- digging in mountains, -->mining underground and as a byproduct of smelting quality [[slag]].
+
+==Notes==
+
+*Stone can be used to [[Paving|Pave]].
+*Digging out a [[cellar]] produces a number of boulders of the stone type that is directly below in the cave layer. This could be used to get an infinite supply of a certain stone type by destroying and rebuilding the house. Cellars built on ore do not produce ore boulders and instead will find the closest stone type.
+*Ore also counts as stone and can thus be stacked into existing stone stockpiles and be used in recipes or construction.
+*Ore that fails to smelt into metal will always become slag.
+*Most buildings and objects that require stone will have texture of stone(s) used.
+*Crafts that require specific type of stone exist. Notable ones include [[Bone Clay]](feldspar), [[Flint & Steel]] (flint), [[Fine Feather Brooch]] (Schist and Granite), [[Tafl Board]] (dolomite and basalt), [[Oak Spire]] (quartz) and [[Golden Cat]] ([[Cat Gold]] and Porphyry)
+
+==List of stones==
+
+[[File:Wiki-gears.png|20px]] [//i.imgur.com/7YMesVU.jpeg Rendered mineable cave-walls(60)] (''imgur shared for the moment'')<!--imgur:png->jpeg-->
+<!--
+-- Note: might be helpful to add native hardness later.
+-- Quote from jorb: "Rocks have a native hardness, modified by a variance field in the map."
+-->
+
+<div style=display:inline-table>
+{| class="wikitable" style="text-align:center;"
+ ! colspan="2" | Stone || Vein
+ |-
+ | [[File:Alabaster.png|frameless|64px|link=]]
+ | [[Alabaster]]
+ | [[File:Vein-Alabaster.png|200px]]
+ |-
+ | [[File:Apatite.png|frameless|64px|link=]]
+ | [[Apatite]]
+ | [[File:Vein-Apatite.jpeg|200px]]
+ |-
+ | [[File:Arkose.png|frameless|64px|link=]]
+ | [[Arkose]]
+ | [[File:Vein-Arkose.png|200px]]
+ |-
+ | [[File:Basalt.png|frameless|64px|link=]]
+ | [[Basalt]]
+ | [[File:Vein-Basalt.png|200px]]
+ |-
+ | [[File:Bat Rock.png|frameless|64px|link=]]
+ | [[Bat Rock]]
+ | [[File:Vein-Bat Rock.png|200px]]
+ |-
+ | [[File:Black Coal.png|frameless|64px|link=]]
+ | [[Black Coal]]
+ | [[File:Vein-Black Coal.png|200px]]
+ |-
+ | [[File:Breccia.png|frameless|64px|link=]]
+ | [[Breccia]]
+ | [[File:Vein-Breccia.png|200px]]
+ |-
+ | [[File:Cat Gold.png|frameless|64px|link=]]
+ | [[Cat Gold]]
+ | (Sometimes received when mining<br>or chipping any stone/ore source.)
+ |-
+ | [[File:Chert.png|frameless|64px|link=]]
+ | [[Chert]]
+ | [[File:Vein-Chert.jpg|200px]]
+ |-
+ | [[File:Diabase.png|frameless|64px|link=]]
+ | [[Diabase]]
+ | [[File:Vein-Diabase.png|200px]]
+ |-
+ | [[File:Diorite.png|frameless|64px|link=]]
+ | [[Diorite]]
+ | [[File:Vein-Diorite.png|200px]]
+ |-
+ | [[File:Dolomite.png|frameless|64px|link=]]
+ | [[Dolomite]]
+ | [[File:Vein-Dolomite.png|200px]]
+ |-
+ | [[File:Eclogite.png|frameless|64px|link=]]
+ | [[Eclogite]]
+ | [[File:Vein-Eclogite.jpg|200px]]
+ |-
+ | [[File:Feldspar.png|frameless|64px|link=]]
+ | [[Feldspar]]
+ | [[File:Vein-Feldspar.png|200px]]
+ |-
+ | [[File:Flint.png|frameless|64px|link=]]
+ | [[Flint]]
+ | [[File:Vein-Flint.png|200px]]
+ |-
+ | [[File:Fluorospar.png|frameless|64px|link=]]
+ | [[Fluorospar]]
+ | [[File:Vein-Fluorospar.png|200px]]
+ |-
+ | [[File:Gabbro.png|frameless|64px|link=]]
+ | [[Gabbro]]
+ | [[File:Vein-Gabbro.jpg|200px]]
+ |-
+ | [[File:Gneiss.png|frameless|64px|link=]]
+ | [[Gneiss]]
+ | [[File:Vein-Gneiss.png|200px]]
+ |-
+ | [[File:Granite.png|frameless|64px|link=]]
+ | [[Granite]]
+ | [[File:Vein-Granite.png|200px]]
+ |-
+ | [[File:Graywacke.png|frameless|64px|link=]]
+ | [[Graywacke]]
+ | [[File:Graywacke-vein.jpg|200px]]
+ |-
+ | [[File:Greenschist.png|frameless|64px|link=]]
+ | [[Greenschist]]
+ | [[File:Vein-Greenschist.jpg|200px]]
+ |-
+ | [[File:Hornblende.png|frameless|64px|link=]]
+ | [[Hornblende]]
+ | [[File:Vein-Hornblende.png|200px]]
+ |-
+ | [[File:Jasper.png|32px|link=]]
+ | [[Jasper]]
+ | [[File:Vein-Jasper.jpg|200px]]
+ |-
+ | [[File:Korund.png|frameless|64px|link=]]
+ | [[Korund]]
+ | [[File:Vein-Korund.png|200px]]
+ |}
+</div>
+<div style=display:inline-table>
+{| class="wikitable" style="text-align:center;"
+ ! colspan="2" | Stone || Vein
+ |-
+ | [[File:Kyanite.png|frameless|64px|link=]]
+ | [[Kyanite]]
+ | [[File:Vein-Kyanite.png|200px]]
+ |-
+ | [[File:Limestone.png|frameless|64px|link=]]
+ | [[Limestone]]
+ | [[File:Vein-Limestone.png|200px]]
+ |-
+ | [[File:Marble.png|frameless|64px|link=]]
+ | [[Marble]]
+ | [[File:Vein-Marble.png|200px]]
+ |-
+ | [[File:Mica.png|frameless|64px|link=]]
+ | [[Mica]]
+ | [[File:Mica_vein.jpg|200px]]
+ |-
+ | [[File:Microlite.png|frameless|64px|link=]]
+ | [[Microlite]]
+ | [[File:Vein-Microlite.png|200px]]
+ |-
+ | [[File:Olivine.png|frameless|64px|link=]]
+ | [[Olivine]]
+ | [[File:Vein-Olivine.png|200px]]
+ |-
+ | [[File:Orthoclase.png|frameless|64px|link=]]
+ | [[Orthoclase]]
+ | [[File:Vein-Orthoclase.png|200px]]
+ |-
+ | [[File:Pegmatite.png|frameless|64px|link=]]
+ | [[Pegmatite]]
+ | [[File:Vein-Pegmatite.jpg|200px]]
+ |-
+ | [[File:Porphyry.png|frameless|64px|link=]]
+ | [[Porphyry]]
+ | [[File:Vein-Porphyry.png|200px]]
+ |-
+ | [[File:Pumice.png|frameless|64px|link=]]
+ | [[Pumice]]
+ | [[File:Vein-Pumice.jpg|200px]]
+ |-
+ | [[File:Quartz.png|frameless|64px|link=]]
+ | [[Quartz]]
+ | [[File:Vein-Quartz.png|200px]]
+ |-
+ | [[File:Rhyolite.png|frameless|64px|link=]]
+ | [[Rhyolite]]
+ | [[File:Vein-Rhyolite.jpg|200px]]
+ |-
+ | [[File:Rock Salt.png|frameless|64px|link=]]
+ | [[Rock Salt]]
+ | [[File:Vein-Rock_Salt.png|200px]]
+ |-
+ | [[File:Sandstone.png|frameless|64px|link=]]
+ | [[Sandstone]]
+ | [[File:Vein-Sandstone.png|200px]]
+ |-
+ | [[File:Schist.png|frameless|64px|link=]]
+ | [[Schist]]
+ | [[File:Vein-Schist.png|200px]]
+ |-
+ | [[File:Slag.png|frameless|64px|link=]]
+ | [[Slag]]
+ | (Byproduct of smelting.<br> As such not available in other forms.)
+ |-
+ | [[File:Serpentine.png|frameless|64px|link=]]
+ | [[Serpentine]]
+ | [[File:Vein-Serpentine.jpg|200px]]
+ |-
+ | [[File:Slate.png|frameless|64px|link=]]
+ | [[Slate]]
+ | [[File:Vein-Slate.png|200px]]
+ |-
+ | [[File:Soapstone.png|frameless|64px|link=]]
+ | [[Soapstone]]
+ | [[File:Vein-Soapstone.png|200px]]
+ |-
+ | [[File:Sodalite.png|frameless|64px|link=]]
+ | [[Sodalite]]
+ | [[File:Vein-Sodalite.png|200px]]
+ |-
+ | [[File:Sunstone.png|frameless|64px|link=]]
+ | [[Sunstone]]
+ | [[File:Vein-Sunstone.jpg|200px]]
+ |-
+ | [[File:Zincspar.png|frameless|64px|link=]]
+ | [[Zincspar]]
+ | [[File:Zincspar-vein.jpg|200px]]
+ |-
+ | [[File:Shard of Conch.png|frameless|64px|link=]]
+ | [[Shard of Conch]]
+ | [[File:Chasm Conch Butchered.png|200px]]
+ |}
+</div>

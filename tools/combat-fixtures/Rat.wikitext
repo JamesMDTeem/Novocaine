@@ -1,0 +1,26 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+| xobst      = {{#expr:(1/11)-(0/11)round6}}
+| yobst      = {{#expr:(1/11)-(0/11)round6}}
+|
+| skillreq   = {{none}}
+| producedby = Hand
+}}
+
+[[Category:Creatures]]
+[[Category:Tmp_xyobj(neg)]]
+
+:''Not to be confused with [[Caverat]].''
+
+Rats can be made into [[Rat on a Stick]], which provides an easy source of FEPs and Energy early-on.
+
+Rats do not have any byproducts, cannot be wrung by their neck, and can be picked up by right-clicking them.
+
+Rats are one of the only creatures, including [[Chicken]]s, [[Rabbit]]s and [[Frog]]s, that can be fought without them fighting back. This makes them good in helping novices figure out the [[Combat moves|Combat System]].
+
+On surface, rats can only be found at forest biomes during night . Semi-common in [[Cave]]s. Rarely, "Monster in the Cellar" [[Lore]] triggers when entering a [[Cellar]] and one spawns there.
+
+Cellar rats seem to scale with your [[Survival]] and seem to have [[survival]] hardcap applied to them if you have less than 10 survival.
+
+{{Game Development}}

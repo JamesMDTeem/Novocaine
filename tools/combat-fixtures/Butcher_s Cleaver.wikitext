@@ -1,0 +1,40 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Fine Butchery]]
+| objectsreq = [[requires::Bar of Wrought Iron]] x2, [[requires::Block of Wood]], [[requires::Bone Glue]]
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 45
+| armorpen   = 20
+| range      = 1
+| cskill     = Melee Combat
+}}
+
+[[Category:Home Decor]]
+[[Category:Mining Tools]]
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Tools|$Axes|$Butcher's Cleaver}}
+
+Armor penetration: 20 %
+
+Increases butchering speed. And also speeds up "slaughter" action
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}WroughtIron+ _{q}Wood+ _{q}Glue}{3} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 45*\sqrt{\sqrt{Strength*{q}Cleaver}/10}</math>.
+
+==Notes==
+
+Since it is considered an "axe" you can use it to chop trees and split woodblocks. You can even [[Mining|mine]] with it!
+
+Block yield from logs seems to be equivalent to [[Stone Axe]], not [[Metal Axe|Metal]] or [[Woodsman's Axe|Woodman's]].
+
+{{Game Development}}

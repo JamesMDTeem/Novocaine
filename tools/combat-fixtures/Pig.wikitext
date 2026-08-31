@@ -1,0 +1,38 @@
+{{infobox creature
+| caption = Hog &raquo; Sow &raquo; Piglet
+|
+| xobst   = {{#expr:(3/11)-(-3/11)round6}}
+| yobst   = {{#expr:(6/11)-(-6/11)round6}}
+|
+| terrain = (''None, Domestic Areas'')
+|
+| baseq   = 10
+|
+| hp      = 150
+|
+| loot    = [[Raw Pork]] x4, [[Animal Fat]] x1-3, [[Entrails]] x2, [[Intestines]], [[Tiny Brain]], [[Fresh Pigskin]] x2, [[Bone Material]] x4, [[Boar Tusk]] x1-2 (only Hogs)
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+Pigs are domesticated creatures, kept usually for their low upkeep requirements and for [[Pork]]'s uses in various recipes, they are also a good source of [[Animal Fat]]. In order to obtain pigs you must [[Taming|tame]] [[Boar]]s. Pigs can be lead around by equipping a [[Rope]], right-clicking on the animal, and selecting 'Leash'. While leading a pig it will occasionally sniff up [[Black Truffles|Black]], [[White Truffles|White]] or [[Blue Truffles]]. These act similarly to [[Black Pepper|Pepper]].
+ 
+Pigs can have twins or triplets on rare occasions.
+
+==Hog==
+
+Hogs give 1-2 Boar Tusk when their bones are collected, sows do not.
+
+==Advantages To Pigs==
+
+Pigs give [[Raw Pork]] instead of Boar Meat. Pork has all of the same applications as Boar meat and can also where Boar Meat cannot be. Full grown pigs also give two [[Fresh Pigskin]], a 2 tile hide with no known use other than generic hide recipes.
+
+See [[Animal Qualities]] for more information.
+
+==Gallery==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh Pigskin]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Pork]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

@@ -1,0 +1,56 @@
+{{infobox creature
+| xobst = {{#expr:(4/11)-(-4/11)round6}}
+| yobst = {{#expr:(10/11)-(-7/11)round6}}
+|
+| baseq = 30
+|
+| armor = 10
+| hp    = 200
+| fhp   = ~150
+|
+| loot  = [[Fresh Red Deer Hide]], [[Intestines]] x2, [[Entrails]] x2, [[Small Brain]], [[Animal Fat]], [[Raw Venison]] x10, [[Bone Material]] x4, [[Red Deer Antlers]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Deer are hoofed ruminant mammals related to [[Reindeer]].
+Deer are found in groups ranging in sizes of 1-5 on any of the forest terrains. They run at a running speed of 3, which means a hearthling will be unable to outrun them barefoot on forest terrain, should they chase you after being aggroed.
+Deer should not be confused with [[Moose]] which are quite a bit stronger. Deer are a brighter brown color and are quite a bit less bulky than [[Moose]].
+
+==Combat==
+
+===Behaviour===
+
+Deer are passive until you aggro them. They're quite quick, so you should fight on horseback or prepare to brawl at a standstill. They spawn in packs of 3 to 5 but do not fight in packs like in Legacy, they'll take you on by themselves. 
+
+Their attacks aren't particularly tough and they have low health and armor, however they have an exceptionally high Agility stat and will easily overwhelm you with sheer attack rate, skyrocketing your openings to deal moderate damage at high speeds if you have lower Agility. They attack faster than a horse and on par with a Lynx. 
+
+At 40-60 AGI you should be able to counteract theirs and kill them easily with a cheap sword or decent Tinker axe and Quick Barrage/Full Circle or Uppercut/Sideswipe.  
+
+Bringing some basic armor like a shield and a leather chestplate would be wise as it lets you tank the knicks of damage they'll deal allowing you to stand and deliver without much worry about your openings.   
+
+If you have lower Agility but enough firepower to make it through their armor, fight on a horse and retreat to recover your openings often. Their Sudden Charge can be brutal. 
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:4</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Low Horn Swipe}} {{:Mule Kick}} {{:Sudden Charge}} {{:Heavy Antlers}}
+| {{:Careful Approach}} {{:Bristle}}
+|}
+
+===Strategy===
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Venison]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Deer Skeleton. Can be collected for [[Red Deer Antlers]] and [[Bone Material]].<br>
+
+==Notes==
+
+*Deer fight solo, but can be found in herds.
+*Deer will destroy anything that obstructs their path if you are on a tile they can get to. If the object in their way has a lower [[Soak]] than 25, it will be destroyed. This essentially means that only [[Palisade]]s and [[Brickwall]]s can stop a Deer from chasing you, although it is also viable to flee onto deep water, since they cannot traverse deep water tiles.
+
+{{Game Development}}

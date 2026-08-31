@@ -1,0 +1,37 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Tanning]]
+| objectsreq = [[requires::Leather]] x4, [[requires::Silk Thread]] x4, [[requires::Hardened Leather]] x2
+| producedby = Hand
+|
+| egildpct   = [[egildpct::20%-45%]]
+| egildatt   = [[egildatt::Agility]], [[egildatt::Stealth]]
+|
+| slot       = 11R
+| ahp        = 58
+| absorbX    = 3
+| absorbY    = 3
+}}
+
+[[Category:Boots & Shoes]]
+[[Category:Home Decor]]
+[[Category:Ranger's Set]]
+
+{{GM|$Craft|$Clothes & Equipment|$Boots & Shoes|$Ranger's Boots}}
+
+A pair of boots that form part of the [[:Category:Ranger's Set|Ranger's set]] of clothing. 
+
+
+Quality formula: <math> (avgQLeather) + (avgQHardenedLeather) + (avgQSilkThread) \over 3 </math> and is [[Softcap|softcapped]] by <math>\sqrt{sewing*dex}</math>.
+
+==Gilding==
+
+Gilding is based on agility and stealth, with a 20% to 45% chance.
+
+==Gallery==
+
+<gallery>
+Rangerset.png | A player wearing ranger's boots.
+</gallery>

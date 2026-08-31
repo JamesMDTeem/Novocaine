@@ -1,0 +1,48 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Archery]]
+| objectsreq = [[requires::Leather]] x1, [[requires::Tree Bough]] x2, [[requires::String]] x8
+| producedby = Hand
+|
+| slot       = 6L and 6R
+| basedmg    = 30
+| cskill     = [[requires::Marksmanship]]
+| ammoreq    = [[requires::Stone Arrow]], [[requires::Bone Arrow]], [[requires::Metal Arrow]]
+}}
+
+[[Category:Home Decor]]
+[[Category:Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Hunter's $Bow}}
+
+A Hunter's Bow, is a medium ranged weapon. It fires ([[Stone Arrow|Stone]], [[Bone Arrow|Bone]] or [[Metal Arrow|Metal Arrows]]) which affect the damage dealt. A player aims the bow at a location, when the player releases their arrow, it will fly in that trajectory.
+
+The [[Ranger's Bow]] is a significant upgrade to the Hunter's bow.
+
+==Damage==
+
+Stone Arrows have a base damage of 10. Bone Arrows have a base damage of 15. Metal Arrows have a base damage of 20.
+
+The arrows have 10%, 15%, and 20% armor penetration respectively.
+
+==Quality==
+
+When crafting, the qualities of a bow are softcapped by <math>\sqrt[3]{Dexterity*Carpentry*Marksmanship}</math>.
+
+
+Damage scales with Marksmanship skill and bow quality using the following formula: <math>Damage = (Bow Base Damage)*\sqrt{\sqrt{Marksmanship *{q}Bow}/10}+_{base}Arrow Damage*\sqrt{_{q}Arrow/10}\Big)</math>.
+
+==Notes==
+
+* One can fire through open gates.
+* One can not fight or aim a bow while carrying things aloft.
+
+==Gallery==
+
+<gallery>
+Hunter's Bow - (on wall).png | A hunter's bow used as a wall decoration.
+</gallery>
+
+{{Game Development}}

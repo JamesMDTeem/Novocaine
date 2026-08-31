@@ -1,0 +1,8 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Overwhelm.png]]
+| Overwhelm
+|
+*Reduces: {{RoB color|striking| Off Balance}}, {{RoB color|sweeping| Reeling}}, {{RoB color|oppressive| Cornered}}
+|}</onlyinclude>

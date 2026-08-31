@@ -1,0 +1,76 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Wilderness Survival]]
+| objectsreq = [[requires::Finebone]] x2, [[requires::Bone Material]] x4, [[requires::Hide Strap]] x4, [[requires::Bone Glue]] x2, [[requires::Leather]]
+| producedby = Hand
+|
+| slot       = 10R
+| ahp        = 75
+| absorbX    = 4
+| absorbY    = 5
+|
+| statAGI    = -3
+|
+| statCMC    = 5
+}}
+
+[[Category:Clothing]]
+[[Category:Leg Armor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|B$one Greaves}}
+
+{{PAGENAME}} is a piece of early leg [[:Category:Armor|armor]]. It gives some Melee bonus, making it more valuable than leather pants. It equips to the [[Equipment Screen|equipment slot]] 10R.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{{_{q}Finebone + _{q}Bone Material + _{q}Hide Strap + _{q}Bone Glue} + _{q}Leather}{5}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Carpentry}</math>.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+!Quality
+!Hitpoints
+!Armour Class
+!Skills & Attributes
+|-
+|10
+|?
+|4/5
+| -3 [[Agility]], +5 [[Melee Combat|Melee]]
+|-
+|40
+|?
+|8/10
+| -6 [[Agility]], +10 [[Melee Combat|Melee]]
+|-
+|90
+|?
+|16/20
+| -12 [[Agility]], +20 [[Melee Combat|Melee]]
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 3.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|-
+|Melee Combat
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -3</math>
+|}
+
+{{Game Development}}

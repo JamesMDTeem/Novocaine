@@ -1,0 +1,33 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = {{none}}
+| objectsreq   = [[requires::Unusually Large Hop Cone]], [[requires::Branch]] x4
+|
+| lpgain       = 2000
+| studytime    = 7:17
+| mentalweight = 5
+| expdrain     = 10
+| ccrafted     = yes
+}}
+
+[[Category:Creatures]]
+
+{{GM|$Craft|C$uriosities|$Cone Cow}}
+
+The {{PAGENAME}} is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]]. Interestingly enough, it is alive. If you drop it, it will run at roughly the same speed as an [[Itsy Bitsy Spider]]. Don't drop it outside!
+
+==How to Acquire==
+
+Obtained when crafting a [[Cone Cow]] using an [[Unusually Large Hop Cone]].
+
+==Quality==
+
+A {{PAGENAME}}'s quality is [[softcap|softcap]]ped by the [[Survival]] skill.
+
+==Gallery==
+
+[[File:Hopped.png|200px|thumb|left|A hopped up cone cow, hopping about in a house.]]
+
+{{Game Development}}

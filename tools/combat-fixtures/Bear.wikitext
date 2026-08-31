@@ -1,0 +1,63 @@
+{{infobox creature
+| xobst  = {{#expr:(4/11)-(-4/11)round6}}
+| yobst  = {{#expr:(10/11)-(-10/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 60
+|
+| armor  = 65
+| hp     = 850
+| fhp    = ~500
+|
+| loot   = [[Fresh Bear Hide]] x2, [[Intestines]] x6, [[Entrails]] x4, [[Brain]], [[Animal Fat]], [[Raw Bear]] x20, [[Bone Material]] x12, [[Bear Tooth]] x1-5
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Bears are generally one of the toughest animals you will see in the Hearthlands. They are big, bulky, strong, and faster than they look. They can be seen occasionally wandering in forests. 
+
+Bears are territorial and are likely to attack you if you get too close. They can easily take down a weaker Hearthling in a few swipes of their mighty claws, so you should give them a wide berth. They won't attack other creatures but will get attacked by [[Wolf|Wolves]] and will generally win a fight against them.
+
+Bears have a decent chance to [[execute]] you if they KO you. More specifically they will often smack you once while you're down which will deal 100-150 damage and then leave you alone. If your CON is 100 or more you might survive.
+
+The pelt, teeth and meat have various unique recipes like the [[Bear Cape]], [[Bear Tooth Talisman]] and multiple sausages. 
+
+==Combat==
+
+===Behaviour===
+
+They will attack you if you get close. Very strong with high damage, they can easily kill you if you aren't fit for the task. 
+
+They are very fast and can only be barely outran by sprinting. If you are attacked by one you should look for a grassland or another area where you can sprint. Try to make it to a river or body of water, as they cannot swim. If you are in the middle of a forest there is little to be done.
+
+After receiving roughly 500 damage, bears will briefly flee from you, and then enter a rage mode. In this rage mode, the bear's eyes will light up with fire and the ferocity of the bear will be unmatched.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:6</small>
+! Restorations<small>:3</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Bear Down}} {{:Bear Hug}} {{:Shredding Paw}} {{:Dark Heart Move}}
+| {{:Unstoppable}} {{:Careful Approach}} {{:Bristle}}
+|}
+
+===Strategy===
+
+Bears have very high combat stats and easily shrug off most attacks. Their openings increase slowly so they generally focus on the offense, only restoring themselves when they get high. Due to their 65 armor they're comfortable standing and delivering even when against a blade. 
+
+Most of the time, both your and the bear's strategy will be the same. Increase openings a ridiculous amount and decimate with a massive attack. At 60+ openings bears easily deal 100 damage per attack and throw out hits quickly. In Rage Mode they have a special attack, Bear Hug, which MAXES OUT ALL YOUR OPENINGS. As such they should only be fought in a group where you can shake off its attack onto a friend or with a kiter's advantage IE on horseback or near a cave you can duck into. If on horseback they may aggro and attack your horse while you ride it.
+
+Cleave is really your only option. Quick barrage or take aim until you have a lot of IP, at least 30-50, then continue quick barrages and use Opportunity Knocks to raise their red opening as high as possible. Optionally use Flex, Parry or something similar to increase their blue opening for extra damage. Then give it your all and go all out with Cleave until you've run out of IP or the bear reduced its openings, then kite it and reduce yours and rinse and repeat until dead.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Bear]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bear Tooth]] and [[Bone Material]].<br>
+
+==Notes==
+
+*To get to you, bears will destroy any objects obstructing their path with lower than Soak 25, meaning only [[Palisade]]s and [[Brickwall]]s will stop their blood lust.
+
+{{Game Development}}

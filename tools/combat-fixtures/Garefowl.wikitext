@@ -1,0 +1,49 @@
+{{infobox_creature
+| xitem = unknown <!-- depends on creature type -->
+| yitem = ...
+| xobst = unknown <!-- later -->
+| yobst = ...
+|
+| baseq = 25
+|
+| hp = 85
+| fhp = 40
+|
+| loot = [[Garefowl Feather]] x2-3, [[Entrails]], [[Raw Garefowl]] x1-3, [[Bone Material]] x2, [[Wishbone]]
+}}
+
+Garefowl, also known as Great Auks, are an extinct species of flightless seabird visually similar to modern-day penguins, though not closely related. Spawns in large flocks.
+
+==Combat==
+
+===Behaviour===
+
+Passive until you attack them. Spawn in large flocks, but aggroes individually.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Feather Flurry}}
+| {{:Bristle}}
+|}
+
+
+===Strategy===
+
+Roughly the same as a Fox. With 15-20 combat stats spamming punch or sideswipe works fine. You'll need to be on a horse to catch it when it flees (they are faster inside water), unless you deal a high enough damage move to kill it before it begins to. 
+
+==In-Game Example(s)==
+
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be plucked for [[{{PAGENAME}} Feather]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Plucked {{PAGENAME}}. Can be butchered for, [[Entrails]] and [[Raw {{PAGENAME}}]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]] and [[Wishbone]].<br>
+
+==Trivia==
+The Garefowl, also known as the Great Auk, was the original penguin. When what we now call penguins were discovered, they were mistaken for Garefowl and called garefowl/penguins, despite being an entirely different species that just so happened to be very similar. Due to a volcanic event that took place near a garefowl breeding ground killing many, and the fact they were an endangered species already, the species was left with only a few dozen survivors on an islet named Eldey, where they were killed for their skin and bones to preserve in museums. The last known garefowl was killed protecting its egg by a group of men employed by a merchant seeking its hide. With no garefowl left in the world, the modern penguin stole its name permanently. 
+
+[https://en.wikipedia.org/wiki/Great%20auk Wikipedia article].
+
+{{Game Development}}

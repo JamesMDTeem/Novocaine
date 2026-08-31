@@ -1,0 +1,20 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Hunting]]
+| producedby = Hand
+| specific   = Bug, Bait
+}}
+
+[[Category:Creatures]]
+
+Sand Flea are insects that may be used as [[Bait]], can leave [[Hitpoints|Sand Flea Bites]] when picked up or droped.
+
+== How to Acquire ==
+
+Sand Fleas may be found on the [[Beach]] at any time.
+
+==Gallery==
+
+[[File:Sandflea in-game.png|200px|thumb|left|]]

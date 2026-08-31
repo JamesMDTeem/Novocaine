@@ -1,0 +1,43 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Primitive Tools]]
+| objectsreq = [[requires::Stone]], [[requires::Branch]]
+| producedby = Hand
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 30
+| armorpen   = 10
+| range      = 1
+| cskill     = Melee Combat
+}}
+
+[[Category:Home Decor]]
+[[Category:Mining Tools]]
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Tools|$Axes|$Stone Axe}}
+
+The Stone Axe is an early game tool, commonly the first tool to be crafted. It counts as an "axe" a "sharp tool" and a "weapon."
+
+An axe is required to cut a [[log]] into [[Block of Wood|blocks]]. Different types of logs provide different amounts of blocks, see more [[Tree|here]]. Blocks can also be further split into [[branch]]es. Enables [[Mining]].
+
+Sharp tools enable actions like flaying, butchering, shearing. Quality of skins, raw meats, [[intestines]], and [[entrails]] will be [[Hardcap]]ped by the sharp tool quality.
+
+It increases the speed of destroying objects (+1 damage when destroying.)
+
+==Quality==
+
+The quality of a stone axe is the average of materials used, and is [[Softcap|softcapped]] by [[Intelligence]] and [[Survival]].
+
+Stone axe can be spiralled up by mining better stone and using better stone axes to split better sticks from blocks to create a higher quality axe, then repeating the process until diminishing returns.
+
+==Upgrades==
+
+[[Tinker's Throwing Axe]] has higher mining strength and can be thrown.
+
+[[Metal Axe]], increase yield of [[Block of Wood|blocks]] by + ~25% and increase chopping speed.
+
+[[Woodsman's Axe]] chopping speed is higher than of Metal Axe.

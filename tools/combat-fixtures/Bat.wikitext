@@ -1,0 +1,59 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 15
+|
+| hp    = 90
+| fhp   = 60
+|
+| loot  = [[Dead Bat]]: [[Fresh Bat Hide]], [[Entrails]], [[Tiny Brain]], [[Raw Bat]], [[Bone Material]], [[Bat Wings]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Bats are aggressive flying creatures. <b>They can fly over water and
+their speed is greater than Hearthling's running.</b>
+
+==Combat==
+
+===Behaviour===
+
+They'll attack you if you get get close, and fellow bats in their gang (within a tile or two) will join in. If you're the one to attack only one will fight back. They don't fight with gang members, so you if equip a [[Bat Wing|bat cape]] they'll ignore you unless you attack them.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Wingbeat}} {{:Vampirism}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+Bats can be outrun on Sprint speed so if you anger some just chug a bit and make a dash for a cave exit.
+
+<s>Bat can be killed in one shot from [[Hunter's Bow]] with 10 [[Marksmanship]] skill.
+Find a single bat, target it from ~15 tiles range and approach slowly using Ctrl+LClick.
+Shoot at an appropriate distance, around 4 tiles.</s> - ''No longer true as of the 2020 archery changes.''
+
+It is possible to comfortably kill a bat with 20 [[Unarmed Combat]] and 20 [[Agility]] without taking little damage. Just spam Punch or something similar. Once you have a decent weapon like a Tinker Axe it'll be better to use Quick Barrage and Full Circle or Uppercut and Sideswipe.
+
+They generally just spam a basic green attack and occasionally use Wingbeat which can batter you up a bit if your openings are high and they can bite your neck if your yellow opening gets high which leeches HP from you onto them. They can only use Bristle which requires IP so their defense is lacking and they're easily killed with brute force.
+
+==Notes==
+
+*Bats '''will''' aggro even at crawl speed, although the aggro range is much smaller.
+*Bats will not aggro you while wearing a [[Bat Wing]], making it very useful in navigating caves.
+*Cleaned Bat can be [[Roasting Spit|spit-roasted]] for [[Intelligence]], [[Perception]] and [[Agility]] [[FEP]]'s.
+
+*You can prevent bat spawning by paving the cave tiles.
+*The quality of a dead bat is [[hardcap]]ped by [[Survival]] of the Hearthling who killed it.
+
+==In-Game Example(s)==
+
+[[File:Sleepbat.png]]
+
+{{Game Development}}

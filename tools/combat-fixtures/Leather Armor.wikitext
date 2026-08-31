@@ -1,0 +1,60 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Tanning]], [[requires::Sewing]]
+| objectsreq = [[requires::Leather]] x8, [[requires::String]] x4
+| producedby = Hand
+|
+| slot       = 4R
+| ahp        = 100
+| absorbX    = 4
+| absorbY    = 5
+|
+| statAGI    = -1
+}}
+
+[[Category:Armor]]
+[[Category:Home Decor]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Leather Armor}}
+
+Very basic armor that offers little protection. 
+
+==How to acquire==
+
+#Get [[Leather]] x8 and [[:Category:String|string]] x4.
+#Use recipe from craft menu.
+
+==Quality==
+
+Quality of leather armor = <math>\frac{_{q}Leather+_{q}String}{2}</math> and [[Softcap|softcapped]] by <math>\sqrt{Dexterity * Sewing}</math>
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>{{Quality}} * {10}</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{_{Quality}}{10}} * {4}</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{_{Quality}}{10}} * {5}</math>
+|-
+|Agility Penalty
+|<math>-\sqrt{\frac{Quality}{10}} * 1</math>
+|}
+
+*Agi Penalty rounded to nearest integer
+
+==Gallery==
+
+<gallery>
+Ushankaka.png | A player wearing leather armor.
+Leather Armor - (on wall).png | Leather armor decorating a wall.
+</gallery>

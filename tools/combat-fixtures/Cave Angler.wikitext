@@ -1,0 +1,55 @@
+{{infobox creature
+| xobst  = {{#expr:(6/11)-(-6/11)round6}}
+| yobst  = {{#expr:(12/11)-(-12/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 50
+|
+| armor  = 40
+| hp     = 1200-1800
+| fhp    = 850-1300
+|
+| loot   = [[Fresh Cave Angler Scales]] x4-15, [[Intestines]] x3, [[Entrails]] x4, [[Filet of Cave Angler]] x10, [[Bone Material]] x4, [[Cave Angler Light]], [[Fishy Eyeball]] x0-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Cave Angler is a large aggressive fish lurking in [[Cave]] [[Deep Water]]s.
+Rarely spawn when picking [[Lamp Stalk]].
+
+==Combat==
+
+===Behaviour===
+
+Very aggressive in small radius.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:6</small>
+! Restorations<small>:5</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Bear Down}} {{:Chomp}} {{:Dark Heart Move}} {{:Fell Scratch}} {{:Shredding Paw}} {{:Tail Splash}}
+| {{:Bristle}} {{:Careful Approach}} {{:Dive & Hide}} {{:Rampant Rage}} {{:Unstoppable}}
+|}
+
+===Strategy===
+
+Easy kill with any ranged weapon from ground, they can't reach you.
+
+Carefull for their [[Tail Splash]] attack, it creates large blue openings and can be used up to five tiles away.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be scaled for [[Fresh {{PAGENAME}} Scales]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Scaled {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Cave Angler Light]], [[Fishy Eyeball]] and [[Filet of Cave Angler]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+==Notes==
+
+*[[Lamp Stalk]]s rarely reveal themselves to be [[Cave Angler]]s (even in shallow water).
+*Cave Anglers move faster than a [[Rowboat]].
+*Can't leave water terrain.
+*Not affected by any [[Credos]].
+
+{{Game Development}}

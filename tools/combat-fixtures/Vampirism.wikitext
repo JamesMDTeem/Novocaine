@@ -1,0 +1,11 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Vampirism.png]]
+| Vampirism
+|
+*Attack type: {{RoB color|sweeping|Sweeping}}
+*Openings: {{RoB color|sweeping|Reeling}}
+*Will only use if {{RoB color|sweeping|Reeling}} is above 50%
+*Will heal the bat for a small ammount of HP
+|}</onlyinclude>

@@ -1,0 +1,1036 @@
+<div style="float:right;margin-left:1em;">__TOC__</div>
+== '''Combat''' ==
+For combat moves to be effective, a player must raise either Unarmed Combat or Melee Combat, preferably both. 
+
+Heavy changes to the combat system were made in the update {{Patch|Bumfights}}.
+
+In order to learn a combat move, an animal must be defeated in melee combat. The move learned is based on the animal defeated, but otherwise appears to be random. (Minor note: During the first iteration of combat discoveries, prerequisites to use the move had to be met. As of world 10, this is not the case and you can pick up moves at random. Some players have had issues with getting a move like chop without getting a way to gain initiative points.)
+
+There has been a widespread assumption that you need to have a weapon equipped for a chance to learn melee attacks. Currently (w13) this does '''not''' seem to be the case.
+
+A note on "μ":
+
+Quote from jorb:
+
+"Spending more points on a combat effect increases the efficiency of said combat effect in that school. The meaning of increasing the weight of some particular combat effect is indicated in the descriptive text for that combat effect by a μ-symbol (Mu). The actual value of μ ranges from 1 to 1.5, depending on your weighting. Usually, a higher weight for some particular combat effect will serve to reduce its cooldown, increase its damage, or the like."
+
+
+
+Moves in italics are available for free to hearthling when acquiring 'The Will to Power' skill.
+
+Damage formula may be (confirm?)
+<math>basedmg*movedmg*\sqrt{\sqrt{ql*str}/10}</math>
+
+General formula for determining amount of opening seems to be:
+<math>\sqrt[3]{W_a/W_d} \cdot O_b \cdot (1.0-O_c)</math>
+Where <math>W_a</math> is attack weight, <math>W_d</math> is defense weight, <math>O_b</math> is base opening % from the move, and <math>O_c</math> is the current opening of that type in the target.
+Example:
+A player who has 50 uac, 25% green opening and is in lvl 4 Chin Up defense mode is attacked by a player with 100 uac by level 5 punch.
+Defense weight will be <math>50\cdot1.4</math> and attack weight will be <math>100*0.8*1.5</math>.
+The opening that will be added to the defending player will thus be <math>\sqrt{\sqrt{120/70}} \cdot 15% \cdot (1.0-0.25) \approx 13%</math> and the total opening will be 38%
+
+Some moves can be "used at a distance", meaning you can use them at any time, even when far from your foe, IE fleeing. Moves which cannot be "used at a distance" require you to advance up to your opponent as if you were attacking and touch them before they can be used.
+
+== '''Armor Penetration''' ==
+Quote from Jorb:
+
+"All attacks have been given some amount of armor penetration. The philosophy that we have used is to give more armor penetration to attacks with lower base damages. Unarmed attacks usually have around 30%, and Swords usually around 5%, with axes somewhere inbetween, &c. The game will at some point present this dynamically."
+
+Unarmed attacks are generally the best at damaging through thick armor, but the [[Pickaxe]] uniquely has the highest penetration of all melee weapons letting it tie with unarmed.
+
+See [[:Category:Weapons|Weapons]] for a list of all melee weapons and their armor penetration values.
+
+== '''Cooldown''' ==
+All moves will occur a cooldown before a next move can be used. A given value for cooldowns can be multiplied by 0.06 seconds to find the actual cooldown duration. 
+
+Changing combat deck while already in combat will put you on a 15 seconds cooldown. 
+
+Changing the equipment held in either of the hand slot - no matter if this is even a weapon or not- will occur a 6 seconds cooldown. 
+
+Restorations and Maneuvers (aka changing stances) will all have a cooldown unaffected by stats. 
+
+The cooldown of attacks depends on the agility of the user and the target, the difference can at most make the user his cooldown 10% shorter while making their attacker his cooldown 10% longer when the difference in agility between user and target exceeds a factor 2. 
+
+== '''Moves''' ==
+
+Moves are unique abilites used to give you a special advantage.
+
+{|class="wikitable stickyHeaders c1c" style="text-align: left"
+|- class="sticky"
+!Move
+!Learned from
+!Initiative cost
+!Effect
+!Cooldown
+!Useable at distance
+!Notes
+|- style="visibility:collapse"
+|<span id="Dash" style="position:relative;top:-4em;"/><h3>Dash</h3>
+|
+|-
+|[[File:icon_dash.png|64px]]<br>Dash
+|
+*[[Badger]]
+*[[Bear]]
+*[[Boar]]
+*[[Grey Seal]]
+*[[Moose]]
+*[[Swan]]
+*[[Wild Horse]]
+*[[Wolverine]]
+|Opponents' initiative points: +2
+|Completely removes your slightest opening.
+|80/μ
+|Yes
+|Since it can be used at distance,
+can be used to completely removed all
+of your openings if you make distance 
+between your foe, in exchange for 
+fueling their IP.
+Note that spending more cards on it
+decreases its cooldown, letting you
+clear openings faster.
+|- style="visibility:collapse"
+|<span id="Opportunity Knocks" style="position:relative;top:-4em;"/><h3>Opportunity Knocks</h3>
+|
+|-
+|[[File:icon_oppknock.png|64px]]<br>Opportunity Knocks
+|
+*[[Aurochs]]
+*[[Bear]]
+*[[Boar]]
+*[[Boreworm]]
+*[[Red Deer]]
+*[[Wolverine]]
+*[[Swan]]
+|4
+|Opportunity Knocks increases your opponent's greatest opening by 40%·μ.
+Unarmed stat have no effect on this move, only U points matter.
+|45
+|No
+|Extremely effective in team fights for
+opening an opponent to let an ally
+strike for high damage.
+Note that spending more cards on it
+even further increases the amount
+it opens the greatest opening.
+|- style="visibility:collapse"
+|<span id="Take Aim" style="position:relative;top:-4em;"/><h3>Take Aim</h3>
+|
+|-
+|[[File:icon_takeaim.png|64px]]<br>Take Aim
+|
+*[[Ants]]
+*[[Badger]]
+*[[Beaver]]
+*[[Boar]]
+*[[Fox]]
+*[[Mammoth]]
+*[[Moose]]
+*[[Roe Deer]]
+*[[Walrus]]
+*[[Wildgoat]]
+*[[Wolverine]]
+|0
+|Gives +1 initiative and can be carried out at a distance. 
+The cooldown of Take Aim increases by 20% for each initiative point you have.
+|(30 + IP·2)/μ
+|Yes
+|
+|- style="visibility:collapse"
+|<span id="Think" style="position:relative;top:-4em;"/><h3>Think</h3>
+|
+|-
+|[[File:icon_think.png|64px]]<br>Think
+|
+*[[Aurochs]]
+*[[Bat]]
+*[[Bear]]
+*[[Boar]]
+*[[Fox]]
+*[[Grey Seal]]
+*[[Otter]]
+*[[Reindeer]]
+*[[Swan]]
+*[[Wildgoat]]
+*[[Wild Horse]]
+
+
+|0+4
+|Gives +2 initiative and can be carried out at a distance. 
+The cooldown of Think increases by 20% for each initiative point you have.
+|40/μ
+|Yes
+|
+|}
+
+== '''Restorations''' ==
+
+Restorations will lower your openings, reducing your vulnerabilities and the damage you take. Some will perform other actions as well.
+
+{|class="wikitable stickyHeaders c1c" style="text-align: left"
+|- class="sticky"
+!Move
+!Learned from
+!Initiative cost
+!Attack Weight
+!Openings
+!Reduces
+!Cooldown
+!Useable at distance
+!Notes
+
+|- style="visibility:collapse"
+|<span id="Artful Evasion" style="position:relative;top:-4em;"/><h3>Artful Evasion</h3>
+|-
+|[[File:icon_artevade.png|64px]]<br>Artful Evasion
+|
+*[[Bat]]
+*[[Boar]]
+*[[Green Ooze]]
+*[[Grey Seal]]
+*[[Red Deer]]
+*[[Walrus]]
+|Opponents' initiative points: +1
+|
+|
+|
+*{{RoB color|striking|20%·μ Striking}}
+*{{RoB color|backhanded|20%·μ Backhanded}}
+*{{RoB color|sweeping|20%·μ Sweeping}}
+*{{RoB color|oppressive|20%·μ Oppressive}}
+|40
+|Yes
+|
+
+|- style="visibility:collapse"
+|<span id="Feigned Dodge" style="position:relative;top:-4em;"/><h3>Feigned Dodge</h3>
+|-
+|[[File:icon_feigneddodge.png|64px]]<br>Feigned Dodge
+|
+*[[Bat]]
+*[[Boreworm]]
+*[[Fox]]
+*[[Moose]]
+*[[Otter]]
+*[[Red Deer]]
+*[[Wolverine]]
+|0
+|
+|
+|
+*{{RoB color|striking|15%·μ Striking}}
+|35
+|No
+|For every unit of opening reduced by Feigned Dodge, twice that amount is given to the opponent.
+Must be within unarmed melee range.
+
+|- style="visibility:collapse"
+|<span id="Flex" style="position:relative;top:-4em;"/><h3>Flex</h3>
+|-
+|[[File:icon_flex.png|64px]]<br>Flex
+|
+*[[Bat]]
+*[[Bear]]
+*[[Boar]]
+*[[Boreworm]]
+*[[Red Deer]]
+|0
+|Unarmed
+|On opponent:
+*{{RoB color|backhanded|+15% Dizzy}}
+|
+*{{RoB color|backhanded|10%·μ Backhanded}}
+*{{RoB color|oppressive|10%·μ Oppressive}}
+|30
+|No
+|Must be within unarmed melee range.
+
+|- style="visibility:collapse"
+|<span id="Jump" style="position:relative;top:-4em;"/><h3>Jump</h3>
+|-
+|[[File:icon_jump.png|64px]]<br>''Jump''
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Bat]]
+*[[Bear]]
+*[[Boar]]
+*[[Fox]]
+*[[Wolverine]]
+*[[Wild Bees]]
+*[[Wild Horse]]
+|0
+|
+|
+|
+*{{RoB color|sweeping|20%·μ Sweeping}}
+|25
+|Yes
+|This move is given to everyone as soon as they spawn.
+
+|- style="visibility:collapse"
+|<span id="Quick Dodge" style="position:relative;top:-4em;"/><h3>Quick Dodge</h3>
+|-
+|[[File:icon_quickdodge.png|64px]]<br>''Quick Dodge''
+|
+*[[Ants]]
+*[[Badger]]
+*[[Bat]]
+*[[Boar]]
+*[[Otter]]
+|0
+|
+|
+|
+*{{RoB color|striking|20%·μ Striking}}
+|25
+|Yes
+|This move is given to everyone as soon as they spawn.
+
+|- style="visibility:collapse"
+|<span id="Regain Composure" style="position:relative;top:-4em;"/><h3>Regain Composure</h3>
+|-
+|[[File:icon_regaincomosure.png|64px]]<br>Regain Composure
+|
+*[[Badger]]
+*[[Boar]]
+*[[Boreworm]]
+*[[Red Deer]]
+*[[Wolverine]]
+|0
+|
+|
+|
+*{{RoB color|striking|20%·μ Striking}}
+*{{RoB color|sweeping|20%·μ Sweeping}}
+|35
+|Yes
+|More efficient than Quick Dodge and Jump together when trying to reduce
+both Striking and Sweeping openings, but less efficient when trying to reduce
+only one.
+
+|- style="visibility:collapse"
+|<span id="Sidestep" style="position:relative;top:-4em;"/><h3>Sidestep</h3>
+|-
+|[[File:icon_sidestep.png|64px]]<br>''Sidestep''
+|
+*[[Ants]]
+*[[Aurochs]]
+*[[Badger]]
+*[[Bat]]
+*[[Beaver]]
+*[[Fox]]
+*[[Otter]]
+*[[Wildgoat]]
+*[[Wild Bees]]
+|0
+|
+|
+|
+*{{RoB color|backhanded|20%·μ Backhanded}}
+|25
+|Yes
+|This move is given to everyone as soon as they spawn.
+
+|- style="visibility:collapse"
+|<span id="Watch Its Moves" style="position:relative;top:-4em;"/><h3>Watch Its Moves</h3>
+|-
+|[[File:icon_watchitsmoves.png|64px]]<br>Watch Its Moves
+|
+*[[Ants]]
+*[[Badger]]
+*[[Bat]]
+*[[Bear]]
+*[[Boreworm]]
+*[[Fox]]
+*[[Lynx]]
+*[[Wolverine]]
+|Opponents' initiative points: +1 
+|
+|
+|
+*{{RoB color|backhanded|30%·μ Backhanded}}
+|45
+|No
+|Gains you 1 point of initiative against your opponent.
+Must be within unarmed melee range.
+
+|- style="visibility:collapse"
+|<span id="Yield Ground" style="position:relative;top:-4em;"/><h3>Yield Ground</h3>
+|-
+|[[File:icon_yieldground.png|64px]]<br>Yield Ground
+|
+*[[Ants]]
+*[[Badger]]
+*[[Bat]]
+*[[Bear]]
+*[[Fox]]
+*[[Boar]]
+*[[Moose]]
+*[[Mouflon]]
+*[[Walrus]]
+|0
+|
+|On you:
+*{{RoB color|backhanded|+10% Dizzy}}
+*{{RoB color|sweeping|+10% Reeling}}
+|
+*{{RoB color|striking|30%·μ Striking}}
+*{{RoB color|oppressive|30%·μ Oppressive}}
+|30
+|Yes
+|
+
+|- style="visibility:collapse"
+|<span id="Zig-Zag Ruse" style="position:relative;top:-4em;"/><h3>Zig-Zag Ruse</h3>
+|-
+|[[File:icon_zigzag.png|64px]]<br>Zig-Zag Ruse
+|
+*[[Aurochs]]
+*[[Boar]]
+*[[Red Deer]]
+*[[Mouflon]]
+*[[Wildgoat]]
+*[[Wild Horse]]
+*[[Wolverine]]
+|Opponents' initiative points: +2
+|
+|
+|
+*{{RoB color|sweeping|50%·μ Sweeping}}
+*{{RoB color|oppressive|50%·μ Oppressive}}
+|50
+|Yes
+|Strongest Oppressive and Sweeping defense. 
+Can invest cards to make it even stronger but 
+even without it is the Restoration with the highest 
+amount of openings reduced in the game.
+
+|}
+
+== '''Maneuvers''' ==
+
+Maneuvers affect your attack weight and which skills are used to calculate it, as well as often giving special buffs for hitting and being hit.
+
+{|class="wikitable stickyHeaders c1c" style="text-align: left"
+|- class="sticky"
+!Move
+!Block weight
+!Cooldown
+!Notes
+!Learned from
+
+|- style="visibility:collapse"
+|<span id="Bloodlust" style="position:relative;top:-3em;"/><h3>Bloodlust</h3>
+|-
+|[[File:icon_chinup.png|64px]]<br>''Chin Up''
+|Unarmed·μ
+|10
+|No special effect.
+|
+*[[The Will to Power]]
+|-
+|[[File:icon_toarms.png|64px]]<br>''To Arms''
+|Melee·μ
+|10
+|No special effect.
+|
+*[[Hunting]]
+|-
+|[[File:icon_shieldup.png|64px]]<br>Shield Up
+|Melee·250%·μ
+|10
+|If Shield Up is used without a shield equipped, its block weight will be 50% instead of 250%.
+(Note: Shield Up still works at 250% effectiveness if your shield is broken, so don't worry about your shield's durability.)
+|
+*[[Yeomanry]]
+
+|- style="visibility:collapse"
+|<span id="Chin Up" style="position:relative;top:-3em;" /><h3>Chin Up</h3>
+|-
+|[[File:icon_parry.png|64px]]<br>Parry
+|Melee·80%·μ
+|10
+|When Attacked:
+*Openings: {{RoB color|backhanded|+10% Dizzy}}
+You need a sword equipped for Parry to inflict its effect upon your opponents.
+|
+*[[Steelmaking]]
+|-
+|[[File:icon_combatmeditation.png|64px]]<br>Combat Meditation
+|Unarmed·μ
+|10
+|When attacked:
+*Combat Meditation is charged by 25%·Δ. When you attack an opponent, your cooldown will be decreased by the amount that Combat Meditation is charged.
+*While Combat Meditation is active, all your attacks will have 25% of their normal attack weight.
+|
+*[[Woodsmanship]]
+
+|- style="visibility:collapse"
+|<span id="Combat Meditation" style="position:relative;top:-3em;" /><h3>Combat Meditation</h3>
+|- style="visibility:collapse"
+|<span id="Death or Glory" style="position:relative;top:-3em;" /><h3>Death or Glory</h3>
+|- style="visibility:collapse"
+|<span id="Oak Stance" style="position:relative;top:-3em;" /><h3>Oak Stance</h3>
+|-
+|[[File:icon_oakstance.png|64px]]<br>Oak Stance
+|Unarmed·150%·μ
+|10
+|When attacked:
+*Your greatest opening is reduced by 5%·Δ.
+*While Oak Stance is active, all your attacks will have 50% of their normal attack weight.
+|
+*[[Forestry]]
+
+|- style="visibility:collapse"
+|<span id="Parry" style="position:relative;top:-3em;" /><h3>Parry</h3>
+|-
+|[[File:icon_bloodlust.png|64px]]<br>Bloodlust
+|Unarmed·75%·μ
+|10
+|When attacked: 
+*Bloodlust is charged by 25%·Δ. When you attack an opponent, your attack weight will be increased by four times the amount that Bloodlust is charged.
+|
+*[[Rage]]
+|-
+|[[File:icon_deathorglory.png|64px]]<br>Death or Glory
+|Unarmed·75%·μ
+|10
+|When attacked:
+*You gain 0.75·Δ points of Initiative against the opponent.
+|
+*[[Siegecraft]]
+
+|- style="visibility:collapse"
+|<span id="Shield Up" style="position:relative;top:-3em;"/><h3>Shield Up</h3>
+|- style="visibility:collapse"
+|<span id="To Arms" style="position:relative;top:-3em;"/><h3>To Arms</h3>
+|}
+
+== '''Attacks''' ==
+
+Attacks increase your opponent's openings and deal damage.
+
+{|class="wikitable stickyHeaders c1c" style="text-align: left"
+|- class="sticky"
+!Move
+!Learned from
+!Initiative cost
+!Attack weight
+!Attack type
+!Openings
+!Damage
+!Grievous damage
+!Cooldown
+!Special
+!Notes
+
+|- style="visibility:collapse"
+|<span id="Chop" style="position:relative;top:-4em;"/><h3>Chop</h3>
+|-
+|[[File:icon_chop.png|64px]]<br>Chop
+|
+*[[Ants]]
+*[[Bat]]
+*[[Badger]]
+*[[Boar]]
+*[[Fox]]
+*[[Grey Seal]]
+*[[Moose]]
+*[[Mouflon]]
+*[[Red Deer]]
+*[[Wildgoat]]
+|1
+|Melee·μ
+|
+*{{RoB color|striking|Striking}}
+|
+*{{RoB color|striking|+15% Off Balance}}
+|According to weapon
+|
+|40
+|Weapon:
+*Any edged weapon
+
+|- style="visibility:collapse"
+|<span id="Cleave" style="position:relative;top:-4em;"/><h3>Cleave</h3>
+|-
+|[[File:icon_cleave.png|64px]]<br>Cleave
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Bear]]
+*[[Lynx]]
+*[[Moose]]
+*[[Walrus]]
+|4+2
+|Melee·μ
+|
+*{{RoB color|backhanded|Backhanded}}
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|oppressive|+25% Cornered}}
+|According to Weapon·150%
+|
+|80
+|
+|Deadliest attack in game. Bay 12 Axe users can murder character through death protection is some circumstances.
+
+|- style="visibility:collapse"
+|<span id="Full Circle" style="position:relative;top:-4em;"/><h3>Full Circle</h3>
+|-
+|[[File:icon_fullcircle.png|64px]]<br>Full Circle
+|
+*[[Bat]]
+*[[Green Ooze]]
+*[[Mouflon]]
+*[[Otter]]
+*[[Red Deer]]
+*[[Walrus]]
+*[[Wildgoat]]
+|0
+|Melee·90%·μ
+|
+*{{RoB color|sweeping|Sweeping}}
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|striking|+15% Off Balance}}
+*{{RoB color|oppressive|+5% Cornered}}
+|According to weapon
+|
+|40
+|Weapon:
+*Any melee weapon
+Full Circle attacks your main target and all other opponents in range.
+|One of most versatile weapon attack.
+
+|- style="visibility:collapse"
+|<span id="Go for the Jugular" style="position:relative;top:-4em;"/><h3>Go for the Jugular</h3>
+|-
+|[[File:icon_goforthejugular.png|64px]]<br>Go for the Jugular
+|
+*[[Badger]]
+*[[Boreworm]]
+*[[Moose]]
+*[[Mouflon]]
+*[[Red Deer]]
+*[[Wolverine]]
+|2+2
+|Unarmed·μ
+|
+*{{RoB color|striking|Striking}}
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|sweeping|+10% Reeling}}
+*{{RoB color|oppressive|+15% Cornered}}
+|40
+|30%
+|45
+|
+
+|- style="visibility:collapse"
+|<span id="Haymaker" style="position:relative;top:-4em;"/><h3>Haymaker</h3>
+|-
+|[[File:icon_haymeker.png|64px]]<br>Haymaker
+|
+*[[Ants]]
+*[[Badger]]
+*[[Bat]]
+*[[Boar]]
+*[[Boreworm]]
+*[[Fox]]
+*[[Green Ooze]]
+*[[Moose]]
+*[[Wolverine]]
+*[[Wild Bees]]
+|0
+|Unarmed·μ
+|
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|sweeping|+15% Reeling}}
+|20
+|15%
+|50
+|
+
+|- style="visibility:collapse"
+|<span id="Kick" style="position:relative;top:-4em;"/><h3>Kick</h3>
+|-
+|[[File:icon_kick.png|64px]]<br>Kick
+|
+*[[Ants]]
+*[[Aurochs]]
+*[[Bat]]
+*[[Boar]]
+*[[Boreworm]]
+*[[Fox]]
+*[[Mouflon]]
+*[[Wolverine]]
+*[[Wild Bees]]
+|1
+|Unarmed·μ
+|
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|sweeping|+20% Reeling}}
+|25
+|15%
+|45
+|
+
+|- style="visibility:collapse"
+|<span id="Knock Its Teeth Out" style="position:relative;top:-4em;"/><h3>Knock Its Teeth Out</h3>
+|-
+|[[File:icon_knockitsteethout.png|64px]]<br>Knock Its Teeth Out
+|
+*[[Beaver]]
+*[[Boar]]
+*[[Mammoth]]
+*[[Red Deer]]
+*[[Wild Horse]]
+*[[Wildgoat]]
+|1
+|Unarmed·μ
+|
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|oppressive|+20% Cornered}}
+|30
+|25%
+|35
+|
+|Has the most efficient opening-increase per cooldown in the game, and strong damage to boot.
+|- style="visibility:collapse"
+|<span id="Left Hook" style="position:relative;top:-4em;"/><h3>Left Hook</h3>
+|-
+|[[File:icon_lefthook.png|64px]]<br>''Left Hook''
+|
+*[[Ants]]
+*[[Badger]]
+*[[Bat]]
+*[[Fox]]
+*[[Swan]]
+*[[Wolverine]]
+*[[Wild Bees]]
+|0
+|Unarmed·μ
+|
+*{{RoB color|backhanded|Backhanded}}
+|
+*{{RoB color|backhanded|+15% Dizzy}}
+|15
+|10%
+|40
+|
+
+|- style="visibility:collapse"
+|<span id="Low Blow" style="position:relative;top:-4em;"/><h3>Low Blow</h3>
+|-
+|[[File:icon_lowblow.png|64px]]<br>Low Blow
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Bat]]
+*[[Beaver]]
+*[[Boar]]
+*[[Fox]]
+*[[Green Ooze]]
+*[[Mouflon]]
+|0
+|Unarmed·μ
+|
+*{{RoB color|backhanded|Backhanded}}
+|
+*{{RoB color|striking|+10% Off Balance}}
+|20
+|30%
+|50
+|Gains you 1 Point of Initiative against your opponent.
+
+|- style="visibility:collapse"
+|<span id="Punch" style="position:relative;top:-4em;"/><h3>Punch</h3>
+|-
+|[[File:icon_punch.png|64px]]<br>''Punch''
+|
+*[[Ants]]
+*[[Badger]]
+*[[Bat]]
+*[[Fox]]
+*[[Moose]]
+*[[Otter]]
+|0
+|Unarmed·80%·μ
+|
+*{{RoB color|striking|Striking}}
+|
+*{{RoB color|striking|+15% Off Balance}}
+|10
+|5%
+|30
+|
+
+|- style="visibility:collapse"
+|<span id="Punch 'em Both" style="position:relative;top:-4em;"/><h3>Punch 'em Both</h3>
+|-
+|[[File:icon_punchemboth.png|64px]]<br>Punch 'em Both
+|
+*[[Ants]]
+*[[Bat]]
+*[[Fox]]
+*[[Green Ooze]]
+*[[Red Deer]]
+*[[Wild Bees]]
+|0
+|Unarmed·μ
+|
+*{{RoB color|striking|Striking}}
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|sweeping|+15% Reeling}}
+|10
+|7.5%
+|40
+|Attacks both your primary target and also one other opponent in range.
+
+|- style="visibility:collapse"
+|<span id="Quick Barrage" style="position:relative;top:-4em;"/><h3>Quick Barrage</h3>
+|-
+|[[File:icon_quickbarrage.png|64px]]<br>Quick Barrage
+|
+*[[Badger]]
+*[[Boar]]
+*[[Fox]]
+*[[Green Ooze]]
+*[[Wild Horse]]
+|0
+|Melee·μ
+|
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|oppressive|+10% Cornered}}
+|According to Weapon·25%
+|
+|20
+|Weapon:
+*Any melee weapon
+If your opponent has more than 25% of {{RoB color|oppressive|Oppressive}} openings, Quick Barrage also gains you 1 Point of Initiative against that opponent.
+|Fastest attack in the game.
+Be warned that when dueling other
+Hearthlings this can quickly fuel their
+special Maneuvers like Bloodlust.
+
+|- style="visibility:collapse"
+|<span id="Raven's Bite" style="position:relative;top:-4em;"/><h3>Raven's Bite</h3>
+|-
+|[[File:icon_ravensbite.png|64px]]<br>Raven's Bite
+|
+*[[Bat]]
+*[[Boar]]
+*[[Red Deer]]
+*[[Wildgoat]]
+*[[Walrus]]
+|4
+|Melee·μ
+|
+*{{RoB color|striking|Striking}}
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|striking|+15% Off Balance}}
+*{{RoB color|sweeping|+15% Reeling}}
+|According to weapon·110%
+|
+|40
+|Weapon:
+*Any axe
+
+|- style="visibility:collapse"
+|<span id="Rip Apart" style="position:relative;top:-4em;"/><h3>Rip Apart</h3>
+|-
+|[[File:Icon_ripapart.png|64px]]<br>Rip Apart
+|
+*[[Bear]]
+*[[Boreworm]]
+*[[Grey Seal]]
+*[[Lynx]]
+*[[Mammoth]]
+*[[Moose]]
+*[[Red Deer]]
+|6
+|Unarmed·μ
+|
+*{{RoB color|striking|Striking}}
+*{{RoB color|backhanded|Backhanded}}
+*{{RoB color|sweeping|Sweeping}}
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|striking|+7.5% Off Balance}}
+*{{RoB color|backhanded|+7.5% Dizzy}}
+*{{RoB color|sweeping|+7.5% Reeling}}
+*{{RoB color|oppressive|+7.5% Cornered}}
+|50
+| 30%
+|60
+|
+
+|- style="visibility:collapse"
+|<span id="Sideswipe" style="position:relative;top:-4em;"/><h3>Sideswipe</h3>
+|-
+|[[File:icon_sideswipe.png|64px]]<br>Sideswipe
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Bat]]
+*[[Fox]]
+*[[Moose]]
+*[[Walrus]]
+*[[Wildgoat]]
+|0
+|Melee·μ
+|
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|sweeping|+7.5% Reeling}}
+|According to weapon·75%
+|
+|25
+|Weapon:
+*Any edged weapon
+|Very effective when paired with ''Uppercut'' that creates opening for this move to deal damage effectively.
+
+|- style="visibility:collapse"
+|<span id="Steal Thunder" style="position:relative;top:-4em;"/><h3>Steal Thunder</h3>
+|-
+|[[File:icon_stealthunder.png|64px]]<br>Steal Thunder
+|
+*[[Badger]]
+*[[Boar]]
+*[[Boreworm]]
+*[[Moose]]
+*[[Walrus]]
+*[[Wildgoat]]
+|0
+|Unarmed·μ
+|
+*{{RoB color|backhanded|Backhanded}}
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|backhanded|+10% Dizzy}}
+|None
+|
+|40
+|To the extent that it is unblocked, Steal Thunder will take 3 points of initiative from its target and you will gain 2 of them.
+|Usable at a small distance, opponent must have 3 or more IP for you to be able to use this move.
+
+|- style="visibility:collapse"
+|<span id="Sting" style="position:relative;top:-4em;"/><h3>Sting</h3>
+|-
+|[[File:icon_sting.png|64px]]<br>Sting
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Bear]]
+*Bees
+*[[Boar]]
+*[[Fox]]
+*[[Lynx]]
+*[[Red Deer]]
+*[[Walrus]]
+*[[Wildgoat]]
+*[[Wild Bees]]
+|2
+|Melee·μ
+|
+*{{RoB color|striking|Striking}}
+*{{RoB color|backhanded|Backhanded}}
+|
+*{{RoB color|backhanded|+20% Dizzy}}
+*{{RoB color|sweeping|+10% Reeling}}
+|According to weapon·125%
+|
+|50
+|Weapon:
+*Any pointed weapon
+
+|- style="visibility:collapse"
+|<span id="Storm of Swords" style="position:relative;top:-4em;"/><h3>Storm of Swords</h3>
+|-
+|[[File:icon_stormofswords.png|64px]]<br>Storm of Swords
+|
+*[[Bat]]
+*[[Green Ooze]]
+*[[Mammoth]]
+*[[Moose]]
+*[[Red Deer]]
+*[[Wildgoat]]
+|4
+|Melee·μ
+|
+*{{RoB color|backhanded|Backhanded}}
+*{{RoB color|sweeping|Sweeping}}
+|
+*{{RoB color|sweeping|+30% Reeling}}
+|According to weapon
+|
+|50
+|Weapon:
+*Any sword
+Storm of Swords will attack up to five opponents in range, starting with your main target. The targets will receive 100%, 125%, 150%, 175%, and 200%, respectively, of the weapon's damage.
+|Extremely useful in large team fights
+and in dungeons as its +30% Sweeping means it not only opens for 
+itself but also Full Circle which does
+not cost IP and can hit anyone and not
+just up to 5 opponents.
+|- style="visibility:collapse"
+|<span id="Takedown" style="position:relative;top:-4em;"/><h3>Takedown</h3>
+|-
+|[[File:icon_takedown.png|64px]]<br>Takedown
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Bear]]
+*[[Boar]]
+*[[Grey Seal]]
+*[[Wildgoat]]
+|3
+|Unarmed·μ
+|
+*{{RoB color|sweeping|Sweeping}}
+*{{RoB color|oppressive|Oppressive}}
+|
+*{{RoB color|sweeping|+30% Reeling}}
+|40
+|30%
+|50
+|
+
+|- style="visibility:collapse"
+|<span id="Uppercut" style="position:relative;top:-4em;"/><h3>Uppercut</h3>
+|-
+|[[File:icon_uppercut.png|64px]]<br>Uppercut
+|
+*[[Aurochs]]
+*[[Badger]]
+*[[Boar]]
+*[[Fox]]
+*[[Mouflon]]
+*[[Swan]]
+*[[Walrus]]
+*[[Wildgoat]]
+|0
+|Unarmed·0.8·μ
+|
+*{{RoB color|striking|Striking}}
+*{{RoB color|backhanded|Backhanded}}
+|
+*{{RoB color|sweeping|+15% Reeling}}
+|30
+|5%
+|30
+|
+|Useless as the only offensive move due to mismatching colors, but effective at creating Yellow opening for moves like ''Sideswipe''.
+
+|}
+
+{{Game Development}}

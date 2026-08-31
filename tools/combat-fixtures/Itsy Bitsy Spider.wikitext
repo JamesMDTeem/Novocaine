@@ -1,0 +1,30 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Foraging]]
+| objectsreq   = {{none}}
+| producedby   = Hand
+| specific     = Bug
+|
+| lpgain       = 5000
+| studytime    = 21:30
+| mentalweight = 10
+| expdrain     = 45
+}}
+
+[[Category:Creatures]]
+
+'''Itsy Bitsy Spider''' is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+The quality is the same quality as the item it was picked up with.
+
+==How to Acquire==
+
+It can occasionally be found while foraging any kind of object.
+
+==Gallery==
+
+[[File:Spiderr.png|200px|thumb|left|Here's a fun fact: a dropped itsy bitsy spiders runs faster than a rabbit. Do not drop one outside or you may not be able to catch it again.]]
+
+{{Game Development}}

@@ -1,0 +1,50 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Hardened Leather]] x4, [[requires::Bar of Hard Metal]]
+| producedby = Hand
+|
+| slot       = 1L
+| ahp        = 70
+| absorbX    = 6
+| absorbY    = 4
+|
+| statSTR    = 1
+}}
+
+[[Category:Headgear]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Raider's Cap}}
+
+A piece of Hard Leather [[armor]] . Equips to 1L.
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Hardened Leather+ _{q}Metal}{2}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Sewing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 7</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 6</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|-
+|Strength Bonus
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|}
+
+{{Game Development}}

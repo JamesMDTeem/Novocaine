@@ -1,0 +1,47 @@
+{{infobox creature
+| xobst  = {{#expr:(4/11)-(-4/11)round6}}
+| yobst  = {{#expr:(10/11)-(-7/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 50
+|
+| armor  = 50
+| hp     = 500
+| fhp    = 400
+|
+| loot   = [[Fresh Wolf Hide]] x2, [[Intestines]] x4, [[Entrails]] x3, [[Big Brain]], [[Raw Wolf]] x10, [[Bone Material]] x6, [[Wolf's Claw]] x2-8
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Wolves are an uncommon but loathed sight in the Hearthlands. They are nightmarishly aggressive. They can be found in mountains or occasionally in forests if the moon is full. They travel in packs of three to eight, attacking and killing everything that moves. If one attacks you, or you attack one, they all attack at the same time. 
+
+Wolves are extremely dangerous because not only do they have a quite high chance to [[execute]] you should they KO you, this chance to maul you to death is rolled for each and every wolf, meaning you have an extremely tiny chance to not have at least 1 decide to kill you. If a pack knocks you out, it's all over.
+
+Wolves give [[Big Brain]]<nowiki/>s when cleaned, and since they spawn in packs hunting them in the mountains is perhaps the most efficient method of farming them.
+
+==Combat==
+
+===Behaviour===
+
+Wolves are extremely aggressive, and will likely engage in combat with nearby players and animals. Aggroing any one wolf will cause the entire pack to also engage. While they aren't incredibly strong on their own, there is no way to split them, meaning you must always fight all at once.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:4</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Shredding Paw}} {{:Blood & Gore}}
+| {{:Careful Approach}}
+|}
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Wolf]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Wolf's Claw]] and [[Bone Material]].<br>
+
+[[File:WolfPride.png|200px|400px]] Wolf Pack roaming [[Mountain]].
+
+{{Game Development}}

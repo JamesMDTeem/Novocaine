@@ -1,0 +1,37 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(2/11)-(-2/11)round6}}
+|
+| baseq = 30
+|
+| hp    = ~180
+| fhp   = ~100
+|
+| loot  = [[Dead Goshawk]]: [[Goshawk Feather]] x1, [[Entrails]] x1, [[Goshawk Meat]] x2, [[Bone Material]] x1 and [[Wishbone]](Rarely)
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Goshawk are birds found in [[Badlands]]. They can fly over cliffs, and normally fly around on 5d speed. If you kill them, you can pick them up like [[rabbit]]s. [[Dead Goshawk]] takes 1x2 slots in the inventory.
+
+==Combat==
+
+===Behaviour===
+
+Rarely Aggressive, always flying around.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Dark Heart Move}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+You'll need to kill it with oneshot move or a horse with full stamina to catch them if they'll run, because only horse on 4th speed can catch up.
+
+{{Game Development}}

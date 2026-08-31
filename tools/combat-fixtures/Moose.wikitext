@@ -1,0 +1,44 @@
+{{infobox creature
+| xobst  = {{#expr:(6/11)-(-6/11)round6}}
+| yobst  = {{#expr:(10/11)-(-10/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 50
+|
+| armor  = 65
+| hp     = 800
+| fhp    = 250
+|
+| loot   = [[Fresh Moose Hide]] x2, [[Intestines]] x4, [[Entrails]] x3, [[Big Brain]], [[Animal Fat]], [[Raw Moose]] x14, [[Bone Material]] x10, [[Moose Antlers]] x1
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+The moose or elk, is the largest and heaviest extant species in the Deer family. They are notorious for their extreme size and strength, as well as their intimidating intelligence, as moose are known to attempt to drown their victims, and short of that will try to crush their ribcage and lungs.
+
+=Combat=
+
+==Behaviour==
+Moose are aggressive and have a decent chance to [[execute]] you if they KO you.
+
+===Combat Moves===
+{| class="wikitable mw-collapsible mw-collapsed"
+! '''Attacks'''
+! '''Restorations'''
+|-
+|
+{{:Low Horn Swipe}}{{:Mule Kick}}{{:Thunder Over}}{{:Bucking}}{{:Blood & Gore}}{{:Heavy Antlers}}{{:Breathing Rage}}{{:Dark Heart Move}}
+|
+{{:Rampant Rage}}{{:Unstoppable}}{{:Careful Approach}}{{:Bristle}}
+|}
+
+==Strategy==
+Ride a horse so you can kite the Moose. You will need about 100+ Melee Combat and 100 Agility to deal damage and keep yourself safe in the fight.
+
+=In-Game Example(s)=
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Moose]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Moose Antlers]] and [[Bone Material]].<br>
+
+{{Game Development|1}}

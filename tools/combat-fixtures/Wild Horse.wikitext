@@ -1,0 +1,47 @@
+{{infobox creature
+| xobst = {{#expr:(4/11)-(-4/11)round6}}
+| yobst = {{#expr:(8/11)-(-8/11)round6}}
+|
+| baseq = 30
+|
+| hp    = ~320
+| fhp   = 200
+|
+| loot  = [[Fresh Wildhorse Hide]], [[Intestines]] x2, [[Entrails]] x2, [[Small Brain]], [[Raw Wildhorse]] x6, [[Bone Material]] x5
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+[[Category:Vehicle]]
+
+Wildhorses wander about in most grassland biomes. They can be fed a [[Clover]] and then ridden. Right click a clover on a wildhorse, wait for the wildhorse to take the clover. Right click on the wildhorse and select Giddyup! '''Be careful and watch Pony Power'''. If it reaches 0, the horse will throw you off and deal exactly half your MHP in SHP damage. To circumvent this, you can use the Horse Whisper [[Hearth Magic]] to augment your pony power, or simply dismount.<br>
+Note: If really close to the horse when feeding the clover. It will take it immediately.
+
+==Combat==
+
+===Behaviour===
+
+Passive until you aggro them.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:5</small>
+! Restorations<small>:3</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Mule Kick}} {{:Bucking}} {{:Bear Down}} {{:Thunder Over}} {{:Sudden Charge}}
+| {{:Careful Approach}} {{:Rampant Rage}} {{:Swift Evasion}}
+|}
+
+===Strategy===
+Horses are tough, but have less Agility than you might expect. They'll spam Mule Kick and Bear Down often, and occasionally use Sudden Charge. Swift Evasion can ruin a good Cleave or Full Circle setup. You'll need a decent melee weapon like a [[Tinker's Throwing Axe|Tinker Axe]] to deal sufficient damage. Once you hit about 200 damage a horse will flee at the fastest speed of any animal in the game. You'll need to be on another horse and chase at your highest speed, cleave for 150+ damage at ~180 health, or simply follow the blood path and wait for the horse to bleed out.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh Wildhorse Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Wildhorse]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+==Notes==
+
+*Attempting to pick up any small animal while riding the horse will result in the animal's death. Young hearthlings can take advantage of this fact to easily hunt [[Hedgehog]]s, [[Rabbit]]s, [[Squirrel]]s, and [[Mole]]s. This bypasses the [[Survival]] skill cap on the animal (''upon picking it up(?)'').
+
+{{Game Development}}

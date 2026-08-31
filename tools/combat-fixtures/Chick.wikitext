@@ -1,0 +1,38 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+| xobst      = 0.162
+| yobst      = 0.162
+|
+| skillreq   = [[requires::Hunting]]
+| objectsreq = [[requires::Chicken Egg]], [[requires::Hen]],
+| producedby = [[requires::Chicken Coop]]
+}}
+
+[[Category:Creatures]]
+[[Category:Domesticated]]
+
+A Chick is a young [[Hen]] or [[Cock]]
+
+
+==How to Acquire==
+
+There are two ways to obtain a Chick:
+
+*Wild flocks of chicken may randomly spawn on certain terrains. Right-clicking a Chick will cause your character to chase it. The Chick will flee, so running is necessary unless you are standing directly next to it. Once caught, it will appear in your inventory.
+*Build a [[Chicken Coop]] for breeding [[Hen]]s and [[Cock]]s. A fertile [[Chicken Egg]] will hatch into a Chick, if brooded by a Hen inside a Chicken Coop.
+
+==How to Use==
+
+*When a Chick is placed inside a Chicken Coop with sufficient fodder, it will turn into a [[Hen]] or [[Cock]] after 5 real life days.
+*Chicks can be killed in the inventory via the "Wring Neck" option just as other inventory animals, but that does not result in a butcherable corpse; instead it will turn into [[A Bloody Mess...]]
+*(Chicks placed in some inventory will just disappear when they die).
+
+==Quality==
+
+When Chicks are hatched, they will need to eat three times to grow into adult chickens (either Chickens or Cocks, though the odds seem to lean towards Chickens). Each time they eat, their quality decreases if the fodder quality is less than their own quality.
+
+==Gallery==
+[[File:Chick ingame.png]]
+
+{{Game Development}}

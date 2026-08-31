@@ -1,0 +1,32 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Block of Wood]], [[requires::Bar of Steel]] x2
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 115
+| armorpen   = 7.5
+| range      = 1.2
+}}
+
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|H$irdsman's Sword}}
+
+The Hirdsman's Sword is one of the best weapons of the game, often wielded by powerful factions and some minor factions as well. It has {{#show:{{PAGENAME}}|?basedmg}} base damage.
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Steel + _{q}Wood}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 115*\sqrt{\sqrt{Strength*{q}Sword}/10}</math>.
+
+{{Game Development}}

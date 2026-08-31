@@ -1,0 +1,45 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(6/11)-(-6/11)round6}}
+|
+| baseq = 30
+|
+| hp    = 300
+| fhp   = 200
+|
+| loot  = [[Fresh Wolverine Hide]], [[Entrails]], [[Intestines]], [[Brain]], [[Raw Wolverine]] x3, [[Bone Material]] x2, [[Scent Gland]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Wolverine also referred to as the glutton, carcajou, skunk bear, or quickhatch, is the largest land-dwelling weasel species, distant relative to [[Otter]] and [[Badger]].
+
+==Combat==
+
+===Behaviour===
+
+Aggressive in a certain radius to everyone, including most small animals and birds. They move noticeably faster than a badger.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Bear Down}} {{:Blood & Gore}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+Easy way is to have sword, put up around 50% Green opening and use 2x Sting. You have to kill them before they'll run (200 hp), you'll need 3rd-4th speed of horse to catch them. Having 30 AGI and 50 UA should be enough, but slightly painful.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Scent Gland]] and [[Raw Wolverine]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+==Notes==
+Wolverines can NOT destroy [[Burrow]]s. Thus, entering into a burrow will provide an easy escape. 
+
+{{Game Development}}

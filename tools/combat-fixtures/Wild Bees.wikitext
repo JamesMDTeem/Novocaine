@@ -1,0 +1,33 @@
+{{infobox creature
+| baseq = N/A
+|
+| hp = 50
+| fhp = N/A
+|
+| loot = N/A
+}}
+
+Wild Bees are found around [[Wild Beehive]]s. When raiding a beehive, all the bees guarding it will attack.
+
+==Combat==
+
+Taking damage from bees will result in [[Wounds|Beestings]].
+
+===Behaviour===
+
+Raiding an [[Wild Beehive]] causes all nearby bees to attack.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:0</small>
+! Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|
+|
+|}
+
+===Strategy===
+
+Because bees have a relatively low amount of hp, it is best to quickly create one opening by using basic attacks such as punch, low blow, or kick, and disregard using restorations.
+Raiding a beehive causes all nearby bees to attack, so killing them beforehand is important to a successful raid. Being attacked by multiple bee swarms will quickly overwhelm you and create large blue and green openings, making it very difficult to recover quick enough.

@@ -1,0 +1,34 @@
+{{infobox creature|||baseq=10|hp=120|fhp=N/A|loot=[[Ant Chitin]] x2, [[Entrails]] x2, [[Tiny Brain]], [[Ant Meat]] x4}}Royal Guard Ants are massive warrior ants that patrol an [[Ant Hill Dungeon]] protecting their queen.
+
+[[Category:Creatures]]
+
+Note that as Royal Guard Ants are a dungeon-dwelling creature, their damage and health is slightly random; or more specifically is connected to the dungeon's invisible "[[Dungeon|difficulty]]" stat that all dungeons randomly roll.
+
+Additionally dungeon enemies never flee not matter how much damage they take.
+
+== Combat ==
+Royal Guard Ants can attack with their jaws and claws as well as spit acid. Ant Spit penetrates all armor as usual.
+
+=== Behaviour ===
+As with all dungeon enemies, they are extremely aggressive in a aggro range that is moderate but not as large as yours. If a dungeon enemy aggroes you, they will additionally call all nearby enemies to aggro you as well. However, if you aggro a dungeon enemy yourself, they will not call their allies.
+
+Naturally, they cannot aggro you through walls or objects, so use them to your advantage to gain angles where you can aggro them, but they can't aggro you, and avoid multiple aggroing you at once.
+
+==== Combat Moves ====
+{| class="wikitable mw-collapsible mw-collapsed"
+!Attacks<small>:1</small>
+!Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|{{:Ant Spit}}{{:Fell Scratch}}{{:Chomp}}{{:Shredding Paw}}{{:Dark Heart Move}}
+|{{:Swift Evasion}}{{:Unstoppable}}
+|}
+
+=== Strategy ===
+If you can fight a [[Badger]] or [[Wolverine]] you can comfortably fight Royal Guard Ants, but keep in mind they have access to some fairly powerful moves like Dark Heart, Unstoppable and Shredding Paw. Just don't let them outnumber you and use Quick Barrage or Sideswipe and Full Circle.
+
+== In-Game Example(s) ==
+[[File:Royal_Guard_Ant-dead.png|150x150px]] Dead {{PAGENAME}}. Can be broken for [[Ant Chitin|Ant Chitin.]]
+
+[[File:Royal_Guard_Ant-skinned.png|150x150px]] Skinned {{PAGENAME}}. Can be butchered for [[Entrails|Entrails,]] [[Tiny Brain]] and [[Ant Meat|Ant Meat.]]
+
+{{Game Development}}

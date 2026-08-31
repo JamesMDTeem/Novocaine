@@ -1,0 +1,43 @@
+{{infobox creature
+| xobst   = {{#expr:(2/11)-(-2/11)round6}}
+| yobst   = {{#expr:(2/11)-(-2/11)round6}}
+|
+| terrain = [[dungeon::Beaver Lodge]]
+|
+| baseq   = 30
+|
+| hp      = ~100
+| fhp     = ~75
+|
+| loot    = [[Fresh Beaver Hide]], [[Intestines]], [[Entrails]] x2, [[Raw Beaver]] x3, [[Bone Material]] x2, [[Beaver Tail]], [[Beaver Teeth]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+The beaver  is a large, primarily nocturnal, semiaquatic rodent. They'll occasionally spawn in some shallow water but can rarely be seen hanging out in the middle of forests too.
+
+==Combat==
+
+===Behaviour===
+
+Like Swans they might attack you on very rare occasion if you get all up in their grill but generally they won't take to your presence. 
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}}
+| {{:Careful Approach}} {{:Bristle}}
+|}
+
+===Strategy===
+They're quite quick on land and will zip away on waters. They're pretty weak but their attacks are fast and can hurt. If you can kill a badger, you'll have an even easier time with a beaver. Make them flee on land where you can sprint or use a horse and they're free meat.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Beaver Tail]], [[Beaver Teeth]] and [[Raw Beaver]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

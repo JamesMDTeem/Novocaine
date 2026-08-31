@@ -1,0 +1,54 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{none}}
+| objectsreq = [[requires::Crab Shell]] x3, [[requires::Crab Claw]] x2, [[requires::String]] x3
+| producedby = Hand
+|
+| slot       = 1L
+| ahp        = 50
+| absorbX    = 0
+| absorbY    = 2
+|
+| statAGI    = -1
+}}
+
+[[Category:Headgear]]
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Hats & Headwear|$Chitin Helmet}}
+
+Headgear that is made from [[crab]].
+
+
+== Quality ==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Crab Shell+ _{q}Crab Claw+ _{q}String}{3}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Sewing}</math>.
+
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 0</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -1</math>
+|}
+
+==Gallery==
+
+<gallery>
+Vapn.png | A player wearing a chitin helmet.
+Chitin Helmet - (on wall).png | A chitin helmet decorating a wall.
+</gallery>

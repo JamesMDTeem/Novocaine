@@ -1,0 +1,24 @@
+{{infobox creature
+| xitem    = 1
+| yitem    = 1
+| hp       = 30
+| baseq    = 10
+|
+| loot     = [[Dead Wood Scorpion]] }}
+
+[[Category:Tmp_xyobj(neg)]]
+
+A Scorpion is a dwelling bug that can be cracked for [[Dead Wood Scorpion]]. It takes up a 1x1 space in the inventory both dead or alive. They lives occasionally in select forest biomes, and abundantly in [[Badlands]].
+
+Both picking up and cracking Scorpions has a large chance to give you the [[Wounds|Scorpion Stung]] wound, causing 1-5 HHP damage per wound, it's poisonous and will grow before start healing.
+
+==How To Acquire==
+
+Scorpions can be found commonly on forests or badlands. Scorpions can be picked up, at risk of stinging, but can also decide to attack, and can't be picked up while in combat.
+
+==Notes==
+*Wearing gloves, such as [[Poor Man's Gloves]], reduce the damage, and chance at taking damage dealt by scorpions.
+*Leaving stungs without treatment can lead to massive HHP loss in hours.
+*Wood Scorpion tend to be very aggressive and will attack small creatures like [[Rabbit]] in approximately.
+
+{{Game Development}}

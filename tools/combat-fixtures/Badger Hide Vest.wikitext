@@ -1,0 +1,65 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Sewing]], [[requires::Tanning]]
+| objectsreq = [[requires::Badger Hide]] x2, [[requires::String]] x2
+| producedby = Hand
+|
+| egildpct   = [[egildpct::0%-35%]]
+| egildatt   = [[egildatt::Survival]]
+|
+| slot       = 4L; 4R
+| ahp        = 100
+| absorbX    = 2
+| absorbY    = 1
+}}
+
+[[Category:Clothing]]
+[[Category:Shirts]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Badger Hide Ves$t}}
+
+{{PAGENAME}} is a low-tier piece of chest [[:Category:Armor|armor]] that provides a small amount of protection and offers a 0%-35% [[Special:SearchByProperty/:Egildatt/Survival|survival]] [[gilding]] slot. It equips to the [[Equipment Screen|equipment slots]] 4L or 4R.
+
+==Quality Formula==
+
+The quality formula of {{PAGENAME}} is <math>\frac{_{q}AvgHide+_{q}AvgString}{2}</math>, [[softcap]]ped by <math>\sqrt{Sewing * Dexterity}</math>.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+| Quality
+| Hit Points
+| Armor Class
+|-
+| 10
+| 100
+| 2/1
+|-
+| 40
+| 400
+| 4/2
+|-
+| 90
+| 900
+| 6/3
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 10</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|}
+
+{{Game Development}}

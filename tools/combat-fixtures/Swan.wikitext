@@ -1,0 +1,39 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = ~150
+| fhp   = ~80
+|
+| loot  = [[Dead Swan]]: [[Swan Feather]] x1-3, [[Entrails]], [[Tiny Brain]], [[Swan Meat]] x3, [[Bone Material]] x2, [[Wishbone]] rarely
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Swans are creatures found in [[Terrain|Shallow Water]] or [[Terrain|Deep Water]], mostly on lakes. They run at walking speed (2) on water and 3 on land, but flee at flying speed (horse speed 3). If you kill them, you can pick them up like a small animal that was trampled. [[Dead Swan]] takes 2x2 slots in the inventory.
+
+Their feathers are the main ingredient in [[Hussar's Wings]], a crucial high-end PvE and overall PvP armor piece.
+
+==Combat==
+
+===Behaviour===
+
+Passive.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Feather Flurry}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+Roughly the same as a [[Badger]]. With 25-30 combat stats spamming punch or sideswipe works fine. You'll need to be on a horse to catch it when it flees, unless you deal a high enough damage move to kill it before it begins to. Cleaving for 90 at ~75 HP should do.
+
+{{Game Development}}

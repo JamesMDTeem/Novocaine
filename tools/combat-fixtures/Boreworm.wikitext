@@ -1,0 +1,52 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(2/11)-(-2/11)round6}}
+|
+| baseq = 20
+|
+| armor = 31
+| hp    = 1200
+| fhp   = 800
+|
+| loot  = [[Fresh Boreworm Hide]], [[Intestines]] x5,[[Entrails]] x3, [[Boreworm Meat]] x4, [[Boreworm Beak]] x1
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+''"Added "Boreworms", creature. Not to bore you with the details, but these tunnelling nematodes now inhabit the lower reaches of the cavernous underworlds. They can pop up, and down, and quite generally cause more than a bit of a nuisance to the poor, unsuspecting cave dweller who chances upon them. Their hides take a fair bit of time to dry, but can be used as leather when dry, without further processing required." ~ Jorb''
+
+
+Boreworms are rare underground creatures, that can be spawned naturally or from [[Loose Rock]] when destroying it or mine around 7 tiles it.
+
+They are known to hide alone or in a group of 2-3 worms by burrowing in the underground tiles, and as a player walks by them, they will unburrow all at once and immediately attack him.
+
+==Combat==
+
+===Behaviour===
+
+Aggressive, instantly attack upon being mined out. 
+
+Can instantly interrupt combat interaction by burrowing.
+
+Once burrowed, they wait between 3-20 seconds before jumping out and either waiting idle or attacking the player again.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}}
+| {{:Bristle}} {{:Careful Approach}}
+|}
+
+===Strategy===
+
+They do not have any special attacks and their only advantage is their high Hitpoints value. They pose no threat to a player on horse, with at least basic combat knowledge and relatively low stats (~100 FEPs and unarmed or melee combat)
+
+Keep in mind, that Horses are faster than Boreworms.
+==Notes==
+*[[Boreworm Hide|Dried Boreworm Hide]] acts like a single piece of leather for any recipe requiring it.
+*During combat, Boreworms tend to burrow and break aggro. It is not uncommon for them, to jump out and not aggro the player again, causing them to stand still and ignore the player they have fought just a moment ago. It is unknown if this is a bug.
+
+{{Game Development}}

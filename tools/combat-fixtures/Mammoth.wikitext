@@ -1,0 +1,66 @@
+{{infobox creature
+| xobst  = {{#expr:(7/11)-(-7/11)round6}}
+| yobst  = {{#expr:(15/11)-(-15/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 80
+|
+| armor  = 125
+| hp     = 4000
+| fhp    = 2800
+|
+| loot   = [[Fresh Mammoth Hide]] x4, [[Animal Fat]] x2-5, [[Intestines]] x10, [[Entrails]] x10, [[Mammoth Meat]] x25, [[Mammoth Tusk]] x2, [[Bone Material]] x16
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+"Mammoths are big, rare, and dangerous. They may kill you, but only seldom attack."
+-jorb
+
+==Combat==
+
+===Behaviour===
+
+Rarely aggressive, but are usually faster than a horse while walking and sometimes even faster when running.<br>
+Take care when fighting mammoths - especially on horses, as after >70% openings they can use an ability similar to "[[Hearth Magic|Raw Hide!]]" and stun nearby horses. This can quickly cause you to get knocked down.<!--Will [[execute]] you if they KO you. (Disabled, see Talk page)-->
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:5</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Crush Underfoot}} {{:Trumpeting Fury}} {{:Trunk Gunk}} {{:Trunk Roll}} {{:Stampede}}
+| {{:Overwhelm}}
+|}
+
+===Strategy===
+[[File:mammoth_strategy_4.png|thumb|''A properly positioned [[Hearthling]] as seen - with the use of Boundary Boxes displayed through the Hurricane Client'']]
+
+Current (as of '''[[World]] 16.1''') strategy involves not fighting the mammoth in a fair fight, but rather abusing the palisades being indestructible by mammoths.<br>
+
+What you need is a [[Claim|claimed]] enclosed palisade in the mountain area. (As a precaution - wait at least 24h after building the palisade before trying to bring a mammoth inside, they may attempt to destroy it before it builds up sufficient soak strength.)<br>
+
+The palisade needs to have a small (preferably rectangular) compartment with a gate and a single empty square without the palisade built there for luring the mammoth inside (see images for reference).<br>
+[[File:mammoth_strategy_1.png]]
+[[File:mammoth_strategy_2.png]]<br>
+Once the palisade is setup, grab yourself a horse and look around for a mammoth (never attempt luring a mammoth on foot unless it's literally next to your palisade) - if found, attack it and run straight into the compartment then wait for the mammoth to walk into it, once it's inside just run through the gap in the wall and after that you can try closing the gate behind it. (usually the gate can stay open, as even in peace mode the animal does not run through the gate - it does rarely happen though)<br>
+'''IMPORTANT - Do not attempt to lure a mammoth inside with a character that has [[Rage]] unlocked, as it will make it impossible to run through the gates and you will have to either run away from the mammoth or use [[Hearth Magic|Quell the Beast]] to escape.<br>'''
+If you have caught yourself a mammoth, you are free to attack it, but beware, as mammoths use a ranged attack called [[Mammoth|Trunk Gunk]] which hits through armor, and to protect yourself your [[Hearthling]] needs to be partially covered by the palisade segment.<br>
+[[File:mammoth_strategy_3.png]]<br>
+To safely fight the mammoth you should use any melee weapon with extra range such as [[Boar Spear]], [[Giant Needle]] or [[B12]] and position yourself outside its attack range.<br>
+If you are experienced, want to learn how to or already do not have any issues positioning yourself perfectly to stop the animal from attacking you then feel free to use a sword.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Mammoth Meat]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for and [[Bone Material]].<br>
+[[File:Mammoth_skull.png|150px]] Mammoth Skull. A leftover after butchering the mammoth - can be collected for [[Mammoth Tusk]].
+
+== Notes ==
+
+* Corpse cannot be lifted.
+* After butchering leaves a liftable skull - can be used for [[Totemic Gate]] or as a display trophy.
+
+{{Game Development}}

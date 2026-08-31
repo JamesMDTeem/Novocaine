@@ -1,0 +1,33 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 3
+|
+| skillreq   = [[requires::Steelmaking]]
+| objectsreq = [[requires::Bar of Steel]] x12, [[requires::Hardened Leather]] x2
+| producedby = [[requires::Anvil]] and [[requires::Smithy's Hammer]]
+|
+| slot       = 6L and 6R
+| basedmg    = 150
+| armorpen   = 10
+| range      = 1.4
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Battlea$xe of the Twelfth Bay}}
+
+The {{PAGENAME}}(Also known as the B12) deals 150 base damage, the highest in the game. This power comes at a cost, as the axe increases attack cooldowns by 25%. It is also considerably expensive to craft, requiring twelve [[Bar of Steel|Bars of Steel]], and two [[Hardened Leather]].
+
+
+The {{PAGENAME}} must be equipped in both hand slots and counts as both a cutting tool and an axe as well as being an edged weapon.
+
+
+The name of this axe originates from the producers of Dwarf Fortress, Bay 12 Games. Members of the Bay 12 forums were one of the first major groups to start playing Haven &amp; Hearth, establishing the town of Bottleneck. Jorb has stated that this is the first, and last time that items will be named after communities that join the game.
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Steel + _{q}Hardened Leather}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 150*\sqrt{\sqrt{Strength*{q}Axe}/10}</math>.

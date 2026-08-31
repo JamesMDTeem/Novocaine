@@ -1,0 +1,42 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Archery]]
+| objectsreq = [[requires::Yew Bough]] x2, [[requires::Silk Thread]] x8, [[requires::Steel Nugget]] x4
+| producedby = Hand
+|
+| slot       = 6L and 6R
+| basedmg    = 60
+| armorpen   = 5
+| cskill     = [[requires::Marksmanship]]
+| ammoreq    = [[requires::Stone Arrow]], [[requires::Bone Arrow]], [[requires::Metal Arrow]]
+}}
+
+[[Category:Home Decor]]
+[[Category:Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Ran$ger's Bow}}
+
+A Ranger's Bow, is a high-tier ranged weapon. It fires ([[Stone Arrow|Stone]],[[Bone Arrow|Bone]] or [[Metal Arrow|Metal) Arrows]] which affect the damage dealt. A player aims the bow at a location, after some time the bow will shoot an arrow, you can't move when you arming the arrow. Arrow flies in straigh line and if touches the target it will hit it.
+
+The Ranger's bow is the improved version of the [[Hunter's Bow]].
+
+==Notes==
+
+When crafting, the qualities of a bow are softcapped by <math>\sqrt[3]{Dexterity*Carpentry*Marksmanship}</math>.
+
+
+Damage scales with Marksmanship skill and bow quality using the following formula: <math>Damage = (Bow Base Damage)*\sqrt{\sqrt{Marksmanship *{q}Bow}/10}+_{base}Arrow Damage*\sqrt{_{q}Arrow/10}</math>.
+
+
+Stone Arrows have a base damage of 10. Bone Arrows have a base damage of 15. Metal Arrows have a base damage of 20.
+The arrows have 5%, 10%, 15% armor penetration respectively.
+
+==Gallery==
+
+<gallery>
+rbow.png | A ranger's bow used as a wall decoration.
+</gallery>
+
+{{Game Development}}

@@ -1,0 +1,30 @@
+{{infobox creature
+| terrain = spawns rarely at daytime, common at nighttime.
+|
+| baseq = N/A
+|
+| hp = N/A
+| fhp = N/A
+|
+| loot = N/A
+}}
+
+" Midge swarms are black clouds of midges floating about, primarily in swamps and forests, primarily at night, making life miserable for hearthlings by dealing the odd, and insignificant wound." -jorb
+
+==Behavior==
+
+Unlike any other creature, midges are untargetable and can pass through any object. They float at 2.5 speed randomly, mostly at night and in swamps. If they notice a hearthling nearby, they start to float towards and around the hearthling to bite for 1-3hhp every time the swarm passes through the hearthling. 
+
+Midge Swarms inflict a new [[Wounds|Midge Bite]] wound per bite. It can be healed with [[Yarrow]], but it heals by itself for 1 HHP in less than a hour (better in [[Sturdy Bed]]).
+
+==Strategy==
+Because of the low movement speed it's pretty easy to avoid them even on foot.  Be careful if traveling in rough terrain or getting stuck on obstacles.
+It's quite dangerous to leave an hearthling in a swamps at night; A single swarm will bite for approximately 30 HHP in a minute, and a few swarms can easily kill character in barely a few minutes.
+
+Because Midge Warms cannot travel between maps, an easy way to evade them is to duck into a building or cave.  After a few seconds without a target, the swarm will leave the area.
+
+==Notes==
+*Extremely bountiful on Swamps, dangerous to new players.
+*Seem to appear after mid-summer.
+
+{{Game Development}}

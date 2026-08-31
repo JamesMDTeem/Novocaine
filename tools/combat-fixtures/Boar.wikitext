@@ -1,0 +1,76 @@
+{{infobox creature
+| xobst  = {{#expr:(4/11)-(-4/11)round6}}
+| yobst  = {{#expr:(10/11)-(-7/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 40
+|
+| armor  = 15
+| hp     = 450
+| fhp    = ~275
+|
+| loot   = [[Fresh Boarhide]], [[Entrails]] x2 [[Intestines]] x3, [[Small Brain]], [[Animal Fat]], [[Raw Boar]] x8, [[Bone Material]] x4, [[Boar Tusk]] x 1-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Boars are a quite common sight in forests, and may be [[Taming|tamed]] to become [[Pig|domesticated pigs]]. 
+Boars also stand out as being one of the tougher creatures due to their aggressive nature and the likelihood of encountering them on forest terrain. Fortunately, boars are slower than most other animals as their fastest movement speed is somewhat slower than a player's running speed, making it possible to outrun them given enough time and stamina.
+
+Boars have a decent chance to [[execute]] you when they KO you.
+
+Boars have a natural armor that absorbs all damage below 15. This armor cannot be broken and ignores armor piercing.
+
+==Combat==
+
+===Behaviour===
+
+There is a good chance that it will attack you if you get too close. Fortunately it is well known that boars are one of the few animals which run slower than a Hearthling's third speed. (Except in very rare cases where they may run fast enough to require you to sprint.) Use this to your advantage if you need to flee from them or when trying to hunt them. If they begin to run away from you, you can punch them from behind for maximum damage. For an easy kill against boars, sling rocks at them from a boat, and then when they start to run you can hop out and chase them down.
+
+=== Strategy ===
+Boars are a great benchmark for your combat prowess. By the time you can reliably kill boars without too much damage you know you're ready to pretty much kill anything save for Mammoth or Trolls with a bit of cheese, and with a great weapon and armor set you can stand and deliver to most animals you'll see.
+
+Boar fight with ferocity. They attack faster than you might expect and deal big opening and big damage.
+
+They prefer to spam Mule Kick to raise your yellow, then Bear Down to weaken you up and gain IP. Then they might Mule Kick more for reliable damage dealing or Bristle to keep themselves safe, and occasionally they're go all out and use Blood & Gore for a mighty whooping.
+
+'''Always remember Boars might decide to KILL and EAT you!''' Blood & Gore can catch you off guard if you aren't paying attention and send you on your ass from a 50 damage smack.
+
+You should be constantly kiting them. Be on horseback for a far easier time. Keep all openings low, they can exploit all of them. 
+
+Since they have 15 armor attacks like Punch are useless. Quick Barrage should be spammed, but it won't deal good damage unless you have a good sword; it's more to gain IP. If you've got good stats but a weak weapon like a Tinker Axe, you should rely on creating big openings and wasting their IP so that they can't Bristle. Full Circle is good if you have a nice sword, but if you're using an Axe you should use Cleave or perhaps Raven's Bite, and only use them when you've made big openings. 
+
+Using strong moves is pretty much the key to success. Just whittle them down.
+
+A huge issue with Boars when using anything other than a good sword is that they will occasionally decide they don't like the hand of cards they've been dealt and '''erase all their openings.''' They do this by suddenly and randomly spamming a Red and Yellow restoration that gives 1 IP 3, 6 or even 9 times, and then spamming Bristle, removing all openings. They generally do this once you've caused any opening to go beyond 30%. They might repeat this once, twice, and on rare occasions, infinitely until all openings are at 10 or lower. 
+
+The only real counter play is to swiftly attack and take the damage they'll deal or heavily outstat them in Agility allowing you to deal out damage far faster than they can spam their moves. If you're at 20 or lower Agility they can use a move once per second and essentially remove all openings multiple times per minute leading to a horrifically drawn out fight.
+
+One good setup is to spam Quick Barrage to stack IP and then use Takedown or Storm of Swords once or twice, leaving them at ~50 Red and Yellow openings. Proceed to spam Full Circle until one of you are dead or they remove all their openings.
+
+Alternatively, f you have a really nice sword and good stats/armor you can just spam quick barrage/full circle or sideswipe without much thought.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Mule Kick}} {{:Bear Down}} {{:Blood & Gore}}
+| {{:Bristle}}
+|}
+
+
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}}hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Boar]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Boar Tusk]] and [[Bone Material]].<br>
+
+
+==Notes==
+
+*To get to you, boars will destroy any objects obstructing their path with lower than Soak 25, meaning only [[Palisade]]s and [[Brickwall]]s stop boars from chasing you.
+
+{{Game Development}}

@@ -1,0 +1,74 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Steel]] x2, [[requires::Bar of Bronze]]
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 1L
+| ahp        = 90
+| absorbX    = 8
+| absorbY    = 8
+|
+| statAGI    = -1
+}}
+
+[[Category:Clothing]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Tha$ne's Helm}}
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Bronze + _{q}Steel}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+| Quality
+| Hit Points
+| Armor Class
+| Agility
+|-
+| 10
+| 90
+| 8/8
+| -1
+|-
+| 40
+| 180
+| 16/16
+| -2
+|-
+| 90
+| 270
+| 24/24
+| -3
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 9</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 8</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 8</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -1</math>
+|}
+
+{{Game Development}}
+
+[[Category:Headgear]]

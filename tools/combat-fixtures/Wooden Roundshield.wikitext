@@ -1,0 +1,38 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Carpentry]]
+| objectsreq = [[requires::Board]] x2, [[requires::Leather]] x2, [[requires::Custom Image Sketch]] (optional)
+|
+| slot       = 6L or 6R
+| ahp        = 75
+| absorbX    = 3
+| absorbY    = 1
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Wooden $Roundshield}}
+
+Provides a bit of armor, and allows the player to use the Shield Up combat maneuver, this will make your defense 2.5 * your [[Skills#Melee_Combat|melee combat]] skill.
+
+The defense buff works even if the shield is broken.
+
+Softcapped by [[Dexterity]] and [[Carpentry]].
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>\frac{Quality}{10} * 75</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 3</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|}
+
+{{Game Development}}

@@ -1,0 +1,9 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Roar of the Wild.png]]
+| Roar of the Wild
+|
+*Reduces: {{RoB color|sweeping| Reeling}}, {{RoB color|oppressive| Cornered}}
+
+|}</onlyinclude>

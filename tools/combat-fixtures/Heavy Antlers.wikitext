@@ -1,0 +1,10 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Heavy Antlers.png]]
+| Heavy Antlers
+|
+*Attack type: {{RoB color|striking|Striking}}, {{RoB color|backhanded|Backhanded}}, {{RoB color|oppressive|Oppressive}}
+*Openings: {{RoB color|sweeping|Reeling}}
+*IP -4
+|}</onlyinclude>

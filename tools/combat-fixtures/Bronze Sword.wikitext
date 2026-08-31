@@ -1,0 +1,41 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Bronze]] x3
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 90
+| armorpen   = 12.5
+| range      = 1.2
+| cskill     = Melee Combat
+}}
+
+[[Category:Home Decor]]
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Bron$ze Sword}}
+
+Armor penetration: 12.5 %
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Bronze * 9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = (Weapon Base Damage)*\sqrt{\sqrt{Strength*{q}Sword}/10}</math>.
+
+==Gallery==
+
+<gallery>
+Link.png | A player wielding a bronze sword.
+Bronze Sword - (on wall).png | A bronze sword used as a wall decoration.
+</gallery>
+
+{{Game Development}}

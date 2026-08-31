@@ -1,0 +1,50 @@
+{{infobox creature
+| caption = Calf &raquo; Cow &raquo; Bull
+|
+| xobst   = {{#expr:(3/11)-(-3/11)round6}}
+| yobst   = {{#expr:(9/11)-(-9/11)round6}}
+|
+| terrain = (''None, Domestic Areas'')
+|
+| hp      = (<i>unknown</i>)
+|
+| loot    = [[Cow's Milk]], [[Raw Beef]] x10, [[Animal Fat]], [[Intestines]] x2,  [[Entrails]] x3, [[Tiny Brain]], [[Fresh Cow Hide]], [[Bone Material]] x6, [[Suckling's Maw]] from calfs.
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+[[File:breeding_cows.png|thumb|A breeding pair of cows]]
+
+{{PAGENAME}} are tamed [[Aurochs]]en. See [[Taming]] for more information about taming. When it comes to quantity, Cows are the best possible source of [[Cow's Milk|milk]], far outproducing [[Goat]]s and [[Sheep]] on a per-animal basis, and they produce a significant amount of [[Raw Beef|meat]] and [[Fresh Cow Hide|hide]]. Additionally, adult Cattle can be equipped with [[Packrack]]s for portable storage, and Bulls can be used to pull [[Wagon]]s.
+
+==Animals==
+*'''Bull''' is a male cattle that can impregnate(indicated through a mating animation) female cattle (cow), pull [[Wagon]]s(slower than [[Horse]]) and equipped with [[Packrack]] to carry things.
+*'''Cow''' is a female cattle. After being impregnated, they give birth to a calf(can have twins on rare occasions) in 4.5 days then start to produce milk. Also can be equipped with [[Packrack]] to carry things.
+*'''Calf''' is an adolescent cattle. They will grow either into a bull or cow (indicated in the top left side of their respective information windows) in 10 days. In addition to regular products, calves give you a [[Suckling's Maw]] when butchered.
+
+==Stats & Quality==
+*The quality of an animal or any of stat is the one of parent quality\stat, +20 -> -5, and then [[softcap|softcapped]] by the breeding quality of the male involved and quality of eaten [[Swill]].
+**See [[Animal Qualities]] for more information.
+===Milk===
+*Cows produce [[Cow's Milk]] at the rate of 0.01 every 10 minutes in RL at Milk Quantity 10, speed modified by Milk Quantity stat and can store a maximum of 25 L. 
+*Milk quality equal to cow's quality and modified by Milk Quality stat.
+===Meat===
+*Adult Cattle produce 10 [[Raw Beef]] at Meat Quantity 10, modified by Meat Quantity stat. 
+*Meat quality equal to cattle's quality and modified by Meat Quality stat.
+===Hide===
+*Cattle produce 1 [[Cow Hide]] and quality equal to cattle's quality, modified by Hide Quality stat.
+
+==Tips & Tricks==
+*It is a good idea to seperate your bulls from your cows, to ensure that you can select the highest quality bull to mate with your cows when you want calves. You can additionally castrate your lower quality bulls to stop them from breeding and to acquire [[Bollock]].
+
+==Notes==
+Herder credo (possible other parts of the game as well) refers to "Cattle" as "ochs." If you have quest to slaughter or flay an "ochs" you can use any cattle to complete them regardless of age or sex. (Modern English word "ox" refers exclusively to male cattle and usually implies castrated draft animal.
+
+
+==Gallery==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead Cow. Can be skinned for [[Fresh Cow Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned Cow. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Beef]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] Cow Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

@@ -1,0 +1,55 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Hunting]], [[requires::Archery]]
+| objectsreq = [[requires::String]] x5, [[requires::Prepared Animal Hide]] x2
+| producedby = Hand
+|
+| slot       = 6L or 6R
+| basedmg    = 15
+| armorpen   = 20
+| cskill     = [[requires::Marksmanship]]
+| ammoreq    = [[Stone]]
+}}
+
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|S$ling}}
+
+A Sling is a one-handed projectile weapon that requires [[Stone]] as ammunition. 
+
+It is often used by players with low [[Marksmanship]] skill, as it is twice as easy to aim with than it is with the [[Bow]]. However, the sling does lower damage than the bow. It is commonly used for hunting. 
+
+=== Damage ===
+
+The maximum damage is {{#show:{{PAGENAME}}|?basedmg}}, multiplied by the square root of the quality of your Sling divided by ten. 
+
+Your [[Perception]] attribute affects the minimum damage of ranged attacks. Your target's [[Agility]] attribute reduces your damage.
+
+<p>{{Verify|Formula seems to be not up-to-date anymore, or is missing some info (Sling listed damage).|Sling damage}}
+
+{{MT|m=old|on}}
+<math> Max = 15 * \sqrt{\frac{_{quality}}{10}}</math>
+
+<math> Min = \frac{1}{2} * \frac{PER}{AGL} * Max</math>
+{{MT|off}}
+
+Where PER is your Perception attribute and AGL is the enemy's [[Agility]] attribute.
+<!-- Accuracy section removed per https://www.havenandhearth.com/forum/viewtopic.php?f=39&t=67070&hilit=ranged this update.-->
+
+=== Quality ===
+
+The [[quality]] of the Sling is determined with the following formula:
+
+<math>_{q}Sling = \frac{AvgStringQ + AvgLeatherQ}{2}</math>
+
+It is [[softcap]]ped by [[Dexterity]], [[Survival]] and [[Marksmanship]].
+
+==Gallery==
+
+<gallery>
+Sling - (on wall).png | A sling used as a wall decoration.
+</gallery>
+
+{{Game Development}}

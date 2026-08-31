@@ -1,0 +1,24 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{none}}
+| producedby = [[requires::Leaf Pile]]
+| specific   = Any Snail
+}}
+
+[[Category:Creatures]]
+
+Forest snails can be made into [[Escargots d'Amour]] and [[Onioned Escargot]], which provides an efficient source of FEPs and Energy early-on.
+
+They do not have any byproducts, cannot be wrung by their neck, and can be picked up by right-clicking them.
+
+== How to Acquire ==
+
+Snail may be found in the any [[Forest]].
+
+==Gallery==
+
+[[File:Forest Snail ingame.jpg|200px|thumb|left|]]
+
+{{Game Development}}

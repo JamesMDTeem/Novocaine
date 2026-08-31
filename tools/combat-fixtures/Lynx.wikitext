@@ -1,0 +1,51 @@
+{{infobox creature
+| xobst  = {{#expr:(2/11)-(-2/11)round6}}
+| yobst  = {{#expr:(5/11)-(-5/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 45
+|
+| armor  = 35
+| hp     = 400
+| fhp    = 150
+|
+| loot   = [[Fresh Lynx Hide]], [[Intestines]] x3, [[Entrails]] x2, [[Big Brain]], [[Raw Lynx]] x6, [[Bone Material]] x3, [[Lynx Claws]] x1-4
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Large yellow cat who patrols the forest for food. They are the animal with the most Agility in the game.
+
+They normally should run away from you, but have a good chance to [[execute]] you if they decide to aggro.
+
+==Combat==
+
+===Behaviour===
+
+They behave extremely strangely, unlike any other aggressive animal: they will flee within a certain radius of a player, then charge seemingly out of nowhere and only initiate combat at the very last second. Very agile will likely hit twice or more for every attack you make
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:4</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Shredding Paw}} {{:Dark Heart Move}}
+| {{:bristle}}
+|}
+
+===Strategy===
+
+You'll need horse with full stamina to catch them if they'll run, because only horse on 3rd-4th speed can catch up lynx. Beware that with 50 AGI they attack faster than you.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Lynx]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Lynx Claws]] and [[Bone Material]].<br>
+
+==Notes==
+
+* To get to you, lynx will destroy any objects obstructing their path with lower than Soak 25, meaning only [[Palisade]]s and [[Brickwall]]s will stop their bloodlust.
+
+{{Game Development}}

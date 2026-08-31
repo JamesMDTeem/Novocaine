@@ -1,0 +1,45 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]], [[requires::Druidic Rite]]
+| objectsreq = [[requires::Bar of Wrought Iron]] x3, [[requires::Red Deer Antlers]]
+| producedby = [[requires::Anvil]], [[requires::Smithy's Hammer]]
+|
+| slot       = 1L
+| ahp        = 45
+| absorbX    = 8
+| absorbY    = 4
+|
+| statAGI    = -1
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Druid's Helm}}
+
+A wrought iron helmet symbolizing your status as a druid. 
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}WroughtIron+ _{q}Antlers}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[3]{Strength*Smithing*Lore}</math>
+.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 4.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 8</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -1</math>
+|}
+
+[[Category:Headgear]]

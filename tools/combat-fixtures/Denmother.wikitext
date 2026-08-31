@@ -1,0 +1,53 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(5/11)-(-5/11)round6}}
+|
+| baseq = 30
+|
+| hp    = 300
+| fhp   = N/A
+|
+| loot  = [[Fresh Badger Hide]], [[Intestines]] x2, [[Entrails]], [[Brain]], [[Raw Badger]] x4, [[Bone Material]] x3, [[Scent Gland]] x0-1
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+[[Category:Creatures]]
+
+Denmothers are larger, stronger [[Badger]]s that serve as mini-bosses in [[Badger Sett]]s. You will generally find one or two in the large rooms within them, with each dungeon usually containing at least one large room with at least one Denmother. They cannot be found in the wild.
+
+Badgers are short-legged omnivores, distant relative to [[Otter]] and [[Wolverine]].
+
+[[Badger Sett]]<nowiki/>s are mini-dungeons inhabited by Badgers and Denmothers.
+
+==Combat==
+
+===Behaviour===
+
+''Extremely'' aggressive in a certain radius to everyone, as all creatures have far higher aggression within dungeons. Being dungeon-dwellers only, they will never flee.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Sudden Charge}} {{:Badgering}}
+| {{:Careful Approach}}
+|}
+
+===Strategy===
+Denmothers are slightly stronger than Badgers, about on par with [[Wolverine]]s. Due to the cramped quarters of a dungeon, the only real strategy you should be using is an ordinary duel and/or kiting them, with no other tricks. If you need to use cliffs or ranged combat to kill them, you simply shouldn't be doing the dungeon yet.
+
+==In-Game Example(s)==
+
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh Badger Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Its model is not displayed correctly. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Badger]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+==Gallery==
+
+<gallery>
+Badger Sett.jpg | [[Badger Sett]] entrance.
+</gallery>
+
+{{Game Development}}

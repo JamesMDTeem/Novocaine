@@ -1,0 +1,38 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Hard Metal]] x2, [[requires::Block of Wood]]
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 45
+| armorpen   = 20
+| range      = 1
+| cskill     = Melee Combat
+}}
+
+[[Category:Home Decor]]
+[[Category:Mining Tools]]
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Tools|$Axes|$Metal Axe}}
+
+A '''Metal Axe''' is the metal equivalent of the [[Stone Axe]]. When felling trees, it's faster and costs less stamina, and it can produce more blocks out of one log than the stone axe. 
+With a [[Metal Axe]], you get ~25% more blocks per log than you get with a stone axe. Different types of logs provide different amounts of blocks, see more [[Tree|here]].
+
+It can also be used to shear a [[sheep]], skin and butcher an animal or for combat. Identical to the stone axe, it increases the effectiveness of chipping stone, destroying objects (adds 1 damage when destroying) and affects quality of skins, raw meats, [[intestines]], and [[entrails]] when skinning and butchering.
+
+When it comes to felling trees, a [[Woodsman's Axe]] is even better. It chops trees slightly faster than a Metal Axe and yields the same high block output.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Metal+ _{q}Wood}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 45*\sqrt{\sqrt{Strength*{q}Axe}/10}</math>.
+
+==Notes==
+
+The quality of blocks of wood you can produce is not capped by axe quality, but skinning, butchering, and splitting logs into branches does take the axe quality into account.

@@ -1,0 +1,15 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{none}}
+| objectsreq = {{none}}
+}}
+
+[[Category:Creatures]]
+
+Toads are one of the few creatures, alongside [[Chicken]]s, [[Rabbit]]s and [[Rat]]s, that can be attacked without them fighting back. This makes them good in helping novices figure out the [[Combat moves|Combat System]].
+
+Toads are needed to create the curiosity [[Enthroned Toad]]
+
+{{Game Development}}

@@ -1,0 +1,26 @@
+{{infobox creature
+| xitem = 1
+| yitem = 1
+}}<!-- This page is for the "not yet captured" (ie: still flying around) Dragonfly object case -->
+
+==How to Acquire==
+
+Dragonflies only fly around in swamps! You can't run after them, which makes them quite tricky to catch.
+The easiest way currently is to catch them on horseback, as horses currently move normal speed in a swamp.
+An alternative method (if you're good at it) is to try and intercept them since their flying pattern is quite clear.
+Another way is just to right-click and wait, it might take a while but sooner or later you will catch it.
+
+When caught the dragonfly will usually be a [[Emerald Dragonfly]].
+But sometimes (around a 2% chance) you may and up with the very rare but superior [[Ruby Dragonfly]] instead.
+
+==Emerald Dragonfly vs Ruby Dragonfly Curiosity data==
+
+{{#ask: [[requires::{{PAGENAME}}]] | mainlabel=Dragonfly | headers=plain
+| ?lpgain#
+| ?studytime
+| ?mentalweight
+}}
+(''More curiosity data available at [[Curiosity#Curiosity_Tables|Curiosity Tables]]'')
+
+==Notes==
+*Does not spawn in Winter or Spring.

@@ -1,0 +1,35 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]] <!-- probably -->
+| objectsreq   = {{none}}
+| producedby   = None/Hand/Terrain
+| specific     = Bug, Bait
+|
+| seasonal     = Spring
+|
+| lpgain       = 550
+| studytime    = 2:25
+| mentalweight = 4
+| expdrain     = 5
+}}
+
+[[Category:Creatures]]
+
+{{PAGENAME}} is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+==How to acquire==
+
+They can spawn under certain conditions (biome, time of the day) and can be chased and caught by simply right-clicking them in the game world or (generally much easily) through the minimap.
+
+It is confirmed that winged insects are much less likely to spawn when it rains.
+
+==Trivia==
+Based on real species of butterfly, ''Gonepteryx rhamni''. Many non-English languages associate its yellow color with [[lemon]]s or citrus in general.
+
+In-game representation reflects species often being the first butterfly to take flight when spring arrives, and disappearing for most of the summer. 
+
+However the real species has another breeding cycle in late summer or early fall. This is not modeled in-game.
+
+{{Game Development}}

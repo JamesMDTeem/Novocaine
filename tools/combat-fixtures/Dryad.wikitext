@@ -1,0 +1,31 @@
+{{infobox creature
+| xobst = {{#expr:(8/11)-(-8/11)round6}}
+| yobst = {{#expr:(8/11)-(-8/11)round6}}
+|
+| loot  = None
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+[[Dryad]]s are rare tree-like [[Creatures]] with green hair, wooden bodies and exquisite antlers. They are always on the move, dashing to and fro through the trees. Dryads cannot be attacked or otherwise interacted with, similar to [[Treant]]s.
+
+Witnessing a [[Dryad]] can trigger the '''Crashing Through the Forest''' [[Experience Events|Experience Event]]. This [[Experience Events|Event]] will grant a hearthling '''400''' [[Experience Points|EXP]], and a text will read as such -   
+
+"''An Otherworldly presence, squirming roots and shaking aspen, seemingly bending the natural world around the path it cuts, comes crashing through the foliage in a most sublime spectacle.''"
+
+==Notes==
+
+*Dryads gain orange hair during Autumn.
+
+*They are also referred to as "Tree Men" or "Ents."
+
+*In Legacy Haven, [[Dryad]]s could be killed.
+
+==Gallery==
+
+<gallery>
+AutumnDryad.png | Dryad during Autumn.
+Legacy-Dryad dead.png | Dead legacy Dryad.
+</gallery>
+
+{{Game Development}}

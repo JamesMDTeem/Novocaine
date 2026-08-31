@@ -1,0 +1,37 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 1
+| fhp   = 1
+|
+| loot  = [[Dead Bog Turtle]]: [[Bog Turtle Shell]], [[Entrails]], [[Raw Bog Turtle]] x2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Bog Turtle is a swamp creature that can be butchered for [[Bog Turtle Shell]], [[Entrails]] and [[Raw Bog Turtle]] meat. It takes up a 2x1 space in the inventory. 
+
+
+==How To Acquire==
+
+Turtles can be found commonly on [[Swamp]], [[Bog]] or [[Fen]]. They do not engage in combat and do not flee. You will need [[Hunting]] to pick up a turtle or killing them through trampling with a horse.
+
+Also can be obtained instead of boulders while digging a [[Cellar]] at 9 lvl of caves.
+
+==Notes==
+
+*Spitroasting turtle still gives [[Bog Turtle Shell]].
+*Bog Turtle Shell is one of the most accessible sources of [[Finebone]] to a fresh character.
+*Most likely represents 'European pond turtle' (Emys orbicularis).
+
+
+==Gallery==
+
+<gallery>
+Bog Turtle in-game.png | Turtle in wilderness.
+</gallery>
+
+{{Game Development}}

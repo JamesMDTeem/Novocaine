@@ -1,0 +1,106 @@
+{{infobox creature
+| caption = Stallion &raquo; Mare &raquo; Foal
+|
+| xobst   = {{#expr:(4/11)-(-4/11)round6}}
+| yobst   = {{#expr:(8/11)-(-8/11)round6}}
+|
+| terrain = (''None, Domestic Areas'')
+|
+| hp      = unknown
+|
+| loot    = [[Fresh Horse Hide]], [[Entrails]] x4, [[Intestines]] x3, [[Brain]], [[Raw Horse]] x8, [[Bone Material]] x10, [[Suckling's Maw]] from youngs.
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+{{PAGENAME}} are domesticated creatures, kept mainly as transportation. In order to obtain Horses, you must [[Taming|tame]] [[Wild Horse]]s. {{PAGENAME}}s can be lead around by right clicking a [[Rope]] onto the animal.
+
+{{PAGENAME}} eat  units of [[Fodder]] per day (a [[Food Trough]] holds 2000 units; 1L of [[swill]] = 10 fodder). Pregnant mares eat ('''???'''){{verify|food consumption}} times as much at ('''???'''){{verify}} units per day. A lactating mare eats ('''???'''){{verify}} units of food per day, plus 0.1 unit for every 1L of milk produced.{{verify}}
+
+In grasslands biome, the horses feed from the natural grass as well, feeding less from the [[Food Trough]].
+
+==Mare==
+
+[[File:Horsestats.png|frame|''Horse information window'']]
+
+Mares are female {{PAGENAME}}s. They are kept for their ability to produce Foals, as well as for their meat.  At quality 10, one mare can feed up to 2.5 foals.  The "Milk #" stat of the mare will need to be increased for it to feed more foals without risk of starvation to the foals. Mares do '''not''' produce usable milk like [[Cattle]], [[Sheep]] and [[Goats]].
+
+==Stallion==
+
+Stallions are male {{PAGENAME}}s. Left with a mare, the stallion will impregnate her, indicated by a distinct mating animation. The non-breeding males are often preferred, over Mares, for pulling Wagons and for riding.  This is because the non-breeding males tend to be of lesser value to the owner, in case the horse needs to be abandoned or is killed.
+
+Note: A stallions will ignore open-gate boundaries when it spots a willing(''none pregnant assumed'') and accessible mare.
+
+==Foal==
+
+Foals are adolescent {{PAGENAME}}s. They will grow into either a mare or a stallion in 10 real life days. In addition to the regular products, foals give you a [[Suckling's Maw]] when butchered.  Foals must have access to any mare that has given birth, for their source of milk.  Foals will begin to starve if there is no access to one or more mares.  Each starvation tick will ruin random stats, till the foal dies.
+
+==How to acquire==
+
+To obtain a Horse you have to tame a [[Wild Horse]]. Feed a Wild Horse a clover, then use a rope to hitch it to a [[Hitching Post]] or tree. Once hitched, it must be tamed about once a day by engaging it in combat until it submits. After each taming session, the Horse must be re-hitched to prevent it from despawning. After about four days (depending on how many "Taming Points" you gain after each round of combat) the Wild Horse will transform into a Stallion or Mare. It may take three or more tames to obtain both so that more horses can be bred.
+
+==Breeding==
+
+A Mare will take 4.5 real life days to give birth.
+
+A foal takes 10 real life days to grow up.
+
+Breeding for animals with higher quality stats is much more difficult than it is to grow higher quality crops. The quality of any of the foal's stat is the average of the male and female's stat, +20 -> -5 {{verify}}, and then soft capped by the breeding quality of the male involved. Since you're typically looking for multiple stats, on top of getting more breeding stat, this can prove to be a slow task.
+
+Mares can have twins on rare occasions.
+
+You can tell the gender of foals by the information window title, it will say stallion for males and mare for females.
+
+Fodder quality must be the same or higher than the breeding horses feeding from it.  If fodder quality is lower, the horses will suffer quality decreases till they are at the same quality of the fodder.  When trough fodder is depleted, the horses will feed from the biome tiles.  The tiles are quality 10 and the horses will begin to suffer quality losses as they eat from the biome.  Once all biome tiles within the feeding area become dirt, the horse(s) will begin to starve, suffer heavy quality/stat losses <s>and die</s>.  One real life day without fodder can easily ruin a month worth of breeding effort.
+
+==Milk==
+
+While mares produce milk for foal's, they can't be manually milked.
+
+==Special stats==
+Horses have three unique values which can be bred: Endurance, Stamina, and Metabolism.
+:'''Endurance''' determines how much pony power the horse has.
+:'''Stamina''' determines how fast the horse regenerates pony power from its food meter.  This stat is arguably the most important stat for breeding riding horses.
+:'''Metabolism''' determines how much pony power each unit of food is converted to.
+
+See [[Animal Qualities]] for more information.
+
+==Tips & Tricks==
+
+*It is a good idea to separate the Males from the Females, to ensure that you can select the highest quality Male to mate with. Also you can castrate your lower quality stallions to stop them from breeding and acquire [[bollocks|Bollock]].
+
+*You should use your lowest quality horse/bull to pull a wagon, since quality has no effect on wagon-pulling and if you have to flee and leave your wagon behind, then the loss will not be as bad.
+
+*Horses can be equipped with [[Saddlebags]], which act as an inventory for the animal. Saddlebags have a 4x4 inventory space.
+
+*You can hearth home with a horse, while mounted or leashed.
+
+*The horse tracks its last rider, so if you dismount while visiting someone's claim, you can still remount without losing the horse, much the same as with boats.
+
+*It is possible to use emotes while riding a horse.
+
+*If you whistle (emote) at a tamed horse, it will run to you.
+
+*If you keep a Rope in your Inventory, your character will auto-leash your horse when you dismount from it. (''rope in belt will not auto-leash'')
+
+==Notes==
+*Doors: Although its possible to go through doors on horseback, its just not straightforward. The troublesome exception is the cave-entry which has become way harder to enter on horseback (''cave-exit not effected by this'').
+
+
+An old April Fool's prank. Jorb and Loftar promised horses during Legacy. The original prank was that if you set many carrots and straw around an [[Aurochs]], and left it there, it would turn into a horse. This obviously led to some suspicion, and so Jorb created the following animation for a horse walking to further fool everyone. Many carrots and much straw was lost.
+
+[[File:Horse - April Fools joke.gif]]
+
+==Gallery==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Horse]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+<gallery>
+<!-- other images -->
+horse-droppings.webp | Horseback flower-dropping.
+</gallery>
+
+{{Game Development}}
+
+[[Category:Vehicle]]

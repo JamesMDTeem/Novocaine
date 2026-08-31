@@ -1,0 +1,82 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Tanning]]
+| objectsreq = [[requires::Hardened Leather|Hardened Leather]] x12, [[requires::Mammoth Hide]] x2, [[requires::Mammoth Tusk]]
+|
+| slot       = 4R
+| ahp        = 600
+| absorbX    = 15
+| absorbY    = 20
+|
+| statSTR    = 10
+| statAGI    = -5
+| statCON    = 5
+|
+| statCMC    = 10
+}}
+
+[[Category:Clothing]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Mammoth Guard}}
+
+{{PAGENAME}} is a high-tier piece of chest [[:Category:Armor|armor]] made from [[Hardened Leather|Hardened Leather]] and [[Mammoth Hide]] and [[Mammoth Tusk]]. It equips to the [[Equipment Screen|equipment slot]] 4R.
+
+==Quality Formula==
+
+The quality formula is <math>\frac{_{q}Hardened Leather + _{q}Hide + _{q}Tusk}{3}</math> [[softcap]]ped by <math>\sqrt{Sewing * Dexterity}</math>.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+!Quality
+!Hitpoints
+!Armour Class
+!Skills & Attributes
+|-
+|10
+|600
+|15/20
+| +10 [[Strength]], +10 [[Melee Combat|Melee]], +5 [[Constitution]], -5 [[Agility]]
+|-
+|40
+|1200
+|30/40
+| +20 [[Strength]], +20 [[Melee Combat|Melee]], +10 [[Constitution]], -10 [[Agility]]
+|-
+|90
+|1800
+|45/60
+| +30 [[Strength]], +30 [[Melee Combat|Melee]], +15 [[Constitution]], -15 [[Agility]]
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 60</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 15</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 20</math>
+|-
+|Bonuses*
+|<math>\sqrt{\frac{Quality}{10}} * [10, 10, 5, -5]</math>
+|}
+
+&#42; where bonuses are &#91;[[Strength]], [[Melee Combat]], [[Constitution]], [[Agility]]&#93; respectively.
+
+==Gallery==
+
+<gallery>
+Mammoth Guard 1.png | Player wearing Mammoth Guard.
+</gallery>
+
+{{Game Development}}

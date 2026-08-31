@@ -1,0 +1,77 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Tanning]]
+| objectsreq = [[requires::Hardened Leather]] x4, [[requires::Hvalraf]] x3, [[requires::Whale Bone Material]]
+| producedby = Hand
+|
+| egildpct   = [[egildpct::0%-50%]]
+| egildatt   = [[egildatt::Survival]], [[egildatt::Charisma]], [[egildatt::Sewing]]
+|
+| slot       = 4L; 4R
+| ahp        = 750
+| absorbX    = 7
+| absorbY    = 5
+|
+| statSTR    = 3
+| statAGI    = 1
+|
+| statCUA    = 5
+}}
+
+[[Category:Clothing]]
+[[Category:Shirts]]
+
+{{GM|$Craft|$Clothes & Equipment|$Shirts & Tunics|Wh$aler's Jacket}}
+
+{{PAGENAME}} is a high-tier piece of chest [[:Category:Armor|armor]] that provides a small amount of protection, stat bonuses and offers a 0%-50% [[Survival|survival]], [[Charisma|charisma]] and [[Sewing|sewing]] [[gilding]] slot. It equips to the [[Equipment Screen|equipment slots]] 4L and 4R.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+!Quality
+!Hitpoints
+!Armour Class
+!Skills & Attributes
+|-
+|10
+|750
+|7/5
+| +3 [[Strength]], +1 [[Agility]], +5 [[Unarmed Combat|UA]]
+|-
+|40
+|1500
+|14/10
+| +6 [[Strength]], +2 [[Agility]], +10 [[Unarmed Combat|UA]]
+|-
+|90
+|2250
+|21/15
+| +9 [[Strength]], +3 [[Agility]], +15 [[Unarmed Combat|UA]]
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 75 </math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 7</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|-
+|Bonuses*
+|<math>\sqrt{\frac{Quality}{10}} * [3, 1, 5]</math>
+|}
+
+&#42; where bonuses are &#91;[[Strength]], [[Agility]], [[Unarmed Combat]]&#93; respectively.
+
+==Quality Formula==
+
+The quality formula of {{PAGENAME}} is <math>\frac{_{q}Leather+ _{q}Hvalraf+ _{q}Bone}{3}</math>, [[softcap]]ped by <math>\sqrt{Sewing * Dexterity}</math>.

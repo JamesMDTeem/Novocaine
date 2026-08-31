@@ -1,0 +1,30 @@
+{{infobox creature|||baseq=N/A|hp=50|fhp=N/A|loot=N/A}}Red Ants are more mature and stronger versions of [[Ants]] that are found only within [[Ant Hill Dungeon|Ant Hill Dungeon.]] They can spit acid, which both ignores and damages your armor. 
+
+Note that as Red Ants are a dungeon-dwelling creature, their damage and health is slightly random; or more specifically is connected to the dungeon's invisible "[[Dungeon|difficulty]]" stat that all dungeons randomly roll. 
+
+Additionally dungeon enemies never flee not matter how much damage they take.
+
+== Combat ==
+Wounds given by Red Ants are all exclusively [[Wounds|Antcid Burns]].
+
+=== Behaviour ===
+As with all dungeon enemies, they are extremely aggressive in a aggro range that is moderate but not as large as yours. If a dungeon enemy aggroes you, they will additionally call all nearby enemies to aggro you as well. However, if you aggro a dungeon enemy yourself, they will not call their allies.
+
+Naturally, they cannot aggro you through walls or objects, so use them to your advantage to gain angles where you can aggro them, but they can't aggro you, and avoid multiple aggroing you at once.
+
+==== Combat Moves ====
+{| class="wikitable mw-collapsible mw-collapsed"
+!Attacks<small>:1</small>
+!Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|{{:Ant Spit}}
+|
+|}
+
+=== Strategy ===
+They are barely any stronger than ordinary Ants. Use any method of melee to dispatch them; Storm of Swords and Full Circle will be useful here. Note that both Ants and Red Ants can't be hit with any ranged weapons.
+
+== In-Game Example(s) ==
+[[File:Antscompare.png|left|thumb|A size comparison between normal and Red Ants.]]
+
+{{Game Development}}

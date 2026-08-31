@@ -1,0 +1,39 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(2/11)-(-2/11)round6}}
+|
+| baseq = 50
+|
+| hp    = ~250
+| fhp   = ~80
+|
+| loot  = [[Dead Golden Eagle]]: [[Golden Eagle Feather]] x2, [[Entrails]] x3, [[Golden Eagle Feather]], [[Golden Eagle Meat]] x4, [[Bone Material]] x3, [[Golden Eagle Talon]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Golden Eagle are creatures found in [[Terrain|Mountain]]. They can fly over cliffs, and normally fly around on 3d speed. If you kill them, you can pick them up like [[rabbit]]s. [[Dead Golden Eagle]] takes 3x2 slots in the inventory.
+
+Not to be confused with [[Eagle Owl]]s, which are weaker and less rewarding to hunt.
+
+==Combat==
+
+===Behaviour===
+
+Somewhat Aggressive, always flying around highspeed.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:4</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Shredding Paw}} {{:Dark Heart Move}}
+| {{:Swift Evasion}} {{:Bristle}}
+|}
+
+===Strategy===
+
+You'll need horse with full stamina to catch them if they'll run, because only horse on 3rd-4th speed can catch up eagle. If Eagle will flee faster than horse, you can stop combat and aggro it again, he will return.
+
+{{Game Development}}

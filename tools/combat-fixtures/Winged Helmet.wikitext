@@ -1,0 +1,48 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Wrought Iron]], [[requires::Bar of Copper]], [[requires::Fine Feather]] x6
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 1L
+| ahp        = 250
+| absorbX    = 10
+| absorbY    = 6
+|
+| statAGI    = 1
+}}
+
+[[Category:Clothing]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Winged Helmet}}
+
+{{PAGENAME}} is a piece of head [[:Category:Armor|armor]]. It deflects almost twice as much damage as it absorbs, making it more durable than other armors. It equips to the [[Equipment Screen|equipment slot]] 1L.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}WroughtIron+ _{q}Copper+ _{q}Feather}{3} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 25</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 10</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 6</math>
+|-
+|Agility Bonus
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|}
+
+*Agi Bonus rounded to nearest integer
+
+[[Category:Headgear]]

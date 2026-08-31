@@ -1,0 +1,36 @@
+{{infobox creature
+| xobst = 0.37
+| yobst = 0.891
+|
+| baseq = 10
+|
+| hp    = 130
+| fhp   = ~80
+|
+| loot  = [[Dead Pelican]]: [[Pelican Feather]] x1-3, [[Entrails]], [[Pelican's Pouch]], [[Bones]] x2, [[Pelican Meat]] x3
+}}
+
+Pelican are creatures found in [[Terrain|Ocean Shallow Water]], [[Terrain| Ocean Deep Water]] or [[Seabird Rookery]]. They run at walking speed (2) on water and 3 on land, but flee at flying speed (horse speed 3). If you kill them, you can pick them up like a small animal that was trampled. [[Dead Pelican]] takes 2x2 slots in the inventory.
+
+
+==Combat==
+
+===Behaviour===
+
+Passive.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Feather Flurry}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+Roughly slightly stronger than [[Swan]]. With 35-40 combat stats spamming punch or sideswipe works fine. You'll need to be on a horse to catch it when it flees, unless you deal a high enough damage move to kill it before it begins to.
+
+{{Game Development}}

@@ -1,0 +1,31 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+| producedby   = Hand
+| specific     = Bug, Bait
+|
+| lpgain       = 2000
+| studytime    = 7:17
+| mentalweight = 24
+| expdrain     = 50
+}}
+
+[[Category:Creatures]]
+
+'''Firefly''' is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+Can be found everywhere at Night. Fireflies can be equipped on a [[Fishing Pole]] to be used as [[Bait]].
+
+==How to Acquire==
+
+You can catch a firefly by right-clicking them while they are flying around, just like [[Ladybug]]s. They appear in [[Grassland]]s, [[Forest Terrain]]s, and most likely on [[Swamp]]s. Only at Night.
+
+==Gallery==
+
+<gallery widths=160px heights=120px>
+Fireflyingame.jpg
+</gallery>
+
+{{Game Development}}

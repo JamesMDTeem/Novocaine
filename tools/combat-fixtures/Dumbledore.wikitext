@@ -1,0 +1,19 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+| specific     = Bug, Bait
+|
+| lpgain       = 750
+| studytime    = 00:27
+| mentalweight = 8
+| expdrain     = 3
+}}
+
+[[Category:Creatures]]
+
+{{PAGENAME}} is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+{{Game Development}}

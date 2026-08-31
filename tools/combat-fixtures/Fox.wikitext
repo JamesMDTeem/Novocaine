@@ -1,0 +1,223 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(3/11)-(-3/11)round6}}
+|
+| baseq = 25
+|
+| hp    = 110
+| fhp   = 75
+|
+| loot  = [[Raw Fox Hide]], [[Entrails]], [[Intestines]], [[Small Brain]], [[Raw Fox]] x3, [[Bone Material]] x2, [[Fresh Sly Ear of the Fox]] x(0-1)
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+'''Foxes''' are neutral [[creatures]] commonly encountered almost anywhere in the Hearthlands. They are an accessible source of [[Raw Fox|meat]], [[Raw Fox Hide|hide]], and [[Fox#Production|more]].
+
+== Acquisition ==
+Foxes spawn individually as entities in all [[forest]] and [[grassland]] [[terrain]] at all times of year. In addition to this, they can be found in significant numbers within [[Fox Hole|Fox Holes]].
+
+Dispatched foxes can be skinned, cleaned, and butchered via right click by [[Hearthling|Hearthlings]] that have learned [[Hunting]]. While fox corpses cannot be placed in a Hearthling's [[inventory]], they can be lifted and stored within objects such as [[Cart|Carts]] and [[Shed|Sheds]].
+
+The [[quality]] of a dispatched fox is calculated upon death, and its total is hardcapped by both a Hearthling's [[Survival]] and the quality of any [[Weapons|weapon]] or [[Sharp Tool|sharp tool]] used to kill them.
+
+== Behavior ==
+Foxes are neutral until attacked, at which point they will initiate [[combat]] and give chase. Foxes run at above Hearthling run speed, so a Hearthling must be sprinting, riding a vehicle, or on [[Horse|horseback]] to outrun or give chase.
+
+Foxes will hunt small game such as [[Squirrel|squirrels]] and [[Rabbit|rabbits]], and will attack any Hearthling that disrupts a chase by stealing their prey. Foxes are themselves hunted by [[Badger|badgers]] and [[Wolverine|wolverines]], which will chase, attack, and inevitably overpower the fox, leaving its corpse to be freely obtained by any nearby Hearthling.
+
+=== Combat ===
+Because foxes do not attack nor defend often, cannot utilize {{RoB color|oppressive|Oppressive}} Openings, and can be comfortably outrun on grassland terrain, they make an approachable target for any fledgling hunter attempting to gain combat experience. Although they are not particularly strong, a minimum of 15 in relevant combat [[Attributes]] is recommended.
+
+{| class="wikitable mw-collapsible mw-collapsed" style="vertical-align:middle; display:inline-table; margin-right:1em;""
+|+Combat&nbsp;Moveset {{#info:Moves that foxes are capable of using in combat.|note}}
+! '''Attacks'''
+! '''Restorations'''
+|- style="vertical-align:top;"
+| {{:Fell Scratch}}
+| {{:Bristle}}
+|- style="vertical-align:top;"
+| {{:Chomp}}
+| {{:Tail Spin}}
+|}
+{| class="mw-collapsible mw-collapsed mw-bold" style="vertical-align:middle; text-align:center; display:inline-table; margin-right:1em;"
+|+Moves&nbsp;Bestowed {{#info:Moves that a Hearthling may learn at random upon defeating a fox.|note}}
+|-
+|style="width:5em;vertical-align:top;"| {{Pre-img|Take Aim|size=48|break=yes|l=Combat moves#Take Aim}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Think|size=48|break=yes|l=Combat moves#Think}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Feigned Dodge|size=48|break=yes|l=Combat moves#Feigned Dodge}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Jump|size=48|break=yes|l=Combat moves#Take Aim}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Sidestep|size=48|break=yes|l=Combat moves#Sidestep}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Watch Its Moves|size=48|break=yes|l=Combat moves#Watch Its Moves}}
+|-
+|style="width:5em;vertical-align:top;"| {{Pre-img|Yield Ground|size=48|break=yes|l=Combat moves#Yield Ground}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Chop|size=48|break=yes|l=Combat moves#Chop}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Haymaker|size=48|break=yes|l=Combat moves#Haymaker}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Kick|size=48|break=yes|l=Combat moves#Kick}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Left Hook|size=48|break=yes|l=Combat moves#Left Hook}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Low Blow|size=48|break=yes|l=Combat moves#Low Blow}}
+|-
+|style="width:5em;vertical-align:top;"| {{Pre-img|Punch|size=48|break=yes|l=Combat moves#Punch}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Punch Em Both|size=48|break=yes|l=Combat moves#Punch 'Em Both}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Quick Barrage|size=48|break=yes|l=Combat moves#Quick Barrage}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Sideswipe|size=48|break=yes|l=Combat moves#Sideswipe}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Sting|size=48|break=yes|l=Combat moves#Sting}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Uppercut|size=48|break=yes|l=Combat moves#Uppercut}}
+|}
+
+== Production ==
+When used an ingredient, fox meat serves as an accessible source of [[Attributes#Intelligence|Intelligence]] and, if utilized for [[Sausage Making]], [[Attributes#Agility|Agility]] [[FEP|FEPs]].
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Creature Products {{#info:Products directly obtained by processing foxes.|note}}
+|-
+! Product
+! Action
+! Req. Skills
+|-
+| {{pre-img|Fresh Fox Hide|size=64}}
+| Skin
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Fresh Sly Ear of the Fox|size=32}}
+| Skin (Rare)
+| {{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Intestines|size=32}}
+|Clean
+|{{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Entrails|size=32}}
+| Clean
+| {{pre-img|Hunting|size=32}}
+|-
+| {{Pre-img|Raw Fox|size=32}}
+| Butcher
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Small Brain|size=32}}
+| Butcher
+| {{pre-img|Fine Butchery|size=32}}
+|-
+| {{pre-img|Bone Material|t=Bone|size=32}}
+| Collect Bones
+| {{pre-img|Hunting|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Related Products {{#info:Products requiring non-generic, exclusively-derived fox products as ingredients.|note}}
+|-
+!Product
+!Process
+!Req. Skills
+|-
+|{{Pre-img|Fox Hide|size=64}}
+|Drying
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Fox Hide Patch|size=32|l=Prepared_Animal_Hide|t=Fox Hide Patch}}
+|Splitting
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Sly Ear of the Fox|size=32}}
+|Drying
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Bone Ash|size=32}}
+|Spitroasting
+|{{pre-img|Firecrafts|size=32}}
+|-
+|{{Pre-img|Fox Hat|size=32}}
+|Crafting
+|{{Pre-img|Tanning|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table;"
+|+ Related Foods {{#info:Food recipes requiring non-generic, exclusively-derived fox products as ingredients.|note}}
+|-
+!Product
+!Process
+!FEPs
+!style="text-align:center;"| +1
+!style="text-align:center;"| +2
+!Req. Skills
+|-
+|{{Pre-img|Roast Fox|size=32}}
+|Roasting
+|style="background-color:#b6e0f5; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+|{{Pre-img|Firecrafts|size=32}}
+|-
+| rowspan="2" |{{pre-img|Spitroast Fox|size=32}}
+| rowspan="2" |Spitroasting
+|style="background-color:#b6e0f5; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{pre-img|Firecrafts|size=32}}
+|-
+|style="background-color:#79ffa5; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 0.5
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|{{Pre-img|Smoked Fox|size=32|l=Smoked_Meat#Variable_Ingredients|t=Smoked Fox}}
+|Smoking
+|style="background-color:#dedede; color:#0645ad;"| [[Smoked Meat#Variable Ingredients|???]]
+|style="text-align:center; color:#9b9b9b;"| ?
+|style="text-align:center; color:#9b9b9b;"| ?
+|{{Pre-img|Carpentry|size=32}}<br>{{Pre-img|Pottery|size=32}}
+|-
+| rowspan="2" |{{Pre-img|Fox Fuet|size=32}}
+| rowspan="2" |Meatgrinding
+|style="background-color:#f4938c; color:#0645ad;"| [[STR]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:#929afb; color:#0645ad;"| [[AGI]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Fox Wurst|size=32}}
+| rowspan="2" |Meatgrinding
+|style="background-color:#b6e0f5; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:#ffce92; color:#0645ad;"| [[PER]]
+|style="text-align:center;"| 2
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Running Rabbit Sausage|size=32}}
+| rowspan="2" |Meatgrinding
+|style="background-color:#929afb; color:#0645ad;"| [[AGI]]
+|style="text-align:center;"| 4
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:#b6e0f5; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 2
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Wonderful Wilderness Wurst|size=32}}
+| rowspan="2" |Meatgrinding
+|style="background-color:#d8f45a; color:#0645ad;"| [[WIL]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 12
+| rowspan="2" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:#d39bff; color:#0645ad;"| [[PSY]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 6
+|}
+
+==Notes==
+*Foxes killed by other creatures are ''not'' subject to a Survival or weapon hardcap, making this a good way for a fresh Hearthling to gather foxes of higher quality.
+
+==Gallery==
+<gallery>
+File:Fox Hole.png|A fox outside a Fox Hole.
+File:Fox-dead.png|A fox corpse.
+File:Fox-skinned.png|A skinned fox corpse.
+File:Fox-skeleton.png|A butchered fox corpse.
+</gallery>
+
+{{Game Development}}

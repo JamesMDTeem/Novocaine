@@ -1,0 +1,38 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Wrought Iron]] x2, [[requires::Block of Wood]]
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 100
+| armorpen   = 10
+| range      = 1.2
+| cskill     = Melee Combat
+}}
+
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|$Fyrdsman's Sword}}
+
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}WroughtIron+ _{q}Wood}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 70*\sqrt{\sqrt{Strength*{q}Sword}/10}</math>.
+
+==Gallery==
+
+<gallery>
+Fyrdsman's Sword - (on wall).png | A fyrdman's sword decorating a wall.
+</gallery>
+
+{{Game Development}}

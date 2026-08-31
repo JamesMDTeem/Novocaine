@@ -1,0 +1,12 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Swift Evasion
+  | rowspan = 2
+  | rdc1 = Green
+  | rdc2 = Blue
+  | rdc3 = Red
+  | note = IP-2
+  }}<nowiki />
+</onlyinclude>

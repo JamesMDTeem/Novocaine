@@ -1,0 +1,29 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{none}}
+| objectsreq = {{none}}
+| producedby = [[requires::Leaf Pile]]
+| specific   = Bug, Bait
+|
+| energy     = 200
+| hunger     = 0.5
+| str        = 1
+|
+| sat1       = Creepies & Crawlies
+}}
+
+[[Category:Creatures]]
+[[Category:Foraged Foods]]
+
+Grubs are tiny insects that can be found generally crawling around in forests and occasionally in [[Old Stump|old tree stump]]s and [[Leaf Pile|leaf piles]].
+
+==How to Acquire==
+
+Grubs are acquired by simply right clicking them. The character will then run to it, trying to catch it. They are slow, but can crawl under bushes and trees making them a bit annoying to catch. Despite this, they are still very easy to catch.
+
+==Notes==
+
+* Grubs spawned in forest have a quality related to ...
+* Grubs spawned in old tree stumps have the quality of the old tree stump.

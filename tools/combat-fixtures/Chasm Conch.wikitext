@@ -1,0 +1,58 @@
+{{infobox creature
+| xobst = {{#expr:(10/11)-(-10/11)round6}}
+| yobst = {{#expr:(40/11)-(-40/11)round6}}
+|
+| baseq = 100
+|
+| armor = 200
+| hp    = 20000
+| fhp   = Never
+|
+| loot  = [[Shard of Conch]] x16-26, [[Intestines]] x8, [[Entrails]] x20, [[Chasm Conch Meat]] x12, [[Horrid Love Dart]] x0-3, [[Grotesque Tumor]] x0-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Chasm Conch large endure snail lurking in [[Cave]]s. First creature with armor. Can't be lifted.
+
+==Combat==
+
+===Behaviour===
+
+Passive until you aggro them. When aggroed hides in its conch and starts fighting only after recieving at least 40 000 armor damage. Can regen health slowly while huddled in its shell.
+
+During battle if it can't reach you, starts using [[Trunk Gunk]] - like a [[Mammoth]].
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:7</small>
+! Restorations<small>:5</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Blood & Gore}} {{:Sudden Charge}} {{:Thunder Over}} {{:Bear Down}} {{:Dark Heart Move}} {{:Trunk Gunk}}
+| {{:Bristle}} {{:Careful Approach}} {{:Rampant Rage}} {{:Unstoppable}} {{:Swift Evasion}}
+|}
+
+===Strategy===
+
+Stronger than a bear, but very slow - about 2nd walking speed. Has a lot of armor (200/400), high piercing weapons (like [[Boar Spear]] or unarmed combat) are more effective than usual. It's a good idea to stack a lot IP and deal a lot of openings before it starts to fight back.
+
+==In-Game Example(s)==
+
+[[File:Chasm Conch Alive.png|150px]] Alive Chasm Conch.<br>
+[[File:Chasm Conch Dead.png|150px]] Dead Chasm Conch. Can be butсhered for [[Intestines]], [[Entrails]], [[Chasm Conch Meat]], [[Horrid Love Dart]] and [[Grotesque Tumor]].<br>
+[[File:Chasm Conch Butchered.png|150px]] Butсhered Chasm Conch. Can be chipped for [[Shard of Conch]].<br>
+
+
+==Notes==
+
+*Dead Chasm Conch can't be lifted.
+*After butchering, conch can be chipped like usual boulder.
+
+==Unconfirmed==
+
+*Despawns when map is unloaded, like all creatures (with the exception of [[Troll]]s.)
+*Can spawn at second cave layer (L2).
+*Possibly more common the deeper you go.
+
+{{Game Development}}

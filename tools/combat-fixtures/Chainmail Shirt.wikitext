@@ -1,0 +1,76 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Wrought Iron]] x6
+| producedby = [[requires::Anvil]] and [[requires::Smithy's Hammer]]
+|
+| slot       = 4R
+| ahp        = 500
+| absorbX    = 15
+| absorbY    = 15
+|
+| statAGI    = -5
+}}
+
+[[Category:Clothing]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Chainmail $Shirt}}
+
+A '''Chainmail Shirt''' is a medium-level armor created from [[Bar of Wrought Iron|wrought iron]]. 
+It is slightly less protective than a [[Bronze Plate]] (equal protection to a [[Cutthroat Cuirass]]) but has more Wear and less AGI debuff. 
+
+Despite being named "shirt", and despite chainmail traditionally being worn under plate mail, the Chainmail Shirt can only be equipped to the Torso Armor (4R) slot, and won't allow you to equip a plate armor with it.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Wrought Iron *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+| Quality
+| Hit Points
+| Armor Class
+| Agility
+|-
+| 10
+| 500
+| 15/15
+| -5
+|-
+| 40
+| 2000
+| 30/30
+| -10
+|-
+| 90
+| 4500
+| 45/45
+| -15
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math> Quality * 50</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 15</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 15</math>
+|-
+|Agility
+|<math>\sqrt{\frac{Quality}{10}} * -5</math>
+|}
+
+==How to Acquire==
+
+Chainmail Shirt can be crafted using 6 [[Wrought Iron]] bars at an [[Anvil]] with a [[Smithy's Hammer]] equipped.

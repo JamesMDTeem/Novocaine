@@ -1,0 +1,69 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Bronze]] x6, [[requires::Leather]] x2
+| producedby = [[requires::Anvil]] and [[requires::Smithy's Hammer]]
+|
+| slot       = 4R
+| ahp        = 450
+| absorbX    = 20
+| absorbY    = 15
+|
+| statAGI    = -7
+}}
+
+[[Category:Clothing]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|B$ronze Plate}}
+
+'''Bronze Plate''' is a medium-level [[armor]] created from [[Bar of Bronze|bronze]]. Equips to 4R.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Bar of Bronze + _{q}Leather}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+| Quality
+| Hit Points
+| Armor Class
+| Agility
+|-
+| 10
+| 450
+| 20/15
+| -7
+|-
+| 40
+| 1,800
+| 40/30
+| -14
+|-
+| 90
+| 4,050
+| 60/45
+| -21
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 45</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 20</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 15</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -7</math>
+|}

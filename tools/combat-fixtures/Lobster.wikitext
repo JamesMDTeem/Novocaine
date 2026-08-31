@@ -1,0 +1,22 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 1
+| xobst      = {{#expr:(1/11)-(0/11)round6}}
+| yobst      = {{#expr:(1/11)-(0/11)round6}}
+|
+| skillreq   = [[requires::Fishing]]
+| producedby = [[requires::Lobster Pot]]
+}}
+
+[[Category:Creatures]]
+[[Category:Tmp_xyobj(neg)]]
+
+Lobsters are creatures that may be cooked in [[Cauldron]] to make [[Boiled Lobster]].
+
+== How to Acquire ==
+
+Main way to catch lobsters is with [[Lobster Pot]] in the Ocean [[Deep Water]].
+
+Alternatively, it's common for [[Tidepool|Tide Pool]]s to have at least one inside.
+
+{{Game Development}}

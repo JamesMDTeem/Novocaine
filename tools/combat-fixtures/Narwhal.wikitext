@@ -1,0 +1,50 @@
+{{infobox creature
+| xobst  = 
+| yobst  = 
+|
+| deadly = yes
+|
+| baseq  = 60
+|
+| armor  = 70
+| hp     = 1500
+| fhp    = 1000 
+|
+| loot   = [[Fresh Narwhal Hide]] x2, [[Raw Narwhal]] x10-15, [[Entrails]] x3-4, [[Intestines]] x3-4, [[Animal Fat]] x0-4, [[Narwhal Tusk]] x0-1, [[Bone Material]] x6, [[Whale Bone Material]] x1-3
+}}
+
+Narwhals are medium tusked whales which live in [[Deep Water|Very Deep Ocean]]. They can spawn solo or in pods of 2-4.
+
+==Combat==
+
+===Behaviour===
+
+Narwhals are low aggressive, and will engage in combat with nearby players. Aggroing any one narwhal will cause the entire pod to also engage.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:0</small>
+! Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|
+|
+|}
+
+===Strategy===
+
+Note that unlike other creatures, narwhals never split - so you can't aggro them one by one. 
+
+You can Safespot them by luring them to the edge of Deep Ocean, they will not follow you onto Shallow Ocean terrain.
+
+Narwhal's can swim through Deep Ocean and Deep water (Rivers)
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw {{PAGENAME}}]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Narwhal Tusk]], [[Bone Material]] and [[Whale Bone Material]].<br>
+
+
+==Notes==
+
+{{Game Development}}

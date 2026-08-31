@@ -1,0 +1,37 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+|
+| lpgain       = 900
+| studytime    = 1:22
+| mentalweight = 7
+| expdrain     = 15
+}}
+
+[[Category:Creatures]]
+
+'''Stalagoomba''' is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].<br>
+
+==How to Acquire==
+
+Found very rarely in [[Caves]].
+
+Can very rarely spawn when picking a [[Stalagoom]].
+
+==Notes==
+
+*It's quite obvious they are a reference to a Goomba, an enemy from the Super Mario game series which looks like a mushroom.
+*Credo quests (Miner, Cave Hermit(?)) may target Stalagoomba but seem to want you to catch or see a wild one, so they may not be valuable to stash for that purpose.
+
+==Gallery==
+
+<gallery>
+StalagoombaLoreScreen.png | Entry in the "Lore & Skills" -screen.
+Stalagoomba.gif | Stalagoombas trapped in a fence.
+GoombaLine.png | Apparently they can spawn as a group that walks in a line, similar to NES game mentioned above.
+</gallery>
+
+{{Game Development}}

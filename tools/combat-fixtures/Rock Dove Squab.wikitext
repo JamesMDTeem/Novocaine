@@ -1,0 +1,42 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Hunting]]
+| objectsreq = [[requires::Rock Dove Egg]], [[requires::Rock Dove]]
+| producedby = [[requires::Dovecote]]
+}}
+
+[[Category:Creatures]]
+[[Category:Domesticated]]
+
+Rock Dove Squabs are young [[Rock Dove]]s.
+
+Unlike wild doves, ones raised in captivity can be used as [//en.wikipedia.org/wiki/Homing_pigeon homing pigeons].
+
+== How to Acquire ==
+
+Hatched from [[Rock Dove Egg]]s lain by doves in Dovecotes.
+Picked by Right-Сlick. 
+
+==How to Use==
+
+*When a Squab is placed inside a [[Dovecote]] or [[Birdhouse]] with sufficient fodder, it will turn into a [[Rock Dove]] after 5 real life days. {{verify|squab growth time}}
+*A squab can be slaughtered via the "Wring Its Neck" option to convert it into [[Squab Meat]].
+
+==Quality==
+
+When Squabs are hatched, they will need to eat three times to grow into adult Doves. Each time they eat, their quality decreases if the fodder quality is less than their own quality.
+
+==Note's==
+
+*Although a Rock Dove has a map icon. Rock Dove Squabs have not. So there relative easy to overlook, if for some reason there walking around.
+*Rock Dove Squabs don't seem to be able to fly.
+
+==Gallery==
+
+<gallery>
+Squab-Ingame.png | A squab placed on the ground.
+</gallery>
+
+{{Game Development}}

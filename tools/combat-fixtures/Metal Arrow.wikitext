@@ -1,0 +1,28 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Archery]], [[requires::Metal Working]]
+| objectsreq = [[requires::Nugget of Common Metal]], [[requires::String]], [[requires::Branch]] x2
+| producedby = [[requires::Anvil]], [[requires::Smithy's Hammer]]
+|
+| basedmg    = 20
+| armorpen   = 20
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|$Metal Arrow}}
+
+A {{PAGENAME}} is ammunition for the [[Hunter's Bow]]. You can keep up to 30 arrows in a [[Hunter's Quiver]] by picking up the arrows and right clicking them onto the quiver, or opening the quiver inventory by right-clicking on the quiver.
+
+''See also [[Bone Arrow]] and [[Stone Arrow]]''
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Nugget+ _{q}String+ _{q}Branch}{3} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Survival}</math>.
+
+* [[{{PAGENAME}}]] damage at any given quality is <math>20*\sqrt{Quality_{Arrow}/10}</math>
+
+{{Game Development}}

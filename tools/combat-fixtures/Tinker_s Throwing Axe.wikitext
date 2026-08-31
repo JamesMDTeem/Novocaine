@@ -1,0 +1,32 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{unknown}}
+| objectsreq = [[requires::Casting Material]] x5, [[requires::Bar of Common Metal]] x2
+| producedby = Metal Casting
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 40
+| armorpen   = 10
+| range      = 1
+| cskill     = Melee Combat
+}}
+
+[[Category:Home Decor]]
+[[Category:Mining Tools]]
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Tools|$Axes|$Tinker's Throwing Axe}}
+
+Tinker's Throwing Axe is an early world upgrade from the Stone Axe, with notable benefits being an increased mining strength, good melee damage, and the ability to be thrown.
+
+Can be thrown by issuing the Shoot action while equipped. The damage seems to be calculated similarly to a sling. It has a fair chance of surviving but will occasionally break and disappear once thrown (regardless of if it hit a target).
+
+To craft, you must click on it in the Craft Menu, and you'll be allowed to place a mold for it. Craft the mold from 5 clay or sand (The mold quality lightly affects the axe) and melt 2 Bars of Common Metal inside. It must be roughly close to a lit smelter or stack furnace to melt the metal bars. If you built in a wrong spot, you can lift it while it's empty, but once you've melted bars into it, it becomes immobile. When you've added 2 bars, it will sit and cool for 8 real life hours. after this, you can right click and select Crack! The mold will be destroyed and the axe will be left sitting on the ground for you.
+
+
+Mining Power = <math>\sqrt{(qTinkers Throwing Axe*1.5)+Strength}</math>
+
+{{Game Development}}

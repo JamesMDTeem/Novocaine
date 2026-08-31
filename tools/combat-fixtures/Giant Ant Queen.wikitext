@@ -1,0 +1,49 @@
+{{infobox creature|||baseq=10|hp=900|fhp=N/A|loot=[[Ant Crown]], [[Ant Chitin]] x10, [[Ant Queen's Wings]], [[Entrails]] x8, [[Big Brain]], [[Ant Meat]] x30}}The Giant Ant Queen is the ultimate boss of an [[Ant Hill Dungeon|Ant Hill Dungeon.]] She is the general commander of the hill and is protected by her daughters in arms.
+
+She is only found in the final room of the dungeon, her arena, which can only be accessed by placing the "Special Key", found randomly in the dungeon, on the "Special Stand" which is found in the room previous.
+
+Defeating her will: 
+
+* Yield everyone in the dungeon (not just those fighting her) the [[Experience Event]] "Sundering the Hill" which grants a permanent speed bonus to raiding anthills.
+* Drop a [[Small Heart Container]] in her arena.
+* Spawn a new exit to the dungeon in her arena.
+* Cause the dungeon to begin shaking, which will destroy it (and render all loot, the Queen or her minion's corpses, the Small Heart Container, any objects you built or brought into the dungeon, even ''tamed animals like your horse'' inside lost forever) in 5 minutes or when all Hearthlings leave.
+
+The Ant Queen's damage and health is slightly random; or more specifically is connected to the dungeon's invisible "[[Dungeon|difficulty]]" stat that all dungeons randomly roll.
+
+Additionally she will not flee no matter how much damage she takes.
+
+== Combat ==
+The Ant Queen can attack with her jaws and claws as well as spit acid. Ant Spit penetrates all armor as usual. She has access to various high tier animal moves.
+
+=== Behaviour ===
+As with all dungeon enemies, she is extremely aggressive in a aggro range that is moderate but not as large as yours. If she aggroes you, she can (but is not guaranteed to) additionally call all nearby enemies to aggro you as well. However, if you aggro her yourself, she will not call her allies.
+
+Naturally, she cannot aggro you through walls or objects, so use them to your advantage to gain angles where you can aggro her, but her minions can't aggro you.
+
+==== Combat Moves ====
+{| class="wikitable mw-collapsible mw-collapsed"
+!Attacks<small>:1</small>
+!Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|{{:Ant Spit}}{{:Fell Scratch}}{{:Chomp}}{{:Bear Down}}{{:Blood & Gore}}{{:Dark Heart Move}}
+|{{:Careful Approach}}{{:Bristle}}{{:Rampant Rage}}
+|}
+
+=== Strategy ===
+The Ant Queen has around 900 HP and can deal very fair damage, in the 100's if you allow your openings to get high, by using her access to powerful moves like Blood & Gore and Bear Down, and her Chomp is nothing to scoff at either.
+
+Unfortunately for her however, she is pathetically slow (33.33 U/s movespeed) and can be easily outrun by any Hearthling on Run (~50 U/s movespeed). Due to this, and the fact she has no armor, she can easily be killed through one of two methods:
+
+* Easy, quick method: Just kite her in circles. Aggro only her and not her minions, and bring her to an empty room. (The reason you do this is because her minions can respawn in her arena, but nowhere else.) If her minions aggro, bring them too and pick them off one by one until it's just you and her. Alternatively if you have allies, have one person distract the minions while the rest draw her away. Then just run in circles tapping her with attacks and always keep your openings low. Eventually she will go down. That is to say unless you simply stand and deliver on her, which can be comfortably done around 90 UA/MC and 60 AGI. Then she can be killed in mere moments with well timed and well opened cleaves or full circles.
+* Easier, slower method: Use this method if you're far underlevelled and made it here through dumb luck and determination or assaulting her hill with sheer numbers. Do just as with method 1, bringing her away from her arena and isolating her from her minions. Then just kite her in circles and sling rocks or shoot arrows at her; there is nothing she can do about it and she won't even bother fleeing from you. 
+
+'''WARNING! Upon killing her, the dungeon will begin shaking and you will have EXACTLY 5 MINUTES to pack up and escape!''' If those 5 minutes elapse, all Hearthlings will be harmlessly booted out of the dungeon and it will destroy itself. Why is that a problem? Because ''only Hearthlings are booted out.'' Anything else in the dungeon, any loot, the Queen or her minion's corpses, the Small Heart Container, any objects you built or brought into the dungeon, even ''tamed animals like your horse'' will be instantly deleted once all Hearthlings are booted and the hill collapses. Do not test the timer! Grab the heart container, the queen's corpse, and any horses you might have brought, and leave. Any looting or butchering of other parts of the dungeon should be done before killing the queen.
+
+== In-Game Example(s) ==
+Dead {{PAGENAME}}. Can be have its [[Ant Crown]] claimed, and then be broken for [[Ant Chitin|Ant Chitin.]]
+
+Skinned {{PAGENAME}}. Can be butchered for [[Ant Queen's Wings|Ant Queen's Wings,]] [[Entrails|Entrails,]] [[Big Brain]] and [[Ant Meat|Ant Meat.]]
+
+{{Game Development}}
+[[Category:Creatures]]

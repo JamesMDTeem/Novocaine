@@ -1,0 +1,187 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(6/11)-(-6/11)round6}}
+|
+| baseq = 25
+|
+| hp    = 200
+| fhp   = 120
+|
+| loot  = [[Fresh Mouflon Hide]], [[Intestines]], [[Entrails]] x3, [[Small Brain]], [[Raw Wild Mutton]] x6, [[Bone Material]] x3, [[Mouflon Horn]] x0-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+'''{{PAGENAME}}''' are neutral [[creatures]] commonly found in [[Grassland|grasslands]]. They are a source of [[Raw Wild Mutton|meat]], [[Fresh Mouflon Hide|hide]], and most notably, [[Wool]]. Individual mouflon can be domesticated into [[Sheep]] through [[Taming]].
+
+==Acquisition==
+Mouflon spawn individually as entities in most [[grassland]] [[terrain]] at all times of year.
+
+Dispatched mouflon can be skinned, cleaned, and butchered via right click by [[Hearthling|Hearthlings]] that have learned [[Hunting]]. While mouflon corpses cannot be placed in a Hearthling's [[inventory]], they can be lifted and stored within objects such as [[Cart|Carts]] and [[Shed|Sheds]].
+
+The [[quality]] of a dispatched mouflon is calculated upon death, and its total is hardcapped by both a Hearthling's [[Survival]] and the quality of any [[Weapons|weapon]] or [[Sharp Tool|sharp tool]] used to kill them.
+
+== Behavior ==
+Mouflon are neutral until attacked, at which point they will initiate [[combat]] and give chase. Mouflon run at above Hearthling run speed, so a Hearthling must be sprinting, riding a vehicle, or on [[Horse|horseback]] to outrun or give chase.
+
+=== Domestication ===
+Mouflon may, over time, be domesticated by any Hearthling that has learned [[Taming]] once successfully fed a [[Clover]] and [[Rope|leashed]] to a [[Hitching Post]]. After multiple rounds of "breaking in" via combat, the taming process will be complete and the mouflon will, with a puff of pink smoke, immediately transform into a sheep.
+
+A mouflon has no gender, and as such whether it transforms into a ram or ewe is determined at random upon transformation. This means that a particularly unlucky Hearthling may end up with a small herd of only ewes, or vice versa, before obtaining a breeding pair. For this reason, simultaneous domestication of multiple mouflon is advised.
+
+=== Combat ===
+Mouflon are about as strong as a [[badger]], with the exception of a higher [[Agility]] stat equivalent to 45-50. They throw out Mule Kicks and Low Horn Swipes quickly, and will often spam Swift Evasion to remove their own openings. Unless a Hearthling possesses similar Agility, or has high enough [[Unarmed Combat|Unarmed]] and [[Melee Combat]] to deal ample openings to force them into a defensive state, using a [[Stone Axe|Stone]] or [[Tinker's Throwing Axe]] to deliver a mighty Cleave or Full Circle while the mouflon's {{RoB color|oppressive|Cornered}} opening is high should encourage it to flee, at which point it can be chased and defeated while running.
+
+When Taming a mouflon, Hearthlings should wear good armor and expect it to sustain durability damage. Quick Barrage or Sideswipe is recommended, so long as the mouflon's {{RoB color|sweeping|Reeling}} opening isn't high enough to inflict grievously high damage. If a Hearthling cannot ignore their own openings, enlisting allies to assist in the Taming process is advised.
+
+{| class="wikitable mw-collapsible mw-collapsed" style="vertical-align:middle; display:inline-table; margin-right:1em;""
+|+Combat&nbsp;Moveset {{#info:Moves that mouflon are capable of using in combat.|note}}
+! colspan = "2"|'''Attacks'''
+! '''Restorations'''
+|- style="vertical-align:top;"
+| {{:Low Horn Swipe}}
+| {{:Mule Kick}}
+| {{:Careful Approach}}
+|- style="vertical-align:top;"
+| {{:Sudden Charge}}
+| {{:Thunder Over}}
+| {{:Swift Evasion}}
+|}
+{| class="mw-collapsible mw-collapsed mw-bold" style="vertical-align:middle; text-align:center; display:inline-table; margin-right:1em;"
+|+Moves&nbsp;Bestowed {{#info:Moves that a Hearthling may learn at random upon defeating a mouflon.|note}}
+|-
+|style="width:5em;vertical-align:top;"| {{Pre-img|Yield Ground|size=48|break=yes|l=Combat moves#Yield Ground}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Zig-Zag- Ruse|size=48|break=yes|i=Icon_zigzag.png|l=Combat moves#Zig-Zag Ruse}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Chop|size=48|break=yes|l=Combat moves#Chop}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Full Circle|size=48|break=yes|i=Icon_fullcircle.png|l=Combat moves#Full Circle}}
+|-
+|style="width:5em;vertical-align:top;"| {{Pre-img|Go for the Jugular|size=48|break=yes|i=Icon_goforthejugular.png|l=Combat moves#Go for the Jugular}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Kick|size=48|break=yes|l=Combat moves#Kick}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Low Blow|size=48|break=yes|l=Combat moves#Low Blow}}
+|style="width:5em;vertical-align:top;"| {{Pre-img|Uppercut|size=48|break=yes|l=Combat moves#Uppercut}}
+|}
+
+== Production ==
+When used an ingredient, wild mutton serves as a source of both [[CHA|Charisma]] and [[DEX|Dexterity]] [[FEP|FEPs]].
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Creature Products {{#info:Products directly obtained by processing mouflon.|note}}
+|-
+! Product
+! Action
+! Req. Skills
+|-
+| {{pre-img|Fresh Mouflon Hide|size=64}}
+| Skin
+| {{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Intestines|size=32}}
+|Clean
+|{{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Entrails|size=32}}
+| Clean
+| {{pre-img|Hunting|size=32}}
+|-
+| {{Pre-img|Raw Wild Mutton|size=32}}
+| Butcher
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Small Brain|size=32}}
+| Butcher
+| {{pre-img|Fine Butchery|size=32}}
+|-
+| {{pre-img|Bone Material|t=Bone|size=32}}
+| Collect Bones
+| {{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Mouflon Horn|size=32}}
+|Collect Bones
+|{{Pre-img|Hunting|size=32}}
+|-
+|{{pre-img|Wool|size=32}}
+|Shear
+|{{pre-img|Animal Husbandry|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Related Products {{#info:Products requiring non-generic, exclusively-derived mouflon products as ingredients.|note}}
+|-
+!Product
+!Process
+!Req. Skills
+|-
+|{{Pre-img|Mouflon Hide|size=64}}
+|Drying
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Mouflon Hide Patch|size=32|l=Prepared_Animal_Hide|t=Mouflon Hide Patch|i=Mouflon_hide_patch.png}}
+|Splitting
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Bone Ash|size=32}}
+|Spitroasting
+|{{pre-img|Firecrafts|size=32}}
+|-
+|{{pre-img|Sheep|size=32|i=Sheep_inv_small.png}}
+|Taming
+|{{pre-img|Animal Husbandry|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table;"
+|+ Related Foods {{#info:Food recipes requiring non-generic, exclusively-derived mouflon products as ingredients.|note}}
+|-
+!Product
+!Process
+!FEPs
+!style="text-align:center;"| +1
+!style="text-align:center;"| +2
+!Req. Skills
+|-
+|{{Pre-img|Roast Wild Mutton|size=32}}
+|Roasting
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+|{{Pre-img|Firecrafts|size=32}}
+|-
+| rowspan="2" |{{pre-img|Spitroast Mutton|size=32|i=Spitroast_mutton.png}}
+| rowspan="2" |Spitroasting
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{pre-img|Firecrafts|size=32}}
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 0.5
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|{{Pre-img|Smoked Mutton|size=32|l=Smoked_Meat#Variable_Ingredients|t=Smoked Mutton|i=Smoked_mutton.png}}
+|Smoking
+|style="background-color:#dedede; color:#0645ad;"| [[Smoked Meat#Variable Ingredients|???]]
+|style="text-align:center; color:#9b9b9b;"| ?
+|style="text-align:center; color:#9b9b9b;"| ?
+|{{Pre-img|Carpentry|size=32}}<br>{{Pre-img|Pottery|size=32}}
+|-
+| rowspan="3" |{{Pre-img|Chicken Chorizo|size=32}}
+| rowspan="3" |Meatgrinding
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="3" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|style="background-color:{{RoB_color|WIL}}; color:#0645ad;"| [[WIL]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+|}
+
+== Notes ==
+*Unlike [[Aurochs|aurochs]], mouflon cannot be [[Milk|milked]], even after being fed a Clover.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Wild Mutton]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

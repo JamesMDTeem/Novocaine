@@ -1,0 +1,27 @@
+{{infobox creature
+| xobst = 0.162
+| yobst = 0.162
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Bullfinch]]: [[Bullfinch Feather]], [[Entrails]], [[Tiny Brain]], [[Bullfinch Meat]], [[Bone Material]] or [[Wishbone]]
+}}
+
+It's a female Bullfinch. Male counterpart is the [[Bullfinch]].
+
+==Catching==
+
+Bullfinch can easily be caught on horseback. Come at them from behind so that they won't flee in the direction of the water and then simply run after them.
+
+== Gallery==
+<gallery>
+File:Bullfinch Hen.png|Female(hen) Bullfinch.
+File:Bullfinch.png|Male Bullfinch.
+</gallery>
+
+([//en.wikipedia.org/wiki/Eurasian_bullfinch The real deal.])
+
+{{Game Development}}

@@ -1,0 +1,13 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Sudden Charge
+  | rowspan = 2
+  | inf1 = Blue
+  | inf2 = Red
+  | opn1 = Blue
+  | opn2 = Red
+  | note = IP-4
+  }}<nowiki />
+</onlyinclude>

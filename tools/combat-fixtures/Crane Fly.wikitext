@@ -1,0 +1,25 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Wilderness Survival]]
+| producedby   = Hand
+| specific     = Bug, Bait
+|
+| lpgain       = 500
+| studytime    = 3:02
+| mentalweight = 6
+| expdrain     = 7
+}}
+
+[[Category:Creatures]]
+
+'''Crane Flies''' are a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]]. 
+
+== How to Acquire ==
+
+Flies only fly around in swamps! You can't run after them, which makes them quite tricky to catch.
+The easiest way currently is to catch them on horseback, as horses currently move normal speed in a swamp.
+
+
+{{Game Development}}

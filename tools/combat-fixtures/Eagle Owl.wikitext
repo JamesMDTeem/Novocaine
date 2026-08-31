@@ -1,0 +1,39 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(2/11)-(-2/11)round6}}
+|
+| baseq = 30
+|
+| hp    = ~180
+| fhp   = ~100
+|
+| loot  = [[Dead Eagle Owl]]: [[Eagle Owl Feather]] x1-3, [[Eagle Owl Eye]] x0-2, [[Entrails]] x2, [[Eagle Owl Meat]] x3, [[Bone Material]] x2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Eagle Owl are birds found in [[Terrain|Mountain]]. They can fly over cliffs, and normally fly around on 2d speed. If you kill them, you can pick them up like [[rabbit]]s. [[Dead Eagle Owl]] takes 2x2 slots in the inventory.
+
+Not to be confused with [[Golden Eagle]], which is rarer, tougher, and gives more items.
+
+==Combat==
+
+===Behaviour===
+
+Rarely Aggressive, always flying around.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:3</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}} {{:Dark Heart Move}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+You'll need horse with full stamina to catch them if they'll run, because only horse on 3rd-4th speed can catch up owl.
+
+{{Game Development}}

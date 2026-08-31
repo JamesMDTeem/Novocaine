@@ -1,0 +1,47 @@
+{{infobox creature
+| xobst  = 0.422
+| yobst  = 1.078
+|
+| deadly = no
+|
+| baseq  = 20
+|
+| armor  = 10
+| hp     = 150
+| fhp    = 80
+|
+| loot   = [[Fresh Roe Deer Hide]] x1-2, [[Entrails]], [[Intestines]] x2, [[Tiny Brain]],  [[Raw Roe Venison]] x8, [[Bone Material]] x4, [[Roe Deer Antlers]] (male only)
+}}
+
+The first wild creature to feature both genders. Males have horns and are the only ones to attack, while females flee.
+
+=Combat=
+
+==Behaviour==
+
+Not aggressive until provoked. Attacking one {{PAGENAME}} also provokes all male members of the flock. 
+
+They're extremely fast on foot; you'll need a horse on at least 3rd, sometimes even 4th speed to outpace them.
+
+== Strategy ==
+
+Roe deer are lesser versions of their [[Red Deer|Red]] cousins. They are weak in HP and power, but extremely fast hitting. Early on, it's best to fight them in a boat or near a cave you can duck into; fighting on horseback is possible but they're so quick on their feet one deer will waste most of your pony power.
+
+You'll need around 40 AGI and MC/UA, and some weapon and melee move, to comfortably tussle with them. They attack quickly, but their damage output is low; let them stack openings on you while you spam Quick Barrage or Sideswipe until their openings are at 60-70%. Opportunity Knocks can help here. Duck into a cave or row your boat back and restore yourself when your openings reach 40% or so. Once their openings are high, use Cleave or Full Circle. Just one or two hits will leave them fleeing. It's best to peace them out, then either reaggro later, or put an arrow in them, to finish them off.
+{| class="wikitable mw-collapsible mw-collapsed"
+! '''Attacks'''
+! '''Restorations'''
+|-
+|
+{{:Mule Kick}}{{:Bear Down}}
+|
+{{:Bristle}}
+|}
+
+=In-Game Example(s)=
+
+[[File:Dead Roe Deer.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:Skinned Roe Deer.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Roe Venison]].<br>
+[[File:Skeleton Roe Deer.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]] and [[Roe Deer Antlers]].<br>
+
+=Notes=

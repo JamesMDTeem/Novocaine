@@ -1,0 +1,50 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Tanning]], [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Hard Metal]] x2, [[requires::Hardened Leather]] x2
+| producedby = [[requires::Smithy's Hammer]] and [[requires::Anvil]]
+|
+| slot       = 11R
+| ahp        = 400
+| absorbX    = 5
+| absorbY    = 3
+|
+| statAGI    = +1
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Armored $Striders}}
+
+Good boot armor that offers protection and [[Agility]]. 
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Metal+ _{q}Leather}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 40</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 3</math>
+|-
+|Agility Bonus
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|}
+
+{{Game Development}}
+
+[[Category:Boots & Shoes]]

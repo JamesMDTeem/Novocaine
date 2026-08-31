@@ -1,0 +1,121 @@
+{{infobox creature
+| xobst  = {{#expr:(10/11)-(-10/11)round6}}
+| yobst  = {{#expr:(10/11)-(-10/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 80
+|
+| armor  = 125
+| hp     = 1000+
+| fhp    = ~40% health
+|
+| loot   = [[Fresh Troll Hide]] x2, [[Troll Meat]] x40, [[Trollbone]] x8, [[Troll Skull]]<br>
+and, depending on variation:
+*[[Troll Tusks]]
+*[[Troll's Third Eye]]
+*[[Troll Tail]]
+*[[Troll Hair]]
+*[[Troll Nose]]
+*[[Troll Mushrooms]]
+*[[Troll Ears]]
+*...
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Note: As Trolls are so rare, much of this information could be incorrect or up for debate, as some amount of it is still from Legacy.
+
+Trolls are the strongest creatures in the game, with a lot of HP, and the strongest hits per each strike. Trolls are also extremely rare, appearing when mining out a tile underground. They have about a 0.002% chance of spawning from each mining grid, although the Cave Hermit credo raises this probability significantly.  They do not have ability to cross water, but don't try killing them from a boat in water or such since Trolls have a cave-in ranged attack.  After gaining 3-4 ip it will cause a cave-in immediately ko'ing any character. Their level is dependent on the depth of the mine they are found in.
+
+They have 1000 HP per-mining-level, starting with 1000 HP at mining level 1 (Caves) and reaching 5000 HP at mining level 5. They can kill new clear character (alt) in 1 hit dealing about 300-750 damage in 1 hit, at the same time knocking out our character, and in the next hit - killing character. To hit, Troll sometimes has to gain 2 IP; It's giving a little moment before hit.
+
+Note: Troll spawning is not limited to Mine-tiles, but can also spawn on caved-in tiles (while mining). Also, there appears to be some evidence to suggest that trolls have nodes in the same way that ore and stone types have areas where they are more likely to appear.
+
+Raw Hide and Meat are [[softcap]]ped by [[Survival]] and your carving tool. Bones are only softcapped by Survival.
+
+==Combat==
+
+===Behaviour===
+
+Trolls will beat their chest for at least 10 seconds after spawning, usually up to few minutes to give the player a chance to get away while they still can, however if a horse is in the range of the troll it can instantly aggro the horse and then the player. If troll can't reach you, he'll start using attacks that cause cave-in's.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:4</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Troll Punch}} {{:Troll Smile}} {{:Devour}} {{:Dark Heart Move}}
+| {{:Thide}} {{:Peek in the Depth}}
+|}
+
+===Strategy===
+
+Level 3 Troll - is the same powerful as [[Mammoth]], but higher trolls are the strongest creature in the game. They can easily kill players due to the high damage amount of damage they deal and their cave-in attack which, if hit, will instantly KO the player. Trolls hit twice per attack, allowing them to do openings and deal damage even on the first attack round.
+
+==Types of Trolls==
+
+Trolls come in different variations, each with their own unique drop. Combinations of these are possible. (list is incomplete)
+
+{| class="wikitable"
+!colspan="2"|Type
+!colspan="2"|Drop
+!Use
+|-
+|[[File:Troll-TypeTusks.jpg|150px]]
+|Normal/Tusked
+|[[File:Troll_Tusks.png|link=]]
+|[[Troll Tusks]]
+|Curio (2x1, LP = 8000, weight = 16, expdrain = 500, studytime = 14.35{{verify|needs to use either H.ddd or H:MM notation}}), [[Bone Material]], ...
+|-
+|[[File:Troll-TypeEye.jpg|150px]]
+|Three-Eyed
+|[[File:Troll's_Third_Eye.png|link=]]
+|[[Troll's Third Eye]]
+|Curio (LP = 5000, weight = 20, expdrain = 250, studytime = 12.45{{verify|Use either H.ddd or H:MM notation}})<br> Food (Energy = 2000, Hunger = 2, INT= 25, PER = 75, PSY = 20)
+----
+You can watch from one eye to another (random, every ingame hour)
+|-
+|[[File:Troll-TypeTail.jpg|150px]]
+|Tailed
+|[[File:Troll_Tail.png|link=]]
+|[[Troll Tail]]
+|Food (1x2, Energy = 2000, Hunger = 2, AGI = 50, CON = 50, PSY = 20)
+|-
+|[[File:Troll-TypeHair.jpg|150px]]
+|Hairy
+|[[File:Troll_Hair.png|link=]]
+|[[Troll Hair]]
+|Base LP =	4000
+Study Time =	9
+Mental Weight =	4
+EXP Cost =	250
+|-
+|[[File:Troll-TypeNose.jpg|150px]]
+|Nosed
+|[[File:Troll_Nose.png|link=]]
+|[[Troll Nose]]
+|Food (2x1, Energy = 2000, Hunger = 2, AGI = 40, STR = 40, PSY = 20))
+|-
+|[[File:Troll-TypeMushroom.jpg|150px]]
+|Mushroom
+|[[File:Troll_Mushrooms.png|link=]]
+|[[Troll Mushrooms]]
+|Food Energy 400% Hunger 1% Q100: PSY = 1.5 Satiation: Mushroom 10(5) and Game 5(5)
+
+----
+can be planted in garden pot
+|-
+|[[File:Troll-TypeEars.png|150px]]
+|Eared
+|[[File:Troll Ears.png]]
+|[[Troll Ears]]
+|Food (1x2, Energy = 2000, Hunger = 2, PER = 80, PSY = 20)
+|}
+
+==In-Game Example(s) - Legacy==
+
+[[File:Legacy-DeadTroll.png]] [[File:Legacy-Troll 2.jpg]], [[File:Legacy-Troll 3.jpg]], [[File:Legacy-Troll dead.jpg]], [[File:Legacy-Troll butch.jpg]], [[File:Legacy-Troll skl.jpg]]
+
+{{Game Development}}

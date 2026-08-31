@@ -1,0 +1,18 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Stoneworking]]
+| objectsreq = [[requires::Obsidian]], [[requires::Block of Wood]], [[requires::String]]
+| producedby = Hand
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 50
+| armorpen   = 20
+| range      = 1
+}}
+
+[[Category:Sharp Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Obsi$dian Dagger}}

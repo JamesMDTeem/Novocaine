@@ -1,0 +1,25 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| producedby   = Working with fire
+|
+| lpgain       = 500
+| studytime    = 2:25
+| mentalweight = 5
+| expdrain     = 2
+}}
+
+[[Category:Creatures]]
+
+{{PAGENAME}} is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+{{PAGENAME}} can randomly appear from any fire source. And when working with fire - dropping a [[Pyrite Spark]], extinguishing a fire, accessing lit smelters, and similar activities.
+
+==Notes==
+
+*Irrlights can be used to instantly light fire or workstations.
+*Irrlights will float through [[Fence|fencing]] but will bounce off of cave walls.
+*Delayed spawning: Offloaded map-parts, with active fires, can spawn multiple irrlights at the same time when re-entering that map-part.
+
+{{Game Development}}

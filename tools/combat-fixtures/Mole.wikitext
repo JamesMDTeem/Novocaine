@@ -1,0 +1,32 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 30
+| fhp   = 30
+|
+| loot  = [[Dead Mole]]: [[Entrails]] x1, [[Tiny Brain]], [[Bone Material]] x1, [[Fresh Mole Hide]] x1, [[Raw Mole]] x1, [[Mole's Pawbone]] x1
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+A live {{PAGENAME}}. You can right-click it and select "Wring Neck" to kill it and receive a [[Dead Mole]].
+
+==Hunting==
+
+Capturing a mole is relatively easy:<br>
+1. Get close to the mole.<br>
+2. Start running.<br>
+3. It may try to escape by burrowing underground, but it won't go far.<br>
+3.1 '''Note''' that mole can't burrow on any non-grassland biome.<br>
+4. Click it again.<br>
+5. Repeat 4 or 5 times and the mole will stop burrowing, and you can chase it down.<br>
+(''W15 note: On [[Cloud Range]] terrain some mole burrowed away at least ten times.)
+
+==Gallery==
+
+[[File:Mole's Pawbone - (on wall)2.png|200px|thumb|left|A live mole standing next to a [[Mole's Pawbone]] on a wall. That's right, the bones from a mole's paws are bigger than a mole's entire body!]]
+
+{{Game Development}}

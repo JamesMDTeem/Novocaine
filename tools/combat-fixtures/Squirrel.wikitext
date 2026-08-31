@@ -1,0 +1,168 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+|
+| loot  =  <div class="s-ul">
+*[[loot::Dead Squirrel]]
+*[[loot::Fresh Squirrel Hide]]
+*[[loot::Entrails]]
+*[[loot::Tiny Brain]]
+*[[loot::Raw Squirrel]]
+*[[loot::Bone Material]]
+*[[loot::Fresh Squirrel Tail]]
+</div>
+|xitem=1|yitem=2}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+'''Squirrels''' are small, passive [[creatures]] commonly found in [[Forest|forests]] that can be processed for their [[Clean Squirrel Carcass|meat]], [[Fresh Squirrel Hide|hide]], and [[Squirrel#Production|more]].
+
+==Acquisition==
+
+Squirrels spawn individually as entities in all forest [[terrain]] at all times of year, as well as within [[Squirrel Cache|Squirrel Caches]] that populate forest and [[grassland]] terrain.
+
+Squirrels can be caught via right click by [[Hearthling|Hearthlings]] that have learned [[Hunting]]. Alternatively, squirrels found within Squirrel Caches can instead be obtained, without [[Skills|Skill]] requirements, as an item. One squirrel takes up two slots of [[inventory]] until wrung and flayed.
+
+The [[quality]] of a caught squirrel is hardcapped by a Hearthling's [[Survival]].
+
+== Behavior ==
+Squirrels will attempt to flee when approached by a Hearthling, whether they are being chased or not. The speed at which squirrels run is variable, but they can almost always be caught by a Hearthling at normal running speed.
+
+Squirrels can be [[Combat|attacked]], but have no [[Combat moves|Combat Moves]] with which to defend themselves and will simply continue to flee until defeated.
+
+In addition to Hearthlings, squirrels can also be hunted by [[Fox|foxes]], which will chase, attack, and inevitably overpower the squirrel, leading to its demise. The fox will immediately lose interest once the squirrel has been killed, leaving it to be freely obtained by any nearby Hearthling.
+
+== Production ==
+When used an ingredient, squirrel meat serves as an accessible source of [[Attributes#Intelligence|Intelligence]] [[FEP|FEPs]].
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Creature Products {{#info:Products directly obtained by processing squirrels.|note}}
+|-
+! Product
+! Action
+! Req. Skills
+|-
+| {{pre-img|Dead Squirrel|size=64}}
+| Wring Neck
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Squirrel Carcass|size=32}}
+| Flay
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Clean Squirrel Carcass|size=32}}
+| Clean
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Raw Squirrel|size=32}}
+| Butcher
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Fresh Squirrel Hide|size=32}}
+| Flay
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Fresh Squirrel Tail|size=32}}
+| Flay
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Tuft of Squirrel's Finest Hair|size=32}}
+| Flay (Uncommon)
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Entrails|size=32}}
+| Clean
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Disgusting Tapeworm|size=32}}
+| Clean (Rare)
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Bone Material|t=Bone|size=32}}
+| Butcher
+| {{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Tiny Brain|size=32}}
+| Butcher
+| {{pre-img|Fine Butchery|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Related Products {{#info:Products requiring non-generic, exclusively-derived squirrel products as ingredients.|note}}
+|-
+!Product
+!Process
+!Req. Skills
+|-
+|{{Pre-img|Squirrel Hide|size=32}}
+|Drying
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Squirrel Tail|size=32}}
+|Drying
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Nine-Tails|size=32}}
+|Crafting
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Forager's Brooch|size=32}}
+|Crafting
+|{{Pre-img|Sewing|size=32}}
+|-
+|{{Pre-img|Squirrel's Pouch|size=32}}
+|Crafting
+|{{Pre-img|Sewing|size=32}}
+|}
+{| class="wikitable sortable c4c c5c" style="display:inline-table;"
+|+ Related Foods {{#info:Food recipes requiring non-generic, exclusively-derived squirrel products as ingredients.|note}}
+|-
+! Product
+! Process
+! FEPs
+! +1
+! +2
+! Req. Skills
+|-
+| {{Pre-img|Roast Squirrel|size=32}}
+| Roasting
+| style="background-color:#b6e0f5; color:#0645ad;"| [[Attributes#Intelligence|INT]]
+| 1
+| style="color:#9b9b9b;"| 0
+| {{Pre-img|Firecrafts|size=32}}
+|-
+| rowspan="2"| {{pre-img|Spitroast Squirrel|size=32}}
+| rowspan="2"| Spitroasting
+| style="background-color:#b6e0f5; color:#0645ad;"| [[Attributes#Intelligence|INT]]
+| 1
+| style="color:#9b9b9b;"| 0
+| rowspan="2"| {{pre-img|Firecrafts|size=32}}
+|-
+| style="background-color:#fc91df;"| [[Attributes#Constitution|CON]]
+| style="display:none;">| ||style="display:none;">|<!-- rowspan workaround, on rowspane'ed cells, when using cNc(column text-align) class -->
+| 0.5
+| style="color:#9b9b9b;"| 0
+|-
+|{{Pre-img|Smoked Squirrel|size=32|l=Smoked_Meat#Variable_Ingredients|t=Smoked Squirrel}}
+|Smoking
+|style="background-color:#dedede; color:#0645ad;"| [[Smoked Meat#Variable Ingredients|???]]
+|style="text-align:center; color:#9b9b9b;"| ?
+|style="text-align:center; color:#9b9b9b;"| ?
+|{{Pre-img|Carpentry|size=32}}<br>{{Pre-img|Pottery|size=32}}
+|}
+
+== Notes ==
+
+* Unlike [[Chicken|chickens]] and [[Rabbit|rabbits]], squirrels do not need to be fed and will stay alive in any container indefinitely.
+* Squirrels found in Squirrel Caches, killed by foxes, or trampled by [[Horse|horses]] are ''not'' subject to a Survival hardcap, making these methods a good way for a fresh Hearthling to gather squirrels of higher quality.
+
+==Gallery==
+
+<gallery>
+Skwee.png | A squirrel.
+Squirrel_(2).png | Other squirrel.
+</gallery>
+
+{{Game Development}}

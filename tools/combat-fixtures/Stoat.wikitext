@@ -1,0 +1,45 @@
+{{infobox creature
+| caption = Usual &raquo; Winter Coat
+|
+| xobst   = {{#expr:(1/11)-(-1/11)round6}}
+| yobst   = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq   = 20
+|
+| hp      = 90
+| fhp     = 60
+|
+| loot    = [[Fresh Stoat Hide]] <b>or</b> [[Fresh Ermine]], [[Entrails]], [[Tiny Brain]], [[Raw Stoat]] x2, [[Bone Material]].
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Stoat are short-legged omnivores, distant relative to [[Otter]] and [[Badger]].
+
+Likes to hunt Rabbits. <!--(?:Chickens,Squirrels)-->
+
+==Combat==
+
+===Behaviour===
+
+Passive until you attack them. 
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}}
+| {{:Careful Approach}}
+|}
+
+===Strategy===
+
+You'll need an horse with full stamina to catch them if they start running, because only horses on 4th speed can catch up to a stoat. 
+
+==Notes==
+
+*During winter, Stoats become white, and instead of [[Stoat Hide]] can be skinned for [[Ermine]] - ingredient for the [[Ermine Trimming]] gilding.
+
+{{Game Development}}

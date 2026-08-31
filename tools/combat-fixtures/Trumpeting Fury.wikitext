@@ -1,0 +1,11 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Trumpeting Fury.png]]
+| Trumpeting Fury
+|
+*Attack type: {{RoB color|striking|Striking}}, {{RoB color|oppressive|Oppressive}}
+*Openings: ??
+*IP ??
+*Used only on >70% Openings and Stun Horse
+|}</onlyinclude>

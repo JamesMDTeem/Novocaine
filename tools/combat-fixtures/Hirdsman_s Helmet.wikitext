@@ -1,0 +1,46 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]], [[requires::Carpentry]]
+| objectsreq = [[requires::Wrought Iron]], [[requires::Block of Wood]]
+| producedby = [[requires::Anvil]]
+|
+| slot       = 1L
+| ahp        = 45
+| absorbX    = 6
+| absorbY    = 4
+|
+| statAGI    = -2
+}}
+
+[[Category:Headgear]]
+
+{{GM|$Craft|$Clothes & Equipment|$Hats & Headwear|$Hirdsman's Helmet}}
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Wrought Iron+ _{q}Wood}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[3]{Strength*Carpentry*Smithing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 4.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 6</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -2</math>
+|}

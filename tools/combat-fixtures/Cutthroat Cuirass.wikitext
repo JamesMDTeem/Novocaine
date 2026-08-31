@@ -1,0 +1,79 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Tanning]]
+| objectsreq = [[requires::Hardened Leather|Hardened Leather]] x8, [[requires::String]] x4
+|
+| slot       = 4R
+| ahp        = 400
+| absorbX    = 15
+| absorbY    = 15
+|
+| statAGI    = 2
+|
+| statCMC    = 5
+| statCUA    = 3
+| statSTL    = 5
+}}
+
+[[Category:Clothing]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Cutthroat Cuirass}}
+
+{{PAGENAME}} is a high-tier piece of chest [[:Category:Armor|armor]] made from [[Hardened Leather|Hardened Leather]] and [[String]]. It is useful for those without access to [[:Category:Metal Bar|metal]], or those who wish to avoid the high [[Agility]] penalties imposed by other chest pieces such as [[Bronze Plate|Bronze Plate]]s and [[Plate Armor|Plate Armor]]. It equips to the [[Equipment Screen|equipment slot]] 4R.
+
+==Quality Formula==
+
+The quality formula is <math>\frac{_{q}Hardened Leather + _{q}String}{2}</math> [[softcap]]ped by <math>\sqrt{Sewing * Dexterity}</math>.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+!Quality
+!Hitpoints
+!Armour Class
+!Skills & Attributes
+|-
+|10
+|400
+|15/15
+| +3 [[Unarmed Combat|UA]], +5 [[Melee Combat|Melee]], +5 [[Stealth]], +2 [[Agility]]
+|-
+|40
+|1600
+|30/30
+| +6 [[Unarmed Combat|UA]], +10 [[Melee Combat|Melee]], +10 [[Stealth]], +4 [[Agility]]
+|-
+|90
+|3600
+|45/45
+| +9 [[Unarmed Combat|UA]], +15 [[Melee Combat|Melee]], +15 [[Stealth]], +6 [[Agility]]
+|-
+|160
+|6400
+|60/60
+| +12 [[Unarmed Combat|UA]], +20 [[Melee Combat|Melee]], +20 [[Stealth]], +8 [[Agility]]
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 40</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 15</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 15</math>
+|-
+|Bonuses*
+|<math>\sqrt{\frac{Quality}{10}} * [3, 5, 5, 2]</math>
+|}
+
+&#42; where bonuses are &#91;[[Unarmed Combat]], [[Melee Combat]], [[Stealth]], [[Agility]]&#93; respectively.

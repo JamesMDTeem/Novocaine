@@ -1,0 +1,25 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+| producedby   = Hand
+| specific     = Bug, Bait
+|
+| lpgain       = 600
+| studytime    = 2:25
+| mentalweight = 10
+| expdrain     = 10
+}}
+
+[[Category:Creatures]]
+
+The '''{{PAGENAME}}''' is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+==Gallery==
+<gallery>
+MonarchButterflyIngame.png | {{PAGENAME}} (<i>in{{Nbh}}game</i>).
+</gallery>
+
+{{Game Development}}

@@ -1,0 +1,11 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Trunk Gunk.png]]
+| Trunk Gunk
+|
+*Attack type: Ranged
+*Shoot a projectile with 50 damage that can be dodged
+*Used when Creature can't reach player
+*Sometimes can be used in melee
+|}</onlyinclude>

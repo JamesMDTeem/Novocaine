@@ -1,0 +1,34 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 4
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = [[requires::Narwhal]] Corpse
+| specific     = Bone Material, Finebone
+|
+| lpgain       = 10000
+| studytime    = 9:44
+| mentalweight = 50
+| expdrain     = 25
+|
+| slot       = 6L and 6R
+| basedmg    = 45
+| armorpen   = 20
+| range      = 1.6
+}}
+
+{{PAGENAME}} is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]] and is a two-handed weapon that can be used for melee combat.
+
+==How to Acquire==
+
+Collect tusk from carcass after butchering an [[Narwhal]] corpse.
+
+==Quality==
+
+* Equal to the Narwhal itself, [[softcap]]ped by [[Survival]].
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 45*\sqrt{\sqrt{Strength*{q}Tusk}/10}</math>.
+
+==Notes==
+* Can be accidently used as a [[Bone Material]] or a [[Finebone]] in crafts if stored on a belt or inventory.
+
+{{Game Development}}

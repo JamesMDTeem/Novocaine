@@ -1,0 +1,12 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Fell Scratch
+  | rowspan = 2
+  | inf1 = Green
+  | inf2 = Blue
+  | opn1 = Green
+  | note = IP+1
+  }}<nowiki />
+</onlyinclude>

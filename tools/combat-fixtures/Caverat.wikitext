@@ -1,0 +1,44 @@
+{{infobox creature
+| xobst      = {{#expr:(1/11)-(-1/11)round6}}
+| yobst      = {{#expr:(3/11)-(-3/11)round6}}
+|
+| producedby = [[requires::Dust Pile]]
+|
+| baseq      = 10
+|
+| hp         = 120
+| fhp        = 75
+|
+| loot       = [[Fresh Caverat Hide]] x1-2, [[Entrails]], [[Raw Caverat]] x1-2, [[Bone Material]] x1-2, [[Caverat Whiskers]] x0-1
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+:''Not to be confused with [[Rat]].''
+
+Caverats lurk in caves as high as the first level and are aggressive to players.
+
+==Combat==
+
+===Behaviour===
+
+Aggressive in certain radius to everyone.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}}
+| {{:Bristle}} {{:Careful Approach}}
+|}
+
+===Strategy===
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Entrails]] and [[Raw Caverat]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

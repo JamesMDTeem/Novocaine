@@ -1,0 +1,388 @@
+{{infobox creature
+| caption = Ram &raquo; Ewe &raquo; Lamb
+|
+| xobst   = {{#expr:(2/11)-(-2/11)round6}}
+| yobst   = {{#expr:(5/11)-(-4/11)round6}}
+|
+| terrain = (''None, Domestic Areas'')
+|
+| baseq   = 10
+|
+| hp      = 200
+| fhp     = 100
+|
+| loot    = [[Sheep's Milk]], [[Wool]], [[Fresh Sheepskin]], [[Intestines]] x2, [[Entrails]] x2, [[Tiny Brain]],  [[Raw Mutton]] x3, [[Bone Material]] x3, [[Suckling's Maw]] from youngs.
+}}
+
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+Sheep are tamed from [[Mouflon]]s. See [[Taming]] for more information about taming.
+Sheep are the only source of [[Wool]] other than tamed [[Goat]]s and feeding [[Clover]]s to Mouflons or [[Wildgoat]]s. Sheep can only 'store' a maximum of 3 wool at a time. 
+Like any other livestock, slaughtered sheep also provide meat, innards, and hide, and their [[Sheepskin]] is required to create a [[Kozhukh]]. Female sheep also produce [[Sheep's Milk|milk]], which can be refined into [[Cheese]]s unique to Sheepsmilk or into other dairy-related products.
+
+==Animals==
+
+*A ram is a male sheep. They can impregnate female sheep (ewe).
+*An ewe is a female sheep. After being impregnated they give birth to a lamb in 4.5 days, and then start producing milk, of which they can store a maximum of 25L.
+*A lamb is an adolescent sheep. They will grow into either a ram or an ewe in 10 real life days. In addition to the regular products, lambs give you a [[Suckling's Maw]] when butchered.
+
+===Wool===
+
+Sheep produce [[Wool]] at a rate of 1 wool every 8 hours RL at Wool Quantity 5. You can increase the speed of growth by raising sheep with higher Wool Quantity, as well as the quality by raising sheep with higher Wool Quality, through breeding of sheep with high Food Eaten quality as well as with high Quantity/Quality levels.
+
+See [[Animal Qualities]] for more information.
+
+== Production ==
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Creature Products {{#info:Products directly obtained by processing sheep.|note}}
+|-
+! Product
+! Action
+! Req. Skills
+|-
+|{{pre-img|Sheep's Milk|size=32}}
+|Milk (Ewe Only)
+|{{pre-img|Animal Husbandry|size=32}}
+|-
+|{{pre-img|Wool|size=32}}
+|Shear
+|{{pre-img|Animal Husbandry|size=32}}
+|-
+| {{pre-img|Fresh Sheepskin|size=64}}
+| Skin
+| {{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Intestines|size=32}}
+|Clean
+|{{pre-img|Hunting|size=32}}
+|-
+| {{pre-img|Entrails|size=32}}
+| Clean
+| {{pre-img|Hunting|size=32}}
+|-
+|{{pre-img|Suckling's Maw|size=32}}
+|Clean (Lamb Only)
+|{{pre-img|Animal Husbandry|size=32}}
+|-
+| {{Pre-img|Raw Mutton|size=32}}
+| Butcher
+| {{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Bollocks|size=32|i=Sheep_Bollocks.png}}
+|Butcher (Ram Only)
+| {{pre-img|Fine Butchery|size=32}}
+|-
+|{{pre-img|Tiny Brain|size=32}}
+|Butcher
+|{{pre-img|Fine Butchery|size=32}}
+|-
+| {{pre-img|Bone Material|t=Bone|size=32}}
+| Collect Bones
+| {{pre-img|Hunting|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Related Products {{#info:Products requiring non-generic, exclusively-derived sheep products as ingredients.|note}}
+|-
+!Product
+!Process
+!Req. Skills
+|-
+|{{Pre-img|Sheepskin|size=64}}
+|Drying
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Sheepskin Patch|size=32|l=Prepared_Animal_Hide|t=Sheepskin Patch}}
+|Splitting
+|{{pre-img|Hunting|size=32}}
+|-
+|{{Pre-img|Kozhukh|size=64}}
+|Crafting
+|{{pre-img|Sewing|size=32}}
+|-
+|{{Pre-img|Bone Ash|size=32}}
+|Spitroasting
+|{{pre-img|Firecrafts|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table; margin-right:1em;"
+|+ Related Foods {{#info:Food recipes requiring non-generic, exclusively-derived sheep products as ingredients.|note}}
+|-
+!Product
+!Process
+!FEPs
+!style="text-align:center;"| +1
+!style="text-align:center;"| +2
+!Req. Skills
+|-
+|{{Pre-img|Roast Mutton|size=32}}
+|Roasting
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+|{{Pre-img|Firecrafts|size=32}}
+|-
+| rowspan="2" |{{pre-img|Spitroast Mutton|size=32|i=Spitroast_mutton.png}}
+| rowspan="2" |Spitroasting
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{pre-img|Firecrafts|size=32}}
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 0.5
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|{{Pre-img|Smoked Mutton|size=32|l=Smoked_Meat#Variable_Ingredients|t=Smoked Mutton|i=Smoked_mutton.png}}
+|Smoking
+|style="background-color:#dedede; color:#0645ad;"| [[Smoked Meat#Variable Ingredients|???]]
+|style="text-align:center; color:#9b9b9b;"| ?
+|style="text-align:center; color:#9b9b9b;"| ?
+|{{Pre-img|Carpentry|size=32}}<br>{{Pre-img|Pottery|size=32}}
+|-
+| rowspan="3" |{{Pre-img|Chicken Chorizo|size=32}}
+| rowspan="3" |Meatgrinding
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="3" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|style="background-color:{{RoB_color|WIL}}; color:#0645ad;"| [[WIL]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|{{Pre-img|Lamb Sausages|size=32}}
+|Meatgrinding
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center;"| 5
+|style="text-align:center;"| 2
+|{{Pre-img|Sausage Making|size=32}}
+|-
+| rowspan="3" |{{Pre-img|Lamb & Lynx|size=32}}
+| rowspan="3" |Meatgrinding
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 2
+| rowspan="3" |{{Pre-img|Sausage Making|size=32}}
+|-
+|style="background-color:{{RoB_color|AGI}}; color:#0645ad;"| [[AGI]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 4
+|-
+|style="background-color:{{RoB_color|WIL}}; color:#0645ad;"| [[WIL]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Haggis|size=32}}
+| rowspan="2" |Cauldron Cooking
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center;"| 6
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |{{Pre-img|Cooking|size=32}}
+|-
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 4
+|-
+| rowspan="3" |{{Pre-img|Shepherd's Pie|size=32}}
+| rowspan="3" |Baking
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 4
+| rowspan="3" |{{Pre-img|Baking|size=32}}
+|-
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center;"| 10
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 5
+|-
+|{{Pre-img|Sheep's Curd|size=32}}
+|Curding
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center;"| 1
+|style="text-align:center; color:#9b9b9b;"| 0
+|{{Pre-img|Cheesemaking|size=32}}
+|}
+{| class="wikitable sortable" style="display:inline-table;"
+|+ Derived Cheeses {{#info:Cheeses derived from Sheep's Milk.|note}}
+|-
+!Product
+!Stage
+!FEPs
+!style="text-align:center;"| +1
+!style="text-align:center;"| +2
+!Method
+|-
+| rowspan="3" |{{pre-img|Halloumi|size=32}}
+| rowspan="3" |Stage 1
+|style="background-color:{{RoB_color|INT}}; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 4
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="3" |[[File:Sheep's Curd.png]][[File:Stonestead Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center;"| 4
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 4
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Feta|size=32}}
+| rowspan="2" |Stage 1
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |[[File:Sheep's Curd.png]][[File:Cellar Door Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Abbaye|size=32}}
+| rowspan="2" |Stage 1
+|style="background-color:{{RoB_color|INT}}; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |[[File:Sheep's Curd.png]][[File:Minehole Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center;"| 3
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Pecorino|size=32}}
+| rowspan="2" |Stage 1
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center;"| 4
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |[[File:Sheep's Curd.png]][[File:Dayscape Small.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 6
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Caciotta|size=32}}
+| rowspan="2" |Stage 2
+|style="background-color:{{RoB_color|AGI}}; color:#0645ad;"| [[AGI]]
+|style="text-align:center;"| 8
+|style="text-align:center;"| 2
+| rowspan="2" |[[File:Feta.png|32x32px]][[File:Stonestead Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CHA}}; color:#0645ad;"| [[CHA]]
+|style="text-align:center;"| 8
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="2" |{{Pre-img|Cabrales|size=32}}
+| rowspan="2" |Stage 2
+|style="background-color:{{RoB_color|INT}}; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |[[File:Feta.png|32x32px]][[File:Dayscape Small.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="3" |{{Pre-img|Zamorano|size=32}}
+| rowspan="3" |Stage 2
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 3
+| rowspan="3" |[[File:Abbaye.png|32x32px]][[File:Cellar Door Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|AGI}}; color:#0645ad;"| [[AGI]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 3
+|-
+|style="background-color:{{RoB_color|PSY}}; color:#0645ad;"| [[PSY]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 3
+|-
+| rowspan="3" |{{Pre-img|Gbejna|size=32}}
+| rowspan="3" |Stage 2
+|style="background-color:{{RoB_color|INT}}; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 4
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="3" |[[File:Pecorino.png|32x32px]][[File:Cellar Door Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center;"| 8
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|style="background-color:{{RoB_color|PSY}}; color:#0645ad;"| [[PSY]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 2
+|-
+| rowspan="2" |{{Pre-img|Manchego|size=32}}
+| rowspan="2" |Stage 2
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center;"| 10
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="2" |[[File:Pecorino.png|32x32px]][[File:Minehole Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|DEX}}; color:#0645ad;"| [[DEX]]
+|style="text-align:center;"| 5
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+| rowspan="3" |{{Pre-img|Roncal|size=32}}
+| rowspan="3" |Stage 3
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center;"| 10
+|style="text-align:center; color:#9b9b9b;"| 0
+| rowspan="3" |[[File:Gbejna.png|32x32px]][[File:Minehole Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 5
+|-
+|style="background-color:{{RoB_color|PSY}}; color:#0645ad;"| [[PSY]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 5
+|-
+| rowspan="3" |{{Pre-img|Brique|size=32}}
+| rowspan="3" |Stage 3
+|style="background-color:{{RoB_color|STR}}; color:#0645ad;"| [[STR]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 10
+| rowspan="3" |[[File:Zamorano.png|32x32px]][[File:Stonestead Paginae.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|INT}}; color:#0645ad;"| [[INT]]
+|style="text-align:center;"| 10
+|style="text-align:center; color:#9b9b9b;"| 0
+|-
+|style="background-color:{{RoB_color|PER}}; color:#0645ad;"| [[PER]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 10
+|-
+| rowspan="3" |{{Pre-img|Oscypki|size=32}}
+| rowspan="3" |Stage 4
+|style="background-color:{{RoB_color|AGI}}; color:#0645ad;"| [[AGI]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 20
+| rowspan="3" |[[File:Brique.png|32x32px]][[File:Dayscape Small.png|32x32px]]
+|-
+|style="background-color:{{RoB_color|CON}}; color:#0645ad;"| [[CON]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 10
+|-
+|style="background-color:{{RoB_color|PSY}}; color:#0645ad;"| [[PSY]]
+|style="text-align:center; color:#9b9b9b;"| 0
+|style="text-align:center;"| 10
+|}
+==Notes==
+
+It is a good idea to separate your rams from your ewes, to ensure that you can select the highest quality ram to mate with your ewes when you want lambs.
+*''Note: Although the game has some auto-naming for newborns, with different names for male and female. This is however not the case with sheep. Both male and female sheep's are initially named "Dolly", so make sure to check (and rename when needed)''.
+
+==Gallery==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh Sheepskin]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]] and [[Raw Mutton]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+{{Game Development}}

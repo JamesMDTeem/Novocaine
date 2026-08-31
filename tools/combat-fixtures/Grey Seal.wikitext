@@ -1,0 +1,54 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(6/11)-(-6/11)round6}}
+|
+| baseq = 35
+|
+| hp    = ~320
+| fhp   = ~240
+|
+| loot  = [[Fresh Grey Seal Hide]] x1-2, [[Intestines]] x2, [[Entrails]] x2, [[Animal Fat]] x1-3, [[Raw Grey Seal]] x4, [[Bone Material]] x3, [[Flipper Bones]] x1-3
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+''"Seal" redirects here. For the Curiosity, see [[Great Wax Seal]].''
+
+'''Seals''' are considered one of the fastest animals in the game.
+<!--{{MT|m=old|<s>Only [[Snekkja|Snekkjas]] and [[Knarr|Knarrs]] of higher quality are able to outpace a Seal in water.</s>}} (Disabled outdated info. In need of rewrite.)--> 
+
+Seals are able to inflict [[Seal Finger|Seal Finger]] [[wounds]] with their attacks, additionally these can also be obtained from butchering their corpses. The chance for wound from butchering is reduced if wearing [[Poor Man's Gloves]] or [[Plate Gauntlets]].
+
+==Combat==
+
+===Behaviour===
+
+Passive until you aggro them.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}}
+| {{:Careful Approach}} {{:Bristle}}
+|}
+
+===Strategy===
+
+Seals are not tough opponents, their only advantage is their speed, which will be drastically reduced when taken on land. Even a [[Hearthling]] without a horse can deal with a Seal outside of water
+
+While on Horse, Seals pose no threat to any player with at least basic knowledge of combat and relatively low stats.
+
+If fought from a ship, and the retreating Seal is faster than you, break aggro and quickly initiate combat with them again, doing so will cause the Seal to return to combat, just to receive a finish blow from you.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Grey Seal]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Flipper Bones]] and [[Bone Material]].
+
+==Notes==
+<!--*{{MT|m=old|<s>While most of Seals are slower than a higher quality ship, some Seals can be a bit faster and will be able to catchup to the player that is not using a top speed ship.</s>}} (Disabled outdated info. In need of rewrite.)-->
+
+{{Game Development}}

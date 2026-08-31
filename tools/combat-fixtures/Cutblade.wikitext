@@ -1,0 +1,33 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 3
+|
+| skillreq   = [[requires::Steelmaking]]
+| objectsreq = [[requires::Bar of Steel]] x8, [[requires::Bar of Silver]], [[requires::Hardened Leather]]
+| producedby = [[requires::Anvil]] and [[requires::Smithy's Hammer]]
+|
+| slot       = 6L and 6R
+| basedmg    = 135
+| armorpen   = 10
+| range      = 1.5
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|C$utblade}}
+
+The {{PAGENAME}} deals 135 base damage. Armor Penetration 10%. This power comes at a cost, as the sword increases attack cooldowns by 20%.
+
+
+The {{PAGENAME}} must be equipped in both hand slots and counts as both a cutting tool and an edged weapon.
+
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Steel + _{q}Hardened Leather}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 135*\sqrt{\sqrt{Strength*{q}Sword}/10}</math>.
+
+{{Game Development}}

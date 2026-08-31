@@ -1,0 +1,29 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 3
+|
+| producedby = [[requires::Rat Dungeon]]
+|
+| slot       = 6L and 6R
+| basedmg    = 80
+| armorpen   = 15
+| range      = 1.6
+}}
+
+The Giant Needle can be obtained from a [[Rat Dungeon]] and functions exactly identical to a [[Boar Spear|Boar Spear.]] It requires two hands to use and allows you to use melee combat attacks that require '''Any Melee Weapon''' or '''Any Pointed Blade.''' This includes Quick Barrage, Full Circle and Sting, but not Chop, Cleave or Storm of Swords, for example.
+
+Like the Boar Spear, it gives extra range to Melee Combat moves that utilize it, allowing you to "cheese" animals from outside their attack range using a [[Boat]]. This does require careful pre-positioning though, if you use a move out of range the character will move to collide with the target. 
+
+This is especially true for the boss of the Rat Dungeon, the Rat King, who often gets stuck in such a way he cannot move, and can easily be killed while taking no damage by simply using one of his own Giant Needles to attack him outside of his attack range.
+
+Also like the Boar Spear, the Giant Needle can be thrown by using the Shoot! command while holding it. Do note this has a fair chance of breaking it, causing it to disappear. Should it survive it will be left lying on the ground.
+
+==How to Acquire==
+
+Within the dungeon are spools of [[Rat Fibre]], which occasionally have a needle sticking out. Right click the needle to obtain one Giant Needle. You can often get three to six needles per dungeon. This can give you either ample ammunition to throw using Shoot! or a few simple weapons to gift/sell to people.
+
+==Quality==
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 80*\sqrt{\sqrt{Strength*{q}Needle}/10}</math>.
+
+{{Game Development}}

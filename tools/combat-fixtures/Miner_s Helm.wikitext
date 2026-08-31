@@ -1,0 +1,53 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Hard Metal]] x2 and [[requires::Leather]], [[Requires::Candle]] may be added
+| producedby = [[requires::Smithy's Hammer]] and [[requires::Anvil]]
+|
+| slot       = 1L
+| ahp        = 85
+| absorbX    = 2
+| absorbY    = 4
+}}
+
+[[Category:Clothing]]
+[[Category:Light Sources]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Miner's Helm}}
+
+When a [[Wax Candle|Candle]] is added to a miner's helm, it becomes a hands-free source of [[:Category:Light Sources|light]], perfect for use with a [[Pickaxe|Pickaxe]].<br>
+It greatly reduces damage taken from cave ins while taking a penalty to its quality, often breaking it entirely. With enough max health and a good quality Miner's Helm, it's possible for a cave-in to not even KO you, dealing only SHP damage.
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Metal + _{q}Leather}{2} *  9+ {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 8.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|}
+
+==Notes==
+
+*Once acquired, you can add a candle by right clicking on the Miner's Helm with Candle in hand. 
+*To extinguish the candle, simply remove the Miner's Helm.
+* As of update {{Patch|Burning Harmonica}}, this item is now considered armor.
+
+[[Category:Headgear]]

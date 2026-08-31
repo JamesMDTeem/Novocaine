@@ -1,0 +1,56 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Tanning]]
+| objectsreq = [[requires::Leather]] x3, [[requires::String]] x1
+| producedby = Hand
+|
+| egildpct   = [[egildpct::20%-35%]]
+| egildatt   = [[egildatt::Agility]]
+|
+| slot       = 11R
+| ahp        = 15
+| absorbX    = 1
+| absorbY    = 3
+}}
+
+[[Category:Boots & Shoes]]
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Boots & Shoes|$Leather Boots}}
+
+Very basic armor that offers little protection. Provides no stat bonuses but has an 20%-35% [[Agility]] [[Gilding]] slot.
+
+==How to acquire==
+
+#Get [[Leather]] x3 and [[:Category:String|string]].
+#Use recipe from craft menu.
+
+==Quality==
+
+Quality of leather boots = <math>\frac{_{q}Leather+_{q}String}{2}</math> and [[Softcap|softcapped]] by <math>\sqrt{Dexterity * Sewing}</math>
+
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>{{Quality}} * {1.5}</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{_{Quality}}{10}} * {1}</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{_{Quality}}{10}} * {3}</math>
+|}
+
+==Gallery==
+
+<gallery>
+Ushankaka.png | A player wearing leather boots.
+Leather Boots - (on wall).png | Leather boots decorating a wall.
+</gallery>

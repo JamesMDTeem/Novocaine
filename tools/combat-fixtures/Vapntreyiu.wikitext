@@ -1,0 +1,74 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Sewing]]
+| objectsreq = [[requires::Cloth]] x5, [[requires::Wool]] x5, [[requires::String]] x2
+| producedby = Hand
+|
+| slot       = 4L; 8L
+| ahp        = 100
+| absorbX    = 3
+| absorbY    = 4
+}}
+
+[[Category:Clothing]]
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Vapntreyiu}}
+
+Vapntreyiu is [[armor]]ed [[Cloak]] that gives defensive stats, but can be worn underneath defensive armor (like [[Leather Armor]] or [[Bronze Plate]]), in both the shirt and cloak slots, allowing two to be worn at once.
+
+It is an essential part of any serious warrior's gear.
+
+==Quality==
+
+The quality formula is <math>\frac{_{q}Cloth + _{q}Wool +_{q}String}{3}</math> [[softcap]]ped by <math>\sqrt{Sewing*Dexterity}</math>
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+!Quality
+!Hitpoints
+!Armor Class
+|-
+|10
+|100
+|3/4
+|-
+|40
+|400
+|6/8
+|-
+|90
+|900
+|9/12
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 10</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 3</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|}
+
+==Reference==
+
+In medieval Norse, ''Vapntreyiu'' literally means "arming shirt". It is a padded, quilted jacket stuffed with wool or similar, often worn underneath armor for additional protection. It is also known as a [//en.wikipedia.org/wiki/Gambeson gambeson] or aketon.
+
+==Gallery==
+
+<gallery>
+Vapn.png | A player wearing a vapntreyiu.
+Vapntreyiu - (on wall).png | A vapntreyiu decorating a wall.
+</gallery>
+[[Category:Cloak]]

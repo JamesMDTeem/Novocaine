@@ -1,0 +1,26 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Hard Metal]] x2
+| producedby = [[requires::Smithy's Hammer]] and [[requires::Anvil]]
+|
+| slot       = 5L
+| basedmg    = 5
+| range      = 1
+| cskill     = Unarmed Combat
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Cutthroat $Knuckles}}
+
+The '''Cutthroat Knuckles''' use the glove slot, give bonus unarmed damage, and are created from 2 bars of [[Bronze]], [[Bar of Cast Iron|Iron]] or [[Bar of Steel|Steel]]. 
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{{_{q}Hard Metal} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 5*\sqrt{\sqrt{Strength*{q}Knucles}/10}</math>.

@@ -1,0 +1,10 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Tail Spin
+  | rowspan = 1
+  | rdc1 = Blue
+  | rdc2 = Yellow
+  }}<nowiki />
+</onlyinclude>

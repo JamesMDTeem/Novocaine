@@ -1,0 +1,32 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Magpie]]: [[Magpie Feather]], [[Entrails]], [[Tiny Brain]], [[Magpie Meat]], [[Bone Material]] or [[Wishbone]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Right-click and select 'Wring neck' to receive a [[Dead Magpie]]
+Magpies collect all dropped items, it can be baited and caught. If it has stolen an item, after picking it up the Wring Neck option is replaced with Recover Swag, which when clicked returns the stolen item. Afterwards you can then Wring Neck as usual.
+
+== How to Acquire ==
+
+Can be found on the [[Grassland]].
+
+Picked by Right-Сlick. Flight on 5(4 horse) speed.
+
+With just few points in marksmanship, can be killed one-shot with a [[Sling]].
+
+==Gallery==
+
+<gallery>
+Magpieingame.jpg | A Magpie in a wild.
+</gallery>
+
+{{Game Development}}

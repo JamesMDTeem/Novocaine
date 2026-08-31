@@ -1,0 +1,12 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Bristle
+  | rowspan = 1
+  | rdc1 = Green
+  | rdc2 = Blue
+  | rdc3 = Yellow
+  | rdc4 = Red
+  }}<nowiki />
+</onlyinclude>

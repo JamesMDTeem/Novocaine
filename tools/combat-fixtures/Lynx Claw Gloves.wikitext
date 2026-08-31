@@ -1,0 +1,53 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Hunting]], [[requires::Sewing]]
+| objectsreq = [[requires::Block of Wood]], [[requires::Lynx Claws]] x4, [[requires::Leather]] x4, [[requires::Bone Glue]]
+| producedby = Hand
+|
+| slot       = 5L
+| basedmg    = 4
+| range      = 1
+| cskill     = Unarmed Combat
+|
+| statAGI    = 5
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|L$ynx Claw Gloves}}
+
+[[Category:Gloves]]
+
+The '''Lynx Claw Gloves''' use the glove slot, give bonus unarmed damage and agility. 
+
+{| class="wikitable" style="text-align: center"
+ !Quality
+ !Effect
+ |-
+ | 10
+ | +5 AGI
+ |-
+ | 40
+ | +10 AGI 
+ |-
+ | 90
+ | +15 AGI
+ |}
+
+AGI bonus = <math>5*\sqrt{quality/10}</math>
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Block + _{q}Claws+ _{q}Leather+ _{q}Glue}{4}</math> and is [[softcap|softcapped]] by <math>\sqrt[3]{Dexterity*Sewing*Survival}</math>.
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 4*\sqrt{\sqrt{Strength*{q}Gloves}/10}</math>.
+
+==Gallery==
+
+<gallery>
+Od.png | A player wearing a Lynx Claw Gloves.
+</gallery>
+
+== Notes ==
+
+* Doesn't protect against [[Nettle Burn]].
+{{Game Development}}

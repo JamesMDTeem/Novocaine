@@ -1,0 +1,9 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:BloodGore.png]]
+| Blood & Gore
+|
+*Attack type: {{RoB color|sweeping|Sweeping}}, {{RoB color|backhanded|Backhanded}}, {{RoB color|oppressive|Oppressive}}
+*Openings: {{RoB color|oppressive|Cornered}}
+|}</onlyinclude>

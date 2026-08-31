@@ -1,0 +1,36 @@
+{{infobox creature
+| xitem    = 2
+| yitem    = 1
+| xobst    = {{#expr:(1/11)-(0/11)round6}}
+| yobst    = {{#expr:(1/11)-(0/11)round6}}
+|
+| skillreq = {{none}}<!-- currently not used by creature infobox -->
+|
+| baseq    = 10
+|
+| loot     = [[Crab Shell]] x0-2, [[Crab Meat]] x1-8, [[Crab Roe]] x0-1, [[Crab Claw]] x0-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+A Crab is a beach-dwelling crustacean that can be cracked for [[Crab Shell]]s, [[Crab Meat]], [[Crab Roe]] and [[Crab Claw]]s. It takes up a 2x1 space in the inventory when alive. They are found on [[Beach]] terrain.
+
+Both picking up and cracking Crabs has a large chance to give you the [[Wounds|Crab Carresed]] wound, causing 3-6 HHP damage per wound.
+
+==How To Acquire==
+
+Crabs can be found commonly on beaches. They do not engage in combat and do not flee. Unlike [[Hedgehog]]s, it is not possible to engage crabs in combat to avoid the damage from picking them up, as there is no Dead Crab item (You simply crack them, which serves as killing and butchering them.) and killing them through combat/trampling with a horse simply deletes them from the game world entirely.
+
+==Notes==
+
+Wearing gloves, such as [[Poor Man's Gloves]], reduce the damage, and chance at taking damage dealt by crabs.
+
+==Crabs In-Game==
+
+[[File:Crab in_game.png]]
+
+==Quick Facts==
+
+* Desperate Hearthling who has lost their will to live can build up Crab Caressed wound incredibly fast by repeatedly picking and releasing single crab.
+
+{{Game Development}}

@@ -1,0 +1,60 @@
+{{infobox creature
+| xobst = {{#expr:(4/11)-(-4/11)round6}}
+| yobst = {{#expr:(12/11)-(-12/11)round6}}
+|
+| baseq = 30
+|
+| armor = 15
+| hp    = 350
+| fhp   = 250
+|
+| loot  = [[Fresh Aurochs Hide]] x2, [[Intestines]] x3, [[Entrails]] x3, [[Small Brain]],  [[Animal Fat]], [[Raw Wild Beef]] x14, [[Bone Material]] x6, [[Aurochs Hair]]*
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+''Note: The singular noun is aurochs while the plural is aurochsen.''
+
+Aurochs/Aurochsen (Oar-awks/Oar-aukzen, like English ox/oxen) are a now extinct cattle relative that once lived in Asia, Europe and North Africa. The last recorded aurochs died in Jaktorów Forest, Poland. 
+
+Their most important gameplay function is that they can be [[Taming|tamed]] to become a [[cow]] or a [[bull]].
+
+
+
+==Combat==
+
+===Behaviour===
+
+Passive until you attack them. If you pull their hair there is a good chance they'll get angry and attack you, though.
+
+''Note: Now, aurochsen spawn in herds, and directly attacking one will lead to the whole herd attacking you. Herd doesn't react if an aggro was result of pulling a hair.''
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:5</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Low Horn Swipe}} {{:Mule Kick}} {{:Bucking}} {{:Thunder Over}} {{:Sudden Charge}}
+| {{:Careful Approach}} {{:Roar of the Wild}}
+|}
+
+===Strategy===
+
+With around 60 UA/60 AGI <del>you should be able to take on an aurochs and win by punching the crap out of it.</del> As of w14, aurochsen have been given same amount of armor that boars have, likely necessitating a melee weapon.
+
+They've got a lot of HP and AGI and their firepower is not to be scoffed at. Don't let yourself get overwhelmed and focus on damage-dealing. Archery on horseback or from a boat is a good option early on.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Wild Beef]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Bone Material]].<br>
+
+==Notes==
+
+*Right click the Aurochs and it will give you the option to "Pull Hair." Use this with extreme caution as it can equally get you a new Curiosity or a dead Hearthling. Each Aurochs yields only one [[Aurochs Hair]].
+*You can get 2L of [[Milk]] from an aurochs. To do so, you need [[Clover]] and a [[Bucket]]. Pick up a clover from your inventory and right click on an aurochs. The aurochs will cautiously proceed to eat the clover. It is recommended to get as close as possible before right clicking the aurochs. Next, take your bucket and right click on the aurochs to milk it. Each Aurochs can only be milked once.
+*'''Trivia:''' The singular noun is aurochs while the plural is aurochsen. - Loftar
+*The singular is obviously "aurochs", seeing how it is cognate with English "ox". Accordingly, the only reasonable plural form is, of course, "aurochsen", seeing how "ox" still uses the Saxon plural form "oxen" even in Modern English.
+*Terrains on which {{PAGENAME}} can spawn, but rarely: [[Deep Tangle]], [[Timber Land]], [[Wald]]. <!--(This data can't be nicely integrated in the currently RoB's system)-->
+
+{{Game Development}}

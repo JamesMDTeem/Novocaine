@@ -1,0 +1,51 @@
+{{infobox creature
+| xobst  = 2.344
+| yobst  = 7.162
+|
+| deadly = yes
+|
+| baseq  = 80
+|
+| armor  = 100
+| hp     = 20000
+| fhp    = 14000 (Bleeds for 400 hp per tick when fleeing)
+|
+| loot   = Orca Chunk x8:<br>[[Raw Orca]] x6(48 total),[[Animal Fat]] x2(16 total), <br> Orca Carcass:<br> [[Orca Brain]], [[Orca Tooth]] x5, [[Whale Bone Material]] x12
+}}
+
+Orcas are large toothed whales which live in [[Deep Water|Very Deep Ocean]]. They can spawn solo or in pods of 2-4.
+
+To butcher a creature, you must first tow it to the [[Knarr]] or [[Snekkja]] and take it to the shore, secondly drag on the ground with the help of a horse.
+
+==Combat==
+
+===Behaviour===
+
+Orcas are aggressive, and will likely engage in combat with nearby players. Aggroing any one orca will cause the entire pod to also engage.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:0</small>
+! Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|
+|
+|}
+
+===Strategy===
+
+Beware, Orcas are strong creatures, capable of outrunning a [[Knarr]], also the problem in numbers. Note that unlike other creatures, orcas never split - so you can't aggro them one by one.
+
+You can Safespot them by luring them to the edge of Very Deep Ocean, they will not follow you onto Deep Ocean terrain.
+
+==In-Game Example(s)==
+[[File:OrcaButchered.png|200px|400px]] Butchered Orca on a beach.
+
+==Notes==
+
+*Dead Orca can be hooked to knarr and lifted on сoast. Then dragged on land by the horse. 
+*Butchered in several pieces that can be lifted.
+*The quality of butchering tool affects the quality of the orca brain during the initial butchering
+
+{{Game Development}}

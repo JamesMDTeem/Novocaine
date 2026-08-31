@@ -1,0 +1,60 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Tanning]], [[requires::Sewing]]
+| objectsreq = [[requires::Leather]] x4, [[requires::String]] x2
+| producedby = Hand
+|
+| slot       = 10R
+| ahp        = 75
+| absorbX    = 3
+| absorbY    = 4
+|
+| statAGI    = -2
+}}
+
+[[Category:Home Decor]]
+[[Category:Leg Armor]]
+
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|L$eather Pants}}
+
+Very basic armor that offers little protection. 
+
+==How to acquire==
+
+#Get [[Leather]] x4 and [[:Category:String|string]] x2.
+#Use recipe from craft menu.
+
+==Quality==
+
+Quality of leather armor = <math>\frac{_{q}Leather+_{q}String}{2}</math> and [[Softcap|softcapped]] by <math>\sqrt{Dexterity * Sewing}</math>
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>\frac{Quality}{10} * 75</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 3</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|-
+|Agility Penalty
+|<math>-\sqrt{\frac{Quality}{10}} * 2</math>
+|}
+
+*Agi Penalty rounded to nearest integer
+
+==Gallery==
+
+<gallery>
+Ushankaka.png | A player wearing leather pants.
+Leather Pants - (on wall).png | Leather pants decorating a wall.
+</gallery>

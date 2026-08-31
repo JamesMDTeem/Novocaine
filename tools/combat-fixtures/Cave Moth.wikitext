@@ -1,0 +1,28 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = {{none}}
+| objectsreq   = {{none}}
+| producedby   = [[requires::Dust Pile]]
+| specific     = Bug, Bait
+|
+| lpgain       = 300
+| studytime    = 1:49
+| mentalweight = 5
+| expdrain     = 3
+}}
+
+[[Category:Creatures]]
+
+The '''{{PAGENAME}}''' is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+==Notes==
+
+*Can be mined out.
+
+==Gallery==
+
+[[File:CavemothIngame.png|200px|thumb|left|]]
+
+{{Game Development}}

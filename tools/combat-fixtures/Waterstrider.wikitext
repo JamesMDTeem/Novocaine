@@ -1,0 +1,32 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Wilderness Survival]]
+| producedby   = Hand
+| specific     = Bug, Bait
+|
+| lpgain       = 500
+| studytime    = 3:47
+| mentalweight = 3
+| expdrain     = 4
+}}
+
+[[Category:Creatures]]
+
+'''Waterstriders''' are a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]]. They move by quickly pushing forward with their middle legs. They act identical to [[Dragonfly|dragonflies]] in that they will glide in one direction, changing direction occasionally or when they collide with something.
+
+== How to Acquire ==
+
+Waterstriders may be found in the water on surface level. While they spawn in [[Shallow Water]], they can glide over onto [[Deep Water]]. They lack any intelligence and do not attempt to flee when being chased, but are far faster than you in shallows. They can be caught since after each push they stop periodically. Eventually they will stop close enough to walk over and catch.
+
+==Notes==
+
+Since waterstriders can only move in water tiles, dropping them on any ground tiles leaves them twitching in place, unable to move.
+
+==Gallery==
+<gallery>
+Waterstrider_in-game.png | {{PAGENAME}} (<i>in{{Nbh}}game</i>).
+</gallery>
+
+{{Game Development}}

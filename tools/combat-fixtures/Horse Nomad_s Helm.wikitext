@@ -1,0 +1,50 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = unknown
+| objectsreq = [[requires::Horse Hide]], [[requires::Wool]] x4, [[requires::Bone Glue]], [[requires::Hardened Leather]] x2, [[requires::Hide Strap]] x4
+| producedby = Hand
+|
+| slot       = 1L
+| ahp        = 150
+| absorbX    = 4
+| absorbY    = 5
+|
+| statAGI    = 5
+}}
+
+[[Category:Headgear]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Hors$e Nomad's Helm}}
+
+A piece of Hard Leather [[armor]] . Equips to 1L.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>{\frac{_{q}Hide + _{q}Wool+ _{q}Glue+ _{q}Hardened Leather+ _{q}Strap}{5}}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Sewing}</math>.
+
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 15</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 4</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|-
+|Agility Bonus
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|}
+
+==Notes==
+*Recipe specifically calls for [[Horse Hide]], so hides from Wild Horses will not work.
+
+{{Game Development}}

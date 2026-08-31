@@ -1,0 +1,57 @@
+{{infobox creature
+| xobst  = {{#expr:(20/11)-(-20/11)round6}}
+| yobst  = {{#expr:(97/11)-(-97/11)round6}}
+|
+| deadly = yes
+|
+| baseq  = 120
+|
+| armor  = 150
+| hp     = 50000
+| fhp    = Varies
+|
+| loot   = [[Cachalot Blowhole]], <br> Cachalot Chunk x16:<br>[[Raw Cachalot]] x8 (128 total), [[Animal Fat]] x4 (64 total), <br> Cachalot Heart:<br> [[Raw Cachalot]] x16 (25% higher q), <br> Cachalot Skull:<br> [[Hvalraf]] x20-25, [[Cachalot Tooth]] x2-10, <br> Cachalot Carcass:<br> [[Whale Bone Material]] x40
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Cachalot are large toothed whales living in [[Deep Water|Oceans]]. They're very fast, strong and durable high-end creatures which parts give access to following recipes: [[Cachalot Charm]], [[Whaler's Jacket]], [[Whalebone Clasps]] and [[Whalebone Scrimshaw]].
+
+To butcher a creature, you must first tow it to the [[Knarr]] or [[Snekkja]] and take it to the shore, secondly drag on the ground with the help of a horse.
+
+==Spawn==
+There is only 3{{verify}} whales can be alive in the world, spawning mechanic is similar to dungeons - whales will not despawn naturally, and after one is killed, next one will spawn in next 8 RL hours (1 in-game day).
+
+==Combat==
+
+===Behaviour===
+
+Usually not aggressive, but will attack anybody in the area if already in combat.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:0</small>
+! Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+|
+|
+|}
+
+===Strategy===
+
+Beware, Cachalots are very strong creatures, capable of outrunning and breaking a [[Knarr]] or [[Snekkja]].
+
+==In-Game Example(s)==
+
+
+==Notes==
+
+*Dead Cachalot can be hooked to knarr and lifted on сoast. Then dragged on land by the horse.
+*Butchered in several pieces that can be lifted.
+*The [[Cachalot Blowhole]] is softcapped by the quality of the cutting tool first used to butcher the cachelot.
+*The Cachalot chunks are only softcapped by tool when butchered directly, not when the whale is butchered.
+*Chunks and Skull not decay naturally and can be used as decoration forever.
+*Neither the heart or skull can be stored in a vehicle's cargo
+
+{{Game Development}}

@@ -1,0 +1,30 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+| xobst        = {{#expr:(1/11)-(0/11)round6}}
+| yobst        = {{#expr:(1/11)-(0/11)round6}}
+|
+| skillreq     = {{none}}
+| producedby   = [[requires::Leaf Pile]]
+|
+| lpgain       = 4500
+| studytime    = 36:00
+| mentalweight = 8
+| expdrain     = 6
+}}
+
+[[Category:Creatures]]
+[[Category:Tmp_xyobj(neg)]]
+
+A small lizard. Low tier curiosity. Easy to find and catch.
+
+== How to Acquire ==
+
+Found in the [[Swamp]], [[Bog]] or [[Fen]].
+Picked by Right-Сlick.
+
+==Gallery==
+
+[[File:Lizardingame.png]]
+
+{{Game Development}}

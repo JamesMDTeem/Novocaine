@@ -1,0 +1,30 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+| producedby   = Hand
+| specific     = Bug, Bait
+|
+| lpgain       = 1500
+| studytime    = 4:51
+| mentalweight = 27
+| expdrain     = 7
+}}
+
+[[Category:Creatures]]
+
+Moonmoths are a kind of [[Bug]] native to the Hearthlands. They are also a [[Curiosity]] that may be studied in a player's [[Study Report]] to earn [[Learning Points]].
+
+==How to Acquire==
+
+You can acquire a Moonmoth by Right-clicking them while they are flying around, just like one would with [[Silkmoth]]s, [[Ladybug]]s, [[Cave Moth]]s, and other such flying insects. Biomes in which they can be found are [[Grassland]]s, [[Forest Terrain]]s, and [[Moor]]s. Be advised that as per their name, they can only be seen at [[Night]].
+
+==Gallery==
+
+<gallery>
+Moonmoth in-game.png | A flying Moonmoth, wild and free in the air.
+</gallery>
+
+{{Game Development}}

@@ -1,0 +1,25 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Wood Grouse Hen]]: [[Wood Grouse Feather]], [[Wood Grouse Meat]], [[Entrails]], [[Bone Material]] and [[Wishbone]](Rarely)
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+It's a female wood grouse.
+
+==Hunting==
+
+Wood grouse hens will try to fly away but they can easily be caught on horseback, unlike their male counterparts which must be fought.
+
+==Gallery==
+
+[[File:Woodd.png|200px|thumb|left|]]
+
+{{Game Development}}

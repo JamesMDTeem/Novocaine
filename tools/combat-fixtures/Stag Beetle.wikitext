@@ -1,0 +1,25 @@
+{{infobox metaobj
+| xitem        = 1
+| yitem        = 1
+|
+| skillreq     = [[requires::Hunting]]
+| objectsreq   = {{none}}
+| producedby   = [[requires::Leaf Pile]]
+| specific     = Bug, Bait
+|
+| lpgain       = 6000
+| studytime    = 32:49
+| mentalweight = 16
+| expdrain     = 24
+}}
+
+[[Category:Creatures]]
+
+{{PAGENAME}} is a [[Curiosity]] which can be used in the [[Study Report]] to earn [[Learning Points]].
+
+==Gallery==
+<gallery>
+Stag.png | {{PAGENAME}} (<i>in{{Nbh}}game</i>).
+</gallery>
+
+{{Game Development}}

@@ -1,0 +1,46 @@
+{{infobox creature
+| xobst = {{#expr:(2/11)-(-2/11)round6}}
+| yobst = {{#expr:(12/11)-(-6/11)round6}}
+|
+| baseq = 30
+|
+| armor = 0
+| hp    = 200
+| fhp   = 110
+|
+| loot  = [[Fresh Reindeer Hide]], [[Intestines]], [[Entrails]] x2, [[Small Brain]], [[Raw Reindeer Venison]] x6, [[Bone Material]] x4, [[Reindeer Antlers]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+The reindeer, also known as the caribou, is a species of deer with circumpolar distribution, native to Arctic, sub-Arctic, tundra, boreal and mountainous regions.
+Reinder also spawn more commonly in the snows of Winter.
+
+Their most important gameplay function is that they can be [[Taming|tamed]] to become a [[Tame Reindeer]].
+
+
+==Combat==
+
+===Behaviour===
+
+Passive until you aggro them.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:2</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Low Horn Swipe}} {{:Mule Kick}}
+| {{:Careful Approach}} {{:Bristle}}
+|}
+
+===Strategy===
+Reindeer attack quickly and have the potential to snowball with openings. Riding a horse is recommended as you can kite and lower your openings.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be cleaned and butchered for [[Intestines]], [[Entrails]] and [[Raw Reindeer Venison]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Reindeer Antlers]] and [[Bone Material]].<br>
+
+{{Game Development}}

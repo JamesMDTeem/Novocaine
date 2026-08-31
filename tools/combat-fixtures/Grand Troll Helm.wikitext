@@ -1,0 +1,65 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Troll Skull]], [[requires::Bar of Steel]] x4
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 1L
+| ahp        = 250
+| absorbX    = 6
+| absorbY    = 10
+|
+| statSTR    = 5
+| statAGI    = -1
+|
+| statCUA    = 10
+}}
+
+[[Category:Clothing]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Helms & Helmets|Grand $Troll Helm}}
+
+Grand Troll Helm is one of the best helmets in game. Giving good bonus at [[Strength]] and [[Unarmed Combat]]
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Troll Skull + _{q}Steel}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+
+* Bonuses = <math>_{q10}Bonuses*\sqrt{\frac{_{q}Helm}{10}}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+ ! Stat
+ ! Formula
+ |-
+ | Wear
+ | <math>Quality * 25</math>
+ |-
+ | Deflection
+ | <math>\sqrt{\frac{Quality}{10}} * 6</math>
+ |-
+ | Absorption
+ | <math>\sqrt{\frac{Quality}{10}} * 10</math>
+ |-
+ | Strength
+ | <math>\sqrt{\frac{Quality}{10}} * 5</math>
+ |-
+ | Unarmed Combat
+ | <math>\sqrt{\frac{Quality}{10}} * 10</math>
+ |-
+ | Agility Penalty
+ | <math>\sqrt{\frac{Quality}{10}}</math>
+ |}
+
+==Gallery==
+
+<gallery>
+Grand Troll.png | A player wearing a Grand Troll Helm.
+</gallery>
+
+{{Game Development}}
+
+[[Category:Headgear]]

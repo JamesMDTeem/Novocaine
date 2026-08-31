@@ -1,0 +1,48 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Lumberjacking]]
+| objectsreq = [[requires::Block of Wood]] x6, [[requires::String]] x4, [[requires::Bone Glue]]
+| producedby = Hand
+|
+| slot       = 4R
+| ahp        = 140
+| absorbX    = 2
+| absorbY    = 3
+|
+| statAGI    = -1
+}}
+
+[[Category:Clothing]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Torso Armor|$Woodland Cuirass}}
+
+{{PAGENAME}} is a piece of early chest [[:Category:Armor|armor]]. It equips to the [[Equipment Screen|equipment slot]] 4R.
+
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Wood+ _{q}String+ _{q}Glue}{3}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Carpentry}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 14</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 3</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -1</math>
+|}
+
+{{Game Development}}

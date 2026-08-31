@@ -1,0 +1,43 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = {{none}}
+| objectsreq = {{none}}
+| specific   = Bait
+|
+| medicine=
+}}
+
+[[Category:Creatures]]
+[[Category:Equipment]]
+
+Leeches will attach themselves to your Hearthling in their Equipment slots as they traverse swamps and suck their blood, decreasing [[Hitpoints|SHP]] slowly, but for every point of SHP damage there's a chance of them to convert [[Swollen Bumps]], [[Bruises]], [[Unfaced]] and [[Blunt Trauma]] to Leech Burns, which in turn heal slowly over time. The amount of SHP drained depends on the quality of the Leech, with q10 Leeches doing 3 SHP damage and q40 doing 12 damage. Each time a Leech drains your SHP, its quality will increase or decrease by 1 towards your [[Constitution]] (base, unaffected by equipment or wounds.)
+
+Equipped Leeches go dormant when the character wearing them is logged out. So there is no danger of receiving any damage, or any healing for that matter, from equipped Leeches while the character is logged out.
+
+Once a Leech becomes bloated it will no longer have any effect on you, but Bloated Leeches will return to normal after sitting in your inventory or a container for eight real hours. It is a good idea to collect leeches and store them for future use.
+
+If you're already covered in Leeches and plan on spending extended time in a swamp, there's no real harm in leaving them equipped.  After 3 bites they will become bloated and will no longer injure you. On the other hand, removing them will allow new, hungrier leeches to take their place and cause more damage overall.
+
+==How to Acquire==
+
+Walk around or stand in a [[Swamp]] with empty equipment slots, and Leeches will soon attach themselves to you.
+
+Caution: swamps have a high chance of causing infected sores on certain wounds.
+
+==Warning==
+
+If your SHP goes down to 0 you will then become unconscious and will continue to lose HHP slowly until the leeches become bloated. Be careful not to let them drain all of your SHP, it is not likely, but your character could die if not given the chance to pick them off while conscious.
+
+As a rule of thumb, be really conservative with the amount of leeches you add to your character unless you're certain it has enough SHP to not get knocked out. Especially if you have lots of wounds and/or use higher quality leeches. Latter can especially ''bite'' you since amount leeched will increase linearly, unlike with most quality effects in game.
+
+==Notes==
+
+*When bloated, leeches can be used as fishing bait. 
+*Leech takes leechQ*3/10 hitpoints with a single bite, up to 3 bites
+*Leeches appear in any kind of [[Swamp]].
+*If you have 0 SHP, Leeches will deal HHP damage to you.
+*Chance to convert certain wounds appears to be close to 5% on q10 leech.
+
+{{Game Development}}

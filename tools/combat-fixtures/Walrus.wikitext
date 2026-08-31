@@ -1,0 +1,56 @@
+{{infobox creature
+| xobst = {{#expr:(5/11)-(-5/11)round6}}
+| yobst = {{#expr:(15/11)-(-11/11)round6}}
+|
+| baseq = 50
+|
+| armor = 75
+| hp    = 900
+| fhp   = 600
+|
+| loot  = [[Fresh Walrus Hide]] x2, [[Intestines]] x3, [[Entrails]] x4, [[Animal Fat]] x1-3, [[Raw Walrus]] x12, [[Bone Material]] x8, [[Walrus Tusk]] x0-2
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+" ''Added Walrii. These feisty badboys chillax on beaches. They are agressive, swim, and should quite generally be approached with a fair bit of prejudice.'' " ~ Jorb
+
+Large, fat and tough creatures resting on beaches. Walrii are aggressive, and will likely engage in combat with nearby players.
+
+Walrus are slow on land and can be easily outrun on a horse, however, in water they require a [[Snekkja]] or [[Knarr]], as they are quicker than a rowboat and low quality ships, and, in rare occasions, faster than a Snekkja.
+
+Walrus are able to inflict [[Seal Finger|Seal Finger]] [[wounds]] with their attacks, additionally these can also be obtained from butchering their corpses. The chance for wound from butchering is reduced if wearing [[Poor Man's Gloves]] or [[Plate Gauntlets]].
+
+==Combat==
+
+===Behaviour===
+
+Aggresive, initiating attack with a walrus will also get the attention of other nearby walrus.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:5</small>
+! Restorations<small>:3</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:'Rus Tusk}} {{:Chomp}} {{:Bear Down}} {{:Shredding Paw}} {{:Dark Heart Move}}
+| {{:Unstoppable}} {{:Careful Approach}} {{:Tail Splash}}
+|}
+
+===Strategy===
+
+Do not attempt to fight more than a single Walrus at once, if fighting a group, try to line them up and attack only one at once .
+
+If fighting in water, be incredibly aware that they use a restoration (See Combat Moves > Tail Splash) that can deal damage in a small area around the Walrus, so the above tactic is a must-do or else you will be hit real hard.
+
+Preferably fight them on a Horse, as they are relatively slow outside water.
+
+==In-Game Example(s)==
+[[File:{{PAGENAME}}-dead.png|150px]] Dead {{PAGENAME}}. Can be skinned for [[Fresh {{PAGENAME}} Hide]].<br>
+[[File:{{PAGENAME}}-skinned.png|150px]] Skinned {{PAGENAME}}. Can be butchered for [[Intestines]], [[Entrails]], [[Animal Fat]] and [[Raw Walrus]].<br>
+[[File:{{PAGENAME}}-skeleton.png|150px]] {{PAGENAME}} Skeleton. Can be collected for [[Walrus Tusk]] and [[Bone Material]].
+==Notes==
+
+*To get to you, walrii will destroy any objects obstructing their path with lower than Soak 25, meaning only [[Palisade]]s and [[Brickwall]]s will stop their bloodlust.
+
+{{Game Development}}

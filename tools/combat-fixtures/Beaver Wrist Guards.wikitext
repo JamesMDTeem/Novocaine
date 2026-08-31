@@ -1,0 +1,55 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Sewing]]?
+| objectsreq = [[requires::Beaver Hide]] x2,[[requires::Wax]] x2, [[requires::Leather]] x2, [[requires::String]] x2
+| producedby = Hand
+|
+| slot       = 5L
+| ahp        = 15
+| absorbX    = 1
+| absorbY    = 2
+|
+| statAGI    = 1
+|
+| statSwim   = 10
+}}
+
+[[Category:Clothing]]
+[[Category:Gloves]]
+
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Beaver Wrist Guards}}
+
+{{PAGENAME}} is a piece of hand [[:Category:Armor|armor]] that give bonus to [[AGI|Agility]] and [[Swimming]]. It equips to the [[Equipment Screen|equipment slot]] 5L.
+
+Although they equip to the Hands slot, 4L, in your Equipment screen, they do not count as [[Gloves]] and as such don't reduce/eliminate hazards like Nettle Burn from picking stinging nettle or Quill'd from picking up/killing hedgehogs.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality is Average Ingredients and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Sewing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 1.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Agility Bonus
+|<math>\sqrt{\frac{Quality}{10}} * 1</math>
+|-
+|Swimming Bonus
+|<math>\sqrt{\frac{Quality}{10}} * 10</math>
+|}
+
+{{Game Development}}

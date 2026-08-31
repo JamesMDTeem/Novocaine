@@ -1,0 +1,73 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Tanning]], [[requires::Metal Working]]
+| objectsreq = [[requires::Leather]], [[requires::Bar of Bronze]] x2
+| producedby = [[requires::Anvil]] and [[requires::Smithy's Hammer]]
+|
+| slot       = 1L
+| ahp        = 40
+| absorbX    = 8
+| absorbY    = 5
+|
+| statAGI    = -2
+}}
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|Bron$ze Helm}}
+
+A head [[armor]] made from [[Bar of Bronze|Bronze]] and [[Leather]]. Equips to 1L.
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Bronze + _{q}Leather}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>
+.
+
+==Stats==
+
+{| class="wikitable" style="text-align: center"
+| Quality
+| Hit Points
+| Armor Class
+| Agility
+|-
+| 10
+| 175
+| 8/5
+| -2
+|-
+| 40
+| 700
+| 16/10
+| -4
+|-
+| 90
+| 1575
+| 24/15
+| -6
+|}
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 17.5</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 8</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 5</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -2</math>
+|}
+
+[[Category:Headgear]]

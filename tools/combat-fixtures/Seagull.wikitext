@@ -1,0 +1,28 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Seagull]]: [[Seagull Feather]] x2, [[Entrails]], [[Seagull Meat]] x2, [[Bone Material]] or [[Wishbone]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Right-click and select 'Wring neck' to receive a [[Dead Seagull]]
+
+== How to Acquire ==
+
+Can be found on the ocean [[Deep Water|waters]].
+Picked by Right-Сlick. Flight on 4(3 horse) speed.
+
+==Gallery==
+
+<gallery>
+Seagull-ingame.png | A Seagull in a wild.
+</gallery>
+
+{{Game Development}}

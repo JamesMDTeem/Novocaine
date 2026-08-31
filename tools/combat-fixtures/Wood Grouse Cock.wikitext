@@ -1,0 +1,41 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = ~120
+| fhp   = 100
+|
+| loot  = [[Dead Wood Grouse Cock]]: [[Wood Grouse Feather]] x2, [[Wood Grouse Meat]] x3, [[Entrails]] x2, [[Bone Material]] x2, [[Wishbone]](Rarely)
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+It's a male wood grouse. They are significantly bigger than the females and cannot be picked up and rather must be fought in combat to kill.
+
+==Combat==
+
+===Behaviour===
+
+Passive until you aggro them.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:1</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Feather Flurry}}
+| {{:Bristle}}
+|}
+
+===Strategy===
+
+With 30 UA and light armor (around 30/30) they can't deal any damage. Also, foxes will attack them, and the wood grouse cock will always win and kill the fox. Use this as an opportunity to get a free fox as well as to attack a now weakened wood grouse cock.
+
+==In-Game Example(s)==
+
+[[File:Grouse.png|200px|thumb|left|]]
+
+{{Game Development}}

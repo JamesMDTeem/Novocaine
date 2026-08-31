@@ -1,0 +1,16 @@
+{{infobox creature
+| xobst = {{#expr:(12/11)-(-12/11)round6}}
+| yobst = {{#expr:(12/11)-(-12/11)round6}}
+|
+| loot  = None
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+[[Treant]]s are rare tree-like [[Creatures]] with large root-like limbs, wooden bodies, and crooked branches. They are always on the move, dashing to and fro through the trees. Treants cannot be attacked or otherwise interacted with.
+
+It is unknown whether witnessing a Treant triggers an [[Experience Events|Experience Event]]. Presently, their only apparent purpose is for visual flavor, much like the [[Dryad]]. 
+
+==Treant In-Game==
+
+[[File:Treant in_game.png]]

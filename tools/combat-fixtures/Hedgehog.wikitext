@@ -1,0 +1,29 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 40
+| fhp   = 40
+|
+| loot  = [[Dead Hedgehog]]: [[Fresh Hedgehog Skin]], [[Entrails]], [[Raw Hedgehog]] x2, [[Bone Material]], [[Hedgehog Quills]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+A hedgehog is a quill covered creature that can be killed for [[Raw Hedgehog]] and [[Hedgehog Quills]]. It takes up a 2x2 space in the inventory when alive. They are found on [[Forest]] terrain.
+
+Note that picking up and butchering Hedgehogs will give your character Quill'd [[wounds]], unless your character is wearing gloves. 
+
+==Quick Facts==
+
+* Seems to be consistently found in [[Root Bosk]] and [[Timber Land]] biomes.
+* Desperate Hearthling who lost their battle for sanity can build up Quill'd wound incredibly fast by repeatedly picking and releasing single hedgehog.
+
+==Trivia==
+
+* Hedgehogs were added in the update {{Patch|Sonic Youth}}, but of the few encounters reported by players there were next to no evidence.
+* As of the update {{Patch|Thy Kingdom Come}} it seems to spawn more often and on diffrent terrains (?).
+
+{{Game Development}}

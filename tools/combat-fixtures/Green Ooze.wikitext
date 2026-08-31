@@ -1,0 +1,41 @@
+{{infobox creature
+| xobst = {{#expr:(3/11)-(-3/11)round6}}
+| yobst = {{#expr:(3/11)-(-3/11)round6}}
+|
+| baseq = 20
+|
+| hp    = from 60 to 500 depends on mine lvl
+| fhp   = 30 - 100
+|
+| loot  = [[Cave Slime]] x1-7(each 0.2-0.4 litres)
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+"Amorphous blobs of cave jelly which, mildly aggressive, move around in caves. They get more common and dangerous the lower you go, but should be very rare on the first cave level. They sometimes appear when mining." -jorb
+
+==Combat==
+
+===Behaviour===
+
+Agrresive in certain radius, immediately attack if mined out.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:2</small>
+! Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Fell Scratch}} {{:Chomp}}
+|
+|}
+
+===Strategy===
+
+==Notes==
+
+* Can be spawned from [[Loose Rock]] when destroying it or mine around 7 tiles it.
+* A Green Ooze will split into 2 Oozes when receive any damage during combat. It is not advised to attack them with weak attacks or weapons, unless you need to multiply them for grind.
+* Deep Water can give you a much-needed advantage against groups of Oozes. They can't swim, neither do they have any kind of ranged attack. Player characters can swim, but also (much more preferably) can use [[boat]]s.
+
+{{Game Development}}

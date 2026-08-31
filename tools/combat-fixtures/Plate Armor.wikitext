@@ -1,0 +1,49 @@
+{{infobox metaobj
+| xitem      = 2
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Steel]] x6, [[requires::Leather]] x2
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 4R
+| ahp        = 100
+| absorbX    = 25
+| absorbY    = 15
+|
+| statAGI    = -10
+}}
+
+[[Category:Clothing]]
+[[Category:Cuirass]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Torso Armor|$Plate Mail}}
+
+{{PAGENAME}} is a piece of high-end chest [[:Category:Armor|armor]]. It deflects twice as much damage as it absorbs, making it more durable than other armors. It equips to the [[Equipment Screen|equipment slot]] 4R.
+
+==How to Acquire==
+
+First you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]].
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_(\frac{_{q}Steel+{q}Leather}{2}) *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Strength *Smithing}</math>.
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+ ! Stat
+ ! Formula
+ |-
+ | Wear
+ | <math>{Quality} * 10</math>
+ |-
+ | Deflection
+ | <math>\sqrt{\frac{Quality}{10}} * 25</math>
+ |-
+ | Absorption
+ | <math>\sqrt{\frac{Quality}{10}} * 15</math>
+ |-
+ | Agility Penalty
+ | <math>\sqrt{\frac{Quality}{10}} * 10</math>
+ |}

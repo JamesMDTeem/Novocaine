@@ -1,0 +1,33 @@
+{{infobox creature
+| xobst = {{#expr:(1/11)-(-1/11)round6}}
+| yobst = {{#expr:(1/11)-(-1/11)round6}}
+|
+| baseq = 10
+|
+| hp    = 10
+| fhp   = 10
+|
+| loot  = [[Dead Rock Dove]]: [[Rock Dove Feather]], [[Entrails]], [[Rock Dove Meat]], [[Bone Material]] or [[Wishbone]]
+}}
+
+[[Category:Tmp_xyobj(neg)]]
+
+Right-click and select 'Wring neck' to receive a [[Dead Rock Dove]].
+
+Rock Doves will be attracted to [[Dovecote]]s with ample space and food, allowing for domesticated Doves to be born and hatched within the Dovecote to then be Homesteaded in [[Birdhouse]]s.
+
+== How to Acquire ==
+
+Can be found on [[Grassland]] terrain.
+Picked by Right-Сlick. Flight on 5(4 horse) speed.
+
+==Notes==
+* Rock doves that are stored in a general container will die after some time. Which also takes a chunk out of there quality level.
+
+==Gallery==
+
+<gallery>
+Rockdoveingame.png | A Rock Dove in the wild.
+</gallery>
+
+{{Game Development}}

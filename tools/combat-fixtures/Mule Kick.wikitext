@@ -1,0 +1,12 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude><nowiki />
+{{Animal Combat Move
+  | move = Mule Kick
+  | rowspan = 2
+  | inf1 = Blue
+  | inf2 = Yellow
+  | opn1 = Yellow
+  | note = IP+1
+  }}<nowiki />
+</onlyinclude>

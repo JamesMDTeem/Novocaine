@@ -1,0 +1,46 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 3
+|
+| skillreq   = [[requires::Metal Working]], [[requires::Archery]]
+| objectsreq = [[requires::Tree Bough]] x4, [[requires::Bar of Hard Metal]] x2
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 6L and 6R
+| basedmg    = 80
+| armorpen   = 15
+| range      = 1.6
+}}
+
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Weapons|Boar $Spear}}
+
+{{PAGENAME}} is a two-handed weapon that can be used for melee combat and can also be thrown from a distance by using [[Ranged_Combat|Shoot]].
+
+'''Warning: {{PAGENAME}} can get randomly destroyed when it is thrown and hits something. Also you might not be able to recover it if {{PAGENAME}} hits a cliff.'''
+
+{{PAGENAME}} gives extra range to Melee Combat moves that utilize it, allowing you to "cheese" animals from outside their attack range using a [[Boat]]. This does require careful pre-positioning though, if you use a move out of range the character  will move to collide with the target.
+
+==How to Acquire==
+
+First, you need to wield a [[smithy's hammer]] in one hand. Then right click an [[anvil]] and craft the spear.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Metal + _{q}Bough}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[3]{Strength *Smithing*Marksmanship}</math>
+
+* Damage scales with strength and weapon quality using the following formula: <math>Damage = 80*\sqrt{\sqrt{Strength*{q}Spear}/10}</math>.
+
+==Quick Facts==
+
+* Despite it's name, Boar Spear does not provide any special bonus when confronting furious [[Boar|Wild Boar]].
+
+==Gallery==
+
+<gallery>
+Outfit.png | A player wielding a boar spear.
+Boar Spear - (on wall).png | A boar spear decorating a wall.
+</gallery>
+
+{{Game Development}}

@@ -1,0 +1,49 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = unknown
+| objectsreq = [[requires::Bog Turtle Shell]], [[requires::String]], [[requires::Sand]]
+| producedby = Hand
+|
+| slot       = 1L
+| ahp        = 100
+| absorbX    = 2
+| absorbY    = 3
+|
+| statAGI    = -1
+}}
+
+[[Category:Headgear]]
+[[Category:Home Decor]]
+
+{{GM|$Craft|$Clothes & Equipment|$Hats & Headwear|T$urtleshell Helmet}}
+
+Headgear that is made from [[Bog Turtle]].
+
+ 
+== Quality ==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{_{q}Shell+ _{q}Sand+ _{q}String}{3}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Survival}</math>.
+
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+!Stat
+!Formula
+|-
+|Wear
+|<math>Quality * 10</math>
+|-
+|Deflection
+|<math>\sqrt{\frac{Quality}{10}} * 2</math>
+|-
+|Absorption
+|<math>\sqrt{\frac{Quality}{10}} * 3</math>
+|-
+|Agility Penalty
+|<math>\sqrt{\frac{Quality}{10}} * -1</math>
+|}
+
+{{Game Development}}

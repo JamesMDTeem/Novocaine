@@ -1,0 +1,42 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 2
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Hard Metal]] x4, [[requires::Tree Bough]] x2
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 6L and 6R
+| basedmg    = 65
+| armorpen   = 30
+| range      = 1.2
+}}
+
+[[Category:Mining Tools]]
+
+{{GM|$Craft|$Clothes & Equipment|$Tools|$Axes|$Pick Axe}}
+
+==How to Acquire==
+
+[[File:Pickaxe in-game.png|frame|In-game example of a pickaxe]]
+
+You need to equip a [[Smithy's Hammer]] and you need an [[Anvil]] to make a pickaxe.
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}Metal+ _{q}Bough}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[3]{Strength *Smithing*Masonry}</math>.
+
+==Notes==
+
+* Increases [[Mining]] speed.
+* Increases [[Stone|Chip Stone]] Speed.
+* Drains the same amount of stamina per tick as an axe. This means that your stamina will drain quicker, as it mines much faster. 
+* Allows boulders to be removed from a [[Cellar]] so it can be used. 
+* Increases damage of destruction +2 damage to buildings. 
+* 2 hand tool. 
+* Your mining power with the pickaxe is <math>\sqrt[2]{({q}Pickaxe*2) *Strength}</math> . This means having a better quality pickaxe weighs more than having high strength.
+*Counts as a heavy, edged weapon
+*
+Example: q40 pickaxe and 100 strength is much better than q10 pickaxe and 300+ strength.
+
+{{Game Development}}

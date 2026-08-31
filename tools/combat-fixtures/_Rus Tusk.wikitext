@@ -1,0 +1,10 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves|Rus Tusk]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Rus Tusk.png]]
+| 'Rus Tusk
+|
+*Attack type: {{RoB color|oppressive|Oppressive}}
+*Openings: {{RoB color|oppressive|Cornered}}
+*IP +2
+|}</onlyinclude>

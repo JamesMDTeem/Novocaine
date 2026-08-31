@@ -1,0 +1,42 @@
+{{infobox creature
+| baseq = N/A
+|
+| hp    = 50
+| fhp   = N/A
+|
+| loot  = N/A
+}}
+
+Ants, or Giant Ants, are not your average garden fare insects. They can spit acid, which both ignores and damages your armor. They are only found guarding [[Ant Hill|Ant Hills]] and inside [[Ant Hill Dungeon|Ant Hill Dungeons.]] Each ant hill generally has 2 to 5 ant swarms, but can very rarely have up to 12. When raiding an ant hill, all the ants guarding it will attack. Because of their low hitpoints and base damage, Ants are the best creature to fight to learn the combat system.
+
+==Combat==
+
+Taking any amount of damage from Ants can result in [[Wounds|Antcid Burns]].
+
+===Behaviour===
+
+Passive until you aggro them. Aggroing Ants will not aggro nearby Ants or Ants of other [[Ant Hill]]s.
+
+Raiding an [[Ant Hill]] causes all nearby ants to attack. If you kill all Ants of an [[Ant Hill]] and begin to Raid it, the Ants that respawn during the time that you are raiding the hill will not aggro onto you.
+
+====Combat Moves====
+
+{| class="wikitable mw-collapsible mw-collapsed"
+! Attacks<small>:1</small>
+! Restorations<small>:0</small>&nbsp;
+|- style="vertical-align: top;"
+| {{:Ant Spit}}
+|
+|}
+
+===Strategy===
+
+When fighting Ants, it is best to quickly create one opening by using basic attacks such as punch, low blow, or kick. If your combat stats are low, you should land as many hits with your method of attack as you can until the Ants start hitting you for 2 damage. Once the Ants hit you for 2 damage, "kite" them by walking away and spamming your Side Step and Quick Dodge to lower the green and blue openings they have made on you.
+
+Each ant swarm should be killed individually. Raiding an [[Ant Hill]] causes all nearby ants to attack, so killing them beforehand is a valid tactic for raiding it without taking damage, given that attacking one of the Ants will NOT aggro the rest. The respawn rate of Ants is very rapid though, so this method is not advised without decent combat stats. Being attacked by multiple ant swarms will quickly overwhelm you and create large blue and green openings, leading to inevitable unconsciousness. Ants that are piled on top of each other are particularly deadly.
+
+==In-Game Example(s)==
+
+[[File:Hnh-68.png|thumb|left|400px|This ant hill has a ginormous and extremely rare amount of ants.]]
+
+{{Game Development}}

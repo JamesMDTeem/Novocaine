@@ -1,0 +1,55 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Metal Working]]
+| objectsreq = [[requires::Bar of Steel]] x2, [[requires::Gold Nugget]] x3, [[requires::Silver Nugget]] x3, [[requires::Bronze Nugget]] x4
+| producedby = [[requires::Smithy's Hammer]], [[requires::Anvil]]
+|
+| slot       = 1L
+| ahp        = 200
+| absorbX    = 9
+| absorbY    = 9
+|
+| statSTR    = 5
+| statAGI    = -1
+|
+| statCMC    = 5
+}}
+
+[[Category:Clothing]]
+
+{{GM|$Craft|$Clothes & Equipment|$Armor & Helmets|$Helms & Helmets|Drag$on Helm}}
+
+The Dragon Helmet (often referred to in the community colloquially as 'dhelm') is one of the costliest items to make in the game, requiring [[Gold Nugget]]s, [[Silver Nugget]]s and even [[Bar of Steel|Steel Bars]]. 
+
+==Quality==
+
+* [[{{PAGENAME}}]] Quality = <math>\frac{\frac{_{q}BronzeNugget + _{q}Steel}{2} *  9 + {_{q}Anvil* 4 + _{q}Smithy's Hammer}* 3}{16}</math> and is [[softcap|softcapped]] by <math>\sqrt[4]{Will*Psyche*Smithing*Lore}</math>
+
+==Stat Formulas==
+
+{| class="wikitable" style="text-align: center"
+ ! Stat
+ ! Formula
+ |-
+ | Wear
+ | <math>Quality * 20</math>
+ |-
+ | Deflection
+ | <math>\sqrt{\frac{Quality}{10}} * 9</math>
+ |-
+ | Absorption
+ | <math>\sqrt{\frac{Quality}{10}} * 9</math>
+ |-
+ | Agility Penalty
+ | <math>\sqrt{\frac{Quality}{10}}</math>
+ |-
+ | Strength Bonus
+ | <math>\sqrt{\frac{Quality}{10}} * 5</math>
+ |-
+ | Melee Combat Bonus
+ | <math>\sqrt{\frac{Quality}{10}} * 5</math>
+ |}
+
+[[Category:Headgear]]

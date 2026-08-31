@@ -1,0 +1,25 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Pottery]]
+| objectsreq = [[requires::Unfired Ceramic Knife]]
+| producedby = [[requires::Kiln]]
+| specific   = Sharp Tool
+|
+| slot       = 6L or 6R
+| basedmg    = 30
+| armorpen   = 15
+| range      = 1
+}}
+
+[[Category:Sharp Tools]]
+
+{{GM|copy=Unfired Ceramic Knife}}
+
+==How to Acquire==
+
+To make a Ceramic Knife, you need to fire an [[Unfired Ceramic Knife]] in a [[Kiln]]:
+
+*Use the craft menu to mold the clay, and then fire the unburnt [[{{PAGENAME}}]] in a [[Kiln]] with 12 branches loaded.
+*After 54 minutes you will get a Ceramic Knife.

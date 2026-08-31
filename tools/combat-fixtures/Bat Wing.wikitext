@@ -1,0 +1,33 @@
+{{infobox metaobj
+| xitem      = 1
+| yitem      = 1
+|
+| skillreq   = [[requires::Sewing]]
+| objectsreq = [[requires::Bat Hide]] x4, [[requires::Bat Wings]] x2, [[requires::String]] x2
+| producedby = Hand
+|
+| egildpct   = [[egildpct::10%-30%]]
+| egildatt   = [[egildatt::Stealth]]
+|
+| slot       = 11L
+| ahp        = 138
+| absorbX    = 3
+| absorbY    = 3
+}}
+
+[[Category:Clothing]]
+
+{{GM|$Craft|$Clothes & Equipment|$Capes, Cloaks & Robes|Bat Wi$ng}}
+
+A Bat Wing cape, not to be confused with [[Bat Wings]] (curiosity), is a [[Cape]] made with bat materials. It is the only cape which is also an armor piece.
+
+Bats will not aggro you while wearing a Bat Wing cape, making it very useful in navigating caves.
+
+*10-30% [[Special:SearchByProperty/:Egildatt/Stealth|Stealth]] gilding slot.
+
+==Quality==
+
+* Quality Formula: <math>\frac{_{q}BatHide + _{q}BatWings+ _{q}String}{3}</math> and is [[softcap|softcapped]] by <math>\sqrt[2]{Dexterity*Sewing}</math>
+
+{{Game Development}}
+[[Category:Cape]]

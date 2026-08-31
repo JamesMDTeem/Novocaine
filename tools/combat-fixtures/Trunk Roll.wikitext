@@ -1,0 +1,10 @@
+{{PAGENAME}} is a Combat Move used by some animals [[Category:Animal Moves]]
+
+<onlyinclude>{| class="wikitable"
+| [[File:Trunk Roll.png]]
+| Trunk Roll
+|
+*Attack type: {{RoB color|striking|Striking}}, {{RoB color|backhanded|Backhanded}}
+*Openings: {{RoB color|striking| Off Balance}}, {{RoB color|oppressive| Cornered}}
+*IP +1
+|}</onlyinclude>

@@ -1,0 +1,33 @@
+{{infobox metaobj
+| xobst      = {{#expr:(1/11)-(-1/11)round6}}
+| yobst      = {{#expr:(1/11)-(-1/11)round6}}
+|
+| skillreq   = [[requires::Hunting]]
+| objectsreq = [[Requires::Rabbit Doe]], [[requires::Rabbit Buck]]
+| producedby = [[requires::Rabbit Hutch]]
+}}
+
+[[Category:Creatures]]
+[[Category:Domesticated]]
+[[Category:Tmp_xyobj(neg)]]
+
+A {{PAGENAME}} is a young rabbit acquired from breeding a [[Rabbit Buck]] and [[Rabbit Doe]] in a [[Rabbit Hutch]]. When killed, it gives a unique version of [[A Bloody Mess...]]
+
+
+==How to Acquire==
+
+*Build a [[Rabbit Hutch]] for breeding [[Rabbit Buck]]s and [[Rabbit Doe]]s.
+*After about 4 days(RL), a [[Rabbit Doe]] should lay between 1-2 Bunny Rabbits.
+
+==How to Use==
+
+Bunnies can be grown into adults, which can then be used to make higher quality [[Bunny Slippers]].
+
+==Quality==
+
+The quality of the [[Swill]] and [[Water]] will determine the Bunny Rabbits's quality.
+
+
+'''Look at the little bunny George!'''
+[[File:Family1.png|200px|thumb|left|A little baby bunbun spending time with its mommy and daddy.]]
+[[File:Rabbitsmmo.png|thumb|This is the ideal hutch setup. Babies will be born on the side of the adult hutch and should be moved to a hutch for babies to give them space to grow. They breed fast, so make sure to check on them every day!]]
