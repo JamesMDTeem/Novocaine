@@ -17,6 +17,9 @@
 import haven.combat.log.JsonObj;
 import haven.combat.log.Openings;
 import haven.combat.log.CombatEvent;
+import haven.combat.log.CombatLogWriter;
+import java.nio.file.*;
+import java.util.List;
 
 public class CombatLogCheck {
     static int failures = 0;
@@ -32,6 +35,7 @@ public class CombatLogCheck {
         jsonBasics();
         openings();
         events();
+        writer();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED" : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
     }
@@ -73,5 +77,43 @@ public class CombatLogCheck {
         check("damage",
               CombatEvent.damage(1002L, 55L, "ARM", 37),
               "{\"ev\":\"dmg\",\"t\":1002,\"gob\":55,\"ch\":\"ARM\",\"v\":37}");
+    }
+
+    static void writer() {
+        System.out.println("\nCombatLogWriter");
+        try {
+            Path dir = Files.createTempDirectory("combatlog");
+            Path f = dir.resolve("a.jsonl");
+
+            CombatLogWriter w = new CombatLogWriter(f, 64);
+            w.offer("{\"a\":1}");
+            w.offer("{\"a\":2}");
+            w.close();
+            List<String> lines = Files.readAllLines(f);
+            check("line count", lines.size(), 2);
+            check("first line", lines.get(0), "{\"a\":1}");
+            check("second line", lines.get(1), "{\"a\":2}");
+            check("nothing dropped", w.dropped(), 0);
+
+            // close is idempotent - the recorder may close on both combat end and logout.
+            w.close();
+            check("double close survives", Files.readAllLines(f).size(), 2);
+
+            // A full queue must drop, never block and never throw.
+            Path g = dir.resolve("b.jsonl");
+            CombatLogWriter w2 = new CombatLogWriter(g, 1);
+            for(int i = 0; i < 20000; i++)
+                w2.offer("{\"i\":" + i + "}");
+            w2.close();
+            check("overflow dropped some", w2.dropped() > 0, true);
+            check("overflow wrote something", Files.readAllLines(g).size() > 0, true);
+
+            // offer after close is a no-op, not a crash.
+            w2.offer("{\"late\":1}");
+            check("offer after close is safe", true, true);
+        } catch(Exception e) {
+            System.out.println("  writer check threw: " + e);
+            failures++;
+        }
     }
 }
