@@ -1,0 +1,692 @@
+[
+  {
+    "attack_types": [
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "+2",
+      "value": 2
+    },
+    "name": "'Rus Tusk",
+    "note": "",
+    "openings": [
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Ant Spit",
+    "note": "",
+    "openings": [
+      "striking",
+      "backhanded"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "oppressive"
+    ],
+    "ip": null,
+    "name": "Badgering",
+    "note": "",
+    "openings": [
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "sweeping",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "+2",
+      "value": 2
+    },
+    "name": "Bear Down",
+    "note": "",
+    "openings": [
+      "backhanded"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "-4",
+      "value": -4
+    },
+    "name": "Bear Hug",
+    "note": "Used only in Rage mode.",
+    "openings": [
+      "striking",
+      "backhanded",
+      "sweeping"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "sweeping",
+      "backhanded",
+      "oppressive"
+    ],
+    "ip": null,
+    "name": "Blood & Gore",
+    "note": "",
+    "openings": [
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "sweeping",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Breathing Rage",
+    "note": "",
+    "openings": [
+      "backhanded",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Bristle",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "source": "template"
+  },
+  {
+    "attack_types": [
+      "backhanded",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "-2",
+      "value": -2
+    },
+    "name": "Bucking",
+    "note": "",
+    "openings": [
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Careful Approach",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "backhanded"
+    ],
+    "source": "template"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "sweeping"
+    ],
+    "ip": {
+      "raw": "-2",
+      "value": -2
+    },
+    "name": "Chomp",
+    "note": "",
+    "openings": [
+      "backhanded"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "template"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Crush Underfoot",
+    "note": "",
+    "openings": [
+      "striking",
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Dark Heart Move",
+    "note": "Low cd, can be spammed to gain large amount of IP.",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "-7",
+      "value": -7
+    },
+    "name": "Devour",
+    "note": "Strongest Attack",
+    "openings": [
+      "striking",
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Dive & Hide",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "backhanded",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded"
+    ],
+    "ip": {
+      "raw": "-2",
+      "value": -2
+    },
+    "name": "Feather Flurry",
+    "note": "",
+    "openings": [
+      "backhanded"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Fell Scratch",
+    "note": "",
+    "openings": [
+      "striking"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "template"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "-4",
+      "value": -4
+    },
+    "name": "Heavy Antlers",
+    "note": "",
+    "openings": [
+      "sweeping"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "sweeping"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Low Horn Swipe",
+    "note": "",
+    "openings": [
+      "striking"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "template"
+  },
+  {
+    "attack_types": [
+      "backhanded",
+      "sweeping"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Mule Kick",
+    "note": "",
+    "openings": [
+      "sweeping"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "template"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Overwhelm",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "sweeping",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": {
+      "raw": "+3",
+      "value": 3
+    },
+    "name": "Peek in the Depth",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Rampant Rage",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "sweeping"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Roar of the Wild",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "sweeping",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "sweeping"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Serpent's Strike",
+    "note": "Inflict [[Wounds|Adder Bite]] wound",
+    "openings": [
+      "sweeping"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "backhanded"
+    ],
+    "ip": {
+      "raw": "-1",
+      "value": -1
+    },
+    "name": "Shredding Paw",
+    "note": "",
+    "openings": [
+      "backhanded",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "sweeping",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "-4",
+      "value": -4
+    },
+    "name": "Stampede",
+    "note": "Very '''HIGH''' damage.",
+    "openings": [
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "backhanded",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "-4",
+      "value": -4
+    },
+    "name": "Sudden Charge",
+    "note": "",
+    "openings": [
+      "backhanded",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "template"
+  },
+  {
+    "attack_types": [],
+    "ip": {
+      "raw": "-2",
+      "value": -2
+    },
+    "name": "Swift Evasion",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "backhanded",
+      "oppressive"
+    ],
+    "source": "template"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Tail Spin",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "backhanded",
+      "sweeping"
+    ],
+    "source": "template"
+  },
+  {
+    "attack_types": [],
+    "ip": {
+      "raw": "+2",
+      "value": 2
+    },
+    "name": "Tail Splash",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "backhanded",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": {
+      "raw": "-2",
+      "value": -2
+    },
+    "name": "Thide",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "sweeping",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "+2",
+      "value": 2
+    },
+    "name": "Thunder Over",
+    "note": "",
+    "openings": [
+      "striking",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "template"
+  },
+  {
+    "attack_types": [
+      "backhanded"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Troll Punch",
+    "note": "",
+    "openings": [
+      "backhanded",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "backhanded",
+      "sweeping"
+    ],
+    "ip": {
+      "raw": "-1",
+      "value": -1
+    },
+    "name": "Troll Smile",
+    "note": "",
+    "openings": [
+      "striking",
+      "backhanded",
+      "sweeping",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "oppressive"
+    ],
+    "ip": {
+      "raw": "??",
+      "value": null
+    },
+    "name": "Trumpeting Fury",
+    "note": "Used only on >70% Openings and Stun Horse",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Trunk Gunk",
+    "note": "Shoot a projectile with 50 damage that can be dodged Used when Creature can't reach player Sometimes can be used in melee",
+    "openings": [],
+    "raw_attack_type": "Ranged",
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking",
+      "backhanded"
+    ],
+    "ip": {
+      "raw": "+1",
+      "value": 1
+    },
+    "name": "Trunk Roll",
+    "note": "",
+    "openings": [
+      "striking",
+      "oppressive"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [],
+    "ip": null,
+    "name": "Unstoppable",
+    "note": "",
+    "openings": [],
+    "raw_attack_type": null,
+    "reduces": [
+      "striking",
+      "oppressive"
+    ],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "sweeping"
+    ],
+    "ip": null,
+    "name": "Vampirism",
+    "note": "Will only use if {{RoB color|sweeping|Reeling}} is above 50% Will heal the bat for a small ammount of HP",
+    "openings": [
+      "sweeping"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  },
+  {
+    "attack_types": [
+      "striking"
+    ],
+    "ip": null,
+    "name": "Wingbeat",
+    "note": "Will use only if {{RoB color|striking|Off Balance}} is above 40%",
+    "openings": [
+      "sweeping"
+    ],
+    "raw_attack_type": null,
+    "reduces": [],
+    "source": "table"
+  }
+]

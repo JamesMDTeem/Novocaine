@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wiki
 import parse_gear
 import parse_creatures
+import parse_animal_moves
 
 failures = 0
 
@@ -103,10 +104,55 @@ def creatures():
     check("lynx move not left lowercase", "bristle" in lynx["moves"], False)
 
 
+def animal_moves():
+    print("\nanimal moves")
+    recs, unparsed, malformed, _ = parse_animal_moves.parse()
+    check("animal move count", len(recs), 41)
+    check("no unparsed animal moves", unparsed, [])
+    check("no malformed animal moves", malformed, [])
+    check("template-form count", len([r for r in recs if r["source"] == "template"]), 10)
+    check("table-form count", len([r for r in recs if r["source"] == "table"]), 31)
+    hug = [r for r in recs if r["name"] == "Bear Hug"][0]
+    check("bear hug attack type", hug["attack_types"], ["oppressive"])
+    check("bear hug ip", hug["ip"]["value"], -4)
+    check("bear hug openings dedup+order",
+          hug["openings"], ["striking", "backhanded", "sweeping"])
+    chomp = [r for r in recs if r["name"] == "Chomp"][0]
+    check("chomp is template form", chomp["source"], "template")
+    check("chomp attack types", chomp["attack_types"], ["striking", "sweeping"])
+    check("chomp openings", chomp["openings"], ["backhanded"])
+    check("chomp ip", chomp["ip"]["value"], -2)
+    # rdc1..4 / *Reduces: is a DIFFERENT axis from openings -- it's what the move removes from
+    # its own user, not what it inflicts on its target. Bristle reduces all four openings on
+    # itself (a restoration move); folding that into `openings` would record it as inflicting
+    # every opening on its target, the opposite of the truth.
+    bristle = [r for r in recs if r["name"] == "Bristle"][0]
+    check("bristle reduces all four schools", bristle["reduces"],
+          ["striking", "backhanded", "sweeping", "oppressive"])
+    check("bristle openings stay empty (reduces, not inflicts)", bristle["openings"], [])
+    unstoppable = [r for r in recs if r["name"] == "Unstoppable"][0]
+    check("unstoppable (table *Reduces:) has reduces data",
+          len(unstoppable["reduces"]) > 0, True)
+    # Trunk Gunk's "Attack type: Ranged" isn't a {{RoB color}} call, so it can't join the
+    # attack_types vocabulary -- but the literal text is real data and must survive somewhere.
+    trunk_gunk = [r for r in recs if r["name"] == "Trunk Gunk"][0]
+    check("trunk gunk raw attack type kept", trunk_gunk["raw_attack_type"], "Ranged")
+    # Exactly two pages carry no {{RoB color}} school data anywhere on the page at all -- Dark
+    # Heart Move (a pure IP generator) and Trunk Gunk (a ranged attack); both sit outside the
+    # four-school system. Asserting the set exactly, rather than "no colourless records" or
+    # "colourless is fine", means a THIRD colourless page still fails loudly instead of being
+    # silently swallowed by a loosened rule.
+    colourless = {r["name"] for r in recs
+                  if not r["attack_types"] and not r["openings"] and not r["reduces"]}
+    check("colourless records are exactly the two off-system moves",
+          colourless, {"Dark Heart Move", "Trunk Gunk"})
+
+
 def main():
     primitives()
     gear()
     creatures()
+    animal_moves()
     print("\nALL CHECKS PASSED" if failures == 0 else "\n%d CHECK(S) FAILED" % failures)
     sys.exit(0 if failures == 0 else 1)
 
