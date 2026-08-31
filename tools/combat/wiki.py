@@ -69,7 +69,13 @@ def raw(title):
 
 def extract_template(text, name):
     """Return the full {{name ...}} block, tracking brace depth so nested templates
-    (every creature's {{#expr:}} coordinates) do not terminate it early."""
+    (every creature's {{#expr:}} coordinates) do not terminate it early.
+
+    Returns None only when {{name is absent altogether. If it is found but never
+    closes (depth never returns to 0), that is a malformed page, not an absent
+    template -- raise instead of returning None, so a later consumer that treats
+    None as "this record legitimately has no infobox" cannot silently absorb a
+    parse failure into that same bucket."""
     i = text.find("{{" + name)
     if i < 0:
         return None
@@ -86,7 +92,7 @@ def extract_template(text, name):
                 return text[i:j]
             continue
         j += 1
-    return None
+    raise ValueError("unbalanced {{%s}} block, never closed: %r" % (name, text[i:i + 60]))
 
 
 def fields(block):
