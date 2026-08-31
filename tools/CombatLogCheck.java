@@ -18,6 +18,7 @@ import haven.combat.log.JsonObj;
 import haven.combat.log.Openings;
 import haven.combat.log.CombatEvent;
 import haven.combat.log.CombatLogWriter;
+import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
 
@@ -111,6 +112,23 @@ public class CombatLogCheck {
             // offer after close is a no-op, not a crash.
             w2.offer("{\"late\":1}");
             check("offer after close is safe", true, true);
+
+            // A healthy writer reports alive.
+            CombatLogWriter w3 = new CombatLogWriter(dir.resolve("c.jsonl"), 8);
+            check("alive for healthy writer", w3.alive(), true);
+            w3.close();
+
+            // An unopenable path must fail loudly from the constructor, not silently on the
+            // background thread. A regular file where a directory is required does it portably.
+            Path blocker = Files.createTempFile("combatlog-blocker", "");
+            Path bad = blocker.resolve("nested").resolve("a.jsonl");
+            boolean threw = false;
+            try {
+                new CombatLogWriter(bad, 8);
+            } catch(IOException e) {
+                threw = true;
+            }
+            check("bad path throws from constructor", threw, true);
         } catch(Exception e) {
             System.out.println("  writer check threw: " + e);
             failures++;
