@@ -375,6 +375,28 @@ public class Fightview extends Widget {
 	    Widget inf = obinfo(rel.gobid, false);
 	    if(inf != null)
 		inf.tick(dt);
+	    if((rel == current) && haven.automated.combat.CombatRecorder.active()) {
+		try {
+		    double dist = -1;
+		    Gob me = ui.sess.glob.oc.getgob(ui.gui.map.plgob);
+		    Gob foe = ui.sess.glob.oc.getgob(rel.gobid);
+		    if((me != null) && (foe != null))
+			dist = me.getc().dist(foe.getc());
+		    IMeter.Meter hpm = ui.gui.getmeter("hp", 0);
+		    IMeter.Meter stm = ui.gui.getmeter("stam", 0);
+		    IMeter.Meter enm = ui.gui.getmeter("nrj", 0);
+		    haven.automated.combat.CombatRecorder.sample(
+			haven.automated.combat.CombatRecorder.readOpenings(buffs.children(Buff.class)),
+			haven.automated.combat.CombatRecorder.readOpenings(rel.buffs.children(Buff.class)),
+			rel.ip, rel.oip,
+			(hpm == null) ? -1 : (int)Math.round(hpm.a * 10000),
+			(stm == null) ? -1 : stm.a,
+			(enm == null) ? -1 : enm.a,
+			dist);
+		} catch(Exception e) {
+		    /* telemetry must never break the tick loop */
+		}
+	    }
         try {
             if (OptWnd.autoPeaceAnimalsWhenCombatStartsCheckBox.a && !rel.autopeaced && curdisp != null && curdisp.give != null && curdisp.give.state != 1) {
                 synchronized (ui.sess.glob) {
