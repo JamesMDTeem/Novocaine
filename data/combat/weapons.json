@@ -1,0 +1,385 @@
+[
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "150",
+      "value": 150
+    },
+    "name": "Battleaxe of the Twelfth Bay",
+    "range": {
+      "raw": "1.4",
+      "value": 1.4
+    },
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "15",
+      "value": 15
+    },
+    "basedmg": {
+      "raw": "80",
+      "value": 80
+    },
+    "name": "Boar Spear",
+    "range": {
+      "raw": "1.6",
+      "value": 1.6
+    },
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "15",
+      "value": 15
+    },
+    "name": "Bone Arrow",
+    "range": null,
+    "slot": null
+  },
+  {
+    "armorpen": {
+      "raw": "12.5",
+      "value": 12.5
+    },
+    "basedmg": {
+      "raw": "90",
+      "value": 90
+    },
+    "name": "Bronze Sword",
+    "range": {
+      "raw": "1.2",
+      "value": 1.2
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "45",
+      "value": 45
+    },
+    "name": "Butcher's Cleaver",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "15",
+      "value": 15
+    },
+    "basedmg": {
+      "raw": "30",
+      "value": 30
+    },
+    "name": "Ceramic Knife",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "135",
+      "value": 135
+    },
+    "name": "Cutblade",
+    "range": {
+      "raw": "1.5",
+      "value": 1.5
+    },
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": null,
+    "basedmg": {
+      "raw": "5",
+      "value": 5
+    },
+    "name": "Cutthroat Knuckles",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "5L"
+  },
+  {
+    "armorpen": {
+      "raw": "15",
+      "value": 15
+    },
+    "basedmg": {
+      "raw": "40",
+      "value": 40
+    },
+    "name": "Flint Knife",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "100",
+      "value": 100
+    },
+    "name": "Fyrdsman's Sword",
+    "range": {
+      "raw": "1.2",
+      "value": 1.2
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "15",
+      "value": 15
+    },
+    "basedmg": {
+      "raw": "80",
+      "value": 80
+    },
+    "name": "Giant Needle",
+    "range": {
+      "raw": "1.6",
+      "value": 1.6
+    },
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "7.5",
+      "value": 7.5
+    },
+    "basedmg": {
+      "raw": "115",
+      "value": 115
+    },
+    "name": "Hirdsman's Sword",
+    "range": {
+      "raw": "1.2",
+      "value": 1.2
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": null,
+    "basedmg": {
+      "raw": "30",
+      "value": 30
+    },
+    "name": "Hunter's Bow",
+    "range": null,
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": null,
+    "basedmg": {
+      "raw": "4",
+      "value": 4
+    },
+    "name": "Lynx Claw Gloves",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "5L"
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "20",
+      "value": 20
+    },
+    "name": "Metal Arrow",
+    "range": null,
+    "slot": null
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "45",
+      "value": 45
+    },
+    "name": "Metal Axe",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "45",
+      "value": 45
+    },
+    "name": "Narwhal Tusk",
+    "range": {
+      "raw": "1.6",
+      "value": 1.6
+    },
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "50",
+      "value": 50
+    },
+    "name": "Obsidian Dagger",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "30",
+      "value": 30
+    },
+    "basedmg": {
+      "raw": "65",
+      "value": 65
+    },
+    "name": "Pickaxe",
+    "range": {
+      "raw": "1.2",
+      "value": 1.2
+    },
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "5",
+      "value": 5
+    },
+    "basedmg": {
+      "raw": "60",
+      "value": 60
+    },
+    "name": "Ranger's Bow",
+    "range": null,
+    "slot": "6L and 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "15",
+      "value": 15
+    },
+    "name": "Sling",
+    "range": null,
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": null,
+    "basedmg": {
+      "raw": "0",
+      "value": 0
+    },
+    "name": "Stone",
+    "range": null,
+    "slot": null
+  },
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "10",
+      "value": 10
+    },
+    "name": "Stone Arrow",
+    "range": null,
+    "slot": null
+  },
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "30",
+      "value": 30
+    },
+    "name": "Stone Axe",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "10",
+      "value": 10
+    },
+    "basedmg": {
+      "raw": "40",
+      "value": 40
+    },
+    "name": "Tinker's Throwing Axe",
+    "range": {
+      "raw": "1",
+      "value": 1
+    },
+    "slot": "6L or 6R"
+  },
+  {
+    "armorpen": {
+      "raw": "20",
+      "value": 20
+    },
+    "basedmg": {
+      "raw": "55",
+      "value": 55
+    },
+    "name": "Woodsman's Axe",
+    "range": {
+      "raw": "1.2",
+      "value": 1.2
+    },
+    "slot": "6L or 6R"
+  }
+]

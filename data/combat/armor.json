@@ -1,0 +1,712 @@
+[
+  {
+    "ahp": {
+      "raw": "400",
+      "value": 400
+    },
+    "hard": {
+      "raw": "5",
+      "value": 5
+    },
+    "name": "Armored Striders",
+    "slot": "11R",
+    "soft": {
+      "raw": "3",
+      "value": 3
+    },
+    "statAGI": {
+      "raw": "+1",
+      "value": 1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Badger Hide Vest",
+    "slot": "4L; 4R",
+    "soft": {
+      "raw": "1",
+      "value": 1
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "138",
+      "value": 138
+    },
+    "hard": {
+      "raw": "3",
+      "value": 3
+    },
+    "name": "Bat Wing",
+    "slot": "11L",
+    "soft": {
+      "raw": "3",
+      "value": 3
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "15",
+      "value": 15
+    },
+    "hard": {
+      "raw": "1",
+      "value": 1
+    },
+    "name": "Beaver Wrist Guards",
+    "slot": "5L",
+    "soft": {
+      "raw": "2",
+      "value": 2
+    },
+    "statAGI": {
+      "raw": "1",
+      "value": 1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "50",
+      "value": 50
+    },
+    "hard": {
+      "raw": "1",
+      "value": 1
+    },
+    "name": "Boar Tusk Helmet",
+    "slot": "1L",
+    "soft": {
+      "raw": "7",
+      "value": 7
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "75",
+      "value": 75
+    },
+    "hard": {
+      "raw": "4",
+      "value": 4
+    },
+    "name": "Bone Greaves",
+    "slot": "10R",
+    "soft": {
+      "raw": "5",
+      "value": 5
+    },
+    "statAGI": {
+      "raw": "-3",
+      "value": -3
+    }
+  },
+  {
+    "ahp": {
+      "raw": "60",
+      "value": 60
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Boreworm Mask",
+    "slot": "1R",
+    "soft": {
+      "raw": "1",
+      "value": 1
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "40",
+      "value": 40
+    },
+    "hard": {
+      "raw": "8",
+      "value": 8
+    },
+    "name": "Bronze Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "5",
+      "value": 5
+    },
+    "statAGI": {
+      "raw": "-2",
+      "value": -2
+    }
+  },
+  {
+    "ahp": {
+      "raw": "450",
+      "value": 450
+    },
+    "hard": {
+      "raw": "20",
+      "value": 20
+    },
+    "name": "Bronze Plate",
+    "slot": "4R",
+    "soft": {
+      "raw": "15",
+      "value": 15
+    },
+    "statAGI": {
+      "raw": "-7",
+      "value": -7
+    }
+  },
+  {
+    "ahp": {
+      "raw": "500",
+      "value": 500
+    },
+    "hard": {
+      "raw": "15",
+      "value": 15
+    },
+    "name": "Chainmail Shirt",
+    "slot": "4R",
+    "soft": {
+      "raw": "15",
+      "value": 15
+    },
+    "statAGI": {
+      "raw": "-5",
+      "value": -5
+    }
+  },
+  {
+    "ahp": {
+      "raw": "50",
+      "value": 50
+    },
+    "hard": {
+      "raw": "0",
+      "value": 0
+    },
+    "name": "Chitin Helmet",
+    "slot": "1L",
+    "soft": {
+      "raw": "2",
+      "value": 2
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "400",
+      "value": 400
+    },
+    "hard": {
+      "raw": "15",
+      "value": 15
+    },
+    "name": "Cutthroat Cuirass",
+    "slot": "4R",
+    "soft": {
+      "raw": "15",
+      "value": 15
+    },
+    "statAGI": {
+      "raw": "2",
+      "value": 2
+    }
+  },
+  {
+    "ahp": {
+      "raw": "200",
+      "value": 200
+    },
+    "hard": {
+      "raw": "9",
+      "value": 9
+    },
+    "name": "Dragon Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "9",
+      "value": 9
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "45",
+      "value": 45
+    },
+    "hard": {
+      "raw": "8",
+      "value": 8
+    },
+    "name": "Druid's Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "250",
+      "value": 250
+    },
+    "hard": {
+      "raw": "6",
+      "value": 6
+    },
+    "name": "Grand Troll Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "10",
+      "value": 10
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "45",
+      "value": 45
+    },
+    "hard": {
+      "raw": "6",
+      "value": 6
+    },
+    "name": "Hirdsman's Helmet",
+    "slot": "1L",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": {
+      "raw": "-2",
+      "value": -2
+    }
+  },
+  {
+    "ahp": {
+      "raw": "150",
+      "value": 150
+    },
+    "hard": {
+      "raw": "4",
+      "value": 4
+    },
+    "name": "Horse Nomad's Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "5",
+      "value": 5
+    },
+    "statAGI": {
+      "raw": "5",
+      "value": 5
+    }
+  },
+  {
+    "ahp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hard": {
+      "raw": "4",
+      "value": 4
+    },
+    "name": "Leather Armor",
+    "slot": "4R",
+    "soft": {
+      "raw": "5",
+      "value": 5
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "15",
+      "value": 15
+    },
+    "hard": {
+      "raw": "1",
+      "value": 1
+    },
+    "name": "Leather Boots",
+    "slot": "11R",
+    "soft": {
+      "raw": "3",
+      "value": 3
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "75",
+      "value": 75
+    },
+    "hard": {
+      "raw": "3",
+      "value": 3
+    },
+    "name": "Leather Pants",
+    "slot": "10R",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": {
+      "raw": "-2",
+      "value": -2
+    }
+  },
+  {
+    "ahp": {
+      "raw": "600",
+      "value": 600
+    },
+    "hard": {
+      "raw": "15",
+      "value": 15
+    },
+    "name": "Mammoth Guard",
+    "slot": "4R",
+    "soft": {
+      "raw": "20",
+      "value": 20
+    },
+    "statAGI": {
+      "raw": "-5",
+      "value": -5
+    }
+  },
+  {
+    "ahp": {
+      "raw": "85",
+      "value": 85
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Miner's Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hard": {
+      "raw": "25",
+      "value": 25
+    },
+    "name": "Plate Armor",
+    "slot": "4R",
+    "soft": {
+      "raw": "15",
+      "value": 15
+    },
+    "statAGI": {
+      "raw": "-10",
+      "value": -10
+    }
+  },
+  {
+    "ahp": {
+      "raw": "450",
+      "value": 450
+    },
+    "hard": {
+      "raw": "7",
+      "value": 7
+    },
+    "name": "Plate Boots",
+    "slot": "11R",
+    "soft": {
+      "raw": "5",
+      "value": 5
+    },
+    "statAGI": {
+      "raw": "-2",
+      "value": -2
+    }
+  },
+  {
+    "ahp": {
+      "raw": "30",
+      "value": 30
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Plate Gauntlets",
+    "slot": "5L",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hard": {
+      "raw": "18",
+      "value": 18
+    },
+    "name": "Plate Greaves",
+    "slot": "10R",
+    "soft": {
+      "raw": "8",
+      "value": 8
+    },
+    "statAGI": {
+      "raw": "-10",
+      "value": -10
+    }
+  },
+  {
+    "ahp": {
+      "raw": "60",
+      "value": 60
+    },
+    "hard": {
+      "raw": "9",
+      "value": 9
+    },
+    "name": "Plate Helmet",
+    "slot": "1L",
+    "soft": {
+      "raw": "6",
+      "value": 6
+    },
+    "statAGI": {
+      "raw": "-2",
+      "value": -2
+    }
+  },
+  {
+    "ahp": {
+      "raw": "70",
+      "value": 70
+    },
+    "hard": {
+      "raw": "6",
+      "value": 6
+    },
+    "name": "Raider's Cap",
+    "slot": "1L",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "58",
+      "value": 58
+    },
+    "hard": {
+      "raw": "3",
+      "value": 3
+    },
+    "name": "Ranger's Boots",
+    "slot": "11R",
+    "soft": {
+      "raw": "3",
+      "value": 3
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "90",
+      "value": 90
+    },
+    "hard": {
+      "raw": "8",
+      "value": 8
+    },
+    "name": "Thane's Helm",
+    "slot": "1L",
+    "soft": {
+      "raw": "8",
+      "value": 8
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Turtleshell Helmet",
+    "slot": "1L",
+    "soft": {
+      "raw": "3",
+      "value": 3
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hard": {
+      "raw": "3",
+      "value": 3
+    },
+    "name": "Vapntreyiu",
+    "slot": "4L; 8L",
+    "soft": {
+      "raw": "4",
+      "value": 4
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "750",
+      "value": 750
+    },
+    "hard": {
+      "raw": "7",
+      "value": 7
+    },
+    "name": "Whaler's Jacket",
+    "slot": "4L; 4R",
+    "soft": {
+      "raw": "5",
+      "value": 5
+    },
+    "statAGI": {
+      "raw": "1",
+      "value": 1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "250",
+      "value": 250
+    },
+    "hard": {
+      "raw": "10",
+      "value": 10
+    },
+    "name": "Winged Helmet",
+    "slot": "1L",
+    "soft": {
+      "raw": "6",
+      "value": 6
+    },
+    "statAGI": {
+      "raw": "1",
+      "value": 1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "75",
+      "value": 75
+    },
+    "hard": {
+      "raw": "3",
+      "value": 3
+    },
+    "name": "Wooden Roundshield",
+    "slot": "6L or 6R",
+    "soft": {
+      "raw": "1",
+      "value": 1
+    },
+    "statAGI": null
+  },
+  {
+    "ahp": {
+      "raw": "140",
+      "value": 140
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Woodland Cuirass",
+    "slot": "4R",
+    "soft": {
+      "raw": "3",
+      "value": 3
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  },
+  {
+    "ahp": {
+      "raw": "140",
+      "value": 140
+    },
+    "hard": {
+      "raw": "2",
+      "value": 2
+    },
+    "name": "Woodland Greaves",
+    "slot": "10R",
+    "soft": {
+      "raw": "2",
+      "value": 2
+    },
+    "statAGI": {
+      "raw": "-1",
+      "value": -1
+    }
+  }
+]
