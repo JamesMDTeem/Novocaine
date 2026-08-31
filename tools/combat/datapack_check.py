@@ -12,6 +12,7 @@ import wiki
 import parse_gear
 import parse_creatures
 import parse_animal_moves
+import parse_player_moves
 
 failures = 0
 
@@ -148,11 +149,47 @@ def animal_moves():
           colourless, {"Dark Heart Move", "Trunk Gunk"})
 
 
+def player_moves():
+    print("\nplayer moves")
+    secs, bad = parse_player_moves.parse()
+    check("no unparsed rows", bad, [])
+    check("moves count", len(secs["moves"]), 4)
+    check("restorations count", len(secs["restorations"]), 10)
+    check("maneuvers count", len(secs["maneuvers"]), 8)
+    check("attacks count", len(secs["attacks"]), 20)
+    names = [a["name"] for a in secs["attacks"]]
+    check("cleave present", "Cleave" in names, True)
+    check("kito present", "Knock Its Teeth Out" in names, True)
+    cleave = [a for a in secs["attacks"] if a["name"] == "Cleave"][0]
+    check("cleave cooldown", cleave["cooldown"]["value"], 80)
+    check("cleave attack types", cleave["attack_types"], ["backhanded", "oppressive"])
+    check("cleave openings", cleave["openings"], ["oppressive"])
+    kito = [a for a in secs["attacks"] if a["name"] == "Knock Its Teeth Out"][0]
+    check("kito damage", kito["damage"]["value"], 30)
+    check("kito cooldown", kito["cooldown"]["value"], 35)
+    # Anchor rows carry no move name; none may survive into the output.
+    allrows = sum(secs.values(), [])
+    check("no nameless rows", [r for r in allrows if not r["name"]], [])
+    # openings_target: "On you:" vs "On opponent:" in the Openings cell says WHO gets opened.
+    # Flattening both into a bare `openings` list would make Yield Ground's self-inflicted
+    # opening (a cost of using the move) look like it opens the opponent (a benefit) -- the
+    # same class of inversion as conflating `openings` with `reduces`.
+    yield_ground = [r for r in secs["restorations"] if r["name"] == "Yield Ground"][0]
+    check("yield ground opens self", yield_ground["openings_target"], "self")
+    flex = [r for r in secs["restorations"] if r["name"] == "Flex"][0]
+    check("flex opens opponent", flex["openings_target"], "opponent")
+    # Confirms the field is genuinely tri-state, not silently defaulting to one of the two
+    # observed values for every row that lacks an explicit "On you:"/"On opponent:" prefix.
+    check("some records have no openings_target",
+          any(r["openings_target"] is None for r in allrows), True)
+
+
 def main():
     primitives()
     gear()
     creatures()
     animal_moves()
+    player_moves()
     print("\nALL CHECKS PASSED" if failures == 0 else "\n%d CHECK(S) FAILED" % failures)
     sys.exit(0 if failures == 0 else 1)
 

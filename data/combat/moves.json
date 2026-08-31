@@ -1,0 +1,1120 @@
+{
+  "attacks": [
+    {
+      "attack_types": [
+        "striking"
+      ],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": {
+        "raw": "According to weapon",
+        "value": null
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "1",
+        "value": 1
+      },
+      "name": "Chop",
+      "notes": null,
+      "openings": [
+        "striking"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "backhanded",
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "80",
+        "value": 80
+      },
+      "damage": {
+        "raw": "According to Weapon\u00b7150%",
+        "value": 150
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "4+2",
+        "value": 4
+      },
+      "name": "Cleave",
+      "notes": "Deadliest attack in game. Bay 12 Axe users can murder character through death protection is some circumstances.",
+      "openings": [
+        "oppressive"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "sweeping",
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": {
+        "raw": "According to weapon",
+        "value": null
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Full Circle",
+      "notes": "One of most versatile weapon attack.",
+      "openings": [
+        "striking",
+        "oppressive"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b790%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking",
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "45",
+        "value": 45
+      },
+      "damage": {
+        "raw": "40",
+        "value": 40
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "30%",
+        "value": 30
+      },
+      "ip": {
+        "raw": "2+2",
+        "value": 2
+      },
+      "name": "Go for the Jugular",
+      "notes": null,
+      "openings": [
+        "sweeping",
+        "oppressive"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "50",
+        "value": 50
+      },
+      "damage": {
+        "raw": "20",
+        "value": 20
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "15%",
+        "value": 15
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Haymaker",
+      "notes": null,
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "45",
+        "value": 45
+      },
+      "damage": {
+        "raw": "25",
+        "value": 25
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "15%",
+        "value": 15
+      },
+      "ip": {
+        "raw": "1",
+        "value": 1
+      },
+      "name": "Kick",
+      "notes": null,
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "35",
+        "value": 35
+      },
+      "damage": {
+        "raw": "30",
+        "value": 30
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "25%",
+        "value": 25
+      },
+      "ip": {
+        "raw": "1",
+        "value": 1
+      },
+      "name": "Knock Its Teeth Out",
+      "notes": "Has the most efficient opening-increase per cooldown in the game, and strong damage to boot.",
+      "openings": [
+        "oppressive"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "backhanded"
+      ],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": {
+        "raw": "15",
+        "value": 15
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "10%",
+        "value": 10
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Left Hook",
+      "notes": null,
+      "openings": [
+        "backhanded"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "backhanded"
+      ],
+      "cooldown": {
+        "raw": "50",
+        "value": 50
+      },
+      "damage": {
+        "raw": "20",
+        "value": 20
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "30%",
+        "value": 30
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Low Blow",
+      "notes": null,
+      "openings": [
+        "striking"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking"
+      ],
+      "cooldown": {
+        "raw": "30",
+        "value": 30
+      },
+      "damage": {
+        "raw": "10",
+        "value": 10
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "5%",
+        "value": 5
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Punch",
+      "notes": null,
+      "openings": [
+        "striking"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b780%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking",
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": {
+        "raw": "10",
+        "value": 10
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "7.5%",
+        "value": 7.5
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Punch 'em Both",
+      "notes": null,
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "20",
+        "value": 20
+      },
+      "damage": {
+        "raw": "According to Weapon\u00b725%",
+        "value": 25
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Quick Barrage",
+      "notes": "Fastest attack in the game.\nBe warned that when dueling other\nHearthlings this can quickly fuel their\nspecial Maneuvers like Bloodlust.",
+      "openings": [
+        "oppressive"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking",
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": {
+        "raw": "According to weapon\u00b7110%",
+        "value": 110
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "4",
+        "value": 4
+      },
+      "name": "Raven's Bite",
+      "notes": null,
+      "openings": [
+        "striking",
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking",
+        "backhanded",
+        "sweeping",
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "60",
+        "value": 60
+      },
+      "damage": {
+        "raw": "50",
+        "value": 50
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "30%",
+        "value": 30
+      },
+      "ip": {
+        "raw": "6",
+        "value": 6
+      },
+      "name": "Rip Apart",
+      "notes": null,
+      "openings": [
+        "striking",
+        "backhanded",
+        "sweeping",
+        "oppressive"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "25",
+        "value": 25
+      },
+      "damage": {
+        "raw": "According to weapon\u00b775%",
+        "value": 75
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Sideswipe",
+      "notes": "Very effective when paired with ''Uppercut'' that creates opening for this move to deal damage effectively.",
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "backhanded",
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": {
+        "raw": "None",
+        "value": null
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Steal Thunder",
+      "notes": "Usable at a small distance, opponent must have 3 or more IP for you to be able to use this move.",
+      "openings": [
+        "backhanded"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking",
+        "backhanded"
+      ],
+      "cooldown": {
+        "raw": "50",
+        "value": 50
+      },
+      "damage": {
+        "raw": "According to weapon\u00b7125%",
+        "value": 125
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "2",
+        "value": 2
+      },
+      "name": "Sting",
+      "notes": null,
+      "openings": [
+        "backhanded",
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "backhanded",
+        "sweeping"
+      ],
+      "cooldown": {
+        "raw": "50",
+        "value": 50
+      },
+      "damage": {
+        "raw": "According to weapon",
+        "value": null
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "",
+        "value": null
+      },
+      "ip": {
+        "raw": "4",
+        "value": 4
+      },
+      "name": "Storm of Swords",
+      "notes": "Extremely useful in large team fights\nand in dungeons as its +30% Sweeping means it not only opens for \nitself but also Full Circle which does\nnot cost IP and can hit anyone and not\njust up to 5 opponents.",
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Melee\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "sweeping",
+        "oppressive"
+      ],
+      "cooldown": {
+        "raw": "50",
+        "value": 50
+      },
+      "damage": {
+        "raw": "40",
+        "value": 40
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "30%",
+        "value": 30
+      },
+      "ip": {
+        "raw": "3",
+        "value": 3
+      },
+      "name": "Takedown",
+      "notes": null,
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [
+        "striking",
+        "backhanded"
+      ],
+      "cooldown": {
+        "raw": "30",
+        "value": 30
+      },
+      "damage": {
+        "raw": "30",
+        "value": 30
+      },
+      "distance": null,
+      "grievous": {
+        "raw": "5%",
+        "value": 5
+      },
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Uppercut",
+      "notes": "Useless as the only offensive move due to mismatching colors, but effective at creating Yellow opening for moves like ''Sideswipe''.",
+      "openings": [
+        "sweeping"
+      ],
+      "openings_target": null,
+      "reduces": [],
+      "section": "attacks",
+      "weight": "Unarmed\u00b70.8\u00b7\u03bc"
+    }
+  ],
+  "maneuvers": [
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Bloodlust",
+      "notes": "When attacked: \n*Bloodlust is charged by 25%\u00b7\u0394. When you attack an opponent, your attack weight will be increased by four times the amount that Bloodlust is charged.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Unarmed\u00b775%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Chin Up",
+      "notes": "No special effect.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Combat Meditation",
+      "notes": "When attacked:\n*Combat Meditation is charged by 25%\u00b7\u0394. When you attack an opponent, your cooldown will be decreased by the amount that Combat Meditation is charged.\n*While Combat Meditation is active, all your attacks will have 25% of their normal attack weight.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Unarmed\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Death or Glory",
+      "notes": "When attacked:\n*You gain 0.75\u00b7\u0394 points of Initiative against the opponent.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Unarmed\u00b775%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Oak Stance",
+      "notes": "When attacked:\n*Your greatest opening is reduced by 5%\u00b7\u0394.\n*While Oak Stance is active, all your attacks will have 50% of their normal attack weight.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Unarmed\u00b7150%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Parry",
+      "notes": "When Attacked:\n*Openings: {{RoB color|backhanded|+10% Dizzy}}\nYou need a sword equipped for Parry to inflict its effect upon your opponents.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Melee\u00b780%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "Shield Up",
+      "notes": "If Shield Up is used without a shield equipped, its block weight will be 50% instead of 250%.\n(Note: Shield Up still works at 250% effectiveness if your shield is broken, so don't worry about your shield's durability.)",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Melee\u00b7250%\u00b7\u03bc"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "10",
+        "value": 10
+      },
+      "damage": null,
+      "distance": null,
+      "grievous": null,
+      "ip": null,
+      "name": "To Arms",
+      "notes": "No special effect.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "maneuvers",
+      "weight": "Melee\u00b7\u03bc"
+    }
+  ],
+  "moves": [
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "80/\u03bc",
+        "value": 80
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "Opponents' initiative points: +2",
+        "value": 2
+      },
+      "name": "Dash",
+      "notes": "Since it can be used at distance,\ncan be used to completely removed all\nof your openings if you make distance \nbetween your foe, in exchange for \nfueling their IP.\nNote that spending more cards on it\ndecreases its cooldown, letting you\nclear openings faster.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "moves",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "45",
+        "value": 45
+      },
+      "damage": null,
+      "distance": "No",
+      "grievous": null,
+      "ip": {
+        "raw": "4",
+        "value": 4
+      },
+      "name": "Opportunity Knocks",
+      "notes": "Extremely effective in team fights for\nopening an opponent to let an ally\nstrike for high damage.\nNote that spending more cards on it\neven further increases the amount\nit opens the greatest opening.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "moves",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "(30 + IP\u00b72)/\u03bc",
+        "value": 30
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Take Aim",
+      "notes": null,
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "moves",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "40/\u03bc",
+        "value": 40
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0+4",
+        "value": 0
+      },
+      "name": "Think",
+      "notes": null,
+      "openings": [],
+      "openings_target": null,
+      "reduces": [],
+      "section": "moves",
+      "weight": null
+    }
+  ],
+  "restorations": [
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "40",
+        "value": 40
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "Opponents' initiative points: +1",
+        "value": 1
+      },
+      "name": "Artful Evasion",
+      "notes": null,
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "striking",
+        "backhanded",
+        "sweeping",
+        "oppressive"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "35",
+        "value": 35
+      },
+      "damage": null,
+      "distance": "No",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Feigned Dodge",
+      "notes": "For every unit of opening reduced by Feigned Dodge, twice that amount is given to the opponent.\nMust be within unarmed melee range.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "striking"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "30",
+        "value": 30
+      },
+      "damage": null,
+      "distance": "No",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Flex",
+      "notes": "Must be within unarmed melee range.",
+      "openings": [
+        "backhanded"
+      ],
+      "openings_target": "opponent",
+      "reduces": [
+        "backhanded",
+        "oppressive"
+      ],
+      "section": "restorations",
+      "weight": "Unarmed"
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "25",
+        "value": 25
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Jump",
+      "notes": "This move is given to everyone as soon as they spawn.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "sweeping"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "25",
+        "value": 25
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Quick Dodge",
+      "notes": "This move is given to everyone as soon as they spawn.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "striking"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "35",
+        "value": 35
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Regain Composure",
+      "notes": "More efficient than Quick Dodge and Jump together when trying to reduce\nboth Striking and Sweeping openings, but less efficient when trying to reduce\nonly one.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "striking",
+        "sweeping"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "25",
+        "value": 25
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Sidestep",
+      "notes": "This move is given to everyone as soon as they spawn.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "backhanded"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "45",
+        "value": 45
+      },
+      "damage": null,
+      "distance": "No",
+      "grievous": null,
+      "ip": {
+        "raw": "Opponents' initiative points: +1",
+        "value": 1
+      },
+      "name": "Watch Its Moves",
+      "notes": "Gains you 1 point of initiative against your opponent.\nMust be within unarmed melee range.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "backhanded"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "30",
+        "value": 30
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "0",
+        "value": 0
+      },
+      "name": "Yield Ground",
+      "notes": null,
+      "openings": [
+        "backhanded",
+        "sweeping"
+      ],
+      "openings_target": "self",
+      "reduces": [
+        "striking",
+        "oppressive"
+      ],
+      "section": "restorations",
+      "weight": null
+    },
+    {
+      "attack_types": [],
+      "cooldown": {
+        "raw": "50",
+        "value": 50
+      },
+      "damage": null,
+      "distance": "Yes",
+      "grievous": null,
+      "ip": {
+        "raw": "Opponents' initiative points: +2",
+        "value": 2
+      },
+      "name": "Zig-Zag Ruse",
+      "notes": "Strongest Oppressive and Sweeping defense. \nCan invest cards to make it even stronger but \neven without it is the Restoration with the highest \namount of openings reduced in the game.",
+      "openings": [],
+      "openings_target": null,
+      "reduces": [
+        "sweeping",
+        "oppressive"
+      ],
+      "section": "restorations",
+      "weight": null
+    }
+  ]
+}
