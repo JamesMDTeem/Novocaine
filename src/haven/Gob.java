@@ -2524,6 +2524,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 			int v = msg.int32();
 			msg.uint8();
 			int c = msg.uint16();
+			haven.automated.combat.CombatRecorder.onDamage(this.id, c, v);
 
 			if(damage == null) {
 				addDmg();

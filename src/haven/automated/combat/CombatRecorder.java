@@ -77,6 +77,28 @@ public final class CombatRecorder {
         }
     }
 
+    /* Colour codes from GobDamageInfo. 35071 is Initiative, which the client does not render but
+     * which is logged here: it is a free signal and cannot be recovered retroactively. */
+    private static String channel(int c) {
+        switch(c) {
+        case 61455: return("SHP");
+        case 64527: return("HHP");
+        case 36751: return("ARM");
+        case 35071: return("IP");
+        default:    return("C" + c);
+        }
+    }
+
+    public static void onDamage(long gobId, int colourCode, int value) {
+        if(!active())
+            return;
+        try {
+            log(CombatEvent.damage(now(), gobId, channel(colourCode), value));
+        } catch(Exception e) {
+            /* never propagate into the object-delta path */
+        }
+    }
+
     public static void sample(Openings mine, Openings foe, int myIp, int foeIp,
                               int hp, double stam, double energy, double dist) {
         if(!active())
