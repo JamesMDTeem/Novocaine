@@ -2274,6 +2274,24 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	public ChatUI.Channel.Message logmessage();
     }
 
+    /* Read from the pref once instead of once per tick per window. The windows that hide
+     * themselves on death -- BuddyWnd, MapWnd, MiniStudy -- each carried their own copy of
+     * this check, and a Preferences lookup takes a lock on the shared node, so the three of
+     * them were doing that every frame for a setting nothing in the client writes. Whatever
+     * eventually grows a widget for it should assign the field alongside the pref, the way
+     * the perf sliders in OptWnd do. */
+    public static volatile boolean cHideAfterDeath = Utils.getprefb("cHideAfterDeath", false);
+
+    /* Whether a window that hides itself on the player's death should be hiding now. */
+    public static boolean hideAfterDeath(UI ui) {
+	if(!cHideAfterDeath)
+	    return(false);
+	if((ui == null) || (ui.sess == null) || (ui.sess.glob == null) || (ui.gui == null) || (ui.gui.map == null))
+	    return(false);
+	Gob pl = ui.gui.map.player();
+	return((pl != null) && pl.isDeadPlayer);
+    }
+
     public boolean msg(UI.Notice msg) {
 	/* Every server notice reaches the listeners, before anything can swallow it.
 	 *

@@ -64,9 +64,14 @@ public abstract class OldListWidget<T> extends Widget {
 	return((a == b) || ((a != null) && a.equals(b)));
     }
 
+    /* sel takes the item out of the LIST, not the one passed in. OldListBox draws its
+     * selection with `item == sel' against what listitem(i) hands back, so a selection
+     * restored by value would land on the right index and still highlight no row -- half
+     * a fix. The two are equal by the test above, so nothing that reads sel can tell the
+     * difference, and OldDropBox (which draws sel itself) renders the same either way. */
     public void change(T item) {
 	selindex = indexof(item);
-	sel = (selindex != -1) ? item : null;
+	sel = (selindex != -1) ? listitem(selindex) : null;
     }
 
     public void change(int index) {

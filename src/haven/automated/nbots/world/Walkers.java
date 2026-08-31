@@ -1110,7 +1110,29 @@ public class Walkers {
         for (Gob g : gobs) {
             try {
                 Resource res = g.getres();
-                if ((res != null) && Pathfinder.isInsideBoundBox(g, p))
+                if (res == null)
+                    continue;
+                if (Pathfinder.isInsideBoundBox(g, p))
+                    return true;
+                /* A STOCKPILE IS PLANNED AT ITS LARGEST, whatever size it happens to be now.
+                 *
+                 * The box test above is per RESOURCE and therefore one fixed size, and a pile's
+                 * real footprint grows with what is in it. In a yard being filled - the only place
+                 * a bot meets a row of them - the cached box is routinely smaller than the heap,
+                 * so a line drawn past a pile read as clear and the character walked into it, and
+                 * a standing position on the far side of a pile read as reachable when the only
+                 * way to it was through the heap. Both are the same mistake, and it gets worse the
+                 * better the bot is doing.
+                 *
+                 * The AXIS-ALIGNED SQUARE the constant actually describes, not a circle drawn from
+                 * it. A pile has no meaningful facing, so there is no rotation to account for, and
+                 * neither circle is the shape: one of radius FOOTPRINT is inscribed in the square
+                 * and misses its corners by better than two units, one of the corner distance
+                 * swallows ground a couple of units clear of the heap on every axis. The square is
+                 * the same two comparisons and is right. See {@link Stockpile#FOOTPRINT}. */
+                if (Stockpile.is(res) && (g.rc != null)
+                    && (Math.abs(wc.x - g.rc.x) < Stockpile.FOOTPRINT)
+                    && (Math.abs(wc.y - g.rc.y) < Stockpile.FOOTPRINT))
                     return true;
             } catch (RuntimeException e) {
                 // Includes Loading: a gob whose resource hasn't arrived cannot be tested, and

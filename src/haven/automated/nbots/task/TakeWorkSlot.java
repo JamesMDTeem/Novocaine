@@ -70,13 +70,21 @@ public class TakeWorkSlot implements Task {
             return Outcome.failed("no target");
 
         List<Gob> others = Crowd.others(ctx.gui);
+        /* One object-cache snapshot for the whole ring, so the slot test can ask what is standing
+         * where without locking the cache once per side of the target. */
+        List<Gob> solids = BotNav.solids(ctx.gui);
         boolean anyFree = false;
+        boolean anyUsable = false;
 
         for (int i : ring.nearestFirst(me.rc)) {
             if (!ctx.running())
                 throw new InterruptedException();
-            if (!ring.plausible(ctx.gui, i))
+            /* Ground AND objects. A slot standing inside the pile next door is not a slot, and
+             * claiming it costs the walk to find that out - which in a yard of piles packed two
+             * deep was most of a trip. See WorkSlots.plausible. */
+            if (!ring.plausible(ctx.gui, solids, i))
                 continue;
+            anyUsable = true;
             // Someone is already standing here. Checked before claiming so we don't reserve a spot
             // a non-participating client is visibly occupying.
             if (NBotConfig.on(NBotConfig.Key.avoidOthers)
@@ -99,6 +107,23 @@ public class TakeWorkSlot implements Task {
         // Every slot taken is a temporary condition - somebody will finish and move on - while
         // every slot being unreachable is not. Distinguishing them lets the caller come back to a
         // busy tree and give up on a walled-off one.
+        if (!anyUsable) {
+            /* No slot to stand in is not the same as no way to work it. The range a target is
+             * acted on from is wider than the ring - Reach.toActOn is better than two tiles for a
+             * stockpile, and the ring sits at halfExtent + 9 - so a pile in the middle of a packed
+             * block is often perfectly workable from where the bot is already standing. That is
+             * the same judgement walkInto makes when it declines to shuffle onto a slot's exact
+             * centre; returning blocked from inside the loop never let it be made, and turned a
+             * trip that used to finish into "boxed in".
+             *
+             * No reservation is held on this path, which costs nothing here: every other bot runs
+             * the same test against the same slots and rejects the same ones, so there is nobody
+             * to contend with for a spot none of us can use. renew() and release() are no-ops
+             * without a key, so the caller's normal finally still works. */
+            if (near(ctx) && !crowded(ctx))
+                return Outcome.ok();
+            return Outcome.blocked("nothing standable around " + ring + " - it is boxed in");
+        }
         return anyFree ? Outcome.blocked("couldn't reach a free spot on " + ring)
                        : Outcome.blocked("every spot on " + ring + " is taken");
     }

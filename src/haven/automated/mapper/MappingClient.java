@@ -128,13 +128,44 @@ public class MappingClient {
     public boolean dead() {return dead;}
 
     /* Kami b9587b9ce: automap failures went to stdout only, so a dropped upload looked
-     * identical to a success. Surface it in chat — the player is the only one who can act. */
+     * identical to a success. Surface it in chat — the player is the only one who can act.
+     *
+     * Rate-limited, because acting on it means fixing the endpoint or turning the automap
+     * off, and the position update runs every two seconds: an unreachable server was worth
+     * thirty chat lines a minute, which buries the log the player has to read to notice
+     * anything else. The same text gets through once a minute and says how many it stood
+     * in for. The console keeps every line. */
+    private static final long WARN_REPEAT_MS = 60_000;
+    /* message -> {last time it reached chat, how many were swallowed since} */
+    private final Map<String, long[]> warned = new HashMap<>();
+
     private void warn(String msg) {
 	System.out.println(msg);
+	String out = msg;
+	long now = System.currentTimeMillis();
+	synchronized(warned) {
+	    long[] st = warned.get(msg);
+	    if(st == null) {
+		/* A message built from an exception varies with the failure, so this is
+		 * keyed on something unbounded. Nothing here is worth remembering across
+		 * that many distinct failures. */
+		if(warned.size() > 64)
+		    warned.clear();
+		warned.put(msg, new long[] {now, 0});
+	    } else if(now - st[0] < WARN_REPEAT_MS) {
+		st[1]++;
+		return;
+	    } else {
+		if(st[1] > 0)
+		    out = String.format("%s (and %d more since)", msg, st[1]);
+		st[0] = now;
+		st[1] = 0;
+	    }
+	}
 	try {
 	    GameUI gui = glob.sess.ui.gui;
 	    if(gui != null)
-		gui.error(msg);
+		gui.error(out);
 	} catch(Exception ignored) {}
     }
 

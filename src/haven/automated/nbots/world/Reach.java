@@ -45,9 +45,15 @@ public class Reach {
             // Includes Loading: no resource yet means no box yet.
             return 0;
         }
+        /* A stockpile's real footprint grows with what is in it and its cached box does not, so
+         * the box under-reports a full one - and under-reporting here is the barrel stutter this
+         * class exists to prevent, one pile at a time. Floored at the CORNER of the full square,
+         * because that is what this method returns for everything else: FOOTPRINT is a half-width
+         * and the loop below reports corner distances, so flooring at the half-width would floor
+         * against the wrong quantity. A resource whose own box is larger still wins. */
+        double best = Stockpile.is(g) ? Math.hypot(Stockpile.FOOTPRINT, Stockpile.FOOTPRINT) : 0;
         if (boxes == null)
-            return 0;
-        double best = 0;
+            return best;
         for (HitBoxes.CollisionBoxSecondary box : boxes) {
             if ((box == null) || (box.coords == null))
                 continue;

@@ -1098,7 +1098,11 @@ public class Fightsess extends Widget {
 
 	private void drawSelfCombatOpenings(GOut g) {
 		Coord3f rawc = ui.gui.map.player().placed.getc();
-		rawc.z += 15;
+		if (rawc == null) // ND: null while riding something -- Following placements have no origin.
+			return;
+		// ND: getc() hands out the placement's own Coord3f. Offsetting it in place used to be
+		//  papered over by the placement being rebuilt every frame; it no longer is, so copy.
+		rawc = rawc.add(0, 0, 15);
 		Coord sc = getparent(GameUI.class).map.screenxf(rawc).round2();
 		int scaledY = sc.y - UI.scale(86);
 		Coord topLeft = new Coord(sc.x - UI.scale(32), scaledY);

@@ -630,17 +630,8 @@ public class MapWnd extends Window implements Console.Directory {
 	mrename.name.buf.select(0, mark.nm.length());
     }
 
-    private boolean isPlayerDead() {
-	if(ui == null || ui.sess == null || ui.sess.glob == null || ui.gui == null || ui.gui.map == null)
-	    return(false);
-	Gob pl = ui.gui.map.player();
-	return(pl != null && pl.isDeadPlayer);
-    }
-
     private void cHideAfterDeath() {
-	if(!Utils.getprefb("cHideAfterDeath", false))
-	    return;
-	if(isPlayerDead() && visible)
+	if(GameUI.hideAfterDeath(ui) && visible)
 	    hide();
     }
 

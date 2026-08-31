@@ -88,16 +88,32 @@ public class WorkSlots {
     }
 
     /**
-     * True if a character could plausibly stand at slot {@code i}: not on water and not across a
-     * cliff edge.
+     * True if a character could stand at slot {@code i} and get to it: not on water, not across a
+     * cliff edge, and NOT INSIDE SOMETHING.
      *
-     * This is a cheap pre-filter, not a reachability proof - the honest answer needs a full path
-     * search, which is far too expensive to run once per slot per candidate target. Its job is to
-     * stop the obvious waste of claiming a slot that is out in a lake, and to let the caller move
-     * on quickly. A slot that passes here and then turns out to be unwalkable simply fails to be
-     * reached, and the caller tries the next one.
+     * The last of those was missing, and in a stockpile yard it is the one that decides. This
+     * asked only about the ground, so a pile in the corner of a block - with its neighbours hard
+     * against two of its sides - offered eight slots of which several stood inside those
+     * neighbours. Every one of them looked fine here, got claimed, and was walked to; the
+     * pathfinder then refused, {@link haven.automated.nbots.task.TakeWorkSlot} released the slot
+     * and tried the next, and the trip was spent walking at a pile it could not reach from any of
+     * the sides it kept choosing. Rejecting them costs one distance test each and turns that into
+     * an immediate "no way in".
+     *
+     * Stockpiles in the way are measured at their FULL size ({@link Stockpile#FOOTPRINT}), because
+     * the pile whose slot this is may be filling up while we walk to it - and so may the ones
+     * around it. See {@link Walkers#occupied(List, Coord2d)}.
+     *
+     * Still a pre-filter and not a reachability proof: the honest answer needs a full path search,
+     * far too expensive once per slot per candidate. A slot that passes here and then turns out to
+     * be unwalkable simply fails to be reached, and the caller tries the next one.
+     *
+     * @param solids one object-cache snapshot for the whole ring, from {@link BotNav#solids}. Null
+     *               to skip the object test - for a caller that only has terrain to go on.
      */
-    public boolean plausible(GameUI gui, int i) {
+    public boolean plausible(GameUI gui, List<Gob> solids, int i) {
+        if ((solids != null) && BotNav.occupied(solids, at(i)))
+            return false;
         if (gui == null)
             return true;
         try {
@@ -131,9 +147,13 @@ public class WorkSlots {
             Resource res = gob.getres();
             if (res == null)
                 return DEFAULT_EXTENT;
+            /* A pile that is about to be filled is bigger than the box says, and the ring has to
+             * clear it at that size or its own slots end up inside it. A FLOOR, not a
+             * replacement - a resource whose box is larger keeps the larger one. */
+            double floor = Stockpile.is(gob) ? Stockpile.FOOTPRINT : 0;
             HitBoxes.CollisionBoxSecondary[] boxes = HitBoxes.collisionBoxMap.get(res.name);
             if (boxes == null)
-                return DEFAULT_EXTENT;
+                return Math.max(floor, DEFAULT_EXTENT);
             double max = 0;
             for (HitBoxes.CollisionBoxSecondary box : boxes) {
                 if (!box.hitAble || box.coords == null)
@@ -141,9 +161,9 @@ public class WorkSlots {
                 for (Coord2d c : box.coords)
                     max = Math.max(max, Math.max(Math.abs(c.x), Math.abs(c.y)));
             }
-            return (max > 0) ? max : DEFAULT_EXTENT;
+            return Math.max(floor, (max > 0) ? max : DEFAULT_EXTENT);
         } catch (Loading | NullPointerException e) {
-            return DEFAULT_EXTENT;
+            return Math.max(Stockpile.is(gob) ? Stockpile.FOOTPRINT : 0, DEFAULT_EXTENT);
         }
     }
 

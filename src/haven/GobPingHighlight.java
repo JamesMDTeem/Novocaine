@@ -18,6 +18,17 @@ public class GobPingHighlight extends GAttrib implements Gob.SetupMod {
 
     public void start() {
         start = System.currentTimeMillis();
+        gob.markStateDirty();
+    }
+
+    /* The pulse below is a function of the clock, so its gobstate() answer differs on
+     * every frame and nothing but the clock changes to say so. Keep the gob dirty for
+     * as long as the pulse is running -- one frame past the end, so the final state
+     * (null, i.e. no tint) is the one that gets pushed. */
+    @Override
+    public void ctick(double dt) {
+        if(System.currentTimeMillis() - start <= duration + 100)
+            gob.markStateDirty();
     }
 
     public Pipe.Op gobstate() {

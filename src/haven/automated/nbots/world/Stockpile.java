@@ -64,6 +64,31 @@ public class Stockpile {
     public static final Alias ANY = new Alias("stockpile", PREFIX);
 
     /**
+     * Half the footprint of a stockpile AT ITS LARGEST, for planning around one.
+     *
+     * A stockpile is one of the few things in this game whose collision box CHANGES SIZE while you
+     * look at it - the heap grows as items go in and shrinks as they come out - and every box the
+     * client has is per RESOURCE and therefore one fixed size. {@link haven.automated.helpers.HitBoxes}
+     * reads the resource's obstacle layer once and caches it under the resource name;
+     * {@code Pathfinder.isInsideBoundBox} reads that; and so every reachability question about a
+     * pile is answered with whatever size the layer happens to describe rather than the size the
+     * pile is now.
+     *
+     * Which is wrong in the one direction that matters. Too SMALL means the client believes there
+     * is room where there is not: a slot on the far side of a pile reads as reachable, a straight
+     * line drawn past a pile reads as clear, and the character walks into the heap and stops. Too
+     * large costs a slot that would have worked. So this is the maximum and not the average, and
+     * everything the bots plan with it is deliberately planned for a pile that is about to be
+     * filled - which, in a yard being filled, is every pile.
+     *
+     * 5.5 units is nurgling's figure for the soil pile (its {@code NHitBox} table carries
+     * {@code stockpile-soil} at 5.5 and the generic {@code stockpile} at 5), reached the same way
+     * and for the same reason. It is a FLOOR, never a replacement: where the resource's own box is
+     * bigger, the bigger one wins.
+     */
+    public static final double FOOTPRINT = 5.5;
+
+    /**
      * Polls to wait for the pile window and its box to arrive. One poll is 25ms, so this is two
      * seconds - a server round trip on a bad day, not a guess at a good one.
      */
@@ -89,6 +114,18 @@ public class Stockpile {
     public static boolean is(Gob g) {
         String n = resname(g);
         return (n != null) && n.startsWith(PREFIX);
+    }
+
+    /**
+     * The same test for a caller that already holds the resource.
+     *
+     * {@link #is(Gob)} goes back through the gob for something the caller has resolved a line
+     * earlier, and the callers that ask this are per-gob sweeps - {@link Walkers} tests every
+     * loaded gob once per point, and {@link #spotsIn} asks about every tile of a yard - so the
+     * redundant read lands once per gob per point rather than once.
+     */
+    public static boolean is(Resource res) {
+        return (res != null) && (res.name != null) && res.name.startsWith(PREFIX);
     }
 
     /**

@@ -1135,6 +1135,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	private final Collection<RenderTree.Slot> slots = new java.util.concurrent.CopyOnWriteArrayList<>();
 	private Placement cur;
 	volatile boolean dirty = true;
+	private int mapseq = -1;
 
 	private Placed() {}
 
@@ -1226,7 +1227,14 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 
 	public void autotick(double dt) {
-	    if(!dirty && getattr(Moving.class) == null)
+	    /* A still gob only needs re-placing when something it is placed
+	     * against has changed. Its own motion and attribute changes set
+	     * `dirty'; the ground under it does not, so watch the map's change
+	     * sequence as well -- otherwise a gob keeps the height the terrain
+	     * had when it was last placed, and floats or sinks when the terrain
+	     * is dug or raised beneath it. */
+	    int mseq = glob.map.chseq;
+	    if(!dirty && (mseq == this.mapseq) && (getattr(Moving.class) == null))
 		return;
 	    synchronized(Gob.this) {
 		Placement np;
@@ -1237,6 +1245,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		}
 		if(!Utils.eq(this.cur, np))
 		    update(np);
+		this.mapseq = mseq;
 		dirty = false;
 	    }
 	}
@@ -1272,6 +1281,13 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
     public final Placed placed = new Placed();
 
     public void placementDirty() {placed.dirty = true;}
+
+    /* Companion to the above for the other half of a gob's render state. A SetupMod
+     * whose gobstate() answer changes without the mod itself being added or removed --
+     * a highlight recoloured in place, a scale recomputed from a setting, a pulse driven
+     * by the clock -- has to say so, or updstate() keeps the state it built the last time
+     * something else happened to dirty the gob. */
+    public void markStateDirty() {stateDirty = true;}
 
     public String toString() {
 	return(String.format("#<ob %d %s>", id, getattr(Drawable.class)));
@@ -1834,6 +1850,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		GobStateHighlight current = getattr(GobStateHighlight.class);
 		if (current != null) {
 			current.color = color;
+			markStateDirty(); // ND: recoloured in place, so nothing else marks it
 		} else  {
 			setattr(new GobStateHighlight(this, color));
 		}
@@ -1841,6 +1858,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 
 	public void updateCustomSizeAndRotation(){
 		customSizeAndRotation.update(this);
+		markStateDirty(); // ND: the mod rewrites its own op, so nothing else marks it
 		if (getres() != null && getres().name.equals("gfx/terobjs/cupboard")) {
 			CollisionBox.MODEL_CACHE.remove("gfx/terobjs/cupboard");
 			if (collisionBox != null) {

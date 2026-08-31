@@ -99,7 +99,11 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
 	}
     }
 
-    private void clean() {
+    /* Drains the reference queue, dropping entries whose referent has been collected.
+     * Reachable from outside because a caller that stops calling add() -- one that caps
+     * itself on size(), say -- otherwise never runs this again, and size() never falls
+     * back below the cap it stopped at. */
+    public void clean() {
 	int psz = sz;
 	Ref<E>[] tab = this.tab;
 	Reference<? extends E> ref;

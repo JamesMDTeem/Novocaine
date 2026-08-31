@@ -685,17 +685,8 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	}
     }
     
-    private boolean isPlayerDead() {
-	if(ui == null || ui.sess == null || ui.sess.glob == null || ui.gui == null || ui.gui.map == null)
-	    return(false);
-	Gob pl = ui.gui.map.player();
-	return(pl != null && pl.isDeadPlayer);
-    }
-
     private void cHideAfterDeath() {
-	if(!Utils.getprefb("cHideAfterDeath", false))
-	    return;
-	if(isPlayerDead() && visible)
+	if(GameUI.hideAfterDeath(ui) && visible)
 	    hide();
     }
 

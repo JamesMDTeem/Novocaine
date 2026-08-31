@@ -218,13 +218,26 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	 * Past the cap we still find() (preserves dedup of existing entries) but
 	 * skip add() — returning `this`. Downstream consumers still get a valid
 	 * DepInfo; they just lose dedup for new entries past the cap.
+	 *
+	 * The cap has to drain the queue itself before it decides. WeakHashedSet
+	 * only reaps collected entries from inside add() and remove(), and its size
+	 * only falls there, so a cap that stops calling add() is a door that shuts
+	 * once: the set stays reported-full for the rest of the process even after
+	 * everything in it has been collected, and interning never resumes. Reaping
+	 * first costs a queue poll proportional to what has died since the last one,
+	 * which is exactly the work add() would have done anyway -- the spike this
+	 * cap exists to stop came from letting that queue grow without bound, not
+	 * from draining it.
 	 */
 	private static final int INTERN_SIZE_CAP = 8192;
 	public DepInfo intern() {
 	    synchronized(interned) {
 		if(interned.size() >= INTERN_SIZE_CAP) {
-		    DepInfo found = interned.find(this);
-		    return found != null ? found : this;
+		    interned.clean();
+		    if(interned.size() >= INTERN_SIZE_CAP) {
+			DepInfo found = interned.find(this);
+			return found != null ? found : this;
+		    }
 		}
 		return(interned.intern(this));
 	    }

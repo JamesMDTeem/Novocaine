@@ -54,7 +54,6 @@ public class Config {
 	 * backwards. Versions look like "v1.85" or "nova-0.1.9"/"nova-2026.08.28.5",
 	 * occasionally with a letter suffix, as in "v1.64a"; anything that
 	 * doesn't parse falls back to the old any-difference behaviour. */
-	private static final java.util.regex.Pattern versionpat = java.util.regex.Pattern.compile("v?(\\d+)\\.(\\d+)([a-z]?)");
 	public static boolean isNewer(String version, String than) {
 		// semver compare: only treat as newer when version > than
 		int[] a = versionParts(version), b = versionParts(than);

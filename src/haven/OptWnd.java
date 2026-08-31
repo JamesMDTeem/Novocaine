@@ -4698,6 +4698,7 @@ public class OptWnd extends Window {
 				{a = Utils.getprefb("hideTrees", true);}
 				public void changed(boolean val) {
 					Utils.setprefb("hideTrees", val);
+					haven.render.TickList.cachedHideTrees = val;
 					if (ui != null && ui.gui != null) {
 						ui.sess.glob.oc.gobAction(Gob::updateHidingBoxes);
 						ui.gui.map.updatePlobHidingBox();

@@ -33,7 +33,11 @@ import haven.Composited;
 import haven.Utils;
 
 public class TickList implements RenderList<TickList.TickNode> {
-    private static volatile boolean cachedHideTrees = Utils.getprefb("hideTrees", true);
+    /* Written by the Trees checkbox in OptWnd, the way GLEnvironment.cachedDisposeCap and
+     * Composited.cachedAnimSkip are. It used to be re-read from Preferences at the top of
+     * every tick(), which takes a lock on the shared prefs node once a frame -- the exact
+     * cost the word "cached" in the name was there to avoid. */
+    public static volatile boolean cachedHideTrees = Utils.getprefb("hideTrees", true);
     private final Map<Ticking, Entry> cur = new HashMap<>();
     private List<Entry> snapshot = new ArrayList<>();
     private boolean snapshotDirty = true;
@@ -133,7 +137,6 @@ public class TickList implements RenderList<TickList.TickNode> {
 
     public void tick(double dt) {
 	Composited.animTickFrame++;
-	cachedHideTrees = Utils.getprefb("hideTrees", true);
 	List<Entry> copy;
 	synchronized(cur) {
 	    if(snapshotDirty) {
