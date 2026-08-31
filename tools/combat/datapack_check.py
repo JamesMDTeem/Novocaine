@@ -168,6 +168,18 @@ def player_moves():
     kito = [a for a in secs["attacks"] if a["name"] == "Knock Its Teeth Out"][0]
     check("kito damage", kito["damage"]["value"], 30)
     check("kito cooldown", kito["cooldown"]["value"], 35)
+    # special: the Attacks table's weapon-requirement / multi-target column. It was captured
+    # into the row dict but silently dropped before reaching rec, so every attack lost its
+    # weapon requirement. Assert on CONTENT, not merely non-nullness -- a check that only
+    # confirms "not None" would still pass if the wrong column had been copied in its place.
+    chop = [a for a in secs["attacks"] if a["name"] == "Chop"][0]
+    check("chop special names an edged weapon",
+          chop["special"] is not None and "edged" in chop["special"].lower(), True)
+    storm = [a for a in secs["attacks"] if a["name"] == "Storm of Swords"][0]
+    check("storm of swords special carries multi-target text", storm["special"] is not None, True)
+    # Confirms special is genuinely optional, not defaulting to a string for rows with a blank
+    # Special cell.
+    check("cleave has no special (field is optional)", cleave["special"], None)
     # Anchor rows carry no move name; none may survive into the output.
     allrows = sum(secs.values(), [])
     check("no nameless rows", [r for r in allrows if not r["name"]], [])
@@ -222,6 +234,41 @@ def constants_and_crosscheck():
     check("animal_moves.json uses all four schools", sorted(canon - animal_schools), [])
 
 
+def write_nothing_on_failure():
+    """Regression-guards build_datapack's core promise: if any parser reports a problem, NO
+    files get written. Injects a fake problem by monkeypatching one parser, redirects the
+    build's output directory to a scratch temp dir for the duration (so this never touches
+    data/combat/), and asserts both the exit code and that the temp dir stays empty. Restored
+    in a finally so a failure here can't leave build_datapack or parse_gear patched for later
+    checks (or, for that matter, later runs of this same check)."""
+    print("\nwrite-nothing-on-failure guarantee")
+    import tempfile, shutil
+    from pathlib import Path
+
+    orig_parse_weapons = parse_gear.parse_weapons
+    orig_out = build_datapack.OUT
+    tmpdir = Path(tempfile.mkdtemp(prefix="combat_datapack_check_"))
+    try:
+        def fake_parse_weapons():
+            weapons, _bad = orig_parse_weapons()
+            return weapons, ["INJECTED (test-only) failure to prove build writes nothing"]
+
+        parse_gear.parse_weapons = fake_parse_weapons
+        build_datapack.OUT = tmpdir
+
+        exit_code = None
+        try:
+            build_datapack.main()
+        except SystemExit as e:
+            exit_code = e.code
+        check("build exits 1 when a parser reports a problem", exit_code, 1)
+        check("temp output dir has no files written", list(tmpdir.iterdir()), [])
+    finally:
+        parse_gear.parse_weapons = orig_parse_weapons
+        build_datapack.OUT = orig_out
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 def main():
     primitives()
     gear()
@@ -229,6 +276,7 @@ def main():
     animal_moves()
     player_moves()
     constants_and_crosscheck()
+    write_nothing_on_failure()
     print("\nALL CHECKS PASSED" if failures == 0 else "\n%d CHECK(S) FAILED" % failures)
     sys.exit(0 if failures == 0 else 1)
 

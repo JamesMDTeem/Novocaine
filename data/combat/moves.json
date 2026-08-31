@@ -29,6 +29,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any edged weapon",
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -61,6 +62,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -94,6 +96,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any melee weapon\nFull Circle attacks your main target and all other opponents in range.",
       "weight": "Melee\u00b790%\u00b7\u03bc"
     },
     {
@@ -127,6 +130,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -158,6 +162,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -189,6 +194,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -220,6 +226,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -251,6 +258,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -282,6 +290,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Gains you 1 Point of Initiative against your opponent.",
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -313,6 +322,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b780%\u00b7\u03bc"
     },
     {
@@ -345,6 +355,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Attacks both your primary target and also one other opponent in range.",
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -376,6 +387,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any melee weapon\nIf your opponent has more than 25% of {{RoB color|oppressive|Oppressive}} openings, Quick Barrage also gains you 1 Point of Initiative against that opponent.",
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -409,6 +421,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any axe",
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -446,6 +459,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -477,6 +491,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any edged weapon",
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -509,6 +524,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "To the extent that it is unblocked, Steal Thunder will take 3 points of initiative from its target and you will gain 2 of them.",
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -542,6 +558,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any pointed weapon",
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -574,6 +591,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": "Weapon:\n*Any sword\nStorm of Swords will attack up to five opponents in range, starting with your main target. The targets will receive 100%, 125%, 150%, 175%, and 200%, respectively, of the weapon's damage.",
       "weight": "Melee\u00b7\u03bc"
     },
     {
@@ -606,6 +624,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -638,6 +657,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "attacks",
+      "special": null,
       "weight": "Unarmed\u00b70.8\u00b7\u03bc"
     }
   ],
@@ -658,6 +678,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Unarmed\u00b775%\u00b7\u03bc"
     },
     {
@@ -676,6 +697,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -694,6 +716,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Unarmed\u00b7\u03bc"
     },
     {
@@ -712,6 +735,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Unarmed\u00b775%\u00b7\u03bc"
     },
     {
@@ -730,6 +754,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Unarmed\u00b7150%\u00b7\u03bc"
     },
     {
@@ -748,6 +773,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Melee\u00b780%\u00b7\u03bc"
     },
     {
@@ -766,6 +792,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Melee\u00b7250%\u00b7\u03bc"
     },
     {
@@ -784,6 +811,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "maneuvers",
+      "special": null,
       "weight": "Melee\u00b7\u03bc"
     }
   ],
@@ -807,6 +835,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "moves",
+      "special": null,
       "weight": null
     },
     {
@@ -828,6 +857,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "moves",
+      "special": null,
       "weight": null
     },
     {
@@ -849,6 +879,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "moves",
+      "special": null,
       "weight": null
     },
     {
@@ -870,6 +901,7 @@
       "openings_target": null,
       "reduces": [],
       "section": "moves",
+      "special": null,
       "weight": null
     }
   ],
@@ -898,6 +930,7 @@
         "oppressive"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -921,6 +954,7 @@
         "striking"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -947,6 +981,7 @@
         "oppressive"
       ],
       "section": "restorations",
+      "special": null,
       "weight": "Unarmed"
     },
     {
@@ -970,6 +1005,7 @@
         "sweeping"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -993,6 +1029,7 @@
         "striking"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -1017,6 +1054,7 @@
         "sweeping"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -1040,6 +1078,7 @@
         "backhanded"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -1063,6 +1102,7 @@
         "backhanded"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -1090,6 +1130,7 @@
         "oppressive"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     },
     {
@@ -1114,6 +1155,7 @@
         "oppressive"
       ],
       "section": "restorations",
+      "special": null,
       "weight": null
     }
   ]

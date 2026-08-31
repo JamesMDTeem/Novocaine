@@ -146,6 +146,7 @@ def parse():
                 "damage": wiki.num(f.get("damage", "")) if "damage" in f else None,
                 "grievous": wiki.num(f.get("grievous", "")) if "grievous" in f else None,
                 "distance": (f.get("distance") or "").strip() or None,
+                "special": (f.get("special") or "").strip() or None,
                 "notes": (f.get("notes") or "").strip() or None,
             }
             rows.append(rec)
