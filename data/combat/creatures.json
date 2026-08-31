@@ -1,0 +1,2054 @@
+[
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "30",
+      "value": 30
+    },
+    "hp": {
+      "raw": "70",
+      "value": 70
+    },
+    "mc": null,
+    "moves": [
+      "Serpent's Strike",
+      "Chomp",
+      "Careful Approach"
+    ],
+    "name": "Adder",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "N/A",
+      "value": null
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "50",
+      "value": 50
+    },
+    "mc": null,
+    "moves": [
+      "Ant Spit"
+    ],
+    "name": "Ants",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "15",
+      "value": 15
+    },
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "250",
+      "value": 250
+    },
+    "hp": {
+      "raw": "350",
+      "value": 350
+    },
+    "mc": null,
+    "moves": [
+      "Low Horn Swipe",
+      "Mule Kick",
+      "Bucking",
+      "Thunder Over",
+      "Sudden Charge",
+      "Careful Approach",
+      "Roar of the Wild"
+    ],
+    "name": "Aurochs",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "150",
+      "value": 150
+    },
+    "hp": {
+      "raw": "250",
+      "value": 250
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Sudden Charge",
+      "Badgering",
+      "Careful Approach"
+    ],
+    "name": "Badger",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "15",
+      "value": 15
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "60",
+      "value": 60
+    },
+    "hp": {
+      "raw": "90",
+      "value": 90
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Wingbeat",
+      "Vampirism",
+      "Bristle"
+    ],
+    "name": "Bat",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "65",
+      "value": 65
+    },
+    "baseq": {
+      "raw": "60",
+      "value": 60
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "~500",
+      "value": 500
+    },
+    "hp": {
+      "raw": "850",
+      "value": 850
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Bear Down",
+      "Bear Hug",
+      "Shredding Paw",
+      "Dark Heart Move",
+      "Unstoppable",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Bear",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~75",
+      "value": 75
+    },
+    "hp": {
+      "raw": "~100",
+      "value": 100
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Beaver",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "90",
+      "value": 90
+    },
+    "mc": null,
+    "moves": [
+      "Ant Spit",
+      "Fell Scratch",
+      "Chomp"
+    ],
+    "name": "Black Ant",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "15",
+      "value": 15
+    },
+    "baseq": {
+      "raw": "40",
+      "value": 40
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "~275",
+      "value": 275
+    },
+    "hp": {
+      "raw": "450",
+      "value": 450
+    },
+    "mc": null,
+    "moves": [
+      "Mule Kick",
+      "Bear Down",
+      "Blood & Gore",
+      "Bristle"
+    ],
+    "name": "Boar",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "1",
+      "value": 1
+    },
+    "hp": {
+      "raw": "1",
+      "value": 1
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Bog Turtle",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "31",
+      "value": 31
+    },
+    "baseq": {
+      "raw": "20",
+      "value": 20
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "800",
+      "value": 800
+    },
+    "hp": {
+      "raw": "1200",
+      "value": 1200
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Bristle",
+      "Careful Approach"
+    ],
+    "name": "Boreworm",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Bullfinch",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Bullfinch Hen",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "150",
+      "value": 150
+    },
+    "baseq": {
+      "raw": "120",
+      "value": 120
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "Varies",
+      "value": null
+    },
+    "hp": {
+      "raw": "50000",
+      "value": 50000
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Cachalot",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": null,
+    "hp": {
+      "raw": "(<i>unknown</i>)",
+      "value": null
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Cattle",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "40",
+      "value": 40
+    },
+    "baseq": {
+      "raw": "50",
+      "value": 50
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "850-1300",
+      "value": 850
+    },
+    "hp": {
+      "raw": "1200-1800",
+      "value": 1200
+    },
+    "mc": null,
+    "moves": [
+      "Bear Down",
+      "Chomp",
+      "Dark Heart Move",
+      "Fell Scratch",
+      "Shredding Paw",
+      "Tail Splash",
+      "Bristle",
+      "Careful Approach",
+      "Dive & Hide",
+      "Rampant Rage",
+      "Unstoppable"
+    ],
+    "name": "Cave Angler",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "50",
+      "value": 50
+    },
+    "baseq": {
+      "raw": "40",
+      "value": 40
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "300",
+      "value": 300
+    },
+    "hp": {
+      "raw": "1000",
+      "value": 1000
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Bear Down",
+      "Sudden Charge",
+      "Blood & Gore",
+      "Bristle"
+    ],
+    "name": "Cave Louse",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "75",
+      "value": 75
+    },
+    "hp": {
+      "raw": "120",
+      "value": 120
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Bristle",
+      "Careful Approach"
+    ],
+    "name": "Caverat",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "200",
+      "value": 200
+    },
+    "baseq": {
+      "raw": "100",
+      "value": 100
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "Never",
+      "value": null
+    },
+    "hp": {
+      "raw": "20000",
+      "value": 20000
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Blood & Gore",
+      "Sudden Charge",
+      "Thunder Over",
+      "Bear Down",
+      "Dark Heart Move",
+      "Trunk Gunk",
+      "Bristle",
+      "Careful Approach",
+      "Rampant Rage",
+      "Unstoppable",
+      "Swift Evasion"
+    ],
+    "name": "Chasm Conch",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Cock",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": null,
+    "hp": null,
+    "mc": null,
+    "moves": [],
+    "name": "Crab",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~100",
+      "value": 100
+    },
+    "hp": {
+      "raw": "150",
+      "value": 150
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Feather Flurry",
+      "Bristle"
+    ],
+    "name": "Crane",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "300",
+      "value": 300
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Sudden Charge",
+      "Badgering",
+      "Careful Approach"
+    ],
+    "name": "Denmother",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": null,
+    "hp": null,
+    "mc": null,
+    "moves": [],
+    "name": "Dragonfly",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": null,
+    "hp": null,
+    "mc": null,
+    "moves": [],
+    "name": "Dryad",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Duck Drake",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Duck Hen",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~100",
+      "value": 100
+    },
+    "hp": {
+      "raw": "~180",
+      "value": 180
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Dark Heart Move",
+      "Bristle"
+    ],
+    "name": "Eagle Owl",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "25",
+      "value": 25
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "75",
+      "value": 75
+    },
+    "hp": {
+      "raw": "110",
+      "value": 110
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Bristle",
+      "Chomp",
+      "Tail Spin"
+    ],
+    "name": "Fox",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "900",
+      "value": 900
+    },
+    "mc": null,
+    "moves": [
+      "Ant Spit",
+      "Fell Scratch",
+      "Chomp",
+      "Bear Down",
+      "Blood & Gore",
+      "Dark Heart Move",
+      "Careful Approach",
+      "Bristle",
+      "Rampant Rage"
+    ],
+    "name": "Giant Ant Queen",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hp": {
+      "raw": "200",
+      "value": 200
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Goat",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "50",
+      "value": 50
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~80",
+      "value": 80
+    },
+    "hp": {
+      "raw": "~250",
+      "value": 250
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Shredding Paw",
+      "Dark Heart Move",
+      "Swift Evasion",
+      "Bristle"
+    ],
+    "name": "Golden Eagle",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~100",
+      "value": 100
+    },
+    "hp": {
+      "raw": "~180",
+      "value": 180
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Dark Heart Move",
+      "Bristle"
+    ],
+    "name": "Goshawk",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "20",
+      "value": 20
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "30 - 100",
+      "value": 30
+    },
+    "hp": {
+      "raw": "from 60 to 500 depends on mine lvl",
+      "value": 60
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp"
+    ],
+    "name": "Green Ooze",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "35",
+      "value": 35
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~240",
+      "value": 240
+    },
+    "hp": {
+      "raw": "~320",
+      "value": 320
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Grey Seal",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "40",
+      "value": 40
+    },
+    "hp": {
+      "raw": "40",
+      "value": 40
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Hedgehog",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Hen",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": null,
+    "hp": {
+      "raw": "unknown",
+      "value": null
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Horse",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "85",
+      "value": 85
+    },
+    "baseq": {
+      "raw": "70",
+      "value": 70
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "~600",
+      "value": 600
+    },
+    "hp": {
+      "raw": "1250",
+      "value": 1250
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Bear Down",
+      "Bear Hug",
+      "Shredding Paw",
+      "Dark Heart Move",
+      "Unstoppable",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Ice Bear",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "35",
+      "value": 35
+    },
+    "baseq": {
+      "raw": "45",
+      "value": 45
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "150",
+      "value": 150
+    },
+    "hp": {
+      "raw": "400",
+      "value": 400
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Shredding Paw",
+      "Dark Heart Move",
+      "bristle"
+    ],
+    "name": "Lynx",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Magpie (Bird)",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Mallard Drake",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Mallard Hen",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "125",
+      "value": 125
+    },
+    "baseq": {
+      "raw": "80",
+      "value": 80
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "2800",
+      "value": 2800
+    },
+    "hp": {
+      "raw": "4000",
+      "value": 4000
+    },
+    "mc": null,
+    "moves": [
+      "Crush Underfoot",
+      "Trumpeting Fury",
+      "Trunk Gunk",
+      "Trunk Roll",
+      "Stampede",
+      "Overwhelm"
+    ],
+    "name": "Mammoth",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "N/A",
+      "value": null
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Midge Swarm",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "30",
+      "value": 30
+    },
+    "hp": {
+      "raw": "30",
+      "value": 30
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Mole",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "65",
+      "value": 65
+    },
+    "baseq": {
+      "raw": "50",
+      "value": 50
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "250",
+      "value": 250
+    },
+    "hp": {
+      "raw": "800",
+      "value": 800
+    },
+    "mc": null,
+    "moves": [
+      "Low Horn Swipe",
+      "Mule Kick",
+      "Thunder Over",
+      "Bucking",
+      "Blood & Gore",
+      "Heavy Antlers",
+      "Breathing Rage",
+      "Dark Heart Move",
+      "Rampant Rage",
+      "Unstoppable",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Moose",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "25",
+      "value": 25
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "120",
+      "value": 120
+    },
+    "hp": {
+      "raw": "200",
+      "value": 200
+    },
+    "mc": null,
+    "moves": [
+      "Low Horn Swipe",
+      "Mule Kick",
+      "Careful Approach",
+      "Sudden Charge",
+      "Thunder Over",
+      "Swift Evasion"
+    ],
+    "name": "Mouflon",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "70",
+      "value": 70
+    },
+    "baseq": {
+      "raw": "60",
+      "value": 60
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "1000",
+      "value": 1000
+    },
+    "hp": {
+      "raw": "1500",
+      "value": 1500
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Narwhal",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": {
+      "raw": "None",
+      "value": null
+    },
+    "hp": {
+      "raw": "?",
+      "value": null
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Nidbane",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "100",
+      "value": 100
+    },
+    "baseq": {
+      "raw": "80",
+      "value": 80
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "14000 (Bleeds for 400 hp per tick when fleeing)",
+      "value": 14000
+    },
+    "hp": {
+      "raw": "20000",
+      "value": 20000
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Orca",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "60",
+      "value": 60
+    },
+    "hp": {
+      "raw": "100",
+      "value": 100
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Bristle"
+    ],
+    "name": "Otter",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~80",
+      "value": 80
+    },
+    "hp": {
+      "raw": "130",
+      "value": 130
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Feather Flurry",
+      "Bristle"
+    ],
+    "name": "Pelican",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": null,
+    "hp": {
+      "raw": "150",
+      "value": 150
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Pig",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "unknown",
+      "value": null
+    },
+    "hp": {
+      "raw": "unknown",
+      "value": null
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Ptarmigan",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Quail",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "30",
+      "value": 30
+    },
+    "hp": {
+      "raw": "30",
+      "value": 30
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Rabbit Buck",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "30",
+      "value": 30
+    },
+    "hp": {
+      "raw": "30",
+      "value": 30
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Rabbit Doe",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "N/A",
+      "value": null
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "50",
+      "value": 50
+    },
+    "mc": null,
+    "moves": [
+      "Ant Spit"
+    ],
+    "name": "Red Ants",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "10",
+      "value": 10
+    },
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~150",
+      "value": 150
+    },
+    "hp": {
+      "raw": "200",
+      "value": 200
+    },
+    "mc": null,
+    "moves": [
+      "Low Horn Swipe",
+      "Mule Kick",
+      "Sudden Charge",
+      "Heavy Antlers",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Red Deer",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "0",
+      "value": 0
+    },
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "110",
+      "value": 110
+    },
+    "hp": {
+      "raw": "200",
+      "value": 200
+    },
+    "mc": null,
+    "moves": [
+      "Low Horn Swipe",
+      "Mule Kick",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Reindeer",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Rock Dove",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "10",
+      "value": 10
+    },
+    "baseq": {
+      "raw": "20",
+      "value": 20
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "80",
+      "value": 80
+    },
+    "hp": {
+      "raw": "150",
+      "value": 150
+    },
+    "mc": null,
+    "moves": [
+      "Mule Kick",
+      "Bear Down",
+      "Bristle"
+    ],
+    "name": "Roe Deer",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "120",
+      "value": 120
+    },
+    "mc": null,
+    "moves": [
+      "Ant Spit",
+      "Fell Scratch",
+      "Chomp",
+      "Shredding Paw",
+      "Dark Heart Move",
+      "Swift Evasion",
+      "Unstoppable"
+    ],
+    "name": "Royal Guard Ant",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Seagull",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hp": {
+      "raw": "200",
+      "value": 200
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Sheep",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": null,
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Squirrel",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "20",
+      "value": 20
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "60",
+      "value": 60
+    },
+    "hp": {
+      "raw": "90",
+      "value": 90
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Careful Approach"
+    ],
+    "name": "Stoat",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "~80",
+      "value": 80
+    },
+    "hp": {
+      "raw": "~150",
+      "value": 150
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Feather Flurry",
+      "Bristle"
+    ],
+    "name": "Swan",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": null,
+    "hp": {
+      "raw": "(<i>unknown</i>)",
+      "value": null
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Tame Reindeer",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": null,
+    "deadly": false,
+    "fhp": null,
+    "hp": null,
+    "mc": null,
+    "moves": [],
+    "name": "Treant",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "125",
+      "value": 125
+    },
+    "baseq": {
+      "raw": "80",
+      "value": 80
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "~40% health",
+      "value": 40
+    },
+    "hp": {
+      "raw": "1000+",
+      "value": 1000
+    },
+    "mc": null,
+    "moves": [
+      "Troll Punch",
+      "Troll Smile",
+      "Devour",
+      "Dark Heart Move",
+      "Thide",
+      "Peek in the Depth"
+    ],
+    "name": "Troll",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "75",
+      "value": 75
+    },
+    "baseq": {
+      "raw": "50",
+      "value": 50
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "600",
+      "value": 600
+    },
+    "hp": {
+      "raw": "900",
+      "value": 900
+    },
+    "mc": null,
+    "moves": [
+      "'Rus Tusk",
+      "Chomp",
+      "Bear Down",
+      "Shredding Paw",
+      "Dark Heart Move",
+      "Unstoppable",
+      "Careful Approach",
+      "Tail Splash"
+    ],
+    "name": "Walrus",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "N/A",
+      "value": null
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "N/A",
+      "value": null
+    },
+    "hp": {
+      "raw": "50",
+      "value": 50
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Wild Bees",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "200",
+      "value": 200
+    },
+    "hp": {
+      "raw": "~320",
+      "value": 320
+    },
+    "mc": null,
+    "moves": [
+      "Mule Kick",
+      "Bucking",
+      "Bear Down",
+      "Thunder Over",
+      "Sudden Charge",
+      "Careful Approach",
+      "Rampant Rage",
+      "Swift Evasion"
+    ],
+    "name": "Wild Horse",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "200",
+      "value": 200
+    },
+    "hp": {
+      "raw": "300",
+      "value": 300
+    },
+    "mc": null,
+    "moves": [
+      "Low Horn Swipe",
+      "Mule Kick",
+      "Thunder Over",
+      "Bear Down",
+      "Blood & Gore",
+      "Rampant Rage",
+      "Careful Approach",
+      "Bristle"
+    ],
+    "name": "Wildgoat",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": {
+      "raw": "50",
+      "value": 50
+    },
+    "baseq": {
+      "raw": "50",
+      "value": 50
+    },
+    "deadly": true,
+    "fhp": {
+      "raw": "400",
+      "value": 400
+    },
+    "hp": {
+      "raw": "500",
+      "value": 500
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Chomp",
+      "Shredding Paw",
+      "Blood & Gore",
+      "Careful Approach"
+    ],
+    "name": "Wolf",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "30",
+      "value": 30
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "200",
+      "value": 200
+    },
+    "hp": {
+      "raw": "300",
+      "value": 300
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Bear Down",
+      "Blood & Gore",
+      "Bristle"
+    ],
+    "name": "Wolverine",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "100",
+      "value": 100
+    },
+    "hp": {
+      "raw": "~120",
+      "value": 120
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Feather Flurry",
+      "Bristle"
+    ],
+    "name": "Wood Grouse Cock",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "10",
+      "value": 10
+    },
+    "hp": {
+      "raw": "10",
+      "value": 10
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Wood Grouse Hen",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
+      "raw": "10",
+      "value": 10
+    },
+    "deadly": false,
+    "fhp": null,
+    "hp": {
+      "raw": "30",
+      "value": 30
+    },
+    "mc": null,
+    "moves": [],
+    "name": "Wood Scorpion",
+    "str": null,
+    "ua": null
+  }
+]

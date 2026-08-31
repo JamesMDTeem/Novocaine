@@ -10,6 +10,7 @@ import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wiki
 import parse_gear
+import parse_creatures
 
 failures = 0
 
@@ -71,9 +72,31 @@ def gear():
           all(w["basedmg"]["value"] is not None for w in weapons), True)
 
 
+def creatures():
+    print("\ncreatures")
+    recs, noinfo, malformed = parse_creatures.parse()
+    check("creature records", len(recs), 81)
+    check("pages without infobox", len(noinfo), 34)
+    check("malformed infobox pages", len(malformed), 0)
+    bear = [c for c in recs if c["name"] == "Bear"][0]
+    check("bear hp", bear["hp"]["value"], 850)
+    check("bear armor", bear["armor"]["value"], 65)
+    check("bear fhp approx parsed", bear["fhp"]["value"], 500)
+    check("bear fhp raw kept", bear["fhp"]["raw"], "~500")
+    check("bear deadly", bear["deadly"], True)
+    check("bear moves include Bear Hug", "Bear Hug" in bear["moves"], True)
+    # Hidden stats are the estimator's job, not the wiki's.
+    check("hidden stats null", (bear["ua"], bear["mc"], bear["str"], bear["agi"]),
+          (None, None, None, None))
+    # Only 20 of 81 creature infoboxes carry armour; the rest must be null, not 0.
+    with_armor = [c for c in recs if c["armor"] is not None]
+    check("creatures with armor field", len(with_armor), 20)
+
+
 def main():
     primitives()
     gear()
+    creatures()
     print("\nALL CHECKS PASSED" if failures == 0 else "\n%d CHECK(S) FAILED" % failures)
     sys.exit(0 if failures == 0 else 1)
 
