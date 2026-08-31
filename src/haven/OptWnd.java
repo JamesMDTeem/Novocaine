@@ -1373,6 +1373,7 @@ public class OptWnd extends Window {
 
 	public static CheckBox showCombatHotkeysUICheckBox;
 	public static CheckBox showDamagePredictUICheckBox;
+	public static CheckBox combatTelemetryCheckBox;
 	public static CheckBox singleRowCombatMovesCheckBox;
 	public static CheckBox includeHHPTextHealthBarCheckBox;
 	public static ColorOptionWidget greenCombatColorOptionWidget;
@@ -1525,6 +1526,12 @@ public class OptWnd extends Window {
 				}
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
+			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
+				{a = Utils.getprefb("combatTelemetry", false);}
+				public void changed(boolean val) {
+					Utils.setprefb("combatTelemetry", val);
+				}
+			}, leftColumn.pos("bl").adds(0, 2));
 
 			leftColumn = add(drawFloatingCombatOpeningsAboveYourselfCheckBox = new CheckBox("Display Combat Openings above Yourself"){
 				{a = Utils.getprefb("drawFloatingCombatDataAboveYourself", true);}
