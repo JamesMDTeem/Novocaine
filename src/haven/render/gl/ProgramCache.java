@@ -68,6 +68,10 @@ public class ProgramCache {
      * hundred, so a few tens of MB. Swept back to this on startup, oldest
      * first, so an abandoned world or a long-past session cannot grow it
      * without bound. */
+    /* Bumped whenever what goes into an entry, or what the client assumes about
+     * one, changes in a way older entries cannot satisfy. Orphaned entries are
+     * never read again and age out of the directory on their own. */
+    private static final String VERSION = "2";
     private static final long MAX_BYTES = 96 * 1024 * 1024;
     /* How long a cache for some other GL implementation has to have gone
      * untouched before it is assumed dead rather than merely idle. */
@@ -124,9 +128,24 @@ public class ProgramCache {
 	}
     }
 
-    /** Digest of the source a program is built from; the per-entry key. */
-    public static String progkey(String vsrc, String fsrc) {
-	return(key(vsrc + " " + fsrc));
+    /**
+     * Digest of everything a cached binary bakes in: the shader sources and the
+     * bindings the program was linked with.
+     *
+     * The bindings matter as much as the source. Attribute locations were being
+     * assigned in identity-hash order, which differs between JVMs, so a binary
+     * written by one run expected its attributes in slots the next run had
+     * assigned elsewhere. Nothing rejects that - the program loads, links clean,
+     * and draws every vertex attribute from the wrong place. The ordering is
+     * fixed at the source now; this key is what makes a mismatch a miss rather
+     * than corruption if anything ever perturbs it again.
+     */
+    public static String progkey(String vsrc, String fsrc, String bindings) {
+	/* Length-prefixed rather than separated, so that no choice of separator
+	 * can be produced by the parts themselves and let two different
+	 * programs digest the same. */
+	return(key(VERSION + ":" + vsrc.length() + ":" + fsrc.length() + ":" + bindings.length() + ":"
+		   + vsrc + fsrc + bindings));
     }
 
     /**

@@ -57,6 +57,10 @@ public class GLProgram implements Disposable {
     public final AtomicInteger locked = new AtomicInteger(0);
     private final Map<Uniform, String> unifnms;
     private final Map<Attribute, AttrID> amap;
+    /* name@location of every attribute, in binding order. Part of the program
+     * binary cache key: these bindings are baked into a binary, so one written
+     * under a different layout must not be loaded under this one. */
+    private final String attrlayout;
     private final String[] fragnms;
     private ProgOb glp;
     boolean disposed = false;
@@ -123,20 +127,45 @@ public class GLProgram implements Disposable {
 	}
 	{
 	    this.attribs = ctx.attribs.toArray(new Attribute[0]);
+	    /* Ordered by GLSL symbol name rather than by identity.
+	     *
+	     * The order decides the attribute locations assigned just below, and
+	     * Utils.idcmp orders on System.identityHashCode, which is a
+	     * different order in every JVM. That was invisible for as long as
+	     * the locations were only ever used by the run that assigned them.
+	     * They are not: a program binary bakes them in, so a run reading a
+	     * cached binary would bind its vertex data to the locations it
+	     * assigned this time while the program expects the ones assigned
+	     * when it was written - every attribute reaching the wrong slot,
+	     * which draws as thoroughly mangled geometry.
+	     *
+	     * Identity remains the tie-break, so an ordering still exists if two
+	     * attributes ever share a symbol name; that case cannot be stable
+	     * across runs, and is why the layout is part of the cache key too. */
 	    Arrays.sort(this.attribs, (a, b) -> {
 		    if(a.primary && !b.primary)
 			return(-1);
 		    if(!a.primary && b.primary)
 			return(1);
+		    String an = ctx.symtab.get(a.name), bn = ctx.symtab.get(b.name);
+		    if((an != null) && (bn != null)) {
+			int c = an.compareTo(bn);
+			if(c != 0)
+			    return(c);
+		    }
 		    return(Utils.idcmp.compare(a, b));
 		});
 	    Map<Attribute, AttrID> amap = new IdentityHashMap<>();
+	    StringBuilder lay = new StringBuilder();
 	    for(int i = 0, loc = 0; i < this.attribs.length; i++) {
 		Attribute attr = this.attribs[i];
-		amap.put(attr, new AttrID(ctx.symtab.get(attr.name), loc));
+		String nm = ctx.symtab.get(attr.name);
+		amap.put(attr, new AttrID(nm, loc));
+		lay.append(nm).append('@').append(loc).append(';');
 		loc += attrsize(attr);
 	    }
 	    this.amap = amap;
+	    this.attrlayout = lay.toString();
 	}
     }
 
@@ -361,7 +390,13 @@ public class GLProgram implements Disposable {
 	    boolean dbg = shaderDbgEnabled();
 	    double start = dbg ? Utils.rtime() : 0;
 	    ProgramCache cache = env.progcache();
-	    String ckey = (cache == null) ? null : ProgramCache.progkey(vsrc, fsrc);
+	    /* Keyed on everything the binary bakes in that this run also relies
+	     * on: the two sources, the attribute locations, and the fragment
+	     * data bindings. A mismatch in any of them has to be a cache miss,
+	     * because the failure mode is not a refused binary - it is a
+	     * program that loads cleanly and draws wrong. */
+	    String ckey = (cache == null) ? null :
+		ProgramCache.progkey(vsrc, fsrc, attrlayout + "|" + String.join(",", fragnms));
 	    if(ckey != null) {
 		ProgramCache.Entry ent = cache.get(ckey);
 		if((ent != null) && loadbin(gl, ent)) {

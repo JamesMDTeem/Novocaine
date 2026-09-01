@@ -77,11 +77,13 @@ public class ProgramCacheCheck {
 	return((byte[])ent.getClass().getField("binary").get(ent));
     }
 
+    static String bindings = "vertex@0;normal@1;";
+
     static String progkey(String v, String f) throws Exception {
 	Class<?> cl = Class.forName("haven.render.gl.ProgramCache");
-	Method m = cl.getDeclaredMethod("progkey", String.class, String.class);
+	Method m = cl.getDeclaredMethod("progkey", String.class, String.class, String.class);
 	m.setAccessible(true);
-	return((String)m.invoke(null, v, f));
+	return((String)m.invoke(null, v, f, bindings));
     }
 
     static Path dirof(Object c) throws Exception {
@@ -118,6 +120,15 @@ public class ProgramCacheCheck {
 	String k2 = progkey("vertex source A", "fragment source B");
 	check("changed shader source is a different key", !k1.equals(k2));
 	check("changed shader source does not hit", get(c, k2) == null);
+
+	// 3b. the regression that mangled every texture on the second client:
+	// attribute locations are baked into a binary, so a run that assigns
+	// them differently must miss rather than load one built for the other.
+	String kb1 = progkey("same source", "same source");
+	bindings = "normal@0;vertex@1;";		// same shaders, other layout
+	String kb2 = progkey("same source", "same source");
+	bindings = "vertex@0;normal@1;";
+	check("a different attribute layout is a different key", !kb1.equals(kb2));
 
 	// 4. GL identity keying
 	Object c2 = open("TestVendor", "TestRenderer", "4.6.1");
