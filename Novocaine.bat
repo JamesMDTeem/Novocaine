@@ -3,11 +3,12 @@ rem The one entry point: double-click this to play. It updates an installed clie
 rem newest GitHub release, or builds a source checkout, and then starts the game with no
 rem console window attached. Everything it does lives in Novocaine.ps1.
 rem
-rem   Novocaine.bat                 update-or-build, then play
+rem   Novocaine.bat                 update-or-build, then play (ZGC by default)
 rem   Novocaine.bat -Count 8        launch a crew of eight
 rem   Novocaine.bat -NoLaunch       build only
 rem   Novocaine.bat -Check          is there a newer release?
-rem   Novocaine.bat -ZGC -Console   ZGC, with a console to read GC logs in
+rem   Novocaine.bat -Console        with a console to read GC logs in
+rem   Novocaine.bat -NoZGC -Console G1 instead of ZGC, with console (alias -G1)
 
 setlocal
 set "NOVOCAINE_HOME=%~dp0"

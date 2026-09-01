@@ -23,7 +23,9 @@
     The JVM flags are NOT written out here. They are read from Play.bat, which has to keep
     existing anyway: hafen.hl names it as the Steam launcher's `command-file`, and that is
     where the HL launcher reads the --add-exports and -D properties from. One file holds
-    the flags, two readers agree on them.
+    the flags, two readers agree on them. Steam Play (HL path via hafen.hl) is ZGC
+    by default with heap auto-scale 6144/8192 when headroom allows, without needing
+    this wrapper or -ZGC flag - Play.bat and hafen.hl jvm-arg carry the flags.
 
 .PARAMETER Count
     How many clients to start. One Haven client is one character, so a crew of eight is
@@ -38,19 +40,24 @@
     Attach a console window and wait for the client to exit. The default is javaw.exe: no
     console, and this script returns as soon as the game is up.
 
-.PARAMETER ZGC
-    Generational ZGC instead of the default G1.
+.PARAMETER NoZGC
+    Opt out of generational ZGC and use G1 instead. ZGC is now the default.
 
     Measured on JDK 21.0.9 over a 45s client session (login screen, GC logging on):
       G1   106 pauses, 436.4ms total, max 12.73ms, 6 pauses over 10ms
       ZGC   90 pauses,   0.8ms total, max  0.02ms, 0 pauses over 5ms
     A 60fps frame is 16.7ms, so G1 worst-case ate 76% of one frame. The trade is
     footprint: ZGC floated to 3632M before collecting where G1 peaked near 1515M.
+    With -Count N each ZGC client holds a larger floating heap, so budget
+    accordingly on 16G boxes or when running a crew.
 
     -XX:+ZGenerational is required on JDK 21 to get the generational collector. It was
     made the default in 23 and REMOVED in 24, where passing it is a fatal "Unrecognized VM
     option". -XX:+IgnoreUnrecognizedVMOptions (already in Play.bat) makes the pair correct
-    on both. Verified against 21.0.9 and 26.0.1.
+    on both. Verified against 21.0.9 and 26.0.1. Alias -G1 is accepted.
+
+.PARAMETER G1
+    Alias for -NoZGC: use G1 instead of the default ZGC.
 
 .PARAMETER Steam
     Launch with -DrunningThroughSteam=true. Detected automatically for a Workshop install
@@ -82,11 +89,12 @@
     game windows on screen.
 
 .EXAMPLE
-    .\Novocaine.ps1                      # update-or-build, then play
+    .\Novocaine.ps1                      # update-or-build, then play (ZGC by default)
     .\Novocaine.ps1 -NoLaunch            # build only (the typecheck gate)
     .\Novocaine.ps1 -Count 8             # build once, launch a crew of eight
     .\Novocaine.ps1 -Count 2 -NoBuild    # two more clients against the build you have
-    .\Novocaine.ps1 -ZGC -Console        # ZGC, with a console to read GC logs in
+    .\Novocaine.ps1 -Console             # with a console to read GC logs in
+    .\Novocaine.ps1 -NoZGC -Console      # G1 instead of ZGC, with console
     .\Novocaine.ps1 -Check               # is there a newer release?
 #>
 
@@ -95,6 +103,8 @@ param(
     [int]$Count = 1,
     [int]$StaggerSeconds = 3,
     [switch]$Console,
+    [switch]$NoZGC,
+    [switch]$G1,
     [switch]$ZGC,
     [switch]$Steam,
     [switch]$NoBuild,
@@ -143,6 +153,63 @@ if (-not $isSource -and -not (Test-Path -LiteralPath (Join-Path $root 'hafen.jar
 # Play.bat is `"%JAVA%" <flags> -jar hafen.jar`. Take everything after the executable and
 # hand it straight to the JVM, so the flags have exactly one home - one that the Steam HL
 # launcher reads too (hafen.hl: `command-file Play.bat`).
+#
+# Steam Play (HL path) is ZGC by default: hafen.hl carries jvm-arg -XX:+UseZGC
+# -XX:+ZGenerational with -XX:+IgnoreUnrecognizedVMOptions first for JDK<25 compat,
+# so hitting Play in Steam needs no wrapper or -ZGC flag. The single home for
+# -Xmx/-XX remains Play.bat line 31; hafen.hl duplicates ZGC via jvm-arg because
+# HL ignores -XX in command-file.
+
+# Heap auto-scaling: floor 4096m always; bump to 6144m if TotalRAM >=16G with
+# headroom, to 8192m if >=24G (or headroom allows) with headroom. Headroom =
+# TotalRAM - (Count * candidate) - 4G OS reserve must remain >=0. TotalRAM via
+# WMI Win32_ComputerSystem.TotalPhysicalMemory. Play.bat stays at 4096m as the
+# static fallback; this override is applied dynamically at launch (regex replace
+# -Xmx\d+m). HL launcher reads hafen.hl `heap-size` separately; when launching
+# via this wrapper the JVM -Xmx here wins, so hafen.hl can stay at 4096 as its
+# own fallback (Steam HL path without the wrapper uses the HL value). To make
+# Steam auto-scale even without the wrapper, this script also patches hafen.hl
+# heap-size to the scaled value whenever it runs, so a subsequent Steam launch
+# inherits the scaling.
+function Get-TotalPhysicalMemoryBytes {
+    try {
+        $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+        if ($cs.TotalPhysicalMemory -and $cs.TotalPhysicalMemory -gt 0) { return [long]$cs.TotalPhysicalMemory }
+    } catch {}
+    try {
+        $cs2 = Get-WmiObject -Class Win32_ComputerSystem -ErrorAction Stop
+        if ($cs2.TotalPhysicalMemory) { return [long]$cs2.TotalPhysicalMemory }
+    } catch {}
+    return 0
+}
+
+function Get-ScaledHeapMb {
+    param([long]$totalBytes, [int]$clientCount)
+    $floor = 4096
+    $mid = 6144
+    $high = 8192
+    $osReserveMb = 4096
+    if ($totalBytes -le 0) { return $floor }
+    $totalMb = [math]::Floor($totalBytes / 1MB)
+    $hasHeadroom = {
+        param($candidate)
+        return $totalMb -ge ($candidate * $clientCount + $osReserveMb)
+    }
+    $hasMid = & $hasHeadroom $mid
+    $hasHigh = & $hasHeadroom $high
+    # Headroom is the hard gate; thresholds are the soft gate. Floor always.
+    # 6144 requires Total >=16G && headroom. 8192 requires Total >=24G && headroom
+    # (spec's "or headroom" clause is implemented as headroom being mandatory, not
+    # as an alternative to the 24G threshold, to avoid overcommitting 16G boxes).
+    if ($totalMb -ge 24576 -and $hasHigh) {
+        return $high
+    }
+    if ($totalMb -ge 16384 -and $hasMid) {
+        return $mid
+    }
+    return $floor
+}
+
 function Get-JvmArgs($dir) {
     $playBat = Join-Path $dir 'Play.bat'
     if (-not (Test-Path -LiteralPath $playBat)) { Die "No Play.bat in $dir - the JVM flags live there." }
@@ -157,11 +224,60 @@ function Get-JvmArgs($dir) {
     if (-not $a) { Die "Parsed an empty argument list out of $playBat." }
 
     if ($Steam) { $a = $a -replace '-DrunningThroughSteam=false', '-DrunningThroughSteam=true' }
-    # G1 is the default and has no flag to remove, so ZGC is purely additive. The repeated
+    # ZGC is the default (opt-out via -NoZGC / -G1). The repeated
     # -XX:+IgnoreUnrecognizedVMOptions is deliberate: it must come BEFORE +ZGenerational for
     # a JDK 24+ to ignore rather than reject it, and this way that holds however Play.bat
-    # orders its own flags.
-    if ($ZGC) { $a = '-XX:+IgnoreUnrecognizedVMOptions -XX:+UseZGC -XX:+ZGenerational ' + $a }
+    # orders its own flags. The guard itself (-XX:+IgnoreUnrecognizedVMOptions) stays
+    # first so Play.bat's standalone launch also tolerates unknown flags.
+    $useZGC = -not $NoZGC -and -not $G1
+    if ($useZGC) {
+        if ($a -notmatch 'UseZGC') {
+            $a = '-XX:+IgnoreUnrecognizedVMOptions -XX:+UseZGC -XX:+ZGenerational ' + $a
+        }
+    } else {
+        # Opt-out: Play.bat now carries ZGC by default, so strip it for G1.
+        $a = $a -replace '-XX:\+UseZGC\s*', ''
+        $a = $a -replace '-XX:\+ZGenerational\s*', ''
+        # Collapse any double spaces left by removal.
+        $a = $a -replace '\s{2,}', ' '
+    }
+
+    # Heap auto-scaling: override -Xmx in place, preserving -Xms1024m and guard order.
+    # Play.bat is the static fallback at 4096m; this is the dynamic override.
+    $totalBytes = Get-TotalPhysicalMemoryBytes
+    $scaledMb = Get-ScaledHeapMb -totalBytes $totalBytes -clientCount $Count
+    if ($a -match '-Xmx(\d+)m') {
+        $currentXmx = [int]$Matches[1]
+        if ($scaledMb -ne $currentXmx) {
+            $a = $a -replace '-Xmx\d+m', "-Xmx${scaledMb}m"
+        }
+    }
+
+    # Keep hafen.hl heap-size in sync so Steam HL path (which ignores Play.bat -Xmx)
+    # also auto-scales on the next Steam launch, even without this wrapper.
+    # For source checkouts $dir is bin\ — patch only the staged copy, not the
+    # repo source (hafen.hl at $root stays at 4096 floor). For installed
+    # clients $dir -eq $root, so the single hafen.hl there is patched.
+    try {
+        $hlPath = Join-Path $dir 'hafen.hl'
+        if (Test-Path -LiteralPath $hlPath) {
+            $hlText = [IO.File]::ReadAllText($hlPath)
+            if ($hlText -match '(?m)^heap-size\s+(\d+)') {
+                $cur = [int]$Matches[1]
+                if ($cur -ne $scaledMb) {
+                    # Rewrite the one line and touch nothing else. An earlier version
+                    # normalised the whole file to CRLF on the theory that HL required
+                    # it; the checked-in hafen.hl is LF and loads fine, and rewriting
+                    # every line turned a three-line change into a 104-line diff that
+                    # hid what had actually been edited. Whatever endings the file
+                    # arrived with are what it keeps.
+                    $hlNew = $hlText -replace '(?m)^heap-size\s+\d+', "heap-size $scaledMb"
+                    [IO.File]::WriteAllText($hlPath, $hlNew, [Text.UTF8Encoding]::new($false))
+                }
+            }
+        }
+    } catch {}
+
     return $a
 }
 
@@ -200,6 +316,8 @@ function Start-Client($dir, $n) {
 
     # -Xms is COMMITTED per process, so the floor is real even when nothing is using it.
     # The -Xmx ceiling only matters if they all fill up. A heads-up, not a limit.
+    # ZGC default: measured 3632M peak vs 1515M on G1 (45s session), so a Count crew
+    # with ZGC holds more floating heap; budget accordingly or use -NoZGC/-G1 to opt out.
     if (($n -gt 1) -and ($jvmArgs -match '-Xms(\d+)m')) {
         $floorGb = [math]::Round(([int]$Matches[1] * $n) / 1024.0, 1)
         Warn "$n clients reserve about $floorGb GB of heap between them before anything loads."

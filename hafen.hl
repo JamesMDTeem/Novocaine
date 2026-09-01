@@ -2,10 +2,16 @@ require 1.0
 
 command-file Play.bat
 
-# The HL launcher reads command-file args for exports and properties but manages the
-# heap itself; without heap-size the child JVM falls back to the ergonomic 1/4-RAM
-# default (multi-GB on big machines), which reads like a RAM leak in LeakDbg logs.
+# The HL launcher reads command-file args for exports/props but manages heap itself;
+# without heap-size JVM falls back to 1/4-RAM ergonomic (multi-GB LeakDbg). Floor
+# 4096m; wrapper scales -Xmx to 6144m (>=16G)/8192m (>=24G or headroom Count*HEAP+4G).
+# Steam Play (hafen.hl command-file Play.bat) is ZGC by default via jvm-arg below;
+# standalone Play.bat is the single home for -Xmx/-XX (Novocaine.ps1 reads it).
 heap-size 4096
+jvm-arg -XX:+IgnoreUnrecognizedVMOptions
+jvm-arg -XX:+UseZGC
+jvm-arg -XX:+ZGenerational
+jvm-arg -XX:+UseCompactObjectHeaders
 
 class-path hafen.jar
 class-path builtin-res.jar

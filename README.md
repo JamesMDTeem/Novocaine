@@ -18,11 +18,11 @@ in the registry and `%APPDATA%\Haven and Hearth`, so they are never touched, and
 dropped into the install folder yourself is left alone.
 
 ```
-Novocaine.bat              update, then play
+Novocaine.bat              update, then play (ZGC by default)
 Novocaine.bat -Check       is there a newer release? (installs nothing)
 Novocaine.bat -Count 4     four clients at once, for a crew
 Novocaine.bat -Console     keep a console window attached
-Novocaine.bat -ZGC         generational ZGC instead of G1
+Novocaine.bat -NoZGC       G1 instead of ZGC (alias -G1)
 ```
 
 ## Getting started (building from source)
@@ -82,11 +82,12 @@ The daily build/launch script is `Novocaine.ps1` — the same one that ships in 
 which builds instead of updating when it finds a `build.xml` next to it:
 
 ```powershell
-.\Novocaine.ps1                    # build + launch
+.\Novocaine.ps1                    # build + launch (ZGC by default)
 .\Novocaine.ps1 -NoLaunch          # build only (the typecheck gate)
 .\Novocaine.ps1 -Count 8           # build once, launch a crew of eight
 .\Novocaine.ps1 -Count 2 -NoBuild  # two more clients against the build you have
-.\Novocaine.ps1 -ZGC -Console      # ZGC, with a console to read GC logs in
+.\Novocaine.ps1 -Console           # with a console to read GC logs in
+.\Novocaine.ps1 -NoZGC -Console    # G1 instead of ZGC, with console (alias -G1)
 ```
 
 `build-and-play.ps1` is kept as a shim that forwards to it, so old habits and the packaging
