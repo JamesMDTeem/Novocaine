@@ -1314,6 +1314,33 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     private ShadowMap.ShadowList slist = null;
     private ShadowMap smap = null;
     private double lsmch = 0;
+    private int smapview = -1;
+
+    /** The shadow map's half-extent in world units for a given ground render distance.
+     *
+     *  The map is an ortho projection spanning +/-size about the camera, and its sampler
+     *  wraps with CLAMP - so geometry drawn outside that square samples the border texels
+     *  of the depth texture and comes out shadowed. Not subtly: a lit patch the shape of
+     *  the map's footprint, ringed by darkness, out at the edge of the screen.
+     *
+     *  The drawn area is (2*view + 1) cuts across, a cut being 25 tiles of 11 units, so
+     *  the half-extent that has to be covered is 137.5 * (2*view + 1):
+     *
+     *    view 2  ->  687.5, inside the fixed 750 upstream used
+     *    view 3  ->  962.5, outside it by 212.5 - about 19 tiles of terrain
+     *
+     *  which is to say the constant was sized to cover render distance 2 and nothing
+     *  beyond it. Scaling reproduces 750 exactly at view 2 and extends by the same
+     *  proportion rather than picking a new number.
+     *
+     *  Resolution does not scale with it, so a wider map is a coarser shadow. That is the
+     *  trade being made deliberately: shadows slightly softer everywhere, against shadows
+     *  that stop existing partway across the screen.
+     */
+    private static float smapsz(int view) {
+	return((750f * ((2 * view) + 1)) / 5f);
+    }
+
     private void updsmap(DirLight light) {
 	boolean usesdw = ui.gprefs.lshadow.val;
 	int sdwres = ui.gprefs.shadowres.val;
@@ -1330,10 +1357,15 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		if(instancer == null)
 		    return;
 		slist = new ShadowMap.ShadowList(instancer);
-		smap = new ShadowMap(new Coord(sdwres, sdwres), 750, 5000, 1);
-	    } else if(smap.lbuf.w != sdwres) {
+		smap = new ShadowMap(new Coord(sdwres, sdwres), smapsz(view), 5000, 1);
+		smapview = view;
+	    } else if((smap.lbuf.w != sdwres) || (smapview != view)) {
+		/* Rebuilt on a render-distance change as well as a resolution one:
+		 * the extent is baked into the map's projection at construction, so
+		 * moving the slider otherwise leaves the old footprint in place. */
 		smap.dispose();
-		smap = new ShadowMap(new Coord(sdwres, sdwres), 750, 5000, 1);
+		smap = new ShadowMap(new Coord(sdwres, sdwres), smapsz(view), 5000, 1);
+		smapview = view;
 		smapcc = null;
 		basic(ShadowMap.class, null);
 	    }
