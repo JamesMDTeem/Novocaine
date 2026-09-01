@@ -108,8 +108,11 @@ public final class CombatRecorder {
      */
     private static int[] readGear(Equipory eq, List<String> out) {
         int hard = 0, soft = 0;
+        /* No equipment widget means we could not look, which is not the same fact as
+         * wearing nothing. Report it as unknown so the analysis cannot read a blind spot
+         * as a measurement of zero armour. */
         if(eq == null)
-            return(new int[] {hard, soft});
+            return(new int[] {-1, -1});
         for(int i = 0; i < eq.slots.length; i++) {
             WItem w = eq.slots[i];
             if(w == null)

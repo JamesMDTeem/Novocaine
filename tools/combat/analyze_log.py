@@ -84,7 +84,10 @@ def report_header(rows, path):
         print("  schema       %s" % h.get("schema"))
         print("  character    %s  (gob %s)" % (h.get("char"), h.get("megob")))
         print("  opponent     %s  (gob %s)" % (h.get("foeres"), h.get("foegob")))
-        print("  armour       %s hard + %s soft" % (h.get("hard"), h.get("soft")))
+        if h.get("hard") == -1:
+            print("  armour       ? (no equipment widget when the fight started)")
+        else:
+            print("  armour       %s hard + %s soft" % (h.get("hard"), h.get("soft")))
         attr = h.get("attr") or {}
         if attr:
             keys = [k for k in ATTR_ORDER if k in attr]
