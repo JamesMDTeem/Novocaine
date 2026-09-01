@@ -76,6 +76,11 @@ public interface GL {
     public static final int GL_INVALID_VALUE = com.jogamp.opengl.GL.GL_INVALID_VALUE;
     public static final int GL_INVALID_OPERATION = com.jogamp.opengl.GL.GL_INVALID_OPERATION;
     public static final int GL_LINK_STATUS = com.jogamp.opengl.GL3.GL_LINK_STATUS;
+    public static final int GL_PROGRAM_BINARY_LENGTH = com.jogamp.opengl.GL2ES2.GL_PROGRAM_BINARY_LENGTH;
+    public static final int GL_NUM_PROGRAM_BINARY_FORMATS = com.jogamp.opengl.GL2ES2.GL_NUM_PROGRAM_BINARY_FORMATS;
+    /* Not exposed as a constant by JOGL's GL2ES2, though the entry points are.
+     * ARB_get_program_binary / GL 4.1 core, 0x8257. */
+    public static final int GL_PROGRAM_BINARY_RETRIEVABLE_HINT = 0x8257;
     public static final int GL_MAJOR_VERSION = com.jogamp.opengl.GL3.GL_MAJOR_VERSION;
     public static final int GL_MAX = com.jogamp.opengl.GL3.GL_MAX;
     public static final int GL_MAX_COLOR_ATTACHMENTS = com.jogamp.opengl.GL3.GL_MAX_COLOR_ATTACHMENTS;
@@ -320,6 +325,13 @@ public interface GL {
     public int glGetUniformLocation(int program, String name);
     public void glLineWidth(float w);
     public void glLinkProgram(int program);
+    /* ARB_get_program_binary. Used to keep linked programs across runs; see
+     * ProgramCache. Callers must treat every one of these as best-effort - a
+     * driver may refuse a binary it wrote itself - and check GL_LINK_STATUS
+     * after glProgramBinary rather than assuming it took. */
+    public void glProgramParameteri(int program, int pname, int value);
+    public void glProgramBinary(int program, int format, byte[] binary, int length);
+    public void glGetProgramBinary(int program, int bufsize, int[] length, int[] format, byte[] binary);
     public void glObjectLabel(int identifier, int name, int length, byte[] label);
     public void glPixelStorei(int pname, int param);
     public void glPointSize(float size);

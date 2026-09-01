@@ -198,11 +198,16 @@ public class GLProgram implements Disposable {
 	public final String text;
 	private int id;
 
+	/* Not prepared on construction. A program loaded from the binary cache
+	 * needs no shader objects at all, and preparing them here would compile
+	 * both of them before the program got the chance to say so. ProgOb
+	 * creates them itself, on the GL thread, only on the path that links
+	 * from source. An uncreated ShaderOb still disposes cleanly: id stays 0
+	 * and glDeleteShader(0) is defined to do nothing. */
 	public ShaderOb(GLEnvironment env, int type, String text) {
 	    super(env);
 	    this.type = type;
 	    this.text = text;
-	    env.prepare(this);
 	}
 
 	public void create(GL gl) {
@@ -355,7 +360,28 @@ public class GLProgram implements Disposable {
 	     * drawn yet - stalls a frame. */
 	    boolean dbg = shaderDbgEnabled();
 	    double start = dbg ? Utils.rtime() : 0;
+	    ProgramCache cache = env.progcache();
+	    String ckey = (cache == null) ? null : ProgramCache.progkey(vsrc, fsrc);
+	    if(ckey != null) {
+		ProgramCache.Entry ent = cache.get(ckey);
+		if((ent != null) && loadbin(gl, ent)) {
+		    if(dbg)
+			shaderLog(String.format("SHADERDBG load id=%d prog=%d in %.1fms cached=%d bytes", id, System.identityHashCode(GLProgram.this), (Utils.rtime() - start) * 1000, ent.binary.length));
+		    return;
+		}
+		if(ent != null)
+		    cache.drop(ckey);
+	    }
 	    this.id = gl.glCreateProgram();
+	    if(ckey != null) {
+		/* Asked for before linking, or the driver is within its rights
+		 * to discard what we mean to read back afterwards. */
+		gl.glProgramParameteri(this.id, GL.GL_PROGRAM_BINARY_RETRIEVABLE_HINT, 1);
+	    }
+	    /* The shaders are compiled here rather than on construction so that
+	     * the cache-hit path above can skip them entirely. */
+	    for(ShaderOb sh : shaders)
+		sh.create(gl);
 	    for(ShaderOb sh : shaders)
 		gl.glAttachShader(this.id, sh.glid());
 	    for(AttrID attr : amap.values())
@@ -376,6 +402,60 @@ public class GLProgram implements Disposable {
 		    info = new String(logbuf, 0, buf[0]);
 		}
 		throw(new LinkException("Failed to link GL program", GLProgram.this, info));
+	    }
+	    if(ckey != null)
+		savebin(gl, cache, ckey);
+	}
+
+	/* Every failure here is a cache miss, never an error: the binary is the
+	 * driver's own opaque blob and it may reject one for reasons it does
+	 * not report - a driver update being the ordinary case. The caller
+	 * links from source when this returns false. */
+	private boolean loadbin(GL gl, ProgramCache.Entry ent) {
+	    int pid = 0;
+	    try {
+		pid = gl.glCreateProgram();
+		gl.glProgramBinary(pid, ent.format, ent.binary, ent.binary.length);
+		/* glProgramBinary signals rejection through GL_LINK_STATUS
+		 * and by raising GL_INVALID_ENUM for a format it does not
+		 * know; the error queue is drained either way so that a
+		 * refusal here is not reported against the next call. */
+		gl.glGetError();
+		int[] buf = {0};
+		gl.glGetProgramiv(pid, GL.GL_LINK_STATUS, buf);
+		if(buf[0] != 1) {
+		    gl.glDeleteProgram(pid);
+		    return(false);
+		}
+		/* Attribute locations are baked into the binary, but they were
+		 * bound from this same amap when it was written, so they agree
+		 * as long as the source digest does. */
+		this.id = pid;
+		return(true);
+	    } catch(Exception e) {
+		if(pid != 0) {
+		    try {
+			gl.glDeleteProgram(pid);
+		    } catch(Exception e2) {
+		    }
+		}
+		return(false);
+	    }
+	}
+
+	private void savebin(GL gl, ProgramCache cache, String ckey) {
+	    try {
+		int[] len = {0};
+		gl.glGetProgramiv(this.id, GL.GL_PROGRAM_BINARY_LENGTH, len);
+		if((len[0] <= 0) || (len[0] > (32 * 1024 * 1024)))
+		    return;
+		byte[] bin = new byte[len[0]];
+		int[] got = {0}, fmt = {0};
+		gl.glGetProgramBinary(this.id, bin.length, got, fmt, bin);
+		if(got[0] > 0)
+		    cache.put(ckey, fmt[0], bin, got[0]);
+	    } catch(Exception e) {
+		/* Not being able to save one is not a reason to fail a draw. */
 	    }
 	}
 

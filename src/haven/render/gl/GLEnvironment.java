@@ -815,6 +815,25 @@ public abstract class GLEnvironment implements Environment {
      * The cap is the safety valve against unbounded growth, not a target. */
     private static final int PROG_KEEP = 512;
 
+    /* Opened on first use rather than in the constructor: the caps are what
+     * say whether the driver has the extension at all, and a null cache is the
+     * ordinary "link from source" path, so there is nothing to arrange in
+     * advance. Null also covers the cache being switched off or unusable. */
+    private ProgramCache progcache = null;
+    private boolean progcacheinit = false;
+
+    ProgramCache progcache() {
+	synchronized(pmon) {
+	    if(!progcacheinit) {
+		progcacheinit = true;
+		boolean supported = ((caps.major > 4) || ((caps.major == 4) && (caps.minor >= 1)) ||
+				     caps.exts.contains("GL_ARB_get_program_binary"));
+		progcache = ProgramCache.open(caps.vendor, caps.renderer, caps.version, supported);
+	    }
+	    return(progcache);
+	}
+    }
+
     static boolean shaderDbgEnabled() {
 	try {
 	    if((haven.OptWnd.cameraDiagnosticsCheckBox != null) && haven.OptWnd.cameraDiagnosticsCheckBox.a)

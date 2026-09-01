@@ -149,6 +149,19 @@ public class LWJGLWrap implements GL {
     public int glGetUniformLocation(int program, String name) {return(GL30.glGetUniformLocation(program, name));}
     public void glLineWidth(float w) {GL30.glLineWidth(w);}
     public void glLinkProgram(int program) {GL30.glLinkProgram(program);}
+    public void glProgramParameteri(int program, int pname, int value) {GL41.glProgramParameteri(program, pname, value);}
+    public void glProgramBinary(int program, int format, byte[] binary, int length) {
+	ByteBuffer buf = ByteBuffer.allocateDirect(length).order(java.nio.ByteOrder.nativeOrder());
+	buf.put(binary, 0, length).flip();
+	GL41.glProgramBinary(program, format, buf);
+    }
+    public void glGetProgramBinary(int program, int bufsize, int[] length, int[] format, byte[] binary) {
+	ByteBuffer buf = ByteBuffer.allocateDirect(bufsize).order(java.nio.ByteOrder.nativeOrder());
+	GL41.glGetProgramBinary(program, length, format, buf);
+	int n = Math.min(length[0], binary.length);
+	buf.position(0);
+	buf.get(binary, 0, n);
+    }
     public void glObjectLabel(int identifier, int name, int length, byte[] label) {GL43.glObjectLabel(identifier, name, ckbuf(ByteBuffer.wrap(label), length));}
     public void glPixelStorei(int pname, int param) {GL30.glPixelStorei(pname, param);}
     public void glPointSize(float size) {GL30.glPointSize(size);}

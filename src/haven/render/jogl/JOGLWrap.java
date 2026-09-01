@@ -124,6 +124,9 @@ public class JOGLWrap implements GL, WrappedJOGL {
     public int glGetUniformLocation(int program, String name) {return(back.glGetUniformLocation(program, name));}
     public void glLineWidth(float w) {back.glLineWidth(w);}
     public void glLinkProgram(int program) {back.glLinkProgram(program);}
+    public void glProgramParameteri(int program, int pname, int value) {back.glProgramParameteri(program, pname, value);}
+    public void glProgramBinary(int program, int format, byte[] binary, int length) {back.glProgramBinary(program, format, java.nio.ByteBuffer.wrap(binary, 0, length), length);}
+    public void glGetProgramBinary(int program, int bufsize, int[] length, int[] format, byte[] binary) {back.glGetProgramBinary(program, bufsize, length, 0, format, 0, java.nio.ByteBuffer.wrap(binary));}
     public void glObjectLabel(int identifier, int name, int length, byte[] label) {back.glObjectLabel(identifier, name, length, label, 0);}
     public void glPixelStorei(int pname, int param) {back.glPixelStorei(pname, param);}
     public void glPointSize(float size) {back.glPointSize(size);}
