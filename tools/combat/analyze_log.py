@@ -69,8 +69,9 @@ def header(rows):
     return None
 
 
-ATTR_ORDER = ("str", "agi", "con", "dex", "int", "psy", "prc", "csm", "wil",
-              "unarmed", "melee", "marksmanship")
+# The server sends every attribute the character has, farming and cooking included.
+# These are the ones combat is a function of; the rest are counted, not listed.
+ATTR_COMBAT = ("str", "agi", "con", "dex", "unarmed", "melee", "ranged", "hp", "hhp")
 
 
 def report_header(rows, path):
@@ -90,9 +91,9 @@ def report_header(rows, path):
             print("  armour       %s hard + %s soft" % (h.get("hard"), h.get("soft")))
         attr = h.get("attr") or {}
         if attr:
-            keys = [k for k in ATTR_ORDER if k in attr]
-            keys += sorted(k for k in attr if k not in keys)
-            print("  attributes   " + ", ".join("%s=%s" % (k, attr[k]) for k in keys))
+            keys = [k for k in ATTR_COMBAT if k in attr]
+            print("  attributes   " + ", ".join("%s=%s" % (k, attr[k]) for k in keys)
+                  + "   (+%d others)" % (len(attr) - len(keys)))
     for g in [r for r in rows if r.get("ev") == "gear"]:
         mark = "  BROKEN" if g.get("broken") else ""
         print("  gear[%-2s]     %-40s q%-8.2f %s/%s%s"
@@ -232,13 +233,19 @@ def report_anomalies(rows, bad):
                      "stats or gear recorded")
     if not any(r.get("ev") == "end" for r in rows):
         notes.append("no end event - treat this fight as incomplete")
-    unknown = sorted(set(r["ch"] for r in rows
-                         if r.get("ev") == "dmg" and r["ch"].startswith("C")))
+    unknown = sorted(set(r["ch"] for r in rows if r.get("ev") == "dmg"
+                         and (r["ch"].startswith("#") or r["ch"].startswith("C"))))
     for u in unknown:
         hits = [r for r in rows if r.get("ev") == "dmg" and r["ch"] == u]
-        notes.append("undocumented damage channel %s: %d hit(s), values %s, at t=%s"
+        gloss = ""
+        # The channel code is a packed RGBA4444 colour. White fires once per kill on
+        # the killer's own gob, and scales with the prey - almost certainly combat
+        # experience, but that is an inference, so it is said here and not in the log.
+        if u in ("#ffff", "C65535"):
+            gloss = " - opaque white; fires on a kill, likely combat experience"
+        notes.append("undocumented damage channel %s: %d hit(s), values %s, at t=%s%s"
                      % (u, len(hits), sorted(set(h["v"] for h in hits)),
-                        [h["t"] for h in hits]))
+                        [h["t"] for h in hits], gloss))
     nameless = sorted(set(r["move"] for r in rows
                           if r.get("ev") == "move" and not r.get("name")))
     if nameless:
@@ -251,6 +258,79 @@ def report_anomalies(rows, bad):
         print("    - " + n)
 
 
+def collect(rows):
+    """The per-fight facts the corpus view aggregates: reported cooldowns and, for
+    every move, the opening it inflicted against the opening already standing."""
+    h = header(rows)
+    foe = (h or {}).get("foeres", "?")
+    sts = states(rows)
+    out = {"foe": foe, "cd": [], "open": []}
+    for m in [r for r in rows if r.get("ev") == "move"]:
+        if m["actor"] == "me" and m.get("cd", -1) >= 0:
+            out["cd"].append((m.get("name") or m["move"], m["cd"]))
+        b = near_before(sts, m["t"])
+        a = near_after(sts, m["t"], AFTER_MS)
+        if b is None or a is None:
+            continue
+        key = "foe" if m["actor"] == "me" else "mine"
+        bv, av = b.get(key), a.get(key)
+        if not bv or not av:
+            continue
+        for i in range(4):
+            d = av[i] - bv[i]
+            if d > 0:
+                out["open"].append((m["actor"], m.get("name") or m["move"],
+                                    COLOURS[i], bv[i], d))
+    return out
+
+
+def report_corpus(fights):
+    """Across every log given at once. One fight cannot separate a move's own
+    constants from the matchup it was measured in; several against different
+    opponents can begin to."""
+    print("=" * 78)
+    print("CORPUS  (%d fight%s)" % (len(fights), "" if len(fights) == 1 else "s"))
+    print("=" * 78)
+
+    # Reported cooldown per move per opponent. The character sheet lists a base
+    # cooldown; if what the server reports moves with the opponent, the difference
+    # is a matchup term and not a property of the move.
+    cd = defaultdict(lambda: defaultdict(set))
+    for f in fights:
+        for name, v in f["cd"]:
+            cd[name][f["foe"].split("/")[-1]].add(v)
+    if cd:
+        print("")
+        print("  reported cooldown (ticks) for my moves, by opponent")
+        for name in sorted(cd):
+            per = cd[name]
+            allv = sorted(set().union(*per.values()))
+            flag = "   VARIES" if len(allv) > 1 else ""
+            print("    %-24s %s%s" % (name, "  ".join(
+                "%s=%s" % (o, ",".join("%g" % x for x in sorted(v)))
+                for o, v in sorted(per.items())), flag))
+
+    # Opening growth against the opening already standing. dO should fall as the
+    # standing opening rises; the shape of that fall is the (1 - Oc) term.
+    op = defaultdict(list)
+    for f in fights:
+        for actor, name, colour, before, delta in f["open"]:
+            op[(actor, name, colour, f["foe"].split("/")[-1])].append((before, delta))
+    if op:
+        print("")
+        print("  opening growth: standing opening -> gain, per move and opponent")
+        for k in sorted(op):
+            actor, name, colour, foe = k
+            pts = sorted(op[k])
+            if len(pts) < 2:
+                continue
+            shown = "  ".join("%d:+%d" % p for p in pts[:12])
+            more = "  (+%d more)" % (len(pts) - 12) if len(pts) > 12 else ""
+            print("    %-4s %-20s %-6s vs %-12s %s%s"
+                  % (actor, name[:20], colour, foe[:12], shown, more))
+    print()
+
+
 def main(argv):
     paths = []
     for a in argv:
@@ -260,6 +340,7 @@ def main(argv):
         print(__doc__)
         return 2
     seen = 0
+    fights = []
     for p in paths:
         if not os.path.exists(p):
             print("missing: %s" % p)
@@ -269,12 +350,15 @@ def main(argv):
             print("%s: empty" % p)
             continue
         seen += 1
+        fights.append(collect(rows))
         report_header(rows, p)
         report_moves(rows)
         report_effects(rows)
         report_damage(rows)
         report_anomalies(rows, bad)
         print()
+    if len(fights) > 1:
+        report_corpus(fights)
     return 0 if seen else 1
 
 

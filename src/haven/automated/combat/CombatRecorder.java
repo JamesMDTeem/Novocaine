@@ -172,15 +172,19 @@ public final class CombatRecorder {
         }
     }
 
-    /* Colour codes from GobDamageInfo. 35071 is Initiative, which the client does not render but
-     * which is logged here: it is a free signal and cannot be recovered retroactively. */
+    /* The "colour code" on a damage message is a packed RGBA4444 value - GobDamageInfo decodes
+     * these same constants with Utils.col16 - so 61455 is 0xf00f, opaque red, and so on. 35071
+     * (0x88ff, blue) is Initiative, which the client does not render but which is logged here:
+     * it is a free signal and cannot be recovered retroactively. Anything unrecognised is
+     * reported as its hex colour rather than a decimal, because the colour is the only clue to
+     * what it means: 0xffff, opaque white, turns up once per kill on the killer's own gob. */
     private static String channel(int c) {
         switch(c) {
         case 61455: return("SHP");
         case 64527: return("HHP");
         case 36751: return("ARM");
         case 35071: return("IP");
-        default:    return("C" + c);
+        default:    return(String.format(java.util.Locale.ROOT, "#%04x", c));
         }
     }
 
