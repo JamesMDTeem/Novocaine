@@ -99,7 +99,8 @@ public class Fightview extends Widget {
 	public void use(Indir<Resource> act) {
 	    try {
 		if(act != null && act.get() != null)
-		    haven.automated.combat.CombatRecorder.onMove("foe", act.get().name, 0.0, gobid);
+		    haven.automated.combat.CombatRecorder.onMove("foe", act.get().name,
+						       haven.automated.combat.CombatRecorder.moveName(act.get()), -1, gobid);
 	    } catch(Loading l) {}
 	    lastact = act;
 	    lastuse = Utils.rtime();
@@ -263,7 +264,9 @@ public class Fightview extends Widget {
     public void use(Indir<Resource> act) {
 	try {
 	    if(act != null && act.get() != null)
-		haven.automated.combat.CombatRecorder.onMove("me", act.get().name, lastMoveCooldown, -1);
+		haven.automated.combat.CombatRecorder.onMove("me", act.get().name,
+							     haven.automated.combat.CombatRecorder.moveName(act.get()),
+							     lastMoveCooldown, (current == null) ? -1 : current.gobid);
 	} catch(Loading l) {}
 	lastact = act;
 	lastuse = Utils.rtime();
@@ -450,7 +453,18 @@ public class Fightview extends Widget {
 		    if((g != null) && (g.getres() != null))
 			foeRes = g.getres().name;
 		} catch(Exception e) {}
-		haven.automated.combat.CombatRecorder.start(Config.playername, rel.gobid, foeRes);
+		long meGob = -1;
+		try {
+		    if((ui != null) && (ui.gui != null) && (ui.gui.map != null))
+			meGob = ui.gui.map.plgob;
+		} catch(Exception e) {}
+		Equipory eq = null;
+		try {
+		    if((ui != null) && (ui.gui != null))
+			eq = ui.gui.getequipory();
+		} catch(Exception e) {}
+		haven.automated.combat.CombatRecorder.start(Config.playername, meGob, rel.gobid, foeRes,
+							    (ui == null) ? null : ui.sess.glob, eq);
 	    }
             return;
         } else if(msg == "del") {

@@ -6,8 +6,20 @@ import haven.combat.log.CombatEvent;
 import haven.combat.log.CombatLogWriter;
 import haven.combat.log.Openings;
 
+import haven.Equipory;
+import haven.Glob;
+import haven.ItemInfo;
+import haven.WItem;
+import haven.res.ui.tt.armor.Armor;
+import haven.res.ui.tt.q.quality.Quality;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
@@ -39,7 +51,8 @@ public final class CombatRecorder {
         return(System.currentTimeMillis() - t0);
     }
 
-    public static synchronized void start(String charName, long foeGob, String foeRes) {
+    public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
+                                          Glob glob, Equipory eq) {
         if(!OptWnd.combatTelemetryCheckBox.a)
             return;
         if(writer != null)
@@ -58,7 +71,75 @@ public final class CombatRecorder {
             writer = new CombatLogWriter(p, 4096);
         } catch(Exception e) {
             writer = null;
+            return;
         }
+        /* The header is best-effort and deliberately separate from opening the file: a stat or
+         * equipment read that trips over a still-loading resource must leave a log that still
+         * records the fight, not no log at all. */
+        try {
+            List<String> gear = new ArrayList<String>();
+            int[] arm = readGear(eq, gear);
+            log(CombatEvent.begin(0, t0, CombatEvent.SCHEMA, charName, meGob, foeGob, foeRes,
+                                  readAttrs(glob, false), readAttrs(glob, true), arm[0], arm[1]));
+            for(String g : gear)
+                log(g);
+        } catch(Exception e) {
+            /* a header we could not build is still better than a lost fight */
+        }
+    }
+
+    /** Every attribute the server has sent, sorted so two logs diff cleanly. */
+    private static SortedMap<String, Integer> readAttrs(Glob glob, boolean comp) {
+        SortedMap<String, Integer> out = new TreeMap<String, Integer>();
+        if(glob == null)
+            return(out);
+        try {
+            for(Map.Entry<String, Glob.CAttr> e : glob.cattrs().entrySet())
+                out.put(e.getKey(), comp ? e.getValue().comp : e.getValue().base);
+        } catch(Exception e) {
+        }
+        return(out);
+    }
+
+    /**
+     * Appends one gear event per equipped slot to `out` and returns {hard, soft}. Broken items
+     * are reported with their nominal armour but excluded from the totals, matching what the
+     * game actually applies (see Equipory's armour-class readout).
+     */
+    private static int[] readGear(Equipory eq, List<String> out) {
+        int hard = 0, soft = 0;
+        if(eq == null)
+            return(new int[] {hard, soft});
+        for(int i = 0; i < eq.slots.length; i++) {
+            WItem w = eq.slots[i];
+            if(w == null)
+                continue;
+            /* Per slot, so one still-loading item costs that slot and not the rest of the set. */
+            try {
+                String res = w.item.getres().name;
+                double ql = 0;
+                int h = 0, sf = 0;
+                boolean broken = false;
+                for(ItemInfo info : w.item.info()) {
+                    if(info instanceof Quality)
+                        ql = ((Quality)info).q;
+                    else if(info instanceof Armor) {
+                        h = ((Armor)info).hard;
+                        sf = ((Armor)info).soft;
+                    } else if(info instanceof haven.res.ui.tt.wear.Wear) {
+                        haven.res.ui.tt.wear.Wear wr = (haven.res.ui.tt.wear.Wear)info;
+                        broken = ((wr.m - wr.d) == 0);
+                    }
+                }
+                if(!broken) {
+                    hard += h;
+                    soft += sf;
+                }
+                out.add(CombatEvent.gear(0, i, res, ql, h, sf, broken));
+            } catch(Exception e) {
+            }
+        }
+        return(new int[] {hard, soft});
     }
 
     public static void log(String line) {
@@ -67,11 +148,22 @@ public final class CombatRecorder {
             w.offer(line);
     }
 
-    public static void onMove(String actor, String moveRes, double cooldownTicks, long gobId) {
+    /** The tooltip the combat bar renders, or null if the resource has no tooltip layer. */
+    public static String moveName(haven.Resource res) {
+        try {
+            haven.Resource.Tooltip tt = res.layer(haven.Resource.tooltip);
+            return((tt == null) ? null : tt.t);
+        } catch(Exception e) {
+            return(null);
+        }
+    }
+
+    public static void onMove(String actor, String moveRes, String moveName,
+                              double cooldownTicks, long gobId) {
         if(!active())
             return;
         try {
-            log(CombatEvent.move(now(), actor, moveRes, cooldownTicks, gobId));
+            log(CombatEvent.move(now(), actor, moveRes, moveName, cooldownTicks, gobId));
         } catch(Exception e) {
             /* never propagate into the message loop */
         }
@@ -150,6 +242,11 @@ public final class CombatRecorder {
         CombatLogWriter w = writer;
         if(w == null)
             return;
+        try {
+            w.offer(CombatEvent.end(now(), outcome));
+        } catch(Exception e) {
+            /* never propagate */
+        }
         writer = null;
         try {
             w.close();
