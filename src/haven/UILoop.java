@@ -462,6 +462,22 @@ public abstract class UILoop implements Console.Directory {
 
     private final double[] frames = new double[128], waited = new double[frames.length];
     public static int fps;
+    /**
+     * Mirrors of the two figures the FPS overlay shows, for the sampler to read.
+     *
+     * These are what tell apart the ways a frame rate can fall, which the frame
+     * time on its own cannot. idle is the fraction of the interval the loop
+     * spent waiting rather than working: a rate that halves with idle still
+     * high is a loop being held back - a limiter, a vsync, a full present queue
+     * - and one that falls with idle at nothing is a loop with more to do than
+     * it has time for. lag is the fence latency from submitting a frame to the
+     * GPU finishing it, which is what rises when the GPU is the one behind.
+     *
+     * Static because the sampler has no handle on the loop, and there is only
+     * ever one of these per client; written by the UI thread and read by the
+     * sampler, so both are volatile.
+     */
+    public static volatile double statidle, statlag;
     private double framelag, uidle;
     protected void updstats(Frame f) {
 	int fi = (int)(f.frameno % frames.length);
@@ -478,6 +494,8 @@ public abstract class UILoop implements Console.Directory {
 	if(f.ftime > frames[ckf]) {
 	    fps = (int)Math.round(i / (f.ftime - frames[ckf]));
 	    uidle = twait / (f.ftime - frames[ckf]);
+	    statidle = uidle;
+	    statlag = framelag;
 	}
     }
 

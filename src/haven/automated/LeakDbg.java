@@ -525,6 +525,14 @@ public class LeakDbg {
         sb.append(" heap=").append(String.format("%,d", rt.totalMemory() - rt.freeMemory()))
           .append('/').append(String.format("%,d", rt.maxMemory()))
           .append(" fps=").append(String.format("%.1f", fps));
+        /* fps alone cannot say why it is what it is. idle separates a loop that
+         * is being held back from one that has too much to do; lag says whether
+         * the GPU is the one behind. */
+        try {
+            sb.append(" idle=").append(String.format("%.0f%%", haven.UILoop.statidle * 100.0))
+              .append(" gpulag=").append(String.format("%.1fms", haven.UILoop.statlag * 1000.0));
+        } catch (Throwable t) {
+        }
         appendAlloc(sb, now);
 
         if (prevTexAllocAt == 0)
