@@ -997,7 +997,7 @@ public class OptWnd extends Window {
 		studyHelperCheckBox.tooltip = studyHelperTooltip;
 
 		leftColumn = add(eatObserverCheckBox = new CheckBox("Log eating data (Eating Helper calibration)"){
-			{a = (Utils.getprefb("eatObserver", false));}
+			{a = (Utils.getprefb("eatObserver", true));}
 			public void changed(boolean val) {
 				Utils.setprefb("eatObserver", val);
 			}
@@ -1527,7 +1527,7 @@ public class OptWnd extends Window {
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
 			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
-				{a = Utils.getprefb("combatTelemetry", false);}
+				{a = Utils.getprefb("combatTelemetry", true);}
 				public void changed(boolean val) {
 					Utils.setprefb("combatTelemetry", val);
 				}
@@ -5005,7 +5005,7 @@ public class OptWnd extends Window {
 				}
 			}, prev.pos("ur").adds(6, 0));
 			prev = add(uploadMapTilesCheckBox = new CheckBox("Upload Map Tiles to your Web Map Server"){
-				{a = Utils.getprefb("uploadMapTiles", false);}
+				{a = Utils.getprefb("uploadMapTiles", true);}
 				public void changed(boolean val) {
 					Utils.setprefb("uploadMapTiles", val);
 				}
@@ -5052,7 +5052,7 @@ public class OptWnd extends Window {
 			prev.tooltip = sendStoredTerrainTooltip;
 
 			prev = add(sendLiveLocationCheckBox = new CheckBox("Send Live Location to your Web Map Server"){
-				{a = Utils.getprefb("enableLocationTracking", false);}
+				{a = Utils.getprefb("enableLocationTracking", true);}
 				public void changed(boolean val) {
 					Utils.setprefb("enableLocationTracking", val);
 				}
