@@ -210,6 +210,48 @@ def report_effects(rows):
                  dtxt, delta))
 
 
+PACK = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                    "..", "..", "data", "combat", "weapons.json")
+
+
+def _norm(s):
+    return "".join(ch for ch in (s or "").lower() if ch.isalnum())
+
+
+def weapon_of(rows):
+    """The equipped weapon, matched to the data pack by normalised basename.
+
+    The pack is keyed on wiki names and the client sends resource paths, so
+    "gfx/invobjs/small/bronzesword" has to be reconciled with "Bronze Sword". Stripping
+    everything but letters and digits does it for the weapons in this corpus. A weapon
+    that does not match is reported as unmatched rather than guessed at, because a wrong
+    match would put someone else's base damage into the prediction below."""
+    try:
+        with open(PACK, "r", encoding="utf8") as f:
+            pack = json.load(f)
+    except Exception:
+        return None
+    rec = pack if isinstance(pack, list) else pack.get("weapons", [])
+    byname = {}
+    for w in (rec if isinstance(rec, list) else rec.values()):
+        byname[_norm(w.get("name"))] = w
+    for g in [r for r in rows if r.get("ev") == "gear"]:
+        hit = byname.get(_norm(g["res"].split("/")[-1]))
+        if hit is not None:
+            return (hit, g.get("ql") or 0.0, g["res"])
+    # Nothing matched: say which slots were looked at, so a miss is visible.
+    held = [g["res"].split("/")[-1] for r in [0] for g in
+            [x for x in rows if x.get("ev") == "gear"]]
+    return ("unmatched", 0.0, ",".join(held[:4])) if held else None
+
+
+def val(x):
+    """Pack numbers are {"raw": ..., "value": ...} and value may be None."""
+    if isinstance(x, dict):
+        return x.get("value")
+    return x
+
+
 def combined(op, colours=None):
     """Openings combine as 1 - product(1 - o_i). With `colours` given, only those
     indices take part - a single-type attack reads only its own colour."""
@@ -220,21 +262,24 @@ def combined(op, colours=None):
     return 1.0 - p
 
 
-def soaked(dmg, hard, soft):
+def soaked(dmg, hard, soft, armpen=0.0):
     """Damage actually dealt after armour, per Jorb's Fighting Quail description.
 
-    Hard soak comes off the top. Soft soak ramps in over an interval of twice its
-    value: with X = (damage - hard) / (2 * soft), the share of the soft soak that
-    applies is 1 - (1 - X)^2, reaching all of it once the damage clears the interval.
+    Armour penetration goes first: that share of the damage "will apply directly to
+    the target before any other armor calculations are done". Hard soak then comes
+    off the top of the rest, and soft soak ramps in over an interval of twice its
+    value - with X = (rest - hard) / (2 * soft), the share of the soft soak applied
+    is 1 - (1 - X)^2, reaching all of it once the damage clears the interval.
 
-    The wiki's prose says the interval is the soft soak, not twice it, but its own
-    worked example - 110 damage, 75 hard, 35 soft, 9 dealt - only comes out with the
-    doubling, and so does every fight in the corpus. The example wins."""
-    r = max(0.0, dmg - hard)
+    The wiki's prose puts the interval at the soft soak rather than twice it, but its
+    own worked example - 110 damage, 75 hard, 35 soft, 9 dealt - only comes out with
+    the doubling, and the page itself notes the inconsistency further down."""
+    pen = dmg * armpen
+    r = max(0.0, (dmg - pen) - hard)
     if soft <= 0:
-        return r
+        return pen + r
     x = min(1.0, r / (2.0 * soft))
-    return r - soft * (1.0 - (1.0 - x) ** 2)
+    return pen + r - soft * (1.0 - (1.0 - x) ** 2)
 
 
 def move_colours(rows):
@@ -267,14 +312,14 @@ def move_colours(rows):
     return out
 
 
-def fit_soak(pts):
+def fit_soak(pts, armpen=0.0):
     """Least squares for C, hard and soft over dealt = soaked(C * o^2, hard, soft).
 
     Coarse grid then refine. Three parameters on a handful of points would overfit
     freely, so the residual is printed beside them: a fit worth believing sits under
     about half a hitpoint, which is the rounding on the numbers themselves."""
     def err(c, h, sf):
-        return sum((soaked(c * o * o, h, sf) - d) ** 2 for o, d in pts)
+        return sum((soaked(c * o * o, h, sf, armpen) - d) ** 2 for o, d in pts)
 
     best, span = None, None
     for step, around in ((2.0, None), (0.5, True), (0.125, True)):
@@ -313,6 +358,14 @@ def report_damage_model(rows):
     foe = h.get("foegob")
     dmgs = [r for r in rows if r.get("ev") == "dmg"]
     cols = move_colours(rows)
+    wp = weapon_of(rows)
+    armpen, wname, wql, basedmg = 0.0, None, 0.0, None
+    if wp and wp[0] != "unmatched":
+        rec, wql, _res = wp
+        ap = val(rec.get("armorpen"))
+        armpen = (ap / 100.0) if ap else 0.0
+        wname = rec.get("name")
+        basedmg = val(rec.get("basedmg"))
     pts = defaultdict(list)
     for m in [r for r in rows if r.get("ev") == "move" and r["actor"] == "me"]:
         b = near_before(sts, m["t"])
@@ -336,11 +389,20 @@ def report_damage_model(rows):
             print("  damage model  dealt = soak(C * opening^2), opening read on the")
             print("                colour the move itself raises")
             shown = True
-        c, hard, soft, rms = fit_soak(p)
+        c, hard, soft, rms = fit_soak(p, armpen)
         which = ",".join(COLOURS[i] for i in sorted(cols.get(name, set()))) or "combined"
         print("    %-22s n=%-2d on %-13s C=%6.1f  hard=%4.1f  soft=%5.1f  rms=%.2f"
               % (name[:22], len(p), which, c, hard, soft, rms))
         print("      %s" % "  ".join("%.2f:%d" % (o, d) for o, d in p))
+        # What the wiki's damage term predicts C should be, from the weapon in the
+        # gear dump and the strength in the header. Agreement is the check that the
+        # fit is measuring the model rather than absorbing its errors into C.
+        st = (h.get("attr") or {}).get("str")
+        if basedmg and st and wql:
+            base = basedmg * (((wql * st) ** 0.5) / 10.0) ** 0.5
+            print("      %s q%.2f, armpen %.1f%%, str %d: weapon scale %.1f, so a move "
+                  "listed at 25%% of weapon damage predicts C = %.1f"
+                  % (wname, wql, armpen * 100, st, base, base * 0.25))
     return shown
 
 

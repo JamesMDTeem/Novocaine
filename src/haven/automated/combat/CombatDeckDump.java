@@ -78,16 +78,25 @@ public final class CombatDeckDump {
         try {
             if((fw == null) || (Client.gameDir == null))
                 return;
-            String json = build(fw);
-            if((json == null) || json.equals(last))
+            /* Compare the body, not the finished file: the finished file carries a wall
+             * clock, so comparing that would make every payload look new and the probe
+             * would write a fresh copy every few seconds. It did, 128 times. */
+            String body = build(fw);
+            if((body == null) || body.equals(last))
                 return;
+            String json = new JsonObj()
+                .put("kind", "combat-deck")
+                .put("schema", 2)
+                .put("wall", System.currentTimeMillis())
+                .raw("body", body)
+                .end();
             String safe = (Config.playername == null ? "unknown"
                            : Config.playername.replaceAll("[^A-Za-z0-9_-]", "_"));
             Path dir = Paths.get(Client.gameDir, "CombatLogs");
             Files.createDirectories(dir);
             Path p = dir.resolve("deck-" + safe + "-" + System.currentTimeMillis() + ".json");
             Files.write(p, json.getBytes(StandardCharsets.UTF_8));
-            last = json;
+            last = body;
         } catch(Exception e) {
             /* never disturb the client, and never cost the caller its fight log */
         }
@@ -108,10 +117,11 @@ public final class CombatDeckDump {
             acts.append(one);
         }
         acts.append(']');
+        /* An empty list is the state before the server has sent "avail"; writing it would
+         * bury the real dump under a file that says nothing. */
+        if(first)
+            return(null);
         return(new JsonObj()
-               .put("kind", "combat-deck")
-               .put("schema", 1)
-               .put("wall", System.currentTimeMillis())
                .put("char", Config.playername)
                /* The deck's own limits, which bound every optimiser search: how many points
                 * may be spent, and how many saved decks exist. */
@@ -134,10 +144,27 @@ public final class CombatDeckDump {
                     * second is what this character actually fought with. */
                    .put("maxlevel", a.a)
                    .put("decklevel", a.u)
+                   /* Where the numbers actually are. The sheet renders this text under
+                    * the move name, and it carries initiative cost, attack weight,
+                    * attack type, openings, damage, grievous fraction and base
+                    * cooldown. It ships with the resource, so it is present for every
+                    * move whether or not the server has been asked for a tooltip. */
+                   .put("pagina", pagina(res))
+                   /* Structured, but only for moves the server has sent a "tt" for,
+                    * which it does on demand. Absent for anything never hovered. */
                    .raw("info", info(a))
                    .end());
         } catch(Exception e) {
             /* a still-loading action costs that action, not the dump */
+            return(null);
+        }
+    }
+
+    private static String pagina(Resource res) {
+        try {
+            Resource.Pagina pag = res.layer(Resource.pagina);
+            return((pag == null) ? null : pag.text);
+        } catch(Exception e) {
             return(null);
         }
     }

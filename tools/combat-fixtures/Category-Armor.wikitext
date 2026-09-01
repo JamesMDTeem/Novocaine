@@ -1,0 +1,42 @@
+This category is used to list all clothing objects which provide armor to player characters when worn.
+
+== How armor works ==
+<s>'''If a piece of armor has class X/Y, it means that it can absorb X hitpoints without taking damage, and then absorb Y more hitpoints, subtracting them from its HP, before any damage is passed to a player.'''
+
+If you have several pieces of armor equipped, their damageless absorption takes precedence, and any absorption that deals damage to the armor is dealt evenly over the pieces equipped.
+
+For example, if you have leather armor (1/2), leather pants (also 1/2) and leather boots (0/2) equipped, each with at least 2 HP, and you take 5 points of damage, 2 points are absorbed damagelessly, and the three remaining points are distributed evenly, so that each piece takes one hitpoint of damage. It would take 9 points of damage or more from an attack to actually deal damage to the player. (by Loftar)
+
+While moving your armor still provides full absorption but your defense bar is negated.
+
+"Indeed. Since the new combat system, every attack has a certain armor penetration value, with unarmed attacks usually having larger such than melee attacks." - Loftar Aug 07, 2010 </s>
+
+Above information is questionably relevant. 
+
+as of Update {{patch|Fighting Quail}} Armor has been significantly modified.
+
+Quote straight from Jorb in the aforementioned update:
+
+{{quote|t=(Combat Changes:) The armor model has been changed. Previously hard armor soak removed damage with no damage to the armor, while soft armor soak removed damage with damage to the armor. Under the new model, both hard and soft armor soak eat damage at a cost of damage to the armor, but the soft soak is only gradually applied to incoming damage, with the full soft soak value of damage only being deducted from the damage if the damage exceeds 2x the soft soak value.}}
+
+{{quote|t=An exact formula for calculating soft soak would be. If X is ((Total damage - Hard soak) / Soft Soak) then the proportion of soft soak actually used to soak damage is 1 - (1 - X)^2.}}
+
+{{quote|t=For example: Pelle is hit by an incoming attack of 110 damage, has 75 total hard soak, and 35 total soft soak. The 75 hard soak is deducted from the incoming damage, quite simply, and distributed as armor damage over the armor parts in proportion to their hard soak, and 35 points of incoming damage then remain. The total soft soak interval in this case is 70 damage, i.e., at 70 points of incoming damage (35 soft soak x 2) above hard soak, the entire soft soak value will be used to soak damage, which means that the 35 damage remaining in our example corresponds exactly to half the soft soak interval, which, using the underlying parabola, means that ~26 points of damage will actually be soaked by the armor in this case, for a total of 101 points of damage soaked. Pelle will take 9 points of damage. All this assuming no weapon or attack has armor penetration.}}
+
+{{quote|t=Weapons and attacks with armor penetration, most have some amount of it, will apply a portion of their damage directly to the target before any other armor calculations are done, just as they always have.}}
+
+{{quote|t=All armors have had their wear significantly increased to account for the increased amount of damage they should be taking.}}
+
+Note. The formula above is not consistent with the example. And the formula doesn't make sense because at X 2 damage reduction becomes 0. Slightly modified formula that is consistent with example will be <code>1 - (1 - X/2)^2</code>.
+
+<div class="mrfloat mw-collapsible" data-expandtext="show data table" data-collapsetext="hide data table" style="line-height: 1em;">
+{{#ask: [[Category:Armor]]
+| limit={{#ask:[[Category:Armor]]|format=count}}
+| mainlabel=Armor
+|
+| ?armorhp = <span class="vht">HitPoints </span> |+align=right
+| ?absorbX = <span class="vht">Soft Soak</span> | ?absorbY = <span class="vht">Hard Soak</span> | ?statAGI = <span class="vht">Agility</span> | ?slot    = <span class="vht">Slot</span>
+}}
+</div>
+
+[[Category:Clothing]]
