@@ -23,6 +23,9 @@ PAIR_MS = 150
 # Openings settle within a client tick; a sample much later than this has had
 # time to decay, which would understate the opening the move actually inflicted.
 AFTER_MS = 600
+# Armour is a flat subtraction, but a fraction of a hit always gets through. Points
+# below this share of raw damage are treated as held up by that floor, not by the fit.
+FLOOR = 0.30
 
 COLOURS = ("green", "blue", "yellow", "red")
 
@@ -207,6 +210,109 @@ def report_effects(rows):
                  dtxt, delta))
 
 
+def combined(op):
+    """Multiple colours combine as 1 - product(1 - o_i), per the wiki. With a single
+    colour open this is just that colour."""
+    p = 1.0
+    for v in op:
+        p *= (1.0 - v / 100.0)
+    return 1.0 - p
+
+
+def fit(pts):
+    """Least squares of dealt against opening squared. Returns (C, A, R2)."""
+    xs = [o * o for o, _ in pts]
+    ys = [float(d) for _, d in pts]
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((x - mx) ** 2 for x in xs)
+    if sxx == 0:
+        return None
+    c = sum((xs[i] - mx) * (ys[i] - my) for i in range(n)) / sxx
+    b = my - c * mx
+    res = sum((ys[i] - (c * xs[i] + b)) ** 2 for i in range(n))
+    tot = sum((y - my) ** 2 for y in ys)
+    return (c, -b, (1 - res / tot) if tot else float("nan"))
+
+
+def fit_clamped(pts):
+    """Fit C and A while dropping hits the armour floor was holding up.
+
+    A flat subtraction cannot take a hit to zero - a fraction always gets through -
+    so at low openings the observed damage stops following the line and the fit is
+    dragged badly wrong. On a fight where 13 armour was known to be worn, fitting
+    every point gave A = 6.1; dropping the two floor-bound ones gave 13.4.
+
+    Returns (C, A, R2, dropped) where dropped are the excluded points."""
+    keep, dropped = list(pts), []
+    for _ in range(len(pts)):
+        if len(keep) < 4:
+            break
+        f = fit(keep)
+        if f is None:
+            break
+        c, a, _r2 = f
+        # A point is floor-bound when the line would have put it at or below the
+        # fraction that always gets through.
+        out = [(o, d) for (o, d) in keep if (c * o * o - a) < FLOOR * c * o * o]
+        if not out:
+            break
+        keep = [q for q in keep if q not in out]
+        dropped += out
+    f = fit(keep) if len(keep) >= 3 else None
+    return (f, keep, dropped)
+
+
+def report_damage_model(rows):
+    """Fit dealt = C * o^2 - A over one fight, per move.
+
+    The wiki's damage term is proportional to the square of the combined opening, and
+    everything else in it - base damage, weapon quality, strength, mu - is constant
+    within a fight, so it collapses into a single C for that matchup. Flat armour
+    shows up as the intercept. Recovering A from damage alone is the armour estimator;
+    recovering C is what a simulator needs in order to predict a hit."""
+    sts = states(rows)
+    h = header(rows)
+    if not sts or not h:
+        return
+    foe = h.get("foegob")
+    dmgs = [r for r in rows if r.get("ev") == "dmg"]
+    pts = defaultdict(list)
+    for m in [r for r in rows if r.get("ev") == "move" and r["actor"] == "me"]:
+        b = near_before(sts, m["t"])
+        if b is None or not b.get("foe"):
+            continue
+        hits = [x for x in dmgs if abs(x["t"] - m["t"]) <= PAIR_MS
+                and x["gob"] == foe and x["ch"] in ("SHP", "HHP", "ARM")]
+        if not hits:
+            continue
+        pts[m.get("name") or m["move"]].append(
+            (combined(b["foe"]), sum(x["v"] for x in hits)))
+
+    shown = False
+    for name in sorted(pts):
+        p = sorted(pts[name])
+        if len(p) < 4:
+            continue
+        if not shown:
+            print("")
+            print("  damage model  dealt = C * opening^2 - A   (A is the defender's armour)")
+            shown = True
+        f, keep, dropped = fit_clamped(p)
+        if f is None:
+            continue
+        c, a, r2 = f
+        print("    %-22s n=%-3d C=%6.1f  A=%5.1f  R2=%.4f" % (name, len(keep), c, a, r2))
+        print("      %s" % "  ".join("%.2f:%d" % (o, d) for o, d in p))
+        if dropped:
+            frac = ["%.0f%%" % (100.0 * d / (c * o * o)) for o, d in sorted(dropped)
+                    if c * o * o > 0]
+            print("      %d hit(s) excluded as floor-bound: %s; they let through %s of raw"
+                  % (len(dropped), " ".join("%.2f:%d" % q for q in sorted(dropped)),
+                     ", ".join(frac)))
+    return shown
+
+
 def report_damage(rows):
     sts = states(rows)
     dmgs = [r for r in rows if r.get("ev") == "dmg"]
@@ -354,6 +460,7 @@ def main(argv):
         report_header(rows, p)
         report_moves(rows)
         report_effects(rows)
+        report_damage_model(rows)
         report_damage(rows)
         report_anomalies(rows, bad)
         print()
