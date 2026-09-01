@@ -274,10 +274,44 @@ public class Avaview extends PView {
 	    }
 	}
 	if (gob != null) {
-		if (drawv && gob.gobSpeed > 0)
-			//g.text(String.format("%.2f u/s", gob.gobSpeed), speedCoord);
-			g.aimage(PUtils.strokeTex(Text.renderstroked(String.format("%.2f u/s", gob.gobSpeed))), speedCoord, 0, 0); // ND: stroked text. Previous (unstroked) line was killing my framerate, idk why.
+		if (drawv && gob.gobSpeed > 0) {
+			String s = String.format("%.2f u/s", gob.gobSpeed);
+			if(!s.equals(speedstr)) {
+				if(speedtex != null)
+					speedtex.dispose();
+				speedtex = PUtils.strokeTex(Text.renderstroked(s));
+				speedstr = s;
+			}
+			g.aimage(speedtex, speedCoord, 0, 0);
+		}
 	}
+    }
+
+    /* Rendered once per distinct reading rather than once per frame.
+     *
+     * renderstroked builds a BufferedImage and strokeTex wraps it in a fresh
+     * TexI, so drawing this straight from the format string created and
+     * uploaded a new GL texture on every frame the widget was drawn. It shows
+     * up in the texture-allocation ring as a haven.TexI@ pair arriving once
+     * per frame, forever, and it is what the note that used to sit on that
+     * line - that the unstroked version "was killing my framerate, idk why" -
+     * was actually seeing: the cost was never stroked vs unstroked, it was
+     * building a texture per frame either way.
+     *
+     * Keying on the rendered string rather than on the speed value is what
+     * makes it hit: a character's speed is constant while it runs, so the
+     * string is stable across a whole run and the texture is rebuilt only
+     * when the number visibly changes. */
+    private String speedstr = null;
+    private TexI speedtex = null;
+
+    public void destroy() {
+	if(speedtex != null) {
+	    speedtex.dispose();
+	    speedtex = null;
+	    speedstr = null;
+	}
+	super.destroy();
     }
 
     public boolean mousedown(MouseDownEvent ev) {
