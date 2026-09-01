@@ -478,6 +478,83 @@ public abstract class UILoop implements Console.Directory {
      * sampler, so both are volatile.
      */
     public static volatile double statidle, statlag;
+
+    /**
+     * Where the frame's time actually went, per phase, sampled every frame.
+     *
+     * fps, idle and lag between them say what KIND of slowdown is happening but
+     * never which work is doing it. The terrain-crossing dip reads as a loop with
+     * more to do than it has time for - idle at nothing, the GPU finishing early
+     * and waiting - and that narrows it to "somewhere on the UI thread" and no
+     * further. Two hypotheses have already died at that boundary for want of this.
+     *
+     * CPUProfile records most of the same phases, but only under -Dhaven.profile,
+     * and into a graph widget rather than the log, so it says nothing about a
+     * session someone else ran. This is always on: nine rtime() calls a frame,
+     * about 300ns, against frames of 7ms and up.
+     *
+     * Two phases here are NOT in the CPUProfile set, and both are places a stall
+     * can hide completely:
+     *
+     * - lock: acquiring the ui monitor at the top of tick(). CPUProfile's first
+     *   marker is inside the synchronized block, so the wait to get in is billed
+     *   to the previous phase. The input pump takes that same monitor every 8ms.
+     * - submit: env.submit(), which hands the frame's command buffer to the GL
+     *   thread from run(), outside Frame entirely.
+     *
+     * Written only by the UI thread, folded into the accumulator under phlock once
+     * per frame, and drained by the sampler. Reported as mean/max ms per phase,
+     * alongside the wall-clock frame interval - the phases will not sum to it, and
+     * what is left over is the part of the loop that is not in any of them
+     * (env.render, frame construction, the samplers' own tick).
+     */
+    public static final String[] PHASES = {"lock", "dwait", "disp", "stick", "utick", "draw", "swap", "submit", "wait"};
+    static final int P_LOCK = 0, P_DWAIT = 1, P_DISP = 2, P_STICK = 3, P_UTICK = 4,
+	P_DRAW = 5, P_SWAP = 6, P_SUBMIT = 7, P_WAIT = 8;
+    private static final Object phlock = new Object();
+    private static final double[] phsum = new double[PHASES.length], phmax = new double[PHASES.length];
+    private static double phwall = 0, phlast = 0;
+    private static int phframes = 0;
+
+    private static void recordphases(Frame f) {
+	double now = Utils.rtime();
+	synchronized(phlock) {
+	    for(int i = 0; i < phsum.length; i++) {
+		double d = f.ph[i];
+		phsum[i] += d;
+		if(d > phmax[i])
+		    phmax[i] = d;
+	    }
+	    if(phlast > 0)
+		phwall += now - phlast;
+	    phframes++;
+	}
+	phlast = now;
+    }
+
+    /**
+     * Drains the accumulator into one log field and resets it. Called by the
+     * sampler, roughly once a second; empty string if no frame has completed
+     * since the last call.
+     */
+    public static String phasestats() {
+	StringBuilder sb = new StringBuilder();
+	synchronized(phlock) {
+	    if(phframes == 0)
+		return("");
+	    sb.append(String.format("frame:%.2f", (phwall * 1000.0) / phframes));
+	    for(int i = 0; i < phsum.length; i++) {
+		sb.append(',').append(PHASES[i]).append(':')
+		    .append(String.format("%.2f/%.1f", (phsum[i] * 1000.0) / phframes, phmax[i] * 1000.0));
+		phsum[i] = 0;
+		phmax[i] = 0;
+	    }
+	    phwall = 0;
+	    phframes = 0;
+	}
+	return(sb.toString());
+    }
+
     private double framelag, uidle;
     protected void updstats(Frame f) {
 	int fi = (int)(f.frameno % frames.length);
@@ -501,6 +578,7 @@ public abstract class UILoop implements Console.Directory {
 
     protected void framedone(Frame f) {
 	updstats(f);
+	recordphases(f);
     }
 
     public static class Frame {
@@ -514,6 +592,8 @@ public abstract class UILoop implements Console.Directory {
 	public GPUProfile.Frame gprof = null;
 	public RenderProfile rprofc = null;
 	public double ttime, ftime, waited;
+	/** Per-phase durations for this frame, indexed by UILoop.P_*. */
+	public final double[] ph = new double[PHASES.length];
 
 	public Frame(UILoop loop, UI ui, Render out, Frame prev) {
 	    this.loop = loop;
@@ -524,7 +604,10 @@ public abstract class UILoop implements Console.Directory {
 	}
 
 	protected void tick() {
+	    double t0 = Utils.rtime();
 	    synchronized(ui) {
+		double t1 = Utils.rtime();
+		ph[P_LOCK] = t1 - t0;
 		CPUProfile.phase(prof, "dwait");
 		if(rprofc != null) rprofc.new Part("tick", out);
 		if(gprof  != null) gprof.part(out, "tick");
@@ -533,11 +616,15 @@ public abstract class UILoop implements Console.Directory {
 		 * before the frame ticks on it, so a frame never draws from
 		 * input it has not yet seen. */
 		loop.dispatch(ui);
+		double t2 = Utils.rtime();
+		ph[P_DISP] = t2 - t1;
 		CPUProfile.phase(prof, "stick");
 		if(ui.sess != null) {
 		    ui.sess.glob.ctick();
 		    ui.sess.glob.gtick(out);
 		}
+		double t3 = Utils.rtime();
+		ph[P_STICK] = t3 - t2;
 		CPUProfile.phase(prof, "utick");
 		ui.tick();
 		ui.gtick(out);
@@ -545,14 +632,17 @@ public abstract class UILoop implements Console.Directory {
 		Coord sz = loop.wnd.size();
 		if(!ui.root.sz.equals(sz))
 		    ui.root.resize(sz);
+		ph[P_UTICK] = Utils.rtime() - t3;
 	    }
 	}
 
 	protected void display() {
+	    double t0 = Utils.rtime();
 	    CPUProfile.phase(prof, "draw");
 	    if(rprofc != null) rprofc.new Part("draw", out);
 	    if(gprof  != null) gprof.part(out, "draw");
 	    loop.display(ui, out);
+	    ph[P_DRAW] = Utils.rtime() - t0;
 	}
 
 	protected void swapbuffers() {
@@ -575,6 +665,7 @@ public abstract class UILoop implements Console.Directory {
 	    } else {
 		this.ftime = now;
 	    }
+	    ph[P_WAIT] = Utils.rtime() - now;
 	    CPUProfile.end(prof);
 	}
 
@@ -583,7 +674,9 @@ public abstract class UILoop implements Console.Directory {
 	    if(prev != null) {
 		double then = Utils.rtime();
 		prev.sync.waitfor();
-		waited += Utils.rtime() - then;
+		double d = Utils.rtime() - then;
+		waited += d;
+		ph[P_DWAIT] = d;
 	    }
 	}
 
@@ -602,7 +695,12 @@ public abstract class UILoop implements Console.Directory {
 	    if(tickwait) syncwait();
 	    display();
 	    CPUProfile.phase(prof, "aux");
+	    /* Timed out here rather than inside swapbuffers() so that GLFrame's
+	     * override - which adds gl.finish() under SyncMode.FINISH - is inside
+	     * the measurement rather than beside it. */
+	    double t0 = Utils.rtime();
 	    swapbuffers();
+	    ph[P_SWAP] = Utils.rtime() - t0;
 	    if(swapsync) out.fence(sync);
 	}
     }
@@ -658,7 +756,9 @@ public abstract class UILoop implements Console.Directory {
 		    Frame curframe = frame(ui, buf, prevframe);
 		    prevframe = null;
 		    curframe.run();
+		    double subt = Utils.rtime();
 		    env.submit(buf); buf = null;
+		    curframe.ph[P_SUBMIT] = Utils.rtime() - subt;
 		    curframe.fin();
 
 		    framedone(curframe);

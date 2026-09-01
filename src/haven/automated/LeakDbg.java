@@ -533,6 +533,16 @@ public class LeakDbg {
               .append(" gpulag=").append(String.format("%.1fms", haven.UILoop.statlag * 1000.0));
         } catch (Throwable t) {
         }
+        /* Which phase of the frame the time went to, mean/max ms over the sample.
+         * idle and gpulag narrow a slowdown to "the UI thread has too much to do";
+         * only this says what it is doing. Drains the accumulator, so it must be
+         * read exactly once per sample. */
+        try {
+            String ph = haven.UILoop.phasestats();
+            if (!ph.isEmpty())
+                sb.append(" ph=").append(ph);
+        } catch (Throwable t) {
+        }
         appendAlloc(sb, now);
 
         if (prevTexAllocAt == 0)
