@@ -36,6 +36,15 @@ import haven.render.sl.*;
 
 public class GLProgram implements Disposable {
     public static boolean dumpall = false;
+    /* Shares GLEnvironment's writer rather than opening a second one. Two
+     * BufferedWriters appending to the same file interleave and lose each
+     * other's buffered content. */
+    private static boolean shaderDbgEnabled() {
+	return(GLEnvironment.shaderDbgEnabled());
+    }
+    private static void shaderLog(String line) {
+	GLEnvironment.shaderLog(line);
+    }
     public final GLEnvironment env;
     public final String vsrc, fsrc;
     public final Uniform[] uniforms;
@@ -140,10 +149,17 @@ public class GLProgram implements Disposable {
     }
 
     public static GLProgram build(GLEnvironment env, Collection<ShaderMacro> mods) {
+	boolean dbg = shaderDbgEnabled();
+	double start = dbg ? Utils.rtime() : 0;
 	ProgramContext prog = new ProgramContext();
 	for(ShaderMacro mod : mods)
 	    mod.modify(prog);
 	GLProgram ret = new GLProgram(env, prog);
+	/* Timed because the cost is the point: this is what a cache miss
+	 * actually charges the render thread, and a burst of these lining up
+	 * with a frame-time spike is what identifies a recompile stall. */
+	if(dbg)
+	    shaderLog(String.format("SHADERDBG build prog=%d in %.1fms mods=%s", System.identityHashCode(ret), (Utils.rtime() - start) * 1000, mods));
 	if(dumpall || prog.dump) {
 	    System.err.println(mods + ":");
 	    System.err.println("---> Vertex shader:");
@@ -339,6 +355,8 @@ public class GLProgram implements Disposable {
 		gl.glBindFragDataLocation(this.id, i, fragnms[i]);
 	    gl.glLinkProgram(this.id);
 	    int[] buf = {0};
+	    if(shaderDbgEnabled())
+		shaderLog("SHADERDBG link id=" + id + " prog=" + System.identityHashCode(GLProgram.this));
 	    gl.glGetProgramiv(this.id, GL.GL_LINK_STATUS, buf);
 	    if(buf[0] != 1) {
 		String info = null;

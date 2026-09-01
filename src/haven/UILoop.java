@@ -59,8 +59,70 @@ public abstract class UILoop implements Console.Directory {
 	this.th = new HackThread(this::run, "Haven UI thread");
     }
 
+    /* Input is otherwise drained exactly once per rendered frame, so the
+     * queue does not move at all while a frame is stalled - a second of
+     * stalled presentation is a second in which nothing the player does
+     * reaches a widget, and the batch that finally lands does so against a
+     * world that has since moved on. This drains it on its own cadence
+     * instead, so input keeps flowing at a steady rate regardless of what
+     * the frame time is doing.
+     *
+     * It drains through the same dispatch() the frame loop uses, not a
+     * clicks-only variant: mouse motion and button presses have to stay in
+     * the order they were made, or a press can be delivered before the
+     * motion that says where the pointer was when it happened. Both this and
+     * the frame loop drain from inside synchronized(ui), which is what keeps
+     * the two from interleaving a batch - the queue is only ever read by a
+     * thread holding that monitor, so batches stay whole and ordered.
+     *
+     * Running UI work off the render thread under the ui monitor is what the
+     * click readback in MapView.checkmapclick already does from a GL callback
+     * thread; the invariant being kept is the monitor, not the thread. */
+    private static final int INPUT_PUMP_MS = 8;
+    private volatile Thread inputThread = null;
+
+    private void startInputPump() {
+	if(inputThread != null)
+	    return;
+	Thread it = new HackThread(() -> {
+		try {
+		    while(!Thread.interrupted()) {
+			UI cui;
+			synchronized(uilock) {
+			    cui = this.ui;
+			}
+			if(cui != null) {
+			    synchronized(cui) {
+				dispatch(cui);
+			    }
+			}
+			Thread.sleep(INPUT_PUMP_MS);
+		    }
+		} catch(InterruptedException e) {
+		    /* Normal shutdown. */
+		}
+	    }, "Haven input pump");
+	it.setDaemon(true);
+	inputThread = it;
+	it.start();
+    }
+
+    private void stopInputPump() {
+	Thread it = inputThread;
+	if(it != null) {
+	    inputThread = null;
+	    it.interrupt();
+	    try {
+		it.join(1000);
+	    } catch(InterruptedException e) {
+		Thread.currentThread().interrupt();
+	    }
+	}
+    }
+
     public void start() {
 	this.th.start();
+	startInputPump();
     }
 
     private void setenv(Environment env) {
@@ -448,6 +510,10 @@ public abstract class UILoop implements Console.Directory {
 		CPUProfile.phase(prof, "dwait");
 		if(rprofc != null) rprofc.new Part("tick", out);
 		if(gprof  != null) gprof.part(out, "tick");
+		/* Kept here as well as on the input pump: whatever arrived
+		 * between the pump's last pass and this frame is dispatched
+		 * before the frame ticks on it, so a frame never draws from
+		 * input it has not yet seen. */
 		loop.dispatch(ui);
 		CPUProfile.phase(prof, "stick");
 		if(ui.sess != null) {
@@ -594,6 +660,7 @@ public abstract class UILoop implements Console.Directory {
     }
 
     public void dispose() {
+	stopInputPump();
 	th.interrupt();
 	try {
 	    th.join(5000);

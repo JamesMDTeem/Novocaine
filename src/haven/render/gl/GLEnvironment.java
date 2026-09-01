@@ -781,18 +781,86 @@ public abstract class GLEnvironment implements Environment {
 	final ShaderMacro[] shaders;
 	final GLProgram prog;
 	SavedProg next;
-	boolean used = true;
+	double lastused;
 
 	SavedProg(int hash, ShaderMacro[] shaders, GLProgram prog) {
 	    this.hash = hash;
 	    this.shaders = Arrays.copyOf(shaders, shaders.length);
 	    this.prog = prog;
+	    this.lastused = Utils.rtime();
 	}
     }
 
     private final Object pmon = new Object();
     private SavedProg[] ptab = new SavedProg[32];
     private int nprog = 0;
+
+    /* Programs to keep before eviction considers running at all.
+     *
+     * This used to be a generational sweep: anything not drawn with in the
+     * last sixty seconds was disposed, unconditionally. Programs are rebuilt
+     * on demand, and glCompileShader/glLinkProgram block the render thread,
+     * so a sweep that dropped a few hundred at once bought a stall for every
+     * one of them that came back into view shortly after - which is most of
+     * them, since sixty seconds of not drawing a shader says very little
+     * about whether it is about to be drawn again. Measured against a session
+     * that hitched to ~10fps at intervals: 526 table events, 365 evictions,
+     * four sweeps dropping 217, 36, 36 and 54 programs.
+     *
+     * The working set observed in play peaks under 400, so the cache is left
+     * alone below the cap and only trims down to it when genuinely over,
+     * oldest-used first. A program is a small GPU object next to the several
+     * hundred megabytes of texture the same session holds, so keeping the
+     * ceiling well clear of the working set is the cheap side of this trade.
+     * The cap is the safety valve against unbounded growth, not a target. */
+    private static final int PROG_KEEP = 512;
+
+    static boolean shaderDbgEnabled() {
+	try {
+	    if((haven.OptWnd.cameraDiagnosticsCheckBox != null) && haven.OptWnd.cameraDiagnosticsCheckBox.a)
+		return(true);
+	    return(haven.Utils.getprefb("cameraDiagnostics", false));
+	} catch(Exception e) {
+	    try {
+		return(haven.Utils.getprefb("cameraDiagnostics", false));
+	    } catch(Exception e2) {
+		return(false);
+	    }
+	}
+    }
+
+    private static java.io.BufferedWriter shaderLogWriter = null;
+    private static final java.time.format.DateTimeFormatter shaderLogTime =
+	java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
+
+    /* Timestamped, because the only use for this log is lining its events up
+     * against the frame times in plgob.log and the counters in vmem.log. An
+     * untimed line cannot answer "did the eviction happen during the stall",
+     * which is the entire question. */
+    static void shaderLog(String line) {
+	try {
+	    java.io.BufferedWriter w;
+	    synchronized(GLEnvironment.class) {
+		if(shaderLogWriter == null) {
+		    java.nio.file.Path p = java.nio.file.Paths.get("logs", "shader.log");
+		    java.nio.file.Files.createDirectories(p.getParent());
+		    shaderLogWriter = java.nio.file.Files.newBufferedWriter(p, java.nio.charset.StandardCharsets.UTF_8, java.nio.file.StandardOpenOption.CREATE, java.nio.file.StandardOpenOption.APPEND);
+		}
+		w = shaderLogWriter;
+	    }
+	    String stamp = java.time.LocalDateTime.now().format(shaderLogTime);
+	    synchronized(w) {
+		w.write(stamp);
+		w.write(' ');
+		w.write(line);
+		w.newLine();
+		w.flush();
+	    }
+	} catch(Exception e) {
+	}
+    }
+
+
     private SavedProg findprog(int hash, ShaderMacro[] shaders) {
 	int idx = hash & (ptab.length - 1);
 	outer: for(SavedProg s = ptab[idx]; s != null; s = s.next) {
@@ -838,6 +906,7 @@ public abstract class GLEnvironment implements Environment {
 	save.next = ptab[idx];
 	ptab[idx] = save;
 	nprog++;
+	if(shaderDbgEnabled()) shaderLog("SHADERDBG putprog hash=" + hash + " nprog=" + nprog + " prog=" + System.identityHashCode(prog));
 	if(nprog > ptab.length)
 	    rehash(ptab.length * 2);
     }
@@ -846,7 +915,10 @@ public abstract class GLEnvironment implements Environment {
 	synchronized(pmon) {
 	    SavedProg s = findprog(hash, shaders);
 	    if(s != null) {
-		s.used = true;
+		/* Not logged: this is the hot path, hit for every program on
+		 * every frame, and writing a line per hit costs more than the
+		 * eviction being investigated. */
+		s.lastused = Utils.rtime();
 		return(s.prog);
 	    }
 	}
@@ -860,7 +932,9 @@ public abstract class GLEnvironment implements Environment {
 	    SavedProg s = findprog(hash, shaders);
 	    if(s != null) {
 		prog.dispose();
-		s.used = true;
+		s.lastused = Utils.rtime();
+		if(shaderDbgEnabled())
+		    shaderLog("SHADERDBG getprog race-hit hash=" + hash + " prog=" + System.identityHashCode(s.prog));
 		return(s.prog);
 	    }
 	    putprog(hash, shaders, prog);
@@ -870,27 +944,52 @@ public abstract class GLEnvironment implements Environment {
 
     private void cleanprogs() {
 	synchronized(pmon) {
+	    if(nprog <= PROG_KEEP)
+		return;
+	    /* Over the cap: trim back to it, least-recently-drawn first.
+	     * Locked programs are in use by the renderer right now and are
+	     * never candidates, whatever their age. */
+	    List<SavedProg> cand = new ArrayList<>();
+	    for(int i = 0; i < ptab.length; i++) {
+		for(SavedProg c = ptab[i]; c != null; c = c.next) {
+		    if(c.prog.locked.get() < 1)
+			cand.add(c);
+		}
+	    }
+	    int excess = nprog - PROG_KEEP;
+	    if((excess <= 0) || cand.isEmpty())
+		return;
+	    cand.sort((a, b) -> Double.compare(a.lastused, b.lastused));
+	    int drop = Math.min(excess, cand.size());
+	    Set<SavedProg> doomed = Collections.newSetFromMap(new IdentityHashMap<SavedProg, Boolean>());
+	    for(int i = 0; i < drop; i++)
+		doomed.add(cand.get(i));
+	    if(shaderDbgEnabled())
+		shaderLog("SHADERDBG cleanprogs enter nprog=" + nprog + " size=" + ptab.length + " keep=" + PROG_KEEP + " dropping=" + drop);
 	    for(int i = 0; i < ptab.length; i++) {
 		SavedProg c, p;
 		for(c = ptab[i], p = null; c != null; c = c.next) {
-		    int rc = c.prog.locked.get();
-		    if(c.used || (rc > 0)) {
-			if(rc < 1)
-			    c.used = false;
-			p = c;
-		    } else {
+		    /* Re-checked rather than trusted from the pass above: a
+		     * program can be taken into use between the two. */
+		    if(doomed.contains(c) && (c.prog.locked.get() < 1)) {
 			if(p == null)
 			    ptab[i] = c.next;
 			else
 			    p.next = c.next;
+			if(shaderDbgEnabled())
+			    shaderLog("SHADERDBG cleanprogs evict hash=" + c.hash + " prog=" + System.identityHashCode(c.prog) + " idle=" + String.format("%.1f", Utils.rtime() - c.lastused) + "s");
 			c.prog.dispose();
 			nprog--;
+		    } else {
+			p = c;
 		    }
 		}
 	    }
 	    /* XXX: Rehash into smaller table? It's probably not a
 	     * problem, but it might be nice just for
 	     * completeness. */
+	    if(shaderDbgEnabled())
+		shaderLog("SHADERDBG cleanprogs exit nprog=" + nprog);
 	}
     }
 

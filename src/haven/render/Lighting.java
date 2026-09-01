@@ -143,7 +143,6 @@ public interface Lighting {
 	private final int lswb;
 	private GridLights last;
 	private Object[][] lastlights;
-	private Matrix4f lastproj;
 
 	public LightGrid(int w, int h, int d) {
 	    if(w != Integer.highestOneBit(w)) throw(new IllegalArgumentException("not a power of two: " + w));
@@ -156,6 +155,79 @@ public interface Lighting {
 	    this.hb = Integer.numberOfTrailingZeros(h);
 	    this.db = Integer.numberOfTrailingZeros(d);
 	    lswb = (wb + hb + db + 1) / 2;
+	}
+
+	/* Tolerances for deciding that nothing has changed since the last
+	 * compile. The light parameters carry float positions and attenuations
+	 * that jitter in the last few digits as the camera eases, so an exact
+	 * comparison reports "changed" on essentially every frame of a scene
+	 * that is visually static. LIGHT_EPS is what counts as the same light.
+	 *
+	 * BBOX_SNAP is coarser and does a different job: the grid is built over
+	 * the view volume, so the volume is snapped outwards to a multiple of
+	 * BBOX_SNAP before anything is derived from it. A camera drifting within
+	 * one snap step then lands on a bit-identical volume, which is what
+	 * makes the reuse below hit at all during normal movement. It is in
+	 * world units and deliberately tile-scale: the grid is 64 cells across
+	 * the view volume, so a snap much smaller than a cell would not stop the
+	 * voxel assignment from shifting, and a snap much larger would inflate
+	 * the volume enough to waste grid resolution. */
+	private static final float LIGHT_EPS = 1e-3f;
+	private static final float BBOX_SNAP = 4.0f;
+
+	private static boolean feq(float a, float b) {
+	    return((a == b) || (Math.abs(a - b) <= LIGHT_EPS));
+	}
+
+	/* Deep comparison of the light parameter arrays with the tolerance
+	 * above. Mirrors the shape Arrays.deepEquals walks, but compares
+	 * float[] and Float leaves with feq rather than bit equality. */
+	private static boolean lightsEq(Object[][] a, Object[][] b) {
+	    if(a == b)
+		return(true);
+	    if((a == null) || (b == null) || (a.length != b.length))
+		return(false);
+	    for(int i = 0; i < a.length; i++) {
+		Object[] la = a[i], lb = b[i];
+		if(la == lb)
+		    continue;
+		if((la == null) || (lb == null) || (la.length != lb.length))
+		    return(false);
+		for(int j = 0; j < la.length; j++) {
+		    Object va = la[j], vb = lb[j];
+		    if(va == vb)
+			continue;
+		    if((va == null) || (vb == null))
+			return(false);
+		    if((va instanceof float[]) && (vb instanceof float[])) {
+			float[] fa = (float[])va, fb = (float[])vb;
+			if(fa.length != fb.length)
+			    return(false);
+			for(int k = 0; k < fa.length; k++) {
+			    if(!feq(fa[k], fb[k]))
+				return(false);
+			}
+		    } else if((va instanceof Float) && (vb instanceof Float)) {
+			if(!feq((Float)va, (Float)vb))
+			    return(false);
+		    } else if(!va.equals(vb)) {
+			return(false);
+		    }
+		}
+	    }
+	    return(true);
+	}
+
+	private static Coord3f snapn(Coord3f c) {
+	    return(Coord3f.of((float)Math.floor(c.x / BBOX_SNAP) * BBOX_SNAP,
+			      (float)Math.floor(c.y / BBOX_SNAP) * BBOX_SNAP,
+			      (float)Math.floor(c.z / BBOX_SNAP) * BBOX_SNAP));
+	}
+
+	private static Coord3f snapp(Coord3f c) {
+	    return(Coord3f.of((float)Math.ceil(c.x / BBOX_SNAP) * BBOX_SNAP,
+			      (float)Math.ceil(c.y / BBOX_SNAP) * BBOX_SNAP,
+			      (float)Math.ceil(c.z / BBOX_SNAP) * BBOX_SNAP));
 	}
 
 	private static final Hash<short[]> sahash = new Hash<short[]>() {
@@ -180,11 +252,7 @@ public interface Lighting {
 	    int nlists = 1;
 	    int maxlist = 0;
 
-	    Compiler(Projection proj) {
-		Matrix4f iproj = proj.fin(Matrix4f.id).invert();
-		Volume3f bbox = Volume3f.point(Coord3f.of(HomoCoord4f.fromindc(iproj, clipcorn[0])));
-		for(int i = 1; i < clipcorn.length; i++)
-		    bbox = bbox.include(Coord3f.of(HomoCoord4f.fromindc(iproj, clipcorn[i])));
+	    Compiler(Volume3f bbox) {
 		this.bbox = bbox;
 		gsz = bbox.sz().div(w, h, d);
 		szf = Coord3f.of(1, 1, 1).div(gsz);
@@ -403,15 +471,39 @@ public interface Lighting {
 	    }
 	}
 
+	/* The view volume the grid is built over, snapped outwards to BBOX_SNAP.
+	 * Eight corner transforms, which is cheap enough to run before deciding
+	 * whether a rebuild is needed at all. */
+	private Volume3f viewbox(Projection proj) {
+	    Matrix4f iproj = proj.fin(Matrix4f.id).invert();
+	    Volume3f bbox = Volume3f.point(Coord3f.of(HomoCoord4f.fromindc(iproj, clipcorn[0])));
+	    for(int i = 1; i < clipcorn.length; i++)
+		bbox = bbox.include(Coord3f.of(HomoCoord4f.fromindc(iproj, clipcorn[i])));
+	    return(Volume3f.corn(snapn(bbox.n), snapp(bbox.p)));
+	}
+
 	public State compile(Object[][] lights, Projection proj) {
 	    /* The light grid is rebuilt from scratch on every draw otherwise,
 	     * churning two texture uploads per frame even in a fully static
-	     * scene. Reuse the previous grid while both the light params and
-	     * the projection are bit-identical to what it was built from. */
-	    Matrix4f pm = proj.fin(Matrix4f.id);
-	    if((last != null) && (lastlights != null) && Arrays.deepEquals(lastlights, lights) && lastproj.equals(pm))
+	     * scene.
+	     *
+	     * The projection only reaches the grid through the view volume, so
+	     * that is what gets compared rather than the projection matrix: an
+	     * easing camera perturbs the matrix every frame but keeps landing in
+	     * the same snapped volume, and the grid built from it would come out
+	     * identical. Comparing the matrix instead means a rebuild on every
+	     * frame the camera is in motion, which is most of them.
+	     *
+	     * Both halves of the state have to match to reuse it. The grid says
+	     * which lights reach each voxel, not what those lights are, so the
+	     * volume agreeing is not on its own enough - the light data texture
+	     * is built from the parameters and goes stale if they have changed.
+	     * The bbox is carried by the state too, as the shader's coordinate
+	     * transform reads it. */
+	    Volume3f bbox = viewbox(proj);
+	    if((last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
 		return(last);
-	    Compiler c = new Compiler(proj);
+	    Compiler c = new Compiler(bbox);
 	    int n = Math.min(lights.length, 65535);
 	    for(int i = 0; i < n; i++)
 		c.addlight(i, lights[i]);
@@ -422,7 +514,6 @@ public interface Lighting {
 		last = null;
 	    }
 	    lastlights = lights;
-	    lastproj = pm;
 	    return(last = new GridLights(lights, c.bbox, c.grid, c.listbuf, c.lboff));
 	}
 
