@@ -391,6 +391,82 @@ public class LeakDbg {
         }
     }
 
+    /**
+     * Allocation rate, per thread, for the threads doing most of it.
+     *
+     * The heap total already in the sample line says how much is live; it says nothing
+     * about churn, and churn is what buys GC pauses. A session measured at a steady 130fps
+     * still allocated around 5MB per frame and collected roughly nine times a minute, each
+     * collection a 0.25-0.5s hitch - with no leak anywhere and the heap flat across the
+     * sawtooth. The total alone cannot distinguish that from a healthy client.
+     *
+     * Per thread rather than in total because the answer is only actionable if it names
+     * something: allocation on the render thread is a per-frame cost in the draw path,
+     * allocation on a connection worker is message handling, and the two are not fixed in
+     * the same place. Only the busiest few are printed - the rest is noise at this cadence.
+     *
+     * Costs one getThreadAllocatedBytes call per live thread per sample, which is a cheap
+     * read of a counter HotSpot maintains anyway.
+     */
+    private static com.sun.management.ThreadMXBean allocBean = null;
+    private static boolean allocBeanTried = false;
+    private static final Map<Long, Long> prevThreadAlloc = new ConcurrentHashMap<>();
+    private static long prevAllocAt = 0;
+
+    private static void appendAlloc(StringBuilder sb, long now) {
+        try {
+            if (!allocBeanTried) {
+                allocBeanTried = true;
+                java.lang.management.ThreadMXBean b = ManagementFactory.getThreadMXBean();
+                if (b instanceof com.sun.management.ThreadMXBean) {
+                    com.sun.management.ThreadMXBean sb2 = (com.sun.management.ThreadMXBean) b;
+                    if (sb2.isThreadAllocatedMemorySupported()) {
+                        if (!sb2.isThreadAllocatedMemoryEnabled())
+                            sb2.setThreadAllocatedMemoryEnabled(true);
+                        allocBean = sb2;
+                    }
+                }
+            }
+            if (allocBean == null)
+                return;
+            long dt = (prevAllocAt == 0) ? 0 : (now - prevAllocAt);
+            prevAllocAt = now;
+            long[] ids = allocBean.getAllThreadIds();
+            long[] bytes = allocBean.getThreadAllocatedBytes(ids);
+            java.util.List<long[]> top = new java.util.ArrayList<>();
+            long total = 0;
+            for (int i = 0; i < ids.length; i++) {
+                if (bytes[i] < 0)
+                    continue;
+                Long prev = prevThreadAlloc.put(ids[i], bytes[i]);
+                if (prev == null || dt <= 0)
+                    continue;
+                long d = bytes[i] - prev;
+                if (d <= 0)
+                    continue;
+                total += d;
+                top.add(new long[] {d, ids[i]});
+            }
+            if (dt <= 0)
+                return;
+            sb.append(" alloc=").append(String.format("%.1fMB/s", total * 1000.0 / dt / (1024 * 1024)));
+            top.sort((x, y) -> Long.compare(y[0], x[0]));
+            int n = 0;
+            for (long[] e : top) {
+                if (n++ >= ALLOC_TOP_THREADS)
+                    break;
+                java.lang.management.ThreadInfo ti = allocBean.getThreadInfo(e[1]);
+                String nm = (ti == null) ? ("#" + e[1]) : ti.getThreadName();
+                sb.append(n == 1 ? " allocby=" : ";")
+                  .append(nm).append('=').append(String.format("%.1f", e[0] * 1000.0 / dt / (1024 * 1024)));
+            }
+        } catch (Throwable t) {
+            allocBean = null;
+        }
+    }
+
+    private static final int ALLOC_TOP_THREADS = 4;
+
     private static void sample() {
         UI u = ui;
         long now = System.currentTimeMillis();
@@ -427,6 +503,7 @@ public class LeakDbg {
         sb.append(" heap=").append(String.format("%,d", rt.totalMemory() - rt.freeMemory()))
           .append('/').append(String.format("%,d", rt.maxMemory()))
           .append(" fps=").append(String.format("%.1f", fps));
+        appendAlloc(sb, now);
 
         if (prevTexAllocAt == 0)
             prevTexAllocAt = now;
