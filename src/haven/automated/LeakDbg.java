@@ -161,6 +161,11 @@ public class LeakDbg {
                 sampler.setDaemon(true);
                 sampler.start();
             }
+            if (watchdog == null) {
+                watchdog = new Thread(LeakDbg::watch, "leakdbg-stall");
+                watchdog.setDaemon(true);
+                watchdog.start();
+            }
         }
     }
 
@@ -360,6 +365,83 @@ public class LeakDbg {
              * carry on - the rest of the sampler is still worth having. */
             NLog.log(LOG, tag("heapclass") + " unavailable: " + t);
         }
+    }
+
+    /**
+     * Frame-stall watchdog: catches a slow frame while it is still running and takes the
+     * UI thread's stack.
+     *
+     * The per-phase timings say which phase a stall lands in, and for utick that answer is
+     * "the widget tree", which is where the trail goes cold - the tree is walked twice per
+     * frame and every widget in it is a candidate. A stack trace names the method instead
+     * of the phase. The UI thread cannot take its own while it is stuck in one, so this
+     * runs beside it.
+     *
+     * Cadence is well under the stalls being chased (observed maxima run from several
+     * hundred milliseconds to nine seconds), so a stall is sampled several times over and
+     * a repeated frame is only reported once - the interesting output is one stack per
+     * stall, not one per poll. Cost is a volatile read every {@value #STALL_POLL_MS} ms
+     * and, only while a frame is genuinely overrunning, one getStackTrace.
+     */
+    private static final long STALL_POLL_MS = 120L;
+    private static final double STALL_MS = 400.0;
+    private static final long STALL_QUIET_MS = 3000L;
+    private static final int STALL_FRAMES = 24;
+    private static volatile Thread watchdog;
+    private static double lastStallFrame = -1;
+    private static long lastStallAt = 0;
+
+    private static void watch() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                double started = haven.UILoop.statframe;
+                if (started > 0) {
+                    double age = (haven.Utils.rtime() - started) * 1000.0;
+                    long now = System.currentTimeMillis();
+                    /* Keyed on the frame's own start time so a stall that spans several
+                     * polls reports once; the quiet period then keeps a run of separate
+                     * bad frames from filling the log with near-identical stacks. */
+                    if ((age >= STALL_MS) && (started != lastStallFrame)
+                        && ((now - lastStallAt) >= STALL_QUIET_MS)) {
+                        lastStallFrame = started;
+                        lastStallAt = now;
+                        dumpStall(age);
+                    }
+                }
+                Thread.sleep(STALL_POLL_MS);
+            } catch (InterruptedException e) {
+                return;
+            } catch (Throwable t) {
+                /* Never let the watchdog take the client down; it is a probe. */
+                try {
+                    Thread.sleep(STALL_POLL_MS);
+                } catch (InterruptedException e2) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private static void dumpStall(double age) {
+        Thread ui = haven.UILoop.statuithread;
+        if (ui == null)
+            return;
+        int pi = haven.UILoop.statphase;
+        String pn = ((pi >= 0) && (pi < haven.UILoop.PHASES.length)) ? haven.UILoop.PHASES[pi] : "?";
+        StackTraceElement[] st = ui.getStackTrace();
+        StringBuilder sb = new StringBuilder(tag("STALL"));
+        sb.append(String.format(" frame running %.0fms, in phase %s - UI thread stack:", age, pn));
+        int n = 0;
+        for (StackTraceElement e : st) {
+            sb.append("\n    ").append(e);
+            if (++n >= STALL_FRAMES) {
+                sb.append("\n    ... (").append(st.length - n).append(" more)");
+                break;
+            }
+        }
+        if (st.length == 0)
+            sb.append("\n    (no stack - thread not running Java code)");
+        NLog.log(LOG, sb.toString());
     }
 
     private static void run() {

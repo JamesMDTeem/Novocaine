@@ -480,6 +480,24 @@ public abstract class UILoop implements Console.Directory {
     public static volatile double statidle, statlag;
 
     /**
+     * The frame currently in progress, for the stall watchdog to look at.
+     *
+     * A phase mean says which phase is expensive on average and a phase max says
+     * how bad one frame got, but neither names the code: utick is the whole
+     * widget tree walked twice, and "the tree was slow" is where the trail ends.
+     * The stalls worth chasing here run to whole seconds, which is long enough
+     * that something outside the loop can notice one WHILE it is happening and
+     * take the UI thread's stack - and a stack names the method.
+     *
+     * statframe is the rtime the current frame started, or 0 between frames;
+     * statphase is the phase index it was last seen entering. The UI thread
+     * cannot sample itself, so the thread is published for the watchdog to walk.
+     */
+    public static volatile double statframe = 0;
+    public static volatile int statphase = -1;
+    public static volatile Thread statuithread = null;
+
+    /**
      * Where the frame's time actually went, per phase, sampled every frame.
      *
      * fps, idle and lag between them say what KIND of slowdown is happening but
@@ -508,9 +526,9 @@ public abstract class UILoop implements Console.Directory {
      * what is left over is the part of the loop that is not in any of them
      * (env.render, frame construction, the samplers' own tick).
      */
-    public static final String[] PHASES = {"lock", "dwait", "disp", "stick", "utick", "draw", "swap", "submit", "wait"};
-    static final int P_LOCK = 0, P_DWAIT = 1, P_DISP = 2, P_STICK = 3, P_UTICK = 4,
-	P_DRAW = 5, P_SWAP = 6, P_SUBMIT = 7, P_WAIT = 8;
+    public static final String[] PHASES = {"lock", "dwait", "disp", "stick", "wtick", "gtick", "hover", "draw", "swap", "submit", "wait"};
+    static final int P_LOCK = 0, P_DWAIT = 1, P_DISP = 2, P_STICK = 3, P_WTICK = 4, P_GTICK = 5,
+	P_HOVER = 6, P_DRAW = 7, P_SWAP = 8, P_SUBMIT = 9, P_WAIT = 10;
     private static final Object phlock = new Object();
     private static final double[] phsum = new double[PHASES.length], phmax = new double[PHASES.length];
     private static double phwall = 0, phlast = 0;
@@ -608,6 +626,7 @@ public abstract class UILoop implements Console.Directory {
 	    synchronized(ui) {
 		double t1 = Utils.rtime();
 		ph[P_LOCK] = t1 - t0;
+		statphase = P_DISP;
 		CPUProfile.phase(prof, "dwait");
 		if(rprofc != null) rprofc.new Part("tick", out);
 		if(gprof  != null) gprof.part(out, "tick");
@@ -625,19 +644,27 @@ public abstract class UILoop implements Console.Directory {
 		}
 		double t3 = Utils.rtime();
 		ph[P_STICK] = t3 - t2;
+		statphase = P_WTICK;
 		CPUProfile.phase(prof, "utick");
 		ui.tick();
+		double t4 = Utils.rtime();
+		ph[P_WTICK] = t4 - t3;
+		statphase = P_GTICK;
 		ui.gtick(out);
+		double t5 = Utils.rtime();
+		ph[P_GTICK] = t5 - t4;
+		statphase = P_HOVER;
 		ui.mousehover(ui.mc);
+		ph[P_HOVER] = Utils.rtime() - t5;
 		Coord sz = loop.wnd.size();
 		if(!ui.root.sz.equals(sz))
 		    ui.root.resize(sz);
-		ph[P_UTICK] = Utils.rtime() - t3;
 	    }
 	}
 
 	protected void display() {
 	    double t0 = Utils.rtime();
+	    statphase = P_DRAW;
 	    CPUProfile.phase(prof, "draw");
 	    if(rprofc != null) rprofc.new Part("draw", out);
 	    if(gprof  != null) gprof.part(out, "draw");
@@ -691,6 +718,7 @@ public abstract class UILoop implements Console.Directory {
 	    if(!swapsync) out.fence(sync);
 	    if(!tickwait) syncwait();
 	    ttime = Utils.rtime();
+	    statframe = ttime;
 	    tick();
 	    if(tickwait) syncwait();
 	    display();
@@ -735,6 +763,7 @@ public abstract class UILoop implements Console.Directory {
     }
 
     private void run() {
+	statuithread = Thread.currentThread();
 	Render buf = null;
 	try {
 	    Frame prevframe = null;
@@ -761,6 +790,7 @@ public abstract class UILoop implements Console.Directory {
 		    curframe.ph[P_SUBMIT] = Utils.rtime() - subt;
 		    curframe.fin();
 
+		    statframe = 0;
 		    framedone(curframe);
 		    (prevframe = curframe).prev = null;
 		} finally {
