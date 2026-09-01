@@ -57,6 +57,14 @@ $modules = @(
     'java.compiler'      # the client compiles resource code at runtime
     'java.desktop'       # AWT/Swing, and the JOGL canvas underneath it
     'java.management'
+    # LeakDbg's diagnostics: per-thread allocation rates come from
+    # com.sun.management.ThreadMXBean, and the heap class histogram from the
+    # com.sun.management DiagnosticCommand MBean. Neither is in
+    # java.management, so without this both are silently absent on the
+    # runtime we actually ship - which is the one the reports come from.
+    # jdeps cannot see either: they are reached by instanceof and by MBean
+    # name, so nothing in the bytecode names the module.
+    'jdk.management'
     'java.prefs'         # every Utils.getpref* call lands here
     'java.sql'           # sqlite-jdbc
     'jdk.unsupported'    # sun.misc.Unsafe, required by lwjgl-fat.jar

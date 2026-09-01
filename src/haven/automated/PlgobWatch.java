@@ -61,6 +61,24 @@ import java.util.Collection;
 public class PlgobWatch {
     private static final String LOG = "plgob.log";
 
+    /**
+     * Process id, on every beat.
+     *
+     * Every client of a multi-boxed crew writes into this one file, and until
+     * now nothing in a beat line said which one wrote it. A crew of five is
+     * five interleaved streams that read as one client behaving erratically -
+     * and the character name only separates them by luck, since it is there to
+     * say which character, not which process. vmem.log has been pid-tagged for
+     * a while; this is the same tag so the two can be joined.
+     */
+    private static String pid() {
+        try {
+            return(" p" + ProcessHandle.current().pid());
+        } catch(Throwable t) {
+            return("");
+        }
+    }
+
     /* One serial per MapView ever built this run. If two views ever coexist - the old one
      * surviving an instance change while a new one is created - their beats interleave under
      * different serials, and the one being watched need not be the one on screen. That has been
@@ -431,7 +449,7 @@ public class PlgobWatch {
             }
         }
         NLog.log(LOG, String.format(
-            "beat mv#%d chr=%s id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
+            "beat" + pid() + " mv#%d chr=%s id=%d plid=%s player=%s rc=%s getc=%s camera=%s cam=%s eye=%s tgt=%s"
                 + " lag=%.1f lagpeak=%.1f dpos=%s dgap=%.1f dgappeak=%.1f"
                 + " rcgap=%.1f rcgappeak=%.1f"
                 + " scroff=%.0fpx scroffpeak=%.0fpx vp=%s pipecam=%s pipeproj=%s"

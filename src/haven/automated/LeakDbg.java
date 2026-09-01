@@ -417,15 +417,33 @@ public class LeakDbg {
         try {
             if (!allocBeanTried) {
                 allocBeanTried = true;
-                java.lang.management.ThreadMXBean b = ManagementFactory.getThreadMXBean();
-                if (b instanceof com.sun.management.ThreadMXBean) {
-                    com.sun.management.ThreadMXBean sb2 = (com.sun.management.ThreadMXBean) b;
-                    if (sb2.isThreadAllocatedMemorySupported()) {
-                        if (!sb2.isThreadAllocatedMemoryEnabled())
-                            sb2.setThreadAllocatedMemoryEnabled(true);
-                        allocBean = sb2;
+                /* Says why when it cannot run. The first version of this went
+                 * quiet instead, and the reason turned out to be that the JRE
+                 * we ship is jlinked without jdk.management, so the class is
+                 * simply absent - which is exactly the kind of thing a silent
+                 * probe will never tell you, on exactly the runtime whose logs
+                 * you are reading. */
+                String why = null;
+                try {
+                    java.lang.management.ThreadMXBean b = ManagementFactory.getThreadMXBean();
+                    if (!(b instanceof com.sun.management.ThreadMXBean)) {
+                        why = "ThreadMXBean is " + b.getClass().getName() + ", not com.sun.management";
+                    } else {
+                        com.sun.management.ThreadMXBean sb2 = (com.sun.management.ThreadMXBean) b;
+                        if (!sb2.isThreadAllocatedMemorySupported()) {
+                            why = "thread allocation counters unsupported by this JVM";
+                        } else {
+                            if (!sb2.isThreadAllocatedMemoryEnabled())
+                                sb2.setThreadAllocatedMemoryEnabled(true);
+                            allocBean = sb2;
+                        }
                     }
+                } catch (Throwable t) {
+                    why = t.getClass().getSimpleName() + ": " + t.getMessage()
+                        + " (jdk.management missing from the runtime?)";
                 }
+                if (why != null)
+                    NLog.log(LOG, tag("alloc") + " per-thread allocation unavailable - " + why);
             }
             if (allocBean == null)
                 return;
