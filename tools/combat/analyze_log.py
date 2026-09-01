@@ -17,6 +17,9 @@ import glob
 import os
 from collections import defaultdict
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import model
+
 # A move and the damage it caused arrive as separate messages a few milliseconds
 # apart, in either order, so the pairing window is symmetric.
 PAIR_MS = 150
@@ -254,33 +257,18 @@ def val(x):
 
 def combined(op, colours=None):
     """Openings combine as 1 - product(1 - o_i). With `colours` given, only those
-    indices take part - a single-type attack reads only its own colour."""
-    p = 1.0
-    for i, v in enumerate(op):
-        if (colours is None) or (i in colours):
-            p *= (1.0 - v / 100.0)
-    return 1.0 - p
+    indices take part - a single-type attack reads only its own colour.
+
+    Logs carry openings as whole percentages; the model works in fractions."""
+    return model.combined([v / 100.0 for i, v in enumerate(op)
+                           if (colours is None) or (i in colours)])
 
 
-def soaked(dmg, hard, soft, armpen=0.0):
-    """Damage actually dealt after armour, per Jorb's Fighting Quail description.
-
-    Armour penetration goes first: that share of the damage "will apply directly to
-    the target before any other armor calculations are done". Hard soak then comes
-    off the top of the rest, and soft soak ramps in over an interval of twice its
-    value - with X = (rest - hard) / (2 * soft), the share of the soft soak applied
-    is 1 - (1 - X)^2, reaching all of it once the damage clears the interval.
-
-    The wiki's prose puts the interval at the soft soak rather than twice it, but its
-    own worked example - 110 damage, 75 hard, 35 soft, 9 dealt - only comes out with
-    the doubling, and the page itself notes the inconsistency further down."""
-    pen = dmg * armpen
-    r = max(0.0, (dmg - pen) - hard)
-    if soft <= 0:
-        return pen + r
-    x = min(1.0, r / (2.0 * soft))
-    return pen + r - soft * (1.0 - (1.0 - x) ** 2)
-
+# The analyzer does not carry its own arithmetic. haven.combat.Formulas is
+# authoritative, model.py is the checked follower, and a third copy here would be a
+# third thing to keep in step - which is exactly how the combined-versus-own-colour
+# error survived as long as it did.
+soaked = model.dealt_damage
 
 def move_colours(rows):
     """Which openings each move actually raises, learned from the fight rather than

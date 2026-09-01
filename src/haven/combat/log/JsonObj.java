@@ -53,6 +53,20 @@ public final class JsonObj {
         return(this);
     }
 
+    /**
+     * A double at full precision, for callers that need the value back exactly.
+     *
+     * {@link #put(String, double)} rounds to four places, which is right for a log - the
+     * numbers there are measurements, and four places is past their resolution. It is wrong
+     * for golden vectors, where a rounded expectation would let the Python evaluator drift
+     * by up to half a unit in the fourth place without any check noticing.
+     */
+    public static String num(double v) {
+        if(Double.isNaN(v) || Double.isInfinite(v))
+            return("null");
+        return(Double.toString(v));
+    }
+
     /** Inserts already-serialised JSON (a nested object or array) verbatim. */
     public JsonObj raw(String k, String json) {
         key(k);

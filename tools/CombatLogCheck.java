@@ -57,6 +57,12 @@ public class CombatLogCheck {
         // Locale safety: a comma decimal separator would produce invalid JSON.
         check("double is locale-safe", new JsonObj().put("d", 1.5).end(), "{\"d\":1.5000}");
         check("NaN becomes null", new JsonObj().put("d", Double.NaN).end(), "{\"d\":null}");
+        // Full-precision form, used by the golden vectors rather than by logs.
+        check("num round-trips", Double.parseDouble(JsonObj.num(1.0 / 3.0)), 1.0 / 3.0);
+        check("num keeps what put() would round away",
+              JsonObj.num(0.00001).equals(new JsonObj().put("d", 0.00001).end()), false);
+        check("num handles NaN", JsonObj.num(Double.NaN), "null");
+        check("num handles infinity", JsonObj.num(Double.POSITIVE_INFINITY), "null");
     }
 
     static void openings() {
