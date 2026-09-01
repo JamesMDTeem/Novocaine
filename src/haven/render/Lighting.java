@@ -79,7 +79,22 @@ public interface Lighting {
 
 	    public void modify(ProgramContext prog) {
 		prog.module(new LightList() {
-			final Uniform u_nlights = new Uniform(INT, "nlights", p -> ((SimpleLights)p.get(lights)).list.length, lights);
+			/* Clamped to the size of the array it indexes. The list is
+			 * every light in the scene - LightList never caps it, and
+			 * SimpleLights stores it whole - while the uniform array
+			 * below is maxlights long, and UniformApplier writes only
+			 * the first maxlights of them. An unclamped count sends the
+			 * loop past the last entry that was ever written, reading
+			 * whatever is adjacent in uniform memory as a light: the
+			 * observed result is the whole screen saturating to red once
+			 * a base grows past the limit, which is also why it appears
+			 * "after some time" rather than on arrival.
+			 *
+			 * Dropping the excess is the documented behaviour of this
+			 * mode, not a workaround for the overrun - the option's own
+			 * tooltip says the limit caps the total number of light
+			 * sources globally. */
+			final Uniform u_nlights = new Uniform(INT, "nlights", p -> Math.min(((SimpleLights)p.get(lights)).list.length, maxlights), lights);
 			final Uniform u_lights = new Uniform(new Array(s_light, maxlights), "lights", p -> ((SimpleLights)p.get(lights)).list, lights);
 
 			public void construct(Block blk, java.util.function.Function<Params, Statement> body) {
