@@ -215,6 +215,18 @@ public class Loader {
 	    if((queue.size() > pool.size()) && (pool.size() < maxthreads)) {
 		Thread th = new HackThread(this::loop, "Loader thread");
 		th.setDaemon(true);
+		/* Below the render thread, as Defer.Worker already runs for the
+		 * same sort of work. These wake in a bunch when the player
+		 * crosses into terrain that has not been loaded yet, and at
+		 * equal priority they take their share of the cores from the
+		 * thread drawing the frames. Measured on that transition: the
+		 * loop's idle share fell from 55% to 9-25% while GPU fence
+		 * latency fell from 5.8ms to 0.8ms - the frame rate halved with
+		 * the GPU finishing early and waiting, which is a client that
+		 * cannot feed it, not a client that has asked too much of it.
+		 * Loading a little later is worth more than the frames it
+		 * costs to load it now. */
+		th.setPriority((Thread.NORM_PRIORITY + Thread.MIN_PRIORITY) / 2);
 		th.start();
 		pool.add(th);
 	    }

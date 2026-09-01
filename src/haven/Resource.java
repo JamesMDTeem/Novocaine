@@ -736,6 +736,13 @@ public class Resource implements Serializable {
 		    final Loader n = new Loader();
 		    Thread th = new HackThread(loadergroup, n, "Haven resource loader");
 		    th.setDaemon(true);
+		    /* See the same change in Loader.check(): decoding resources
+		     * is background work that should yield to drawing, which is
+		     * what Defer.Worker has always done. This was the largest
+		     * single allocator in the client during a terrain crossing,
+		     * at 377MB/s, and it was doing that at the same priority as
+		     * the thread trying to render. */
+		    th.setPriority((Thread.NORM_PRIORITY + Thread.MIN_PRIORITY) / 2);
 		    th.start();
 		    while(!n.added) {
 			try {
