@@ -465,6 +465,9 @@ public class Fightview extends Widget {
 		} catch(Exception e) {}
 		haven.automated.combat.CombatRecorder.start(Config.playername, meGob, rel.gobid, foeRes,
 							    (ui == null) ? null : ui.sess.glob, eq);
+		/* Beside the fight log, not inside it: the deck is a property of the character,
+		 * changes rarely, and is written only when it differs from the last dump. */
+		haven.automated.combat.CombatDeckDump.dump((ui == null) ? null : ui.gui);
 	    }
             return;
         } else if(msg == "del") {
