@@ -346,6 +346,15 @@ public class GLProgram implements Disposable {
 	}
 
 	public void create(GL gl) {
+	    /* Timed across the whole of create, not just glLinkProgram: the
+	     * driver is free to defer the attached shaders' compilation to
+	     * link time, so the cost of a program first coming into use lands
+	     * somewhere in here and not necessarily on the call it is charged
+	     * to. This is the number that matters when a burst of first-sight
+	     * programs - walking into terrain whose materials have not been
+	     * drawn yet - stalls a frame. */
+	    boolean dbg = shaderDbgEnabled();
+	    double start = dbg ? Utils.rtime() : 0;
 	    this.id = gl.glCreateProgram();
 	    for(ShaderOb sh : shaders)
 		gl.glAttachShader(this.id, sh.glid());
@@ -355,9 +364,9 @@ public class GLProgram implements Disposable {
 		gl.glBindFragDataLocation(this.id, i, fragnms[i]);
 	    gl.glLinkProgram(this.id);
 	    int[] buf = {0};
-	    if(shaderDbgEnabled())
-		shaderLog("SHADERDBG link id=" + id + " prog=" + System.identityHashCode(GLProgram.this));
 	    gl.glGetProgramiv(this.id, GL.GL_LINK_STATUS, buf);
+	    if(dbg)
+		shaderLog(String.format("SHADERDBG link id=%d prog=%d in %.1fms", id, System.identityHashCode(GLProgram.this), (Utils.rtime() - start) * 1000));
 	    if(buf[0] != 1) {
 		String info = null;
 		gl.glGetProgramiv(this.id, GL.GL_INFO_LOG_LENGTH, buf);
