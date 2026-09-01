@@ -1173,11 +1173,33 @@ public class Observed {
                         + " to save; still dirty, retrying on the next pass");
                     return;
                 }
-                Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
-                if (!read(disk))
-                    return;    // cannot see what we would be overwriting, so do not. Still dirty.
-                fileAt = stamp;
-                adopt(disk);
+                /* Only re-read when somebody else has written since we last
+                 * did. What is on disk is otherwise what we last wrote, already
+                 * folded into the map we are about to write out - reading it
+                 * back would merge our own state into itself.
+                 *
+                 * Worth checking because the read is not cheap: this file
+                 * reaches several megabytes on a well-explored world, and
+                 * parsing it allocates it several times over as a String and
+                 * then as a tree of JSON objects. Doing that every five seconds
+                 * for the length of a session made this thread the second
+                 * largest allocator in the client, at 134MB/s against the
+                 * render thread's 370 - which is a curious place for a
+                 * background bookkeeping task to be, and it was buying GC
+                 * pauses for everybody.
+                 *
+                 * Re-stamped inside the lock rather than trusting the check
+                 * above it: another client can write in the window between
+                 * wanting the lock and holding it, and that write is exactly
+                 * the one we must not drop. */
+                long locked = stamp();
+                if ((locked == UNKNOWN) || (locked != fileAt)) {
+                    Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
+                    if (!read(disk))
+                        return;    // cannot see what we would be overwriting, so do not. Still dirty.
+                    adopt(disk);
+                }
+                fileAt = locked;
 
                 JSONArray segs = new JSONArray();
                 for (Map.Entry<Long, Map<Coord, byte[]>> se : map.entrySet()) {

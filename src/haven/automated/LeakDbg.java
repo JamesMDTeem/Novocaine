@@ -475,8 +475,12 @@ public class LeakDbg {
                     break;
                 java.lang.management.ThreadInfo ti = allocBean.getThreadInfo(e[1]);
                 String nm = (ti == null) ? ("#" + e[1]) : ti.getThreadName();
+                /* Spaces out of the thread name: nearly every one of ours has
+                 * them ("Haven UI thread"), and a space-separated field inside
+                 * a space-separated line cannot be picked back out. */
                 sb.append(n == 1 ? " allocby=" : ";")
-                  .append(nm).append('=').append(String.format("%.1f", e[0] * 1000.0 / dt / (1024 * 1024)));
+                  .append(nm.replace(' ', '_')).append('=')
+                  .append(String.format("%.1f", e[0] * 1000.0 / dt / (1024 * 1024)));
             }
         } catch (Throwable t) {
             allocBean = null;
