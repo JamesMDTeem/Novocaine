@@ -42,16 +42,43 @@ public final class CombatDeckDump {
 
     private CombatDeckDump() {}
 
+    /* The sheet ticks many times a second; rebuilding the payload on each one to compare it
+     * would be wasteful, so probes are spaced out. Fight-start dumps are not throttled. */
+    private static final long PROBE_MS = 3000;
+    private static volatile long lastProbe = 0;
+
+    /**
+     * Called from the sheet's own tick. The sheet lists every move the character has learned,
+     * including ones not in the current deck and ones never taken into a fight, so probing here
+     * captures the full set rather than whatever happened to be equipped when a fight started.
+     */
+    public static void probe(FightWnd fw) {
+        long now = System.currentTimeMillis();
+        if((now - lastProbe) < PROBE_MS)
+            return;
+        lastProbe = now;
+        write(fw);
+    }
+
     public static void dump(GameUI gui) {
+        try {
+            if(gui == null)
+                return;
+            CharWnd cw = gui.chrwdg;
+            if(cw == null)
+                return;
+            write(cw.fight);
+        } catch(Exception e) {
+        }
+    }
+
+    private static void write(FightWnd fw) {
         if(!OptWnd.combatTelemetryCheckBox.a)
             return;
         try {
-            if((gui == null) || (Client.gameDir == null))
+            if((fw == null) || (Client.gameDir == null))
                 return;
-            CharWnd cw = gui.chrwdg;
-            if((cw == null) || (cw.fight == null))
-                return;
-            String json = build(cw.fight);
+            String json = build(fw);
             if((json == null) || json.equals(last))
                 return;
             String safe = (Config.playername == null ? "unknown"

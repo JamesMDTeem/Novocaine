@@ -1022,6 +1022,10 @@ public class FightWnd extends Widget {
 		if(needFilter) {
 			doFilter();
 		}
+		/* This window knows every move the character has learned, not just the ones in
+		 * the deck a fight happened to start with. The probe is throttled and writes only
+		 * when the content differs from the last dump. */
+		haven.automated.combat.CombatDeckDump.probe(this);
 	}
 
 	private void doFilter() {

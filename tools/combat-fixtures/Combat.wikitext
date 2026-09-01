@@ -1,0 +1,97 @@
+== '''Combat''' ==
+Haven has a rather unique combat system with a user interface that seems very unique to me. 
+
+There's an ancient guide for new users in the forums, at https://www.havenandhearth.com/forum/viewtopic.php?f=42&t=54070, but it dates back to 2017. 
+
+=== '''Basics''' ===
+There are two basic types of combat in Haven: ranged and melee. 
+
+- "ranged combat" is a gamer's term for combat from a distance, using bows, slings, and similar weapons 
+
+- "melee combat" is a gamer's term for combat that's generally up close and personal, using swords, axes, fists, and similar weapons.  
+
+When people talk about "combat" in Haven, they generally mean melee combat. If they want to talk about "ranged combat" they'll use both words.  
+
+They use basically the same interface, but the melee combat system is far more complicated.  
+
+Melee combat can itself be divided into armed and unarmed combat. Haven frequently uses the term "melee combat" to mean "armed combat". The discussion below refers to them both as "melee combat".   
+
+=== '''Basics of Melee Combat''' ===
+Combat in Haven is multi-layered.
+
+First, you have two combat [[abilities|Abilities]]: melee and unarmed. (There's also a third, called Marksmanship, used for ranged combat.)
+
+Second, you have [[Attributes|attributes]] (stats) like strength, agility, and constitution, all of which affect combat.
+
+Third, you may have armor and/or weapons. 
+
+Fourth, you need a "deck" of [[Combat moves|combat moves]]. No matter how many moves you may know, you can only use ones from your current deck. You start with very few moves available to you, and learn more semi-randomly when you kill things. 
+
+Fifth, there's a complicated and somewhat undocumented system involving something called "openings". These come in four colours: red, green, yellow, and blue. Each combatant starts with 0 level openings in all colours. Attacks of a particular colour widen (enlarge) the target's openings in that colour. When the target's openings get large enough, damage may finally get through to the target - or perhaps only to that target's armor. There are, however, various defence moves available for each colour; use one of those, and your openings of that colour are reduced. 
+
+Sixth, there's an initiative system. Some moves generate initiative points. Others consume initiative points, and can only be done when you have enough points available. 
+
+After a certain level of character development, you'll generally fight by doing a bunch of moves to gain initiative, in between moves to close your openings, then an expensive high damage attack that uses initiative, and then repeat. But you don't start out with any of the initiative-creating or initiative-using moves.   
+
+Seventh, there's a user-interface that's complicated and confusing. The best way to get used to that interface is to 'spar' with a friend. 
+
+=== '''First Steps in Melee Combat''' ===
+
+==== '''Things to Do Before Fighting''' ====
+1. Learn the [[hunting|Hunting]] [[Skill]]. You won't be able to attack animals without it.  
+
+2. Put enough [[Glossary#Learning_Points|learning points]] into unarmed combat, melee combat, or both to get them to at least 10. Unarmed is more important for a new player.  
+
+3. Raise your strength and agility. Strength affects the damage you do. Agility affects both your chance to hit the opponent, and its chance to hit you. One possibly out-dated guide suggests you need 20 in each to handle an ant in a fair fight, 30 in each to handle a bat.   
+
+4. Make a combat deck. You do this in the 4th panel of your character sheet.  
+
+==== '''Your First Combat Deck''' ====
+As a new player, you'll have a very short list of combat moves available. They'll be in alphabetical order; you may find it more useful to look at attacks, defenses, etc. separately. 
+
+- Punch: green attack. This will be your mainstay initially.
+
+- Left hook: blue attack.
+
+Drag both of these to one of the numbered slots near the bottom of the panel. Perhaps 1 for punch and 2 for left hook.
+
+- Quick dodge: green defence
+
+- Sidestep: blue defence
+
+- Jump: yellow defence
+
+Put all these on your bar too. 
+
+- chin up: useful maneuver, when you aren't using a shield. Put it on your bar.
+
+- to arms: another maneuver
+
+You can eventually have up to 5 of each move on your bar, except that the total is limited to much less than 5 * 10. For now, you have 2 punch and 2 quick dodge available - only 1 of the others. After dragging punch to your bar, with it still selected, click the + beside it. You'll then see 2/2 beneath it on your bar, and 0 beside it in the list, showing you have 2 loaded and no more available. Do the same with quick dodge.
+
+Now give the deck a name, and save it.
+
+(Potential/optional tip: only put defensive moves, or any move that is done at range, to 1-5. Put attack into 1-5(+Shift) only. This adds slight clunkiness to using an offensive move, but if you expect to mainly try to run away, you can slam 1-5 without turning 180 degrees and running towards the bat/boar/bear (or [[Murder|worse]]) chasing you.
+
+==== '''What to Fight''' ====
+When you first start combat, start small. The two easiest targets are the ant swarms found beside an [[ant hill|Ant Hill]] and [[Bat|bats]]. Ants ignore armor, so if you don't have any armor (likely, as a new player), you might as well do ants. They also don't seem to run away when injured. 
+
+Whatever you start with, as a new fighter you should make sure to fight only one at a time. (Bats will attack you if you go too close to them, and often roost in groups. And if you 'raid' an anthill, without first killing each ant swarm individually, they'll ''all'' attack you.)
+
+==== '''Precautions''' ====
+Always have a way to escape when fighting something new. That might be a cave, a cave exit, a boat, or a mount that can go faster than the animal you are fighting. It's no fun at all to be knocked out by your opponent, spend real life days healing, or worse, get your character killed.
+
+==== '''How to Fight''' ====
+You can start a combat by:
+
+- selecting spar on a fellow player and having them agree
+
+- clicking the sword icon (labelled attack) and then some animal. (This also works with players, but if you are new to combat that's a really bad idea. Also, you may not have the skills to attack players.)
+
+- with a bow or sling equipped, clicking the bow icon (labelled shoot). You need the archery skill to even have that icon available. This also works with players and archery targets.
+
+- going too near an aggressive animal or player, who attacks you. The higher your stealth, the less likely aggressive animals are to attack you. 
+ 
+That puts you in the combat interface, which is IMO more than a little confusing.
+
+=== '''The combat interface''' ===

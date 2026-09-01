@@ -210,73 +210,109 @@ def report_effects(rows):
                  dtxt, delta))
 
 
-def combined(op):
-    """Multiple colours combine as 1 - product(1 - o_i), per the wiki. With a single
-    colour open this is just that colour."""
+def combined(op, colours=None):
+    """Openings combine as 1 - product(1 - o_i). With `colours` given, only those
+    indices take part - a single-type attack reads only its own colour."""
     p = 1.0
-    for v in op:
-        p *= (1.0 - v / 100.0)
+    for i, v in enumerate(op):
+        if (colours is None) or (i in colours):
+            p *= (1.0 - v / 100.0)
     return 1.0 - p
 
 
-def fit(pts):
-    """Least squares of dealt against opening squared. Returns (C, A, R2)."""
-    xs = [o * o for o, _ in pts]
-    ys = [float(d) for _, d in pts]
-    n = len(xs)
-    mx, my = sum(xs) / n, sum(ys) / n
-    sxx = sum((x - mx) ** 2 for x in xs)
-    if sxx == 0:
-        return None
-    c = sum((xs[i] - mx) * (ys[i] - my) for i in range(n)) / sxx
-    b = my - c * mx
-    res = sum((ys[i] - (c * xs[i] + b)) ** 2 for i in range(n))
-    tot = sum((y - my) ** 2 for y in ys)
-    return (c, -b, (1 - res / tot) if tot else float("nan"))
+def soaked(dmg, hard, soft):
+    """Damage actually dealt after armour, per Jorb's Fighting Quail description.
+
+    Hard soak comes off the top. Soft soak ramps in over an interval of twice its
+    value: with X = (damage - hard) / (2 * soft), the share of the soft soak that
+    applies is 1 - (1 - X)^2, reaching all of it once the damage clears the interval.
+
+    The wiki's prose says the interval is the soft soak, not twice it, but its own
+    worked example - 110 damage, 75 hard, 35 soft, 9 dealt - only comes out with the
+    doubling, and so does every fight in the corpus. The example wins."""
+    r = max(0.0, dmg - hard)
+    if soft <= 0:
+        return r
+    x = min(1.0, r / (2.0 * soft))
+    return r - soft * (1.0 - (1.0 - x) ** 2)
 
 
-def fit_clamped(pts):
-    """Fit C and A while dropping hits the armour floor was holding up.
+def move_colours(rows):
+    """Which openings each move actually raises, learned from the fight rather than
+    looked up. A move's damage reads the opening it is itself aimed at: Quick Barrage
+    is Oppressive and reads Cornered alone. Reading the combined opening instead
+    understates C badly whenever some other colour happens to be up."""
+    sts = states(rows)
+    seen = defaultdict(lambda: [0, 0, 0, 0])
+    uses = defaultdict(int)
+    for m in [r for r in rows if r.get("ev") == "move"]:
+        b, a = near_before(sts, m["t"]), near_after(sts, m["t"], AFTER_MS)
+        if b is None or a is None:
+            continue
+        key = "foe" if m["actor"] == "me" else "mine"
+        bv, av = b.get(key), a.get(key)
+        if not bv or not av:
+            continue
+        name = m.get("name") or m["move"]
+        uses[name] += 1
+        for i in range(4):
+            if av[i] > bv[i]:
+                seen[name][i] += 1
+    out = {}
+    for name, counts in seen.items():
+        n = uses[name]
+        cs = set(i for i in range(4) if counts[i] * 2 >= n)
+        if cs:
+            out[name] = cs
+    return out
 
-    A flat subtraction cannot take a hit to zero - a fraction always gets through -
-    so at low openings the observed damage stops following the line and the fit is
-    dragged badly wrong. On a fight where 13 armour was known to be worn, fitting
-    every point gave A = 6.1; dropping the two floor-bound ones gave 13.4.
 
-    Returns (C, A, R2, dropped) where dropped are the excluded points."""
-    keep, dropped = list(pts), []
-    for _ in range(len(pts)):
-        if len(keep) < 4:
-            break
-        f = fit(keep)
-        if f is None:
-            break
-        c, a, _r2 = f
-        # A point is floor-bound when the line would have put it at or below the
-        # fraction that always gets through.
-        out = [(o, d) for (o, d) in keep if (c * o * o - a) < FLOOR * c * o * o]
-        if not out:
-            break
-        keep = [q for q in keep if q not in out]
-        dropped += out
-    f = fit(keep) if len(keep) >= 3 else None
-    return (f, keep, dropped)
+def fit_soak(pts):
+    """Least squares for C, hard and soft over dealt = soaked(C * o^2, hard, soft).
+
+    Coarse grid then refine. Three parameters on a handful of points would overfit
+    freely, so the residual is printed beside them: a fit worth believing sits under
+    about half a hitpoint, which is the rounding on the numbers themselves."""
+    def err(c, h, sf):
+        return sum((soaked(c * o * o, h, sf) - d) ** 2 for o, d in pts)
+
+    best, span = None, None
+    for step, around in ((2.0, None), (0.5, True), (0.125, True)):
+        if around is None:
+            cs = [x * step for x in range(1, 121)]
+            hs = [x * step for x in range(0, 26)]
+            ss = [x * step for x in range(0, 26)]
+        else:
+            c0, h0, s0 = best[1], best[2], best[3]
+            k = span * 2
+            cs = [max(0.0, c0 + i * step) for i in range(-int(k / step), int(k / step) + 1)]
+            hs = [max(0.0, h0 + i * step) for i in range(-int(k / step), int(k / step) + 1)]
+            ss = [max(0.0, s0 + i * step) for i in range(-int(k / step), int(k / step) + 1)]
+        for c in cs:
+            for h in hs:
+                for sf in ss:
+                    e = err(c, h, sf)
+                    if best is None or e < best[0]:
+                        best = (e, c, h, sf)
+        span = step
+    e, c, h, sf = best
+    return (c, h, sf, (e / len(pts)) ** 0.5)
 
 
 def report_damage_model(rows):
-    """Fit dealt = C * o^2 - A over one fight, per move.
+    """Recover the attacker's damage constant and the defender's armour from a fight.
 
-    The wiki's damage term is proportional to the square of the combined opening, and
-    everything else in it - base damage, weapon quality, strength, mu - is constant
-    within a fight, so it collapses into a single C for that matchup. Flat armour
-    shows up as the intercept. Recovering A from damage alone is the armour estimator;
-    recovering C is what a simulator needs in order to predict a hit."""
+    Within one fight everything in the damage term except the opening is constant -
+    base damage, weapon and its quality, strength, mu - so it collapses into a single
+    C per move. The armour is then whatever explains the gap between C * o^2 and what
+    the defender actually took, which is the armour estimator."""
     sts = states(rows)
     h = header(rows)
     if not sts or not h:
         return
     foe = h.get("foegob")
     dmgs = [r for r in rows if r.get("ev") == "dmg"]
+    cols = move_colours(rows)
     pts = defaultdict(list)
     for m in [r for r in rows if r.get("ev") == "move" and r["actor"] == "me"]:
         b = near_before(sts, m["t"])
@@ -286,8 +322,9 @@ def report_damage_model(rows):
                 and x["gob"] == foe and x["ch"] in ("SHP", "HHP", "ARM")]
         if not hits:
             continue
-        pts[m.get("name") or m["move"]].append(
-            (combined(b["foe"]), sum(x["v"] for x in hits)))
+        name = m.get("name") or m["move"]
+        pts[name].append((combined(b["foe"], cols.get(name)),
+                          sum(x["v"] for x in hits)))
 
     shown = False
     for name in sorted(pts):
@@ -296,20 +333,14 @@ def report_damage_model(rows):
             continue
         if not shown:
             print("")
-            print("  damage model  dealt = C * opening^2 - A   (A is the defender's armour)")
+            print("  damage model  dealt = soak(C * opening^2), opening read on the")
+            print("                colour the move itself raises")
             shown = True
-        f, keep, dropped = fit_clamped(p)
-        if f is None:
-            continue
-        c, a, r2 = f
-        print("    %-22s n=%-3d C=%6.1f  A=%5.1f  R2=%.4f" % (name, len(keep), c, a, r2))
+        c, hard, soft, rms = fit_soak(p)
+        which = ",".join(COLOURS[i] for i in sorted(cols.get(name, set()))) or "combined"
+        print("    %-22s n=%-2d on %-13s C=%6.1f  hard=%4.1f  soft=%5.1f  rms=%.2f"
+              % (name[:22], len(p), which, c, hard, soft, rms))
         print("      %s" % "  ".join("%.2f:%d" % (o, d) for o, d in p))
-        if dropped:
-            frac = ["%.0f%%" % (100.0 * d / (c * o * o)) for o, d in sorted(dropped)
-                    if c * o * o > 0]
-            print("      %d hit(s) excluded as floor-bound: %s; they let through %s of raw"
-                  % (len(dropped), " ".join("%.2f:%d" % q for q in sorted(dropped)),
-                     ", ".join(frac)))
     return shown
 
 
