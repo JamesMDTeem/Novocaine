@@ -1,0 +1,310 @@
+#!/usr/bin/env python3
+"""Turn the client's combat-deck dumps into data/combat/moves_ingame.json.
+
+    python tools/combat/parse_deck.py [bin/CombatLogs/deck-*.json]
+
+The wiki-derived moves.json is a transcription of a third-party page. This is the
+game's own text for the character who produced the dump: initiative cost, attack
+weight, attack type, openings inflicted and reduced, damage, grievous fraction and
+base cooldown - plus how many levels of each move the character has bought and how
+many are in the deck, which nothing outside the client knows.
+
+Stdlib only. Reads dumps, writes one JSON file, and cross-checks against the
+wiki-derived pack. Like build_datapack.py it collects every problem first and writes
+nothing if any survive, so a partial parse can never be mistaken for a good one.
+"""
+
+import json
+import sys
+import glob
+import os
+import re
+from collections import OrderedDict
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+DATA = os.path.join(ROOT, "data", "combat")
+OUT = os.path.join(DATA, "moves_ingame.json")
+WIKI = os.path.join(DATA, "moves.json")
+
+# The sheet colours each opening and each attack school, and the two use the same four
+# colours - which is the mapping the whole model turns on, stated by the game itself
+# rather than inferred. Keyed on the exact RGB the client renders.
+COLOUR = {
+    "128,255,160": ("green", "Off Balance", "Striking"),
+    "128,192,255": ("blue", "Dizzy", "Backhanded"),
+    "255,255,128": ("yellow", "Reeling", "Sweeping"),
+    "255,128,128": ("red", "Cornered", "Oppressive"),
+}
+BY_WORD = {}
+for _rgb, (_c, _open, _school) in COLOUR.items():
+    BY_WORD[_open.lower()] = _c
+    BY_WORD[_school.lower()] = _c
+
+# Fields the sheet uses. Anything labelled but not listed here is kept as an extra
+# rather than dropped, and reported - an unknown label is new game data, not noise.
+KNOWN = [
+    "Weapon", "Attack weight", "Block weight", "Attack type", "Attack types",
+    "Openings", "Openings on you", "Reduces", "Damage", "Grievous damage",
+    "Initiative points", "Cooldown", "When attacked", "Opponents' initiative points",
+]
+
+FIELD_RE = re.compile(r"^([A-Z][A-Za-z' ]{2,32}):\s*(.*)$")
+# "+15% Cornered", "+7.5% Off Balance", "20% - mu Striking"
+TERM_RE = re.compile(r"([+-]?\d+(?:\.\d+)?)\s*%\s*(.*)$")
+
+
+def strip_markup(t):
+    """Remove the client's rendering directives, keeping the text they wrap."""
+    if not t:
+        return ""
+    prev = None
+    while prev != t:
+        prev = t
+        t = re.sub(r"\$[a-z]+\[[^\]]*\]\{([^{}]*)\}", r"\1", t)
+        t = re.sub(r"\$[a-z]+\{([^{}]*)\}", r"\1", t)
+    t = re.sub(r"\$[a-z]+\[[^\]]*\]", "", t)
+    return t
+
+
+def colours_in(raw):
+    """Colours named by the markup, before it is stripped, in order of appearance."""
+    return [COLOUR[m][0] for m in re.findall(r"\$col\[(\d+,\d+,\d+)\]", raw)
+            if m in COLOUR]
+
+
+def parse_terms(raw, problems, where):
+    """Parse "+15% Cornered, +5% Reeling" or "20% - mu Striking" into terms.
+
+    The colour is taken from the markup where present and from the word otherwise;
+    a term whose colour cannot be established is reported rather than dropped, since
+    a silently missing opening is the difference between a move that opens red and
+    one that opens nothing."""
+    out = []
+    plain = strip_markup(raw)
+    marked = colours_in(raw)
+    for i, part in enumerate(p.strip() for p in plain.split(",")):
+        if not part:
+            continue
+        m = TERM_RE.match(part)
+        if not m:
+            problems.append("%s: cannot read term %r" % (where, part))
+            continue
+        rest = m.group(2).strip()
+        # Scaled by the deck weighting when the text says so.
+        mu = ("µ" in rest) or (" mu" in rest.lower())
+        word = re.sub(r"^[·µ\s\-*x]*", "", rest).strip()
+        colour = marked[i] if i < len(marked) else BY_WORD.get(word.lower())
+        if colour is None:
+            problems.append("%s: no colour for %r" % (where, part))
+            continue
+        out.append(OrderedDict([("pct", float(m.group(1))), ("name", word),
+                                ("colour", colour), ("mu", mu)]))
+    return out
+
+
+def num(s):
+    s = strip_markup(s).strip().rstrip("%")
+    try:
+        return float(s) if "." in s else int(s)
+    except ValueError:
+        return None
+
+
+def parse_move(m, problems):
+    raw = m.get("pagina")
+    rec = OrderedDict()
+    rec["res"] = m["res"]
+    rec["name"] = m.get("name")
+    rec["maxlevel"] = m.get("maxlevel")
+    rec["decklevel"] = m.get("decklevel")
+    if not raw:
+        problems.append("%s: no pagina text" % m.get("name"))
+        return None
+    fields, notes, extras = OrderedDict(), [], []
+    for line in raw.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        fm = FIELD_RE.match(strip_markup(line))
+        if not fm:
+            notes.append(strip_markup(line).strip())
+            continue
+        label = fm.group(1).strip()
+        # Re-take the value from the unstripped line so colour markup survives.
+        value_raw = line.split(":", 1)[1].strip()
+        if label not in KNOWN:
+            extras.append(label)
+        fields[label] = value_raw
+
+    where = m.get("name")
+    rec["weapon"] = strip_markup(fields.get("Weapon", "")).strip() or None
+    rec["attack_weight"] = strip_markup(fields.get("Attack weight", "")).strip() or None
+    rec["block_weight"] = strip_markup(fields.get("Block weight", "")).strip() or None
+    rec["damage"] = strip_markup(fields.get("Damage", "")).strip() or None
+    rec["grievous_pct"] = num(fields["Grievous damage"]) if "Grievous damage" in fields else None
+    rec["initiative"] = num(fields["Initiative points"]) if "Initiative points" in fields else None
+    # "Cooldown: 20" is a number; "Cooldown: 30 / mu" is a formula, and its presence is
+    # itself a finding - it says the deck weighting shortens that move, which makes mu
+    # readable straight off a reported cooldown instead of having to be fitted.
+    cd_raw = strip_markup(fields.get("Cooldown", "")).strip()
+    rec["cooldown_raw"] = cd_raw or None
+    rec["cooldown_mu"] = None
+    if cd_raw:
+        cm = re.match(r"^\s*(\d+(?:\.\d+)?)\s*(?:/\s*(.+))?$", cd_raw)
+        if cm:
+            v = cm.group(1)
+            rec["cooldown"] = float(v) if "." in v else int(v)
+            rec["cooldown_mu"] = bool(cm.group(2))
+        else:
+            rec["cooldown"] = None
+            problems.append("%s: cannot read cooldown %r" % (m.get("name"), cd_raw))
+    else:
+        rec["cooldown"] = None
+
+    # Split after stripping, never before: "$col[255,128,128]{Oppressive}" contains two
+    # commas of its own, and splitting the raw form turns one school into three shards.
+    types_raw = fields.get("Attack type", fields.get("Attack types"))
+    rec["attack_types"] = []
+    if types_raw:
+        marked = colours_in(types_raw)
+        for i, t in enumerate(x.strip() for x in strip_markup(types_raw).split(",")):
+            if not t:
+                continue
+            colour = marked[i] if i < len(marked) else BY_WORD.get(t.lower())
+            if colour is None:
+                problems.append("%s: no colour for attack type %r" % (where, t))
+                continue
+            rec["attack_types"].append(OrderedDict([("name", t), ("colour", colour)]))
+    rec["openings"] = parse_terms(fields["Openings"], problems, where + " Openings") \
+        if "Openings" in fields else []
+    # Openings the move puts on the user, not the opponent. Folding these into
+    # `openings` would record a cost as a benefit.
+    rec["openings_on_self"] = parse_terms(fields["Openings on you"], problems,
+                                          where + " Openings on you") \
+        if "Openings on you" in fields else []
+    rec["reduces"] = parse_terms(fields["Reduces"], problems, where + " Reduces") \
+        if "Reduces" in fields else []
+    rec["when_attacked"] = strip_markup(fields.get("When attacked", "")).strip() or None
+    rec["opponent_initiative"] = num(fields["Opponents' initiative points"]) \
+        if "Opponents' initiative points" in fields else None
+    rec["notes"] = notes
+    rec["pagina"] = raw
+    if extras:
+        problems.append("%s: unrecognised field label(s) %s" % (where, ", ".join(extras)))
+    if rec["cooldown"] is None and not rec["cooldown_raw"]:
+        problems.append("%s: no cooldown line" % where)
+    return rec
+
+
+def best_dump(paths):
+    """The dump with the most moves carrying pagina text. Probes fire while the sheet
+    is still loading, so early files in a session are legitimately thin."""
+    best, chosen = None, None
+    for p in paths:
+        try:
+            with open(p, "r", encoding="utf8") as f:
+                d = json.load(f)
+        except Exception:
+            continue
+        body = d.get("body", d)
+        moves = body.get("moves") or []
+        # Deck levels arrive in a separate server message from the action list, so an
+        # early probe can have every move's text and no levels at all. Prefer a dump
+        # that has both rather than silently reporting an empty deck.
+        score = (sum(1 for m in moves if m.get("pagina")),
+                 sum(1 for m in moves if (m.get("decklevel") or 0) > 0),
+                 len(moves))
+        if best is None or score > best:
+            best, chosen = score, (p, body)
+    return chosen
+
+
+def crosscheck(recs, problems):
+    """Compare against the wiki-derived pack. Disagreements are reported, never
+    resolved: the game text is authoritative, but a mismatch is worth a human's eye
+    because it may mean the wiki is stale, or that the two are naming different
+    things."""
+    try:
+        with open(WIKI, "r", encoding="utf8") as f:
+            wiki = json.load(f)
+    except Exception:
+        print("  (no wiki moves.json to compare against)")
+        return
+    rows = wiki if isinstance(wiki, list) else sum(
+        (v for v in wiki.values() if isinstance(v, list)), [])
+    byname = {}
+    for w in rows:
+        if isinstance(w, dict) and w.get("name"):
+            byname[w["name"].strip().lower()] = w
+    matched = agree = differ = 0
+    for r in recs:
+        w = byname.get((r["name"] or "").strip().lower())
+        if w is None:
+            continue
+        matched += 1
+        wc = w.get("cooldown")
+        wc = wc.get("value") if isinstance(wc, dict) else wc
+        if wc is None or r["cooldown"] is None:
+            continue
+        if abs(float(wc) - float(r["cooldown"])) < 0.001:
+            agree += 1
+        else:
+            differ += 1
+            print("    cooldown differs  %-24s game %-6s wiki %s"
+                  % (r["name"], r["cooldown"], wc))
+    print("  cross-check: %d of %d names matched the wiki pack, %d cooldowns agree, "
+          "%d differ" % (matched, len(recs), agree, differ))
+
+
+def main(argv):
+    paths = []
+    for a in (argv or [os.path.join(ROOT, "bin", "CombatLogs", "deck-*.json")]):
+        paths.extend(sorted(glob.glob(a)))
+    if not paths:
+        print("no deck dumps found")
+        return 2
+    chosen = best_dump(paths)
+    if chosen is None:
+        print("no readable deck dump among %d file(s)" % len(paths))
+        return 2
+    path, body = chosen
+    print("reading %s" % os.path.relpath(path, ROOT))
+
+    problems, recs = [], []
+    for m in body.get("moves") or []:
+        r = parse_move(m, problems)
+        if r is not None:
+            recs.append(r)
+    recs.sort(key=lambda r: r["name"] or r["res"])
+
+    print("  %d move(s) parsed, %d with a deck level, %d point(s) of %s used"
+          % (len(recs), sum(1 for r in recs if (r["decklevel"] or 0) > 0),
+             sum(r["decklevel"] or 0 for r in recs), body.get("maxpoints")))
+    crosscheck(recs, problems)
+
+    if problems:
+        print("\n%d problem(s); writing nothing:" % len(problems))
+        for p in problems:
+            print("  - " + p)
+        return 1
+
+    out = OrderedDict([
+        ("source", "client combat-deck dump"),
+        ("char", body.get("char")),
+        ("maxpoints", body.get("maxpoints")),
+        ("nsave", body.get("nsave")),
+        ("colours", OrderedDict(
+            (c, OrderedDict([("opening", o), ("school", s)]))
+            for _rgb, (c, o, s) in sorted(COLOUR.items(), key=lambda kv: kv[1][0]))),
+        ("moves", recs),
+    ])
+    os.makedirs(DATA, exist_ok=True)
+    with open(OUT, "w", encoding="utf8") as f:
+        json.dump(out, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    print("\nwrote %s" % os.path.relpath(OUT, ROOT))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
