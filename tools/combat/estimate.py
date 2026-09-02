@@ -37,12 +37,16 @@ CREATURES = os.path.join(ROOT, "data", "combat", "creatures.json")
 # depth, whose single stated figure is one depth rather than a nominal individual.
 NOTES = os.path.join(ROOT, "data", "combat", "creature-notes.json")
 
-# The deck weighting. Every attack weight on the sheet is written "... * mu", and mu is
-# only readable from moves whose cooldown divides by it - Take Aim, which reported its
-# listed 30 exactly, so mu is 1 there. For the rest it is unknown, and assuming 1 makes
-# every defence weight below proportional to the truth rather than equal to it. Since Wd
-# is only ever used as the ratio Wa/Wd against the same Wa, predictions are unaffected;
-# the printed number is what carries the assumption.
+# The deck weighting, applied to a move's ATTACK WEIGHT.
+#
+# mu is not one global multiplier. It scales whatever the move's headline quantity is,
+# and the sheet says which per move - an attack's attack weight, a maneuver's opening, a
+# defensive card's block weight, or Take Aim's cooldown, which it divides. See mu_ratio
+# for why that distinction is not cosmetic: it makes the correction linear for one kind
+# of move and cubed for another.
+#
+# This constant is the attack-weight one, and it is 1.0 here as a measurement rather than
+# an assumption - see MU_MIN below.
 MU = 1.0
 
 # The wiki puts the deck weighting between 1.0 and 1.5, rising with the points put into
@@ -62,14 +66,31 @@ MU_MIN, MU_MAX = 1.0 / 1.5, 1.5
 
 
 def mu_ratio(wd_a, wd_b):
-    """How much bigger move b's deck weighting is than move a's.
+    """How much bigger move b's deck weighting is than move a's. ATTACKS ONLY.
 
-    Wd_true = mu * Wd_measured, because the measurement divides an attack weight that is
-    itself proportional to mu. Against one opponent Wd_true is a single number, so
-    mu_a * Wd_a = mu_b * Wd_b and the ratio falls straight out - with no cube root, and
-    the opposite way up from how it first went in. The earlier version took the cube root
-    of the reciprocal, which compressed every difference towards 1 and so read as healthy
-    exactly when it was hiding the most: a true ratio of 1.5 printed as 0.87.
+    mu does not do one thing. It multiplies whatever the move's headline quantity is, and
+    the sheet says which per move:
+
+        attack             the ATTACK WEIGHT     "According to weapon * mu"
+        defensive maneuver the REDUCTION         "Reduces: 20% * mu Striking"
+        block card         the BLOCK WEIGHT      "Block weight: * 250% * mu"
+        Take Aim           divides the COOLDOWN  "Cooldown: 30 / mu"
+
+    The openings an attack inflicts are flat - a plain "+10% Cornered", never scaled. So
+    for the moves this estimator uses, mu enters only through Wa, and
+
+        Wd_true = mu * Wd_measured
+
+    which is linear, and the ratio below falls straight out of it.
+
+    Were a move ever to carry mu on the OPENING instead, the measured k would be inflated
+    by mu and the correction would be Wd_true = mu**3 * Wd_measured - cubed, and applying
+    the linear form to it would be 125% wrong at mu 1.5. Nothing in the sheet does that
+    today; collect() refuses such a gain rather than leaving it as a silent assumption.
+
+    No cube root and no reciprocal: the first version had both, which compressed every
+    difference towards 1 and so read as healthy exactly when it was hiding the most - a
+    true ratio of 1.5 printed as 0.87.
     """
     return wd_a / wd_b if wd_b > 0 else 0.0
 
@@ -282,6 +303,7 @@ def collect(paths):
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         "res": None, "hp": None, "wd_by_gob": {},
         "last_hit": {}, "partial": set(), "soak": [],
+        "mu_scaled_openings": set(),
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -334,11 +356,22 @@ def collect(paths):
                 m = moves.get(name)
                 if m is None:
                     continue
-                ob = None
+                ob, ob_scales_with_mu = None, False
                 for o in m.get("openings") or []:
                     if o.get("colour") == colour:
                         ob = o.get("pct")
+                        ob_scales_with_mu = bool(o.get("mu"))
                 if not ob:
+                    continue
+                if ob_scales_with_mu:
+                    # This move's OPENING carries the deck weighting, not its attack
+                    # weight - "Openings: 20% * mu Off Balance". The correction is then
+                    # cubed rather than linear (see mu_ratio), so mixing one of these in
+                    # with the attacks would be wrong by 125% at mu 1.5. Every move that
+                    # does this today is a maneuver with no attack weight at all, so the
+                    # case does not arise; refusing it here is what keeps that from being
+                    # a silent assumption.
+                    rec["mu_scaled_openings"].add(name)
                     continue
                 wa = attack_weight(m, attrs)
                 if not wa:
@@ -584,6 +617,12 @@ def report(per, moves):
                       " do not overlap, midpoints %.0f - %.0f"
                       % (len(vals), vals[0], vals[-1]))
             print("                   (assuming mu = 1; see MU in this file)")
+            if rec["mu_scaled_openings"]:
+                print("                   excluded, because their OPENING carries the deck"
+                      " weighting rather than")
+                print("                   their attack weight, which makes the correction"
+                      " cubed: %s"
+                      % ", ".join(sorted(rec["mu_scaled_openings"])))
 
             # Per individual, because a species bucket assumes every one of them is the
             # same creature and that is not free. Hitpoints say otherwise outright - two

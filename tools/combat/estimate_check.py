@@ -154,6 +154,30 @@ def deck_weighting():
     check("an impossible denominator constrains nothing", estimate.mu_ratio(90.0, 0.0),
           0.0)
 
+    # mu is not one global multiplier - it scales whatever the move's headline quantity
+    # is. An attack's attack weight, a maneuver's opening, a defensive card's block
+    # weight. That decides the arithmetic: with mu in the attack weight the correction is
+    # linear, with mu in the opening it is cubed, and confusing the two is 125% wrong at
+    # mu 1.5. The sheet is unambiguous about which, so the check is that the two families
+    # do not overlap.
+    sheet = estimate.load_moves()
+    # No move's OPENING is scaled by mu. An attack inflicts a flat "+10% Cornered", and
+    # the moves that do scale with mu scale a REDUCTION instead - "Reduces: 20% * mu
+    # Striking" on the defensive maneuvers. That is what makes the linear correction
+    # right for everything this estimator measures.
+    check("no move's openings are scaled by mu",
+          any(o.get("mu") for m in sheet.values() for o in (m.get("openings") or [])),
+          False)
+    reducers = [m["name"] for m in sheet.values()
+                if any(o.get("mu") for o in (m.get("reduces") or []))]
+    check("the mu-scaled percentages are all reductions", len(reducers) > 0, True)
+    check("and no attack is among them",
+          any(sheet[n].get("attack_types") for n in reducers), False)
+    # An attack carries mu on its attack-weight line instead.
+    atk = sheet.get("Quick Barrage") or {}
+    check("an attack's weight line carries mu",
+          "µ" in (atk.get("attack_weight") or ""), True)
+
     # The wiki puts mu between 1.0 and 1.5, so a ratio outside 1/1.5 to 1.5 cannot be a
     # deck-level difference at all. That is what rules the boar's disagreement out: its
     # two moves imply 2.72, where every other opponent in the corpus sits within 0.82 to
