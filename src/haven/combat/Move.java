@@ -77,8 +77,10 @@ public final class Move {
      * "4+2") took them from 7 to 3. Gains are never written this way - they appear as prose,
      * which is {@link #ipGain} below.
      *
-     * The second number in a "4+2" is not accounted for here. It is not a gain to the user and
-     * not a gain to the opponent, and one observation is not enough to say what it is.
+     * The second number in a "4+2" is carried separately, as {@link #ipExtra}. It is not a gain
+     * to the user and not a gain to the opponent, and one observation is not enough to say what
+     * it is - but it is not nothing, and dropping the line wholesale (which is what used to
+     * happen) recorded Cleave and Go for the Jugular as costing no initiative at all.
      */
     public final int ipCost;
     /** Initiative the move grants its user, from prose: "gains you 1 Point of Initiative". */
@@ -109,6 +111,35 @@ public final class Move {
     /** The move's own multiplier on attack weight - the "75%" in "Unarmed * 75% * mu". */
     public final double weightMu;
 
+    /**
+     * The deck weighting for THIS card, at the level its owner has it.
+     *
+     * mu belongs to a card, not to a character. A deck holds Quick Barrage at one level
+     * and Sting at another, and the game weights each by its own level - so a single
+     * per-character mu can only ever be right when every card sits at the same level,
+     * which is a coincidence rather than a rule. It used to live on {@link Combatant},
+     * where it silently applied one card's weighting to every card in the deck.
+     *
+     * 1.0 here is measured, not assumed: Take Aim - whose cooldown divides by mu - reports
+     * its listed 30 exactly at level 1. The devs state the range as 1.0 to 1.5 rising with
+     * the points put in, and the curve between is not known, so a levelled card cannot be
+     * simulated to a point value. {@link data.Pack} therefore leaves this at 1.0, and a
+     * caller that knows a card's level says so with {@link #withMu}. The Python estimator
+     * carries the same fact as an interval rather than a number, deliberately.
+     */
+    public final double mu;
+
+    /**
+     * The trailing number of an initiative line written "4+2", or 0.
+     *
+     * Cleave and Go for the Jugular both write their initiative this way. The leading
+     * number is the cost - an opponent's Cleave took them from 7 to 3 - and this one has
+     * no established meaning, so it is carried rather than folded into {@link #ipCost} or
+     * dropped. It used to be dropped: the whole line failed to parse and both moves
+     * recorded a cost of zero.
+     */
+    public final int ipExtra;
+
     private Move(Builder b) {
         this.res = b.res;
         this.name = b.name;
@@ -130,6 +161,29 @@ public final class Move {
         this.ipScale = b.ipScale;
         this.weight = b.weight;
         this.weightMu = b.weightMu;
+        this.mu = b.mu;
+        this.ipExtra = b.ipExtra;
+    }
+
+    /** Copy constructor for {@link #withMu}, which is the only field that varies by owner. */
+    private Move(Move o, double mu) {
+        this.res = o.res; this.name = o.name; this.kind = o.kind;
+        this.school = o.school; this.schools = o.schools;
+        this.openings = o.openings; this.openingsSelf = o.openingsSelf;
+        this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
+        this.grievous = o.grievous;
+        this.ipCost = o.ipCost; this.ipGain = o.ipGain; this.foeIpGain = o.foeIpGain;
+        this.gainColour = o.gainColour; this.gainAbove = o.gainAbove;
+        this.cooldownBase = o.cooldownBase; this.cooldownMu = o.cooldownMu;
+        this.ipScale = o.ipScale;
+        this.weight = o.weight; this.weightMu = o.weightMu;
+        this.ipExtra = o.ipExtra;
+        this.mu = mu;
+    }
+
+    /** The same move as held by a deck that weights it differently. */
+    public Move withMu(double mu) {
+        return((mu == this.mu) ? this : new Move(this, mu));
     }
 
     /** Whether the move takes the relative-agility cooldown modifier. Attacks do; maneuvers do not. */
@@ -160,7 +214,8 @@ public final class Move {
         private double damageShare = 0, flatDamage = 0, grievous = 0;
         private int ipCost = 0, ipGain = 0, foeIpGain = 0, gainColour = -1;
         private double gainAbove = 0;
-        private double cooldownBase = 0, ipScale = 0, weightMu = 1.0;
+        private double cooldownBase = 0, ipScale = 0, weightMu = 1.0, mu = 1.0;
+        private int ipExtra = 0;
         private boolean cooldownMu = false;
         private Weight weight = Weight.WEAPON;
 
@@ -203,6 +258,8 @@ public final class Move {
         public Builder ipScale(double v) {this.ipScale = v; return(this);}
         public Builder weight(Weight v) {this.weight = v; return(this);}
         public Builder weightMu(double v) {this.weightMu = v; return(this);}
+        public Builder mu(double v) {this.mu = v; return(this);}
+        public Builder ipExtra(int v) {this.ipExtra = v; return(this);}
 
         /** Percentage points opened on the target in one colour. */
         public Builder opens(int colour, double pct) {

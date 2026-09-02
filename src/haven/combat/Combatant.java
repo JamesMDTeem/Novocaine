@@ -40,9 +40,6 @@ public final class Combatant {
      */
     public double defenceWeight;
 
-    /** The deck weighting, from a move's reported cooldown - see {@link Formulas#muFromCooldown}. */
-    public double mu = 1.0;
-
     /**
      * Openings standing on this combatant, 0..100, indexed by {@link Formulas#GREEN} and friends.
      *
@@ -102,9 +99,15 @@ public final class Combatant {
         }
     }
 
-    /** A move's attack weight: the skill it names, times its own multiplier, times mu. */
+    /**
+     * A move's attack weight: the skill it names, times its own multiplier, times its mu.
+     *
+     * The deck weighting is read off the MOVE, not off this combatant. It is a property of a
+     * card at the level its owner holds it, so two cards in one deck can carry different ones;
+     * keeping it here applied whichever card was measured last to the whole deck.
+     */
     public double attackWeight(Move m) {
-        return(skill(m.weight) * m.weightMu * mu);
+        return(skill(m.weight) * m.weightMu * m.mu);
     }
 
     /**
@@ -142,7 +145,6 @@ public final class Combatant {
         c.armHard = armHard; c.armSoft = armSoft;
         c.hp = hp; c.maxHp = maxHp;
         c.defenceWeight = defenceWeight;
-        c.mu = mu;
         c.ip = ip;
         c.readyAt = readyAt;
         System.arraycopy(openings, 0, c.openings, 0, 4);

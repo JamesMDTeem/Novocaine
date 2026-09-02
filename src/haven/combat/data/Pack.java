@@ -109,11 +109,17 @@ public final class Pack {
 
         b.damageShare(dbl(j, "damage_share", 0)).flatDamage(dbl(j, "damage_flat", 0))
             .grievous(dbl(j, "grievous_pct", 0) / 100.0)
-            /* "Initiative points: N" is what the move SPENDS - see Move.ipCost. */
+            /* "Initiative points: N" is what the move SPENDS - see Move.ipCost. The trailing
+             * number of a "4+2" comes through separately and unresolved. */
             .ipCost(integer(j, "initiative", 0))
+            .ipExtra(integer(j, "initiative_extra", 0))
             .foeIpGain(integer(j, "opponent_initiative", 0))
             .cooldown(dbl(j, "cooldown", 0))
             .cooldownMu(j.optBoolean("cooldown_mu", false))
+            /* Take Aim's "increases by 20% for each Point of Initiative". Omitting this
+             * used to leave every packed move at zero, so Take Aim reported its base 30 at
+             * any initiative while the logs show it reaching 60. */
+            .ipScale(dbl(j, "ip_scale", 0))
             .weightMu(dbl(j, "weight_mult", 1.0));
 
         String skill = j.optString("attack_skill", null);

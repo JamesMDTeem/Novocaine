@@ -64,7 +64,6 @@ public class CombatSimCheck {
         c.weaponDamage = 90; c.weaponQl = 28.68; c.weaponPen = 0.125;
         c.armHard = 5; c.armSoft = 2;
         c.hp = c.maxHp = 100;
-        c.mu = 1.0;
         return(c);
     }
 

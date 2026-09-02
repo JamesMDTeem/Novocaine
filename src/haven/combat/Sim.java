@@ -105,7 +105,9 @@ public final class Sim {
             return(new Result(no));
         Combatant target = other(actor);
 
-        long cd = Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, actor.mu, m.ipScale,
+        /* The deck weighting is the move's own, not the actor's: Take Aim's cooldown divides by
+         * Take Aim's mu, which says nothing about how the rest of the deck is weighted. */
+        long cd = Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale,
                                          actor.ip, m.isAttack(), actor.agi, target.agi);
         actor.readyAt = tick + cd;
 
