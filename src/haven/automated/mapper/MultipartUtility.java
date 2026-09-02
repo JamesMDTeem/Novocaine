@@ -116,25 +116,47 @@ public class MultipartUtility {
         writer.close();
 
         int status = httpConn.getResponseCode();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(
-                httpConn.getInputStream()));
+
+        // getInputStream() throws for any 4xx/5xx, so reading it unconditionally meant no
+        // error status ever reached the caller as a status: it arrived as an IOException
+        // reading "Server returned HTTP response code: 429 for URL: ...", and every
+        // caller's own status handling below 200/above 299 was dead code. The error body
+        // lives on getErrorStream() instead, and may be absent, in which case there is
+        // simply no body to read.
+        InputStream body = (status >= 400) ? httpConn.getErrorStream() : httpConn.getInputStream();
         StringBuilder builder = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            builder.append(line);
+        if (body != null) {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(body));
+            String line = null;
+            while ((line = reader.readLine()) != null) {
+                builder.append(line);
+            }
+            reader.close();
         }
-        reader.close();
+
+        // Read before disconnect(): the headers are gone afterwards. -1 when absent or
+        // not a delta-seconds value, which is what getHeaderFieldLong yields on a parse
+        // failure rather than throwing.
+        long retryAfter = httpConn.getHeaderFieldLong("Retry-After", -1L);
+
         httpConn.disconnect();
-        return new Response(builder.toString(), status);
+        return new Response(builder.toString(), status, retryAfter);
     }
 
     static class Response {
         public String response;
         public int statusCode;
+        /** Retry-After in seconds, or -1 when the server did not send a usable one. */
+        public long retryAfterSeconds;
 
         public Response(String response, int statusCode) {
+            this(response, statusCode, -1L);
+        }
+
+        public Response(String response, int statusCode, long retryAfterSeconds) {
             this.response = response;
             this.statusCode = statusCode;
+            this.retryAfterSeconds = retryAfterSeconds;
         }
     }
 }

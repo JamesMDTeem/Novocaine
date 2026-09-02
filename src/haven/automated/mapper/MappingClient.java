@@ -221,6 +221,13 @@ public class MappingClient {
 	    return false;
 	}
     }
+
+    /* Delayed hand-off to the grid uploader. The wait happens on the scheduler and only
+     * the run itself goes to gridsUploader, so a task waiting out a rate limit does not
+     * occupy the single upload thread every other grid is queued behind. */
+    private boolean submitGrid(Runnable task, long delay, TimeUnit unit) {
+	return submit(() -> submitGrid(task), delay, unit);
+    }
     
     public static boolean initialized() {return INSTANCE != null;}
     
@@ -270,6 +277,16 @@ public class MappingClient {
     /** Backoff before retrying a throttled batch. */
     private static final long BACKFILL_THROTTLE_BACKOFF_MS = 5000L;
     /** Consecutive Loading failures before a grid image upload gives up entirely. */
+    /* HTTP 429 from the map server means the tenant rate limit for this upload lane is
+     * spent, not that the grid is unwanted. Nothing used to retry it - and until the
+     * MultipartUtility error-stream fix, nothing even saw it as a status - so ground the
+     * player had walked over simply never reached the map. The server counts uploads in
+     * ten-second segments over a one-minute sliding window, so a delay measured in
+     * seconds lands in a fresh segment; Retry-After, when sent, beats any guess. */
+    private static final int THROTTLE_MAX_RETRIES = 5;
+    private static final long THROTTLE_RETRY_BACKOFF_MS = 4000L;
+    private static final long THROTTLE_RETRY_MAX_MS = 120_000L;
+
     private static final int GRID_LOADING_MAX_RETRIES = 6;
     /** Base backoff between Loading retries (doubles each attempt). */
     private static final long GRID_LOADING_RETRY_BACKOFF_MS = 1000L;
@@ -904,9 +921,19 @@ public class MappingClient {
     private void flushSeenMasks() {
 	if(dirtySeenGrids.isEmpty() || !OptWnd.sendLiveLocationCheckBox.a)
 	    return;
+	/* Take the batch out of the dirty set up front - so cells seen while this upload
+	 * is in flight are not swallowed by a later clear - but keep the ids, and put them
+	 * back if the upload does not land. The set used to be cleared unconditionally
+	 * before the request, so a 429 or a timeout (the two common outcomes on a busy
+	 * exploration session) discarded those grids for good. Nothing was corrupted - the
+	 * masks themselves are kept - but the server never heard about ground the player
+	 * had walked over, and the only way to make it hear was to walk it again. */
+	final Set<Long> batch = new LinkedHashSet<>(dirtySeenGrids);
+	dirtySeenGrids.clear();
+	HttpURLConnection connection = null;
 	try {
 	    JSONArray items = new JSONArray();
-	    for(Long gridId : dirtySeenGrids) {
+	    for(Long gridId : batch) {
 		byte[] mask = seenMasks.get(gridId);
 		if(mask == null)
 		    continue;
@@ -915,10 +942,9 @@ public class MappingClient {
 		item.put("seen", java.util.Base64.getEncoder().encodeToString(mask));
 		items.put(item);
 	    }
-	    dirtySeenGrids.clear();
 	    if(items.length() == 0)
 		return;
-	    final HttpURLConnection connection =
+	    connection =
 		(HttpURLConnection) new URL(OptWnd.webmapEndpointTextEntry.buf.line() + "/seenUpload").openConnection();
 	    connection.setConnectTimeout(CONNECT_TIMEOUT_MS);
 	    connection.setReadTimeout(READ_TIMEOUT_MS);
@@ -929,11 +955,21 @@ public class MappingClient {
 		out.write(items.toString().getBytes(StandardCharsets.UTF_8));
 	    }
 	    int code = connection.getResponseCode();
-	    if(code < 200 || code >= 300)
-		warn(String.format("Seen upload rejected by the server (HTTP %d).", code));
-	    connection.disconnect();
+	    if(code < 200 || code >= 300) {
+		/* Re-dirty so the next flush carries these again. The server merges a mask
+		 * by OR, so re-sending one is always safe and never un-sees a cell. A 429 is
+		 * a routine throttle on this lane, not something the player can act on, so
+		 * it is retried silently. */
+		dirtySeenGrids.addAll(batch);
+		if(code != 429)
+		    warn(String.format("Seen upload rejected by the server (HTTP %d).", code));
+	    }
 	} catch(Exception e) {
+	    dirtySeenGrids.addAll(batch);
 	    warn("Seen upload failed: " + e.getMessage());
+	} finally {
+	    if(connection != null)
+		connection.disconnect();
 	}
     }
 
@@ -1309,6 +1345,8 @@ public class MappingClient {
 	private final WeakReference<MCache.Grid> grid;
 	/** Consecutive Loading failures already retried for this grid. */
 	private int loadingRetries = 0;
+	/** Consecutive 429s already retried for this grid. */
+	private int throttleRetries = 0;
 	
 	GridUploadTask(String gridID, WeakReference<MCache.Grid> grid) {
 	    this.gridID = gridID;
@@ -1363,8 +1401,20 @@ public class MappingClient {
 			    terrainTypes.put(String.valueOf(e.getKey()), e.getValue());
 			multipart.addFormField("terrainTypes", terrainTypes.toString());
 			MultipartUtility.Response response = multipart.finish();
-			if(response.statusCode < 200 || response.statusCode >= 300)
+			if(response.statusCode == 429) {
+			    /* Throttled, not rejected: re-queue rather than dropping the grid.
+			     * Nothing is retained across the wait but the weak reference - the
+			     * image is redrawn on the retry - so a grid the cache has since let
+			     * go of quietly stops retrying, which is the correct outcome. */
+			    long delay = throttleRetryDelay(response.retryAfterSeconds, throttleRetries++);
+			    if(delay < 0)
+				warn(String.format("Grid image upload gave up after %d throttled attempts for grid %s.",
+						   THROTTLE_MAX_RETRIES, gridID));
+			    else
+				submitGrid(this, delay, TimeUnit.MILLISECONDS);
+			} else if(response.statusCode < 200 || response.statusCode >= 300) {
 			    warn(String.format("Grid image upload rejected by the server (HTTP %d) for grid %s.", response.statusCode, gridID));
+			}
 		    } catch (IOException ex) {
 			warn("Grid image upload failed: " + ex.getMessage());
 		    }
@@ -1385,6 +1435,22 @@ public class MappingClient {
 	}
     }
     
+    /* How long to wait before re-sending a request the server refused with 429.
+     *
+     * Honours Retry-After when the server sends a delta-seconds value, and otherwise
+     * doubles a few seconds per attempt. Capped both ways: a server asking for an hour
+     * still gets retried within two minutes, because the grid image is regenerated from
+     * a weak reference that may not survive that long. Returns -1 once the attempt
+     * budget is spent and the caller should give up. */
+    private static long throttleRetryDelay(long retryAfterSeconds, int attempt) {
+	if(attempt >= THROTTLE_MAX_RETRIES)
+	    return -1;
+	long delay = THROTTLE_RETRY_BACKOFF_MS * (1L << attempt);
+	if(retryAfterSeconds > 0)
+	    delay = Math.max(delay, retryAfterSeconds * 1000L);
+	return Math.min(delay, THROTTLE_RETRY_MAX_MS);
+    }
+
     private static Coord toGC(Coord2d c) {
 	return new Coord(Math.floorDiv((int) c.x, GRID_SIZE), Math.floorDiv((int) c.y, GRID_SIZE));
     }
