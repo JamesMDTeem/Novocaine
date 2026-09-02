@@ -24,6 +24,13 @@ from collections import OrderedDict
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 DATA = os.path.join(ROOT, "data", "combat")
 OUT = os.path.join(DATA, "moves_ingame.json")
+# The same moves with every character-specific field removed. See publish() for the
+# argument that this half is safe to commit and the other half is not.
+PUBLIC = os.path.join(DATA, "moves_sheet.json")
+
+# Fields that describe the CHARACTER rather than the game: what it has bought, how far
+# it has levelled each move, and the raw sheet text those were read from.
+PRIVATE_FIELDS = ("maxlevel", "decklevel", "pagina")
 WIKI = os.path.join(DATA, "moves.json")
 
 # The sheet colours each opening and each attack school, and the two use the same four
@@ -64,6 +71,20 @@ def strip_markup(t):
         t = re.sub(r"\$[a-z]+\{([^{}]*)\}", r"\1", t)
     t = re.sub(r"\$[a-z]+\[[^\]]*\]", "", t)
     return t
+
+
+# "Attack weight: $img[gfx/hud/chr/unarmed,h=1ln] - mu" - the skill that feeds a move's
+# attack weight is named by the icon, not by the text, so stripping the markup throws it
+# away. That is the difference between a move weighted on Unarmed Combat and one weighted
+# on Melee Combat, which is a factor of two on this character and decides every defence
+# weight recovered from an opening gain.
+SKILL_RE = re.compile(r"\$img\[gfx/hud/chr/([a-z]+)")
+
+
+def skill_in(raw):
+    """The character skill an attack- or block-weight line names by its icon."""
+    m = SKILL_RE.search(raw or "")
+    return m.group(1) if m else None
 
 
 def colours_in(raw):
@@ -140,6 +161,10 @@ def parse_move(m, problems):
     rec["weapon"] = strip_markup(fields.get("Weapon", "")).strip() or None
     rec["attack_weight"] = strip_markup(fields.get("Attack weight", "")).strip() or None
     rec["block_weight"] = strip_markup(fields.get("Block weight", "")).strip() or None
+    # Which skill those weights are read from. Null for a move whose line says
+    # "According to weapon", which the sheet's own closing note resolves to Melee Combat.
+    rec["attack_skill"] = skill_in(fields.get("Attack weight", ""))
+    rec["block_skill"] = skill_in(fields.get("Block weight", ""))
     rec["damage"] = strip_markup(fields.get("Damage", "")).strip() or None
     rec["grievous_pct"] = num(fields["Grievous damage"]) if "Grievous damage" in fields else None
     rec["initiative"] = num(fields["Initiative points"]) if "Initiative points" in fields else None
@@ -302,8 +327,41 @@ def main(argv):
     with open(OUT, "w", encoding="utf8") as f:
         json.dump(out, f, indent=1, ensure_ascii=False)
         f.write("\n")
-    print("\nwrote %s" % os.path.relpath(OUT, ROOT))
+    print("\nwrote %s  (gitignored - names a character and its build)"
+          % os.path.relpath(OUT, ROOT))
+    publish(out)
     return 0
+
+
+def publish(out):
+    """Write the character-free half of the dump, which is committed.
+
+    The reason the full dump stays local is that it records which moves this character
+    has bought and how far it has levelled each one. Everything else in it - a move's
+    attack weight, the openings it inflicts and by how much, its damage, its cooldown -
+    is a property of the game, true for every player, and no different in kind from the
+    wiki-derived pack alongside it.
+
+    Splitting on exactly that line gets the move data into the repository, where the
+    simulator and the estimator can both depend on it being there, without publishing
+    anything about whose character produced it. The opening percentages are the part
+    that matters most: the wiki pack records which colour a move opens but not by how
+    much, and without the percentage no defence weight can be recovered from a gain.
+    """
+    body = OrderedDict()
+    for k, v in out.items():
+        if k == "char":
+            continue
+        if k == "moves":
+            v = [OrderedDict((mk, mv) for mk, mv in m.items()
+                             if mk not in PRIVATE_FIELDS) for m in v]
+        body[k] = v
+    body["source"] = "client combat-deck dump, character-specific fields removed"
+    with open(PUBLIC, "w", encoding="utf8") as f:
+        json.dump(body, f, indent=1, ensure_ascii=False)
+        f.write("\n")
+    print("wrote %s  (committed - no character in it)"
+          % os.path.relpath(PUBLIC, ROOT))
 
 
 if __name__ == "__main__":

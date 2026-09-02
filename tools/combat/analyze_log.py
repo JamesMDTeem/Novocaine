@@ -18,6 +18,7 @@ import os
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fightlog  # noqa: E402
 import model
 
 # A move and the damage it caused arrive as separate messages a few milliseconds
@@ -445,29 +446,26 @@ def report_anomalies(rows, bad):
         print("    - " + n)
 
 
-def collect(rows):
+def collect(path):
     """The per-fight facts the corpus view aggregates: reported cooldowns and, for
-    every move, the opening it inflicted against the opening already standing."""
-    h = header(rows)
-    foe = (h or {}).get("foeres", "?")
-    sts = states(rows)
-    out = {"foe": foe, "cd": [], "open": []}
-    for m in [r for r in rows if r.get("ev") == "move"]:
-        if m["actor"] == "me" and m.get("cd", -1) >= 0:
-            out["cd"].append((m.get("name") or m["move"], m["cd"]))
-        b = near_before(sts, m["t"])
-        a = near_after(sts, m["t"], AFTER_MS)
-        if b is None or a is None:
+    every move, the opening it inflicted against the opening already standing.
+
+    Attribution comes from fightlog rather than from a timestamp window here, and the
+    engagement is skipped when fightlog says our own moves cannot account for what
+    happened. Doing it by hand is what this function used to do, and it silently
+    credited another player's attacks to our last move in every group fight.
+    """
+    log = fightlog.read(path)
+    out = {"foe": "?", "cd": [], "open": []}
+    for eng in log.engagements:
+        if not eng.offence_ok:
             continue
-        key = "foe" if m["actor"] == "me" else "mine"
-        bv, av = b.get(key), a.get(key)
-        if not bv or not av:
-            continue
-        for i in range(4):
-            d = av[i] - bv[i]
-            if d > 0:
-                out["open"].append((m["actor"], m.get("name") or m["move"],
-                                    COLOURS[i], bv[i], d))
+        out["foe"] = eng.res or out["foe"]
+        for m in eng.moves:
+            if m.get("actor") == "me" and m.get("cd", -1) >= 0:
+                out["cd"].append((m.get("name") or m["move"], m["cd"]))
+        for actor, name, colour, standing, gain in fightlog.opening_gains(eng):
+            out["open"].append((actor, name, colour, standing, gain))
     return out
 
 
@@ -537,7 +535,7 @@ def main(argv):
             print("%s: empty" % p)
             continue
         seen += 1
-        fights.append(collect(rows))
+        fights.append(collect(p))
         report_header(rows, p)
         report_moves(rows)
         report_effects(rows)

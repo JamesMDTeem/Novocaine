@@ -1,0 +1,1147 @@
+{
+ "source": "client combat-deck dump, character-specific fields removed",
+ "maxpoints": 30,
+ "nsave": 5,
+ "colours": {
+  "blue": {
+   "opening": "Dizzy",
+   "school": "Backhanded"
+  },
+  "green": {
+   "opening": "Off Balance",
+   "school": "Striking"
+  },
+  "red": {
+   "opening": "Cornered",
+   "school": "Oppressive"
+  },
+  "yellow": {
+   "opening": "Reeling",
+   "school": "Sweeping"
+  }
+ },
+ "moves": [
+  {
+   "res": "paginae/atk/bloodlust",
+   "name": "Bloodlust",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": "· 75% · µ",
+   "attack_skill": null,
+   "block_skill": "unarmed",
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "10",
+   "cooldown_mu": false,
+   "cooldown": 10,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Bloodlust is charged by 25% / Δ. When you attack an opponent, your attack weight will be increased by four times the amount that Bloodlust is charged."
+   ]
+  },
+  {
+   "res": "paginae/atk/chinup",
+   "name": "Chin Up",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": "· µ",
+   "attack_skill": null,
+   "block_skill": "unarmed",
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "10",
+   "cooldown_mu": false,
+   "cooldown": 10,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/chop",
+   "name": "Chop",
+   "weapon": "Any edged weapon",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon",
+   "grievous_pct": null,
+   "initiative": 1,
+   "cooldown_raw": "40",
+   "cooldown_mu": false,
+   "cooldown": 40,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Off Balance",
+     "colour": "green",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/cleave",
+   "name": "Cleave",
+   "weapon": "Any heavy, edged weapon",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon · 150%",
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "80",
+   "cooldown_mu": false,
+   "cooldown": 80,
+   "attack_types": [
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    },
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 25.0,
+     "name": "Cornered",
+     "colour": "red",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/combmed",
+   "name": "Combat Meditation",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": "· µ",
+   "attack_skill": null,
+   "block_skill": "unarmed",
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "10",
+   "cooldown_mu": false,
+   "cooldown": 10,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Combat Meditation is charged by 25% / Δ. When you attack an opponent, your cooldown will be decreased by the amount that Combat Meditation is charged.",
+    "While Combat Meditation is active, all your attacks will have 25% of their normal attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/dash",
+   "name": "Dash",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "80 / µ",
+   "cooldown_mu": true,
+   "cooldown": 80,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": 2,
+   "notes": [
+    "Dash completely removes your slightest opening."
+   ]
+  },
+  {
+   "res": "paginae/atk/fdodge",
+   "name": "Feigned Dodge",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "35",
+   "cooldown_mu": false,
+   "cooldown": 35,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 15.0,
+     "name": "Striking",
+     "colour": "green",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "For every unit of opening reduced by Feigned Dodge, twice that amount is given to the opponent."
+   ]
+  },
+  {
+   "res": "paginae/atk/fullcircle",
+   "name": "Full Circle",
+   "weapon": "Any melee weapon",
+   "attack_weight": "· 90% · µ",
+   "block_weight": null,
+   "attack_skill": "melee",
+   "block_skill": null,
+   "damage": "According to weapon",
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "40",
+   "cooldown_mu": false,
+   "cooldown": 40,
+   "attack_types": [
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    },
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Off Balance",
+     "colour": "green",
+     "mu": false
+    },
+    {
+     "pct": 5.0,
+     "name": "Cornered",
+     "colour": "red",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Full Circle attacks your main target and all other opponents in range.",
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/gojug",
+   "name": "Go for the Jugular",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "40",
+   "grievous_pct": 30,
+   "initiative": null,
+   "cooldown_raw": "45",
+   "cooldown_mu": false,
+   "cooldown": 45,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    },
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 10.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    },
+    {
+     "pct": 15.0,
+     "name": "Cornered",
+     "colour": "red",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/haymaker",
+   "name": "Haymaker",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "20",
+   "grievous_pct": 15,
+   "initiative": null,
+   "cooldown_raw": "50",
+   "cooldown_mu": false,
+   "cooldown": 50,
+   "attack_types": [
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/jump",
+   "name": "Jump",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "25",
+   "cooldown_mu": false,
+   "cooldown": 25,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 20.0,
+     "name": "Sweeping",
+     "colour": "yellow",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/kick",
+   "name": "Kick",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "25",
+   "grievous_pct": 15,
+   "initiative": 1,
+   "cooldown_raw": "45",
+   "cooldown_mu": false,
+   "cooldown": 45,
+   "attack_types": [
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 20.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/knockteeth",
+   "name": "Knock Its Teeth Out",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "30",
+   "grievous_pct": 25,
+   "initiative": 1,
+   "cooldown_raw": "35",
+   "cooldown_mu": false,
+   "cooldown": 35,
+   "attack_types": [
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 20.0,
+     "name": "Cornered",
+     "colour": "red",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/lefthook",
+   "name": "Left Hook",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "15",
+   "grievous_pct": 10,
+   "initiative": null,
+   "cooldown_raw": "40",
+   "cooldown_mu": false,
+   "cooldown": 40,
+   "attack_types": [
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Dizzy",
+     "colour": "blue",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/lowblow",
+   "name": "Low Blow",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "20",
+   "grievous_pct": 30,
+   "initiative": null,
+   "cooldown_raw": "50",
+   "cooldown_mu": false,
+   "cooldown": 50,
+   "attack_types": [
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 10.0,
+     "name": "Off Balance",
+     "colour": "green",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Low Blow gains you 1 Point of Initiative against your opponent."
+   ]
+  },
+  {
+   "res": "paginae/atk/oppknock",
+   "name": "Opportunity Knocks",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": 4,
+   "cooldown_raw": "45",
+   "cooldown_mu": false,
+   "cooldown": 45,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Opportunity Knocks increases your opponent's greatest opening by 40% · µ."
+   ]
+  },
+  {
+   "res": "paginae/atk/parry",
+   "name": "Parry",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": "· 80% · µ",
+   "attack_skill": null,
+   "block_skill": "melee",
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "10",
+   "cooldown_mu": false,
+   "cooldown": 10,
+   "attack_types": [],
+   "openings": [
+    {
+     "pct": 10.0,
+     "name": "Dizzy",
+     "colour": "blue",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "You need a sword equipped for Parry to inflict its effect upon your opponents."
+   ]
+  },
+  {
+   "res": "paginae/atk/pow",
+   "name": "Punch",
+   "weapon": null,
+   "attack_weight": "· 80% · µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "10",
+   "grievous_pct": 5,
+   "initiative": null,
+   "cooldown_raw": "30",
+   "cooldown_mu": false,
+   "cooldown": 30,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Off Balance",
+     "colour": "green",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/punchboth",
+   "name": "Punch 'em Both",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "10",
+   "grievous_pct": 7.5,
+   "initiative": null,
+   "cooldown_raw": "40",
+   "cooldown_mu": false,
+   "cooldown": 40,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    },
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Punch 'em Both attacks both your primary target and also one other opponent in range."
+   ]
+  },
+  {
+   "res": "paginae/atk/barrage",
+   "name": "Quick Barrage",
+   "weapon": "Any melee weapon",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon · 25%",
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "20",
+   "cooldown_mu": false,
+   "cooldown": 20,
+   "attack_types": [
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 10.0,
+     "name": "Cornered",
+     "colour": "red",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "If your opponent has more than 25% of Oppressive openings, Quick Barrage also gains you 1 Point of Initiative against that opponent.",
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/qdodge",
+   "name": "Quick Dodge",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "25",
+   "cooldown_mu": false,
+   "cooldown": 25,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 20.0,
+     "name": "Striking",
+     "colour": "green",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/regain",
+   "name": "Regain Composure",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "35",
+   "cooldown_mu": false,
+   "cooldown": 35,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 20.0,
+     "name": "Striking",
+     "colour": "green",
+     "mu": true
+    },
+    {
+     "pct": 20.0,
+     "name": "Sweeping",
+     "colour": "yellow",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/ripapart",
+   "name": "Rip Apart",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "50",
+   "grievous_pct": 30,
+   "initiative": 6,
+   "cooldown_raw": "60",
+   "cooldown_mu": false,
+   "cooldown": 60,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    },
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    },
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    },
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 7.5,
+     "name": "Off Balance",
+     "colour": "green",
+     "mu": false
+    },
+    {
+     "pct": 7.5,
+     "name": "Dizzy",
+     "colour": "blue",
+     "mu": false
+    },
+    {
+     "pct": 7.5,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    },
+    {
+     "pct": 7.5,
+     "name": "Cornered",
+     "colour": "red",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/shield",
+   "name": "Shield Up",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": "· 250% · µ",
+   "attack_skill": null,
+   "block_skill": "melee",
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "10",
+   "cooldown_mu": false,
+   "cooldown": 10,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "If Shield Up is used without a shield equipped, its block weight will be 50% instead of 250%."
+   ]
+  },
+  {
+   "res": "paginae/atk/sidestep",
+   "name": "Sidestep",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "25",
+   "cooldown_mu": false,
+   "cooldown": 25,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 20.0,
+     "name": "Backhanded",
+     "colour": "blue",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/sideswipe",
+   "name": "Sideswipe",
+   "weapon": "Any edged weapon",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon · 75%",
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "25",
+   "cooldown_mu": false,
+   "cooldown": 25,
+   "attack_types": [
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 7.5,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/sting",
+   "name": "Sting",
+   "weapon": "Any pointed weapon",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon · 125%",
+   "grievous_pct": null,
+   "initiative": 2,
+   "cooldown_raw": "50",
+   "cooldown_mu": false,
+   "cooldown": 50,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    },
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 20.0,
+     "name": "Dizzy",
+     "colour": "blue",
+     "mu": false
+    },
+    {
+     "pct": 10.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ]
+  },
+  {
+   "res": "paginae/atk/takeaim",
+   "name": "Take Aim",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "30 / µ",
+   "cooldown_mu": true,
+   "cooldown": 30,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Take Aim gains you 1 Point of Initiative against your opponent, and can be carried out at a distance.",
+    "The cooldown of Take Aim increases by 20% for each Point of Initiative you have."
+   ]
+  },
+  {
+   "res": "paginae/atk/toarms",
+   "name": "To Arms",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": "· µ",
+   "attack_skill": null,
+   "block_skill": "melee",
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "10",
+   "cooldown_mu": false,
+   "cooldown": 10,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/uppercut",
+   "name": "Uppercut",
+   "weapon": null,
+   "attack_weight": "· 0.8 · µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "30",
+   "grievous_pct": 5,
+   "initiative": null,
+   "cooldown_raw": "30",
+   "cooldown_mu": false,
+   "cooldown": 30,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    },
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/watchmoves",
+   "name": "Watch Its Moves",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "45",
+   "cooldown_mu": false,
+   "cooldown": 45,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 30.0,
+     "name": "Backhanded",
+     "colour": "blue",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": 1,
+   "notes": [
+    "Watch Its Moves gains you 1 Point of Initiative against your opponent."
+   ]
+  },
+  {
+   "res": "paginae/atk/yieldground",
+   "name": "Yield Ground",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "30",
+   "cooldown_mu": false,
+   "cooldown": 30,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [
+    {
+     "pct": 10.0,
+     "name": "Dizzy",
+     "colour": "blue",
+     "mu": false
+    },
+    {
+     "pct": 10.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "reduces": [
+    {
+     "pct": 30.0,
+     "name": "Striking",
+     "colour": "green",
+     "mu": true
+    },
+    {
+     "pct": 30.0,
+     "name": "Oppressive",
+     "colour": "red",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": []
+  },
+  {
+   "res": "paginae/atk/zigzag",
+   "name": "Zig-Zag Ruse",
+   "weapon": null,
+   "attack_weight": null,
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": null,
+   "grievous_pct": null,
+   "initiative": null,
+   "cooldown_raw": "50",
+   "cooldown_mu": false,
+   "cooldown": 50,
+   "attack_types": [],
+   "openings": [],
+   "openings_on_self": [],
+   "reduces": [
+    {
+     "pct": 50.0,
+     "name": "Sweeping",
+     "colour": "yellow",
+     "mu": true
+    },
+    {
+     "pct": 50.0,
+     "name": "Oppressive",
+     "colour": "red",
+     "mu": true
+    }
+   ],
+   "when_attacked": null,
+   "opponent_initiative": 2,
+   "notes": []
+  }
+ ]
+}
