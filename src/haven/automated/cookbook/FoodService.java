@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -219,7 +220,15 @@ public class FoodService {
                     parsedFoodInfo.hunger = round2Dig(foodInfo.glut * HUNGER_SCALE / multiplier2);
 
                     for (int i = 0; i < foodInfo.evs.length; i++) {
-                        parsedFoodInfo.feps.add(new FoodFEP(foodInfo.evs[i].ev.nm, round2Dig(foodInfo.evs[i].a / multiplier)));
+                        // Both the resource and the display name. The resource is the identity -
+                        // "gfx/hud/chr/fev/str2" is the same in every locale, while ev.nm is a
+                        // server-authored, localised string that a catalog keying on it silently
+                        // stops matching the moment the game is played in another language. The
+                        // name still travels because it costs nothing and reads better in logs.
+                        parsedFoodInfo.feps.add(new FoodFEP(
+                                foodInfo.evs[i].ev.nm,
+                                fepResource(foodInfo.evs[i]),
+                                round2Dig(foodInfo.evs[i].a / multiplier)));
                     }
 
                     for (ItemInfo info : infoList) {
@@ -236,11 +245,11 @@ public class FoodService {
                         if (info.getClass().getName().contains("Ingredient")) {
                             String name = (String) info.getClass().getField("name").get(info);
                             Double value = (Double) info.getClass().getField("val").get(info);
-                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * PERCENT_SCALE)));
+                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, ingredientPercent(value)));
                         } else if (info.getClass().getName().contains("Smoke")) {
                             String name = (String) info.getClass().getField("name").get(info);
                             Double value = (Double) info.getClass().getField("val").get(info);
-                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, (int) (value * PERCENT_SCALE)));
+                            parsedFoodInfo.ingredients.add(new FoodIngredient(name, ingredientPercent(value)));
                         } else if (info.getClass().getName().contains("FoodTypes")) {
                             readFoodTypes(info, parsedFoodInfo);
                         }
@@ -407,7 +416,14 @@ public class FoodService {
      * q10, leaving "% of highest quality seen" planning against a number that never grows.
      */
     private static boolean improvesOnCached(String hash, ParsedFoodInfo info) {
-        ParsedFoodInfo seen = cachedItems.get(hash);
+        return improvesOn(cachedItems.get(hash), info);
+    }
+
+    /**
+     * The rule above, against an arbitrary earlier sighting rather than the session cache, so
+     * {@link #sendItems()} can apply it between two sightings queued in the same flush window.
+     */
+    private static boolean improvesOn(ParsedFoodInfo seen, ParsedFoodInfo info) {
         if (seen == null) {
             return true;
         }
@@ -428,6 +444,47 @@ public class FoodService {
         return seen.quality == null || info.quality > seen.quality;
     }
 
+    /**
+     * An ingredient's share of the dish, as a percentage, keeping the fraction the game gave us.
+     *
+     * This used to be {@code (int)(value * PERCENT_SCALE)}. Truncation, not rounding, and lossy
+     * either way: real shares are fractions like 0.0625 and 0.1875, so 6.25% and 18.75% were
+     * being filed as 6 and 18. Two recipes that differ only below a whole percent then become
+     * indistinguishable, and the percentages shown against a dish no longer add up. Rounded to
+     * two decimals because that is the precision the tooltip itself is drawn at.
+     */
+    private static double ingredientPercent(double val) {
+        return round2Dig(val * PERCENT_SCALE);
+    }
+
+    /**
+     * The FEP event's resource name, or null when it cannot be read. Never guessed at: a wrong
+     * resource is worse than none, because the server prefers it over the display name.
+     */
+    private static String fepResource(FoodInfo.Event event) {
+        try {
+            return event.ev.getres().name;
+        } catch (RuntimeException e) {
+            // Resource.Layer.getres() is safe, but the layer itself can still be a loading stub
+            // in edge cases; fall back to the display name rather than lose the whole sighting.
+            return null;
+        }
+    }
+
+    /**
+     * Copies the tooltip fields that resolve asynchronously from an older sighting onto a newer
+     * one that is missing them. Only ever fills gaps - a field the newer sighting already read is
+     * the fresher answer and is left alone.
+     */
+    private static void carryOverLateFields(ParsedFoodInfo from, ParsedFoodInfo to) {
+        if (to.foodTypes.isEmpty() && !from.foodTypes.isEmpty()) {
+            to.foodTypes = from.foodTypes;
+        }
+        if (to.satiationKeys.isEmpty() && !from.satiationKeys.isEmpty()) {
+            to.satiationKeys = from.satiationKeys;
+        }
+    }
+
     public static boolean isValidEndpoint() {
         String raw = cachedEndpoint;
         return raw != null && raw.length() >= MIN_ENDPOINT_LENGTH;
@@ -443,14 +500,37 @@ public class FoodService {
         if (endpoint == null) return;
         final java.net.URI apiBase = java.net.URI.create(endpoint.trim());
 
-        List<HashedFoodInfo> batch = new ArrayList<>();
-        List<ParsedFoodInfo> toSend = new ArrayList<>();
+        // One flush window routinely holds several sightings of the same dish: a re-inspection at
+        // a higher quality is exactly what improvesOnCached is there to let through, and nothing
+        // marks a dish as sent until the batch is acknowledged. Sending them all posted the same
+        // (name, ingredients) key more than once in a single payload, which is a duplicate the
+        // server has to collapse - and until it learned to, the whole batch was rejected on a
+        // unique-index violation. Keep the best sighting per hash; insertion order is preserved
+        // so a payload still reads in the order the dishes were inspected.
+        Map<String, HashedFoodInfo> bestByHash = new LinkedHashMap<>();
         while (!sendQueue.isEmpty()) {
             HashedFoodInfo info = sendQueue.poll();
             if (!improvesOnCached(info.hash, info.foodInfo)) {
                 continue;
             }
-            batch.add(info);
+            HashedFoodInfo kept = bestByHash.get(info.hash);
+            if (kept == null) {
+                bestByHash.put(info.hash, info);
+            } else if (improvesOn(kept.foodInfo, info.foodInfo)) {
+                // A later sighting can be better on quality while being worse on the tooltip
+                // fields - the types and satiation keys resolve asynchronously and a hover can
+                // land before they do. Carry over what the winner is missing rather than let a
+                // quality bump throw away the only copy that had them.
+                carryOverLateFields(kept.foodInfo, info.foodInfo);
+                bestByHash.put(info.hash, info);
+            } else {
+                carryOverLateFields(info.foodInfo, kept.foodInfo);
+            }
+        }
+
+        List<HashedFoodInfo> batch = new ArrayList<>(bestByHash.values());
+        List<ParsedFoodInfo> toSend = new ArrayList<>(batch.size());
+        for (HashedFoodInfo info : batch) {
             toSend.add(info.foodInfo);
         }
 
@@ -528,6 +608,15 @@ public class FoodService {
                     .append(foodInfo.itemName).append(";")
                     .append(foodInfo.resourceName).append(";");
             foodInfo.ingredients.forEach(it -> stringBuilder.append(it.name).append(";").append(it.percentage).append(";"));
+            // The FEP values too. Name and ingredients alone do not identify a dish: the same
+            // ingredients cooked to a different result carry different FEPs, and keying without
+            // them made the second such dish look like one already sent, so it was dropped in the
+            // client and the server never heard of it. Quality stays out on purpose - it is not
+            // part of a recipe's identity, and putting it in would queue a fresh upload for every
+            // quality point of every dish.
+            foodInfo.feps.forEach(it -> stringBuilder
+                    .append(it.resource != null ? it.resource : it.name).append(";")
+                    .append(it.value).append(";"));
 
             MessageDigest digest = MessageDigest.getInstance("MD5");
             byte[] hash = digest.digest(stringBuilder.toString().getBytes(StandardCharsets.UTF_8));
@@ -559,9 +648,12 @@ public class FoodService {
     /** Single ingredient entry serialized for cookbook submission (name + percentage scaled 0-100). */
     public static class FoodIngredient {
         public String name;
-        public Integer percentage;
 
-        public FoodIngredient(String name, Integer percentage) {
+        /** Share of the dish as a percentage. A fraction, not a whole number - see
+         *  {@link FoodService#ingredientPercent(double)} for why the int here was a bug. */
+        public Double percentage;
+
+        public FoodIngredient(String name, Double percentage) {
             this.name = name;
             this.percentage = percentage;
         }
@@ -570,7 +662,7 @@ public class FoodService {
             return name;
         }
 
-        public Integer getPercentage() {
+        public Double getPercentage() {
             return percentage;
         }
     }
@@ -578,15 +670,25 @@ public class FoodService {
     /** Nutrient component (name + value) from food effect description. */
     public static class FoodFEP {
         public String name;
+
+        /** Game resource of the FEP event ("gfx/hud/chr/fev/str2") - the locale-independent
+         *  identity the server prefers. Null when it could not be read. */
+        public String resource;
+
         public Double value;
 
-        public FoodFEP(String name, Double value) {
+        public FoodFEP(String name, String resource, Double value) {
             this.name = name;
+            this.resource = resource;
             this.value = value;
         }
 
         public String getName() {
             return name;
+        }
+
+        public String getResource() {
+            return resource;
         }
 
         public Double getValue() {
