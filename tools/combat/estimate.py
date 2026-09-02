@@ -633,6 +633,64 @@ def gain_interval(wa, gain, ob, standing, wa_hi=None):
     return (lo, hi)
 
 
+def own_defence_weight(moves, attrs, gear, levels):
+    """OUR defence weight - the one term in the opening formula we do not have to infer.
+
+    Returns (wd, description) or (None, why not).
+
+    An opponent's Wd has to be recovered from how fast our attacks open it. Ours does not:
+    it is the block weight of whichever stance we are holding, and the sheet states that
+    outright as a skill, a multiplier and mu. Holding Shield Up with Melee Combat at 125
+    and the card at level 1, ours is 125 x 250% x 1.0 = 312.5, known rather than fitted.
+
+    That makes the reverse direction measurable for the first time. A gain the OPPONENT
+    puts on US is cbrt(Wa_foe / Wd_us) * Ob * (1 - Oc), and with Wd_us known the only
+    thing left in it is the creature's own attack weight times the move's listed opening.
+
+    Two conditions have to be respected or the number is wrong by a lot.
+
+    The card must actually be IN THE DECK. A stance at deck level 0 cannot have been held,
+    which is what rules out Bloodlust here - it would otherwise be the obvious explanation
+    for anything odd about our attack weight, since it raises it by four times its charge.
+
+    And a conditional multiplier has to be checked against the gear. Shield Up reads
+    "If Shield Up is used without a shield equipped, its block weight will be 50% instead
+    of 250%" - a factor of five, and the difference between a defence weight of 312 and
+    one of 62.
+    """
+    best = None
+    for name, m in moves.items():
+        if not m.get("block_weight"):
+            continue
+        lvl = levels.get(name) or 0
+        if lvl < 1:
+            continue
+        skill = m.get("block_skill") or "melee"
+        base = attrs.get(skill)
+        if not base:
+            continue
+        mult = m.get("block_mult") or 1.0
+        why = ""
+        need = m.get("block_requires")
+        if need:
+            held = any(need in (g.get("res") or "") for g in gear)
+            if not held:
+                mult = m.get("block_mult_without") or mult
+                why = " (no %s equipped, so the reduced multiplier)" % need
+            else:
+                why = " (%s equipped)" % need
+        lo, hi = mu_bounds(lvl)
+        wd = base * mult * ((lo + hi) / 2.0)
+        desc = "%s: %s %g x %g x mu %.3f%s" % (name, skill, base, mult, (lo + hi) / 2.0, why)
+        # More than one stance in the deck is possible; the log does not say which was
+        # held, so the strongest is reported and flagged rather than guessed at.
+        if best is None or wd > best[0]:
+            best = (wd, desc)
+    if best is None:
+        return (None, "no stance card in the deck at this time")
+    return best
+
+
 def opens_map(moves):
     """Move name -> the set of colour indices it opens, for fightlog.
 
@@ -657,6 +715,9 @@ def collect(paths):
         "res": None, "hp": None, "wd_by_gob": {},
         "last_hit": {}, "partial": set(), "soak": [], "soak_clean": [],
         "mu_scaled_openings": set(), "wd_by_gob_move": {}, "deck_at": {},
+        # What the opponent's moves do to US, against our own KNOWN defence weight.
+        # move -> list of (pressure, our Wd, n) - see own_defence_weight.
+        "pressure": defaultdict(list), "my_wd": set(),
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -669,6 +730,7 @@ def collect(paths):
         agi_me = attrs.get("agi")
         # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
         lv = levels_at((log.header or {}).get("wall"))
+        my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv)
         for eng in log.engagements:
             rec = per[bucket(eng)]
             rec["engagements"] += 1
@@ -708,6 +770,35 @@ def collect(paths):
             # before we could see it, and no flag in a log detects that.
             if died(eng, log):
                 rec["killed"].add(eng.gob)
+
+            # What the opponent does to US, taken BEFORE the offence gate and under the
+            # DEFENCE one - the two fail for different reasons. Someone else hitting the
+            # boar spoils what we can learn about the boar's defence and says nothing
+            # about what the boar did to us; another opponent attacking US is what spoils
+            # this direction, because then a rise on us may be someone else's move.
+            #
+            # This is measurable at all only because our own defence weight is known
+            # rather than inferred - see own_defence_weight. With Wd_us known,
+            #
+            #     gain = cbrt(Wa_foe / Wd_us) * Ob * (1 - Oc)
+            #     P    = gain / (1 - Oc)  =  cbrt(Wa_foe / Wd_us) * Ob
+            #
+            # P is how many points the move opens on a fresh colour, and it is fully
+            # measured. Splitting it into the creature's attack weight and the move's own
+            # listed opening is NOT possible here: the wiki's animal-move table records
+            # WHICH colours a move opens and never by how much. So the product is what
+            # gets reported, because the product is what was measured - and it is the
+            # useful half anyway, since it falls as the cube root of our own defence
+            # weight and so says directly what a heavier stance would buy.
+            if eng.defence_ok and my_wd:
+                for actor, name, colour, standing, gain in fightlog.opening_gains(eng):
+                    if actor == "me":
+                        continue
+                    oc = min(standing, 99) / 100.0
+                    if (1.0 - oc) <= 0.02:
+                        continue
+                    rec["pressure"][(name, colour)].append(gain / (1.0 - oc))
+                    rec["my_wd"].add(round(my_wd, 1))
 
             if not eng.offence_ok:
                 rec["skipped"].append((os.path.basename(p), eng.problems))
@@ -955,6 +1046,50 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
 
 
 DEPTH = depth_scaled()
+
+def report_shared_moves(per):
+    """One animal move seen against several species - the first cross-species comparison.
+
+    Opening pressure is P = cbrt(Wa_foe / Wd_us) * Ob, and Ob belongs to the MOVE. So for
+    one move thrown by two different creatures at a known Wd_us, Ob cancels in the ratio
+    and what is left is cbrt of the ratio of their attack weights. Nothing else in this
+    project can compare two species directly; every other measurement is a property of one
+    creature recovered from our attacks on it.
+
+    It exists only because our own defence weight is known rather than inferred. Before the
+    stance was pinned, Wd_us was an unknown sitting inside every one of these numbers.
+
+    Read the ratio cubed and read it carefully: P varies as the CUBE ROOT of attack weight,
+    so a 12% spread in P is a 40% spread in Wa, and the observed spreads are wide enough
+    to overlap. What the corpus supports today is the ordering, not the magnitudes.
+    """
+    shared = defaultdict(list)
+    for name, rec in per.items():
+        for (mv, colour), vals in rec.get("pressure", {}).items():
+            if len(vals) >= 2:
+                shared[(mv, colour)].append((name, sorted(vals)))
+    shared = dict((k, v) for k, v in shared.items() if len(v) > 1)
+    if not shared:
+        return
+    print("=" * 78)
+    print("ONE MOVE, SEVERAL CREATURES")
+    print("=" * 78)
+    print("  Opening pressure is cbrt(its attack weight / OURS) x the move's own listed")
+    print("  opening. For one move the listed opening is the same whoever throws it, so a")
+    print("  ratio between two creatures is cbrt of the ratio of their attack weights -")
+    print("  and cubing it is how to read it. Our own defence weight is known, which is")
+    print("  the only reason any of this is a measurement rather than two unknowns.\n")
+    for (mv, colour), rows in sorted(shared.items()):
+        rows.sort(key=lambda r: -(sum(r[1]) / len(r[1])))
+        top = sum(rows[0][1]) / len(rows[0][1])
+        print("  %s (%s)" % (mv, colour))
+        for name, vals in rows:
+            mean = sum(vals) / len(vals)
+            print("      %-14s n=%-4d %5.1f  (%.1f to %.1f)   attack weight x%.2f of the "
+                  "strongest here" % (name, len(vals), mean, vals[0], vals[-1],
+                                      (mean / top) ** 3))
+        print()
+
 
 def report_mu(per):
     """How the deck weighting rises with a card's level.
@@ -1296,6 +1431,24 @@ def report(per, moves):
                 tot = sum(h["shp"] for h in dmg)
                 print("  what it did      %d landed hit(s), %d total through our armour, "
                       "worst raw %d" % (len(dmg), tot, worst))
+        if rec["pressure"]:
+            wds = sorted(rec["my_wd"])
+            print("\n  how fast it opens us   against OUR defence weight of %s"
+                  % (("%g" % wds[0]) if len(wds) == 1
+                     else "%g to %g" % (wds[0], wds[-1])))
+            print("                   points opened on a fresh colour, per use. This is")
+            print("                   cbrt(its attack weight / ours) x the move's own")
+            print("                   listed opening - the two cannot be separated, because")
+            print("                   the wiki's animal table says WHICH colours a move")
+            print("                   opens and never by how much.")
+            rows = []
+            for (mv, colour), vals in rec["pressure"].items():
+                vals = sorted(vals)
+                rows.append((sum(vals) / len(vals), mv, colour, len(vals),
+                             vals[0], vals[-1]))
+            for mean, mv, colour, n, lo, hi in sorted(rows, reverse=True):
+                print("      %-22s %-7s n=%-4d %5.1f  (%.1f to %.1f)"
+                      % (mv[:22], colour, n, mean, lo, hi))
         print()
 
 
@@ -1401,6 +1554,7 @@ def main(argv):
         return 2
     report(per, moves)
     report_mu(per)
+    report_shared_moves(per)
     if write:
         write_pack(per, moves)
     return 0

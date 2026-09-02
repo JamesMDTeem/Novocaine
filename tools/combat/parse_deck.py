@@ -184,6 +184,16 @@ def num_field(fields, label, problems, where):
     return v
 
 
+# "If Shield Up is used without a shield equipped, its block weight will be 50% instead
+# of 250%." A block multiplier can be conditional, and the condition is prose rather than
+# a labelled field - the same shape as Take Aim's initiative scaling, and missed for the
+# same reason. It matters more than most: Shield Up is a FACTOR OF FIVE between its two
+# readings, and block weight is our own defence weight, which is the one quantity in the
+# opening formula we get to know rather than infer.
+BLOCK_IF_RE = re.compile(
+    r"if\s+.{0,40}?is used without\s+(?:an?\s+)?([a-z ]{3,20}?)\s+equipped[^.]*?"
+    r"block weight will be\s*(\d+(?:\.\d+)?)\s*%", re.I)
+
 # "Initiative points: 4+2" - a cost of four, and a second number whose meaning is not
 # established. Splitting it is not a guess: the corpus shows an opponent's Cleave taking
 # them from 7 to 3, so the leading number is the cost. The trailing one is kept in its
@@ -313,6 +323,14 @@ def parse_move(m, problems):
     ips = IP_SCALE_RE.search(" ".join(notes))
     if ips:
         rec["ip_scale"] = float(ips.group(1)) / 100.0
+    # What the block multiplier falls to without the item the card needs, and which item
+    # that is. Null when the card names no condition.
+    rec["block_requires"] = None
+    rec["block_mult_without"] = None
+    bif = BLOCK_IF_RE.search(" ".join(notes))
+    if bif:
+        rec["block_requires"] = bif.group(1).strip().lower()
+        rec["block_mult_without"] = float(bif.group(2)) / 100.0
     rec["pagina"] = raw
     if extras:
         problems.append("%s: unrecognised field label(s) %s" % (where, ", ".join(extras)))

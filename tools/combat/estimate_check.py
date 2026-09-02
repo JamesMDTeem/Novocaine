@@ -297,6 +297,51 @@ def mu_measurement():
               blo <= 1.25 <= bhi, False)
 
 
+def own_defence():
+    """OUR block weight, which is the one term in the opening formula we get to know.
+
+    The control here is the arithmetic against the sheet: Shield Up reads
+    "Block weight: Melee * 250% * mu", so at Melee Combat 125 and level 1 it is 312.5 and
+    nothing about it is fitted. The conditional is the part that bites - "if used without
+    a shield equipped, its block weight will be 50% instead of 250%" is a factor of FIVE,
+    and it lives in prose rather than in the block-weight field.
+    """
+    print("\nour own defence weight, from the stance we are holding")
+    moves = {
+        "Shield Up": {"block_weight": "· 250% · µ", "block_skill": "melee",
+                      "block_mult": 2.5, "block_requires": "shield",
+                      "block_mult_without": 0.5},
+        "Bloodlust": {"block_weight": "· 75% · µ", "block_skill": "unarmed",
+                      "block_mult": 0.75},
+    }
+    attrs = {"melee": 125, "unarmed": 81}
+    shield = [{"res": "gfx/invobjs/small/roundshield"}, {"res": "gfx/invobjs/small/bronzesword"}]
+    bare = [{"res": "gfx/invobjs/small/bronzesword"}]
+
+    wd, why = estimate.own_defence_weight(moves, attrs, shield, {"Shield Up": 1})
+    near("Shield Up with a shield is Melee 125 x 250%", wd, 312.5, 3.0)
+    check("  and says so", "shield equipped" in why, True)
+    wd, why = estimate.own_defence_weight(moves, attrs, bare, {"Shield Up": 1})
+    near("without one it drops to 50%, a factor of five", wd, 62.5, 1.0)
+    check("  and says why", "no shield equipped" in why, True)
+
+    # A stance not in the deck cannot have been held. This is what rules Bloodlust out,
+    # and Bloodlust matters because it is the one card that would inflate our ATTACK
+    # weight - four times its charge - and so explain an anomaly it has nothing to do with.
+    wd, why = estimate.own_defence_weight(moves, attrs, shield, {"Bloodlust": 0})
+    check("a stance at deck level 0 is not held", wd, None)
+    check("  and the reason is given", "no stance card" in why, True)
+    wd, _ = estimate.own_defence_weight(moves, attrs, shield, {"Bloodlust": 1})
+    near("Bloodlust held would be Unarmed 81 x 75%", wd, 60.75, 1.0)
+
+    # Opening pressure: P = gain / (1 - Oc). The point of dividing out the falloff is that
+    # the same move must read the same P whatever opening it lands on.
+    print("  pressure divides out the standing opening it landed on:")
+    for standing, gain in ((0, 10.0), (50, 5.0), (75, 2.5)):
+        p_ = gain / (1.0 - standing / 100.0)
+        near("    %d%% standing, gain %.1f" % (standing, gain), p_, 10.0, 0.01)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -382,6 +427,7 @@ def main():
     deck_weighting()
     deck_history()
     mu_measurement()
+    own_defence()
     armour()
     buckets()
     if failures:
