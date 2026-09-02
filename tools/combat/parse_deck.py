@@ -166,6 +166,38 @@ def num(s):
         return None
 
 
+def num_field(fields, label, problems, where):
+    """A numeric field, reporting rather than swallowing a value it cannot read.
+
+    An absent line is a real absence and returns None quietly. A line that is PRESENT
+    and unreadable is a finding, and used not to be: Cleave's "Initiative points: 4+2"
+    returned None exactly like a move with no initiative line at all, so a cost of four
+    was recorded as a cost of zero with nothing said. The cooldown field has always
+    reported its failures; these three did not, and the asymmetry was the bug.
+    """
+    if label not in fields:
+        return None
+    v = num(fields[label])
+    if v is None:
+        problems.append("%s: cannot read %s %r"
+                        % (where, label, strip_markup(fields[label]).strip()))
+    return v
+
+
+# "Initiative points: 4+2" - a cost of four, and a second number whose meaning is not
+# established. Splitting it is not a guess: the corpus shows an opponent's Cleave taking
+# them from 7 to 3, so the leading number is the cost. The trailing one is kept in its
+# own field rather than folded into the cost or dropped.
+IP_PAIR_RE = re.compile(r"^\s*(\d+)\s*\+\s*(\d+)\s*$")
+# Take Aim: "The cooldown of Take Aim increases by 20% for each Point of Initiative you
+# have." Read from the prose because the sheet has no structured field for it, and
+# without it Take Aim reports a flat cooldown at every initiative instead of the
+# 30/36/42/48/54/60 ladder the logs actually show.
+IP_SCALE_RE = re.compile(
+    r"cooldown[^.]*?increases by\s*(\d+(?:\.\d+)?)\s*%\s*for each\s*point of initiative",
+    re.I)
+
+
 def parse_move(m, problems):
     raw = m.get("pagina")
     rec = OrderedDict()
@@ -215,8 +247,19 @@ def parse_move(m, problems):
     # The percentage factors on the attack-weight line - the 90% in "Melee * 90% * mu".
     rec["weight_mult"] = mult_of(rec["attack_weight"])
     rec["block_mult"] = mult_of(rec["block_weight"])
-    rec["grievous_pct"] = num(fields["Grievous damage"]) if "Grievous damage" in fields else None
-    rec["initiative"] = num(fields["Initiative points"]) if "Initiative points" in fields else None
+    rec["grievous_pct"] = num_field(fields, "Grievous damage", problems, where)
+    # "Initiative points: N" is what the move SPENDS. Cleave writes "4+2"; the leading
+    # number is the cost and the trailing one is recorded unresolved.
+    rec["initiative"] = None
+    rec["initiative_extra"] = None
+    if "Initiative points" in fields:
+        ip_raw = strip_markup(fields["Initiative points"]).strip()
+        pair = IP_PAIR_RE.match(ip_raw)
+        if pair:
+            rec["initiative"] = int(pair.group(1))
+            rec["initiative_extra"] = int(pair.group(2))
+        else:
+            rec["initiative"] = num_field(fields, "Initiative points", problems, where)
     # "Cooldown: 20" is a number; "Cooldown: 30 / mu" is a formula, and its presence is
     # itself a finding - it says the deck weighting shortens that move, which makes mu
     # readable straight off a reported cooldown instead of having to be fitted.
@@ -259,9 +302,17 @@ def parse_move(m, problems):
     rec["reduces"] = parse_terms(fields["Reduces"], problems, where + " Reduces") \
         if "Reduces" in fields else []
     rec["when_attacked"] = strip_markup(fields.get("When attacked", "")).strip() or None
-    rec["opponent_initiative"] = num(fields["Opponents' initiative points"]) \
-        if "Opponents' initiative points" in fields else None
+    rec["opponent_initiative"] = num_field(fields, "Opponents' initiative points",
+                                           problems, where)
     rec["notes"] = notes
+    # The cooldown's dependence on initiative held, as a fraction of the base per point.
+    # Prose, not a field, so it is read from the notes - and it has to be read from
+    # somewhere, because a simulator that misses it has Take Aim costing 30 ticks at five
+    # initiative when the logs say 60.
+    rec["ip_scale"] = 0.0
+    ips = IP_SCALE_RE.search(" ".join(notes))
+    if ips:
+        rec["ip_scale"] = float(ips.group(1)) / 100.0
     rec["pagina"] = raw
     if extras:
         problems.append("%s: unrecognised field label(s) %s" % (where, ", ".join(extras)))
