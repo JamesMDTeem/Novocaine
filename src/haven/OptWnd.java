@@ -4596,13 +4596,15 @@ public class OptWnd extends Window {
             }, rightColumn.pos("bl").adds(0, 34));
             onlyRenderCameraVisibleObjectsCheckBox.tooltip = onlyRenderCameraVisibleObjectsTooltip;
 
-            rightColumn = add(cameraDiagnosticsCheckBox = new CheckBox("Log Camera Diagnostics"){
-                {a = (Utils.getprefb("cameraDiagnostics", false));}
+            rightColumn = add(diagnosticLoggingCheckBox = new CheckBox("Log Diagnostics"){
+                {a = (Utils.getprefb("diagnosticLogging", false));}
                 public void changed(boolean val) {
-                    Utils.setprefb("cameraDiagnostics", val);
+                    Utils.setprefb("diagnosticLogging", val);
+                    // The writers cache this; without it they keep the value from startup.
+                    haven.automated.nbots.core.NLog.diag(val);
                 }
             }, rightColumn.pos("bl").adds(0, 2));
-            cameraDiagnosticsCheckBox.tooltip = cameraDiagnosticsTooltip;
+            diagnosticLoggingCheckBox.tooltip = diagnosticLoggingTooltip;
 
 
 			Widget backButton;
@@ -4612,7 +4614,7 @@ public class OptWnd extends Window {
 		}
 	}
 
-	public static CheckBox cameraDiagnosticsCheckBox;
+	public static CheckBox diagnosticLoggingCheckBox;
 	public static CheckBox toggleGobHidingCheckBox;
 	public static CheckBox alsoFillTheHidingBoxesCheckBox;
 	public static CheckBox dontHideObjectsThatHaveTheirMapIconEnabledCheckBox;
@@ -5903,11 +5905,15 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[185,185,185]{I have no idea why this disgusting effect exists at all. " +
 			"\nThe vanilla client does not warn you about it in any way, shape or form.}", UI.scale(280));
-    private static final Object cameraDiagnosticsTooltip = RichText.render(
-        "Writes a line a second to $col[218,163,32]{logs/plgob.log} describing what the camera is doing - " +
-        "where it is, where it thinks you are, and what the renderer was actually handed.\n\n" +
-        "Off by default. Only worth turning on if you are reporting a camera problem and have been " +
-        "asked for the log, since it costs a little work every frame and writes about a megabyte an hour.", 300);
+    private static final Object diagnosticLoggingTooltip = RichText.render(
+        "Writes detailed diagnostic logs while you play - frame timings and stalls to " +
+        "$col[218,163,32]{logs/vmem.log}, camera behaviour to $col[218,163,32]{logs/plgob.log}, " +
+        "shader-cache timings to $col[218,163,32]{logs/shader.log}.\n\n" +
+        "Off by default, and worth leaving off. It costs work on every frame and writes several " +
+        "megabytes an hour. Turn it on when you are reporting a performance problem and have been " +
+        "asked for the logs, and turn it off again afterwards.\n\n" +
+        "$col[218,163,32]{Normal logging is unaffected} - crashes, bot activity, combat and eating " +
+        "data are always recorded regardless of this setting.", 300);
 
     private static final Object onlyRenderCameraVisibleObjectsTooltip = RichText.render("Render only objects within the camera’s view frustum. Objects behind the camera are not rendered, reducing GPU load and potentially improving performance." +
             "\n" +

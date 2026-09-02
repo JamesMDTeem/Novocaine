@@ -34,6 +34,39 @@ import java.util.Set;
  * Thread-safe by a single lock: bot threads, the UI thread and the watchdog all write here.
  */
 public class NLog {
+    /**
+     * Whether diagnostic logging is on. Off unless somebody has asked for it.
+     *
+     * The distinction being drawn is between logs that are part of using the client and logs
+     * that only exist to answer a question somebody is currently asking. Bot activity, hearth
+     * travel, survey results, crashes and the output of console commands are the first kind and
+     * always write. The frame sampler, the stall watchdog, the camera trace, the shader-cache
+     * timings and the sight measurements are the second kind: they cost work every frame and
+     * every second, they write megabytes an hour, and outside an active investigation nobody
+     * reads them. Those go behind this.
+     *
+     * Cached rather than read from prefs per call - these are on per-frame paths, and
+     * Preferences is a synchronized lookup, not a field read. {@link #diag(boolean)} keeps it
+     * current when the setting is toggled.
+     */
+    private static volatile boolean diag = haven.Utils.getprefb("diagnosticLogging", false);
+
+    /** Whether diagnostic logging is currently on. */
+    public static boolean diag() {
+        return diag;
+    }
+
+    /** Called by the setting when it changes, so the cached flag does not go stale. */
+    public static void diag(boolean on) {
+        diag = on;
+    }
+
+    /** Logs only when diagnostic logging is on. */
+    public static void diag(String file, String line) {
+        if (diag)
+            log(file, line);
+    }
+
     private static final Object LOCK = new Object();
     private static final SimpleDateFormat STAMP = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private static volatile boolean handlerInstalled = false;

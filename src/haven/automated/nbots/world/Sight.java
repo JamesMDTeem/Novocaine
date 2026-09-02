@@ -388,7 +388,7 @@ public class Sight {
                 (dropped == 0) ? "" : ("; " + dropped + " samples over " + (int) SANE_TILES
                     + "t discarded as re-bases"));
         }
-        NLog.log(LOG, line);
+        NLog.diag(LOG, line);
     }
 
     /** The measured radius so far, in tiles, or 0 before anything has been seen to arrive. */

@@ -246,7 +246,7 @@ public class PlgobWatch {
      */
     private static boolean on() {
         try {
-            return((OptWnd.cameraDiagnosticsCheckBox != null) && OptWnd.cameraDiagnosticsCheckBox.a);
+            return(haven.automated.nbots.core.NLog.diag());
         } catch (RuntimeException e) {
             return(false);
         }

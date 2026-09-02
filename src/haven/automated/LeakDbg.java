@@ -146,6 +146,12 @@ public class LeakDbg {
      * One line, per frame, from the UI thread. Stores references and counts frames only.
      */
     public static void tick(UI ui) {
+        /* Gated at the very top rather than at the log call: the cost of this probe is not the
+         * writing, it is the sampler and the watchdog running for the whole session, and a
+         * client nobody is investigating should not be paying it at all. Checked every frame
+         * so the setting takes effect without a restart - it is one volatile read. */
+        if (!NLog.diag())
+            return;
         LeakDbg.ui = ui;
         frames++;
         if (mapRef == null || (frames & (MAP_REFRESH_PERIOD - 1)) == 0) {

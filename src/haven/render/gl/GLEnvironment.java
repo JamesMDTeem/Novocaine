@@ -834,18 +834,11 @@ public abstract class GLEnvironment implements Environment {
 	}
     }
 
+    /* The ladder of fallbacks this used to be existed because it reached into a widget that
+     * might not be built yet. It now reads one volatile field, so there is nothing left to
+     * fail and nothing to guard against. */
     static boolean shaderDbgEnabled() {
-	try {
-	    if((haven.OptWnd.cameraDiagnosticsCheckBox != null) && haven.OptWnd.cameraDiagnosticsCheckBox.a)
-		return(true);
-	    return(haven.Utils.getprefb("cameraDiagnostics", false));
-	} catch(Exception e) {
-	    try {
-		return(haven.Utils.getprefb("cameraDiagnostics", false));
-	    } catch(Exception e2) {
-		return(false);
-	    }
-	}
+	return(haven.automated.nbots.core.NLog.diag());
     }
 
     private static java.io.BufferedWriter shaderLogWriter = null;
