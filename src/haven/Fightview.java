@@ -352,6 +352,17 @@ public class Fightview extends Widget {
 	nonmain = nrel;
     }
 
+    /* An opponent's resource name, or null while the gob has yet to arrive. Never throws: this
+     * feeds telemetry only, and a fight must not break because a resource was still loading. */
+    private String resOf(long gobid) {
+	try {
+	    Gob g = ui.sess.glob.oc.getgob(gobid);
+	    return(((g == null) || (g.getres() == null)) ? null : g.getres().name);
+	} catch(Exception e) {
+	    return(null);
+	}
+    }
+
     private void setcur(Relation rel) {
 	if(current == rel)
 	    return;
@@ -364,6 +375,11 @@ public class Fightview extends Widget {
 	}
 	currentChanged = true;
 	current = rel;
+	/* The state events describe whichever relation is current, so a switch has to be on the
+	 * record - otherwise the openings of a fresh opponent read as the old one's leaping. */
+	haven.automated.combat.CombatRecorder.onFoe((rel == null) ? -1 : rel.gobid,
+						    (rel == null) ? null : resOf(rel.gobid),
+						    "current");
 	if (current != null) {
 		ui.gui.lastopponent = current.gobid;
 	}
@@ -375,6 +391,10 @@ public class Fightview extends Widget {
 	super.tick(dt);
 	for(Relation rel : lsrel) {
 		rel.updateCombatOverlays(rel);
+	    /* Every opponent, not only the sampled one, and only until its resource resolves:
+	     * a relation can arrive before its gob does, and a null res there is what left one
+	     * three-opponent fight identifying none of them. */
+	    haven.automated.combat.CombatRecorder.nameFoe(rel.gobid, resOf(rel.gobid));
 	    Widget inf = obinfo(rel.gobid, false);
 	    if(inf != null)
 		inf.tick(dt);
@@ -469,11 +489,16 @@ public class Fightview extends Widget {
 		 * changes rarely, and is written only when it differs from the last dump. */
 		haven.automated.combat.CombatDeckDump.dump((ui == null) ? null : ui.gui);
 	    }
+	    /* After start(), so the first opponent's own event lands inside its log rather than
+	     * being dropped by an inactive recorder. */
+	    haven.automated.combat.CombatRecorder.onFoe(rel.gobid, resOf(rel.gobid), "new");
             return;
         } else if(msg == "del") {
             Relation rel = getrel(Utils.uiv(args[0]));
 	    rel.remove();
             lsrel.remove(rel);
+	    /* Before stop(), or the last opponent's departure falls outside its own log. */
+	    haven.automated.combat.CombatRecorder.onFoe(rel.gobid, resOf(rel.gobid), "del");
 	    if(lsrel.isEmpty())
 		haven.automated.combat.CombatRecorder.stop("ended");
 	    if(rel == current) {

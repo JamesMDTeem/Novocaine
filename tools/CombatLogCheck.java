@@ -128,7 +128,25 @@ public class CombatLogCheck {
               CombatEvent.begin(0L, 1L, 2, "c", 1L, 2L, null, null, null, 0, 0),
               "{\"ev\":\"begin\",\"t\":0,\"wall\":1,\"schema\":2,\"char\":\"c\",\"megob\":1,"
               + "\"foegob\":2,\"foeres\":null,\"attrb\":{},\"attr\":{},\"hard\":0,\"soft\":0}");
-        check("schema constant", CombatEvent.SCHEMA, 2);
+        check("schema constant", CombatEvent.SCHEMA, 3);
+        // The opponent events, added in schema 3. Without them a fight against more than one
+        // opponent reads as one opponent whose openings jump for no reason.
+        check("foe (appears)",
+              CombatEvent.foe(17L, 1649181853L, "gfx/kritter/lynx/lynx", "new"),
+              "{\"ev\":\"foe\",\"t\":17,\"gob\":1649181853,"
+              + "\"res\":\"gfx/kritter/lynx/lynx\",\"how\":\"new\"}");
+        check("foe (becomes the sampled one)",
+              CombatEvent.foe(27539L, 675939166L, "gfx/kritter/boar/boar", "current"),
+              "{\"ev\":\"foe\",\"t\":27539,\"gob\":675939166,"
+              + "\"res\":\"gfx/kritter/boar/boar\",\"how\":\"current\"}");
+        // A relation can arrive before its gob does, and the res then reads null. That is a fact
+        // about the fight, not a failure - the "name" event carries the answer when it arrives.
+        check("foe (resource not loaded yet)",
+              CombatEvent.foe(0L, 5L, null, "new"),
+              "{\"ev\":\"foe\",\"t\":0,\"gob\":5,\"res\":null,\"how\":\"new\"}");
+        check("foe (no relation is current)",
+              CombatEvent.foe(1L, -1L, null, "current"),
+              "{\"ev\":\"foe\",\"t\":1,\"gob\":-1,\"res\":null,\"how\":\"current\"}");
         check("gear",
               CombatEvent.gear(0L, 6, "gfx/invobjs/cutthroatknuckles", 34.5, 0, 0, false),
               "{\"ev\":\"gear\",\"t\":0,\"slot\":6,\"res\":\"gfx/invobjs/cutthroatknuckles\","

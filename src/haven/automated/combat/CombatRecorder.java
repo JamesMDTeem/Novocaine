@@ -36,6 +36,11 @@ public final class CombatRecorder {
     private static volatile CombatLogWriter writer = null;
     private static volatile long t0 = 0;
     private static volatile String lastSample = null;
+    /* Opponents whose resource has already been logged, so the tick loop names each one once.
+     * Concurrent because it is written from the UI thread and cleared from start(), which the
+     * message loop calls. */
+    private static final java.util.Set<Long> named =
+        java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Long, Boolean>());
 
     private CombatRecorder() {}
 
@@ -65,6 +70,7 @@ public final class CombatRecorder {
         try {
             t0 = System.currentTimeMillis();
             lastSample = null;
+            named.clear();
             String safe = (charName == null ? "unknown" : charName.replaceAll("[^A-Za-z0-9_-]", "_"));
             Path p = Paths.get(Client.gameDir, "CombatLogs",
                                t0 + "-" + safe + "-" + seq.incrementAndGet() + ".jsonl");
@@ -159,6 +165,39 @@ public final class CombatRecorder {
         } catch(Exception e) {
             return(null);
         }
+    }
+
+    /**
+     * Records an opponent appearing, leaving, or becoming the one being sampled.
+     *
+     * See {@link CombatEvent#foe} for why: the header names one opponent and the client samples
+     * one relation, so without this a multi-opponent fight reads as a single opponent whose
+     * openings jump for no reason.
+     */
+    public static void onFoe(long gobId, String res, String how) {
+        if(!active())
+            return;
+        try {
+            log(CombatEvent.foe(now(), gobId, res, how));
+        } catch(Exception e) {
+            /* never propagate into the message loop */
+        }
+    }
+
+    /**
+     * Names an opponent the first time its resource resolves, and never again.
+     *
+     * A relation can arrive before the gob it refers to, and then its res reads null - which is
+     * how a ninety-second three-opponent fight came to identify none of them. This runs off the
+     * tick loop, so it costs a set lookup per opponent per frame and writes one line per fight
+     * per opponent.
+     */
+    public static void nameFoe(long gobId, String res) {
+        if(!active() || (res == null))
+            return;
+        if(!named.add(gobId))
+            return;
+        onFoe(gobId, res, "name");
     }
 
     public static void onMove(String actor, String moveRes, String moveName,

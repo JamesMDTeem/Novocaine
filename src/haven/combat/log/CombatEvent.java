@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 2;
+    public static final int SCHEMA = 3;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -64,6 +64,35 @@ public final class CombatEvent {
                .put("hard", hard)
                .put("soft", soft)
                .put("broken", broken)
+               .end());
+    }
+
+    /**
+     * An opponent entering, leaving, or becoming the one the state events describe.
+     *
+     * The header names exactly one opponent, which is a lie in any fight against more than one.
+     * The client samples whichever relation is current, and switching targets makes consecutive
+     * state events describe different creatures - so an opening that appears to leap is really
+     * the sampler moving to a fresh opponent. One logged fight switches three times across ninety
+     * seconds while its header names only the first.
+     *
+     * The state and damage events already carry a gob, so the switch is recoverable after the
+     * fact; what is not recoverable is what the other opponents WERE. That is what this event
+     * adds.
+     *
+     * @param how "new" when a relation appears, "current" when the sampled one changes, "del"
+     *            when one leaves, and "name" when a resource that was still loading resolves.
+     *            The last matters more than it sounds: a relation that arrives before its gob
+     *            does is logged with a null res, which is how one whole fight came to record no
+     *            opponent at all.
+     */
+    public static String foe(long t, long gob, String res, String how) {
+        return(new JsonObj()
+               .put("ev", "foe")
+               .put("t", t)
+               .put("gob", gob)
+               .put("res", res)
+               .put("how", how)
                .end());
     }
 
