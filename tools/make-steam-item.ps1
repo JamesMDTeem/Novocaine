@@ -107,10 +107,10 @@ Copy-Item -Path $repoHl -Destination (Join-Path $item 'hafen.hl') -Force
 $hl = Get-Content (Join-Path $item 'hafen.hl') -Raw
 if ($hl -notmatch '(?m)^heap-size\s+(\d+)\s*$') { Die 'Staged hafen.hl has no heap-size line.' }
 $stagedHeap = [int]$Matches[1]
-foreach ($req in @('-XX:\+UseZGC', '-XX:SoftMaxHeapSize=', '-XX:\+IgnoreUnrecognizedVMOptions')) {
+foreach ($req in @('-XX:\+UseZGC', '-XX:ZUncommitDelay=', '-XX:\+IgnoreUnrecognizedVMOptions')) {
     if ($hl -notmatch [regex]::Escape('jvm-arg ') + $req) { Die "Staged hafen.hl is missing a required jvm-arg matching '$req'." }
 }
-Ok "launcher descriptor from repo (heap-size ${stagedHeap}m, ZGC + soft max, machine-independent)"
+Ok "launcher descriptor from repo (heap-size ${stagedHeap}m, ZGC, machine-independent)"
 # The overlay replaced files the staged manifest had already hashed; redo it so the item's
 # manifest.json describes the item that actually ships.
 & java -cp (Join-Path $repoRoot 'bin\hafen.jar') haven.BuildManifest $item (Join-Path $item 'manifest.json')

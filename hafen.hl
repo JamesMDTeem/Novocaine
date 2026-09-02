@@ -17,20 +17,27 @@ command-file Play.bat
 # sitting unused; over three minutes of ordinary play the capacity fell by 36M. So the
 # ceiling is not somewhere the heap avoids, it is where it ends up.
 #
-# SoftMaxHeapSize alone does not fix that - it changes when a collection starts, not
-# what stays committed - which is why all three of these are here:
-#   heap-size 6144       hard bound. 40% above the highest used figure measured, and
-#                        leaves ~10G on a 16G machine.
-#   SoftMaxHeapSize      what ordinary play should sit under; sized just above the
-#                        1.6-3G live set so the heap is collected rather than grown.
-#   ZUncommitDelay       the default 300s returned nothing over the window measured;
+# So the ceiling does the work:
+#   heap-size 6144       the hard bound, and the only one there is. 40% above the
+#                        highest used figure measured, ~3.8x the 1.6G live set (healthy
+#                        for a collector - overhead is flat above roughly 3x), and it
+#                        leaves ~10G free on a 16G machine, which was the whole point.
+#   ZUncommitDelay       the default 300s returned nothing across the window measured;
 #                        120s gets idle pages back to the OS while play continues.
+#
+# Deliberately NOT set: SoftMaxHeapSize. It was tried at 3072m and removed. It cannot
+# bound the footprint on its own (that was measured: a forced collection dropped used
+# from 4.4G to 1.6G and capacity did not move at all), so with the ceiling already
+# bounding the worst case it buys nothing - while costing every machine real work.
+# Ordinary play drifts to ~4.4G used between cycles, so a 3G soft target makes ZGC
+# start cycles earlier and re-mark a 1.6G live set more often, on 32G machines that
+# were never the problem as much as on the 16G ones that were. If it is ever
+# reintroduced, set it above the observed working range, not below it.
 heap-size 6144
 jvm-arg -XX:+IgnoreUnrecognizedVMOptions
 jvm-arg -XX:+UseZGC
 jvm-arg -XX:+ZGenerational
 jvm-arg -XX:+UseCompactObjectHeaders
-jvm-arg -XX:SoftMaxHeapSize=3072m
 jvm-arg -XX:ZUncommitDelay=120
 
 class-path hafen.jar
