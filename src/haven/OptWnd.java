@@ -4985,6 +4985,7 @@ public class OptWnd extends Window {
 	public static CheckBox uploadMapTilesCheckBox;
 	public static CheckBox twelveHourClockCheckBox;
 	public static CheckBox sendLiveLocationCheckBox;
+	public static CheckBox webmapChatErrorsCheckBox;
 	public static TextEntry liveLocationNameTextEntry;
 //	public static TextEntry webmapTokenTextEntry;
 
@@ -5070,6 +5071,18 @@ public class OptWnd extends Window {
 				}
 			}, prev.pos("ur").adds(6, 0));
 			liveLocationNameTextEntry.tooltip = liveLocationNameTooltip;
+
+			// Off by default. The uploads retry on their own schedule, so a server that is
+			// down produces a failure per upload path per minute, none of them actionable
+			// beyond the first. The console log keeps every line either way; this only
+			// decides whether they also land in chat, and they never carry the error sound.
+			prev = add(webmapChatErrorsCheckBox = new CheckBox("Show web map errors in chat"){
+				{a = Utils.getprefb("webmapChatErrors", false);}
+				public void changed(boolean val) {
+					Utils.setprefb("webmapChatErrors", val);
+				}
+			}, prev.pos("bl").adds(0, 12).x(12));
+			webmapChatErrorsCheckBox.tooltip = webmapChatErrorsTooltip;
 
             prev = add(new Label("Cookbook Integration"), prev.pos("bl").adds(0, 26).x(110));
 			prev = add(new Label("Cookbook Endpoint:"), prev.pos("bl").adds(0, 16).x(0));
@@ -5931,6 +5944,9 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[218,163,0]{For example:} Nightdawg (VillageCrafter)$col[185,185,185]{, where }\"Nightdawg\" $col[185,185,185]{is the name I set in this text entry, and} \"VillageCrafter\" $col[185,185,185]{is the character's original name." +
 			"\nThe character's original name is the one you see in the character selection screen, NOT the presentation name.}", UI.scale(320));
+	private static final Object webmapChatErrorsTooltip = RichText.render("Show upload and location failures from the web map in chat." +
+			"\n" +
+			"\n$col[185,185,185]{Off by default: the uploads retry by themselves, so a server that is down or slow reports the same problem once a minute from each of its upload paths. They are always written to the console log either way, and they never play the error sound.}", UI.scale(320));
 	private static final Object worldTagTooltip = RichText.render("Which world your cookbook uploads are filed under. Detected automatically from the world shown next to your character on the character selection screen - there is nothing to set." +
 			"\n" +
 			"\n$col[185,185,185]{One account can have characters in several live worlds, and a dish's values only mean anything in the world it was cooked in, so each world gets its own catalog.}" +

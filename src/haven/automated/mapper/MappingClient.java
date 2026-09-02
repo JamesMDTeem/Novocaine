@@ -14,6 +14,8 @@ import haven.MCache;
 import haven.MapFile;
 import haven.MapView;
 import haven.OptWnd;
+import haven.UI;
+import haven.Utils;
 import haven.WItem;
 import haven.MCache.LoadingMap;
 import haven.res.ui.obj.buddy.Buddy;
@@ -134,13 +136,29 @@ public class MappingClient {
      * off, and the position update runs every two seconds: an unreachable server was worth
      * thirty chat lines a minute, which buries the log the player has to read to notice
      * anything else. The same text gets through once a minute and says how many it stood
-     * in for. The console keeps every line. */
+     * in for. The console keeps every line.
+     *
+     * Rate-limiting was not enough. There are eight independent upload paths and each one
+     * fails with its own wording, so a server that is merely unreachable still produces a
+     * distinct message per path per minute — none of which the player can do anything
+     * about beyond what the first one already told them. Worse, they went out as
+     * ErrorMessage, which is what the game uses for "you cannot do that": red text plus
+     * sfx/error, a sound the player is trained to look up from whatever they are doing
+     * for. A background upload that will be retried in two seconds does not deserve the
+     * same alarm as a failed action.
+     *
+     * So chat is off by default and the console keeps every line. Turning
+     * "Show web map errors in chat" on brings the text back, still without the sound: a
+     * player who has gone looking for the option wants to read the failures, not be
+     * startled by them. */
     private static final long WARN_REPEAT_MS = 60_000;
     /* message -> {last time it reached chat, how many were swallowed since} */
     private final Map<String, long[]> warned = new HashMap<>();
 
     private void warn(String msg) {
 	System.out.println(msg);
+	if(!Utils.getprefb("webmapChatErrors", false))
+	    return;
 	String out = msg;
 	long now = System.currentTimeMillis();
 	synchronized(warned) {
@@ -165,7 +183,7 @@ public class MappingClient {
 	try {
 	    GameUI gui = glob.sess.ui.gui;
 	    if(gui != null)
-		gui.error(out);
+		gui.msg(out, UI.ErrorMessage.color, UI.SimpleMessage.nosfx);
 	} catch(Exception ignored) {}
     }
 
