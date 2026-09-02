@@ -345,6 +345,13 @@ public class Observed {
      */
     private static Map<Long, Map<Coord, BitSet>> looked = new HashMap<>();
     private static boolean dirty = false;
+    /**
+     * Bumped whenever the recorded bytes change, so a save can tell whether the snapshot
+     * it encoded is still the whole story. See {@link #save}.
+     */
+    private static long gen = 0;
+    /** Bumped by {@link #reset} alone, so an in-flight save can tell it was overtaken. */
+    private static long wipes = 0;
     private static long swept = 0;
     private static long fileAt = -1;
     private static Thread saver = null;
@@ -1034,6 +1041,7 @@ public class Observed {
         if (g[i] != v) {
             g[i] = v;
             dirty = true;
+            gen++;
         }
     }
 
@@ -1139,92 +1147,125 @@ public class Observed {
      * to keep in sync.
      */
     private static void save() {
+        long stamp;
+        boolean write;
         synchronized (LOCK) {
             if (map == null)
                 return;
             /* Re-reading a file nobody has touched, to merge in what it already told us, is the
              * one thing here that could cost real time - it happens every few seconds for the
              * length of a session. The modification time settles it for nothing. */
-            long stamp = stamp();
+            stamp = stamp();
             if (!dirty && (stamp != UNKNOWN) && (stamp == fileAt))
                 return;
+            write = dirty;
+        }
 
-            if (!dirty) {
-                /* Nothing of ours to say - we only came to adopt what a crewmate wrote. A reader
-                 * cannot corrupt anybody, so it does not queue behind the lock. */
-                Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
-                if (read(disk)) {
-                    fileAt = stamp;
-                    adopt(disk);
-                }
+        if (!write) {
+            /* Nothing of ours to say - we only came to adopt what a crewmate wrote. A reader
+             * cannot corrupt anybody, so it does not take the cross-process lock.
+             *
+             * The parse runs OFF LOCK. read() fills the fresh local map it is handed and touches
+             * nothing else, so there is nothing for the client's tick to see half-done - and this
+             * is the parse that was holding the tick for hundreds of milliseconds every time any
+             * crewmate saved. */
+            Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
+            if (!read(disk))
+                return;
+            synchronized (LOCK) {
+                if (map == null)
+                    return;
+                fileAt = stamp;
+                adopt(disk);
+            }
+            return;
+        }
+
+        /* We are going to write, so the read-merge-write has to be atomic against the other
+         * clients doing exactly the same thing every few seconds. Two clients out of one
+         * install directory is the normal case for a crew, and without the lock their merges
+         * interleave: each reads before the other's write lands, and whichever renames last
+         * silently drops the other's exploration. The AccessDeniedException that turned up in
+         * a friend's crash.log was the loud half of that same race - Windows refusing the
+         * rename while the other process had the file open.
+         *
+         * This is the CROSS-PROCESS lock and it still spans read-merge-write exactly as before.
+         * What no longer spans them is LOCK, the in-process one the client's tick needs. */
+        try (SharedFile.Held held = SharedFile.lock(file())) {
+            if (held == null) {
+                NLog.log("observed.log", "couldn't lock " + FILE
+                    + " to save; still dirty, retrying on the next pass");
                 return;
             }
+            /* Only re-read when somebody else has written since we last did. What is on disk is
+             * otherwise what we last wrote, already folded into the map we are about to write
+             * out - reading it back would merge our own state into itself.
+             *
+             * Re-stamped inside the cross-process lock rather than trusting the check above it:
+             * another client can write in the window between wanting the lock and holding it,
+             * and that write is exactly the one we must not drop. */
+            long locked = stamp();
+            long known;
+            synchronized (LOCK) {
+                known = fileAt;
+            }
+            Map<Long, Map<Coord, byte[]>> disk = null;
+            if ((locked == UNKNOWN) || (locked != known)) {
+                disk = new HashMap<>();
+                if (!read(disk))
+                    return;    // cannot see what we would be overwriting, so do not. Still dirty.
+            }
 
-            /* We are going to write, so the read-merge-write has to be atomic against the other
-             * clients doing exactly the same thing every few seconds. Two clients out of one
-             * install directory is the normal case for a crew, and without the lock their merges
-             * interleave: each reads before the other's write lands, and whichever renames last
-             * silently drops the other's exploration. The AccessDeniedException that turned up in
-             * a friend's crash.log was the loud half of that same race - Windows refusing the
-             * rename while the other process had the file open. */
-            try (SharedFile.Held held = SharedFile.lock(file())) {
-                if (held == null) {
-                    NLog.log("observed.log", "couldn't lock " + FILE
-                        + " to save; still dirty, retrying on the next pass");
+            Map<Long, Map<Coord, byte[]>> snap;
+            long snapGen, snapWipes;
+            synchronized (LOCK) {
+                if (map == null)
+                    return;
+                /* Adopting here rather than before the read is the whole point of the ordering:
+                 * the snapshot has to be of the MERGED record, since that is what gets written.
+                 *
+                 * Adopting late is safe for a reason already in the design rather than new to
+                 * it. adopt() decides tile by tile against the looked-mask AS IT STANDS WHEN IT
+                 * RUNS, and set() marks that mask for every tile it touches, whether or not the
+                 * value changed. The mask only grows within a run. So a tile the client observed
+                 * while the parse above was running is already marked by the time adopt() looks,
+                 * and adopt() will not overwrite it. The authority rule - that having looked is
+                 * what entitles us to overrule the file - does the work unchanged; it is simply
+                 * asked a moment later than it used to be. */
+                if (disk != null)
+                    adopt(disk);
+                fileAt = locked;
+                snap = snapshot();
+                snapGen = gen;
+                snapWipes = wipes;
+            }
+
+            /* The encode - run-length coding every grid, building the JSON tree, and rendering
+             * it to a multi-megabyte string - is the other half of what used to sit on LOCK. It
+             * is a pure function of the snapshot, so it does not need the lock at all. */
+            byte[] out = encode(snap);
+
+            synchronized (LOCK) {
+                if (wipes != snapWipes) {
+                    /* reset() ran while we were encoding. Writing this would put the record it
+                     * just wiped back on disk for the whole crew, so drop it: still dirty, and
+                     * the next pass writes the wiped state instead. */
+                    NLog.log("observed.log", "discarding a save that reset() overtook");
                     return;
                 }
-                /* Only re-read when somebody else has written since we last
-                 * did. What is on disk is otherwise what we last wrote, already
-                 * folded into the map we are about to write out - reading it
-                 * back would merge our own state into itself.
-                 *
-                 * Worth checking because the read is not cheap: this file
-                 * reaches several megabytes on a well-explored world, and
-                 * parsing it allocates it several times over as a String and
-                 * then as a tree of JSON objects. Doing that every five seconds
-                 * for the length of a session made this thread the second
-                 * largest allocator in the client, at 134MB/s against the
-                 * render thread's 370 - which is a curious place for a
-                 * background bookkeeping task to be, and it was buying GC
-                 * pauses for everybody.
-                 *
-                 * Re-stamped inside the lock rather than trusting the check
-                 * above it: another client can write in the window between
-                 * wanting the lock and holding it, and that write is exactly
-                 * the one we must not drop. */
-                long locked = stamp();
-                if ((locked == UNKNOWN) || (locked != fileAt)) {
-                    Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
-                    if (!read(disk))
-                        return;    // cannot see what we would be overwriting, so do not. Still dirty.
-                    adopt(disk);
-                }
-                fileAt = locked;
-
-                JSONArray segs = new JSONArray();
-                for (Map.Entry<Long, Map<Coord, byte[]>> se : map.entrySet()) {
-                    JSONArray grids = new JSONArray();
-                    for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
-                        JSONObject go = new JSONObject();
-                        go.put("gc", new JSONArray(new int[] {ge.getKey().x, ge.getKey().y}));
-                        go.put("rle", rle(ge.getValue()));
-                        grids.put(go);
-                    }
-                    JSONObject so = new JSONObject();
-                    so.put("seg", se.getKey());
-                    so.put("grids", grids);
-                    segs.put(so);
-                }
-                JSONObject root = new JSONObject();
-                root.put("v", VERSION);
-                root.put("segs", segs);
-                SharedFile.writeAtomic(file(), root.toString().getBytes(StandardCharsets.UTF_8));
-                dirty = false;
+            }
+            SharedFile.writeAtomic(file(), out);
+            synchronized (LOCK) {
+                /* Only clean if nothing was recorded while we were encoding. An observation that
+                 * landed after the snapshot is not in what we just wrote, so clearing the flag
+                 * unconditionally would strand it until something else changed the same grid.
+                 * Left dirty, it goes out on the next pass, five seconds later. */
+                dirty = (gen != snapGen);
                 // Our own write moved it on; without this every pass would re-read what we wrote.
                 fileAt = stamp();
-            } catch (IOException | RuntimeException e) {
-                NLog.crash("saving " + FILE, e);
             }
+        } catch (IOException | RuntimeException e) {
+            NLog.crash("saving " + FILE, e);
         }
     }
 
@@ -1245,13 +1286,72 @@ public class Observed {
                     ours.put(ge.getKey(), theirs);
                     continue;
                 }
-                BitSet seen = mask(se.getKey(), ge.getKey());
+                /* peek rather than mask: mask() is computeIfAbsent and was creating an empty
+                 * BitSet for every grid ON DISK, whether or not this run had been near it -
+                 * several thousand of them, kept for the session, and all of them answering
+                 * "no" to every question ever asked of them. */
+                BitSet seen = peek(se.getKey(), ge.getKey());
+                if ((seen == null) || seen.isEmpty()) {
+                    /* Nothing in this grid was looked at this run, so the loop below would
+                     * copy every single element. Identical result, one memcpy - and this is
+                     * the overwhelmingly common case, since a run looks at the ground the
+                     * bots walked over and the file holds the whole world. */
+                    System.arraycopy(theirs, 0, mine, 0, Math.min(theirs.length, mine.length));
+                    continue;
+                }
                 for (int i = 0; i < mine.length; i++) {
                     if (!seen.get(i))
                         mine[i] = theirs[i];
                 }
             }
         }
+    }
+
+    /** The looked-mask for a grid if this run has one, without creating it. See {@link #mask}. */
+    private static BitSet peek(long seg, Coord gc) {
+        Map<Coord, BitSet> byseg = looked.get(seg);
+        return (byseg == null) ? null : byseg.get(gc);
+    }
+
+    /**
+     * A deep copy of the record, for encoding off the lock.
+     *
+     * Plain clones rather than anything shared or reused: this runs on the saver thread every
+     * few seconds and the arrays are the only mutable thing in it, so a copy is what makes the
+     * encode below safe to do while the client keeps observing. It is a memcpy of the whole
+     * record and costs a few milliseconds against the hundreds this takes off the UI thread.
+     */
+    private static Map<Long, Map<Coord, byte[]>> snapshot() {
+        Map<Long, Map<Coord, byte[]>> out = new HashMap<>();
+        for (Map.Entry<Long, Map<Coord, byte[]>> se : map.entrySet()) {
+            Map<Coord, byte[]> seg = new HashMap<>();
+            for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet())
+                seg.put(ge.getKey(), ge.getValue().clone());
+            out.put(se.getKey(), seg);
+        }
+        return out;
+    }
+
+    /** Serialises a snapshot. Pure function of its argument, so it runs off {@link #LOCK}. */
+    private static byte[] encode(Map<Long, Map<Coord, byte[]>> src) {
+        JSONArray segs = new JSONArray();
+        for (Map.Entry<Long, Map<Coord, byte[]>> se : src.entrySet()) {
+            JSONArray grids = new JSONArray();
+            for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
+                JSONObject go = new JSONObject();
+                go.put("gc", new JSONArray(new int[] {ge.getKey().x, ge.getKey().y}));
+                go.put("rle", rle(ge.getValue()));
+                grids.put(go);
+            }
+            JSONObject so = new JSONObject();
+            so.put("seg", se.getKey());
+            so.put("grids", grids);
+            segs.put(so);
+        }
+        JSONObject root = new JSONObject();
+        root.put("v", VERSION);
+        root.put("segs", segs);
+        return root.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     /** A modification time that can't be asked for. Never equal to the last one, so never skipped. */
@@ -1317,6 +1417,8 @@ public class Observed {
             announced.clear();
             fileAt = UNKNOWN;
             dirty = true;
+            gen++;
+            wipes++;
         }
         save();
     }
