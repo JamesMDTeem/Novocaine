@@ -200,7 +200,7 @@ def collect(paths):
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
-        "res": None, "hp": None,
+        "res": None, "hp": None, "wd_by_gob": {},
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -253,6 +253,7 @@ def collect(paths):
                 if wd > 0:
                     lo, hi = gain_interval(wa, gain, ob, standing)
                     rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi))
+                    rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
 
             for h in fightlog.hits(eng, log.me):
                 if h["actor"] == "me":
@@ -368,6 +369,22 @@ def report(per, moves):
                       " do not overlap, midpoints %.0f - %.0f"
                       % (len(vals), vals[0], vals[-1]))
             print("                   (assuming mu = 1; see MU in this file)")
+
+            # Per individual, because a species bucket assumes every one of them is the
+            # same creature and that is not free. Hitpoints say otherwise outright - two
+            # badgers here differ by a factor of 1.6 - so the same could be true of
+            # defence, and pooling would hide it in a wider interval rather than reporting
+            # it. It happens not to be: those two badgers give 74-132 and 74-97, which
+            # overlap. That is a finding, and it only exists because it was checked.
+            if len(rec["wd_by_gob"]) > 1:
+                print("                   per individual - a species bucket assumes these"
+                      " agree:")
+                for gob, rows in sorted(rec["wd_by_gob"].items()):
+                    glo, ghi = max(r[0] for r in rows), min(r[1] for r in rows)
+                    print("      gob %-14s %2d obs   %s"
+                          % (gob, len(rows),
+                             ("%.0f - %.0f" % (glo, ghi)) if glo <= ghi
+                             else "CONTRADICTORY on its own"))
 
             # Per move, because two moves disagreeing is a different fact from two
             # observations of one move disagreeing. The opponent's defence weight is a
