@@ -116,23 +116,65 @@ def mu_ratio(wd_a, wd_b):
     return wd_a / wd_b if wd_b > 0 else 0.0
 
 
-def deck_levels():
-    """Move name -> the points this character has in it, from the local deck dump.
+def deck_history():
+    """Every deck the client has dumped, as (wall time, {move: level}), oldest first.
 
-    Read from moves_ingame.json, which is deliberately NOT committed - it is the one
-    file that says what a particular character has bought. Absent, every mu comparison
-    below simply loses its labels; nothing else changes.
+    A deck changes, and a measurement has to be read against the deck it was made with.
+    Using today's instead is not a small error: Quick Barrage sat at level 1 through most
+    of this corpus and has since been dropped, so judging those fights by the current deck
+    marks all of them level 0 and quietly excludes them from every mu comparison - which
+    made three badgers look inconsistent when they were measured with a move the filter
+    had thrown away.
+
+    The dumps carry their own millisecond timestamp in the filename, and the client writes
+    one when a fight starts, so the deck in force for a log is the newest dump at or
+    before it.
     """
-    path = os.path.join(ROOT, "data", "combat", "moves_ingame.json")
-    if not os.path.exists(path):
+    out = []
+    for d in fightlog.find_log_dirs(ROOT):
+        for p in glob.glob(os.path.join(d, "deck-*.json")):
+            stamp = os.path.basename(p).rsplit("-", 1)[-1].split(".")[0]
+            try:
+                when = int(stamp)
+            except ValueError:
+                continue
+            try:
+                with open(p, "r", encoding="utf8") as f:
+                    doc = json.load(f)
+            except (OSError, ValueError):
+                continue
+            body = doc.get("body", doc)
+            moves = body.get("moves") or []
+            # A probe fired while the sheet was still loading has the text but no levels.
+            levels = dict((m.get("name"), m.get("decklevel")) for m in moves
+                          if m.get("name") and m.get("decklevel") is not None)
+            if levels and any(v > 0 for v in levels.values()):
+                out.append((when, levels))
+    out.sort()
+    return out
+
+
+DECKS = deck_history()
+
+
+def levels_at(when):
+    """The deck in force at a wall time - the newest dump at or before it.
+
+    Falls back to the earliest known deck for a fight that predates every dump, which is
+    better than reporting no levels at all: the deck it was fought with is more likely to
+    resemble the oldest one on record than today's.
+    """
+    if not DECKS:
         return {}
-    with open(path, "r", encoding="utf8") as f:
-        doc = json.load(f)
-    return dict((m["name"], m.get("decklevel")) for m in doc.get("moves") or []
-                if m.get("name"))
+    best = DECKS[0][1]
+    for stamp, levels in DECKS:
+        if when is not None and stamp > when:
+            break
+        best = levels
+    return best
 
 
-LEVELS = deck_levels()
+LEVELS = levels_at(None) if not DECKS else DECKS[-1][1]
 
 
 def load_moves():
@@ -324,7 +366,7 @@ def collect(paths):
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         "res": None, "hp": None, "wd_by_gob": {},
         "last_hit": {}, "partial": set(), "soak": [],
-        "mu_scaled_openings": set(), "wd_by_gob_move": {},
+        "mu_scaled_openings": set(), "wd_by_gob_move": {}, "deck_at": {},
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -406,6 +448,7 @@ def collect(paths):
                     # thrown at the same creature - see report_mu.
                     rec["wd_by_gob_move"].setdefault(eng.gob, {}).setdefault(
                         name, []).append((wd, lo, hi))
+                    rec["deck_at"][eng.gob] = levels_at((log.header or {}).get("wall"))
 
             for h in fightlog.hits(eng, log.me):
                 if h["actor"] == "me":
@@ -628,10 +671,12 @@ def report_mu(per):
         for gob, bymove in sorted(per[name]["wd_by_gob_move"].items()):
             if len(bymove) < 2:
                 continue
+            # The deck as it stood when this creature was fought, not as it stands now.
+            lv = per[name]["deck_at"].get(gob, LEVELS)
             ref = None
             for mv in sorted(bymove):
-                if LEVELS.get(mv) == 1 and (ref is None
-                                            or len(bymove[mv]) > len(bymove[ref])):
+                if lv.get(mv) == 1 and (ref is None
+                                        or len(bymove[mv]) > len(bymove[ref])):
                     ref = mv
             if ref is None:
                 continue
@@ -646,7 +691,7 @@ def report_mu(per):
 
             rb = band(ref)
             for mv in sorted(bymove):
-                lvl = LEVELS.get(mv)
+                lvl = lv.get(mv)
                 if mv == ref or not lvl or med(mv) <= 0:
                     continue
                 nb = band(mv)
@@ -671,13 +716,25 @@ def report_mu(per):
               % (lvl, mu, "%.2f - %.2f" % (lo, hi), n,
                  "%.3f" % pred if pred else "?", mv[:16], ref[:16], name[:12]))
 
-    same = [r for r in rows if r[0] == 1]
-    if same:
-        v = sorted(r[1] for r in same)
-        print("\n  The level-1 rows must read exactly 1.00. They read %.2f to %.2f, which"
-              % (v[0], v[-1]))
-        print("  is this method's noise floor - a higher-level reading inside that band")
-        print("  has not been measured, only observed.")
+    # The level-1 rows are the control: every one of them must read exactly 1.00, so what
+    # they actually read is this method's noise. A higher-level reading is only evidence
+    # to the extent it sits outside that spread, which is a sharper test than asking
+    # whether it is near a predicted value.
+    ctrl = sorted(r[1] for r in rows if r[0] == 1)
+    if ctrl:
+        mid = ctrl[len(ctrl) // 2]
+        print("\n  The %d level-1 rows are the control - each must read exactly 1.00."
+              % len(ctrl))
+        print("  They read %.2f to %.2f, median %.2f. That spread is the method's noise."
+              % (ctrl[0], ctrl[-1], mid))
+        for lvl, mu, _lo, _hi, _n, _sp, mv, _ref in sorted(rows):
+            if lvl == 1:
+                continue
+            over = sum(1 for c in ctrl if mu > c)
+            print("    level %s (%s) reads %.2f - above %d of the %d controls%s"
+                  % (lvl, mv[:18], mu, over, len(ctrl),
+                     ", so it is not noise" if over == len(ctrl)
+                     else ", which the noise could produce"))
     print()
     print("  The linear column is a hypothesis - levels 1 to 5 mapped onto 1.0 to 1.5 -")
     print("  and its rival, 1 + 0.1*(level-1), gives 1.40 at level 5 against 1.50. Those")

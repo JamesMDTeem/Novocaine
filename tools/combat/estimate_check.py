@@ -207,6 +207,40 @@ def deck_weighting():
               for r in (0.82, 0.88, 0.96, 1.06, 1.11, 1.12)), True)
 
 
+def deck_history():
+    print("\nthe deck in force at a fight")
+    # A deck changes, and a measurement has to be read against the deck it was made with.
+    # Judging historical fights by today's deck is not a small error: Quick Barrage sat at
+    # level 1 through most of this corpus and has since been dropped, so today's deck
+    # marks all of it level 0 and silently drops it from every mu comparison.
+    saved = estimate.DECKS
+    try:
+        estimate.DECKS = [
+            (1000, {"Quick Barrage": 1, "Punch": 0}),
+            (2000, {"Quick Barrage": 1, "Punch": 3}),
+            (3000, {"Quick Barrage": 0, "Punch": 5}),
+        ]
+        check("a fight between dumps uses the one before it",
+              estimate.levels_at(2500)["Punch"], 3)
+        check("a fight after the last dump uses the last",
+              estimate.levels_at(9999)["Punch"], 5)
+        check("exactly on a dump counts as that dump",
+              estimate.levels_at(2000)["Punch"], 3)
+        # The whole point: a move dropped since is still read at the level it was used at.
+        check("a move dropped since is read at the level it was used at",
+              estimate.levels_at(2500)["Quick Barrage"], 1)
+        check("and today's deck would have said 0", estimate.DECKS[-1][1]["Quick Barrage"],
+              0)
+        # A fight older than every dump falls back to the earliest, which resembles the
+        # deck it was fought with far more than today's does.
+        check("a fight older than every dump falls back to the earliest",
+              estimate.levels_at(1)["Punch"], 0)
+        estimate.DECKS = []
+        check("no dumps at all is empty rather than wrong", estimate.levels_at(500), {})
+    finally:
+        estimate.DECKS = saved
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -290,6 +324,7 @@ def main():
     agility()
     defence()
     deck_weighting()
+    deck_history()
     armour()
     buckets()
     if failures:
