@@ -154,8 +154,15 @@ public class CombatMatchup {
                                   "not enough measured - " + missing(o));
                 continue;
             }
-            Outcome hard = fight(me(), o.toughest(), deck);
             Outcome easy = fight(me(), o.weakest(), deck);
+            if(!o.hpBounded()) {
+                /* It survived everything we ever did to it, so nothing caps its health.
+                 * The floor is a floor, not an answer. */
+                System.out.printf("%-14s %-6d %-34s %-34s%n", o.name, o.engagements,
+                                  "no ceiling on its hitpoints", describe(easy));
+                continue;
+            }
+            Outcome hard = fight(me(), o.toughest(), deck);
             System.out.printf("%-14s %-6d %-34s %-34s%n",
                               o.name, o.engagements, describe(hard), describe(easy));
             if(hard.killed != easy.killed)

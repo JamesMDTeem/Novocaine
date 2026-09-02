@@ -198,6 +198,18 @@ public final class Pack {
         }
 
         /**
+         * Whether anything caps this opponent's hitpoints.
+         *
+         * An opponent we only ever survived has a floor and no ceiling: it took what we
+         * gave it and walked away, so the honest answer to "how long to kill it" is that
+         * we do not know. Simulating against the floor would answer a question nobody
+         * asked - how long to kill the smallest one it could possibly have been.
+         */
+        public boolean hpBounded() {
+            return(!Double.isNaN(hpHi));
+        }
+
+        /**
          * The hardest fight the corpus allows: most defence, most armour, most hitpoints, and
          * the agility that lengthens our cooldowns most.
          *

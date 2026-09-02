@@ -430,6 +430,44 @@ def hits(eng, me_gob):
     return out
 
 
+def soak_pairs(eng):
+    """Every hit this opponent took, as (absorbed, through), whoever threw it.
+
+    The client draws its floating numbers over a creature for damage from ANY source, not
+    only ours - the bear log carries thirty of them for a fight this character sat out
+    entirely. So armour can be measured in a group fight exactly as well as in a duel:
+    the ratio of absorbed to through is a property of the armour and says nothing about
+    the attacker.
+
+    ARM and SHP for one hit are emitted together, on the same millisecond, which is what
+    makes them safe to pair without going near the move list. Pairing armour observations
+    through our own moves instead - as the first version did - both threw away every
+    group fight and risked matching our ARM against somebody else's SHP.
+
+    A hit with no SHP was absorbed entirely, and its ARM is the raw damage rather than
+    the armour's capacity. Those are kept, because they are the only hits that land
+    inside the soft-soak ramp and so the only ones that can ever separate hard from soft.
+    """
+    byt = {}
+    for d in eng.damage:
+        if d.get("gob") != eng.gob:
+            continue
+        ch = d.get("ch")
+        if ch not in ("ARM", "SHP"):
+            continue
+        # One millisecond of slack: the two are usually stamped identically, but one
+        # boar hit split across 98932 and 98933.
+        key = d["t"] // 2
+        slot = byt.setdefault(key, {"t": d["t"], "ARM": 0, "SHP": 0})
+        slot[ch] += d["v"]
+    out = []
+    for _k, v in sorted(byt.items()):
+        if (v["ARM"] + v["SHP"]) > 0:
+            out.append({"t": v["t"], "soaked": v["ARM"], "shp": v["SHP"],
+                        "raw": v["ARM"] + v["SHP"]})
+    return out
+
+
 def read_all(paths, opens=None):
     out = []
     for p in paths:

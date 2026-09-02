@@ -194,6 +194,35 @@ def damage():
     h = fightlog.hits(log.engagements[0], ME)[0]
     check("a stranger's damage is not credited to our move", h["raw"], 0)
 
+    print("\nsoak pairs, which do not go through the move list at all")
+    # The client draws a floating number over a creature for damage from ANY source -
+    # the bear log carries thirty for a fight this character sat out entirely. So armour
+    # is measurable in a group fight, and pairing ARM with SHP by timestamp is what makes
+    # that possible. Here nothing of ours is thrown at all.
+    log = load([begin(), state(1000),
+                dmg(2000, FOE, "ARM", 65), dmg(2000, FOE, "SHP", 5),
+                dmg(3000, FOE, "ARM", 40),
+                dmg(4000, FOE, "ARM", 65), dmg(4001, FOE, "SHP", 26), end()])
+    pairs = fightlog.soak_pairs(log.engagements[0])
+    check("every hit is recovered without a move of ours", len(pairs), 3)
+    check("ARM and SHP on one hit are one observation",
+          (pairs[0]["soaked"], pairs[0]["shp"], pairs[0]["raw"]), (65, 5, 70))
+    # A hit with no SHP was absorbed entirely: its ARM is the raw damage, not the
+    # armour's capacity. Those are the only hits that land inside the soft-soak ramp and
+    # so the only ones that can ever separate hard from soft - they must be kept.
+    check("a fully absorbed hit is kept",
+          (pairs[1]["soaked"], pairs[1]["shp"], pairs[1]["raw"]), (40, 0, 40))
+    # One boar hit split across two milliseconds, so the pairing tolerates that.
+    check("a hit split across a millisecond is still one hit",
+          (pairs[2]["soaked"], pairs[2]["shp"]), (65, 26))
+
+    # A stranger's numbers are excluded because they are over a different creature, not
+    # because of who threw them.
+    log = load([begin(), state(1000), dmg(2000, OTHER, "ARM", 9),
+                dmg(2000, OTHER, "SHP", 9), end()])
+    check("numbers over another creature are not this one's",
+          fightlog.soak_pairs(log.engagements[0]), [])
+
 
 def completeness():
     print("\nincomplete logs")

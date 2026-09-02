@@ -30,6 +30,9 @@ import model  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 SHEET = os.path.join(ROOT, "data", "combat", "moves_sheet.json")
+# The wiki-derived pack. Its stated hitpoints and armour are the baseline our own
+# measurements bound rather than replace - see summarise_hp.
+CREATURES = os.path.join(ROOT, "data", "combat", "creatures.json")
 
 # The deck weighting. Every attack weight on the sheet is written "... * mu", and mu is
 # only readable from moves whose cooldown divides by it - Take Aim, which reported its
@@ -109,9 +112,19 @@ def fit_armour(hits):
     pts = [(h["raw"], h["shp"]) for h in hits if h["soaked"] > 0 and h["raw"] > 0]
     if len(pts) < 2:
         return None
+    # The search runs over the TOTAL soak and how it splits, bounded by the largest
+    # amount ever seen absorbed. Absorption saturates at hard + soft once a hit is big
+    # enough, so no total above that is possible - and bounding it this way is what
+    # keeps the grid cheap enough to cover a mammoth's stated 125.
+    #
+    # A fixed 0..60 grid was the first version, and it silently could not reach the
+    # bear's 65: the true fit sits at 65 + 0 with no residual at all, and the search
+    # returned 60 + 5 with an error of 1.56 because that was the best it could see.
+    top = int(max(h["soaked"] for h in hits)) + 2
     scored = []
-    for hard in range(0, 61):
-        for soft in range(0, 61):
+    for total in range(0, top + 1):
+        for soft in range(0, total + 1):
+            hard = total - soft
             err = 0.0
             for raw, dealt in pts:
                 err += (model.dealt_damage(raw, hard, soft, 0.0) - dealt) ** 2
@@ -125,7 +138,13 @@ def fit_armour(hits):
     # will happily return one of them. Saying which is which needs a hit small enough to
     # land inside the ramp, and reporting a split that the data cannot see is how a
     # confident wrong number gets into a table.
-    tol = max(0.5, err * 1.0001)
+    # Ties are judged against a quarter of a squared point per observation, because the
+    # numbers are integers and a half-point residual is indistinguishable from rounding.
+    # A tighter tolerance manufactures certainty: the lynx's 33+2 beats 35+0 by half a
+    # squared point across 28 hits, on the strength of one raw-35 hit that reads 1 in one
+    # instance and 0 in another, and reporting that as an identified split would be
+    # reading the rounding.
+    tol = err + (0.25 * len(pts))
     tied = [(h, s) for e, h, s in scored if e <= tol]
     totals = set(h + s for h, s in tied)
     return {"hard": hard, "soft": soft, "n": len(pts),
@@ -196,11 +215,13 @@ def opens_map(moves):
 
 def collect(paths):
     moves = load_moves()
+    wiki = wiki_creatures()
     opens = opens_map(moves)
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         "res": None, "hp": None, "wd_by_gob": {},
+        "last_hit": {}, "partial": set(), "soak": [],
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -222,9 +243,22 @@ def collect(paths):
             # sittings, so a group fight and an interrupted one both still measure it -
             # they are only useless for attributing openings.
             rec["res"] = rec["res"] or eng.res
-            rec["dealt"][eng.gob] += sum(
-                d["v"] for d in eng.damage
-                if d.get("ch") == "SHP" and d.get("gob") == eng.gob)
+            hits = [d for d in eng.damage
+                    if d.get("ch") == "SHP" and d.get("gob") == eng.gob]
+            rec["dealt"][eng.gob] += sum(d["v"] for d in hits)
+            # Armour reads off every hit the creature took, whoever threw it: the ratio
+            # of absorbed to through is a property of the armour, not of the attacker.
+            rec["soak"].extend(fightlog.soak_pairs(eng))
+            # The killing blow, for the overkill bound - it is the last damage this
+            # opponent took, and however much of it exceeded the opponent's remaining
+            # health is not evidence of anything.
+            if hits:
+                rec["last_hit"][eng.gob] = hits[-1]["v"]
+            # Deliberately NOT gated on whether anyone else was attacking. The client
+            # draws a floating number over a creature for damage from any source, so our
+            # total is the creature's total intake while it was in view - which is what
+            # the ceiling below needs. What can still be missed is a fight that started
+            # before we could see it, and no flag in a log detects that.
             if died(eng, log):
                 rec["killed"].add(eng.gob)
 
@@ -273,7 +307,9 @@ def collect(paths):
                         rec["took"].append(h)
 
     for rec in per.values():
-        rec["hp"] = summarise_hp(rec["dealt"], rec["killed"])
+        rec["wiki"] = wiki_for(wiki, rec["res"])
+        rec["hp"] = summarise_hp(rec["dealt"], rec["killed"], rec["last_hit"],
+                                 wiki_for(wiki, rec["res"]))
     return per, moves
 
 
@@ -303,39 +339,139 @@ def died(eng, log):
                for d in eng.damage)
 
 
-def summarise_hp(dealt, killed):
-    """Hitpoints, from the total damage it took to kill one.
+def norm(name):
+    """A creature key stripped to letters, so "Wild Bees" and "wildbees" agree."""
+    if not name:
+        return None
+    return name.lower().replace(" ", "").replace("'", "").replace("-", "")
 
-    The sum must run across every FILE the same gob appears in, not within one. A fight
-    interrupted by auto-reaggro continues in a fresh log with the creature's health where
-    the last one left it, and counting only the file that contains the kill measures the
-    last instalment rather than the total. That error was not small: the fox came out at
-    42 where the true figure across its two files is 126, and one badger at 38 where it
-    is 210 - which had also made the two badgers look like wildly different creatures
-    (38 and 342) when they are 210 and 342.
 
-    Damage other people dealt counts too, and should: hitpoints are hitpoints, and it is
-    the creature's total intake that killed it. What that cannot see is damage dealt out
-    of our view, so every figure here is a lower bound on the creature at full health -
-    it is exactly its health at the moment we first saw it.
+def wiki_for(wiki, res):
+    """The wiki entry for a resource path, which does not always end in the creature.
 
-    A kill also gives an upper bound, since the killing blow was the first to take it
-    past zero, but the corpus does not record which blow was last cleanly enough to
-    subtract it, so only the lower bound is reported.
+    "gfx/kritter/wildbees/beeswarm" is the swarm the wiki calls Wild Bees, and its name
+    is the directory rather than the file. Trying every segment costs nothing and is the
+    difference between having a baseline for that creature and not.
     """
-    kills = [v for g, v in dealt.items() if g in killed and v > 0]
-    lived = [v for g, v in dealt.items() if g not in killed and v > 0]
-    if kills:
-        return {"lo": min(kills), "hi": max(kills),
-                "from": "%d kill(s), summed across every file each gob appears in"
-                        % len(kills),
-                "note": "at least this much - the creature may have been hurt before we "
-                        "first saw it, and damage dealt out of our view is not counted"}
-    if lived:
-        return {"lo": max(lived), "hi": None,
-                "from": "%d opponent(s) that survived" % len(lived),
-                "note": "lower bound only - none of them died"}
+    if not res:
+        return None
+    for part in reversed(res.split("/")):
+        e = wiki.get(norm(part))
+        if e is not None:
+            return e
     return None
+
+
+def wiki_creatures():
+    """The wiki's stated stats, keyed the same way as our own buckets."""
+    if not os.path.exists(CREATURES):
+        return {}
+    with open(CREATURES, "r", encoding="utf8") as f:
+        doc = json.load(f)
+    out = {}
+    for e in doc:
+        out[norm(e.get("name"))] = e
+    return out
+
+
+def wiki_value(entry, field):
+    if not entry:
+        return None
+    v = entry.get(field)
+    if isinstance(v, dict):
+        return v.get("value")
+    return v
+
+
+def summarise_hp(dealt, killed, last_hit, wiki_entry):
+    """Hitpoints, as the range a fresh one of these could have.
+
+    The wiki's stated figure is the baseline and it is a good one. Its boar died three
+    times here at 453, 483 and 499 against a stated 450; its stated armour of 15 for the
+    boar, 65 for the bear and 35 for the lynx are each exactly what our own hits
+    recovered. Discarding that in favour of a handful of fights would be worse, not more
+    rigorous.
+
+    But the wiki also lists a BASE QUALITY beside every creature - 30 for a badger, 40
+    for a boar - so its hitpoints are the figure for a nominal individual, and real ones
+    vary around it. That settles how to combine several fights: not by intersecting them,
+    which assumes every badger is the same badger, but by taking the envelope. Two
+    badgers here come to 190-210 and 171-342; a third could be either, or outside both.
+
+    What one fight bounds is the individual in it, and the two directions are not
+    symmetric:
+
+    A creature that SURVIVED taking D had more than D. A creature that DIED having taken
+    D had at most D - but possibly far less, since the killing blow overshoots by however
+    much it overshoots, so a kill at D says only (D - last hit, D].
+
+    Both hold in a group fight. The client draws a floating number over a creature for
+    damage from any source - the bear log carries thirty for a fight this character sat
+    out entirely - so D is the creature's whole intake while in view, not our share. What
+    is still invisible is a fight that began before we could see it, which would make a
+    creature look smaller than it is.
+    """
+    stated = wiki_value(wiki_entry, "hp")
+    per, lo, hi, sur = [], None, None, None
+
+    for gob, d in sorted(dealt.items()):
+        if d <= 0:
+            continue
+        if gob in killed:
+            floor, ceil = d - last_hit.get(gob, 0), d
+            per.append("died at %d with a last hit of %d, so that one had %d to %d"
+                       % (d, last_hit.get(gob, 0), floor, ceil))
+            lo = floor if lo is None else min(lo, floor)
+            hi = ceil if hi is None else max(hi, ceil)
+        else:
+            # A survivor proves some individual was AT LEAST this big, which raises the
+            # top of the range and says nothing about the bottom. Letting it lower the
+            # floor as well put the boar's range at 64 to 499, on the strength of one
+            # boar that walked away from 63 damage and may well have had 450.
+            per.append("survived taking %d, so that one had more than that" % d)
+            sur = d + 1 if sur is None else max(sur, d + 1)
+
+    # The envelope of every individual seen, widened to include the nominal one. A fresh
+    # opponent is drawn from this range, not pinned to any point in it.
+    #
+    # Kills and survivors enter differently. A kill brackets its individual, so it can
+    # both lower the floor and raise the ceiling. A survivor only ever proves one was
+    # BIGGER than something - it never bounds it from above and never says anything about
+    # how small the species goes. Letting a survivor lower the floor put the boar at 64,
+    # on the strength of one that walked away from 63 damage and probably had 450.
+    use_lo, use_hi = lo, hi
+    if sur is not None:
+        # It had at least this much. With no kill to cap it, the top stays open rather
+        # than collapsing onto the floor - "445 or more" is the finding, and printing
+        # "445" would turn a lower bound into a point estimate.
+        use_lo = sur if use_lo is None else use_lo
+        if use_hi is not None:
+            use_hi = max(use_hi, sur)
+    if stated is not None:
+        use_lo = stated if use_lo is None else min(use_lo, stated)
+        use_hi = stated if use_hi is None else max(use_hi, stated)
+
+    verdict = None
+    if stated is not None and per:
+        below = [g for g, d in dealt.items() if g in killed and d > 0 and d < stated]
+        above = [g for g, d in dealt.items()
+                 if g not in killed and d > 0 and d + 1 > stated]
+        if below and not above:
+            verdict = ("%d of these died before taking the wiki's %d, so they were below "
+                       "its base quality (or already hurt when we met them)"
+                       % (len(below), stated))
+        elif above and not below:
+            verdict = ("%d of these survived past the wiki's %d, so they were above its "
+                       "base quality" % (len(above), stated))
+        elif below and above:
+            verdict = "individuals seen on both sides of the wiki's %d" % stated
+        else:
+            verdict = "every individual seen is consistent with the wiki's %d" % stated
+
+    if use_lo is None and use_hi is None:
+        return None
+    return {"lo": use_lo, "hi": use_hi, "wiki": stated, "verdict": verdict,
+            "observed_lo": lo, "observed_hi": hi, "from": "; ".join(per) or "wiki only"}
 
 
 def report(per, moves):
@@ -451,7 +587,8 @@ def report(per, moves):
             print("\n  agility          ? (no attack cooldowns reported against this opponent)")
 
         # --- armour
-        arm = fit_armour(rec["hits"])
+        arm = fit_armour(rec["soak"])
+        wiki_arm = wiki_value(rec.get("wiki"), "armor")
         if arm:
             tlo, thi = arm["total"]
             if arm["identified"]:
@@ -465,19 +602,38 @@ def report(per, moves):
             else:
                 print("\n  armour           %d - %d total, split unidentifiable   (%d hit(s), "
                       "rms %.2f)" % (tlo, thi, arm["n"], arm["rms"]))
-            for h in rec["hits"][:6]:
-                if h["soaked"] > 0:
-                    print("      %-22s raw %-4d soaked %-4d through %-4d"
-                          % (h["move"][:22], h["raw"], h["soaked"], h["shp"]))
+            if wiki_arm is not None:
+                mark = "agrees" if wiki_arm == tlo == thi else "DIFFERS"
+                print("                   the wiki says %s - %s" % (wiki_arm, mark))
+            for h in [x for x in rec["soak"] if x["soaked"] > 0][:6]:
+                print("      raw %-5d soaked %-5d through %-5d" % (h["raw"], h["soaked"],
+                                                                   h["shp"]))
         else:
-            hit = [h for h in rec["hits"] if h["raw"] > 0]
+            hit = [h for h in rec["soak"] if h["raw"] > 0]
             if hit and not any(h["soaked"] for h in hit):
                 print("\n  armour           none observed - %d hit(s), no ARM channel on any"
                       % len(hit))
+            elif wiki_arm is not None:
+                print("\n  armour           %s total, from the wiki - our own hits could not "
+                      "measure it" % wiki_arm)
             else:
-                print("\n  armour           ? (too few soaked hits to separate hard from soft)")
+                print("\n  armour           ? (too few soaked hits, and the wiki does not "
+                      "list it)")
 
         # --- what it does back
+        hp = rec["hp"]
+        if hp:
+            span = ("%s" % hp["lo"]) if hp["lo"] == hp["hi"] else \
+                   ("%s - %s" % (hp["lo"], hp["hi"] if hp["hi"] is not None else "?"))
+            print("\n  hitpoints        %s" % span)
+            if hp.get("verdict"):
+                print("                   %s" % hp["verdict"])
+            for line in (hp.get("from") or "").split("; "):
+                if line and line != "wiki only":
+                    print("                   - %s" % line)
+        else:
+            print("\n  hitpoints        ? (never damaged it, and the wiki does not list it)")
+
         if rec["their_moves"]:
             print("\n  its moves        %s" % ", ".join(sorted(rec["their_moves"])))
         if rec["took"]:
@@ -530,17 +686,23 @@ def write_pack(per, moves):
                             {"lo": round(iv[0], 1), "hi": round(iv[1], 1),
                              "capped": iv[2], "our_agility": agi_me})
 
-        arm = fit_armour(rec["hits"])
+        arm = fit_armour(rec["soak"])
+        wiki_arm = wiki_value(rec.get("wiki"), "armor")
         if arm:
             tlo, thi = arm["total"]
             entry["armour"] = {"total_lo": tlo, "total_hi": thi,
                                "hard": arm["hard"] if arm["identified"] else None,
                                "soft": arm["soft"] if arm["identified"] else None,
-                               "identified": arm["identified"], "n": arm["n"]}
-        elif rec["hits"] and not any(h["soaked"] for h in rec["hits"]):
-            # Not the same as unknown: we hit it and nothing was absorbed.
+                               "identified": arm["identified"], "n": arm["n"],
+                               "wiki": wiki_arm}
+        elif rec["soak"] and not any(h["soaked"] for h in rec["soak"]):
+            # Not the same as unknown: it was hit and nothing was absorbed.
             entry["armour"] = {"total_lo": 0, "total_hi": 0, "hard": 0, "soft": 0,
-                               "identified": True, "n": len(rec["hits"])}
+                               "identified": True, "n": len(rec["soak"]), "wiki": wiki_arm}
+        elif wiki_arm is not None:
+            entry["armour"] = {"total_lo": wiki_arm, "total_hi": wiki_arm, "hard": None,
+                               "soft": None, "identified": False, "n": 0,
+                               "wiki": wiki_arm, "source": "wiki"}
         else:
             entry["armour"] = None
 

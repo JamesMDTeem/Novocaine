@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import estimate  # noqa: E402
+from estimate import summarise_hp  # noqa: E402
 
 failures = []
 
@@ -34,58 +35,63 @@ def near(what, got, want, tol):
         failures.append(what)
 
 
+WIKI = lambda hp, armor=None: {"hp": {"value": hp}, "armor": {"value": armor}}
+
+
 def hitpoints():
     print("hitpoints")
-    # The bug this exists for. A fight interrupted by auto-reaggro continues in a fresh
-    # log with the creature's health where the last one left it, so the file containing
-    # the kill holds only the last instalment. The fox really did read 42 this way, when
-    # its two files together come to 126.
-    hp = estimate.summarise_hp({7: 84 + 42}, {7})
-    check("a kill sums every file the gob appears in", hp["lo"], 126)
-    hp = estimate.summarise_hp({7: 42}, {7})
-    check("one file alone would have said 42", hp["lo"], 42)
+    # Auto-reaggro splits an engagement across files and the creature returns with the
+    # health the last one left it, so the file holding the kill has only the final
+    # instalment. The fox read 42 that way; its two files come to 126.
+    hp = summarise_hp({7: 84 + 42}, {7}, {7: 42}, None)
+    check("a kill sums every file the gob appears in", hp["observed_hi"], 126)
 
-    # Two of the same species are two observations, not one range over one creature.
-    hp = estimate.summarise_hp({1: 210, 2: 342}, {1, 2})
-    check("two kills give a range", (hp["lo"], hp["hi"]), (210, 342))
+    # The overkill bound, which is the whole reason a kill is a CEILING and not a floor.
+    # A kill at 126 whose last hit was 42 says the creature was somewhere in (84, 126].
+    check("a kill puts a ceiling on it", hp["hi"], 126)
+    check("and a floor one last hit below", hp["lo"], 84)
 
-    # A survivor bounds from below only, and must not be averaged in with a kill.
-    hp = estimate.summarise_hp({1: 500}, set())
-    check("a survivor has no upper bound", hp["hi"], None)
-    check("and reports the largest seen", hp["lo"], 500)
-    hp = estimate.summarise_hp({1: 100, 2: 50}, {1})
-    check("a kill is preferred over a survivor", (hp["lo"], hp["hi"]), (100, 100))
+    # A survivor proves one was bigger. It never caps anything, and it must never lower
+    # the floor - doing so put the boar at 64 on the strength of one that walked away
+    # from 63 damage and probably had 450.
+    hp = summarise_hp({1: 63}, set(), {}, None)
+    check("a survivor has no ceiling", hp["hi"], None)
+    check("and reports what it walked away from", hp["lo"], 64)
+    hp = summarise_hp({1: 499, 2: 63}, {1}, {1: 256}, None)
+    check("a survivor does not drag the floor down", hp["lo"], 243)
+    check("the kill still caps it", hp["hi"], 499)
 
-    check("nothing observed is not zero", estimate.summarise_hp({}, set()), None)
-    check("zero damage is not an observation", estimate.summarise_hp({1: 0}, {1}), None)
+    # Individuals of a species differ - the wiki lists a base quality beside every one -
+    # so several fights are an ENVELOPE, not an intersection. Two badgers at 190-210 and
+    # 171-342 make a third anywhere in 171-342.
+    hp = summarise_hp({1: 210, 2: 342}, {1, 2}, {1: 20, 2: 171}, None)
+    check("two individuals give the envelope, not the overlap",
+          (hp["lo"], hp["hi"]), (171, 342))
 
-    print("\ndid it die?")
+    print("\n  against the wiki baseline")
+    # The wiki's figure is kept when our fights are consistent with it, and is included
+    # in the range either way.
+    hp = summarise_hp({1: 126}, {1}, {1: 42}, WIKI(110))
+    check("a consistent wiki value sits inside the range",
+          hp["lo"] <= 110 <= hp["hi"], True)
+    check("and is reported as consistent", "consistent" in hp["verdict"], True)
 
-    class Eng(object):
-        def __init__(self, res, gob, damage):
-            self.res = res
-            self.gob = gob
-            self.damage = damage
+    # Dead below stated: that individual was below the wiki's base quality.
+    hp = summarise_hp({1: 210}, {1}, {1: 20}, WIKI(250))
+    check("dying below the stated figure is flagged", "below its base quality"
+          in hp["verdict"], True)
+    check("and the stated figure still widens the range", hp["hi"], 250)
 
-    class Log(object):
-        me = 1
+    # Alive above stated: that individual was above it.
+    hp = summarise_hp({1: 400}, set(), {}, WIKI(250))
+    check("surviving past the stated figure is flagged",
+          "above its base quality" in hp["verdict"], True)
 
-    white = lambda gob: {"ch": "#ffff", "gob": gob, "v": 100, "t": 9}
-    # The award lands on whoever won. Ours, over an animal, is a kill.
-    check("an award on us over an animal is a kill",
-          estimate.died(Eng("gfx/kritter/fox/fox", 2, [white(1)]), Log()), True)
-    # Somebody else's award over an animal is still that animal dying - two boars and a
-    # bear in this corpus were finished by other people.
-    check("someone else's award is still a death",
-          estimate.died(Eng("gfx/kritter/boar/boar", 2, [white(3)]), Log()), True)
-    # The award on the opponent's own gob means the opponent won, and we are what ended.
-    check("an award on the opponent is not the opponent dying",
-          estimate.died(Eng("gfx/kritter/bear/bear", 2, [white(2)]), Log()), False)
-    # A player fight ends in a knockout, so the award says nothing about a death.
-    check("beating a player is a knockout, not a kill",
-          estimate.died(Eng("gfx/borka/body", 2, [white(1)]), Log()), False)
-    check("no award, no death",
-          estimate.died(Eng("gfx/kritter/fox/fox", 2, []), Log()), False)
+    # With no fights at all the wiki stands alone rather than the creature being unknown.
+    hp = summarise_hp({}, set(), {}, WIKI(4000))
+    check("a creature we have never fought still has a baseline",
+          (hp["lo"], hp["hi"]), (4000, 4000))
+    check("nothing at all is still nothing", summarise_hp({}, set(), {}, None), None)
 
 
 def agility():
@@ -146,6 +152,29 @@ def armour():
 
     check("one hit is not enough to fit anything",
           estimate.fit_armour(hits[:1]), None)
+
+    # The bear, whose stated armour is 65. The first version of this search ran a fixed
+    # 0..60 grid and could not reach it: the true fit sits at 65 + 0 with no residual at
+    # all, and it returned 60 + 5 with an error of 1.56 because that was the best it
+    # could see. Nothing about the output said the answer had been out of range.
+    bear = [{"raw": 1, "shp": 0, "soaked": 1}, {"raw": 40, "shp": 0, "soaked": 40},
+            {"raw": 70, "shp": 5, "soaked": 65}, {"raw": 91, "shp": 26, "soaked": 65},
+            {"raw": 153, "shp": 88, "soaked": 65}, {"raw": 427, "shp": 362, "soaked": 65}]
+    arm = estimate.fit_armour(bear)
+    check("a soak above any fixed grid is still found", arm["total"], (65, 65))
+    near("and fits exactly", arm["rms"], 0.0, 0.01)
+
+    # Tie tolerance. These numbers are integers, so a half-point residual is rounding and
+    # not evidence. Judging ties tightly made the lynx's 33 + 2 beat 35 + 0 by half a
+    # squared point across 28 hits - on one raw-35 hit reading 1 in one instance and 0 in
+    # another - and reported an identified split that was really the rounding.
+    lynx = [{"raw": 35, "shp": 1, "soaked": 34}, {"raw": 35, "shp": 0, "soaked": 35},
+            {"raw": 27, "shp": 0, "soaked": 27}, {"raw": 21, "shp": 0, "soaked": 21},
+            {"raw": 60, "shp": 25, "soaked": 35}]
+    arm = estimate.fit_armour(lynx)
+    check("a split within rounding is not claimed", arm["identified"], False)
+    check("but the total still lands on the wiki's 35",
+          arm["total"][0] <= 35 <= arm["total"][1], True)
 
 
 def buckets():

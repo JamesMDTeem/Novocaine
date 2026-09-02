@@ -3,14 +3,7 @@
  "opponents": [
   {
    "agility": null,
-   "armour": {
-    "hard": 0,
-    "identified": true,
-    "n": 4,
-    "soft": 0,
-    "total_hi": 0,
-    "total_lo": 0
-   },
+   "armour": null,
    "defence_weight": null,
    "engagements": 1,
    "hitpoints": null,
@@ -28,10 +21,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 17,
+    "n": 3,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 38.4,
@@ -40,10 +34,13 @@
    },
    "engagements": 2,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
+    "from": "survived taking 35, so that one had more than that",
     "hi": null,
-    "lo": 35,
-    "note": "lower bound only - none of them died"
+    "lo": 36,
+    "observed_hi": null,
+    "observed_lo": null,
+    "verdict": null,
+    "wiki": null
    },
    "moves": [],
    "name": "?#598556427",
@@ -51,14 +48,25 @@
   },
   {
    "agility": null,
-   "armour": null,
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 9,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
    "defence_weight": null,
    "engagements": 1,
    "hitpoints": {
-    "from": "1 kill(s), summed across every file each gob appears in",
+    "from": "died at 115 with a last hit of 23, so that one had 92 to 115",
     "hi": 115,
-    "lo": 115,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "lo": 92,
+    "observed_hi": 115,
+    "observed_lo": 92,
+    "verdict": null,
+    "wiki": null
    },
    "moves": [],
    "name": "?#67527879",
@@ -74,10 +82,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 10,
+    "n": 3,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 38.4,
@@ -86,10 +95,13 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
+    "from": "survived taking 35, so that one had more than that",
     "hi": null,
-    "lo": 35,
-    "note": "lower bound only - none of them died"
+    "lo": 36,
+    "observed_hi": null,
+    "observed_lo": null,
+    "verdict": null,
+    "wiki": null
    },
    "moves": [],
    "name": "?#675939166",
@@ -105,10 +117,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 33,
+    "n": 25,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 96.8,
@@ -117,10 +130,13 @@
    },
    "engagements": 3,
    "hitpoints": {
-    "from": "2 kill(s), summed across every file each gob appears in",
+    "from": "died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342",
     "hi": 342,
-    "lo": 210,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "lo": 171,
+    "observed_hi": 342,
+    "observed_lo": 171,
+    "verdict": "1 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
+    "wiki": 250
    },
    "moves": [
     "Badgering"
@@ -130,14 +146,25 @@
   },
   {
    "agility": null,
-   "armour": null,
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 17,
+    "soft": null,
+    "total_hi": 65,
+    "total_lo": 65,
+    "wiki": 65
+   },
    "defence_weight": null,
    "engagements": 1,
    "hitpoints": {
-    "from": "1 kill(s), summed across every file each gob appears in",
+    "from": "died at 1143 with a last hit of 357, so that one had 786 to 1143",
     "hi": 1143,
-    "lo": 1143,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "lo": 786,
+    "observed_hi": 1143,
+    "observed_lo": 786,
+    "verdict": "every individual seen is consistent with the wiki's 850",
+    "wiki": 850
    },
    "moves": [],
    "name": "bear",
@@ -153,10 +180,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 9,
+    "n": 3,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 38.0,
@@ -165,10 +193,13 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 kill(s), summed across every file each gob appears in",
-    "hi": 48,
-    "lo": 48,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "from": "died at 48 with a last hit of 27, so that one had 21 to 48",
+    "hi": 50,
+    "lo": 21,
+    "observed_hi": 48,
+    "observed_lo": 21,
+    "verdict": "1 of these died before taking the wiki's 50, so they were below its base quality (or already hurt when we met them)",
+    "wiki": 50
    },
    "moves": [],
    "name": "beeswarm",
@@ -184,10 +215,11 @@
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 7,
+    "n": 39,
     "soft": null,
     "total_hi": 15,
-    "total_lo": 15
+    "total_lo": 15,
+    "wiki": 15
    },
    "defence_weight": {
     "contradictory": true,
@@ -197,10 +229,13 @@
    },
    "engagements": 4,
    "hitpoints": {
-    "from": "3 kill(s), summed across every file each gob appears in",
+    "from": "died at 499 with a last hit of 256, so that one had 243 to 499; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 453 with a last hit of 15, so that one had 438 to 453",
     "hi": 499,
-    "lo": 453,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "lo": 238,
+    "observed_hi": 499,
+    "observed_lo": 238,
+    "verdict": "every individual seen is consistent with the wiki's 450",
+    "wiki": 450
    },
    "moves": [
     "Bear Down",
@@ -220,10 +255,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 22,
+    "n": 7,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 393.3,
@@ -232,10 +268,13 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
+    "from": "survived taking 13, so that one had more than that",
     "hi": null,
-    "lo": 13,
-    "note": "lower bound only - none of them died"
+    "lo": 14,
+    "observed_hi": null,
+    "observed_lo": null,
+    "verdict": null,
+    "wiki": null
    },
    "moves": [
     "Cleave",
@@ -253,14 +292,7 @@
     "lo": 40.5,
     "our_agility": 81
    },
-   "armour": {
-    "hard": 0,
-    "identified": true,
-    "n": 1,
-    "soft": 0,
-    "total_hi": 0,
-    "total_lo": 0
-   },
+   "armour": null,
    "defence_weight": {
     "hi": 29.8,
     "lo": 17.5,
@@ -282,10 +314,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 22,
+    "n": 20,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 4.8,
@@ -294,10 +327,13 @@
    },
    "engagements": 3,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
+    "from": "survived taking 444, so that one had more than that",
     "hi": null,
-    "lo": 444,
-    "note": "lower bound only - none of them died"
+    "lo": 445,
+    "observed_hi": null,
+    "observed_lo": null,
+    "verdict": null,
+    "wiki": null
    },
    "moves": [
     "Chin Up",
@@ -316,10 +352,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 17,
+    "n": 11,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 59.3,
@@ -328,10 +365,13 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
+    "from": "survived taking 225, so that one had more than that",
     "hi": null,
-    "lo": 225,
-    "note": "lower bound only - none of them died"
+    "lo": 226,
+    "observed_hi": null,
+    "observed_lo": null,
+    "verdict": null,
+    "wiki": null
    },
    "moves": [
     "Knock Its Teeth Out",
@@ -350,10 +390,11 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 8,
+    "n": 5,
     "soft": 0,
     "total_hi": 0,
-    "total_lo": 0
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": {
     "hi": 70.4,
@@ -362,10 +403,13 @@
    },
    "engagements": 2,
    "hitpoints": {
-    "from": "1 kill(s), summed across every file each gob appears in",
+    "from": "died at 126 with a last hit of 42, so that one had 84 to 126",
     "hi": 126,
-    "lo": 126,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "lo": 84,
+    "observed_hi": 126,
+    "observed_lo": 84,
+    "verdict": "every individual seen is consistent with the wiki's 110",
+    "wiki": 110
    },
    "moves": [
     "Fell Scratch"
@@ -375,14 +419,25 @@
   },
   {
    "agility": null,
-   "armour": null,
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 28,
+    "soft": null,
+    "total_hi": 36,
+    "total_lo": 34,
+    "wiki": 35
+   },
    "defence_weight": null,
    "engagements": 12,
    "hitpoints": {
-    "from": "1 kill(s), summed across every file each gob appears in",
+    "from": "died at 524 with a last hit of 196, so that one had 328 to 524",
     "hi": 524,
-    "lo": 524,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "lo": 328,
+    "observed_hi": 524,
+    "observed_lo": 328,
+    "verdict": "every individual seen is consistent with the wiki's 400",
+    "wiki": 400
    },
    "moves": [],
    "name": "lynx",
@@ -390,14 +445,25 @@
   },
   {
    "agility": null,
-   "armour": null,
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 9,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
    "defence_weight": null,
    "engagements": 1,
    "hitpoints": {
-    "from": "1 kill(s), summed across every file each gob appears in",
-    "hi": 166,
-    "lo": 166,
-    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+    "from": "died at 166 with a last hit of 66, so that one had 100 to 166",
+    "hi": 200,
+    "lo": 100,
+    "observed_hi": 166,
+    "observed_lo": 100,
+    "verdict": "1 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
+    "wiki": 200
    },
    "moves": [],
    "name": "sheep",
