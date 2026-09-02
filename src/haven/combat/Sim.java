@@ -6,9 +6,13 @@ package haven.combat;
  *
  * {@link Formulas} says what a number is; this says when it is read and what it changes. The two
  * are separate because the arithmetic is settled and the sequencing is not - every ordering
- * decision below is a claim about the game that the replay harness in
- * {@code tools/CombatReplay.java} checks against real logged fights, and several of them were
- * chosen only after the corpus ruled on them.
+ * decision below is a claim about the game, and several of them were chosen only after the
+ * corpus ruled on them.
+ *
+ * Two harnesses hold this to the logs. {@code tools/CombatSimCheck.java} covers the sequencing
+ * against figures transcribed by hand, and {@code tools/combat/replay.py} drives the model from
+ * the log files themselves, so a new fight becomes new coverage without anyone editing a check.
+ * (This javadoc previously named a {@code tools/CombatReplay.java} that was never written.)
  *
  * Deterministic, with no random element anywhere. That is not a simplification: fits of the
  * logged damage against this model return an R-squared of 0.9966 or better, which leaves no room

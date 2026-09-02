@@ -3,7 +3,7 @@
     Runs every check in the combat system and reports which passed.
 
 .DESCRIPTION
-    The combat work is spread across two languages and eight check harnesses, each with
+    The combat work is spread across two languages and nine check harnesses, each with
     its own javac incantation buried in a file header. Retyping those is how a check
     stops being run, so this runs all of them and prints one table.
 
@@ -112,6 +112,9 @@ Invoke-PyCheck 'fightlog_check.py' 'tools\combat\fightlog_check.py'
 
 Write-Host "`n== the estimators" -ForegroundColor Cyan
 Invoke-PyCheck 'estimate_check.py' 'tools\combat\estimate_check.py'
+
+Write-Host "`n== every logged fight, replayed through the model" -ForegroundColor Cyan
+Invoke-PyCheck 'replay.py' 'tools\combat\replay.py'
 
 Write-Host "`n== the wiki data pack" -ForegroundColor Cyan
 Invoke-PyCheck 'datapack_check.py' 'tools\combat\datapack_check.py'

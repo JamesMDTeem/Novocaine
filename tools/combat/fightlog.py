@@ -502,12 +502,14 @@ def hits(eng, me_gob):
         chans = {}
         for d in near:
             chans[d["ch"]] = chans.get(d["ch"], 0) + d["v"]
-        before = None
-        for s in eng.states:
-            if s["t"] <= m["t"] + SLACK_MS:
-                before = s
-            else:
-                break
+        # The opening the attack READ, by file position - the same rule opening_gains
+        # uses, and for the same reason. This used to take the last state stamped within
+        # SLACK_MS AFTER the move, which lets the state that already contains the move's
+        # own opening be read as the one it swung against. The damage term squares the
+        # opening, so a one-step overshoot is not a small error: a badger's Quick Barrage
+        # at a true 14% red was predicted against 28% and came out at 3.9 points where
+        # the log recorded 1.
+        before, _after = eng.brackets(m)
         if before is None:
             continue
         key = "foe" if m.get("actor") == "me" else "mine"
