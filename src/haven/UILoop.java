@@ -123,6 +123,11 @@ public abstract class UILoop implements Console.Directory {
     public void start() {
 	this.th.start();
 	startInputPump();
+	/* Started here rather than by the bots, which is where it used to be started from and
+	 * meant a client that never ran one had no watchdog at all. The freeze it now catches -
+	 * the UI thread dying outright - has nothing to do with bots and leaves a window that
+	 * cannot be closed, so it is exactly the case a player without bots needs covered. */
+	haven.automated.nbots.core.UiWatchdog.ensureStarted();
     }
 
     private void setenv(Environment env) {
@@ -507,6 +512,13 @@ public abstract class UILoop implements Console.Directory {
     public static volatile Thread statuithread = null;
 
     /**
+     * Set while the client is being shut down on purpose, so a dead UI thread can be told
+     * from a deliberately stopped one. Without it the watchdog below would call a normal
+     * quit a crash, and would race the orderly shutdown to exit first.
+     */
+    public static volatile boolean stopping = false;
+
+    /**
      * Where the frame's time actually went, per phase, sampled every frame.
      *
      * fps, idle and lag between them say what KIND of slowdown is happening but
@@ -823,6 +835,7 @@ public abstract class UILoop implements Console.Directory {
     }
 
     public void dispose() {
+	stopping = true;
 	stopInputPump();
 	th.interrupt();
 	try {
