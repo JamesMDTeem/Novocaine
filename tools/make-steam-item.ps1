@@ -89,6 +89,28 @@ $steamMeta = "Build: steam-workshop`nChannel: steam`nCommit: $(git rev-parse HEA
 [IO.File]::WriteAllText((Join-Path $item 'BUILD-INFO.txt'), $steamMeta, [Text.UTF8Encoding]::new($false))
 # Overlay the Novocaine steam metadata (and any preview image) OVER bin\'s Hurricane copy.
 Copy-Item -Path (Join-Path $steamSrc '*') -Destination $item -Recurse -Force -Exclude 'README.md'
+
+# Take hafen.hl from version control, not from bin\.
+#
+# bin\ is the live install, and Novocaine.ps1 rewrites `heap-size` there on every launch to
+# whatever tier THIS machine's RAM earns (4096 / 6144 / 8192). stage-client.ps1 ships *.hl,
+# so the Workshop item was inheriting the build machine's stamp and handing it to everyone
+# who installs - a 24G box publishing -Xmx8192m to friends on 16G, with no wrapper on the
+# Steam path to ever re-scale it. The launcher descriptor is not machine state, so it comes
+# from the repo copy, and the item is identical no matter who builds it.
+$repoHl = Join-Path $repoRoot 'hafen.hl'
+if (-not (Test-Path $repoHl)) { Die "Missing $repoHl - cannot stage a deterministic launcher descriptor." }
+Copy-Item -Path $repoHl -Destination (Join-Path $item 'hafen.hl') -Force
+
+# The heap settings are the whole reason the above matters, so assert them rather than
+# trusting the copy: a silent revert here is invisible until a friend runs out of RAM.
+$hl = Get-Content (Join-Path $item 'hafen.hl') -Raw
+if ($hl -notmatch '(?m)^heap-size\s+(\d+)\s*$') { Die 'Staged hafen.hl has no heap-size line.' }
+$stagedHeap = [int]$Matches[1]
+foreach ($req in @('-XX:\+UseZGC', '-XX:SoftMaxHeapSize=', '-XX:\+IgnoreUnrecognizedVMOptions')) {
+    if ($hl -notmatch [regex]::Escape('jvm-arg ') + $req) { Die "Staged hafen.hl is missing a required jvm-arg matching '$req'." }
+}
+Ok "launcher descriptor from repo (heap-size ${stagedHeap}m, ZGC + soft max, machine-independent)"
 # The overlay replaced files the staged manifest had already hashed; redo it so the item's
 # manifest.json describes the item that actually ships.
 & java -cp (Join-Path $repoRoot 'bin\hafen.jar') haven.BuildManifest $item (Join-Path $item 'manifest.json')

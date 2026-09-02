@@ -7,11 +7,31 @@ command-file Play.bat
 # 4096m; wrapper scales -Xmx to 6144m (>=16G)/8192m (>=24G or headroom Count*HEAP+4G).
 # Steam Play (hafen.hl command-file Play.bat) is ZGC by default via jvm-arg below;
 # standalone Play.bat is the single home for -Xmx/-XX (Novocaine.ps1 reads it).
-heap-size 4096
+#
+# -Xmx is the only hard bound on what ZGC costs the machine, so it is the setting that
+# decides whether this is safe on a 16G box. Measured on a live session (jcmd against
+# the running Steam client, heap-size 8192): the live set after a full collection was
+# 1.6G and drifted between 1.9G and 4.4G during play, while ZGC held 7.9G of capacity
+# and 8.5G resident throughout - roughly three times what the client was actually
+# using. ZGC grows toward -Xmx and gives pages back only after ZUncommitDelay of a page
+# sitting unused; over three minutes of ordinary play the capacity fell by 36M. So the
+# ceiling is not somewhere the heap avoids, it is where it ends up.
+#
+# SoftMaxHeapSize alone does not fix that - it changes when a collection starts, not
+# what stays committed - which is why all three of these are here:
+#   heap-size 6144       hard bound. 40% above the highest used figure measured, and
+#                        leaves ~10G on a 16G machine.
+#   SoftMaxHeapSize      what ordinary play should sit under; sized just above the
+#                        1.6-3G live set so the heap is collected rather than grown.
+#   ZUncommitDelay       the default 300s returned nothing over the window measured;
+#                        120s gets idle pages back to the OS while play continues.
+heap-size 6144
 jvm-arg -XX:+IgnoreUnrecognizedVMOptions
 jvm-arg -XX:+UseZGC
 jvm-arg -XX:+ZGenerational
 jvm-arg -XX:+UseCompactObjectHeaders
+jvm-arg -XX:SoftMaxHeapSize=3072m
+jvm-arg -XX:ZUncommitDelay=120
 
 class-path hafen.jar
 class-path builtin-res.jar
