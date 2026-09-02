@@ -1,0 +1,393 @@
+{
+ "note": "Every value is an interval or null. Nothing here is a point estimate.",
+ "opponents": [
+  {
+   "agility": null,
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 4,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": null,
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [],
+   "name": "?#1649181853",
+   "res": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 48.2,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 17,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 38.4,
+    "lo": 25.0,
+    "n": 4
+   },
+   "engagements": 2,
+   "hitpoints": {
+    "from": "1 fight(s) it survived",
+    "hi": null,
+    "lo": 35,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [],
+   "name": "?#598556427",
+   "res": null
+  },
+  {
+   "agility": null,
+   "armour": null,
+   "defence_weight": null,
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [],
+   "name": "?#67527879",
+   "res": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 48.2,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 10,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 38.4,
+    "lo": 25.0,
+    "n": 4
+   },
+   "engagements": 1,
+   "hitpoints": {
+    "from": "1 fight(s) it survived",
+    "hi": null,
+    "lo": 35,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [],
+   "name": "?#675939166",
+   "res": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 42.3,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 33,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 96.8,
+    "lo": 73.8,
+    "n": 25
+   },
+   "engagements": 3,
+   "hitpoints": {
+    "from": "2 kill(s)",
+    "hi": 342,
+    "lo": 38,
+    "note": "the opponent may have been injured before the fight, so this is its hitpoints at the START of ours"
+   },
+   "moves": [
+    "Badgering"
+   ],
+   "name": "badger",
+   "res": "gfx/kritter/badger/badger"
+  },
+  {
+   "agility": null,
+   "armour": null,
+   "defence_weight": null,
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [],
+   "name": "bear",
+   "res": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 44.2,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 9,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 38.0,
+    "lo": 28.0,
+    "n": 4
+   },
+   "engagements": 1,
+   "hitpoints": {
+    "from": "1 kill(s)",
+    "hi": 48,
+    "lo": 48,
+    "note": "the opponent may have been injured before the fight, so this is its hitpoints at the START of ours"
+   },
+   "moves": [],
+   "name": "beeswarm",
+   "res": "gfx/kritter/wildbees/beeswarm"
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 60.2,
+    "lo": 49.4,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 7,
+    "soft": null,
+    "total_hi": 15,
+    "total_lo": 15
+   },
+   "defence_weight": {
+    "contradictory": true,
+    "hi": null,
+    "lo": null,
+    "n": 7
+   },
+   "engagements": 4,
+   "hitpoints": {
+    "from": "1 fight(s) it survived",
+    "hi": null,
+    "lo": 63,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [
+    "Bear Down",
+    "Mule Kick",
+    "Roar of the Wild"
+   ],
+   "name": "boar",
+   "res": "gfx/kritter/boar/boar"
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 148.6,
+    "lo": 136.2,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 22,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 393.3,
+    "lo": 213.0,
+    "n": 23
+   },
+   "engagements": 1,
+   "hitpoints": {
+    "from": "1 fight(s) it survived",
+    "hi": null,
+    "lo": 13,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [
+    "Cleave",
+    "Full Circle",
+    "Quick Barrage",
+    "Zig-Zag Ruse"
+   ],
+   "name": "body#1420460144",
+   "res": "gfx/borka/body"
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 48.2,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 1,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 29.8,
+    "lo": 17.5,
+    "n": 1
+   },
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [],
+   "name": "body#1965990376",
+   "res": "gfx/borka/body"
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 48.2,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 22,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 4.8,
+    "lo": 3.6,
+    "n": 17
+   },
+   "engagements": 3,
+   "hitpoints": {
+    "from": "3 fight(s) it survived",
+    "hi": null,
+    "lo": 159,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [
+    "Chin Up",
+    "Left Hook"
+   ],
+   "name": "body#787251591",
+   "res": "gfx/borka/body"
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 60.2,
+    "lo": 52.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 17,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 59.3,
+    "lo": 45.2,
+    "n": 14
+   },
+   "engagements": 1,
+   "hitpoints": {
+    "from": "1 fight(s) it survived",
+    "hi": null,
+    "lo": 225,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [
+    "Knock Its Teeth Out",
+    "Quick Barrage"
+   ],
+   "name": "body#926133699",
+   "res": "gfx/borka/body"
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 44.2,
+    "lo": 40.5,
+    "our_agility": 81
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 8,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0
+   },
+   "defence_weight": {
+    "hi": 70.4,
+    "lo": 59.0,
+    "n": 6
+   },
+   "engagements": 2,
+   "hitpoints": {
+    "from": "1 kill(s)",
+    "hi": 42,
+    "lo": 42,
+    "note": "the opponent may have been injured before the fight, so this is its hitpoints at the START of ours"
+   },
+   "moves": [
+    "Fell Scratch"
+   ],
+   "name": "fox",
+   "res": "gfx/kritter/fox/fox"
+  },
+  {
+   "agility": null,
+   "armour": null,
+   "defence_weight": null,
+   "engagements": 12,
+   "hitpoints": {
+    "from": "1 fight(s) it survived",
+    "hi": null,
+    "lo": 2,
+    "note": "lower bound only - it did not die"
+   },
+   "moves": [],
+   "name": "lynx",
+   "res": "gfx/kritter/lynx/lynx"
+  },
+  {
+   "agility": null,
+   "armour": null,
+   "defence_weight": null,
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [],
+   "name": "sheep",
+   "res": null
+  }
+ ],
+ "source": "tools/combat/estimate.py over the logged corpus"
+}

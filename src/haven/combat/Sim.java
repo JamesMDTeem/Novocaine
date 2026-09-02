@@ -111,8 +111,17 @@ public final class Sim {
 
         double raw = 0, dealt = 0, grievous = 0;
         if(m.deals() && (m.school >= 0)) {
+            /* The opening the attack reads is the combined one over its OWN attack types -
+             * one colour for most moves, two for Full Circle and Sting. Never the combined
+             * opening over all four: that mistake made the damage coefficient appear to rise
+             * with Melee Combat, when what had really happened was that another colour was
+             * standing open. */
+            double[] own = new double[m.schools.length];
+            for(int i = 0; i < own.length; i++)
+                own[i] = target.opening(m.schools[i]);
             raw = Formulas.rawDamage(actor.damageBase(m), actor.damageShare(m),
-                                     actor.damageQuality(m), actor.str, target.opening(m.school));
+                                     actor.damageQuality(m), actor.str,
+                                     Formulas.combined(own));
             /* Armour penetration belongs to the weapon, so a move that swings the weapon carries
              * it and an unarmed move does not. The corpus cannot separate the two readings - the
              * one opponent logged with penetrable armour had no soft soak, and with soft soak at

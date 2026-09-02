@@ -87,6 +87,41 @@ def skill_in(raw):
     return m.group(1) if m else None
 
 
+def mult_of(text):
+    """The product of every percentage on a weight line, as a fraction.
+
+    "Melee * 90% * mu" gives 0.9; a line with no percentage gives 1.0. Uppercut's sheet
+    writes its factor as a bare "0.8" rather than "80%", so a plain decimal counts too.
+    """
+    if not text:
+        return 1.0
+    out = 1.0
+    for tok in text.replace("·", " ").split():
+        tok = tok.strip()
+        try:
+            if tok.endswith("%"):
+                out *= float(tok[:-1]) / 100.0
+            elif tok.replace(".", "", 1).isdigit() and "." in tok:
+                out *= float(tok)
+        except ValueError:
+            pass
+    return out
+
+
+def split_damage(text):
+    """A damage line as (share of the weapon's damage, flat damage).
+
+    Exactly one of the two is set. "According to weapon * 25%" is a quarter share;
+    "According to weapon" is a full one; "30" is flat.
+    """
+    if not text:
+        return (None, None)
+    if "weapon" in text.lower():
+        return (mult_of(text), None)
+    n = num(text)
+    return (None, n) if n is not None else (None, None)
+
+
 def colours_in(raw):
     """Colours named by the markup, before it is stripped, in order of appearance."""
     return [COLOUR[m][0] for m in re.findall(r"\$col\[(\d+,\d+,\d+)\]", raw)
@@ -166,6 +201,15 @@ def parse_move(m, problems):
     rec["attack_skill"] = skill_in(fields.get("Attack weight", ""))
     rec["block_skill"] = skill_in(fields.get("Block weight", ""))
     rec["damage"] = strip_markup(fields.get("Damage", "")).strip() or None
+    # The same line, as numbers a simulator can use without re-parsing English. A move
+    # either takes a share of the weapon's damage or states a flat figure of its own,
+    # never both, and the two scale differently: the weapon's share reads the weapon's
+    # quality, while a flat figure is unarmed and reads the character's strength in its
+    # place.
+    rec["damage_share"], rec["damage_flat"] = split_damage(rec["damage"])
+    # The percentage factors on the attack-weight line - the 90% in "Melee * 90% * mu".
+    rec["weight_mult"] = mult_of(rec["attack_weight"])
+    rec["block_mult"] = mult_of(rec["block_weight"])
     rec["grievous_pct"] = num(fields["Grievous damage"]) if "Grievous damage" in fields else None
     rec["initiative"] = num(fields["Initiative points"]) if "Initiative points" in fields else None
     # "Cooldown: 20" is a number; "Cooldown: 30 / mu" is a formula, and its presence is

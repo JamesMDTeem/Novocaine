@@ -40,6 +40,23 @@ public final class Move {
      */
     public final int school;
 
+    /**
+     * Every colour this move's attack types name, which for most moves is just
+     * {@link #school} again.
+     *
+     * Some moves carry two. Full Circle is both Sweeping and Oppressive, and Sting is
+     * both Striking and Backhanded, so "the attack's own colour" is not by itself a
+     * complete rule. This model reads the combined opening across a move's own types -
+     * which reduces to exactly the single-colour case when there is one, and is why the
+     * one-colour findings did not have to be revisited.
+     *
+     * Not verified for the two-colour case. Both logged Full Circles landed with their
+     * Sweeping colour at zero, where combining and not combining give the same answer:
+     * 35.0 predicted against 35 observed, and 38.4 against 40. Separating the two
+     * readings needs a Full Circle thrown with yellow standing.
+     */
+    public final int[] schools;
+
     /** Percentage points this move opens on its target, per colour. Sheet: "Openings: +20% ...". */
     public final double[] openings;
     /** Percentage points it opens on its user. Some moves list openings against yourself. */
@@ -97,6 +114,7 @@ public final class Move {
         this.name = b.name;
         this.kind = b.kind;
         this.school = b.school;
+        this.schools = b.schools();
         this.openings = b.openings;
         this.openingsSelf = b.openingsSelf;
         this.damageShare = b.damageShare;
@@ -136,6 +154,7 @@ public final class Move {
         private String res, name;
         private Kind kind = Kind.ATTACK;
         private int school = -1;
+        private int[] extra = null;
         private final double[] openings = new double[4];
         private final double[] openingsSelf = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
@@ -152,6 +171,27 @@ public final class Move {
         public Builder res(String v) {this.res = v; return(this);}
         public Builder kind(Kind v) {this.kind = v; return(this);}
         public Builder school(int v) {this.school = v; return(this);}
+
+        /** A second (or third) attack type, for a move whose sheet lists more than one. */
+        public Builder alsoSchool(int v) {
+            int[] n = new int[(extra == null) ? 1 : extra.length + 1];
+            if(extra != null)
+                System.arraycopy(extra, 0, n, 0, extra.length);
+            n[n.length - 1] = v;
+            this.extra = n;
+            return(this);
+        }
+
+        private int[] schools() {
+            if(school < 0)
+                return(new int[0]);
+            if(extra == null)
+                return(new int[] {school});
+            int[] n = new int[extra.length + 1];
+            n[0] = school;
+            System.arraycopy(extra, 0, n, 1, extra.length);
+            return(n);
+        }
         public Builder damageShare(double v) {this.damageShare = v; return(this);}
         public Builder flatDamage(double v) {this.flatDamage = v; return(this);}
         public Builder grievous(double v) {this.grievous = v; return(this);}

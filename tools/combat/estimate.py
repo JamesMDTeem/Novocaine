@@ -185,6 +185,7 @@ def collect(paths):
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
+        "res": None, "hp": None, "hp_seen": [],
     })
     for p in sorted(paths):
         log = fightlog.read(p)
@@ -228,6 +229,18 @@ def collect(paths):
                 if h["actor"] == "me":
                     rec["hits"].append(h)
 
+            rec["res"] = rec["res"] or eng.res
+            # An opponent that died tells us its hitpoints: the soft damage we put into
+            # it over the engagement is what it had left when the engagement began. The
+            # kill is legible because the client draws an opaque-white number on the
+            # KILLER's gob, once, and nothing else uses that channel.
+            killed = any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") == log.me
+                         for d in eng.damage)
+            dealt = sum(d["v"] for d in eng.damage
+                        if d.get("ch") == "SHP" and d.get("gob") == eng.gob)
+            if dealt > 0:
+                rec["hp_seen"].append((dealt, killed))
+
             for m in eng.moves:
                 if m.get("actor") == "me":
                     name = m.get("name") or m.get("move")
@@ -240,7 +253,31 @@ def collect(paths):
                 for h in fightlog.hits(eng, log.me):
                     if h["actor"] != "me":
                         rec["took"].append(h)
+
+    for rec in per.values():
+        rec["hp"] = summarise_hp(rec["hp_seen"])
     return per, moves
+
+
+def summarise_hp(seen):
+    """Hitpoints, from what it took to kill one.
+
+    A kill puts a lower AND an upper bound on the same number - the damage that killed
+    it is at least its remaining hitpoints and, since the killing blow was the first to
+    reach zero, less than that plus the last hit. A fight it survived only gives a lower
+    bound, and a weak one, because it may have been hurt before we met it.
+    """
+    kills = [d for d, killed in seen if killed]
+    survived = [d for d, killed in seen if not killed]
+    if kills:
+        return {"lo": min(kills), "hi": max(kills), "from": "%d kill(s)" % len(kills),
+                "note": "the opponent may have been injured before the fight, so this "
+                        "is its hitpoints at the START of ours"}
+    if survived:
+        return {"lo": max(survived), "hi": None,
+                "from": "%d fight(s) it survived" % len(survived),
+                "note": "lower bound only - it did not die"}
+    return None
 
 
 def report(per, moves):
@@ -379,7 +416,77 @@ def report(per, moves):
         print()
 
 
+PACK = os.path.join(ROOT, "data", "combat", "opponents.json")
+
+
+def write_pack(per, moves):
+    """Write what the corpus knows, in the form the simulator can load.
+
+    Every quantity is an interval or null. There is no field here that can hold a point
+    estimate, deliberately: the simulator's job is to answer "can I win this", and the
+    honest answer to that is often a range that straddles yes and no. A pack that
+    flattened 74-97 to 85 would let it print a confident answer it has not got.
+    """
+    out = []
+    for name in sorted(per):
+        rec = per[name]
+        entry = {"name": name, "engagements": rec["engagements"],
+                 "res": rec.get("res"), "moves": sorted(rec["their_moves"])}
+
+        if rec["wd"]:
+            lo = max(w[6] for w in rec["wd"])
+            hi = min(w[7] for w in rec["wd"])
+            entry["defence_weight"] = ({"lo": round(lo, 1), "hi": round(hi, 1),
+                                        "n": len(rec["wd"])}
+                                       if lo <= hi else
+                                       {"lo": None, "hi": None, "n": len(rec["wd"]),
+                                        "contradictory": True})
+        else:
+            entry["defence_weight"] = None
+
+        obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
+        for mv, ticks in rec["cd"].items():
+            m = moves.get(mv)
+            if m is None or m.get("cooldown") is None or not (m.get("attack_types") or []):
+                continue
+            for t in ticks:
+                obs.append((m["cooldown"], t))
+        iv = agility_interval(obs, agi_me) if (obs and agi_me) else None
+        entry["agility"] = (None if iv is None or iv[0] > iv[1] else
+                            {"lo": round(iv[0], 1), "hi": round(iv[1], 1),
+                             "capped": iv[2], "our_agility": agi_me})
+
+        arm = fit_armour(rec["hits"])
+        if arm:
+            tlo, thi = arm["total"]
+            entry["armour"] = {"total_lo": tlo, "total_hi": thi,
+                               "hard": arm["hard"] if arm["identified"] else None,
+                               "soft": arm["soft"] if arm["identified"] else None,
+                               "identified": arm["identified"], "n": arm["n"]}
+        elif rec["hits"] and not any(h["soaked"] for h in rec["hits"]):
+            # Not the same as unknown: we hit it and nothing was absorbed.
+            entry["armour"] = {"total_lo": 0, "total_hi": 0, "hard": 0, "soft": 0,
+                               "identified": True, "n": len(rec["hits"])}
+        else:
+            entry["armour"] = None
+
+        entry["hitpoints"] = rec["hp"]
+        out.append(entry)
+
+    doc = {"source": "tools/combat/estimate.py over the logged corpus",
+           "note": "Every value is an interval or null. Nothing here is a point estimate.",
+           "opponents": out}
+    with open(PACK, "w", encoding="utf8") as f:
+        json.dump(doc, f, indent=1, sort_keys=True)
+        f.write("\n")
+    print("wrote %s  (%d opponent(s))" % (os.path.relpath(PACK, ROOT), len(out)))
+
+
 def main(argv):
+    argv = list(argv)
+    write = "--write-pack" in argv
+    if write:
+        argv.remove("--write-pack")
     paths = []
     for a in argv:
         hits_ = sorted(glob.glob(a))
@@ -394,6 +501,8 @@ def main(argv):
               % os.path.relpath(SHEET, ROOT))
         return 2
     report(per, moves)
+    if write:
+        write_pack(per, moves)
     return 0
 
 

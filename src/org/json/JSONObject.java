@@ -24,7 +24,6 @@ package org.json;
  SOFTWARE.
  */
 
-import haven.Config;
 
 import java.io.IOException;
 import java.io.StringWriter;
