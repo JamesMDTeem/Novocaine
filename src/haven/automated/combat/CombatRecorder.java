@@ -37,6 +37,7 @@ public final class CombatRecorder {
     private static volatile long t0 = 0;
     private static volatile String lastSample = null;
     private static volatile String lastFoes = null;
+    private static volatile String lastBuffs = null;
     /* Opponents whose resource has already been logged, so the tick loop names each one once.
      * Concurrent because it is written from the UI thread and cleared from start(), which the
      * message loop calls. */
@@ -72,6 +73,7 @@ public final class CombatRecorder {
             t0 = System.currentTimeMillis();
             lastSample = null;
             lastFoes = null;
+            lastBuffs = null;
             named.clear();
             String safe = (charName == null ? "unknown" : charName.replaceAll("[^A-Za-z0-9_-]", "_"));
             Path p = Paths.get(Client.gameDir, "CombatLogs",
@@ -312,6 +314,46 @@ public final class CombatRecorder {
             log(CombatEvent.overlay(now(), gobId, gobRes, olRes));
         } catch(Exception e) {
             /* never propagate into the object-delta path */
+        }
+    }
+
+    /**
+     * The buff resources standing on a combatant - which is where a stance lives.
+     *
+     * readOpenings below walks this same list and keeps only the four opening paginae, so
+     * a stance card has been visible on every sample and discarded every time. It is the
+     * missing term in an opponent's defence weight: skill x block multiplier x mu, and the
+     * block multiplier runs from Bloodlust's 75% of Unarmed to Shield Up's 250% of Melee.
+     * Without it, players in this corpus measure anywhere from 3 to 393 and the number
+     * gets recorded as a property of the person.
+     *
+     * Value-gated per combatant, since buffs change rarely against a frame rate.
+     */
+    public static void sampleBuffs(long gobId, String who,
+                                   java.util.Collection<haven.Buff> buffs) {
+        if(!active() || (buffs == null))
+            return;
+        try {
+            java.util.List<String> names = new java.util.ArrayList<String>();
+            for(haven.Buff b : buffs) {
+                try {
+                    if((b.res != null) && (b.res.get() != null))
+                        names.add(b.res.get().name);
+                } catch(Exception e) {
+                    /* a still-loading resource is skipped, not fatal */
+                }
+            }
+            if(names.isEmpty())
+                return;
+            java.util.Collections.sort(names);
+            String key = who + gobId + names;
+            if(key.equals(lastBuffs))
+                return;
+            lastBuffs = key;
+            log(CombatEvent.buffs(now(), gobId, who,
+                                  names.toArray(new String[names.size()])));
+        } catch(Exception e) {
+            /* never propagate into tick() */
         }
     }
 

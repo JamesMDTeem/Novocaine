@@ -133,7 +133,16 @@ public class CombatLogCheck {
          * other opponents were open" - schema 1 logs have no header at all and schema 3
          * logs have no foes lines, and both are still valid evidence for everything else
          * they do carry. */
-        check("schema constant", CombatEvent.SCHEMA, 4);
+        /* 5 adds the "buffs" event: what each side is holding, stance included. An
+         * opponent's defence weight is skill x block multiplier x mu, and the multiplier
+         * comes from the stance - the difference between Bloodlust's 75% of Unarmed and
+         * Shield Up's 250% of Melee. */
+        check("schema constant", CombatEvent.SCHEMA, 5);
+        check("buffs lists what a combatant is holding",
+              CombatEvent.buffs(3L, 42L, "foe",
+                                new String[] {"paginae/atk/shieldup", "paginae/atk/cornered"}),
+              "{\"ev\":\"buffs\",\"t\":3,\"gob\":42,\"who\":\"foe\","
+              + "\"res\":[\"paginae/atk/shieldup\",\"paginae/atk/cornered\"]}");
         check("foes packs gob and four openings per relation",
               CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8}),
               "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]]}");

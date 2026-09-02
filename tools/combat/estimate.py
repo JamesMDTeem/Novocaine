@@ -229,6 +229,42 @@ def measure_mu(logs=None):
 # at 0 initiative, would discriminate between every surviving candidate.
 
 
+# What the wiki's own worked example states, as opposed to what this corpus measured.
+#
+# "A player who has 50 uac, 25% green opening and is in lvl 4 Chin Up defense mode is
+# attacked by a player with 100 uac by level 5 punch. Defense weight will be 50*1.4 and
+# attack weight will be 100*0.8*1.5."
+#
+# Chin Up's block multiplier is 1.0, so 50*1.4 puts mu at 1.4 for level 4; Punch's is 0.8,
+# so 100*0.8*1.5 puts it at 1.5 for level 5. Wiki prose rather than a dev quote, so it is
+# kept apart from MU_MEASURED and used to judge candidate curves rather than to compute.
+MU_WIKI_EXAMPLE = {4: 1.4, 5: 1.5}
+
+
+def mu_curve(level):
+    """The leading curve: 1 + 0.5*(sqrt(L)-1)/(sqrt(5)-1).
+
+    Three independent lines pick this out, and each kills something the others do not.
+
+        level 2   Take Aim's cooldown measures 1.143-1.177. The curve gives 1.168.
+                  The obvious linear curve gives 1.125 and is EXCLUDED here.
+        level 4   the wiki's worked example states 1.4. The curve gives 1.405; linear
+                  gives 1.375.
+        level 5   reduction floors put mu at 1.49 or above, and the wiki states 1.5. The
+                  curve gives exactly 1.5. Rivals that fit level 2 but cap out lower -
+                  1.5-0.5/sqrt(L) at 1.276, 1+0.5(L-1)/(L+1) at 1.333 - are EXCLUDED here.
+
+    Nothing computes with this yet. mu_bounds still returns measured intervals and the
+    stated range elsewhere, because one curve fitting three points is a good hypothesis and
+    not a measurement. Take Aim's own maximum is 3: one further point in it reads level 3
+    to about +/-0.02, where this curve says 1.296 and linear says 1.250.
+    """
+    if not level or level < 1:
+        return None
+    L = min(level, MU_LEVELS)
+    return 1.0 + (MU_MAX - 1.0) * ((L ** 0.5) - 1.0) / ((MU_LEVELS ** 0.5) - 1.0)
+
+
 def mu_bounds(level):
     """What a card's deck weighting can be, as an interval. This is an INPUT.
 
@@ -631,6 +667,68 @@ def gain_interval(wa, gain, ob, standing, wa_hi=None):
     lo = model.defence_weight(wa, gain + GAIN_SLOP, ob, oc_hi)
     hi = model.defence_weight(wa_hi if wa_hi else wa, max(0.1, gain - GAIN_SLOP), ob, oc_lo)
     return (lo, hi)
+
+
+def stance_of(log, gob):
+    """The stance resource a combatant was holding, from the schema-5 buffs samples.
+
+    Returns the LAST one seen, or None. A stance can be swapped mid-fight and this does not
+    try to track that - it is a starting point for reading the corpus, not a timeline.
+    """
+    best = None
+    for r in log.buffs:
+        if (gob is not None) and (r.get("gob") != gob):
+            continue
+        for res in r.get("res") or []:
+            nm = (res or "").rsplit("/", 1)[-1]
+            if nm in STANCE_RES:
+                best = STANCE_RES[nm]
+    return best
+
+
+# Move name by the resource basename its stance buff uses. Only the cards whose sheet
+# carries a Block weight line are stances; an opening pagina is not one.
+STANCE_RES = {
+    "bloodlust": "Bloodlust", "chinup": "Chin Up", "combmed": "Combat Meditation",
+    "parry": "Parry", "shieldup": "Shield Up", "toarms": "To Arms",
+    "oakstance": "Oak Stance", "dorf": "Death or Glory",
+}
+
+
+def block_weight(moves, stance, attrs, gear, level):
+    """A combatant's defence weight from the stance they are holding.
+
+    The wiki states this outright in its own worked example: "a player who ... is in lvl 4
+    Chin Up defense mode ... defense weight will be 50 * 1.4" - the skill the card names,
+    times its block multiplier, times the card's mu at their level. Chin Up's multiplier is
+    1.0, so that example is 50 unarmed at mu 1.4, and it is where the mu curve's level-4
+    value of 1.4 comes from.
+
+    This is the same arithmetic own_defence_weight does for us, factored out so it can be
+    pointed at an opponent. The difference is what is known: for us the level is in our own
+    deck dump and mu with it, and for THEM the level is not visible at all - so their mu is
+    the whole stated 1.0 to 1.5 and the answer is an interval a third wide.
+
+    Returns (lo, hi, description) or None.
+    """
+    m = moves.get(stance)
+    if (m is None) or not m.get("block_weight"):
+        return None
+    skill = m.get("block_skill") or "melee"
+    base = attrs.get(skill)
+    if not base:
+        return None
+    mult = m.get("block_mult") or 1.0
+    why = ""
+    need = m.get("block_requires")
+    if need:
+        held = (gear is None) or any(need in (g.get("res") or "") for g in gear)
+        if not held:
+            mult = m.get("block_mult_without") or mult
+            why = " (no %s equipped)" % need
+    lo, hi = mu_bounds(level) if level else (MU_MIN_STATED, MU_MAX)
+    return (base * mult * lo, base * mult * hi,
+            "%s: %s %g x %g x mu %.3f-%.3f%s" % (stance, skill, base, mult, lo, hi, why))
 
 
 def own_defence_weight(moves, attrs, gear, levels):

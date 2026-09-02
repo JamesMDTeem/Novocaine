@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 4;
+    public static final int SCHEMA = 5;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -173,6 +173,36 @@ public final class CombatEvent {
                .put("gob", gobId)
                .put("gobres", gobRes)
                .put("res", olRes)
+               .end());
+    }
+
+    /**
+     * The buffs standing on one combatant - which is how a STANCE becomes visible.
+     *
+     * An opponent's defence weight is their skill times their stance's block multiplier
+     * times their mu, and the wiki's own worked example spells that out: "a player who is
+     * in lvl 4 Chin Up defense mode ... defense weight will be 50 * 1.4". So a player's Wd
+     * is not one number. Ours reads from 62 in Shield Up without a shield to 313 with one,
+     * and this corpus has players measured anywhere from 3 to 393 - a factor of seventy
+     * being reported as if it were a property of the person.
+     *
+     * The client has always had this. readOpenings walks exactly this list and keeps the
+     * four opening paginae, so the stance was being seen and thrown away on every sample.
+     */
+    public static String buffs(long t, long gobId, String who, String[] res) {
+        StringBuilder b = new StringBuilder("[");
+        for(int i = 0; i < res.length; i++) {
+            if(i > 0)
+                b.append(',');
+            b.append('"').append(JsonObj.esc(res[i])).append('"');
+        }
+        b.append(']');
+        return(new JsonObj()
+               .put("ev", "buffs")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("who", who)
+               .raw("res", b.toString())
                .end());
     }
 

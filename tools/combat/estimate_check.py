@@ -375,6 +375,33 @@ def mu_from_reductions():
               med > 1.333, True)
 
 
+def mu_curve():
+    """The leading curve, held to all three lines of evidence at once.
+
+    Kept as a check rather than a note because the linear curve is what anyone reaches for
+    first, it tracks the reduction medians almost exactly, and only the level-2 measurement
+    rules it out. That exclusion is easy to lose.
+    """
+    print("\nthe mu curve, against every line of evidence")
+    c = estimate.mu_curve
+    near("level 1 is 1.0 by definition", c(1), 1.0, 1e-9)
+    near("level 5 reaches the devs' stated ceiling", c(5), 1.5, 1e-9)
+    # Take Aim, measured.
+    lo, hi = estimate.mu_bounds(2)
+    check("level 2 lands inside Take Aim's measured interval", lo <= c(2) <= hi, True)
+    check("  where the linear curve does not", lo <= 1.125 <= hi, False)
+    # The wiki's worked example.
+    for level, stated in sorted(estimate.MU_WIKI_EXAMPLE.items()):
+        near("level %d matches the wiki's worked example" % level, c(level), stated, 0.01)
+    # The reduction floors.
+    rows, _inert = estimate.mu_from_reductions()
+    five = [v for (lv, _n), vals in rows.items() if lv == 5 for v in vals]
+    if five:
+        med = sorted(five)[len(five) // 2]
+        check("level 5 clears the floor the reductions put under it", c(5) >= med, True)
+        check("  and the rivals that cap at 1.333 do not", 1.333 >= med, False)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -462,6 +489,7 @@ def main():
     mu_measurement()
     own_defence()
     mu_from_reductions()
+    mu_curve()
     armour()
     buckets()
     if failures:

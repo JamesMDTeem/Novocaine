@@ -406,7 +406,14 @@ public class Fightview extends Widget {
 		    packed[n++] = o.blue;
 		    packed[n++] = o.yellow;
 		    packed[n++] = o.red;
+		    /* The stance each opponent is holding. Their defence weight is skill x block
+		     * multiplier x mu, and without the stance the multiplier is missing - which is
+		     * the difference between Bloodlust's 75% of Unarmed and Shield Up's 250% of
+		     * Melee, and why players in this corpus measure from 3 to 393. */
+		    haven.automated.combat.CombatRecorder.sampleBuffs(
+			rel.gobid, "foe", rel.buffs.children(Buff.class));
 		}
+		haven.automated.combat.CombatRecorder.sampleBuffs(-1, "me", buffs.children(Buff.class));
 		haven.automated.combat.CombatRecorder.sampleFoes(packed);
 	    } catch(Exception e) {
 		/* telemetry must never break the tick loop */

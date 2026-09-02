@@ -157,6 +157,8 @@ class Log(object):
         # Schema 4 "foes" samples: every relation's openings at a moment, not only the
         # sampled opponent's. Empty for every log written before that existed.
         self.foes = []
+        # Schema 5 "buffs" samples: what each side is holding, stance included.
+        self.buffs = []
 
     @property
     def me(self):
@@ -212,6 +214,10 @@ def read(path, opens=None):
             log.end = r
         elif ev == "foe" and r.get("res"):
             log.names[r["gob"]] = r["res"]
+        elif ev == "buffs":
+            # Schema 5. The buff resources standing on a combatant, which is where a
+            # STANCE lives - the missing term in an opponent's defence weight.
+            log.buffs.append(r)
         elif ev == "foes":
             # Schema 4. Every opponent's openings, including ones we never targeted - the
             # only evidence a log carries about another player's attacks, since their moves
