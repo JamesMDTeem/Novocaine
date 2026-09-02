@@ -837,6 +837,58 @@
    "ip_scale": 0.0
   },
   {
+   "res": "paginae/atk/ravenbite",
+   "name": "Raven's Bite",
+   "weapon": "Any axe",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon · 110%",
+   "damage_share": 1.1,
+   "damage_flat": null,
+   "weight_mult": 1.0,
+   "block_mult": 1.0,
+   "grievous_pct": null,
+   "initiative": 4,
+   "initiative_extra": null,
+   "cooldown_raw": "40",
+   "cooldown_mu": false,
+   "cooldown": 40,
+   "attack_types": [
+    {
+     "name": "Striking",
+     "colour": "green"
+    },
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 15.0,
+     "name": "Off Balance",
+     "colour": "green",
+     "mu": false
+    },
+    {
+     "pct": 15.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ],
+   "ip_scale": 0.0
+  },
+  {
    "res": "paginae/atk/regain",
    "name": "Regain Composure",
    "weapon": null,
@@ -1055,6 +1107,52 @@
    "ip_scale": 0.0
   },
   {
+   "res": "paginae/atk/stealthunder",
+   "name": "Steal Thunder",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "None",
+   "damage_share": null,
+   "damage_flat": null,
+   "weight_mult": 1.0,
+   "block_mult": 1.0,
+   "grievous_pct": null,
+   "initiative": null,
+   "initiative_extra": null,
+   "cooldown_raw": "40",
+   "cooldown_mu": false,
+   "cooldown": 40,
+   "attack_types": [
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    },
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 10.0,
+     "name": "Dizzy",
+     "colour": "blue",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "To the extent that it is unblocked, Steal Thunder will take 3 Points of Initiative from its target and gain you 2 of them. It can be carried out at a small distance."
+   ],
+   "ip_scale": 0.0
+  },
+  {
    "res": "paginae/atk/sting",
    "name": "Sting",
    "weapon": "Any pointed weapon",
@@ -1136,6 +1234,50 @@
     "The cooldown of Take Aim increases by 20% for each Point of Initiative you have."
    ],
    "ip_scale": 0.2
+  },
+  {
+   "res": "paginae/atk/takedown",
+   "name": "Takedown",
+   "weapon": null,
+   "attack_weight": "· µ",
+   "block_weight": null,
+   "attack_skill": "unarmed",
+   "block_skill": null,
+   "damage": "40",
+   "damage_share": null,
+   "damage_flat": 40,
+   "weight_mult": 1.0,
+   "block_mult": 1.0,
+   "grievous_pct": 30,
+   "initiative": 3,
+   "initiative_extra": null,
+   "cooldown_raw": "50",
+   "cooldown_mu": false,
+   "cooldown": 50,
+   "attack_types": [
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    },
+    {
+     "name": "Oppressive",
+     "colour": "red"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 30.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [],
+   "ip_scale": 0.0
   },
   {
    "res": "paginae/atk/toarms",
