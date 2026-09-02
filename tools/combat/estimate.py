@@ -64,6 +64,27 @@ MU = 1.0
 # explanation.
 MU_MIN, MU_MAX = 1.0 / 1.5, 1.5
 
+# The card cap is 5 for everything except stances, and the range is 1.0 to 1.5, so the
+# obvious curve is linear across the five levels. It fits both anchors the corpus has:
+# Take Aim at level 1 reads exactly 1.0 (its cooldown divides by mu and reported its
+# listed 30), and Sting at level 3 measures somewhere in 1.12 to 1.38 against 1.25.
+#
+# A hypothesis, not a measurement. Two anchors cannot distinguish it from, say,
+# 1 + 0.1*(level-1), which also passes through 1.0 at level 1 and gives 1.2 at level 3.
+# mu_at_level() below is what the corpus is accumulating evidence against.
+#
+# Note the deck dump's "maxlevel" is how far the character has LEARNED a move, not the
+# game's ceiling - a move showing a max of 1 has been picked up once, and is at the
+# bottom of the mu range rather than the top.
+MU_LEVELS = 5
+
+
+def mu_at_level(level):
+    """The deck weighting a card at this level would have, on the linear hypothesis."""
+    if not level or level < 1:
+        return None
+    return 1.0 + (MU_MAX - 1.0) * (min(level, MU_LEVELS) - 1) / (MU_LEVELS - 1)
+
 
 def mu_ratio(wd_a, wd_b):
     """How much bigger move b's deck weighting is than move a's. ATTACKS ONLY.
@@ -585,6 +606,39 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
 
 DEPTH = depth_scaled()
 
+# Every mu measurement the report makes, by deck level. Accumulated so that levelling a
+# move and fighting with it sharpens the curve automatically, rather than needing a
+# separate experiment.
+MU_SEEN = {}
+
+
+def report_mu_curve():
+    """What the corpus knows about how mu rises with deck level."""
+    if not MU_SEEN:
+        return
+    print("=" * 78)
+    print("DECK WEIGHTING BY LEVEL")
+    print("=" * 78)
+    print("  mu is 1.0 at level 1, measured: Take Aim's cooldown divides by it and came")
+    print("  back at its listed 30. The rest is what the corpus has managed to see.\n")
+    print("  %-6s %-5s %-16s %-12s %s" % ("level", "n", "measured", "if linear", "from"))
+    for lvl in sorted(MU_SEEN):
+        rows = MU_SEEN[lvl]
+        vals = sorted(r[2] for r in rows)
+        span = ("%.2f" % vals[0]) if len(vals) == 1 else ("%.2f - %.2f"
+                                                          % (vals[0], vals[-1]))
+        pred = mu_at_level(lvl)
+        where = ", ".join(sorted(set("%s vs %s" % (mv, sp) for sp, mv, _ in rows)))
+        print("  %-6s %-5d %-16s %-12s %s"
+              % (lvl, len(rows), span, "%.3f" % pred if pred else "?", where[:34]))
+    print()
+    print("  The linear column is a hypothesis - levels 1 to 5 mapped onto 1.0 to 1.5 -")
+    print("  not a measurement. Two anchors cannot separate it from 1 + 0.1*(level-1).")
+    print("  To settle it, level an unarmed attack that goes high (Punch and Left Hook")
+    print("  are learned to 5) and fight one creature with it AND Knock Its Teeth Out,")
+    print("  which stays at level 1. Same skill, so the skill term cancels exactly.")
+    print()
+
 
 def report(per, moves):
     for name in sorted(per):
@@ -684,6 +738,9 @@ def report(per, moves):
                             else "   OUTSIDE 1.0-1.5 - NOT a deck-level difference")
                     print("      %-20s level %-4s mu %.2f%s"
                           % (mv[:20], LEVELS.get(mv, "?"), r, flag))
+                    lvl = LEVELS.get(mv)
+                    if lvl and MU_MIN <= r <= MU_MAX:
+                        MU_SEEN.setdefault(lvl, []).append((name, mv, r))
             if len(rec["wd"]) > 8:
                 print("      (+%d more)" % (len(rec["wd"]) - 8))
         else:
@@ -895,6 +952,7 @@ def main(argv):
               % os.path.relpath(SHEET, ROOT))
         return 2
     report(per, moves)
+    report_mu_curve()
     if write:
         write_pack(per, moves)
     return 0

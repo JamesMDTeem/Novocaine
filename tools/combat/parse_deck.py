@@ -171,6 +171,11 @@ def parse_move(m, problems):
     rec = OrderedDict()
     rec["res"] = m["res"]
     rec["name"] = m.get("name")
+    # How far THIS CHARACTER has learned the move, not the game's ceiling. Everything
+    # except stances goes to 5; a move showing a max of 1 has simply been picked up once.
+    # Misreading it as the cap is easy and costly - it makes a move at 1 of 1 look fully
+    # weighted, which would put its mu at the top of the range when it is really at the
+    # bottom.
     rec["maxlevel"] = m.get("maxlevel")
     rec["decklevel"] = m.get("decklevel")
     if not raw:

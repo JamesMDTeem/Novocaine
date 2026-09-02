@@ -186,6 +186,22 @@ def deck_weighting():
           (round(estimate.MU_MIN, 3), estimate.MU_MAX), (0.667, 1.5))
     check("a boar-sized gap is outside it",
           estimate.MU_MIN <= 2.72 <= estimate.MU_MAX, False)
+    # The linear hypothesis: levels 1 to 5 across 1.0 to 1.5. The cap is 5 for everything
+    # except stances - a move showing a "max" of 1 in the deck dump has merely been
+    # LEARNED once, which is not the same fact and is easy to misread as the ceiling.
+    near("level 1 is 1.0, which Take Aim measures exactly",
+         estimate.mu_at_level(1), 1.0, 1e-9)
+    near("level 5 is the top of the wiki's range", estimate.mu_at_level(5), 1.5, 1e-9)
+    near("level 3 sits midway", estimate.mu_at_level(3), 1.25, 1e-9)
+    check("an unlearned card has no weighting", estimate.mu_at_level(0), None)
+    check("and nothing goes past the cap",
+          estimate.mu_at_level(9) == estimate.mu_at_level(5), True)
+    # One anchor at 1.0 and one loose reading at level 3 cannot separate this from the
+    # rival curve, and the checks should not pretend otherwise.
+    rival = 1.0 + 0.1 * (3 - 1)
+    check("the rival curve is still live at level 3",
+          abs(estimate.mu_at_level(3) - rival) < 0.1, True)
+
     check("a level-1 spread is inside it",
           all(estimate.MU_MIN <= r <= estimate.MU_MAX
               for r in (0.82, 0.88, 0.96, 1.06, 1.11, 1.12)), True)
