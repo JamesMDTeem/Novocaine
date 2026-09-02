@@ -60,19 +60,49 @@ public class RUtils {
     }
 
     public static void readd(Collection<Slot> slots, Consumer<Slot> add, Runnable revert) {
-	Collection<Slot> ch = new ArrayList<>(slots.size());
+	/* Snapshot first. Nothing here holds the render-tree lock across the whole
+	 * operation, so the thread that owns the tree is free to remove any of these
+	 * slots between two iterations, and removing one runs the owner's removed()
+	 * callback, which deletes it from the very collection being iterated. */
+	Collection<Slot> live = new ArrayList<>(slots);
+	Collection<Slot> ch = new ArrayList<>(live.size());
 	try {
-	    for(Slot slot : slots) {
+	    for(Slot slot : live) {
 		ch.add(slot);
-		slot.clear();
-		add.accept(slot);
+		try {
+		    slot.clear();
+		    add.accept(slot);
+		} catch(RenderTree.SlotRemoved dead) {
+		    /* That slot left the tree while we were repopulating it. It is gone,
+		     * not broken: TreeSlot.remove empties a slot's children before it
+		     * detaches the slot, so a detached slot can never hold half-built
+		     * content, and its owner's removed() callback has already dropped it.
+		     *
+		     * This is a race the client loses constantly and is meant to survive.
+		     * MapView.Gobs.removed detaches a gob's slot when the server drops the
+		     * object, and cullGob detaches it from OCache.gtick on any frame the gob
+		     * crosses the edge of the screen - neither holds the gob lock, while the
+		     * loader thread arrives here from OCache.GobInfo.apply holding only that.
+		     * MapView.Gobs.addgob calls the mirror image of it harmless and skips it.
+		     *
+		     * Skip the dead slot and keep going. Treating it as a failure meant
+		     * reverting every live slot to stale content for the sake of one that no
+		     * longer renders, and then failing the revert too - the old parts do not
+		     * fit a detached slot either - which left readd throwing Error out of the
+		     * loader thread and took the client down over an object it had already
+		     * stopped drawing. */
+		}
 	    }
 	} catch(RuntimeException e) {
 	    revert.run();
 	    try {
 		for(Slot slot : ch) {
-		    slot.clear();
-		    add.accept(slot);
+		    try {
+			slot.clear();
+			add.accept(slot);
+		    } catch(RenderTree.SlotRemoved dead) {
+			/* Same race, same answer: a slot that left the tree needs no content. */
+		    }
 		}
 	    } catch(RuntimeException e2) {
 		/* Both the new content and the old one only got as far as "not ready yet".
