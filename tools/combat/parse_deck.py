@@ -280,9 +280,17 @@ def best_dump(paths):
         # Deck levels arrive in a separate server message from the action list, so an
         # early probe can have every move's text and no levels at all. Prefer a dump
         # that has both rather than silently reporting an empty deck.
+        # Recency breaks a tie. Without it an equally rich dump from an earlier session
+        # wins simply by being encountered first, and the deck reported is yesterday's -
+        # which is how a move the character has since put points into showed up in the
+        # fights while reading as level 0 in the deck.
+        try:
+            when = os.path.getmtime(p)
+        except OSError:
+            when = 0
         score = (sum(1 for m in moves if m.get("pagina")),
                  sum(1 for m in moves if (m.get("decklevel") or 0) > 0),
-                 len(moves))
+                 len(moves), when)
         if best is None or score > best:
             best, chosen = score, (p, body)
     return chosen
@@ -327,8 +335,17 @@ def crosscheck(recs, problems):
 
 def main(argv):
     paths = []
-    for a in (argv or [os.path.join(ROOT, "bin", "CombatLogs", "deck-*.json")]):
-        paths.extend(sorted(glob.glob(a)))
+    if argv:
+        for a in argv:
+            paths.extend(sorted(glob.glob(a)))
+    else:
+        # Every install on this machine. The Steam Workshop copy keeps its own directory,
+        # and a client played through Steam writes its dumps there and nowhere near the
+        # checkout.
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import fightlog
+        for d in fightlog.find_log_dirs(ROOT):
+            paths.extend(sorted(glob.glob(os.path.join(d, "deck-*.json"))))
     if not paths:
         print("no deck dumps found")
         return 2

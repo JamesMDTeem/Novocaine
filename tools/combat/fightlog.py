@@ -19,6 +19,7 @@ This module does that separation and nothing else. It fits nothing and infers no
 Stdlib only, like everything else here.
 """
 
+import glob
 import json
 import os
 
@@ -466,6 +467,83 @@ def soak_pairs(eng):
             out.append({"t": v["t"], "soaked": v["ARM"], "shp": v["SHP"],
                         "raw": v["ARM"] + v["SHP"]})
     return out
+
+
+def find_log_dirs(root=None):
+    """Every directory on this machine that a client writes combat logs into.
+
+    There is more than one, and finding that out the hard way costs a session: fights
+    recorded through the Steam Workshop copy land under
+    steamapps/workshop/content/<app>/<item>/CombatLogs, nowhere near the checkout, and a
+    tool pointed only at bin/CombatLogs reports a corpus that has quietly stopped
+    growing. Two mornings of fights sat unnoticed in the Steam directory for exactly this
+    reason.
+
+    Returns existing directories only, most recently written first, so the newest corpus
+    leads.
+    """
+    if root is None:
+        root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                            "..", ".."))
+    out = [os.path.join(root, "bin", "CombatLogs"),
+           os.path.join(root, "Release", "CombatLogs")]
+
+    libs = []
+    try:
+        import winreg
+        for hive, key, name in (
+                (winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam", "SteamPath"),
+                (winreg.HKEY_LOCAL_MACHINE, r"SOFTWARE\WOW6432Node\Valve\Steam",
+                 "InstallPath")):
+            try:
+                with winreg.OpenKey(hive, key) as k:
+                    libs.append(winreg.QueryValueEx(k, name)[0])
+            except OSError:
+                pass
+    except ImportError:
+        pass
+    libs.append(r"C:\Program Files (x86)\Steam")
+
+    for lib in libs:
+        vdf = os.path.join(lib, "steamapps", "libraryfolders.vdf")
+        roots = [lib]
+        if os.path.exists(vdf):
+            try:
+                with open(vdf, "r", encoding="utf8", errors="replace") as f:
+                    for line in f:
+                        if '"path"' in line:
+                            parts = line.split('"')
+                            if len(parts) >= 4:
+                                roots.append(parts[3].replace("\\\\", os.sep))
+            except OSError:
+                pass
+        for r in roots:
+            out.extend(glob.glob(os.path.join(r, "steamapps", "workshop", "content",
+                                              "*", "*", "CombatLogs")))
+
+    seen, dirs = set(), []
+    for d in out:
+        real = os.path.normcase(os.path.abspath(d))
+        if real in seen or not os.path.isdir(d):
+            continue
+        seen.add(real)
+        dirs.append(d)
+
+    def newest(d):
+        files = glob.glob(os.path.join(d, "*.jsonl"))
+        return max((os.path.getmtime(f) for f in files), default=0)
+
+    dirs.sort(key=newest, reverse=True)
+    return dirs
+
+
+def default_logs(root=None):
+    """Every combat log this machine has, from every install. (paths, dirs)."""
+    dirs = find_log_dirs(root)
+    paths = []
+    for d in dirs:
+        paths.extend(sorted(glob.glob(os.path.join(d, "*.jsonl"))))
+    return paths, dirs
 
 
 def read_all(paths, opens=None):

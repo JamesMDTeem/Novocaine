@@ -33,6 +33,9 @@ SHEET = os.path.join(ROOT, "data", "combat", "moves_sheet.json")
 # The wiki-derived pack. Its stated hitpoints and armour are the baseline our own
 # measurements bound rather than replace - see summarise_hp.
 CREATURES = os.path.join(ROOT, "data", "combat", "creatures.json")
+# Curated facts the wiki dump does not carry - chiefly which creatures scale with mine
+# depth, whose single stated figure is one depth rather than a nominal individual.
+NOTES = os.path.join(ROOT, "data", "combat", "creature-notes.json")
 
 # The deck weighting. Every attack weight on the sheet is written "... * mu", and mu is
 # only readable from moves whose cooldown divides by it - Take Aim, which reported its
@@ -41,6 +44,53 @@ CREATURES = os.path.join(ROOT, "data", "combat", "creatures.json")
 # is only ever used as the ratio Wa/Wd against the same Wa, predictions are unaffected;
 # the printed number is what carries the assumption.
 MU = 1.0
+
+# The wiki puts the deck weighting between 1.0 and 1.5, rising with the points put into
+# a card. Two useful things follow.
+#
+# First, MU = 1.0 above is not a blind assumption for this corpus: the character's deck
+# dump shows Quick Barrage, Full Circle, Cleave and Knock Its Teeth Out all at level 1,
+# and Take Aim - also level 1, and the one move whose cooldown divides by mu - reporting
+# its listed 30 exactly. So mu is 1.0 at level 1, measured, and every defence weight
+# recovered from those four moves is a true figure rather than a proportional one.
+#
+# Second, it bounds the disagreement between two moves. Since Wd_true = mu * Wd_measured,
+# two moves against one opponent must satisfy mu_b/mu_a = Wd_a/Wd_b, and that ratio
+# cannot leave 1/1.5 to 1.5. A wider gap is not a deck-level difference and needs another
+# explanation.
+MU_MIN, MU_MAX = 1.0 / 1.5, 1.5
+
+
+def mu_ratio(wd_a, wd_b):
+    """How much bigger move b's deck weighting is than move a's.
+
+    Wd_true = mu * Wd_measured, because the measurement divides an attack weight that is
+    itself proportional to mu. Against one opponent Wd_true is a single number, so
+    mu_a * Wd_a = mu_b * Wd_b and the ratio falls straight out - with no cube root, and
+    the opposite way up from how it first went in. The earlier version took the cube root
+    of the reciprocal, which compressed every difference towards 1 and so read as healthy
+    exactly when it was hiding the most: a true ratio of 1.5 printed as 0.87.
+    """
+    return wd_a / wd_b if wd_b > 0 else 0.0
+
+
+def deck_levels():
+    """Move name -> the points this character has in it, from the local deck dump.
+
+    Read from moves_ingame.json, which is deliberately NOT committed - it is the one
+    file that says what a particular character has bought. Absent, every mu comparison
+    below simply loses its labels; nothing else changes.
+    """
+    path = os.path.join(ROOT, "data", "combat", "moves_ingame.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r", encoding="utf8") as f:
+        doc = json.load(f)
+    return dict((m["name"], m.get("decklevel")) for m in doc.get("moves") or []
+                if m.get("name"))
+
+
+LEVELS = deck_levels()
 
 
 def load_moves():
@@ -120,7 +170,17 @@ def fit_armour(hits):
     # A fixed 0..60 grid was the first version, and it silently could not reach the
     # bear's 65: the true fit sits at 65 + 0 with no residual at all, and the search
     # returned 60 + 5 with an error of 1.56 because that was the best it could see.
-    top = int(max(h["soaked"] for h in hits)) + 2
+    # Absorption only saturates at hard + soft once a hit is big enough to get through.
+    # If nothing ever did, the largest absorption seen is just our largest HIT, and says
+    # only that the armour is at least that much - a cachalot's 150 looks like 20 if all
+    # we ever landed on it were twenties. Reporting a fitted total there would be a
+    # confident number for a quantity the data does not contain.
+    penetrated = any(shp > 0 for _raw, shp in pts)
+    biggest = int(max(h["soaked"] for h in hits))
+    if not penetrated:
+        return {"hard": None, "soft": None, "n": len(pts), "rms": 0.0,
+                "total": (biggest, None), "identified": False, "penetrated": False}
+    top = biggest + 2
     scored = []
     for total in range(0, top + 1):
         for soft in range(0, total + 1):
@@ -150,7 +210,7 @@ def fit_armour(hits):
     return {"hard": hard, "soft": soft, "n": len(pts),
             "rms": math.sqrt(err / len(pts)),
             "total": (min(totals), max(totals)),
-            "identified": len(tied) == 1}
+            "identified": len(tied) == 1, "penetrated": True}
 
 
 def bucket(eng):
@@ -362,6 +422,16 @@ def wiki_for(wiki, res):
     return None
 
 
+def depth_scaled():
+    """Creature keys whose stats scale with the mine floor they were found on."""
+    if not os.path.exists(NOTES):
+        return set()
+    with open(NOTES, "r", encoding="utf8") as f:
+        doc = json.load(f)
+    return set(norm(n) for n in
+               (doc.get("depth_scaled") or {}).get("creatures") or [])
+
+
 def wiki_creatures():
     """The wiki's stated stats, keyed the same way as our own buckets."""
     if not os.path.exists(CREATURES):
@@ -454,14 +524,20 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     verdict = None
     if stated is not None and per:
         below = [g for g, d in dealt.items() if g in killed and d > 0 and d < stated]
+        # Above the stated figure two ways: something walked away from more than it, or
+        # something needed more than it just to reach its last hit. Counting only the
+        # first missed the cave angler entirely - it DIED at 1545 with a last hit of 90,
+        # so it held at least 1455 against a stated 1200, and was reported as
+        # "consistent" because it was not a survivor.
         above = [g for g, d in dealt.items()
-                 if g not in killed and d > 0 and d + 1 > stated]
+                 if d > 0 and ((g not in killed and d + 1 > stated)
+                               or (g in killed and (d - last_hit.get(g, 0)) > stated))]
         if below and not above:
             verdict = ("%d of these died before taking the wiki's %d, so they were below "
                        "its base quality (or already hurt when we met them)"
                        % (len(below), stated))
         elif above and not below:
-            verdict = ("%d of these survived past the wiki's %d, so they were above its "
+            verdict = ("%d of these held out past the wiki's %d, so they were above its "
                        "base quality" % (len(above), stated))
         elif below and above:
             verdict = "individuals seen on both sides of the wiki's %d" % stated
@@ -472,6 +548,9 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
         return None
     return {"lo": use_lo, "hi": use_hi, "wiki": stated, "verdict": verdict,
             "observed_lo": lo, "observed_hi": hi, "from": "; ".join(per) or "wiki only"}
+
+
+DEPTH = depth_scaled()
 
 
 def report(per, moves):
@@ -542,15 +621,30 @@ def report(per, moves):
                 print("      %-20s Wa %-6.1f %2d obs   Wd %-14s midpoints %.0f - %.0f"
                       % (mv[:20], rows[0][0], len(rows), span,
                          min(r[1] for r in rows), max(r[1] for r in rows)))
-            if len(bymove) > 1:
-                items = sorted(bymove.items())
-                for i in range(len(items) - 1):
-                    (an, ar), (bn, br) = items[i], items[i + 1]
-                    amid = sorted(r[1] for r in ar)[len(ar) // 2]
-                    bmid = sorted(r[1] for r in br)[len(br) // 2]
-                    if amid > 0 and bmid > 0:
-                        print("        %s vs %s: mu ratio about %.2f"
-                              % (an[:18], bn[:18], (bmid / amid) ** (1.0 / 3.0)))
+            # Everything against ONE reference, not neighbouring pairs. A chain of
+            # pairwise ratios says nothing about the ends, and the question is what each
+            # move's deck weighting is - so anchor on a move whose weighting is known.
+            # Level 1 is mu 1.0, measured: Take Aim is the only move whose cooldown
+            # divides by mu, it sits at level 1, and it reports its listed 30 exactly.
+            med = dict((mv, sorted(r[1] for r in rows)[len(rows) // 2])
+                       for mv, rows in bymove.items())
+            ref = None
+            for mv in sorted(bymove):
+                if LEVELS.get(mv) == 1 and (ref is None
+                                            or len(bymove[mv]) > len(bymove[ref])):
+                    ref = mv
+            others = [mv for mv in sorted(bymove) if mv != ref and med.get(mv, 0) > 0]
+            if (ref is not None) and others:
+                print("                   deck weighting against %s, which is at level 1 "
+                      "and so at mu 1.0" % ref)
+                print("                   (levels are TODAY's deck, not the deck each "
+                      "fight was fought with)")
+                for mv in others:
+                    r = mu_ratio(med[ref], med[mv])
+                    flag = ("" if MU_MIN <= r <= MU_MAX
+                            else "   OUTSIDE 1.0-1.5 - NOT a deck-level difference")
+                    print("      %-20s level %-4s mu %.2f%s"
+                          % (mv[:20], LEVELS.get(mv, "?"), r, flag))
             if len(rec["wd"]) > 8:
                 print("      (+%d more)" % (len(rec["wd"]) - 8))
         else:
@@ -589,7 +683,14 @@ def report(per, moves):
         # --- armour
         arm = fit_armour(rec["soak"])
         wiki_arm = wiki_value(rec.get("wiki"), "armor")
-        if arm:
+        if arm and not arm.get("penetrated", True):
+            print("\n  armour           at least %d, no ceiling   (%d hit(s), none got "
+                  "through)" % (arm["total"][0], arm["n"]))
+            print("                   absorption only saturates on a hit that penetrates,"
+                  " so this is our biggest hit and not its armour")
+            if wiki_arm is not None:
+                print("                   the wiki says %s" % wiki_arm)
+        elif arm:
             tlo, thi = arm["total"]
             if arm["identified"]:
                 print("\n  armour           %d hard + %d soft   (%d hit(s), rms %.2f)"
@@ -621,6 +722,14 @@ def report(per, moves):
                       "list it)")
 
         # --- what it does back
+        if norm(rec.get("res")) in DEPTH or (rec.get("wiki")
+                                            and norm(rec["wiki"].get("name")) in DEPTH):
+            print("\n  NOTE             this creature scales with mine depth (floors 1-9),"
+                  " so the range below")
+            print("                   spans DEPTHS, not individual variation - and nothing"
+                  " in a log records")
+            print("                   which floor a fight happened on")
+
         hp = rec["hp"]
         if hp:
             span = ("%s" % hp["lo"]) if hp["lo"] == hp["hi"] else \
@@ -728,6 +837,16 @@ def main(argv):
         hits_ = sorted(glob.glob(a))
         paths.extend(hits_ if hits_ else [a])
     paths = [p for p in paths if os.path.exists(p)]
+    if not paths:
+        # Every install on this machine, not just the checkout. See
+        # fightlog.find_log_dirs - the Steam Workshop copy keeps its own directory, and
+        # a tool that only looked in bin/CombatLogs reported a corpus that had silently
+        # stopped growing while two mornings of fights sat elsewhere.
+        paths, dirs = fightlog.default_logs()
+        for d in dirs:
+            n = len([x for x in paths if os.path.dirname(x) == d])
+            print("  %3d log(s)  %s" % (n, d))
+        print()
     if not paths:
         print(__doc__)
         return 2

@@ -1,0 +1,17 @@
+{
+ "source": "player knowledge, not derived from the wiki dump",
+ "note": "Facts about creatures that change how their measurements may be combined. The wiki pack states one figure per creature; these say where that single figure is not the whole story.",
+ "depth_scaled": {
+  "note": "Creatures found on mine floors scale with depth, floors 1 to 9. A species bucket pools individuals of genuinely different size, so its envelope is a range over DEPTHS rather than over individual variation, and the wiki's stated figure is one depth rather than a nominal individual. Nothing in a combat log records the floor a fight happened on, so these cannot be separated after the fact - a fight on floor 9 and one on floor 1 are indistinguishable in the data.",
+  "creatures": [
+   "Troll",
+   "Cave Angler",
+   "Angler",
+   "Green Ooze",
+   "Slime",
+   "Bore Worm",
+   "Cave Lice",
+   "Cave Louse"
+  ]
+ }
+}

@@ -138,6 +138,35 @@ def defence():
           (loose[1] - loose[0]) > (tight[1] - tight[0]) * 5, True)
 
 
+def deck_weighting():
+    print("\ndeck weighting (mu)")
+    # Wd_true = mu * Wd_measured, because the measurement divides an attack weight that
+    # is itself proportional to mu. Against ONE opponent Wd_true is a single number, so
+    # mu_b/mu_a = Wd_a/Wd_b - no cube root, and the opposite way up from how it first
+    # went in. The earlier version took the cube root of the reciprocal, which compressed
+    # every difference towards 1 and so looked healthiest exactly when it hid the most.
+    near("two moves agreeing means equal weighting", estimate.mu_ratio(90.0, 90.0),
+         1.0, 1e-9)
+    near("the move recovering a SMALLER weight has the LARGER mu",
+         estimate.mu_ratio(90.0, 60.0), 1.5, 1e-9)
+    check("and the old cube-rooted form would have said 0.87 for that",
+          round((60.0 / 90.0) ** (1 / 3.0), 2), 0.87)
+    check("an impossible denominator constrains nothing", estimate.mu_ratio(90.0, 0.0),
+          0.0)
+
+    # The wiki puts mu between 1.0 and 1.5, so a ratio outside 1/1.5 to 1.5 cannot be a
+    # deck-level difference at all. That is what rules the boar's disagreement out: its
+    # two moves imply 2.72, where every other opponent in the corpus sits within 0.82 to
+    # 1.11.
+    check("the wiki's range bounds what a level difference can explain",
+          (round(estimate.MU_MIN, 3), estimate.MU_MAX), (0.667, 1.5))
+    check("a boar-sized gap is outside it",
+          estimate.MU_MIN <= 2.72 <= estimate.MU_MAX, False)
+    check("a level-1 spread is inside it",
+          all(estimate.MU_MIN <= r <= estimate.MU_MAX
+              for r in (0.82, 0.88, 0.96, 1.06, 1.11, 1.12)), True)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -176,6 +205,25 @@ def armour():
     check("but the total still lands on the wiki's 35",
           arm["total"][0] <= 35 <= arm["total"][1], True)
 
+    # Armour goes well past anything seen so far - a cachalot's is at least 150 - and the
+    # search bound comes from the data rather than a constant, so it follows.
+    heavy = [{"raw": 160, "shp": 10, "soaked": 150},
+             {"raw": 300, "shp": 150, "soaked": 150},
+             {"raw": 40, "shp": 0, "soaked": 40}]
+    arm = estimate.fit_armour(heavy)
+    check("a 150 soak is found without widening any constant", arm["total"], (150, 150))
+
+    # Nothing got through, so absorption never saturated: the largest number seen is our
+    # largest HIT, not the armour. A cachalot's 150 looks like 20 when all we ever landed
+    # were twenties, and fitting a total there would be a confident number for a quantity
+    # the data does not contain.
+    blunt = [{"raw": 20, "shp": 0, "soaked": 20}, {"raw": 12, "shp": 0, "soaked": 12},
+             {"raw": 18, "shp": 0, "soaked": 18}]
+    arm = estimate.fit_armour(blunt)
+    check("nothing penetrating means no ceiling", arm["total"], (20, None))
+    check("and it is flagged as unpenetrated", arm["penetrated"], False)
+    check("with no split invented", arm["hard"], None)
+
 
 def buckets():
     print("\nbucketing")
@@ -201,6 +249,7 @@ def main():
     hitpoints()
     agility()
     defence()
+    deck_weighting()
     armour()
     buckets()
     if failures:
