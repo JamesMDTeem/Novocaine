@@ -324,7 +324,7 @@ def collect(paths):
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         "res": None, "hp": None, "wd_by_gob": {},
         "last_hit": {}, "partial": set(), "soak": [],
-        "mu_scaled_openings": set(),
+        "mu_scaled_openings": set(), "wd_by_gob_move": {},
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -402,6 +402,10 @@ def collect(paths):
                     lo, hi = gain_interval(wa, gain, ob, standing)
                     rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi))
                     rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
+                    # Per individual AND per move. mu can only be read between two moves
+                    # thrown at the same creature - see report_mu.
+                    rec["wd_by_gob_move"].setdefault(eng.gob, {}).setdefault(
+                        name, []).append((wd, lo, hi))
 
             for h in fightlog.hits(eng, log.me):
                 if h["actor"] == "me":
@@ -606,38 +610,81 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
 
 DEPTH = depth_scaled()
 
-# Every mu measurement the report makes, by deck level. Accumulated so that levelling a
-# move and fighting with it sharpens the curve automatically, rather than needing a
-# separate experiment.
-MU_SEEN = {}
+def report_mu(per):
+    """How the deck weighting rises with a card's level.
 
+    Every comparison is between two moves thrown at ONE creature. mu is a property of our
+    own deck, not of the opponent, so each individual gives an independent estimate of
+    the same quantity and they pool - but only after the opponent has been divided out,
+    which needs both moves used on the same one. Comparing across individuals measures
+    the individuals.
 
-def report_mu_curve():
-    """What the corpus knows about how mu rises with deck level."""
-    if not MU_SEEN:
+    Same-level pairs are reported alongside, because they must read exactly 1.00 and
+    whatever they actually read is this method's noise floor. A level-5 reading is only
+    interesting to the extent it sits outside that.
+    """
+    rows = []
+    for name in sorted(per):
+        for gob, bymove in sorted(per[name]["wd_by_gob_move"].items()):
+            if len(bymove) < 2:
+                continue
+            ref = None
+            for mv in sorted(bymove):
+                if LEVELS.get(mv) == 1 and (ref is None
+                                            or len(bymove[mv]) > len(bymove[ref])):
+                    ref = mv
+            if ref is None:
+                continue
+
+            def band(mv):
+                obs = bymove[mv]
+                return (max(o[1] for o in obs), min(o[2] for o in obs))
+
+            def med(mv):
+                v = sorted(o[0] for o in bymove[mv])
+                return v[len(v) // 2]
+
+            rb = band(ref)
+            for mv in sorted(bymove):
+                lvl = LEVELS.get(mv)
+                if mv == ref or not lvl or med(mv) <= 0:
+                    continue
+                nb = band(mv)
+                lo = rb[0] / nb[1] if nb[1] > 0 else 0.0
+                hi = rb[1] / nb[0] if nb[0] > 0 else 0.0
+                rows.append((lvl, mu_ratio(med(ref), med(mv)), lo, hi,
+                             len(bymove[mv]), name, mv, ref))
+    if not rows:
         return
+
     print("=" * 78)
     print("DECK WEIGHTING BY LEVEL")
     print("=" * 78)
     print("  mu is 1.0 at level 1, measured: Take Aim's cooldown divides by it and came")
-    print("  back at its listed 30. The rest is what the corpus has managed to see.\n")
-    print("  %-6s %-5s %-16s %-12s %s" % ("level", "n", "measured", "if linear", "from"))
-    for lvl in sorted(MU_SEEN):
-        rows = MU_SEEN[lvl]
-        vals = sorted(r[2] for r in rows)
-        span = ("%.2f" % vals[0]) if len(vals) == 1 else ("%.2f - %.2f"
-                                                          % (vals[0], vals[-1]))
+    print("  back at its listed 30. Everything below is one move against another thrown")
+    print("  at the SAME creature, since only that divides the opponent out.\n")
+    print("  %-6s %-6s %-16s %-5s %-11s %s"
+          % ("level", "mu", "interval", "n", "if linear", "measured on"))
+    for lvl, mu, lo, hi, n, name, mv, ref in sorted(rows):
         pred = mu_at_level(lvl)
-        where = ", ".join(sorted(set("%s vs %s" % (mv, sp) for sp, mv, _ in rows)))
-        print("  %-6s %-5d %-16s %-12s %s"
-              % (lvl, len(rows), span, "%.3f" % pred if pred else "?", where[:34]))
+        print("  %-6s %-6.2f %-16s %-5d %-11s %s vs %s, %s"
+              % (lvl, mu, "%.2f - %.2f" % (lo, hi), n,
+                 "%.3f" % pred if pred else "?", mv[:16], ref[:16], name[:12]))
+
+    same = [r for r in rows if r[0] == 1]
+    if same:
+        v = sorted(r[1] for r in same)
+        print("\n  The level-1 rows must read exactly 1.00. They read %.2f to %.2f, which"
+              % (v[0], v[-1]))
+        print("  is this method's noise floor - a higher-level reading inside that band")
+        print("  has not been measured, only observed.")
     print()
     print("  The linear column is a hypothesis - levels 1 to 5 mapped onto 1.0 to 1.5 -")
-    print("  not a measurement. Two anchors cannot separate it from 1 + 0.1*(level-1).")
-    print("  To settle it, level an unarmed attack that goes high (Punch and Left Hook")
-    print("  are learned to 5) and fight one creature with it AND Knock Its Teeth Out,")
-    print("  which stays at level 1. Same skill, so the skill term cancels exactly.")
+    print("  and its rival, 1 + 0.1*(level-1), gives 1.40 at level 5 against 1.50. Those")
+    print("  are far enough apart to separate, given enough paired fights: each one is an")
+    print("  independent estimate of the same number, because mu belongs to our deck.")
     print()
+
 
 
 def report(per, moves):
@@ -714,33 +761,13 @@ def report(per, moves):
                 print("      %-20s Wa %-6.1f %2d obs   Wd %-14s midpoints %.0f - %.0f"
                       % (mv[:20], rows[0][0], len(rows), span,
                          min(r[1] for r in rows), max(r[1] for r in rows)))
-            # Everything against ONE reference, not neighbouring pairs. A chain of
-            # pairwise ratios says nothing about the ends, and the question is what each
-            # move's deck weighting is - so anchor on a move whose weighting is known.
-            # Level 1 is mu 1.0, measured: Take Aim is the only move whose cooldown
-            # divides by mu, it sits at level 1, and it reports its listed 30 exactly.
-            med = dict((mv, sorted(r[1] for r in rows)[len(rows) // 2])
-                       for mv, rows in bymove.items())
-            ref = None
-            for mv in sorted(bymove):
-                if LEVELS.get(mv) == 1 and (ref is None
-                                            or len(bymove[mv]) > len(bymove[ref])):
-                    ref = mv
-            others = [mv for mv in sorted(bymove) if mv != ref and med.get(mv, 0) > 0]
-            if (ref is not None) and others:
-                print("                   deck weighting against %s, which is at level 1 "
-                      "and so at mu 1.0" % ref)
-                print("                   (levels are TODAY's deck, not the deck each "
-                      "fight was fought with)")
-                for mv in others:
-                    r = mu_ratio(med[ref], med[mv])
-                    flag = ("" if MU_MIN <= r <= MU_MAX
-                            else "   OUTSIDE 1.0-1.5 - NOT a deck-level difference")
-                    print("      %-20s level %-4s mu %.2f%s"
-                          % (mv[:20], LEVELS.get(mv, "?"), r, flag))
-                    lvl = LEVELS.get(mv)
-                    if lvl and MU_MIN <= r <= MU_MAX:
-                        MU_SEEN.setdefault(lvl, []).append((name, mv, r))
+            # mu is deliberately NOT compared here, though it used to be. It can only be
+            # read between two moves thrown at the SAME creature, and a species bucket
+            # holds several - so comparing a move used on one badger against a move used
+            # on another measures the difference between the badgers instead. Doing
+            # exactly that made Cleave and Full Circle read 0.59 and 0.55, outside the
+            # possible range, purely because a fourth badger arrived and the reference
+            # move moved onto it. report_mu() works per individual.
             if len(rec["wd"]) > 8:
                 print("      (+%d more)" % (len(rec["wd"]) - 8))
         else:
@@ -952,7 +979,7 @@ def main(argv):
               % os.path.relpath(SHEET, ROOT))
         return 2
     report(per, moves)
-    report_mu_curve()
+    report_mu(per)
     if write:
         write_pack(per, moves)
     return 0

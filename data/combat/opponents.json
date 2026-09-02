@@ -117,25 +117,26 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 34,
+    "n": 50,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
     "wiki": null
    },
    "defence_weight": {
-    "hi": 93.8,
-    "lo": 75.1,
-    "n": 37
+    "contradictory": true,
+    "hi": null,
+    "lo": null,
+    "n": 53
    },
-   "engagements": 4,
+   "engagements": 5,
    "hitpoints": {
-    "from": "died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 250 with a last hit of 65, so that one had 185 to 250",
+    "from": "died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
     "hi": 342,
     "lo": 171,
     "observed_hi": 342,
     "observed_lo": 171,
-    "verdict": "1 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
+    "verdict": "2 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
     "wiki": 250
    },
    "moves": [
