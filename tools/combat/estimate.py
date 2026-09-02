@@ -180,15 +180,33 @@ def gain_interval(wa, gain, ob, standing):
     return (lo, hi)
 
 
+def opens_map(moves):
+    """Move name -> the set of colour indices it opens, for fightlog.
+
+    This is what lets contamination detection be exact rather than temporal: a rise in a
+    colour none of our deck opens cannot be ours, however close in time it landed.
+    """
+    idx = dict((c, i) for i, c in enumerate(fightlog.COLOURS))
+    out = {}
+    for name, m in moves.items():
+        out[name] = set(idx[o["colour"]] for o in (m.get("openings") or [])
+                        if o.get("colour") in idx)
+    return out
+
+
 def collect(paths):
     moves = load_moves()
+    opens = opens_map(moves)
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
-        "res": None, "hp": None, "hp_seen": [],
+        "res": None, "hp": None,
+        # Damage per opponent GOB, accumulated across every file that gob appears in -
+        # see summarise_hp for why this cannot be done per file.
+        "dealt": defaultdict(int), "killed": set(),
     })
     for p in sorted(paths):
-        log = fightlog.read(p)
+        log = fightlog.read(p, opens)
         if not log.rows:
             continue
         attrs = (log.header or {}).get("attr") or {}
@@ -198,6 +216,18 @@ def collect(paths):
             rec["engagements"] += 1
             if agi_me:
                 rec["agi_me"].add(agi_me)
+
+            # Hitpoints are accumulated BEFORE the usability gate, and per gob rather
+            # than per engagement. A creature does not care who hurt it or in how many
+            # sittings, so a group fight and an interrupted one both still measure it -
+            # they are only useless for attributing openings.
+            rec["res"] = rec["res"] or eng.res
+            rec["dealt"][eng.gob] += sum(
+                d["v"] for d in eng.damage
+                if d.get("ch") == "SHP" and d.get("gob") == eng.gob)
+            if any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") == log.me
+                   for d in eng.damage):
+                rec["killed"].add(eng.gob)
 
             if not eng.offence_ok:
                 rec["skipped"].append((os.path.basename(p), eng.problems))
@@ -229,18 +259,6 @@ def collect(paths):
                 if h["actor"] == "me":
                     rec["hits"].append(h)
 
-            rec["res"] = rec["res"] or eng.res
-            # An opponent that died tells us its hitpoints: the soft damage we put into
-            # it over the engagement is what it had left when the engagement began. The
-            # kill is legible because the client draws an opaque-white number on the
-            # KILLER's gob, once, and nothing else uses that channel.
-            killed = any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") == log.me
-                         for d in eng.damage)
-            dealt = sum(d["v"] for d in eng.damage
-                        if d.get("ch") == "SHP" and d.get("gob") == eng.gob)
-            if dealt > 0:
-                rec["hp_seen"].append((dealt, killed))
-
             for m in eng.moves:
                 if m.get("actor") == "me":
                     name = m.get("name") or m.get("move")
@@ -255,28 +273,42 @@ def collect(paths):
                         rec["took"].append(h)
 
     for rec in per.values():
-        rec["hp"] = summarise_hp(rec["hp_seen"])
+        rec["hp"] = summarise_hp(rec["dealt"], rec["killed"])
     return per, moves
 
 
-def summarise_hp(seen):
-    """Hitpoints, from what it took to kill one.
+def summarise_hp(dealt, killed):
+    """Hitpoints, from the total damage it took to kill one.
 
-    A kill puts a lower AND an upper bound on the same number - the damage that killed
-    it is at least its remaining hitpoints and, since the killing blow was the first to
-    reach zero, less than that plus the last hit. A fight it survived only gives a lower
-    bound, and a weak one, because it may have been hurt before we met it.
+    The sum must run across every FILE the same gob appears in, not within one. A fight
+    interrupted by auto-reaggro continues in a fresh log with the creature's health where
+    the last one left it, and counting only the file that contains the kill measures the
+    last instalment rather than the total. That error was not small: the fox came out at
+    42 where the true figure across its two files is 126, and one badger at 38 where it
+    is 210 - which had also made the two badgers look like wildly different creatures
+    (38 and 342) when they are 210 and 342.
+
+    Damage other people dealt counts too, and should: hitpoints are hitpoints, and it is
+    the creature's total intake that killed it. What that cannot see is damage dealt out
+    of our view, so every figure here is a lower bound on the creature at full health -
+    it is exactly its health at the moment we first saw it.
+
+    A kill also gives an upper bound, since the killing blow was the first to take it
+    past zero, but the corpus does not record which blow was last cleanly enough to
+    subtract it, so only the lower bound is reported.
     """
-    kills = [d for d, killed in seen if killed]
-    survived = [d for d, killed in seen if not killed]
+    kills = [v for g, v in dealt.items() if g in killed and v > 0]
+    lived = [v for g, v in dealt.items() if g not in killed and v > 0]
     if kills:
-        return {"lo": min(kills), "hi": max(kills), "from": "%d kill(s)" % len(kills),
-                "note": "the opponent may have been injured before the fight, so this "
-                        "is its hitpoints at the START of ours"}
-    if survived:
-        return {"lo": max(survived), "hi": None,
-                "from": "%d fight(s) it survived" % len(survived),
-                "note": "lower bound only - it did not die"}
+        return {"lo": min(kills), "hi": max(kills),
+                "from": "%d kill(s), summed across every file each gob appears in"
+                        % len(kills),
+                "note": "at least this much - the creature may have been hurt before we "
+                        "first saw it, and damage dealt out of our view is not counted"}
+    if lived:
+        return {"lo": max(lived), "hi": None,
+                "from": "%d opponent(s) that survived" % len(lived),
+                "note": "lower bound only - none of them died"}
     return None
 
 

@@ -35,6 +35,11 @@ PAIR_MS = 150
 # handful of milliseconds either way; it is not a settle window.
 SLACK_MS = 60
 
+# How far from a state showing an opening rise one of our moves may be and still be a
+# candidate for having caused it. Generous on purpose: the point of the window is only to
+# gather candidates, and it is the COLOUR test that decides between them.
+ATTRIB_MS = 900
+
 
 class Engagement(object):
     """One contiguous run of a log during which the same opponent was being sampled."""
@@ -161,8 +166,12 @@ class Log(object):
         return best
 
 
-def read(path):
-    """Parse one log file into a Log. Never raises on bad content."""
+def read(path, opens=None):
+    """Parse one log file into a Log. Never raises on bad content.
+
+    `opens` maps a move name to the set of colour indices it opens, from the move
+    sheet. Supplying it makes contamination detection exact - see unattributed_rises.
+    """
     log = Log(path)
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
@@ -188,7 +197,7 @@ def read(path):
             log.names[r["gob"]] = r["res"]
 
     _segment(log)
-    _diagnose(log)
+    _diagnose(log, opens)
     return log
 
 
@@ -222,7 +231,7 @@ def _segment(log):
         eng.res = log.names.get(eng.gob)
 
 
-def _diagnose(log):
+def _diagnose(log, opens=None):
     """Record what each engagement can and cannot be used to measure.
 
     The two directions fail independently. Measuring what we did to an opponent is
@@ -245,7 +254,7 @@ def _diagnose(log):
                 "opponent - someone else was fighting here"
                 % (sum(strangers.values()), len(strangers)))
 
-        rises = unattributed_rises(eng)
+        rises = unattributed_rises(eng, opens)
         if rises:
             eng.third_party_rises = len(rises)
             eng.problems.append(
@@ -297,7 +306,7 @@ def carried_in(eng):
     return [(COLOURS[i], best[i]) for i in range(4) if best[i] > 0]
 
 
-def unattributed_rises(eng):
+def unattributed_rises(eng, opens=None):
     """Opening rises on the opponent, after our own first move, that no move of ours
     can account for.
 
@@ -308,20 +317,46 @@ def unattributed_rises(eng):
 
     Rises before our first move are excluded deliberately: those are openings the
     opponent walked in with, which is a different fact and is reported by carried_in().
+
+    Neither position nor timing alone decides this, and both were tried. A move's effect
+    can arrive a state late - one fox log shows the move, then a state with the opening
+    still at zero, then the opening - so requiring the move to sit strictly between the
+    two states rejects a perfectly good hit. And the move message can arrive AFTER its
+    own effect, five milliseconds later in one boar log, so requiring it to precede the
+    rise rejects another. Meanwhile a pure time window is useless in the case that
+    matters: in a group fight another player's hits land within a few hundred
+    milliseconds of ours anyway.
+
+    What does decide it is colour. Our deck opens the colours it opens; a rise in any
+    other colour cannot be ours, whoever it happened next to. `opens` supplies that -
+    move name to the set of colour indices it opens, from the move sheet. Without it this
+    falls back to proximity alone, which catches a fight we sat out entirely but not much
+    else, and says so by flagging nothing it cannot prove.
     """
-    mine = sorted(m["t"] for m in eng.moves if m.get("actor") == "me")
+    mine = [m for m in eng.moves if m.get("actor") == "me"]
     if not mine:
-        return []
+        # Openings rose on an opponent we never touched, so whoever did it, it was not
+        # us. The very first transition is exempt: an engagement's opening sample is
+        # zeroes and the next one carries whatever the opponent walked in with, which is
+        # every auto-reaggro fragment in the corpus and not a third party.
+        return [(b["t"], COLOURS[c], b["foe"][c] - a["foe"][c])
+                for a, b in zip(eng.states[1:], eng.states[2:])
+                for c in range(4) if b["foe"][c] > a["foe"][c]]
+    first = mine[0]["t"]
     out = []
     for a, b in zip(eng.states, eng.states[1:]):
-        if b["t"] < mine[0]:
+        if b["t"] < first:
             continue
-        for i in range(4):
-            d = b["foe"][i] - a["foe"][i]
+        near = [m for m in mine if abs(m["t"] - b["t"]) <= ATTRIB_MS]
+        for c in range(4):
+            d = b["foe"][c] - a["foe"][c]
             if d <= 0:
                 continue
-            if not any(a["t"] - SLACK_MS <= t <= b["t"] + SLACK_MS for t in mine):
-                out.append((b["t"], COLOURS[i], d))
+            if not near:
+                out.append((b["t"], COLOURS[c], d))
+            elif opens is not None and not any(
+                    c in opens.get(m.get("name") or m.get("move"), set()) for m in near):
+                out.append((b["t"], COLOURS[c], d))
     return out
 
 
@@ -395,9 +430,9 @@ def hits(eng, me_gob):
     return out
 
 
-def read_all(paths):
+def read_all(paths, opens=None):
     out = []
     for p in paths:
         if os.path.exists(p):
-            out.append(read(p))
+            out.append(read(p, opens))
     return out

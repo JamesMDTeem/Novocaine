@@ -40,10 +40,10 @@
    },
    "engagements": 2,
    "hitpoints": {
-    "from": "1 fight(s) it survived",
+    "from": "1 opponent(s) that survived",
     "hi": null,
     "lo": 35,
-    "note": "lower bound only - it did not die"
+    "note": "lower bound only - none of them died"
    },
    "moves": [],
    "name": "?#598556427",
@@ -54,7 +54,12 @@
    "armour": null,
    "defence_weight": null,
    "engagements": 1,
-   "hitpoints": null,
+   "hitpoints": {
+    "from": "1 opponent(s) that survived",
+    "hi": null,
+    "lo": 115,
+    "note": "lower bound only - none of them died"
+   },
    "moves": [],
    "name": "?#67527879",
    "res": null
@@ -81,10 +86,10 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 fight(s) it survived",
+    "from": "1 opponent(s) that survived",
     "hi": null,
     "lo": 35,
-    "note": "lower bound only - it did not die"
+    "note": "lower bound only - none of them died"
    },
    "moves": [],
    "name": "?#675939166",
@@ -112,10 +117,10 @@
    },
    "engagements": 3,
    "hitpoints": {
-    "from": "2 kill(s)",
+    "from": "2 kill(s), summed across every file each gob appears in",
     "hi": 342,
-    "lo": 38,
-    "note": "the opponent may have been injured before the fight, so this is its hitpoints at the START of ours"
+    "lo": 210,
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [
     "Badgering"
@@ -128,10 +133,15 @@
    "armour": null,
    "defence_weight": null,
    "engagements": 1,
-   "hitpoints": null,
+   "hitpoints": {
+    "from": "1 opponent(s) that survived",
+    "hi": null,
+    "lo": 1143,
+    "note": "lower bound only - none of them died"
+   },
    "moves": [],
    "name": "bear",
-   "res": null
+   "res": "gfx/kritter/bear/bear"
   },
   {
    "agility": {
@@ -155,10 +165,10 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 kill(s)",
+    "from": "1 kill(s), summed across every file each gob appears in",
     "hi": 48,
     "lo": 48,
-    "note": "the opponent may have been injured before the fight, so this is its hitpoints at the START of ours"
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [],
    "name": "beeswarm",
@@ -187,10 +197,10 @@
    },
    "engagements": 4,
    "hitpoints": {
-    "from": "1 fight(s) it survived",
-    "hi": null,
-    "lo": 63,
-    "note": "lower bound only - it did not die"
+    "from": "2 kill(s), summed across every file each gob appears in",
+    "hi": 483,
+    "lo": 453,
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [
     "Bear Down",
@@ -222,10 +232,10 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 fight(s) it survived",
+    "from": "1 opponent(s) that survived",
     "hi": null,
     "lo": 13,
-    "note": "lower bound only - it did not die"
+    "note": "lower bound only - none of them died"
    },
    "moves": [
     "Cleave",
@@ -284,10 +294,10 @@
    },
    "engagements": 3,
    "hitpoints": {
-    "from": "3 fight(s) it survived",
+    "from": "1 opponent(s) that survived",
     "hi": null,
-    "lo": 159,
-    "note": "lower bound only - it did not die"
+    "lo": 444,
+    "note": "lower bound only - none of them died"
    },
    "moves": [
     "Chin Up",
@@ -318,10 +328,10 @@
    },
    "engagements": 1,
    "hitpoints": {
-    "from": "1 fight(s) it survived",
+    "from": "1 opponent(s) that survived",
     "hi": null,
     "lo": 225,
-    "note": "lower bound only - it did not die"
+    "note": "lower bound only - none of them died"
    },
    "moves": [
     "Knock Its Teeth Out",
@@ -352,10 +362,10 @@
    },
    "engagements": 2,
    "hitpoints": {
-    "from": "1 kill(s)",
-    "hi": 42,
-    "lo": 42,
-    "note": "the opponent may have been injured before the fight, so this is its hitpoints at the START of ours"
+    "from": "1 kill(s), summed across every file each gob appears in",
+    "hi": 126,
+    "lo": 126,
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [
     "Fell Scratch"
@@ -369,10 +379,10 @@
    "defence_weight": null,
    "engagements": 12,
    "hitpoints": {
-    "from": "1 fight(s) it survived",
-    "hi": null,
-    "lo": 2,
-    "note": "lower bound only - it did not die"
+    "from": "1 kill(s), summed across every file each gob appears in",
+    "hi": 524,
+    "lo": 524,
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [],
    "name": "lynx",
@@ -383,10 +393,15 @@
    "armour": null,
    "defence_weight": null,
    "engagements": 1,
-   "hitpoints": null,
+   "hitpoints": {
+    "from": "1 kill(s), summed across every file each gob appears in",
+    "hi": 166,
+    "lo": 166,
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
+   },
    "moves": [],
    "name": "sheep",
-   "res": null
+   "res": "gfx/kritter/sheep/sheep"
   }
  ],
  "source": "tools/combat/estimate.py over the logged corpus"
