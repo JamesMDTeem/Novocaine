@@ -494,6 +494,15 @@ public abstract class UILoop implements Console.Directory {
      * cannot sample itself, so the thread is published for the watchdog to walk.
      */
     public static volatile double statframe = 0;
+    /**
+     * EVERY phase stamps this, including the ones that only ever wait.
+     *
+     * A phase that does not stamp does not read as itself when a stall lands in it - it
+     * reads as whichever phase stamped last, and sends whoever is holding the stack to the
+     * wrong part of the loop. That is not hypothetical: with only the working phases
+     * stamped, every stall inside syncwait came back labelled "hover", because hover was
+     * the last thing to stamp before the next frame began waiting on the fence.
+     */
     public static volatile int statphase = -1;
     public static volatile Thread statuithread = null;
 
@@ -622,6 +631,7 @@ public abstract class UILoop implements Console.Directory {
 	}
 
 	protected void tick() {
+	    statphase = P_LOCK;
 	    double t0 = Utils.rtime();
 	    synchronized(ui) {
 		double t1 = Utils.rtime();
@@ -637,6 +647,7 @@ public abstract class UILoop implements Console.Directory {
 		loop.dispatch(ui);
 		double t2 = Utils.rtime();
 		ph[P_DISP] = t2 - t1;
+		statphase = P_STICK;
 		CPUProfile.phase(prof, "stick");
 		if(ui.sess != null) {
 		    ui.sess.glob.ctick();
@@ -681,6 +692,7 @@ public abstract class UILoop implements Console.Directory {
 	}
 
 	protected void fin() throws InterruptedException {
+	    statphase = P_WAIT;
 	    CPUProfile.phase(prof, "wait");
 	    double now = Utils.rtime();
 	    double fd = loop.framedur();
@@ -697,6 +709,7 @@ public abstract class UILoop implements Console.Directory {
 	}
 
 	protected void syncwait() throws InterruptedException {
+	    statphase = P_DWAIT;
 	    CPUProfile.phase(prof, "dwait");
 	    if(prev != null) {
 		double then = Utils.rtime();
@@ -726,6 +739,7 @@ public abstract class UILoop implements Console.Directory {
 	    /* Timed out here rather than inside swapbuffers() so that GLFrame's
 	     * override - which adds gl.finish() under SyncMode.FINISH - is inside
 	     * the measurement rather than beside it. */
+	    statphase = P_SWAP;
 	    double t0 = Utils.rtime();
 	    swapbuffers();
 	    ph[P_SWAP] = Utils.rtime() - t0;
@@ -785,6 +799,7 @@ public abstract class UILoop implements Console.Directory {
 		    Frame curframe = frame(ui, buf, prevframe);
 		    prevframe = null;
 		    curframe.run();
+		    statphase = P_SUBMIT;
 		    double subt = Utils.rtime();
 		    env.submit(buf); buf = null;
 		    curframe.ph[P_SUBMIT] = Utils.rtime() - subt;
