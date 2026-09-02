@@ -1,15 +1,19 @@
 {
   "tick_seconds": {"value": 0.06, "status": "confirmed",
                    "source": "Combat moves wiki; matches Fightview atkc handling"},
-  "opening_exponent": {"value": 3, "status": "disputed",
-                       "source": "wiki states cube root; its worked example computes a fourth root",
-                       "resolve_with": "sparring Experiment A"},
+  "opening_exponent": {"value": 3, "status": "confirmed",
+                       "source": "cbrt(Wa/Wd). The wiki's worked example appears to compute a fourth root, but Knock Its Teeth Out at a listed +20% produced +24/+19/+14/+11 from standing openings of 0/24/42/56 against one opponent, which the cube root reproduces to within a point once the weight term is fixed by the first observation"},
   "mu_min": {"value": 1.0, "status": "confirmed", "source": "jorb quote on the Combat moves page"},
   "mu_max": {"value": 1.5, "status": "confirmed", "source": "jorb quote on the Combat moves page"},
-  "mu_curve": {"value": null, "status": "unknown",
-               "resolve_with": "sparring Experiment B"},
+  "mu_curve": {"value": null, "status": "unknown-and-not-measurable-from-fights",
+               "note": "mu is a property of OUR card at ITS level, so a fight has nothing to say about it - the only unknown in the opening formula is the opponent's defence weight. It is measured at exactly 1.0 for level 1 by Take Aim, whose cooldown divides by mu and which reports its listed 30. Above level 1 the model carries the stated 1.0-1.5 range as an INTERVAL rather than guessing a curve; a levelled card therefore widens the defence weight it recovers instead of biasing it. Deriving mu from fights was tried and was a second-order inference on the quantity being measured - it moved by a fifth depending only on where a noise threshold sat.",
+               "resolve_with": "the same move logged at two known card levels"},
   "agility_cooldown_band": {"value": 0.1, "status": "confirmed",
                             "source": "Combat moves wiki: at most 10% either way, capping at a factor-2 gap"},
   "opening_damage_exponent": {"value": 2, "status": "confirmed",
-                              "source": "Fightsess.java damage prediction: openingMul = opening^2"}
+                              "source": "Fightsess.java damage prediction: openingMul = opening^2"},
+  "damage_opening_scope": {"value": "own attack types only", "status": "confirmed",
+                           "source": "Fightsess.java:701-712 - a multi-coloured attack combines 1-prod(1-o) over ITS OWN colours; a single-coloured one reads that one colour. Never the combined opening over all four"},
+  "opening_display_rounding": {"value": "floor", "status": "confirmed",
+                               "source": "Buff.java renders (int)floor(ameter()*100); CombatRecorder logs (int)(100*m), the same. An observed opening of 24 means [24,25), so a logged gain carries +/-1 before any other error"}
 }

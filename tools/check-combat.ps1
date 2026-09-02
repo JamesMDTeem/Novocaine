@@ -3,7 +3,7 @@
     Runs every check in the combat system and reports which passed.
 
 .DESCRIPTION
-    The combat work is spread across two languages and seven check harnesses, each with
+    The combat work is spread across two languages and eight check harnesses, each with
     its own javac incantation buried in a file header. Retyping those is how a check
     stops being run, so this runs all of them and prints one table.
 
@@ -51,10 +51,16 @@ function Add-Result($name, $ok, $detail) {
     $script:results += [pscustomobject]@{ Check = $name; Passed = $ok; Detail = $detail }
 }
 
-function Invoke-JavaCheck($name, $sources, $mainClass) {
+function Invoke-JavaCheck($name, $sources, $mainClass, $sourcePath) {
     $dir = Join-Path $out $mainClass
     $null = New-Item -ItemType Directory -Force -Path $dir
-    $compile = & $javac -d $dir $sources 2>&1
+    # A check that loads the data pack needs org.json on the source path. Everything else is
+    # compiled from an explicit, minimal list, which is what keeps ADR-0002's seam honest.
+    if ($sourcePath) {
+        $compile = & $javac -nowarn -d $dir -sourcepath $sourcePath $sources 2>&1
+    } else {
+        $compile = & $javac -d $dir $sources 2>&1
+    }
     if ($LASTEXITCODE -ne 0) {
         if (-not $Quiet) { $compile | ForEach-Object { Write-Host "    $_" } }
         Add-Result $name $false 'did not compile'
@@ -93,6 +99,10 @@ Invoke-JavaCheck 'CombatFormulaCheck' (@('src\haven\combat\Formulas.java',
 
 Write-Host "`n== the state machine" -ForegroundColor Cyan
 Invoke-JavaCheck 'CombatSimCheck' ($model + @('tools\CombatSimCheck.java')) 'CombatSimCheck'
+
+Write-Host "`n== the data pack, loaded the way the bot will load it" -ForegroundColor Cyan
+Invoke-JavaCheck 'CombatPackCheck' ($model + @('src\haven\combat\data\Pack.java',
+    'tools\CombatPackCheck.java')) 'CombatPackCheck' 'src'
 
 Write-Host "`n== the Python follower, against the golden vectors" -ForegroundColor Cyan
 Invoke-PyCheck 'model_check.py' 'tools\combat\model_check.py'

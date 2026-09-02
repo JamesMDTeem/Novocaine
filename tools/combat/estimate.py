@@ -422,12 +422,20 @@ def gain_interval(wa, gain, ob, standing, wa_hi=None):
     almost nothing, while a +24 into a fresh one constrains tightly. Reporting a midpoint
     alone hides which of those two an estimate is.
     """
-    oc = standing / 100.0
-    # Wd = Wa / k**3, so the low end pairs the smallest attack weight with the largest
-    # gain and the high end does the opposite. Passing an interval for Wa is how a card
-    # whose level leaves mu uncertain widens the answer instead of biasing it.
-    lo = model.defence_weight(wa, gain + GAIN_SLOP, ob, oc)
-    hi = model.defence_weight(wa_hi if wa_hi else wa, max(0.1, gain - GAIN_SLOP), ob, oc)
+    # The STANDING opening is quantised too, and used not to be treated as such. The client
+    # renders it as floor(fraction * 100) and the log records the same integer, so a logged
+    # 52 means somewhere in [52, 53) - and (1 - Oc) is a divisor of k, so that carries
+    # through to Wd the same way the gain does. Using the integer for both ends made every
+    # interval a few percent narrower than the data supports, which is the same species of
+    # error as reporting a point estimate: an honest-looking number that is not earned.
+    oc_lo = standing / 100.0
+    oc_hi = min(1.0, (standing + 1) / 100.0)
+    # Wd = Wa / k**3. The low end maximises k - largest gain, smallest (1 - Oc) - and pairs
+    # it with the smallest attack weight; the high end does the opposite. Passing an
+    # interval for Wa is how a card whose level leaves mu uncertain widens the answer
+    # instead of biasing it.
+    lo = model.defence_weight(wa, gain + GAIN_SLOP, ob, oc_hi)
+    hi = model.defence_weight(wa_hi if wa_hi else wa, max(0.1, gain - GAIN_SLOP), ob, oc_lo)
     return (lo, hi)
 
 
@@ -867,6 +875,21 @@ def report(per, moves):
             if ilo <= ihi:
                 print("\n  defence weight   %.0f - %.0f   from %d observation(s), midpoints"
                       " %.0f - %.0f" % (ilo, ihi, len(vals), vals[0], vals[-1]))
+                # An intersection that survives by a hair is a near-miss, not a precise
+                # answer, and it prints identically to a real one. Four badgers whose own
+                # bands are 71-132, 71-97, 73-122 and 45-73 intersect at exactly 73-73:
+                # that reads as a measurement good to the point when it is really the
+                # observations only just failing to contradict each other. Say so - the
+                # next observation is as likely to empty the intersection as confirm it.
+                widths = [w[7] - w[6] for w in rec["wd"]]
+                tightest = min(widths) if widths else 0.0
+                if (ihi - ilo) < (0.25 * tightest):
+                    print("                   NB the intersection (%.0f wide) is far tighter"
+                          " than any single" % (ihi - ilo))
+                    print("                   observation (narrowest %.0f) - these barely"
+                          " overlap, so read it as a" % tightest)
+                    print("                   near-miss rather than a figure known to the"
+                          " point")
             else:
                 # Individuals of a species are taken to share a defence weight until
                 # something says otherwise, so an empty intersection is first of all a

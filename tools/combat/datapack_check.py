@@ -202,9 +202,22 @@ def constants_and_crosscheck():
     import json as _json
     consts = _json.loads((wiki.DATA / "constants.json").read_text(encoding="utf8"))
     check("tick seconds", consts["tick_seconds"]["value"], 0.06)
-    check("opening exponent flagged disputed", consts["opening_exponent"]["status"], "disputed")
-    check("mu curve unknown", consts["mu_curve"]["value"], None)
+    # Was "disputed" while the wiki's worked example and its prose disagreed. The corpus
+    # settled it - Knock Its Teeth Out's +24/+19/+14/+11 ladder from a listed +20% - so this
+    # now pins the resolved value. A check that pins a stale status keeps a settled question
+    # looking open, which is its own quiet failure.
+    check("opening exponent settled at a cube root", consts["opening_exponent"]["value"], 3)
+    check("  and flagged confirmed", consts["opening_exponent"]["status"], "confirmed")
+    # mu is an input, not a measurement: the curve above level 1 stays null on purpose, and
+    # the model carries the stated range as an interval rather than guessing a shape.
+    check("mu curve still unmeasured", consts["mu_curve"]["value"], None)
+    check("mu range is the devs' stated 1.0 to 1.5",
+          (consts["mu_min"]["value"], consts["mu_max"]["value"]), (1.0, 1.5))
     check("damage exponent", consts["opening_damage_exponent"]["value"], 2)
+    # The damage term reads the attack's OWN colours, never all four - the mistake that made
+    # the damage coefficient appear to rise with Melee Combat.
+    check("damage reads the attack's own colours",
+          consts["damage_opening_scope"]["value"], "own attack types only")
     # Every constant must declare a status, so nothing reads as settled when it is not.
     missing = [k for k, v in consts.items() if "status" not in v]
     check("all constants declare status", missing, [])

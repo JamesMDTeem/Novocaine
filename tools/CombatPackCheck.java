@@ -1,0 +1,196 @@
+/*
+ * Checks the data-pack seam: data/combat/moves_sheet.json, as loaded by haven.combat.data.Pack.
+ *
+ * NOT part of the client build - build.xml compiles src/ only. Run on demand:
+ *
+ *   javac -d %TEMP%\packcheck src\haven\combat\*.java src\haven\combat\data\*.java ^
+ *         src\org\json\*.java tools\CombatPackCheck.java
+ *   java -cp %TEMP%\packcheck CombatPackCheck
+ *
+ * WHY THIS EXISTS. Every other check in this project builds its moves by hand. That made the
+ * arithmetic and the sequencing well covered and left the path the bot will actually use - parse
+ * the sheet, write JSON, load it into a Move - covered by nothing at all. A defect there is
+ * invisible to a green check suite, and one was: Take Aim's "increases by 20% for each Point of
+ * Initiative" was never parsed and never loaded, so a packed Take Aim reported a flat 30 ticks at
+ * any initiative while CombatSimCheck's hand-built copy, carrying ipScale(0.20) as a literal,
+ * reproduced the logged 30/36/42/48/54/60 perfectly. Two moves also lost their whole initiative
+ * line to an unparsed "4+2" and read as costing nothing.
+ *
+ * So the rule this file enforces is the one the mu chain taught: an estimator or a loader needs a
+ * control with a known answer, and the control has to be RUN, not assumed. Every expectation
+ * below is a number printed on the character sheet or measured in the logged corpus.
+ *
+ * Exits 0 when every check passes, 1 otherwise.
+ */
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Map;
+
+import haven.combat.Combatant;
+import haven.combat.Formulas;
+import haven.combat.Move;
+import haven.combat.Sim;
+import haven.combat.data.Pack;
+
+public class CombatPackCheck {
+    static int failures = 0;
+
+    static void check(String what, Object got, Object want) {
+        boolean ok = (got == null) ? (want == null) : got.equals(want);
+        System.out.printf("  %-56s %-18s %s%n", what, got, ok ? "ok" : "WANT " + want);
+        if(!ok)
+            failures++;
+    }
+
+    static void near(String what, double got, double want, double tol) {
+        boolean ok = Math.abs(got - want) <= tol;
+        System.out.printf("  %-56s %-18s %s%n", what, String.format("%.3f", got),
+                          ok ? "ok" : String.format("WANT %.3f +/- %.3f", want, tol));
+        if(!ok)
+            failures++;
+    }
+
+    static final Path MOVES = Paths.get("data", "combat", "moves_sheet.json");
+
+    static Map<String, Move> moves;
+
+    static Move m(String name) {
+        Move v = moves.get(name);
+        if(v == null) {
+            System.out.printf("  %-56s %-18s %s%n", "move present", "MISSING", "WANT " + name);
+            failures++;
+        }
+        return(v);
+    }
+
+    public static void main(String[] args) throws Exception {
+        moves = Pack.moves(MOVES);
+        System.out.println("loaded " + moves.size() + " moves from data/combat/moves_sheet.json");
+        sheetNumbers();
+        initiativeLines();
+        takeAimLadder();
+        weightsAndSchools();
+        System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
+                           : "\n" + failures + " CHECK(S) FAILED");
+        System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /** Numbers printed verbatim on the sheet, which the loader must not alter. */
+    static void sheetNumbers() {
+        System.out.println("\nsheet numbers survive the round trip");
+        Move kito = m("Knock Its Teeth Out");
+        near("Knock Its Teeth Out flat damage", kito.flatDamage, 30, 0);
+        near("  its grievous share, 25% as a fraction", kito.grievous, 0.25, 1e-9);
+        near("  its Cornered opening, in percentage points", kito.openings[Formulas.RED], 20, 0);
+        near("  its cooldown", kito.cooldownBase, 35, 0);
+
+        Move qb = m("Quick Barrage");
+        near("Quick Barrage damage share, from \"weapon * 25%\"", qb.damageShare, 0.25, 1e-9);
+        check("  its gain is conditional on red", qb.gainColour, Formulas.RED);
+        near("  above a quarter open", qb.gainAbove, 0.25, 1e-9);
+
+        Move cleave = m("Cleave");
+        near("Cleave deals 150% of the weapon", cleave.damageShare, 1.5, 1e-9);
+        check("  and is two-coloured (Backhanded, Oppressive)", cleave.schools.length, 2);
+
+        Move punch = m("Punch");
+        near("Punch's attack weight multiplier, \"80%\"", punch.weightMu, 0.8, 1e-9);
+        Move upper = m("Uppercut");
+        near("Uppercut's, written \"0.8\" rather than \"80%\"", upper.weightMu, 0.8, 1e-9);
+    }
+
+    /**
+     * The initiative line, including the two moves that write it as "N+M".
+     *
+     * These both read as zero until the parser learned the form, which meant the simulator
+     * would happily throw a six-point Cleave from an empty initiative pool.
+     */
+    static void initiativeLines() {
+        System.out.println("\ninitiative costs, including the \"4+2\" form");
+        check("Knock Its Teeth Out costs one", m("Knock Its Teeth Out").ipCost, 1);
+        check("Rip Apart costs six", m("Rip Apart").ipCost, 6);
+        check("Cleave costs four", m("Cleave").ipCost, 4);
+        check("  with its trailing two carried, not folded in", m("Cleave").ipExtra, 2);
+        check("Go for the Jugular costs two", m("Go for the Jugular").ipCost, 2);
+        check("  and carries a trailing two as well", m("Go for the Jugular").ipExtra, 2);
+        check("Zig-Zag Ruse hands the opponent two", m("Zig-Zag Ruse").foeIpGain, 2);
+        check("Punch's silent sheet means no cost, not an unread one", m("Punch").ipCost, 0);
+    }
+
+    /**
+     * The control that would have caught the missing ipScale.
+     *
+     * Take Aim reported 30, 36, 42, 48, 54 and 60 ticks across a logged run as its user's
+     * initiative climbed from nothing to five. A packed Take Aim has to reproduce that ladder;
+     * with ipScale lost it returned 30 six times and every check still passed.
+     */
+    static void takeAimLadder() {
+        System.out.println("\nTake Aim's cooldown ladder, straight from the pack");
+        Move aim = m("Take Aim");
+        check("its cooldown divides by mu", aim.cooldownMu, true);
+        near("  and rises 20% per initiative point", aim.ipScale, 0.20, 1e-9);
+        check("  it is a maneuver, so agility does not touch it", aim.isAttack(), false);
+
+        long[] want = {30, 36, 42, 48, 54, 60};
+        Combatant me = me();
+        Combatant foe = foe();
+        for(int ip = 0; ip < want.length; ip++) {
+            me.ip = ip;
+            me.readyAt = 0;
+            Sim sim = new Sim(me, foe);
+            check("  at " + ip + " initiative", sim.use(me, aim).cooldown, want[ip]);
+        }
+    }
+
+    /**
+     * The weight line, whose skill is an icon and is absent for "According to weapon".
+     *
+     * A null there has to mean Melee Combat rather than no skill at all - the sheet's own closing
+     * note says so - and reading it as none would collapse every weapon attack's attack weight to
+     * zero, which reads as an infinitely tough opponent rather than as an error.
+     */
+    static void weightsAndSchools() {
+        System.out.println("\nattack weights and schools");
+        Combatant me = me();
+        check("Knock Its Teeth Out reads Unarmed", m("Knock Its Teeth Out").weight,
+              Move.Weight.UNARMED);
+        near("  so its attack weight is Unarmed 58 at mu 1", me.attackWeight(m("Knock Its Teeth Out")),
+             58, 1e-9);
+        check("Quick Barrage's blank skill means the weapon default", m("Quick Barrage").weight,
+              Move.Weight.WEAPON);
+        near("  which resolves to Melee Combat 111", me.attackWeight(m("Quick Barrage")), 111, 1e-9);
+        near("Punch is Unarmed at 80%", me.attackWeight(m("Punch")), 58 * 0.8, 1e-9);
+        check("Full Circle names Melee explicitly", m("Full Circle").weight, Move.Weight.MELEE);
+        near("  at 90%", me.attackWeight(m("Full Circle")), 111 * 0.9, 1e-9);
+
+        check("mu defaults to 1.0, the level-1 value Take Aim measures",
+              m("Knock Its Teeth Out").mu, 1.0);
+        near("  and a levelled card carries its own",
+             me.attackWeight(m("Knock Its Teeth Out").withMu(1.5)), 58 * 1.5, 1e-9);
+        near("  leaving the rest of the deck alone", me.attackWeight(m("Punch")), 58 * 0.8, 1e-9);
+
+        check("Zig-Zag Ruse has no attack type, so it is a maneuver",
+              m("Zig-Zag Ruse").kind, Move.Kind.MANEUVER);
+        check("Full Circle is two-coloured", m("Full Circle").schools.length, 2);
+    }
+
+    /* The character that fought the logged corpus. */
+    static Combatant me() {
+        Combatant c = new Combatant("ZzxcuV3");
+        c.str = 82; c.agi = 81; c.unarmed = 58; c.melee = 111;
+        c.weaponDamage = 90; c.weaponQl = 28.68; c.weaponPen = 0.125;
+        c.armHard = 5; c.armSoft = 2;
+        c.hp = c.maxHp = 100;
+        return(c);
+    }
+
+    /* Equal agility, so the agility factor is exactly 1 and cannot mask a cooldown error. */
+    static Combatant foe() {
+        Combatant c = new Combatant("control");
+        c.agi = 81;
+        c.hp = c.maxHp = 1000;
+        c.defenceWeight = 111;
+        return(c);
+    }
+}
