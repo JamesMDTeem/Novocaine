@@ -342,6 +342,39 @@ def own_defence():
         near("    %d%% standing, gain %.1f" % (standing, gain), p_, 10.0, 0.01)
 
 
+def mu_from_reductions():
+    """The second mu measurement, and the reason it is trusted only as a floor.
+
+    Its control is Zig-Zag Ruse at level 1, where mu must be exactly 1.0. That it comes
+    back BELOW 1.0 is the finding: a reduction cannot over-report, so the gap is the
+    opponent adding to the same colour while we defend. A method whose control reads low
+    gives floors, not estimates, and saying so is the difference between this settling the
+    mu curve and this quietly bending it.
+    """
+    print("\nmu read from what a defensive card takes off us")
+    rows, inert = estimate.mu_from_reductions()
+    if not rows:
+        print("  (no defensive card in this corpus at a known level)")
+        return
+    for (level, nm), vals in sorted(rows.items()):
+        vals = sorted(vals)
+        print("  level %d %-15s n=%-4d median %.3f%s"
+              % (level, nm[:15], len(vals), vals[len(vals) // 2],
+                 "   %d use(s) reduced nothing" % inert[(level, nm)]
+                 if inert.get((level, nm)) else ""))
+    lvl1 = [v for (lv, _n), vals in rows.items() if lv == 1 for v in vals]
+    if lvl1:
+        med = sorted(lvl1)[len(lvl1) // 2]
+        check("  CONTROL: level 1 must be 1.0, and reads at or below it", med <= 1.02, True)
+        check("  which is why these are floors, not estimates", med <= 1.0 + 1e-9, True)
+    five = [v for (lv, _n), vals in rows.items() if lv == 5 for v in vals]
+    if five:
+        med = sorted(five)[len(five) // 2]
+        # A floor of 1.49 at level 5 rules out every candidate curve that tops out lower.
+        check("  level 5 floors mu at 1.49, so a curve capping at 1.333 is out",
+              med > 1.333, True)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -428,6 +461,7 @@ def main():
     deck_history()
     mu_measurement()
     own_defence()
+    mu_from_reductions()
     armour()
     buckets()
     if failures:

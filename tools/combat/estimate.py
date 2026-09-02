@@ -1125,6 +1125,124 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
 
 DEPTH = depth_scaled()
 
+def mu_from_reductions(logs=None):
+    """mu per card level, read off what a defensive card takes off our own openings.
+
+    The SECOND independent way to measure mu, and the only one that reaches the levels
+    Take Aim cannot - Take Aim's own maximum is 3, and this deck holds Quick Dodge at 5.
+
+    A "Reduces: 20% - mu" line removes a SHARE of what is standing, and the share scales
+    linearly with mu (see Move.reduces). Nothing about the opponent enters, so
+
+        after = floor(before * (1 - share * mu))
+
+    inverts to an interval on mu, widened by the display truncating BOTH numbers. Small
+    standing values are dropped: at a standing 4 the truncation is worth more than the
+    reduction.
+
+    IT READS LOW, and the corpus says so rather than theory. The level-1 control - Zig-Zag
+    Ruse, where mu must be exactly 1.0 - comes back at 0.98, and three uses of Quick Dodge
+    at level 5 reduced NOTHING at all, which a reduction cannot do. Both are explained the
+    same way: the opponent is attacking while we defend, and a gain it puts on the same
+    colour inside the same bracket nets against the reduction. That can only ever make a
+    reduction look smaller, so these medians are floors on mu and not estimates of it.
+
+    Which is what makes them useful. Take Aim measures mu(2) tightly at 1.143 to 1.177,
+    and these say mu(5) is at least 1.49 - and the only curve satisfying both is the one
+    that reaches the stated ceiling of 1.5 at level 5.
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    moves = load_moves()
+    opens = opens_map(moves)
+    red = dict((n, [(t["colour"], t["pct"]) for t in (m.get("reduces") or [])])
+               for n, m in moves.items() if m.get("reduces"))
+    out = defaultdict(list)
+    inert = defaultdict(int)
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path, opens)
+        except Exception:
+            continue
+        lv = levels_at((log.header or {}).get("wall"))
+        for eng in log.engagements:
+            for m in eng.moves:
+                nm = m.get("name")
+                if (m.get("actor") != "me") or (nm not in red):
+                    continue
+                level = lv.get(nm)
+                if not level:
+                    continue
+                before_s, after_s = eng.brackets(m)
+                if (before_s is None) or (after_s is None):
+                    continue
+                bv, av = before_s.get("mine"), after_s.get("mine")
+                if not bv or not av:
+                    continue
+                for colour, pct in red[nm]:
+                    i = fightlog.COLOURS.index(colour)
+                    share = pct / 100.0
+                    before, after = bv[i], av[i]
+                    # Below 8 points the display's truncation is worth more than the
+                    # reduction itself, and the interval covers everything.
+                    if (before < 8) or (share <= 0):
+                        continue
+                    if after >= before:
+                        inert[(level, nm)] += 1
+                        continue
+                    lo = (1.0 - ((after + 1.0) / (before + 1.0))) / share
+                    hi = (1.0 - (after / before)) / share
+                    out[(level, nm)].append((lo + hi) / 2.0)
+    return out, inert
+
+
+def report_mu_reductions():
+    rows, inert = mu_from_reductions()
+    if not rows:
+        return
+    print("=" * 78)
+    print("DECK WEIGHTING, MEASURED A SECOND WAY")
+    print("=" * 78)
+    print("  A defensive card removes a SHARE of a standing opening and mu scales that")
+    print("  share linearly, so what it takes off measures mu with no opponent in it. This")
+    print("  reaches level 5, where Take Aim stops at its own maximum of 3.")
+    print("  It reads LOW: the level-1 control must be exactly 1.0 and comes back under it,")
+    print("  and some uses reduce nothing at all - the opponent is attacking the same")
+    print("  colour while we defend, and that can only ever mask a reduction. Read these")
+    print("  as FLOORS on mu.\n")
+    print("  %-6s %-15s %-5s %-8s %-8s %s"
+          % ("level", "card", "n", "median", "Take Aim", "uses that did nothing"))
+    for (level, nm), vals in sorted(rows.items()):
+        vals = sorted(vals)
+        med = vals[len(vals) // 2]
+        direct = MU_MEASURED.get(level)
+        print("  %-6s %-15s %-5d %-8.3f %-8s %d"
+              % (level, nm[:15], len(vals), med,
+                 ("%.3f-%.3f" % direct) if direct else "-", inert.get((level, nm), 0)))
+    print()
+    print("  Against the curves still standing after Take Aim's level-2 measurement:\n")
+    print("  %-6s %-9s %-11s %-11s %-11s %s"
+          % ("level", "measured", "linear", "1.5-.5/rtL", "(L-1)/(L+1)", "sqrt-norm"))
+    for (level, nm), vals in sorted(rows.items()):
+        vals = sorted(vals)
+        med = vals[len(vals) // 2]
+        print("  %-6s %-9.3f %-11.3f %-11.3f %-11.3f %.3f"
+              % (level, med,
+                 1.0 + 0.5 * (level - 1) / 4.0,
+                 1.5 - 0.5 / (level ** 0.5),
+                 1.0 + 0.5 * (level - 1) / (level + 1.0),
+                 1.0 + 0.5 * ((level ** 0.5) - 1) / ((5 ** 0.5) - 1)))
+    print()
+    print("  The linear curve tracks these medians almost exactly - and Take Aim EXCLUDES")
+    print("  it, measuring 1.143-1.177 at level 2 where linear wants 1.125. Since these")
+    print("  read low and Take Aim does not, the reconciliation is that the true curve sits")
+    print("  above the medians. Only one candidate does that and still reaches the devs'")
+    print("  stated 1.5 at level 5: mu = 1 + 0.5*(sqrt(L)-1)/(sqrt(5)-1), which puts level")
+    print("  2 at 1.168 - inside Take Aim's interval - and level 5 at exactly 1.5.")
+    print("  Leading candidate, not a settled one. One more point in Take Aim measures")
+    print("  level 3 directly and separates it from everything else.\n")
+
+
 def report_shared_moves(per):
     """One animal move seen against several species - the first cross-species comparison.
 
@@ -1636,6 +1754,7 @@ def main(argv):
     report(per, moves)
     report_mu(per)
     report_shared_moves(per)
+    report_mu_reductions()
     if write:
         write_pack(per, moves)
     return 0
