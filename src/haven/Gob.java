@@ -744,6 +744,15 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 				MessageBuf sdt = spr.sdt;
 				if(sdt != null && res.name.equals("gfx/fx/floatimg")) {
 					processDmg(sdt.clone());
+				} else {
+					/* Another player's combat move shows as a brief icon over their body,
+					 * and that icon is the ONLY record a log can carry of what they did:
+					 * their moves never enter our fightview, so every gain they cause is
+					 * otherwise unattributable and spoils ours along with it. Which overlay
+					 * resource carries it is not documented anywhere, so this records the
+					 * candidates rather than guessing - restricted to player gobs, which
+					 * keeps a fight's worth to a handful of lines. */
+					haven.automated.combat.CombatRecorder.onGobOverlay(this.id, playerRes(), res.name);
 				}
 			}
 		}
@@ -2515,6 +2524,17 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		if (Gob.permanentHighlightList.contains(id)) {
 			Gob.permanentHighlightList.remove(id);
 			delattr(GobPermanentHighlight.class);
+		}
+	}
+
+	/** This gob's resource name when it is a player, else null - the overlay filter. */
+	private String playerRes() {
+		try {
+			Resource r = getres();
+			String n = (r == null) ? null : r.name;
+			return(((n != null) && n.contains("borka")) ? n : null);
+		} catch(Loading l) {
+			return(null);
 		}
 	}
 

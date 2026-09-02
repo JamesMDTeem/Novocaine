@@ -36,6 +36,7 @@ public final class CombatRecorder {
     private static volatile CombatLogWriter writer = null;
     private static volatile long t0 = 0;
     private static volatile String lastSample = null;
+    private static volatile String lastFoes = null;
     /* Opponents whose resource has already been logged, so the tick loop names each one once.
      * Concurrent because it is written from the UI thread and cleared from start(), which the
      * message loop calls. */
@@ -70,6 +71,7 @@ public final class CombatRecorder {
         try {
             t0 = System.currentTimeMillis();
             lastSample = null;
+            lastFoes = null;
             named.clear();
             String safe = (charName == null ? "unknown" : charName.replaceAll("[^A-Za-z0-9_-]", "_"));
             Path p = Paths.get(Client.gameDir, "CombatLogs",
@@ -259,6 +261,57 @@ public final class CombatRecorder {
             log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId));
         } catch(Exception e) {
             /* never propagate into tick() */
+        }
+    }
+
+    /**
+     * Every opponent's openings, sampled together.
+     *
+     * Separate from sample() because it answers a different question. sample() records the
+     * duel we are in; this records who ELSE is being opened, which is the only evidence a log
+     * carries about another player's attacks - their moves never enter our fightview and so
+     * are never logged at all. A rise on a creature we are not hitting is proof that somebody
+     * else is swinging, and that is what decides whether a gain on our own target was ours.
+     *
+     * Gated on the values, like sample(), because these change rarely against a frame rate.
+     *
+     * @param packed gob and four openings per relation, five entries each
+     */
+    public static void sampleFoes(long[] packed) {
+        if(!active() || (packed == null) || (packed.length == 0))
+            return;
+        try {
+            StringBuilder k = new StringBuilder();
+            for(long v : packed)
+                k.append(v).append(':');
+            String key = k.toString();
+            if(key.equals(lastFoes))
+                return;
+            lastFoes = key;
+            log(CombatEvent.foes(now(), packed));
+        } catch(Exception e) {
+            /* never propagate into tick() */
+        }
+    }
+
+    /**
+     * An overlay appearing on another player's body.
+     *
+     * A player's combat move is announced by a brief icon over them, and nothing else in a
+     * log says what somebody other than us did - their moves are not in our fightview. Until
+     * the resource that carries the icon is identified from real fights, every overlay on a
+     * player gob is recorded and the analysis side decides which one matters.
+     *
+     * Not value-gated: an overlay is an event, and two identical ones in a row are two moves.
+     * The player filter is what keeps the volume down.
+     */
+    public static void onGobOverlay(long gobId, String gobRes, String olRes) {
+        if(!active() || (gobRes == null) || (olRes == null))
+            return;
+        try {
+            log(CombatEvent.overlay(now(), gobId, gobRes, olRes));
+        } catch(Exception e) {
+            /* never propagate into the object-delta path */
         }
     }
 

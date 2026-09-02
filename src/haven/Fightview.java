@@ -389,6 +389,29 @@ public class Fightview extends Widget {
     
     public void tick(double dt) {
 	super.tick(dt);
+	/* Every opponent's openings, not only the sampled one's. The game draws the pips over
+	 * each creature in the fight and the client has them all, but only the target's were
+	 * ever recorded - which is exactly the evidence a group fight needs. Another player's
+	 * moves never enter our fightview, so a rise on a creature we are NOT hitting is the
+	 * only proof a log can carry that somebody else is swinging. */
+	if(haven.automated.combat.CombatRecorder.active() && !lsrel.isEmpty()) {
+	    try {
+		long[] packed = new long[lsrel.size() * 5];
+		int n = 0;
+		for(Relation rel : lsrel) {
+		    haven.combat.log.Openings o =
+			haven.automated.combat.CombatRecorder.readOpenings(rel.buffs.children(Buff.class));
+		    packed[n++] = rel.gobid;
+		    packed[n++] = o.green;
+		    packed[n++] = o.blue;
+		    packed[n++] = o.yellow;
+		    packed[n++] = o.red;
+		}
+		haven.automated.combat.CombatRecorder.sampleFoes(packed);
+	    } catch(Exception e) {
+		/* telemetry must never break the tick loop */
+	    }
+	}
 	for(Relation rel : lsrel) {
 		rel.updateCombatOverlays(rel);
 	    /* Every opponent, not only the sampled one, and only until its resource resolves:

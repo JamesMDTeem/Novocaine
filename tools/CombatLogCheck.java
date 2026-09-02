@@ -128,7 +128,18 @@ public class CombatLogCheck {
               CombatEvent.begin(0L, 1L, 2, "c", 1L, 2L, null, null, null, 0, 0),
               "{\"ev\":\"begin\",\"t\":0,\"wall\":1,\"schema\":2,\"char\":\"c\",\"megob\":1,"
               + "\"foegob\":2,\"foeres\":null,\"attrb\":{},\"attr\":{},\"hard\":0,\"soft\":0}");
-        check("schema constant", CombatEvent.SCHEMA, 3);
+        /* 4 adds the "foes" event: every opponent's openings, not only the sampled one's.
+         * A reader must treat its absence as "this log predates the event", never as "no
+         * other opponents were open" - schema 1 logs have no header at all and schema 3
+         * logs have no foes lines, and both are still valid evidence for everything else
+         * they do carry. */
+        check("schema constant", CombatEvent.SCHEMA, 4);
+        check("foes packs gob and four openings per relation",
+              CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8}),
+              "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]]}");
+        check("foes with one relation is still an array of arrays",
+              CombatEvent.foes(1L, new long[] {9L, 0, 0, 0, 0}),
+              "{\"ev\":\"foes\",\"t\":1,\"o\":[[9,0,0,0,0]]}");
         // The opponent events, added in schema 3. Without them a fight against more than one
         // opponent reads as one opponent whose openings jump for no reason.
         check("foe (appears)",

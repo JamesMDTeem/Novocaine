@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 3;
+    public static final int SCHEMA = 4;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -122,6 +122,57 @@ public final class CombatEvent {
                .put("stam", stam)
                .put("energy", energy)
                .put("dist", dist)
+               .end());
+    }
+
+    /**
+     * Every opponent's openings, not only the sampled one's.
+     *
+     * The game draws opening pips over every creature in the fight, and the client sees all
+     * of them - but only the current target was ever recorded. That single omission is what
+     * makes a group fight unmeasurable: when another player attacks our boar, the boar's
+     * openings jump and nothing in the log says whether we or they did it. Our own moves are
+     * logged and theirs are not, so the only way to tell is to watch creatures we are NOT
+     * hitting. A rise on one of those is proof that someone else is swinging, and its timing
+     * bounds when.
+     *
+     * `o` is a flat array of gob, green, blue, yellow, red per relation, which keeps the line
+     * short in a file that already writes one state per sample.
+     *
+     * @param packed gob and four openings per relation, five entries each
+     */
+    public static String foes(long t, long[] packed) {
+        StringBuilder b = new StringBuilder("[");
+        for(int i = 0; i < packed.length; i += 5) {
+            if(i > 0)
+                b.append(',');
+            b.append('[').append(packed[i]);
+            for(int j = 1; j < 5; j++)
+                b.append(',').append(packed[i + j]);
+            b.append(']');
+        }
+        b.append(']');
+        return(new JsonObj()
+               .put("ev", "foes")
+               .put("t", t)
+               .raw("o", b.toString())
+               .end());
+    }
+
+    /**
+     * An overlay that appeared on a player's body - a candidate move announcement.
+     *
+     * `gob` and `gobres` say who, `res` says which overlay. Recorded broadly on purpose:
+     * the resource carrying a move's icon is not documented, and one logged group fight
+     * names it more reliably than reading render code does.
+     */
+    public static String overlay(long t, long gobId, String gobRes, String olRes) {
+        return(new JsonObj()
+               .put("ev", "overlay")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("gobres", gobRes)
+               .put("res", olRes)
                .end());
     }
 
