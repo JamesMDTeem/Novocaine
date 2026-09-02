@@ -131,7 +131,11 @@ public final class Pack {
              * used to leave every packed move at zero, so Take Aim reported its base 30 at
              * any initiative while the logs show it reaching 60. */
             .ipScale(dbl(j, "ip_scale", 0))
-            .weightMu(dbl(j, "weight_mult", 1.0));
+            .weightMu(dbl(j, "weight_mult", 1.0))
+            /* What holding this maneuver does to its user's own attacks - Combat
+             * Meditation's 25%, Oak Stance's 50%. Applied through Combatant.attackMult by
+             * whoever decides which stance is up, not by the move that is being thrown. */
+            .attackMult(dbl(j, "attack_mult", 1.0));
 
         String skill = j.optString("attack_skill", null);
         b.weight("unarmed".equals(skill) ? Move.Weight.UNARMED

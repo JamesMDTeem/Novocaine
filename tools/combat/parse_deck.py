@@ -194,6 +194,16 @@ BLOCK_IF_RE = re.compile(
     r"if\s+.{0,40}?is used without\s+(?:an?\s+)?([a-z ]{3,20}?)\s+equipped[^.]*?"
     r"block weight will be\s*(\d+(?:\.\d+)?)\s*%", re.I)
 
+# "While Combat Meditation is active, all your attacks will have 25% of their normal
+# attack weight." Three maneuvers scale OUR OWN attack weight while held - Combat
+# Meditation to 25%, Oak Stance to 50%, and Bloodlust upward by four times its charge.
+# None of it is in a labelled field, and none of it was modelled: attackWeight() had no
+# term for the stance at all, which is the same shape as the bug that had mu living on the
+# character instead of the card. Benign only because all three sit at deck level 0 today.
+ATTACK_MULT_RE = re.compile(
+    r"all your attacks will have\s*(\d+(?:\.\d+)?)\s*%\s*of their normal attack weight",
+    re.I)
+
 # "Initiative points: 4+2" - a cost of four, and a second number whose meaning is not
 # established. Splitting it is not a guess: the corpus shows an opponent's Cleave taking
 # them from 7 to 3, so the leading number is the cost. The trailing one is kept in its
@@ -325,6 +335,12 @@ def parse_move(m, problems):
         rec["ip_scale"] = float(ips.group(1)) / 100.0
     # What the block multiplier falls to without the item the card needs, and which item
     # that is. Null when the card names no condition.
+    # What holding this maneuver does to our own attack weight, as a fraction. None when
+    # the card says nothing, which is every card that is not a stance.
+    rec["attack_mult"] = None
+    am = ATTACK_MULT_RE.search(" ".join(notes))
+    if am:
+        rec["attack_mult"] = float(am.group(1)) / 100.0
     rec["block_requires"] = None
     rec["block_mult_without"] = None
     bif = BLOCK_IF_RE.search(" ".join(notes))

@@ -156,6 +156,15 @@ public final class Move {
      */
     public final int ipExtra;
 
+    /**
+     * If this move is a stance, what holding it does to its user's attack weight.
+     *
+     * 1.0 for everything that is not a stance, and for the stances that leave attacks
+     * alone. Read by whoever sets {@link Combatant#attackMult}; a move does not apply this
+     * to itself.
+     */
+    public final double attackMult;
+
     private Move(Builder b) {
         this.res = b.res;
         this.name = b.name;
@@ -180,6 +189,7 @@ public final class Move {
         this.weightMu = b.weightMu;
         this.mu = b.mu;
         this.ipExtra = b.ipExtra;
+        this.attackMult = b.attackMult;
     }
 
     /** Copy constructor for {@link #withMu}, which is the only field that varies by owner. */
@@ -196,6 +206,7 @@ public final class Move {
         this.ipScale = o.ipScale;
         this.weight = o.weight; this.weightMu = o.weightMu;
         this.ipExtra = o.ipExtra;
+        this.attackMult = o.attackMult;
         this.mu = mu;
     }
 
@@ -235,6 +246,7 @@ public final class Move {
         private double gainAbove = 0;
         private double cooldownBase = 0, ipScale = 0, weightMu = 1.0, mu = 1.0;
         private int ipExtra = 0;
+        private double attackMult = 1.0;
         private boolean cooldownMu = false;
         private Weight weight = Weight.WEAPON;
 
@@ -279,6 +291,7 @@ public final class Move {
         public Builder weightMu(double v) {this.weightMu = v; return(this);}
         public Builder mu(double v) {this.mu = v; return(this);}
         public Builder ipExtra(int v) {this.ipExtra = v; return(this);}
+        public Builder attackMult(double v) {this.attackMult = v; return(this);}
 
         /** Percentage points opened on the target in one colour. */
         public Builder opens(int colour, double pct) {

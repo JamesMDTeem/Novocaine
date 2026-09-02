@@ -41,6 +41,21 @@ public final class Combatant {
     public double defenceWeight;
 
     /**
+     * What the stance being held does to THIS combatant's own attack weight, as a factor.
+     *
+     * A maneuver is not only a block weight. Combat Meditation cuts every attack to 25% of
+     * its normal weight while it is active, Oak Stance to 50%, and Bloodlust raises it by
+     * four times its charge - so a stance is a trade, defence bought with offence, and the
+     * model had no term for the offence half at all.
+     *
+     * 1.0 is "no stance, or a stance that does not touch attack weight", which is every
+     * card in this deck today - all three sit at deck level 0, which is the only reason
+     * this was harmless. It is the same shape as the bug that had mu living on the
+     * character instead of the card: a real term with nowhere to go.
+     */
+    public double attackMult = 1.0;
+
+    /**
      * Openings standing on this combatant, 0..100, indexed by {@link Formulas#GREEN} and friends.
      *
      * Not decayed here, and that is a gap rather than a finding. Openings plainly do decay: the
@@ -118,9 +133,12 @@ public final class Combatant {
      * The deck weighting is read off the MOVE, not off this combatant. It is a property of a
      * card at the level its owner holds it, so two cards in one deck can carry different ones;
      * keeping it here applied whichever card was measured last to the whole deck.
+     *
+     * {@link #attackMult} is the other way round and belongs here: a stance is held by the
+     * COMBATANT and scales every attack it makes.
      */
     public double attackWeight(Move m) {
-        return(skill(m.weight) * m.weightMu * m.mu);
+        return(skill(m.weight) * m.weightMu * m.mu * attackMult);
     }
 
     /**
@@ -158,6 +176,7 @@ public final class Combatant {
         c.armHard = armHard; c.armSoft = armSoft;
         c.hp = hp; c.maxHp = maxHp;
         c.defenceWeight = defenceWeight;
+        c.attackMult = attackMult;
         c.ip = ip;
         c.readyAt = readyAt;
         System.arraycopy(openings, 0, c.openings, 0, 4);

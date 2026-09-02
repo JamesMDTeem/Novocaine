@@ -202,6 +202,18 @@ public class CombatPackCheck {
         check("Full Circle names Melee explicitly", m("Full Circle").weight, Move.Weight.MELEE);
         near("  at 90%", me.attackWeight(m("Full Circle")), 111 * 0.9, 1e-9);
 
+        /* A stance is a trade: defence bought with offence. Combat Meditation cuts every
+         * attack to a quarter weight while it is held, and the model had no term for that
+         * at all until a forum guide's plain-language note on Oak Stance surfaced it. */
+        near("Combat Meditation quarters its holder's attack weight",
+             m("Combat Meditation").attackMult, 0.25, 1e-9);
+        near("an ordinary card leaves attack weight alone",
+             m("Quick Barrage").attackMult, 1.0, 1e-9);
+        Combatant med = me();
+        med.attackMult = m("Combat Meditation").attackMult;
+        near("  so Quick Barrage falls from 111 to 27.75 while it is held",
+             med.attackWeight(m("Quick Barrage")), 27.75, 1e-9);
+
         check("mu defaults to 1.0, the level-1 value Take Aim measures",
               m("Knock Its Teeth Out").mu, 1.0);
         near("  and a levelled card carries its own",

@@ -50,6 +50,7 @@
     "Bloodlust is charged by 25% / Δ. When you attack an opponent, your attack weight will be increased by four times the amount that Bloodlust is charged."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -80,6 +81,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -124,6 +126,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -172,6 +175,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -205,6 +209,7 @@
     "While Combat Meditation is active, all your attacks will have 25% of their normal attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": 0.25,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -237,6 +242,7 @@
     "Dash completely removes your slightest opening."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -276,6 +282,7 @@
     "For every unit of opening reduced by Feigned Dodge, twice that amount is given to the opponent."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -331,6 +338,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -383,6 +391,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -425,6 +434,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -462,6 +472,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -504,6 +515,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -546,6 +558,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -588,6 +601,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -632,6 +646,7 @@
     "Low Blow gains you 1 Point of Initiative against your opponent."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -664,6 +679,7 @@
     "Opportunity Knocks increases your opponent's greatest opening by 40% · µ."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -703,6 +719,7 @@
     "You need a sword equipped for Parry to inflict its effect upon your opponents."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -745,6 +762,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -793,6 +811,7 @@
     "Punch 'em Both attacks both your primary target and also one other opponent in range."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -838,6 +857,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -875,6 +895,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -929,6 +950,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -972,6 +994,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1044,6 +1067,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1076,6 +1100,7 @@
     "If Shield Up is used without a shield equipped, its block weight will be 50% instead of 250%."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": "shield",
    "block_mult_without": 0.5
   },
@@ -1113,6 +1138,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1157,6 +1183,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1205,6 +1232,7 @@
     "To the extent that it is unblocked, Steal Thunder will take 3 Points of Initiative from its target and gain you 2 of them. It can be carried out at a small distance."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1259,6 +1287,7 @@
     "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1292,6 +1321,7 @@
     "The cooldown of Take Aim increases by 20% for each Point of Initiative you have."
    ],
    "ip_scale": 0.2,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1338,6 +1368,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1368,6 +1399,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1414,6 +1446,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1453,6 +1486,7 @@
     "Watch Its Moves gains you 1 Point of Initiative against your opponent."
    ],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1509,6 +1543,7 @@
    "opponent_initiative": null,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   },
@@ -1552,6 +1587,7 @@
    "opponent_initiative": 2,
    "notes": [],
    "ip_scale": 0.0,
+   "attack_mult": null,
    "block_requires": null,
    "block_mult_without": null
   }
