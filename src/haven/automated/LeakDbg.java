@@ -180,6 +180,8 @@ public class LeakDbg {
      * latest sampler snapshot and logs through NLog's lock. Cheap enough for invalblob's rate.
      */
     public static void transition(String name) {
+        if (!NLog.diag())
+            return;
         StringBuilder sb = new StringBuilder(tag(name));
         /* Read the GL counters HERE rather than reusing the sampler's snapshot. invalblob and trim
          * fire in the same millisecond, so both used to see the identical once-per-second array and
@@ -222,6 +224,11 @@ public class LeakDbg {
      * the same string that goes to glObjectLabel.
      */
     public static void textureAlloc(String desc, long bytes) {
+        /* Gated even though it writes nothing: the histogram and the ring exist only for the
+         * sampler to read, so with the sampler off this is a ConcurrentHashMap update and a
+         * deque push per texture created, on the GL thread, for nobody. */
+        if (!NLog.diag())
+            return;
         String key = histkey(desc);
         long[] a = texHist.computeIfAbsent(key, k -> new long[2]);
         synchronized (a) {
@@ -241,6 +248,8 @@ public class LeakDbg {
      * Accounts a GL texture free. Called from the GL thread via {@code GLTexture.delete}.
      */
     public static void textureFree(String desc, long bytes) {
+        if (!NLog.diag())
+            return;
         String key = histkey(desc);
         long[] a = texHist.get(key);
         if (a != null) {
