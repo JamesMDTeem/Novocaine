@@ -225,8 +225,7 @@ def collect(paths):
             rec["dealt"][eng.gob] += sum(
                 d["v"] for d in eng.damage
                 if d.get("ch") == "SHP" and d.get("gob") == eng.gob)
-            if any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") == log.me
-                   for d in eng.damage):
+            if died(eng, log):
                 rec["killed"].add(eng.gob)
 
             if not eng.offence_ok:
@@ -275,6 +274,32 @@ def collect(paths):
     for rec in per.values():
         rec["hp"] = summarise_hp(rec["dealt"], rec["killed"])
     return per, moves
+
+
+# Players all share this resource, and a fight against one ends in a knockout rather
+# than a death.
+PLAYER = "borka"
+
+
+def died(eng, log):
+    """Whether this engagement ended with the opponent dead.
+
+    The client draws an opaque-white number when a fight ends, on the gob of whoever won
+    it. Every white in the corpus lands in the last moments of its log, which is what
+    made it look like a kill marker - but one lands on the OPPONENT'S gob, in a spar this
+    character lost, where nothing died at all. So the signal is the award, not the death,
+    and reading it correctly needs two conditions.
+
+    The award must be on someone other than the opponent, which excludes the fight we
+    lost. And the opponent must not be a player, because beating one of those is a
+    knockout. What is deliberately NOT required is that the award be ours: two boars and
+    a bear in this corpus were finished by other people, and their hitpoints count just
+    the same.
+    """
+    if PLAYER in (eng.res or ""):
+        return False
+    return any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
+               for d in eng.damage)
 
 
 def summarise_hp(dealt, killed):

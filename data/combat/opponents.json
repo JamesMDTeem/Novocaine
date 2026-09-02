@@ -55,10 +55,10 @@
    "defence_weight": null,
    "engagements": 1,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
-    "hi": null,
+    "from": "1 kill(s), summed across every file each gob appears in",
+    "hi": 115,
     "lo": 115,
-    "note": "lower bound only - none of them died"
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [],
    "name": "?#67527879",
@@ -134,10 +134,10 @@
    "defence_weight": null,
    "engagements": 1,
    "hitpoints": {
-    "from": "1 opponent(s) that survived",
-    "hi": null,
+    "from": "1 kill(s), summed across every file each gob appears in",
+    "hi": 1143,
     "lo": 1143,
-    "note": "lower bound only - none of them died"
+    "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },
    "moves": [],
    "name": "bear",
@@ -197,8 +197,8 @@
    },
    "engagements": 4,
    "hitpoints": {
-    "from": "2 kill(s), summed across every file each gob appears in",
-    "hi": 483,
+    "from": "3 kill(s), summed across every file each gob appears in",
+    "hi": 499,
     "lo": 453,
     "note": "at least this much - the creature may have been hurt before we first saw it, and damage dealt out of our view is not counted"
    },

@@ -426,11 +426,13 @@ def report_anomalies(rows, bad):
     for u in unknown:
         hits = [r for r in rows if r.get("ev") == "dmg" and r["ch"] == u]
         gloss = ""
-        # The channel code is a packed RGBA4444 colour. White fires once per kill on
-        # the killer's own gob, and scales with the prey - almost certainly combat
-        # experience, but that is an inference, so it is said here and not in the log.
+        # The channel code is a packed RGBA4444 colour. White fires at the end of a
+        # fight on the gob of whoever WON it - not only on a kill: one spar in the
+        # corpus puts it on the opponent, with nothing dead. It scales with the
+        # opponent, so it is very likely combat experience, but that is an inference and
+        # is said here rather than in the log.
         if u in ("#ffff", "C65535"):
-            gloss = " - opaque white; fires on a kill, likely combat experience"
+            gloss = (" - opaque white; the end-of-fight award, on the winner's gob")
         notes.append("undocumented damage channel %s: %d hit(s), values %s, at t=%s%s"
                      % (u, len(hits), sorted(set(h["v"] for h in hits)),
                         [h["t"] for h in hits], gloss))

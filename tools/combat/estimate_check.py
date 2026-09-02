@@ -59,6 +59,34 @@ def hitpoints():
     check("nothing observed is not zero", estimate.summarise_hp({}, set()), None)
     check("zero damage is not an observation", estimate.summarise_hp({1: 0}, {1}), None)
 
+    print("\ndid it die?")
+
+    class Eng(object):
+        def __init__(self, res, gob, damage):
+            self.res = res
+            self.gob = gob
+            self.damage = damage
+
+    class Log(object):
+        me = 1
+
+    white = lambda gob: {"ch": "#ffff", "gob": gob, "v": 100, "t": 9}
+    # The award lands on whoever won. Ours, over an animal, is a kill.
+    check("an award on us over an animal is a kill",
+          estimate.died(Eng("gfx/kritter/fox/fox", 2, [white(1)]), Log()), True)
+    # Somebody else's award over an animal is still that animal dying - two boars and a
+    # bear in this corpus were finished by other people.
+    check("someone else's award is still a death",
+          estimate.died(Eng("gfx/kritter/boar/boar", 2, [white(3)]), Log()), True)
+    # The award on the opponent's own gob means the opponent won, and we are what ended.
+    check("an award on the opponent is not the opponent dying",
+          estimate.died(Eng("gfx/kritter/bear/bear", 2, [white(2)]), Log()), False)
+    # A player fight ends in a knockout, so the award says nothing about a death.
+    check("beating a player is a knockout, not a kill",
+          estimate.died(Eng("gfx/borka/body", 2, [white(1)]), Log()), False)
+    check("no award, no death",
+          estimate.died(Eng("gfx/kritter/fox/fox", 2, []), Log()), False)
+
 
 def agility():
     print("\nagility, from integer cooldowns")
