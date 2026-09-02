@@ -49,8 +49,10 @@ NOTES = os.path.join(ROOT, "data", "combat", "creature-notes.json")
 # an assumption - see MU_MIN below.
 MU = 1.0
 
-# The wiki puts the deck weighting between 1.0 and 1.5, rising with the points put into
-# a card. Two useful things follow.
+# The deck weighting runs 1.0 to 1.5, rising with the points put into a card. That is the
+# devs' own statement quoted on the wiki - "the actual value of mu ranges from 1 to 1.5,
+# depending on your weighting" - and carries the same weight as Jorb's armour notes, which
+# the damage model already treats as authoritative. Two useful things follow.
 #
 # First, MU = 1.0 above is not a blind assumption for this corpus: the character's deck
 # dump shows Quick Barrage, Full Circle, Cleave and Knock Its Teeth Out all at level 1,
@@ -64,18 +66,18 @@ MU = 1.0
 # explanation.
 MU_MIN, MU_MAX = 1.0 / 1.5, 1.5
 
-# The card cap is 5 for everything except stances, and the range is 1.0 to 1.5, so the
-# obvious curve is linear across the five levels. It fits both anchors the corpus has:
-# Take Aim at level 1 reads exactly 1.0 (its cooldown divides by mu and reported its
-# listed 30), and Sting at level 3 measures somewhere in 1.12 to 1.38 against 1.25.
+# The card cap is 5 for everything except stances. A linear curve across those five
+# levels - 1.0 to 1.5 - is the obvious shape, and mu_at_level() below computes it, but
+# NOTHING in the estimator depends on it: mu enters through mu_bounds() as the stated
+# range, so a levelled card widens its own answer instead of leaning on a guessed curve.
 #
-# A hypothesis, not a measurement. Two anchors cannot distinguish it from, say,
-# 1 + 0.1*(level-1), which also passes through 1.0 at level 1 and gives 1.2 at level 3.
-# mu_at_level() below is what the corpus is accumulating evidence against.
+# Attempting to measure the curve from fights was a mistake worth recording. mu is ours,
+# not the opponent's, so a fight has nothing to say about it - and the attempt behaved
+# exactly like the second-order inference it was, moving by a fifth depending only on
+# where a noise threshold sat.
 #
 # Note the deck dump's "maxlevel" is how far the character has LEARNED a move, not the
-# game's ceiling - a move showing a max of 1 has been picked up once, and is at the
-# bottom of the mu range rather than the top.
+# game's ceiling - a move showing a max of 1 has been picked up once.
 MU_LEVELS = 5
 
 
@@ -84,6 +86,33 @@ def mu_at_level(level):
     if not level or level < 1:
         return None
     return 1.0 + (MU_MAX - 1.0) * (min(level, MU_LEVELS) - 1) / (MU_LEVELS - 1)
+
+
+def mu_bounds(level):
+    """What a card's deck weighting can be, as an interval. This is an INPUT.
+
+    mu is ours. It is a property of a card at a level, the game states its range, and
+    nothing about an opponent changes it - so there is nothing here for a fight to
+    reveal. The one unknown in the opening formula is the opponent's Wd, and every fight
+    is solving for that.
+
+    Which is why this returns an interval rather than a number. At level 1 the interval
+    is a point, because Take Aim measures mu = 1.0 there exactly. Above level 1 the curve
+    is unknown, so the honest input is the whole stated range from 1.0 up, and a card
+    that has been levelled simply yields a WIDER Wd - not a wrong one, and not one that
+    needs mu estimated first.
+
+    Trying to derive mu from fights instead was a second-order inference on top of the
+    quantity actually being measured, and it behaved like one: the estimate moved by a
+    fifth depending only on where a noise threshold was set.
+    """
+    if not level or level < 1:
+        return (MU, MU)
+    if level == 1:
+        return (1.0, 1.0)
+    # Level 2 cannot be below level 1, and nothing can exceed the stated ceiling. A
+    # measured curve would narrow this; until there is one, the range is the input.
+    return (1.0, MU_MAX)
 
 
 def mu_ratio(wd_a, wd_b):
@@ -218,6 +247,30 @@ def attack_weight(move, attrs, level=None):
     return base * mult * (mu if mu else MU)
 
 
+def attack_weight_bounds(move, attrs, level=None):
+    """Wa as the interval the card's level allows. See mu_bounds - mu is an input.
+
+    At level 1 this is a point, because mu is measured at exactly 1.0 there. Above it the
+    interval carries the whole stated range, so a levelled card yields a wider defence
+    weight rather than a wrong one.
+    """
+    skill = move.get("attack_skill") or "melee"
+    base = attrs.get(skill)
+    if base is None:
+        return None
+    mult = 1.0
+    raw = move.get("attack_weight") or ""
+    for tok in raw.replace("·", " ").split():
+        tok = tok.strip()
+        if tok.endswith("%"):
+            try:
+                mult *= float(tok[:-1]) / 100.0
+            except ValueError:
+                pass
+    lo, hi = mu_bounds(level)
+    return (base * mult * lo, base * mult * hi)
+
+
 def agility_interval(observations, agi_me):
     """The opponent's agility, as the interval the reported cooldowns allow.
 
@@ -339,8 +392,29 @@ def bucket(eng):
 # 100 that a joint fit of the whole series returns.
 GAIN_SLOP = 1.5
 
+# The smallest opening gain worth reading a POINT estimate from.
+#
+# k = gain / (Ob * (1 - Oc)) and Wd = Wa / k**3, so half a point of rounding on an
+# integer gain becomes a third-power error on the defence weight. It is not a rounding
+# nuisance, it is the dominant term at small gains:
+#
+#     gain 20   ->  Wd within about  8%
+#     gain 13   ->  Wd within about 12%
+#     gain 10   ->  Wd within about 17%
+#     gain  5   ->  Wd within  -37% .. +25%
+#     gain  3   ->  Wd within  -73% .. +37%
+#
+# Weighting a gain of 3 the same as a gain of 20 is what made every mu comparison
+# unreadable. Two cards known to be at the same level - and so certain to have the same
+# mu - read anywhere from 0.44 to 2.25 of each other with everything pooled, and 0.93 to
+# 1.08 once only gains of 13 or more are counted. The model was never the problem.
+#
+# Interval arithmetic already handles this correctly, since a small gain simply yields a
+# wide band. This threshold is for the places a single number is wanted.
+MIN_GAIN = 10
 
-def gain_interval(wa, gain, ob, standing):
+
+def gain_interval(wa, gain, ob, standing, wa_hi=None):
     """The defence weight an observed gain allows, as an interval.
 
     Because the weight enters through a cube root, the slop above becomes a wide band at
@@ -349,8 +423,11 @@ def gain_interval(wa, gain, ob, standing):
     alone hides which of those two an estimate is.
     """
     oc = standing / 100.0
+    # Wd = Wa / k**3, so the low end pairs the smallest attack weight with the largest
+    # gain and the high end does the opposite. Passing an interval for Wa is how a card
+    # whose level leaves mu uncertain widens the answer instead of biasing it.
     lo = model.defence_weight(wa, gain + GAIN_SLOP, ob, oc)
-    hi = model.defence_weight(wa, max(0.1, gain - GAIN_SLOP), ob, oc)
+    hi = model.defence_weight(wa_hi if wa_hi else wa, max(0.1, gain - GAIN_SLOP), ob, oc)
     return (lo, hi)
 
 
@@ -449,18 +526,19 @@ def collect(paths):
                     # a silent assumption.
                     rec["mu_scaled_openings"].add(name)
                     continue
-                wa = attack_weight(m, attrs, lv.get(name))
-                if not wa:
+                bounds = attack_weight_bounds(m, attrs, lv.get(name))
+                if not bounds or not bounds[0]:
                     continue
+                wa, wa_hi = bounds
                 wd = model.defence_weight(wa, gain, ob, standing / 100.0)
                 if wd > 0:
-                    lo, hi = gain_interval(wa, gain, ob, standing)
+                    lo, hi = gain_interval(wa, gain, ob, standing, wa_hi)
                     rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi))
                     rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
                     # Per individual AND per move. mu can only be read between two moves
                     # thrown at the same creature - see report_mu.
                     rec["wd_by_gob_move"].setdefault(eng.gob, {}).setdefault(
-                        name, []).append((wd, lo, hi))
+                        name, []).append((wd, lo, hi, gain))
                     rec["deck_at"][eng.gob] = lv
 
             for h in fightlog.hits(eng, log.me):
@@ -675,13 +753,21 @@ def report_mu(per):
     which needs both moves used on the same one. Comparing across individuals measures
     the individuals.
 
-    Same-level pairs are reported alongside, because they must read exactly 1.00 and
-    whatever they actually read is this method's noise floor. A level-5 reading is only
-    interesting to the extent it sits outside that.
+    Only gains of MIN_GAIN or more are counted, and that is not a detail. Two cards known
+    to be at the same level - and so certain to share a mu - read anywhere from 0.44 to
+    2.25 of each other with every gain pooled, and 0.93 to 1.08 once the small ones are
+    dropped. Equal-weighting an integer gain of 3 with one of 20 is what made this
+    unreadable, since the gain enters cubed.
+
+    Same-level pairs are reported alongside as the control, because they must read exactly
+    1.00 and whatever they actually read is this method's remaining noise.
     """
     rows = []
     for name in sorted(per):
-        for gob, bymove in sorted(per[name]["wd_by_gob_move"].items()):
+        for gob, allmoves in sorted(per[name]["wd_by_gob_move"].items()):
+            bymove = dict((mv, [o for o in obs if o[3] >= MIN_GAIN])
+                          for mv, obs in allmoves.items())
+            bymove = dict((mv, obs) for mv, obs in bymove.items() if obs)
             if len(bymove) < 2:
                 continue
             # The deck as it stood when this creature was fought, not as it stands now.
@@ -740,19 +826,17 @@ def report_mu(per):
               % len(ctrl))
         print("  They read %.2f to %.2f, median %.2f. That spread is the method's noise."
               % (ctrl[0], ctrl[-1], mid))
-        for lvl, mu, _lo, _hi, _n, _sp, mv, _ref in sorted(rows):
+        for lvl, mu, _lo, _hi, n, _sp, mv, _ref in sorted(rows):
             if lvl == 1:
                 continue
             over = sum(1 for c in ctrl if mu > c)
-            print("    level %s (%s) reads %.2f - above %d of the %d controls%s"
-                  % (lvl, mv[:18], mu, over, len(ctrl),
-                     ", so it is not noise" if over == len(ctrl)
-                     else ", which the noise could produce"))
-    print()
-    print("  The linear column is a hypothesis - levels 1 to 5 mapped onto 1.0 to 1.5 -")
-    print("  and its rival, 1 + 0.1*(level-1), gives 1.40 at level 5 against 1.50. Those")
-    print("  are far enough apart to separate, given enough paired fights: each one is an")
-    print("  independent estimate of the same number, because mu belongs to our deck.")
+            print("    level %s (%s, n=%d) reads %.2f - above %d of the %d controls"
+                  % (lvl, mv[:18], n, mu, over, len(ctrl)))
+        print("\n  These are a CHECK, not a measurement. mu is ours - a card at a level")
+        print("  has the weighting the game gives it, and no fight reveals it. It enters")
+        print("  the estimate as an input, and above level 1 it enters as the stated")
+        print("  1.0 to 1.5, which simply widens that card's Wd rather than biasing it.")
+        print("  A levelled card reading high here is that width, not a discovery.")
     print()
 
 
@@ -798,9 +882,10 @@ def report(per, moves):
                       % ("within measurement error - integer gains carry about this much"
                          " slop" if gap <= 0.1 * span else
                          "too far apart to be one creature - something else is wrong"))
-            print("                   (mu applied per card level: 1.0 at level 1, measured;"
-                  " above that it follows")
-            print("                   the hypothesis in MU_LEVELS)")
+            print("                   (mu is an INPUT, from the card's level: exactly 1.0"
+                  " at level 1, and the")
+            print("                   stated 1.0-1.5 above it, which widens that card's"
+                  " band rather than biasing it)")
             if rec["mu_scaled_openings"]:
                 print("                   excluded, because their OPENING carries the deck"
                       " weighting rather than")
