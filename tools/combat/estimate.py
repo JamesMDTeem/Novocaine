@@ -185,11 +185,21 @@ def load_moves():
     return dict((m["name"], m) for m in doc.get("moves") or [] if m.get("name"))
 
 
-def attack_weight(move, attrs):
-    """Wa for one of our moves: the skill its icon names, times its own multiplier.
+def attack_weight(move, attrs, level=None):
+    """Wa for one of our moves: the skill its icon names, its own multiplier, and mu.
 
     "According to weapon" moves name no skill, and the sheet's closing note resolves
     those to Melee Combat.
+
+    mu comes from the card's level at the time of the fight. Leaving it at 1.0 for a
+    levelled card is not neutral - it understates that move's attack weight and so
+    understates every defence weight recovered from it. Punch at level 5 was reading a
+    badger 20 points lighter than the same badger measured with an unlevelled move,
+    purely from the missing factor.
+
+    The level-to-mu curve is a hypothesis (see MU_LEVELS), so every number downstream
+    inherits it for LEVELLED moves only. Level 1 is measured at exactly 1.0, and almost
+    everything in this corpus is level 1, so most of it is unaffected either way.
     """
     skill = move.get("attack_skill") or "melee"
     base = attrs.get(skill)
@@ -204,7 +214,8 @@ def attack_weight(move, attrs):
                 mult *= float(tok[:-1]) / 100.0
             except ValueError:
                 pass
-    return base * mult * MU
+    mu = mu_at_level(level) if level else MU
+    return base * mult * (mu if mu else MU)
 
 
 def agility_interval(observations, agi_me):
@@ -377,6 +388,8 @@ def collect(paths):
             continue
         attrs = (log.header or {}).get("attr") or {}
         agi_me = attrs.get("agi")
+        # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
+        lv = levels_at((log.header or {}).get("wall"))
         for eng in log.engagements:
             rec = per[bucket(eng)]
             rec["engagements"] += 1
@@ -436,7 +449,7 @@ def collect(paths):
                     # a silent assumption.
                     rec["mu_scaled_openings"].add(name)
                     continue
-                wa = attack_weight(m, attrs)
+                wa = attack_weight(m, attrs, lv.get(name))
                 if not wa:
                     continue
                 wd = model.defence_weight(wa, gain, ob, standing / 100.0)
@@ -448,7 +461,7 @@ def collect(paths):
                     # thrown at the same creature - see report_mu.
                     rec["wd_by_gob_move"].setdefault(eng.gob, {}).setdefault(
                         name, []).append((wd, lo, hi))
-                    rec["deck_at"][eng.gob] = levels_at((log.header or {}).get("wall"))
+                    rec["deck_at"][eng.gob] = lv
 
             for h in fightlog.hits(eng, log.me):
                 if h["actor"] == "me":
@@ -771,10 +784,23 @@ def report(per, moves):
                 print("\n  defence weight   %.0f - %.0f   from %d observation(s), midpoints"
                       " %.0f - %.0f" % (ilo, ihi, len(vals), vals[0], vals[-1]))
             else:
-                print("\n  defence weight   CONTRADICTORY - %d observation(s) whose intervals"
-                      " do not overlap, midpoints %.0f - %.0f"
-                      % (len(vals), vals[0], vals[-1]))
-            print("                   (assuming mu = 1; see MU in this file)")
+                # Individuals of a species are taken to share a defence weight until
+                # something says otherwise, so an empty intersection is first of all a
+                # measurement problem. Report the size of the miss instead of a bare
+                # verdict: four badgers missing by one point on integer gains is not the
+                # same finding as two disagreeing by half, and calling both
+                # "contradictory" hides which one you have.
+                gap = ilo - ihi
+                span = max(1.0, ihi if ihi > 0 else ilo)
+                print("\n  defence weight   %.0f - %.0f, missing by %.0f (%.0f%%)   from %d"
+                      " observation(s)" % (ihi, ilo, gap, 100.0 * gap / span, len(vals)))
+                print("                   %s"
+                      % ("within measurement error - integer gains carry about this much"
+                         " slop" if gap <= 0.1 * span else
+                         "too far apart to be one creature - something else is wrong"))
+            print("                   (mu applied per card level: 1.0 at level 1, measured;"
+                  " above that it follows")
+            print("                   the hypothesis in MU_LEVELS)")
             if rec["mu_scaled_openings"]:
                 print("                   excluded, because their OPENING carries the deck"
                       " weighting rather than")
