@@ -62,6 +62,22 @@ public final class Move {
     /** Percentage points it opens on its user. Some moves list openings against yourself. */
     public final double[] openingsSelf;
 
+    /**
+     * The SHARE of a standing opening this move removes from its user, per colour, 0..1.
+     *
+     * A fraction, not percentage points, and the corpus is unambiguous about it. Zig-Zag
+     * Ruse is listed "Reduces: 50% - mu Sweeping, 50% - mu Oppressive" and at level 1 it
+     * took a standing Cornered of 55 to 27, 44 to 22, 66 to 33, 26 to 13 and 32 to 16 -
+     * half of whatever was there, never a flat 50 points. Reading these the way the
+     * openings field is read would have subtracted 50 points from a 26 and floored it.
+     *
+     * Every one of the ten reduction terms in the sheet is written "N% - mu", so mu scales
+     * the share directly and LINEARLY. That is the distinction that made the mu chain
+     * dangerous: for an attack mu enters the weight and its effect on the recovered
+     * defence weight is cubed, and here it is not.
+     */
+    public final double[] reduces;
+
     /** Fraction of the weapon's base damage, from "Damage: According to weapon * 25%". */
     public final double damageShare;
     /** Flat damage, from a sheet that prints a number: Knock Its Teeth Out's "Damage: 30". */
@@ -148,6 +164,7 @@ public final class Move {
         this.schools = b.schools();
         this.openings = b.openings;
         this.openingsSelf = b.openingsSelf;
+        this.reduces = b.reduces;
         this.damageShare = b.damageShare;
         this.flatDamage = b.flatDamage;
         this.grievous = b.grievous;
@@ -170,6 +187,7 @@ public final class Move {
         this.res = o.res; this.name = o.name; this.kind = o.kind;
         this.school = o.school; this.schools = o.schools;
         this.openings = o.openings; this.openingsSelf = o.openingsSelf;
+        this.reduces = o.reduces;
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
         this.grievous = o.grievous;
         this.ipCost = o.ipCost; this.ipGain = o.ipGain; this.foeIpGain = o.foeIpGain;
@@ -211,6 +229,7 @@ public final class Move {
         private int[] extra = null;
         private final double[] openings = new double[4];
         private final double[] openingsSelf = new double[4];
+        private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
         private int ipCost = 0, ipGain = 0, foeIpGain = 0, gainColour = -1;
         private double gainAbove = 0;
@@ -264,6 +283,12 @@ public final class Move {
         /** Percentage points opened on the target in one colour. */
         public Builder opens(int colour, double pct) {
             this.openings[colour] = pct;
+            return(this);
+        }
+
+        /** The share of a standing opening this move removes from the user, 0..1. */
+        public Builder reduces(int colour, double frac) {
+            this.reduces[colour] = frac;
             return(this);
         }
 

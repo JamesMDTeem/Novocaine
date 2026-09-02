@@ -84,6 +84,19 @@ public final class Combatant {
         openings[colour] = (v > 100.0) ? 100.0 : ((v < 0.0) ? 0.0 : v);
     }
 
+    /**
+     * Removes a share of one standing opening - what a defensive card does.
+     *
+     * A share of what is there, not a number of points: see {@link Move#reduces}. Nothing
+     * about the attacker enters, which is why a reduction is the one combat quantity that
+     * can be read straight off a log without knowing anything about the opponent.
+     */
+    public void close(int colour, double share) {
+        if(share <= 0)
+            return;
+        openings[colour] *= (1.0 - ((share > 1.0) ? 1.0 : share));
+    }
+
     /** The skill feeding a move's attack weight. */
     public double skill(Move.Weight w) {
         switch(w) {

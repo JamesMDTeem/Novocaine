@@ -100,7 +100,9 @@ public final class Sim {
      * 3. Damage, read against the target's opening in the move's own school as it stands before
      *    this move opens anything further.
      * 4. Openings, which the move's own damage therefore does not benefit from.
-     * 5. Initiative, last, so that a conditional gain is judged on the same opening the damage
+     * 5. Reductions, on the actor's own openings - a defensive card closes what is standing
+     *    on its user, by a SHARE of it rather than a number of points.
+     * 6. Initiative, last, so that a conditional gain is judged on the same opening the damage
      *    was.
      */
     public Result use(Combatant actor, Move m) {
@@ -144,6 +146,16 @@ public final class Sim {
 
         /* The conditional-gain test is taken here, before the move's own openings land. */
         boolean gains = (m.gainColour < 0) || (target.opening(m.gainColour) > m.gainAbove);
+
+        /* Reductions land before the openings this move inflicts, and on the ACTOR - a
+         * defensive card closes its user's own openings. Order matters only for a card
+         * that both reduces and opens the same colour on itself, which nothing in the
+         * sheet does today; put here because a card cannot benefit from an opening it
+         * gives itself in the same use. */
+        for(int c = 0; c < 4; c++) {
+            if(m.reduces[c] > 0)
+                actor.close(c, m.reduces[c] * m.mu);
+        }
 
         double[] opened = new double[4];
         for(int c = 0; c < 4; c++) {

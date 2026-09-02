@@ -68,12 +68,50 @@ public class CombatPackCheck {
         moves = Pack.moves(MOVES);
         System.out.println("loaded " + moves.size() + " moves from data/combat/moves_sheet.json");
         sheetNumbers();
+        reductions();
         initiativeLines();
         takeAimLadder();
         weightsAndSchools();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /**
+     * Defensive cards, whose "Reduces" line is a SHARE and not a number of points.
+     *
+     * Zig-Zag Ruse is listed at 50% and settles it: at level 1, where mu is 1.0, it took a
+     * standing Cornered of 55 to 27, 44 to 22, 66 to 33, 26 to 13 and 32 to 16 across the
+     * corpus. Half of whatever was there, every time. Reading the line the way an openings
+     * line is read would subtract fifty POINTS, which floors a 26 to nothing.
+     */
+    static void reductions() {
+        System.out.println("\ndefensive cards reduce a share, not a number of points");
+        Move zig = m("Zig-Zag Ruse");
+        near("Zig-Zag Ruse takes half of Cornered", zig.reduces[Formulas.RED], 0.5, 1e-9);
+        near("  and half of Reeling", zig.reduces[Formulas.YELLOW], 0.5, 1e-9);
+        near("  it opens nothing", zig.openings[Formulas.RED], 0, 0);
+        near("Quick Dodge is listed at 20% of Off Balance",
+             m("Quick Dodge").reduces[Formulas.GREEN], 0.2, 1e-9);
+
+        /* The logged series, replayed. Every one of these is a real pair from the corpus. */
+        Combatant me = me();
+        Combatant foe = foe();
+        int[][] logged = {{55, 27}, {44, 22}, {66, 33}, {26, 13}, {32, 16}};
+        for(int[] pair : logged) {
+            me.openings[Formulas.RED] = pair[0];
+            me.readyAt = 0;
+            new Sim(me, foe).use(me, zig);
+            check("  " + pair[0] + " Cornered becomes",
+                  (int)Math.floor(me.openings[Formulas.RED]), pair[1]);
+        }
+        /* mu scales the share LINEARLY - the distinction that made the mu chain dangerous,
+         * since for an attack it enters the weight and its effect is cubed. */
+        me.openings[Formulas.RED] = 50;
+        me.readyAt = 0;
+        new Sim(me, foe).use(me, zig.withMu(1.2));
+        near("at mu 1.2 the same card takes 60%, not 50%",
+             me.openings[Formulas.RED], 20.0, 1e-9);
     }
 
     /** Numbers printed verbatim on the sheet, which the loader must not alter. */

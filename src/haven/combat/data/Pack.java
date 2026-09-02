@@ -107,6 +107,17 @@ public final class Pack {
                 b.opensSelf(c, o.optDouble("pct", 0));
         }
 
+        /* "Reduces: 50% - mu Sweeping" is a SHARE of what is standing, not fifty points -
+         * Zig-Zag Ruse took a Cornered of 55 to 27 and one of 26 to 13. Divided by 100 here
+         * for that reason, where the openings above are left in percentage points. */
+        JSONArray red = j.optJSONArray("reduces");
+        for(int i = 0; (red != null) && (i < red.length()); i++) {
+            JSONObject o = red.getJSONObject(i);
+            Integer c = colour(o.optString("colour", null));
+            if(c != null)
+                b.reduces(c, o.optDouble("pct", 0) / 100.0);
+        }
+
         b.damageShare(dbl(j, "damage_share", 0)).flatDamage(dbl(j, "damage_flat", 0))
             .grievous(dbl(j, "grievous_pct", 0) / 100.0)
             /* "Initiative points: N" is what the move SPENDS - see Move.ipCost. The trailing
