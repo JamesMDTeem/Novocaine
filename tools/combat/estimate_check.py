@@ -186,21 +186,24 @@ def deck_weighting():
           (round(estimate.MU_MIN, 3), estimate.MU_MAX), (0.667, 1.5))
     check("a boar-sized gap is outside it",
           estimate.MU_MIN <= 2.72 <= estimate.MU_MAX, False)
-    # The linear hypothesis: levels 1 to 5 across 1.0 to 1.5. The cap is 5 for everything
-    # except stances - a move showing a "max" of 1 in the deck dump has merely been
-    # LEARNED once, which is not the same fact and is easy to misread as the ceiling.
-    near("level 1 is 1.0, which Take Aim measures exactly",
-         estimate.mu_at_level(1), 1.0, 1e-9)
-    near("level 5 is the top of the wiki's range", estimate.mu_at_level(5), 1.5, 1e-9)
-    near("level 3 sits midway", estimate.mu_at_level(3), 1.25, 1e-9)
+    # The linear hypothesis - levels 1 to 5 across 1.0 to 1.5 - is kept only so it can be
+    # shown to be wrong. The cap is 5 for everything except stances; a move showing a
+    # "max" of 1 in the deck dump has merely been LEARNED once, which is a different fact
+    # and an easy one to misread as the ceiling.
+    near("the linear curve puts level 1 at 1.0", estimate.mu_linear(1), 1.0, 1e-9)
+    near("and level 5 at the top of the stated range", estimate.mu_linear(5), 1.5, 1e-9)
+    near("and level 2 at 1.125", estimate.mu_linear(2), 1.125, 1e-9)
+    check("nothing goes past the cap",
+          estimate.mu_linear(9) == estimate.mu_linear(5), True)
+    # Which the measurement contradicts. This is the whole point of keeping it.
+    check("Take Aim's level-2 measurement excludes that 1.125",
+          estimate.mu_bounds(2)[0] <= 1.125 <= estimate.mu_bounds(2)[1], False)
+    # And the point estimate no longer comes off the excluded curve.
     check("an unlearned card has no weighting", estimate.mu_at_level(0), None)
-    check("and nothing goes past the cap",
-          estimate.mu_at_level(9) == estimate.mu_at_level(5), True)
-    # One anchor at 1.0 and one loose reading at level 3 cannot separate this from the
-    # rival curve, and the checks should not pretend otherwise.
-    rival = 1.0 + 0.1 * (3 - 1)
-    check("the rival curve is still live at level 3",
-          abs(estimate.mu_at_level(3) - rival) < 0.1, True)
+    check("the point estimate now sits inside the measured band",
+          estimate.mu_bounds(2)[0] <= estimate.mu_at_level(2) <= estimate.mu_bounds(2)[1],
+          True)
+    near("and is 1.0 at level 1", estimate.mu_at_level(1), 1.0, 0.01)
 
     check("a level-1 spread is inside it",
           all(estimate.MU_MIN <= r <= estimate.MU_MAX
@@ -231,14 +234,67 @@ def deck_history():
               estimate.levels_at(2500)["Quick Barrage"], 1)
         check("and today's deck would have said 0", estimate.DECKS[-1][1]["Quick Barrage"],
               0)
-        # A fight older than every dump falls back to the earliest, which resembles the
-        # deck it was fought with far more than today's does.
-        check("a fight older than every dump falls back to the earliest",
-              estimate.levels_at(1)["Punch"], 0)
+        # A fight older than every dump is UNKNOWN, not guessed. It used to fall back to
+        # the earliest deck, and a fight with no wall stamp at all walked the whole list
+        # and came back with TODAY's - which credited the corpus's oldest Take Aim fight
+        # to level 2 and made its textbook 30/36/42 ladder read as mu 1.18 instead of the
+        # 1.0 it plainly is. A level-keyed measurement should skip a fight whose deck it
+        # does not know, and it can only do that if this says so.
+        check("a fight older than every dump is unknown, not guessed",
+              estimate.levels_at(1), {})
+        check("a fight with no timestamp is unknown too", estimate.levels_at(None), {})
         estimate.DECKS = []
         check("no dumps at all is empty rather than wrong", estimate.levels_at(500), {})
     finally:
         estimate.DECKS = saved
+
+
+def mu_measurement():
+    """Take Aim's cooldown, which is the only direct read of mu anywhere in this project.
+
+    The level-1 row is the control: a card with no extra points in it must weight at
+    exactly 1.0, and 48 logged observations spanning the whole 30/36/42/48/54/60/66/72
+    ladder say it does. If that row ever stops containing 1.0, the reader is wrong and
+    every level above it is wrong with it.
+    """
+    print("\nmu, measured from Take Aim's cooldown")
+    # The arithmetic, on numbers rather than on the corpus, so this section still means
+    # something on a machine with no logs.
+    lo, hi = estimate.mu_from_takeaim(30, 0)
+    check("30 ticks at 0 IP brackets mu = 1.0", lo < 1.0 <= hi, True)
+    lo, hi = estimate.mu_from_takeaim(26, 0)
+    check("26 ticks at 0 IP gives about 1.15", round((lo + hi) / 2, 2), 1.15)
+    # 26 at 0 IP and 31 at 1 IP are the SAME mu - the initiative term has to come off the
+    # observation before the ratio is taken, and getting that backwards is what made an
+    # earlier version of this read a different mu at every initiative.
+    a = estimate.mu_from_takeaim(26, 0)
+    b = estimate.mu_from_takeaim(31, 1)
+    check("26 at 0 IP and 31 at 1 IP are consistent", (a[0] < b[1]) and (b[0] < a[1]), True)
+    # 36 at 1 IP is mu = 1.0, so it must NOT be consistent with 26 at 0 IP.
+    c = estimate.mu_from_takeaim(36, 1)
+    check("36 at 1 IP is a different mu, and reads so",
+          (a[0] < c[1]) and (c[0] < a[1]), False)
+
+    m = estimate.measure_mu()
+    if not m:
+        print("  (no Take Aim in this corpus - nothing measured)")
+        return
+    for level in sorted(m):
+        blo, bhi, n, stale = m[level]
+        print("  level %d: mu in (%.4f, %.4f]  from %d observation(s)%s"
+              % (level, blo, bhi, n,
+                 ", %d stale ip sample(s) set aside" % stale if stale else ""))
+    if 1 in m:
+        blo, bhi, _n, _s = m[1]
+        check("  CONTROL: level 1 must contain exactly 1.0", (blo <= 1.0 <= bhi), True)
+    if 2 in m:
+        blo, bhi, _n, _s = m[2]
+        # The linear curve is what everyone reaches for first, and this corpus rules it
+        # out. Pinning the exclusion stops it being quietly reintroduced.
+        check("  the linear 1.0-1.5 curve predicts 1.125 and is excluded",
+              blo <= 1.125 <= bhi, False)
+        check("  linear across the card's own max predicts 1.25, also excluded",
+              blo <= 1.25 <= bhi, False)
 
 
 def armour():
@@ -325,6 +381,7 @@ def main():
     defence()
     deck_weighting()
     deck_history()
+    mu_measurement()
     armour()
     buckets()
     if failures:

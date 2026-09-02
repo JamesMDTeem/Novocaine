@@ -65,6 +65,9 @@ MU = 1.0
 # cannot leave 1/1.5 to 1.5. A wider gap is not a deck-level difference and needs another
 # explanation.
 MU_MIN, MU_MAX = 1.0 / 1.5, 1.5
+# The floor on mu ITSELF, as opposed to MU_MIN above, which floors a RATIO of two of
+# them. Conflating the two would let a measurement clip to 0.67.
+MU_MIN_STATED = 1.0
 
 # The card cap is 5 for everything except stances. A linear curve across those five
 # levels - 1.0 to 1.5 - is the obvious shape, and mu_at_level() below computes it, but
@@ -81,11 +84,149 @@ MU_MIN, MU_MAX = 1.0 / 1.5, 1.5
 MU_LEVELS = 5
 
 
-def mu_at_level(level):
-    """The deck weighting a card at this level would have, on the linear hypothesis."""
+def mu_linear(level):
+    """What the linear hypothesis would give - 1.0 to 1.5 across the five card levels.
+
+    KEPT ONLY TO BE CONTRADICTED. Take Aim's cooldown now measures mu directly at level 2
+    as 1.143 to 1.177, and this predicts 1.125, which is outside it. Nothing may compute
+    with this; it exists so the report can show what the obvious guess would have said
+    next to what the corpus actually says, and so a check can pin the exclusion.
+    """
     if not level or level < 1:
         return None
     return 1.0 + (MU_MAX - 1.0) * (min(level, MU_LEVELS) - 1) / (MU_LEVELS - 1)
+
+
+def mu_at_level(level):
+    """A single mu for a card at this level, for the places that cannot carry an interval.
+
+    The midpoint of mu_bounds, which is measured where Take Aim has been logged at that
+    level and the devs' stated range otherwise. It used to be the linear curve, which the
+    corpus has since excluded - and a point estimate off an excluded curve is exactly the
+    kind of confident wrong number this project keeps finding.
+
+    Prefer mu_bounds and attack_weight_bounds. A point here throws away the fact that an
+    unmeasured level is known only to within 1.0-1.5, and that width is real.
+    """
+    if not level or level < 1:
+        return None
+    lo, hi = mu_bounds(level)
+    return (lo + hi) / 2.0
+
+
+# Take Aim's base cooldown and its initiative scaling, from the sheet. Kept here rather
+# than read from the move sheet because measure_mu() must work on a corpus whose deck
+# dump is not the one loaded, and because a wrong base here would silently rescale every
+# mu it reports - a literal is easier to check than a lookup.
+TAKE_AIM_BASE, TAKE_AIM_IP_SCALE = 30.0, 0.20
+
+
+def mu_from_takeaim(cooldown, ip):
+    """The deck weighting implied by one Take Aim cooldown, as an interval.
+
+    observed = round(base / mu * (1 + ipScale * ip)), and the server sends whole ticks, so
+    an observed N means the unrounded value was in [N - 0.5, N + 0.5). Inverting that
+    gives a band rather than a point, and the band is what makes two observations at
+    different initiative able to intersect into something tighter than either.
+    """
+    if not cooldown or cooldown <= 0:
+        return None
+    f = 1.0 + (TAKE_AIM_IP_SCALE * ip)
+    lo = TAKE_AIM_BASE / ((cooldown + 0.5) / f)
+    hi = TAKE_AIM_BASE / ((cooldown - 0.5) / f)
+    return (lo, hi)
+
+
+def measure_mu(logs=None):
+    """mu per card level, read off Take Aim's reported cooldown. {level: (lo, hi)}.
+
+    THIS IS THE ONE PLACE mu IS MEASURED RATHER THAN ASSUMED, and it works only because
+    Take Aim's sheet writes "Cooldown: 30 / mu" - the server hands us a number that mu
+    divides, so nothing about an opponent enters. Every other card carries mu into a
+    quantity that is multiplied by an unknown defence weight, where mu and Wd cannot be
+    separated; this one does not.
+
+    Two things have to be handled or the answer is wrong rather than merely wide.
+
+    The initiative the cooldown scales by is the one held GOING IN, and the state sample
+    that records it can land either side of the move message. So a use is read against the
+    ip in the state before it, and an observation whose bracketing states disagree in a
+    way the move itself cannot explain - Take Aim grants a point, so an unchanged ip means
+    a sample was dropped - is not trusted to a single ip and is reported separately rather
+    than averaged in. One such observation here reads 31 ticks against an apparent 2 IP,
+    which would be mu 1.36; its own file also holds a clean 26 at 0 IP, and 26 at 0 IP
+    predicts exactly 31 at 1 IP, so the ip sample is stale rather than the model wrong.
+
+    The level is the level in force AT THE TIME, from levels_at(). A fight whose deck is
+    unknown is skipped, never credited to today's deck - doing that credited the corpus's
+    oldest fight, which predates every dump, to level 2 and made its textbook 30/36/42
+    ladder read as mu 1.18.
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    per = defaultdict(list)
+    suspect = defaultdict(list)
+    for path in logs:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                recs = [json.loads(ln) for ln in f if ln.strip()]
+        except (OSError, ValueError):
+            continue
+        wall = next((r.get("wall") for r in recs if r.get("ev") == "begin"), None)
+        level = levels_at(wall).get("Take Aim")
+        if not level:
+            continue
+        before = None
+        for i, r in enumerate(recs):
+            if r.get("ev") == "state":
+                before = r
+                continue
+            if r.get("ev") != "move" or r.get("actor") != "me":
+                continue
+            if not str(r.get("move") or "").endswith("takeaim"):
+                continue
+            if before is None:
+                continue
+            after = next((x for x in recs[i + 1:] if x.get("ev") == "state"), None)
+            ip = before.get("myip")
+            if ip is None:
+                continue
+            band = mu_from_takeaim(r.get("cd"), ip)
+            if band is None:
+                continue
+            # Take Aim grants a point. If the state after it shows the same ip, a sample
+            # was dropped and this ip cannot be trusted.
+            stale = (after is not None) and (after.get("myip") == ip)
+            (suspect if stale else per)[level].append(band)
+    out = {}
+    for level, bands in per.items():
+        lo = max(b[0] for b in bands)
+        hi = min(b[1] for b in bands)
+        # Clipped to the devs' stated 1.0-1.5. That is not cosmetic at level 1: the
+        # measurement there is (0.9931, 1.0070], and the part below 1.0 is rounding on a
+        # whole-tick cooldown rather than a real possibility, since level 1 is a card with
+        # no extra points in it and 1.0 is the floor by definition. Clipping keeps the
+        # floor without pretending the measurement is tighter than it is.
+        lo, hi = max(lo, MU_MIN_STATED), min(hi, MU_MAX)
+        if lo <= hi:
+            out[level] = (lo, hi, len(bands), len(suspect.get(level, ())))
+    return out
+
+
+# Measured at import, so every defence weight this tool reports is corrected by a mu that
+# was read rather than assumed. What it currently finds:
+#
+#   level 1  ->  exactly 1.0        63 observations, the whole 30/36/42/48/54/60/66/72
+#                                   ladder at 0 through 7 initiative, without exception
+#   level 2  ->  1.143 to 1.177     six agreeing observations - five of "26 at 0 IP" and
+#                                   one of "31 at 1 IP", which are the same mu
+#
+# What that EXCLUDES matters as much as what it says. The obvious curve, linear from 1.0
+# to 1.5 across the five card levels, predicts 1.125 at level 2 and is ruled out. So is
+# linear across a card's own maximum, which predicts 1.25. Shapes that still fit include
+# 1.5 - 0.5/sqrt(L) (1.146) and 1 + 0.5*(L-1)/(L+1) (1.167), and one level cannot separate
+# them. Take Aim's own maximum is 3: one further point in it, and a handful of uses logged
+# at 0 initiative, would discriminate between every surviving candidate.
 
 
 def mu_bounds(level):
@@ -108,10 +249,16 @@ def mu_bounds(level):
     """
     if not level or level < 1:
         return (MU, MU)
+    # Measured, wherever Take Aim has been logged at that level - see MU_MEASURED. A
+    # measurement beats a stated range: at level 2 it narrows 1.0-1.5 to 1.14-1.18, which
+    # is the difference between a defence weight known to 50% and one known to 3%.
+    if level in MU_MEASURED:
+        return MU_MEASURED[level]
     if level == 1:
         return (1.0, 1.0)
-    # Level 2 cannot be below level 1, and nothing can exceed the stated ceiling. A
-    # measured curve would narrow this; until there is one, the range is the input.
+    # An unmeasured level keeps the devs' stated range, and is NOT interpolated. The
+    # corpus has already excluded the linear curve, so interpolating between measured
+    # levels would be guessing a shape the data contradicts.
     return (1.0, MU_MAX)
 
 
@@ -180,6 +327,18 @@ def deck_history():
             if levels and any(v > 0 for v in levels.values()):
                 out.append((when, levels))
     out.sort()
+    # A probe that fires while the sheet is still loading carries a handful of cards
+    # rather than the deck. One here holds 8 where every dump either side holds 33, and
+    # left in place it reports every card it is missing as absent for the eight minutes
+    # it covers. Judge it on card COUNT, not on levels: a genuine deck change moves
+    # levels around and a genuine new card raises the count by one, while a partial dump
+    # is short by twenty. Nothing here treats a level going DOWN as suspicious, because
+    # it legitimately does - this corpus contains a six-minute stretch where Sting and
+    # Quick Barrage were swapped out for Punch and Knock Its Teeth Out and then swapped
+    # back, which is an experiment rather than an artefact.
+    if out:
+        full = max(len(l) for _w, l in out)
+        out = [(w, l) for w, l in out if len(l) >= (full * 0.75)]
     return out
 
 
@@ -187,23 +346,31 @@ DECKS = deck_history()
 
 
 def levels_at(when):
-    """The deck in force at a wall time - the newest dump at or before it.
+    """The deck in force at a wall time - the newest dump at or before it, or {} if none.
 
-    Falls back to the earliest known deck for a fight that predates every dump, which is
-    better than reporting no levels at all: the deck it was fought with is more likely to
-    resemble the oldest one on record than today's.
+    An unknown deck is reported as unknown. It used to fall back: a fight with no wall
+    stamp walked the whole list and came back with TODAY'S deck, and a fight older than
+    every dump came back with the earliest one. Both are guesses wearing a measurement's
+    clothes, and the second one is the exact error this project has already paid for once
+    - Take Aim's first logged fight, which predates every dump, was credited to level 2
+    and its perfect 30/36/42 ladder read as mu 1.18 instead of the 1.0 it plainly is.
+
+    Returning {} costs nothing that matters: a level-keyed measurement skips the fight,
+    which is the correct treatment for a fight whose deck is not known.
     """
-    if not DECKS:
+    if not DECKS or when is None or when < DECKS[0][0]:
         return {}
-    best = DECKS[0][1]
+    best = {}
     for stamp, levels in DECKS:
-        if when is not None and stamp > when:
+        if stamp > when:
             break
         best = levels
     return best
 
 
-LEVELS = levels_at(None) if not DECKS else DECKS[-1][1]
+LEVELS = DECKS[-1][1] if DECKS else {}
+
+MU_MEASURED = dict((lvl, (lo, hi)) for lvl, (lo, hi, _n, _s) in measure_mu().items())
 
 
 def load_moves():
@@ -300,14 +467,41 @@ def agility_interval(observations, agi_me):
     return (lo, hi, capped)
 
 
-def fit_armour(hits):
+# How far a fit's root-mean-square residual may sit before it stops being a measurement.
+#
+# This is the trust signal, and the corpus calibrates it rather than taste. Every armour
+# that lands exactly on the wiki's figure fits with an rms of 0.22 or less - red deer 0.00,
+# boar 0.00 on clean hits, lynx 0.15, cave angler 0.22. Every fit that CONTRADICTS the
+# wiki has an rms above 2 - bear 2.42 against a stated 65, moose 4.16 against the same.
+#
+# The boar settles which side is wrong, because it is the one species with both: 222 hits
+# from group fights fit 15-16 with rms 2.33, and the 7 hits from the fight nobody else
+# joined fit 15 exactly with rms 0.00. The armour did not change between them. So a high
+# residual means the hits are mixed, not that the wiki is wrong, and a fit above this
+# threshold may not be used to contradict a stated figure.
+ARM_RMS_TRUST = 1.0
+
+
+def fit_armour(hits, clean=None):
     """Hard and soft soak, from attacks whose ARM channel recorded what was absorbed.
+
+    `clean` is the subset thrown in fights nobody else was in. When there are enough of
+    them they are used ALONE, because a fit is only as good as its assumption that every
+    hit came from the same attacker with the same penetration.
 
     ARM + SHP is the damage before armour and SHP is what got through, so each hit is a
     direct (raw, dealt) pair and no damage model is needed to produce one. The grid is
     coarse because the numbers are integers; a finer one would be inventing precision.
     """
-    pts = [(h["raw"], h["shp"]) for h in hits if h["soaked"] > 0 and h["raw"] > 0]
+    def usable(rows):
+        return [(h["raw"], h["shp"]) for h in rows or ()
+                if h["soaked"] > 0 and h["raw"] > 0]
+
+    pts, source = usable(clean), "clean"
+    if len(pts) < 4:
+        pts, source, hits = usable(hits), "mixed", hits
+    else:
+        hits = clean
     if len(pts) < 2:
         return None
     # The search runs over the TOTAL soak and how it splits, bounded by the largest
@@ -326,7 +520,7 @@ def fit_armour(hits):
     penetrated = any(shp > 0 for _raw, shp in pts)
     biggest = int(max(h["soaked"] for h in hits))
     if not penetrated:
-        return {"hard": None, "soft": None, "n": len(pts), "rms": 0.0,
+        return {"hard": None, "soft": None, "n": len(pts), "rms": 0.0, "source": source,
                 "total": (biggest, None), "identified": False, "penetrated": False}
     top = biggest + 2
     scored = []
@@ -355,7 +549,7 @@ def fit_armour(hits):
     tol = err + (0.25 * len(pts))
     tied = [(h, s) for e, h, s in scored if e <= tol]
     totals = set(h + s for h, s in tied)
-    return {"hard": hard, "soft": soft, "n": len(pts),
+    return {"hard": hard, "soft": soft, "n": len(pts), "source": source,
             "rms": math.sqrt(err / len(pts)),
             "total": (min(totals), max(totals)),
             "identified": len(tied) == 1, "penetrated": True}
@@ -461,7 +655,7 @@ def collect(paths):
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         "res": None, "hp": None, "wd_by_gob": {},
-        "last_hit": {}, "partial": set(), "soak": [],
+        "last_hit": {}, "partial": set(), "soak": [], "soak_clean": [],
         "mu_scaled_openings": set(), "wd_by_gob_move": {}, "deck_at": {},
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
@@ -491,7 +685,17 @@ def collect(paths):
             rec["dealt"][eng.gob] += sum(d["v"] for d in hits)
             # Armour reads off every hit the creature took, whoever threw it: the ratio
             # of absorbed to through is a property of the armour, not of the attacker.
-            rec["soak"].extend(fightlog.soak_pairs(eng))
+            pairs = fightlog.soak_pairs(eng)
+            rec["soak"].extend(pairs)
+            # Hits from a fight nobody else was in. soak_pairs deliberately takes hits
+            # from every attacker, on the argument that the absorbed/through split is a
+            # property of the armour - but that argument has a hole. Penetration bypasses
+            # armour entirely, so the split depends on the ATTACKER's penetration too, and
+            # the fit assumes zero. Worse, two hits landing inside the same two-millisecond
+            # bucket merge into one synthetic hit with both their ARM and both their SHP.
+            # Neither can happen when we are the only one swinging.
+            if not eng.others_present:
+                rec["soak_clean"].extend(pairs)
             # The killing blow, for the overkill bound - it is the last damage this
             # opponent took, and however much of it exceeded the opponent's remaining
             # health is not evidence of anything.
@@ -812,15 +1016,20 @@ def report_mu(per):
     print("=" * 78)
     print("DECK WEIGHTING BY LEVEL")
     print("=" * 78)
-    print("  mu is 1.0 at level 1, measured: Take Aim's cooldown divides by it and came")
-    print("  back at its listed 30. Everything below is one move against another thrown")
-    print("  at the SAME creature, since only that divides the opponent out.\n")
-    print("  %-6s %-6s %-16s %-5s %-11s %s"
-          % ("level", "mu", "interval", "n", "if linear", "measured on"))
+    print("  mu is measured directly off Take Aim, whose cooldown divides by it - see the")
+    print("  'Take Aim says' column, which owes nothing to any fight. The rows themselves")
+    print("  are one move against another thrown at the SAME creature, since only that")
+    print("  divides the opponent out, and they are the weaker evidence of the two.")
+    print("  The linear curve is shown only because the corpus EXCLUDES it: it wants")
+    print("  1.125 at level 2 where Take Aim measures 1.143 to 1.177.\n")
+    print("  %-6s %-6s %-16s %-5s %-13s %-11s %s"
+          % ("level", "mu", "interval", "n", "Take Aim says", "linear said", "measured on"))
     for lvl, mu, lo, hi, n, name, mv, ref in sorted(rows):
-        pred = mu_at_level(lvl)
-        print("  %-6s %-6.2f %-16s %-5d %-11s %s vs %s, %s"
+        pred = mu_linear(lvl)
+        direct = MU_MEASURED.get(lvl)
+        print("  %-6s %-6.2f %-16s %-5d %-13s %-11s %s vs %s, %s"
               % (lvl, mu, "%.2f - %.2f" % (lo, hi), n,
+                 ("%.3f-%.3f" % direct) if direct else "-",
                  "%.3f" % pred if pred else "?", mv[:16], ref[:16], name[:12]))
 
     # The level-1 rows are the control: every one of them must read exactly 1.00, so what
@@ -995,7 +1204,7 @@ def report(per, moves):
             print("\n  agility          ? (no attack cooldowns reported against this opponent)")
 
         # --- armour
-        arm = fit_armour(rec["soak"])
+        arm = fit_armour(rec["soak"], rec.get("soak_clean"))
         wiki_arm = wiki_value(rec.get("wiki"), "armor")
         if arm and not arm.get("penetrated", True):
             print("\n  armour           at least %d, no ceiling   (%d hit(s), none got "
@@ -1017,8 +1226,29 @@ def report(per, moves):
             else:
                 print("\n  armour           %d - %d total, split unidentifiable   (%d hit(s), "
                       "rms %.2f)" % (tlo, thi, arm["n"], arm["rms"]))
+            if arm.get("source") == "mixed":
+                print("                   fitted from hits by EVERY attacker, ours and "
+                      "other people's - the")
+                print("                   split depends on the attacker's penetration, "
+                      "and two hits inside one")
+                print("                   two-millisecond bucket merge, so this is looser "
+                      "than its width suggests")
             if wiki_arm is not None:
-                mark = "agrees" if wiki_arm == tlo == thi else "DIFFERS"
+                # A fit may only contradict a stated figure when it is clean enough to be
+                # believed. Every armour that lands exactly on the wiki fits with an rms
+                # under 0.25; every one that contradicts it sits above 2. The boar settles
+                # it - 15 exactly from the fight nobody else joined, 15-16 with rms 2.33
+                # from 222 mixed hits of the same creature.
+                trusted = (arm["rms"] <= ARM_RMS_TRUST) or (arm.get("source") == "clean")
+                if wiki_arm == tlo == thi:
+                    mark = "agrees"
+                elif tlo <= wiki_arm <= thi:
+                    mark = "contains it"
+                elif not trusted:
+                    mark = ("outside this fit, but the fit's residual of %.2f is too high "
+                            "to contradict it" % arm["rms"])
+                else:
+                    mark = "DIFFERS"
                 print("                   the wiki says %s - %s" % (wiki_arm, mark))
             for h in [x for x in rec["soak"] if x["soaked"] > 0][:6]:
                 print("      raw %-5d soaked %-5d through %-5d" % (h["raw"], h["soaked"],
@@ -1109,7 +1339,7 @@ def write_pack(per, moves):
                             {"lo": round(iv[0], 1), "hi": round(iv[1], 1),
                              "capped": iv[2], "our_agility": agi_me})
 
-        arm = fit_armour(rec["soak"])
+        arm = fit_armour(rec["soak"], rec.get("soak_clean"))
         wiki_arm = wiki_value(rec.get("wiki"), "armor")
         if arm:
             tlo, thi = arm["total"]
