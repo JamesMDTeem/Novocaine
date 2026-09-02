@@ -172,7 +172,13 @@ def pairing():
     log = load([begin(), state(1000), move(2000), move(2100),
                 state(2200, foe=(0, 0, 0, 30)), end()])
     gains = fightlog.opening_gains(log.engagements[0])
-    check("two moves with no state between them credit only the later", len(gains), 1)
+    # The assertion used to be 1, which contradicted the comment directly above it. The
+    # comment was right: brackets() stopped at an intervening move going FORWARD and not
+    # going BACKWARD, so the later move's "before" state predated BOTH moves and it was
+    # credited with the pair's combined work. 144 of 2400 brackets in the corpus, and it
+    # inflates a gain rather than shrinking it - which is how one ant came out with a
+    # defence weight near 1 from a single Quick Barrage that a listed 10% cannot produce.
+    check("two moves with no state between them credit neither", len(gains), 0)
 
 
 def damage():

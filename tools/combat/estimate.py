@@ -691,14 +691,56 @@ def own_defence_weight(moves, attrs, gear, levels):
     return best
 
 
+# The four attack schools, and the opening colour each one inflicts. The wiki's animal
+# table names schools where our own sheet names colours; they are the same four things.
+SCHOOL_COLOUR = {"striking": "green", "backhanded": "blue",
+                 "sweeping": "yellow", "oppressive": "red"}
+
+ANIMALS = os.path.join(ROOT, "data", "combat", "animal_moves.json")
+
+
+def animal_opens():
+    """Animal move name -> the colours it opens, from the wiki's table.
+
+    Needed for the same reason our own deck's map is: attribution turns on colour. Without
+    it every gain an ANIMAL puts on us is unattributable, because there is nothing to test
+    a stray colour against - which is why the pressure figures could only ever come from
+    fights with a single opponent.
+
+    The table gives the schools and not the percentages, which is the whole reason
+    opening pressure is reported as a product - see collect().
+    """
+    try:
+        with open(ANIMALS, "r", encoding="utf8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    rows = doc if isinstance(doc, list) else sum(
+        (v for v in doc.values() if isinstance(v, list)), [])
+    idx = dict((c, i) for i, c in enumerate(fightlog.COLOURS))
+    out = {}
+    for r in rows:
+        if not isinstance(r, dict) or not r.get("name"):
+            continue
+        cols = set()
+        for o in r.get("openings") or []:
+            c = SCHOOL_COLOUR.get(str(o).lower())
+            if c in idx:
+                cols.add(idx[c])
+        out[r["name"]] = cols
+    return out
+
+
 def opens_map(moves):
     """Move name -> the set of colour indices it opens, for fightlog.
 
     This is what lets contamination detection be exact rather than temporal: a rise in a
-    colour none of our deck opens cannot be ours, however close in time it landed.
+    colour none of our deck opens cannot be ours, however close in time it landed. Animal
+    moves are folded in from the wiki table so the same test works in both directions;
+    ours win a name collision, since our sheet is the game's own text.
     """
     idx = dict((c, i) for i, c in enumerate(fightlog.COLOURS))
-    out = {}
+    out = animal_opens()
     for name, m in moves.items():
         out[name] = set(idx[o["colour"]] for o in (m.get("openings") or [])
                         if o.get("colour") in idx)
@@ -790,8 +832,48 @@ def collect(paths):
             # gets reported, because the product is what was measured - and it is the
             # useful half anyway, since it falls as the cube root of our own defence
             # weight and so says directly what a heavier stance would buy.
-            if eng.defence_ok and my_wd:
-                for actor, name, colour, standing, gain in fightlog.opening_gains(eng):
+            # ATTRIBUTION IS PER OBSERVATION, NOT PER ENGAGEMENT.
+            #
+            # This used to skip a whole engagement the moment anything else was happening
+            # in it, and "anything else" included another player fighting a DIFFERENT
+            # animal a few paces away - which cannot touch what our sword did to our boar.
+            # It cost most of a busy world: sixteen of thirty-four boar engagements,
+            # twenty of twenty-two beelarva, and every bear fight in the corpus.
+            #
+            # A move's bracket already excludes every move the log records. What it cannot
+            # see is another PLAYER, whose moves never enter our fightview. attributed_
+            # gains() tests each bracket for that directly - a stray colour, or a second
+            # hit landing on the target inside the window - and keeps the observations
+            # that pass. The engagement-level problems are still reported, because they
+            # remain the honest description of the fight; they no longer decide on their
+            # own what may be measured.
+            # PER-BRACKET ATTRIBUTION IS BUILT BUT NOT YET TRUSTED, and the corpus is
+            # why. fightlog.attributed_gains() tests each bracket on its own - a stray
+            # colour, or a second hit landing inside the window - instead of discarding a
+            # whole engagement because something else was happening somewhere in it. That
+            # is the right idea and it multiplies the corpus six-fold. It also breaks a
+            # measurement that was previously solid: the fox goes from a consistent 57-71
+            # across 17 observations to a contradictory 38-57 across 24, and DOWNWARD,
+            # which is the direction an unseen extra opening pushes a defence weight.
+            #
+            # Both tests are blind to the one case that matters - another player opening
+            # the SAME colour inside the same bracket - and no amount of tightening the
+            # engagement gate fixes that, because the evidence simply is not in the log.
+            #
+            # It IS in the game. Openings are drawn over every opponent's head, not only
+            # the one we have targeted, and the client only samples the target's. With
+            # every relation's openings recorded, a third party's work shows up as a rise
+            # on a creature we never touched, and this becomes decidable rather than
+            # hopeful. That is the next step; until the logs carry it, the engagement gate
+            # stands.
+            attributed = (fightlog.attributed_gains(eng, opens, log.me)
+                          if eng.offence_ok else [])
+            if eng.problems:
+                rec["skipped"].append((os.path.basename(p), eng.problems,
+                                       len(attributed)))
+
+            if my_wd:
+                for actor, name, colour, standing, gain in attributed:
                     if actor == "me":
                         continue
                     oc = min(standing, 99) / 100.0
@@ -800,11 +882,7 @@ def collect(paths):
                     rec["pressure"][(name, colour)].append(gain / (1.0 - oc))
                     rec["my_wd"].add(round(my_wd, 1))
 
-            if not eng.offence_ok:
-                rec["skipped"].append((os.path.basename(p), eng.problems))
-                continue
-
-            for actor, name, colour, standing, gain in fightlog.opening_gains(eng):
+            for actor, name, colour, standing, gain in attributed:
                 # Only our own attacks measure the opponent's defence. Theirs measure
                 # ours, against an attack weight the log does not record.
                 if actor != "me":
@@ -1201,8 +1279,11 @@ def report(per, moves):
               % (name, rec["engagements"], "" if rec["engagements"] == 1 else "s"))
         print("=" * 78)
         if rec["skipped"]:
-            print("  %d engagement(s) not used for offence:" % len(rec["skipped"]))
-            for f, probs in rec["skipped"][:4]:
+            kept = sum(n for _f, _p, n in rec["skipped"])
+            print("  %d engagement(s) with something else going on - %d observation(s)"
+                  " survived per-bracket attribution anyway:"
+                  % (len(rec["skipped"]), kept))
+            for f, probs, _n in rec["skipped"][:4]:
                 print("    %s" % f)
                 for pr in probs:
                     print("      - %s" % pr)

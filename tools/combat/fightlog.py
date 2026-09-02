@@ -111,9 +111,22 @@ class Engagement(object):
             return (None, None)
         before = after = None
         for j in range(i - 1, -1, -1):
-            if self.seq[j].get("ev") == "state":
+            ev = self.seq[j].get("ev")
+            if ev == "state":
                 before = self.seq[j]
                 break
+            if ev == "move":
+                # Another move landed and no state was sampled between the two, so the
+                # older state describes the world before BOTH of them. Taking it would
+                # credit this move with the previous one's work.
+                #
+                # The forward search has always stopped here; the backward one did not,
+                # and the asymmetry was invisible while whole engagements were being
+                # discarded for contamination. It affects 144 of 2400 brackets, and it
+                # inflates a gain rather than shrinking it - which is how an ant ended up
+                # with a defence weight of 1 from a single 47-point Quick Barrage that a
+                # listed 10% opening cannot produce.
+                return (None, None)
         for j in range(i + 1, len(self.seq)):
             ev = self.seq[j].get("ev")
             if ev == "state":
@@ -141,6 +154,9 @@ class Log(object):
         self.engagements = []
         # gob -> resource name, from every source in the file
         self.names = {}
+        # Schema 4 "foes" samples: every relation's openings at a moment, not only the
+        # sampled opponent's. Empty for every log written before that existed.
+        self.foes = []
 
     @property
     def me(self):
@@ -196,6 +212,13 @@ def read(path, opens=None):
             log.end = r
         elif ev == "foe" and r.get("res"):
             log.names[r["gob"]] = r["res"]
+        elif ev == "foes":
+            # Schema 4. Every opponent's openings, including ones we never targeted - the
+            # only evidence a log carries about another player's attacks, since their moves
+            # never enter our fightview. Kept on the Log rather than an Engagement because
+            # it spans them: a rise on a creature we are not fighting is what says a gain on
+            # the one we ARE fighting may not be ours.
+            log.foes.append(r)
 
     _segment(log)
     _diagnose(log, opens)
@@ -389,6 +412,77 @@ def opening_gains(eng):
             if d > 0:
                 out.append((m.get("actor"), m.get("name") or m.get("move"),
                             COLOURS[i], bv[i], d))
+    return out
+
+
+def attributed_gains(eng, opens, me_gob=None):
+    """Gains that survive attribution PER OBSERVATION rather than per engagement.
+
+    opening_gains() returns every gain a move brackets and leaves the caller to decide
+    whether the engagement as a whole is trustworthy. That all-or-nothing gate throws away
+    most of a busy world: sixteen of thirty-four boar engagements, twenty of twenty-two
+    beelarva, and every bear fight in the corpus were discarded because SOMETHING else was
+    happening in them - in several cases another player fighting a different animal
+    nearby, which cannot affect what our sword did to our boar.
+
+    A move's bracket is already exclusive of every move the log records, ours and the
+    opponent's alike, because brackets() stops at one. What it cannot see is another
+    PLAYER, whose moves are not in our fightview and so never reach the log at all. Two
+    independent tests catch that, and an observation must pass both.
+
+    COLOUR. Our deck opens the colours it opens. If any colour rose inside the bracket
+    that this move does not open, something else acted in that window, and the rise in the
+    colour it DOES open is no longer separable from that something. Reject the whole
+    observation, not just the stray colour.
+
+    DAMAGE. The client draws floating numbers over a creature for damage from any source.
+    One move lands one hit, so two distinct hits inside one bracket means two attackers -
+    and a hit inside the bracket of a move that deals no damage at all means the hit was
+    not ours.
+
+    What survives is still not proof. A third party opening the SAME colour inside the
+    same bracket is invisible to both tests. The bias that leaves has a known direction,
+    which is worth more than a false sense of safety: it can only ADD to a gain, so it
+    makes an opponent's defence weight read LOW. An estimate that disagrees with a duel by
+    reading lower is therefore suspect in a way one reading higher is not.
+    """
+    out = []
+    for m in eng.moves:
+        name = m.get("name") or m.get("move")
+        can = opens.get(name)
+        if can is None:
+            # A move whose openings we do not know cannot attribute anything. Silence
+            # here is the point: guessing would put an unmeasured move's rise on the
+            # nearest known one.
+            continue
+        mine = (m.get("actor") == "me")
+        key = "foe" if mine else "mine"
+        before, after = eng.brackets(m)
+        if before is None or after is None:
+            continue
+        bv, av = before.get(key), after.get(key)
+        if not bv or not av:
+            continue
+        rose = [i for i in range(4) if av[i] > bv[i]]
+        if not rose:
+            continue
+        if [i for i in rose if i not in can]:
+            continue
+
+        # Damage on the OPPONENT inside this window. Only meaningful for our own moves:
+        # a foe's move damages us, and our own hitpoints are not drawn per hit.
+        if mine and (me_gob is not None):
+            lo, hi = before["t"], after["t"]
+            groups = set()
+            for d in eng.damage:
+                if d.get("gob") != eng.gob:
+                    continue
+                if lo <= d["t"] <= hi and d.get("ch") in ("SHP", "HHP", "ARM"):
+                    groups.add(d["t"] // 2)
+            if len(groups) > 1:
+                continue
+        for i in rose:
+            out.append((m.get("actor"), name, COLOURS[i], bv[i], av[i] - bv[i]))
     return out
 
 
