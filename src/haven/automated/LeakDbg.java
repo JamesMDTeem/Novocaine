@@ -218,6 +218,67 @@ public class LeakDbg {
         NLog.log(LOG, sb.toString());
     }
 
+    /** Where TexI objects are being constructed: "Class.method:line" -> count. */
+    private static final Map<String, long[]> texiSites = new ConcurrentHashMap<>();
+    private static final int TEXI_TOP = 5;
+
+    /**
+     * Records who constructed a {@link haven.TexI}.
+     *
+     * The texture histogram says {@code haven.TexI@} is what accumulates and never gets freed, and
+     * that is as far as it can go: every TexI collapses to the same key, so the histogram names
+     * the type and not the site. Attributing the leak from that alone got it wrong once already -
+     * the minimap's grid cache was a real undisposed-texture bug, fixed, and the leak carried on
+     * at the same rate, because the minimap was never the big source.
+     *
+     * So: walk the stack at construction and count by call site. The constructor is the right
+     * place rather than {@code st()}, which is where the GL texture is actually born - by then the
+     * stack is whatever happened to draw first, and the question is who MADE the thing and forgot
+     * to dispose it, not who first looked at it.
+     */
+    public static void texi() {
+        if (!NLog.diag())
+            return;
+        try {
+            String site = StackWalker.getInstance().walk(s -> s
+                .skip(1)
+                .filter(f -> !f.getClassName().equals("haven.TexI")
+                          && !f.getClassName().equals("haven.automated.LeakDbg"))
+                .findFirst()
+                .map(f -> f.getClassName().substring(f.getClassName().lastIndexOf('.') + 1)
+                     + "." + f.getMethodName() + ":" + f.getLineNumber())
+                .orElse("?"));
+            texiSites.computeIfAbsent(site, k -> new long[1])[0]++;
+        } catch (Throwable t) {
+            // A probe must never be the thing that breaks texture creation.
+        }
+    }
+
+    /** Top TexI construction sites since the last call, and resets. */
+    private static String texiSites() {
+        if (texiSites.isEmpty())
+            return ("");
+        List<Map.Entry<String, long[]>> all = new java.util.ArrayList<>(texiSites.entrySet());
+        texiSites.clear();
+        all.sort((a, b) -> Long.compare(b.getValue()[0], a.getValue()[0]));
+        StringBuilder sb = new StringBuilder();
+        int n = 0;
+        long other = 0;
+        for (Map.Entry<String, long[]> e : all) {
+            if (n < TEXI_TOP) {
+                if (n > 0)
+                    sb.append(';');
+                sb.append(e.getKey()).append('=').append(e.getValue()[0]);
+                n++;
+            } else {
+                other += e.getValue()[0];
+            }
+        }
+        if (other > 0)
+            sb.append(";+").append(all.size() - TEXI_TOP).append("more=").append(other);
+        return (sb.toString());
+    }
+
     /**
      * Accounts a GL texture alloc by its description. Called from the GL thread inside
      * {@code GLTexture}'s prepare lambdas (create paths). desc is the texture's {@code data.desc},
@@ -407,7 +468,12 @@ public class LeakDbg {
     private static long lastStallAt = 0;
 
     private static void watch() {
+        try {
         while (!Thread.currentThread().isInterrupted()) {
+            /* Same standing-down rule as the sampler: a probe that outlives its setting keeps
+             * dumping UI-thread stacks into the log of a client nobody is investigating. */
+            if (!NLog.diag())
+                return;
             try {
                 double started = haven.UILoop.statframe;
                 if (started > 0) {
@@ -433,6 +499,12 @@ public class LeakDbg {
                 } catch (InterruptedException e2) {
                     return;
                 }
+            }
+        }
+        } finally {
+            synchronized (LeakDbg.class) {
+                if (watchdog == Thread.currentThread())
+                    watchdog = null;
             }
         }
     }
@@ -464,7 +536,18 @@ public class LeakDbg {
         NLog.log(LOG, tag("jvmargs") + " " + String.join(" ", args));
         long next = System.currentTimeMillis();
         long nextHeapHist = (HEAP_HIST_MS > 0) ? System.currentTimeMillis() : Long.MAX_VALUE;
+        try {
         while (!Thread.currentThread().isInterrupted()) {
+            /* Stand down when the setting goes off. Without this the sampler outlived the toggle:
+             * tick() and textureAlloc() are gated and stopped feeding it, but this loop kept
+             * writing a line a second regardless - so every sample after the switch reported
+             * fps=0.0, tex=0/s and a frozen texture histogram, which reads as a total stall rather
+             * than as instrumentation that has been switched off. 138 of the 219 samples in the
+             * 2026-09-03 log are that artefact. */
+            if (!NLog.diag()) {
+                NLog.log(LOG, tag("samp") + " diagnostics switched off - sampler stopping");
+                return;
+            }
             try {
                 sample();
                 if (System.currentTimeMillis() >= nextHeapHist) {
@@ -484,6 +567,15 @@ public class LeakDbg {
                 } catch (InterruptedException e) {
                     return;
                 }
+            }
+        }
+        } finally {
+            /* Cleared however we leave, so tick() can start a fresh sampler when the setting is
+             * switched back on within the same session. Left set, the toggle would only ever work
+             * once per launch. */
+            synchronized (LeakDbg.class) {
+                if (sampler == Thread.currentThread())
+                    sampler = null;
             }
         }
     }
@@ -638,6 +730,23 @@ public class LeakDbg {
             String ph = haven.UILoop.phasestats();
             if (!ph.isEmpty())
                 sb.append(" ph=").append(ph);
+        } catch (Throwable t) {
+        }
+        /* wtick says the widget tree is where the frame goes; this says WHICH widget. Exclusive
+         * ms per class per second, so it lines up directly with the ph= means above. Drains the
+         * accumulator, so like phasestats it must be read exactly once per sample. */
+        try {
+            String wt = TickProf.drain();
+            if (!wt.isEmpty())
+                sb.append(" wtickby=").append(wt);
+        } catch (Throwable t) {
+        }
+        /* Which code is making the TexIs the histogram keeps finding. Counts per second by call
+         * site, so a site whose rate matches the leak rate is the one to look at. */
+        try {
+            String ts = texiSites();
+            if (!ts.isEmpty())
+                sb.append(" texiby=").append(ts);
         } catch (Throwable t) {
         }
         appendAlloc(sb, now);

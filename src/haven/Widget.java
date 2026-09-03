@@ -836,6 +836,24 @@ public class Widget {
 	}
 
 	public boolean dispatch(Widget w) {
+	    /* [LEAKDBG] Charge this widget its own tick time, exclusive of its children. Only for
+	     * TickEvent, and only with diagnostic logging on: this is the one recursion point every
+	     * widget's tick passes through, which is what makes per-class attribution possible at
+	     * all, but it is also the point every OTHER event passes through, so the gate matters.
+	     * See haven.automated.TickProf. */
+	    if((this instanceof TickEvent) && haven.automated.TickProf.on()) {
+		long saved = haven.automated.TickProf.open();
+		long t0 = System.nanoTime();
+		try {
+		    return(dispatch0(w));
+		} finally {
+		    haven.automated.TickProf.close(w.getClass(), saved, t0);
+		}
+	    }
+	    return(dispatch0(w));
+	}
+
+	private boolean dispatch0(Widget w) {
 	    try(CPUProfile.Current prof = CPUProfile.begin(w)) {
 		Widget phandling = handling;
 		handling = w;

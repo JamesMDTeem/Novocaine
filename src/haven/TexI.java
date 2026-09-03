@@ -41,6 +41,9 @@ public class TexI implements Tex {
     protected final Coord tdim;
 
     public TexI(BufferedImage back, boolean round) {
+	/* [LEAKDBG] Who is making these. The texture histogram can only say that TexI is what
+	 * accumulates, never which code made it - see haven.automated.LeakDbg.texi(). */
+	haven.automated.LeakDbg.texi();
 	this.back = back;
 	this.sz = Utils.imgsz(back);
 	if(round)
