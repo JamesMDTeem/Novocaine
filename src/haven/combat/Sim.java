@@ -170,13 +170,22 @@ public final class Sim {
         double[] opened = new double[4];
         for(int c = 0; c < 4; c++) {
             if(m.openings[c] > 0) {
-                opened[c] = Formulas.openingGain(actor.attackWeight(m), target.defenceWeight,
-                                                 m.openings[c], target.opening(c));
+                /* The SKILLS equalize and the multipliers do not, so the two halves go in
+                 * separately. Passing a lumped Wa and Wd here was wrong in a way that only
+                 * showed against an opponent near our own skill: inside the equalization
+                 * band the skill ratio is pinned to 1, and a lumped call cannot express
+                 * that. */
+                opened[c] = Formulas.openingGainEq(
+                    actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult,
+                    target.blockSkill, target.blockMult,
+                    m.openings[c], target.opening(c));
                 target.open(c, opened[c]);
             }
             if(m.openingsSelf[c] > 0) {
-                actor.open(c, Formulas.openingGain(actor.attackWeight(m), actor.defenceWeight,
-                                                   m.openingsSelf[c], actor.opening(c)));
+                actor.open(c, Formulas.openingGainEq(
+                    actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult,
+                    actor.blockSkill, actor.blockMult,
+                    m.openingsSelf[c], actor.opening(c)));
             }
         }
 

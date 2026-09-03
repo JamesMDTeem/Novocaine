@@ -9,7 +9,8 @@
    "hitpoints": null,
    "moves": [],
    "name": "?#1649181853",
-   "res": null
+   "res": null,
+   "skill": null
   },
   {
    "agility": {
@@ -28,8 +29,8 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 38.4,
-    "lo": 25.0,
+    "hi": 38.7,
+    "lo": 24.1,
     "n": 4
    },
    "engagements": 2,
@@ -44,7 +45,17 @@
    },
    "moves": [],
    "name": "?#598556427",
-   "res": null
+   "res": null,
+   "skill": {
+    "equalized": false,
+    "hi": 15.6,
+    "lo": 15.6,
+    "moves": [
+     "Knock Its Teeth Out"
+    ],
+    "n": 1,
+    "value": 15.6
+   }
   },
   {
    "agility": null,
@@ -68,9 +79,12 @@
     "verdict": null,
     "wiki": null
    },
-   "moves": [],
+   "moves": [
+    "paginae/atk/fscratch"
+   ],
    "name": "?#67527879",
-   "res": null
+   "res": null,
+   "skill": null
   },
   {
    "agility": {
@@ -89,8 +103,8 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 38.4,
-    "lo": 25.0,
+    "hi": 38.7,
+    "lo": 24.1,
     "n": 4
    },
    "engagements": 1,
@@ -105,19 +119,58 @@
    },
    "moves": [],
    "name": "?#675939166",
-   "res": null
+   "res": null,
+   "skill": {
+    "equalized": false,
+    "hi": 15.6,
+    "lo": 15.6,
+    "moves": [
+     "Knock Its Teeth Out"
+    ],
+    "n": 1,
+    "value": 15.6
+   }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 50.1,
-    "lo": 48.0,
-    "our_agility": 96
+    "hi": 67.2,
+    "lo": 56.5,
+    "our_agility": 113
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 50,
+    "n": 4,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 1,
+   "hitpoints": {
+    "from": "died at 66 with a last hit of 29, so that one had 37 to 66",
+    "hi": 70,
+    "lo": 37,
+    "observed_hi": 66,
+    "observed_lo": 37,
+    "verdict": "1 of these died before taking the wiki's 70, so they were below its base quality (or already hurt when we met them)",
+    "wiki": 70
+   },
+   "moves": [
+    "Roar of the Wild"
+   ],
+   "name": "adder",
+   "res": "gfx/kritter/adder/adder",
+   "skill": null
+  },
+  {
+   "agility": null,
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 259,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -127,16 +180,65 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 53
+    "n": 58
    },
-   "engagements": 5,
+   "engagements": 144,
    "hitpoints": {
-    "from": "died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
+    "from": "survived taking 21, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 47, so that one had more than that; survived taking 13, so that one had more than that; survived taking 41, so that one had more than that; survived taking 12, so that one had more than that; survived taking 31, so that one had more than that; survived taking 12, so that one had more than that; survived taking 42, so that one had more than that; survived taking 5, so that one had more than that; died at 4 with a last hit of 4, so that one had 0 to 4; survived taking 16, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 41, so that one had more than that; survived taking 10, so that one had more than that; survived taking 17, so that one had more than that; survived taking 12, so that one had more than that; survived taking 17, so that one had more than that; survived taking 3, so that one had more than that; survived taking 17, so that one had more than that; survived taking 8, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 11, so that one had more than that; survived taking 21, so that one had more than that; survived taking 45, so that one had more than that; survived taking 15, so that one had more than that; survived taking 11, so that one had more than that; died at 20 with a last hit of 15, so that one had 5 to 20; survived taking 15, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 22, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 21, so that one had more than that; survived taking 27, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 21, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 30, so that one had more than that; survived taking 5, so that one had more than that; survived taking 15, so that one had more than that; survived taking 54, so that one had more than that; survived taking 30, so that one had more than that; survived taking 42, so that one had more than that; survived taking 16, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 12, so that one had more than that; survived taking 49, so that one had more than that; survived taking 14, so that one had more than that; survived taking 41, so that one had more than that; survived taking 20, so that one had more than that; survived taking 50, so that one had more than that; survived taking 33, so that one had more than that; survived taking 31, so that one had more than that; survived taking 3, so that one had more than that; survived taking 10, so that one had more than that; survived taking 38, so that one had more than that; survived taking 21, so that one had more than that; survived taking 53, so that one had more than that; survived taking 15, so that one had more than that; survived taking 33, so that one had more than that; survived taking 11, so that one had more than that; survived taking 41, so that one had more than that; survived taking 38, so that one had more than that; survived taking 36, so that one had more than that; survived taking 31, so that one had more than that; survived taking 51, so that one had more than that; survived taking 32, so that one had more than that; survived taking 14, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 16, so that one had more than that; survived taking 41, so that one had more than that; survived taking 11, so that one had more than that; survived taking 15, so that one had more than that; survived taking 36, so that one had more than that; died at 25 with a last hit of 15, so that one had 10 to 25; survived taking 21, so that one had more than that; survived taking 15, so that one had more than that; survived taking 35, so that one had more than that; died at 13 with a last hit of 11, so that one had 2 to 13; survived taking 32, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 21, so that one had more than that; survived taking 29, so that one had more than that; survived taking 31, so that one had more than that; survived taking 16, so that one had more than that; survived taking 43, so that one had more than that; died at 36 with a last hit of 34, so that one had 2 to 36; survived taking 21, so that one had more than that; survived taking 5, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 6, so that one had more than that; survived taking 14, so that one had more than that; died at 41 with a last hit of 10, so that one had 31 to 41; survived taking 42, so that one had more than that; survived taking 18, so that one had more than that; survived taking 20, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 6, so that one had more than that; survived taking 4, so that one had more than that; survived taking 17, so that one had more than that; survived taking 16, so that one had more than that",
+    "hi": 55,
+    "lo": 0,
+    "observed_hi": 41,
+    "observed_lo": 0,
+    "verdict": "individuals seen on both sides of the wiki's 50",
+    "wiki": 50
+   },
+   "moves": [
+    "Ant Spit",
+    "Fell Scratch"
+   ],
+   "name": "ants",
+   "res": "gfx/kritter/ants/ants",
+   "skill": {
+    "equalized": false,
+    "hi": 5.3,
+    "lo": 5.1,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 5.3
+   }
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 59.0,
+    "lo": 56.5,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 70,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 73.8,
+    "lo": 72.8,
+    "n": 69
+   },
+   "engagements": 7,
+   "hitpoints": {
+    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
     "hi": 342,
-    "lo": 171,
+    "lo": 110,
     "observed_hi": 342,
-    "observed_lo": 171,
-    "verdict": "2 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
+    "observed_lo": 110,
+    "verdict": "3 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
     "wiki": 250
    },
    "moves": [
@@ -144,45 +246,153 @@
     "Fell Scratch"
    ],
    "name": "badger",
-   "res": "gfx/kritter/badger/badger"
-  },
-  {
-   "agility": null,
-   "armour": {
-    "hard": null,
-    "identified": false,
-    "n": 17,
-    "soft": null,
-    "total_hi": 65,
-    "total_lo": 65,
-    "wiki": 65
-   },
-   "defence_weight": null,
-   "engagements": 1,
-   "hitpoints": {
-    "from": "died at 1143 with a last hit of 357, so that one had 786 to 1143",
-    "hi": 1143,
-    "lo": 786,
-    "observed_hi": 1143,
-    "observed_lo": 786,
-    "verdict": "every individual seen is consistent with the wiki's 850",
-    "wiki": 850
-   },
-   "moves": [],
-   "name": "bear",
-   "res": "gfx/kritter/bear/bear"
+   "res": "gfx/kritter/badger/badger",
+   "skill": {
+    "bound_hi": 116.0,
+    "bound_lo": 55.5,
+    "disputed": true,
+    "equalized": false,
+    "hi": 39.0,
+    "lo": 21.9,
+    "moves": [
+     "Knock Its Teeth Out",
+     "Punch",
+     "Quick Barrage",
+     "Sting"
+    ],
+    "n": 2,
+    "value": 39.0
+   }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 44.2,
-    "lo": 40.5,
-    "our_agility": 81
+    "hi": 226.0,
+    "lo": 216.4,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 158,
+    "soft": null,
+    "total_hi": 68,
+    "total_lo": 66,
+    "wiki": 65
+   },
+   "defence_weight": null,
+   "engagements": 4,
+   "hitpoints": {
+    "from": "died at 1127 with a last hit of 338, so that one had 789 to 1127; died at 1030 with a last hit of 324, so that one had 706 to 1030; died at 1143 with a last hit of 357, so that one had 786 to 1143; died at 863 with a last hit of 54, so that one had 809 to 863",
+    "hi": 1143,
+    "lo": 706,
+    "observed_hi": 1143,
+    "observed_lo": 706,
+    "verdict": "every individual seen is consistent with the wiki's 850",
+    "wiki": 850
+   },
+   "moves": [
+    "Bear Down",
+    "Bristle",
+    "Careful Approach",
+    "Chomp",
+    "Fell Scratch",
+    "Unstoppable"
+   ],
+   "name": "bear",
+   "res": "gfx/kritter/bear/bear",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 67.2,
+    "lo": 56.5,
+    "our_agility": 113
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 3,
+    "n": 10,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 76.5,
+    "lo": 62.1,
+    "n": 8
+   },
+   "engagements": 3,
+   "hitpoints": {
+    "from": "died at 107 with a last hit of 18, so that one had 89 to 107",
+    "hi": 107,
+    "lo": 89,
+    "observed_hi": 107,
+    "observed_lo": 89,
+    "verdict": "every individual seen is consistent with the wiki's 100",
+    "wiki": 100
+   },
+   "moves": [
+    "Fell Scratch"
+   ],
+   "name": "beaver",
+   "res": "gfx/kritter/beaver/beaver",
+   "skill": {
+    "equalized": false,
+    "hi": 44.1,
+    "lo": 44.1,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 1,
+    "value": 44.1
+   }
+  },
+  {
+   "agility": null,
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 41,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 22,
+   "hitpoints": {
+    "from": "died at 42 with a last hit of 18, so that one had 24 to 42; died at 160 with a last hit of 123, so that one had 37 to 160; died at 55 with a last hit of 51, so that one had 4 to 55; died at 42 with a last hit of 24, so that one had 18 to 42; died at 96 with a last hit of 73, so that one had 23 to 96; died at 88 with a last hit of 88, so that one had 0 to 88; died at 39 with a last hit of 25, so that one had 14 to 39; died at 77 with a last hit of 66, so that one had 11 to 77; survived taking 8, so that one had more than that; died at 74 with a last hit of 66, so that one had 8 to 74; died at 48 with a last hit of 20, so that one had 28 to 48; died at 42 with a last hit of 18, so that one had 24 to 42; died at 102 with a last hit of 15, so that one had 87 to 102; died at 75 with a last hit of 42, so that one had 33 to 75",
+    "hi": 160,
+    "lo": 0,
+    "observed_hi": 160,
+    "observed_lo": 0,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Bear Down",
+    "Fell Scratch",
+    "Roar of the Wild",
+    "Thunder Over"
+   ],
+   "name": "beelarva",
+   "res": "gfx/kritter/bees/beelarva",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 62.2,
+    "lo": 57.0,
+    "our_agility": 114
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 114,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -190,34 +400,44 @@
    },
    "defence_weight": {
     "hi": 38.0,
-    "lo": 28.0,
-    "n": 4
+    "lo": 29.0,
+    "n": 14
    },
-   "engagements": 1,
+   "engagements": 59,
    "hitpoints": {
-    "from": "died at 48 with a last hit of 27, so that one had 21 to 48",
-    "hi": 50,
+    "from": "survived taking 10, so that one had more than that; survived taking 32, so that one had more than that; survived taking 10, so that one had more than that; survived taking 26, so that one had more than that; survived taking 30, so that one had more than that; survived taking 43, so that one had more than that; died at 48 with a last hit of 27, so that one had 21 to 48; survived taking 44, so that one had more than that; survived taking 43, so that one had more than that; died at 48 with a last hit of 18, so that one had 30 to 48; survived taking 25, so that one had more than that; survived taking 45, so that one had more than that; survived taking 44, so that one had more than that; survived taking 17, so that one had more than that; survived taking 5, so that one had more than that; survived taking 18, so that one had more than that; survived taking 45, so that one had more than that; survived taking 38, so that one had more than that; survived taking 25, so that one had more than that; survived taking 38, so that one had more than that; survived taking 45, so that one had more than that; survived taking 50, so that one had more than that; survived taking 3, so that one had more than that; survived taking 22, so that one had more than that; survived taking 39, so that one had more than that; survived taking 39, so that one had more than that; survived taking 49, so that one had more than that; survived taking 11, so that one had more than that; survived taking 21, so that one had more than that; survived taking 34, so that one had more than that; survived taking 2, so that one had more than that; survived taking 50, so that one had more than that; survived taking 5, so that one had more than that; survived taking 44, so that one had more than that; survived taking 22, so that one had more than that; survived taking 25, so that one had more than that; survived taking 8, so that one had more than that; survived taking 41, so that one had more than that; survived taking 44, so that one had more than that; survived taking 22, so that one had more than that",
+    "hi": 51,
     "lo": 21,
     "observed_hi": 48,
     "observed_lo": 21,
-    "verdict": "1 of these died before taking the wiki's 50, so they were below its base quality (or already hurt when we met them)",
+    "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
-   "moves": [],
+   "moves": [
+    "Bear Down",
+    "Careful Approach",
+    "Fell Scratch"
+   ],
    "name": "beeswarm",
-   "res": "gfx/kritter/wildbees/beeswarm"
+   "res": "gfx/kritter/wildbees/beeswarm",
+   "skill": {
+    "equalized": false,
+    "hi": 16.5,
+    "lo": 15.3,
+    "moves": [
+     "Knock Its Teeth Out",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 16.5
+   }
   },
   {
-   "agility": {
-    "capped": false,
-    "hi": 60.2,
-    "lo": 49.4,
-    "our_agility": 81
-   },
+   "agility": null,
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 39,
+    "n": 7,
     "soft": null,
     "total_hi": 15,
     "total_lo": 15,
@@ -229,23 +449,25 @@
     "lo": null,
     "n": 7
    },
-   "engagements": 4,
+   "engagements": 35,
    "hitpoints": {
-    "from": "died at 499 with a last hit of 256, so that one had 243 to 499; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 453 with a last hit of 15, so that one had 438 to 453",
-    "hi": 499,
+    "from": "died at 499 with a last hit of 256, so that one had 243 to 499; died at 517 with a last hit of 94, so that one had 423 to 517; died at 464 with a last hit of 178, so that one had 286 to 464; died at 608 with a last hit of 170, so that one had 438 to 608; died at 454 with a last hit of 172, so that one had 282 to 454; survived taking 321, so that one had more than that; died at 677 with a last hit of 236, so that one had 441 to 677; died at 559 with a last hit of 280, so that one had 279 to 559; died at 504 with a last hit of 110, so that one had 394 to 504; died at 597 with a last hit of 219, so that one had 378 to 597; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 508 with a last hit of 185, so that one had 323 to 508; died at 529 with a last hit of 137, so that one had 392 to 529; survived taking 367, so that one had more than that; died at 453 with a last hit of 15, so that one had 438 to 453",
+    "hi": 677,
     "lo": 238,
-    "observed_hi": 499,
+    "observed_hi": 677,
     "observed_lo": 238,
     "verdict": "every individual seen is consistent with the wiki's 450",
     "wiki": 450
    },
    "moves": [
     "Bear Down",
+    "Bristle",
     "Mule Kick",
     "Roar of the Wild"
    ],
    "name": "boar",
-   "res": "gfx/kritter/boar/boar"
+   "res": "gfx/kritter/boar/boar",
+   "skill": null
   },
   {
    "agility": {
@@ -265,7 +487,7 @@
    },
    "defence_weight": {
     "hi": 393.3,
-    "lo": 213.0,
+    "lo": 205.2,
     "n": 23
    },
    "engagements": 1,
@@ -285,7 +507,32 @@
     "Zig-Zag Ruse"
    ],
    "name": "body#1420460144",
-   "res": "gfx/borka/body"
+   "res": "gfx/borka/body",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 80.7,
+    "lo": 57.1,
+    "our_agility": 96
+   },
+   "armour": null,
+   "defence_weight": {
+    "hi": 182.0,
+    "lo": 70.8,
+    "n": 1
+   },
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [
+    "Flex",
+    "Parry",
+    "Take Aim"
+   ],
+   "name": "body#1744726637",
+   "res": "gfx/borka/body",
+   "skill": null
   },
   {
    "agility": {
@@ -296,15 +543,16 @@
    },
    "armour": null,
    "defence_weight": {
-    "hi": 29.8,
-    "lo": 17.5,
+    "hi": 30.0,
+    "lo": 17.0,
     "n": 1
    },
    "engagements": 1,
    "hitpoints": null,
    "moves": [],
    "name": "body#1965990376",
-   "res": "gfx/borka/body"
+   "res": "gfx/borka/body",
+   "skill": null
   },
   {
    "agility": {
@@ -324,8 +572,8 @@
    },
    "defence_weight": {
     "hi": 4.8,
-    "lo": 3.6,
-    "n": 17
+    "lo": 3.4,
+    "n": 16
    },
    "engagements": 3,
    "hitpoints": {
@@ -342,7 +590,17 @@
     "Left Hook"
    ],
    "name": "body#787251591",
-   "res": "gfx/borka/body"
+   "res": "gfx/borka/body",
+   "skill": {
+    "equalized": false,
+    "hi": 2.1,
+    "lo": 2.1,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 1,
+    "value": 2.1
+   }
   },
   {
    "agility": {
@@ -362,7 +620,7 @@
    },
    "defence_weight": {
     "hi": 59.3,
-    "lo": 45.2,
+    "lo": 43.3,
     "n": 14
    },
    "engagements": 1,
@@ -380,10 +638,54 @@
     "Quick Barrage"
    ],
    "name": "body#926133699",
-   "res": "gfx/borka/body"
+   "res": "gfx/borka/body",
+   "skill": null
   },
   {
-   "agility": null,
+   "agility": {
+    "capped": true,
+    "hi": 62.2,
+    "lo": 57.0,
+    "our_agility": 114
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 151,
+    "soft": null,
+    "total_hi": 16,
+    "total_lo": 16,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 52,
+   "hitpoints": {
+    "from": "died at 389 with a last hit of 121, so that one had 268 to 389; survived taking 344, so that one had more than that; died at 515 with a last hit of 181, so that one had 334 to 515; died at 457 with a last hit of 144, so that one had 313 to 457; survived taking 268, so that one had more than that; survived taking 296, so that one had more than that; died at 374 with a last hit of 119, so that one had 255 to 374; died at 431 with a last hit of 140, so that one had 291 to 431; died at 342 with a last hit of 150, so that one had 192 to 342; died at 446 with a last hit of 126, so that one had 320 to 446; died at 213 with a last hit of 51, so that one had 162 to 213; survived taking 346, so that one had more than that",
+    "hi": 515,
+    "lo": 162,
+    "observed_hi": 515,
+    "observed_lo": 162,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Careful Approach",
+    "Low Horn Swipe",
+    "Mule Kick",
+    "Roar of the Wild",
+    "Thunder Over"
+   ],
+   "name": "cattle",
+   "res": "gfx/kritter/cattle/cattle",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 154.6,
+    "lo": 141.8,
+    "our_agility": 96
+   },
    "armour": {
     "hard": null,
     "identified": false,
@@ -404,75 +706,481 @@
     "verdict": "1 of these held out past the wiki's 1200, so they were above its base quality",
     "wiki": 1200
    },
-   "moves": [],
+   "moves": [
+    "Bear Down",
+    "Bristle",
+    "Fell Scratch",
+    "Roar of the Wild",
+    "Shredding Paw",
+    "Tail Splash"
+   ],
    "name": "caveangler",
-   "res": "gfx/kritter/caveangler/caveangler"
+   "res": "gfx/kritter/caveangler/caveangler",
+   "skill": null
   },
   {
    "agility": {
     "capped": true,
-    "hi": 44.2,
-    "lo": 40.5,
-    "our_agility": 81
+    "hi": 60.6,
+    "lo": 56.5,
+    "our_agility": 113
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 5,
+    "n": 29,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
     "wiki": null
    },
    "defence_weight": {
-    "hi": 70.4,
-    "lo": 59.0,
-    "n": 6
+    "hi": 70.9,
+    "lo": 57.0,
+    "n": 17
    },
-   "engagements": 2,
+   "engagements": 14,
    "hitpoints": {
-    "from": "died at 126 with a last hit of 42, so that one had 84 to 126",
-    "hi": 126,
-    "lo": 84,
-    "observed_hi": 126,
-    "observed_lo": 84,
-    "verdict": "every individual seen is consistent with the wiki's 110",
+    "from": "died at 133 with a last hit of 55, so that one had 78 to 133; survived taking 158, so that one had more than that; died at 126 with a last hit of 42, so that one had 84 to 126; died at 112 with a last hit of 26, so that one had 86 to 112; died at 157 with a last hit of 108, so that one had 49 to 157",
+    "hi": 159,
+    "lo": 49,
+    "observed_hi": 157,
+    "observed_lo": 49,
+    "verdict": "1 of these held out past the wiki's 110, so they were above its base quality",
     "wiki": 110
    },
    "moves": [
     "Fell Scratch"
    ],
    "name": "fox",
-   "res": "gfx/kritter/fox/fox"
+   "res": "gfx/kritter/fox/fox",
+   "skill": {
+    "equalized": false,
+    "hi": 32.0,
+    "lo": 25.4,
+    "moves": [
+     "Quick Barrage",
+     "Sting"
+    ],
+    "n": 2,
+    "value": 32.0
+   }
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 87.1,
+    "lo": 73.3,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 18,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 7,
+   "hitpoints": {
+    "from": "died at 389 with a last hit of 225, so that one had 164 to 389; survived taking 298, so that one had more than that",
+    "hi": 389,
+    "lo": 164,
+    "observed_hi": 389,
+    "observed_lo": 164,
+    "verdict": "every individual seen is consistent with the wiki's 320",
+    "wiki": 320
+   },
+   "moves": [
+    "Fell Scratch"
+   ],
+   "name": "greyseal",
+   "res": "gfx/kritter/greyseal/greyseal",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 60.6,
+    "lo": 56.5,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 133,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 35,
+   "hitpoints": {
+    "from": "died at 86 with a last hit of 61, so that one had 25 to 86; died at 115 with a last hit of 90, so that one had 25 to 115; died at 84 with a last hit of 69, so that one had 15 to 84; died at 119 with a last hit of 88, so that one had 31 to 119; died at 193 with a last hit of 133, so that one had 60 to 193; died at 72 with a last hit of 20, so that one had 52 to 72; died at 115 with a last hit of 86, so that one had 29 to 115; died at 115 with a last hit of 46, so that one had 69 to 115; died at 76 with a last hit of 19, so that one had 57 to 76; died at 83 with a last hit of 66, so that one had 17 to 83; died at 180 with a last hit of 126, so that one had 54 to 180; died at 100 with a last hit of 56, so that one had 44 to 100; died at 82 with a last hit of 15, so that one had 67 to 82; died at 106 with a last hit of 40, so that one had 66 to 106; died at 103 with a last hit of 53, so that one had 50 to 103; died at 162 with a last hit of 117, so that one had 45 to 162; died at 79 with a last hit of 62, so that one had 17 to 79; died at 89 with a last hit of 69, so that one had 20 to 89; died at 73 with a last hit of 21, so that one had 52 to 73; died at 148 with a last hit of 104, so that one had 44 to 148; died at 101 with a last hit of 45, so that one had 56 to 101; died at 197 with a last hit of 29, so that one had 168 to 197; died at 136 with a last hit of 72, so that one had 64 to 136; died at 97 with a last hit of 34, so that one had 63 to 97; died at 83 with a last hit of 66, so that one had 17 to 83; died at 84 with a last hit of 69, so that one had 15 to 84; died at 81 with a last hit of 65, so that one had 16 to 81; died at 105 with a last hit of 83, so that one had 22 to 105",
+    "hi": 197,
+    "lo": 15,
+    "observed_hi": 197,
+    "observed_lo": 15,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Bear Down",
+    "Chomp",
+    "Fell Scratch",
+    "Roar of the Wild",
+    "Thunder Over"
+   ],
+   "name": "honeybee",
+   "res": "gfx/kritter/bees/honeybee",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 87.9,
+    "lo": 80.6,
+    "our_agility": 114
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 28,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 233.4,
+    "lo": 125.0,
+    "n": 2
+   },
+   "engagements": 9,
+   "hitpoints": {
+    "from": "died at 362 with a last hit of 18, so that one had 344 to 362; died at 391 with a last hit of 142, so that one had 249 to 391",
+    "hi": 391,
+    "lo": 249,
+    "observed_hi": 391,
+    "observed_lo": 249,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Bear Down",
+    "Mule Kick",
+    "Roar of the Wild"
+   ],
+   "name": "horse",
+   "res": "gfx/kritter/horse/horse",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 226.0,
+    "lo": 226.0,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 32,
+    "soft": null,
+    "total_hi": 36,
+    "total_lo": 35,
+    "wiki": 35
+   },
+   "defence_weight": null,
+   "engagements": 13,
+   "hitpoints": {
+    "from": "died at 543 with a last hit of 332, so that one had 211 to 543; died at 524 with a last hit of 196, so that one had 328 to 524",
+    "hi": 543,
+    "lo": 211,
+    "observed_hi": 543,
+    "observed_lo": 211,
+    "verdict": "every individual seen is consistent with the wiki's 400",
+    "wiki": 400
+   },
+   "moves": [
+    "Bristle",
+    "Fell Scratch",
+    "Roar of the Wild"
+   ],
+   "name": "lynx",
+   "res": "gfx/kritter/lynx/lynx",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 226.0,
+    "lo": 216.4,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 238,
+    "soft": null,
+    "total_hi": 69,
+    "total_lo": 68,
+    "wiki": 65
+   },
+   "defence_weight": null,
+   "engagements": 21,
+   "hitpoints": {
+    "from": "died at 819 with a last hit of 124, so that one had 695 to 819; survived taking 853, so that one had more than that; survived taking 657, so that one had more than that; died at 879 with a last hit of 163, so that one had 716 to 879; died at 838 with a last hit of 64, so that one had 774 to 838",
+    "hi": 879,
+    "lo": 695,
+    "observed_hi": 879,
+    "observed_lo": 695,
+    "verdict": "1 of these held out past the wiki's 800, so they were above its base quality",
+    "wiki": 800
+   },
+   "moves": [
+    "Bear Down",
+    "Breathing Rage",
+    "Bristle",
+    "Low Horn Swipe",
+    "Mule Kick",
+    "Roar of the Wild",
+    "Thunder Over",
+    "Unstoppable"
+   ],
+   "name": "moose",
+   "res": "gfx/kritter/moose/moose",
+   "skill": null
   },
   {
    "agility": null,
    "armour": {
-    "hard": null,
-    "identified": false,
-    "n": 28,
-    "soft": null,
-    "total_hi": 36,
-    "total_lo": 34,
-    "wiki": 35
+    "hard": 0,
+    "identified": true,
+    "n": 6,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
    },
    "defence_weight": null,
-   "engagements": 12,
+   "engagements": 4,
    "hitpoints": {
-    "from": "died at 524 with a last hit of 196, so that one had 328 to 524",
-    "hi": 524,
-    "lo": 328,
-    "observed_hi": 524,
-    "observed_lo": 328,
-    "verdict": "every individual seen is consistent with the wiki's 400",
-    "wiki": 400
+    "from": "died at 357 with a last hit of 145, so that one had 212 to 357",
+    "hi": 357,
+    "lo": 212,
+    "observed_hi": 357,
+    "observed_lo": 212,
+    "verdict": null,
+    "wiki": null
    },
-   "moves": [],
-   "name": "lynx",
-   "res": "gfx/kritter/lynx/lynx"
+   "moves": [
+    "Fell Scratch"
+   ],
+   "name": "queenbee",
+   "res": "gfx/kritter/bees/queenbee",
+   "skill": null
   },
   {
-   "agility": null,
+   "agility": {
+    "capped": true,
+    "hi": 60.5,
+    "lo": 55.5,
+    "our_agility": 111
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 66,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 26.0,
+    "lo": 17.7,
+    "n": 3
+   },
+   "engagements": 36,
+   "hitpoints": {
+    "from": "survived taking 24, so that one had more than that; survived taking 44, so that one had more than that; survived taking 17, so that one had more than that; survived taking 13, so that one had more than that; survived taking 31, so that one had more than that; survived taking 16, so that one had more than that; survived taking 25, so that one had more than that; survived taking 22, so that one had more than that; survived taking 13, so that one had more than that; survived taking 30, so that one had more than that; survived taking 53, so that one had more than that; survived taking 51, so that one had more than that; died at 52 with a last hit of 10, so that one had 42 to 52; died at 30 with a last hit of 15, so that one had 15 to 30; survived taking 13, so that one had more than that; died at 53 with a last hit of 20, so that one had 33 to 53; died at 22 with a last hit of 13, so that one had 9 to 22; survived taking 10, so that one had more than that; survived taking 22, so that one had more than that; survived taking 26, so that one had more than that; survived taking 34, so that one had more than that; survived taking 15, so that one had more than that; survived taking 63, so that one had more than that",
+    "hi": 64,
+    "lo": 9,
+    "observed_hi": 53,
+    "observed_lo": 9,
+    "verdict": "individuals seen on both sides of the wiki's 50",
+    "wiki": 50
+   },
+   "moves": [
+    "Ant Spit",
+    "Fell Scratch"
+   ],
+   "name": "redants",
+   "res": "gfx/kritter/ants/redants",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 123.2,
+    "lo": 103.6,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 31,
+    "soft": null,
+    "total_hi": 10,
+    "total_lo": 10,
+    "wiki": 10
+   },
+   "defence_weight": null,
+   "engagements": 3,
+   "hitpoints": {
+    "from": "died at 218 with a last hit of 110, so that one had 108 to 218; died at 212 with a last hit of 133, so that one had 79 to 212; died at 222 with a last hit of 112, so that one had 110 to 222",
+    "hi": 222,
+    "lo": 79,
+    "observed_hi": 222,
+    "observed_lo": 79,
+    "verdict": "every individual seen is consistent with the wiki's 200",
+    "wiki": 200
+   },
+   "moves": [
+    "Low Horn Swipe",
+    "Mule Kick"
+   ],
+   "name": "reddeer",
+   "res": "gfx/kritter/reddeer/reddeer",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 134.4,
+    "lo": 95.0,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 16,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": 0
+   },
+   "defence_weight": null,
+   "engagements": 2,
+   "hitpoints": {
+    "from": "died at 181 with a last hit of 104, so that one had 77 to 181; died at 199 with a last hit of 110, so that one had 89 to 199",
+    "hi": 200,
+    "lo": 77,
+    "observed_hi": 199,
+    "observed_lo": 77,
+    "verdict": "2 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
+    "wiki": 200
+   },
+   "moves": [
+    "Low Horn Swipe",
+    "Mule Kick"
+   ],
+   "name": "reindeer",
+   "res": "gfx/kritter/reindeer/reindeer",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 60.5,
+    "lo": 55.5,
+    "our_agility": 111
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 182,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 36,
+   "hitpoints": {
+    "from": "died at 187 with a last hit of 99, so that one had 88 to 187; died at 187 with a last hit of 101, so that one had 86 to 187; died at 141 with a last hit of 102, so that one had 39 to 141; died at 150 with a last hit of 109, so that one had 41 to 150; died at 205 with a last hit of 99, so that one had 106 to 205; died at 154 with a last hit of 90, so that one had 64 to 154; died at 146 with a last hit of 88, so that one had 58 to 146; died at 126 with a last hit of 53, so that one had 73 to 126; died at 219 with a last hit of 103, so that one had 116 to 219; died at 198 with a last hit of 81, so that one had 117 to 198; died at 124 with a last hit of 18, so that one had 106 to 124; died at 153 with a last hit of 110, so that one had 43 to 153; died at 167 with a last hit of 63, so that one had 104 to 167; died at 174 with a last hit of 113, so that one had 61 to 174; died at 188 with a last hit of 100, so that one had 88 to 188; died at 244 with a last hit of 150, so that one had 94 to 244; died at 83 with a last hit of 68, so that one had 15 to 83; died at 138 with a last hit of 68, so that one had 70 to 138; died at 110 with a last hit of 86, so that one had 24 to 110; died at 155 with a last hit of 58, so that one had 97 to 155; died at 150 with a last hit of 69, so that one had 81 to 150; died at 136 with a last hit of 72, so that one had 64 to 136; died at 192 with a last hit of 78, so that one had 114 to 192; died at 288 with a last hit of 167, so that one had 121 to 288; died at 123 with a last hit of 33, so that one had 90 to 123; died at 132 with a last hit of 20, so that one had 112 to 132; died at 124 with a last hit of 73, so that one had 51 to 124; died at 122 with a last hit of 18, so that one had 104 to 122; died at 173 with a last hit of 93, so that one had 80 to 173; died at 196 with a last hit of 123, so that one had 73 to 196",
+    "hi": 288,
+    "lo": 15,
+    "observed_hi": 288,
+    "observed_lo": 15,
+    "verdict": "individuals seen on both sides of the wiki's 120",
+    "wiki": 120
+   },
+   "moves": [
+    "Ant Spit",
+    "Bristle",
+    "Careful Approach",
+    "Fell Scratch",
+    "Roar of the Wild",
+    "Shredding Paw"
+   ],
+   "name": "royalguardant",
+   "res": "gfx/kritter/ants/royalguardant",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 60.6,
+    "lo": 56.5,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 293,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 205.0,
+    "lo": 79.7,
+    "n": 1
+   },
+   "engagements": 46,
+   "hitpoints": {
+    "from": "died at 251 with a last hit of 111, so that one had 140 to 251; died at 111 with a last hit of 10, so that one had 101 to 111; died at 234 with a last hit of 89, so that one had 145 to 234; died at 180 with a last hit of 94, so that one had 86 to 180; died at 188 with a last hit of 114, so that one had 74 to 188; died at 242 with a last hit of 107, so that one had 135 to 242; died at 281 with a last hit of 154, so that one had 127 to 281; died at 230 with a last hit of 104, so that one had 126 to 230; died at 240 with a last hit of 106, so that one had 134 to 240; died at 236 with a last hit of 104, so that one had 132 to 236; died at 122 with a last hit of 17, so that one had 105 to 122; died at 236 with a last hit of 89, so that one had 147 to 236; died at 247 with a last hit of 117, so that one had 130 to 247; survived taking 80, so that one had more than that; died at 183 with a last hit of 118, so that one had 65 to 183; died at 179 with a last hit of 109, so that one had 70 to 179; died at 274 with a last hit of 129, so that one had 145 to 274; died at 240 with a last hit of 106, so that one had 134 to 240; died at 239 with a last hit of 96, so that one had 143 to 239; died at 267 with a last hit of 126, so that one had 141 to 267; died at 251 with a last hit of 103, so that one had 148 to 251; died at 209 with a last hit of 107, so that one had 102 to 209; died at 259 with a last hit of 113, so that one had 146 to 259; died at 222 with a last hit of 121, so that one had 101 to 222; survived taking 5, so that one had more than that; died at 159 with a last hit of 109, so that one had 50 to 159; died at 315 with a last hit of 131, so that one had 184 to 315; died at 162 with a last hit of 13, so that one had 149 to 162; died at 247 with a last hit of 90, so that one had 157 to 247; died at 233 with a last hit of 115, so that one had 118 to 233; died at 228 with a last hit of 131, so that one had 97 to 228; died at 175 with a last hit of 97, so that one had 78 to 175; died at 207 with a last hit of 91, so that one had 116 to 207; died at 166 with a last hit of 19, so that one had 147 to 166; died at 279 with a last hit of 124, so that one had 155 to 279; died at 207 with a last hit of 97, so that one had 110 to 207; died at 252 with a last hit of 104, so that one had 148 to 252; died at 168 with a last hit of 19, so that one had 149 to 168; survived taking 15, so that one had more than that",
+    "hi": 315,
+    "lo": 50,
+    "observed_hi": 315,
+    "observed_lo": 50,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Bear Down",
+    "Bristle",
+    "Fell Scratch",
+    "Rampant Rage",
+    "Thunder Over"
+   ],
+   "name": "sentinelbee",
+   "res": "gfx/kritter/bees/sentinelbee",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 68.1,
+    "lo": 48.2,
+    "our_agility": 81
+   },
    "armour": {
     "hard": 0,
     "identified": true,
@@ -493,9 +1201,124 @@
     "verdict": "1 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 200
    },
-   "moves": [],
+   "moves": [
+    "Low Horn Swipe"
+   ],
    "name": "sheep",
-   "res": "gfx/kritter/sheep/sheep"
+   "res": "gfx/kritter/sheep/sheep",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 61.6,
+    "lo": 56.5,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 103,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 26,
+   "hitpoints": {
+    "from": "died at 78 with a last hit of 60, so that one had 18 to 78; survived taking 1, so that one had more than that; died at 89 with a last hit of 69, so that one had 20 to 89; died at 57 with a last hit of 48, so that one had 9 to 57; died at 203 with a last hit of 94, so that one had 109 to 203; died at 57 with a last hit of 46, so that one had 11 to 57; died at 50 with a last hit of 14, so that one had 36 to 50; died at 42 with a last hit of 38, so that one had 4 to 42; died at 59 with a last hit of 11, so that one had 48 to 59; died at 57 with a last hit of 46, so that one had 11 to 57; died at 80 with a last hit of 60, so that one had 20 to 80; died at 50 with a last hit of 13, so that one had 37 to 50; died at 78 with a last hit of 34, so that one had 44 to 78; died at 84 with a last hit of 42, so that one had 42 to 84; died at 54 with a last hit of 8, so that one had 46 to 54; died at 97 with a last hit of 75, so that one had 22 to 97; died at 57 with a last hit of 46, so that one had 11 to 57; died at 97 with a last hit of 62, so that one had 35 to 97; died at 51 with a last hit of 8, so that one had 43 to 51; died at 106 with a last hit of 75, so that one had 31 to 106; died at 98 with a last hit of 73, so that one had 25 to 98",
+    "hi": 203,
+    "lo": 4,
+    "observed_hi": 203,
+    "observed_lo": 4,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Bear Down",
+    "Fell Scratch",
+    "Rampant Rage",
+    "Shredding Paw"
+   ],
+   "name": "vulturebee",
+   "res": "gfx/kritter/bees/vulturebee",
+   "skill": null
+  },
+  {
+   "agility": null,
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 96,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 53.3,
+    "lo": 27.8,
+    "n": 2
+   },
+   "engagements": 29,
+   "hitpoints": {
+    "from": "died at 90 with a last hit of 73, so that one had 17 to 90; died at 98 with a last hit of 86, so that one had 12 to 98; died at 231 with a last hit of 153, so that one had 78 to 231; died at 90 with a last hit of 75, so that one had 15 to 90; died at 95 with a last hit of 21, so that one had 74 to 95; died at 123 with a last hit of 122, so that one had 1 to 123; died at 93 with a last hit of 74, so that one had 19 to 93; died at 113 with a last hit of 63, so that one had 50 to 113; died at 113 with a last hit of 63, so that one had 50 to 113; died at 87 with a last hit of 70, so that one had 17 to 87; died at 110 with a last hit of 85, so that one had 25 to 110; died at 93 with a last hit of 74, so that one had 19 to 93; died at 112 with a last hit of 54, so that one had 58 to 112; died at 115 with a last hit of 64, so that one had 51 to 115; died at 139 with a last hit of 102, so that one had 37 to 139; died at 134 with a last hit of 71, so that one had 63 to 134; died at 87 with a last hit of 35, so that one had 52 to 87; died at 120 with a last hit of 101, so that one had 19 to 120; died at 95 with a last hit of 75, so that one had 20 to 95; died at 223 with a last hit of 148, so that one had 75 to 223; died at 92 with a last hit of 16, so that one had 76 to 92; survived taking 50, so that one had more than that; died at 106 with a last hit of 82, so that one had 24 to 106",
+    "hi": 231,
+    "lo": 1,
+    "observed_hi": 231,
+    "observed_lo": 1,
+    "verdict": "9 of these held out past the wiki's 50, so they were above its base quality",
+    "wiki": 50
+   },
+   "moves": [
+    "Ant Spit",
+    "Careful Approach",
+    "Fell Scratch",
+    "Rampant Rage",
+    "Roar of the Wild"
+   ],
+   "name": "warriorant",
+   "res": "gfx/kritter/ants/warriorant",
+   "skill": null
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 61.6,
+    "lo": 56.5,
+    "our_agility": 113
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 127,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": null,
+   "engagements": 32,
+   "hitpoints": {
+    "from": "died at 94 with a last hit of 46, so that one had 48 to 94; died at 123 with a last hit of 91, so that one had 32 to 123; died at 81 with a last hit of 66, so that one had 15 to 81; died at 98 with a last hit of 24, so that one had 74 to 98; died at 169 with a last hit of 115, so that one had 54 to 169; died at 197 with a last hit of 123, so that one had 74 to 197; died at 87 with a last hit of 76, so that one had 11 to 87; died at 75 with a last hit of 75, so that one had 0 to 75; died at 181 with a last hit of 121, so that one had 60 to 181; died at 135 with a last hit of 98, so that one had 37 to 135; survived taking 34, so that one had more than that; died at 112 with a last hit of 66, so that one had 46 to 112; died at 88 with a last hit of 30, so that one had 58 to 88; died at 120 with a last hit of 68, so that one had 52 to 120; died at 89 with a last hit of 59, so that one had 30 to 89; died at 107 with a last hit of 79, so that one had 28 to 107; died at 297 with a last hit of 117, so that one had 180 to 297; died at 138 with a last hit of 95, so that one had 43 to 138; died at 166 with a last hit of 114, so that one had 52 to 166; died at 145 with a last hit of 84, so that one had 61 to 145; died at 164 with a last hit of 108, so that one had 56 to 164; died at 136 with a last hit of 80, so that one had 56 to 136; died at 90 with a last hit of 25, so that one had 65 to 90",
+    "hi": 297,
+    "lo": 0,
+    "observed_hi": 297,
+    "observed_lo": 0,
+    "verdict": null,
+    "wiki": null
+   },
+   "moves": [
+    "Chomp",
+    "Fell Scratch",
+    "Rampant Rage",
+    "Roar of the Wild",
+    "Thunder Over"
+   ],
+   "name": "warriordrone",
+   "res": "gfx/kritter/bees/warriordrone",
+   "skill": null
   }
  ],
  "source": "tools/combat/estimate.py over the logged corpus"

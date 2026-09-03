@@ -1341,6 +1341,55 @@ def report_mu_reductions():
     print("  level 3 directly and separates it from everything else.\n")
 
 
+def foe_skill_entry(rec):
+    """What the pack should carry for an opponent's combat skill.
+
+    {value, lo, hi, n, moves, equalized} - value is None when every move equalized, and
+    lo/hi then bound it. Disagreement between moves is reported rather than averaged: a
+    creature sitting near our own skill is exactly where the branch test is least stable.
+    """
+    bymove = defaultdict(list)
+    for row in rec.get("wd") or ():
+        if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
+            bymove[row[0]].append((row[4], row[5]))
+    ests, lo_b, hi_b, used = [], 0.0, float("inf"), []
+    for mv, obs in sorted(bymove.items()):
+        if len(obs) < 3:
+            continue
+        wa = obs[0][0]
+        wds = sorted(o[1] for o in obs)
+        m = load_moves().get(mv) or {}
+        mult = m.get("weight_mult") or 1.0
+        our = (wa / mult) if mult else wa
+        skill, lo, hi, _branch = foe_skill_from(our, wds[len(wds) // 2])
+        used.append(mv)
+        if skill is not None:
+            ests.append(skill)
+        else:
+            lo_b, hi_b = max(lo_b, lo), min(hi_b, hi)
+    if not used:
+        return None
+    if ests:
+        ests.sort()
+        med = ests[len(ests) // 2]
+        # Some moves equalized and some did not, and they disagree. That is not an average
+        # waiting to be taken: a creature near our own skill is exactly where the branch
+        # test is least stable, so the estimate and the bound are both suspect. The badger
+        # is the case - four moves bound it to 56-116 while Punch and Sting read 22 and 39.
+        disputed = (hi_b < float("inf")) and not (lo_b <= med <= hi_b)
+        out = {"value": round(med, 1),
+               "lo": round(ests[0], 1), "hi": round(ests[-1], 1),
+               "n": len(ests), "moves": used, "equalized": False}
+        if disputed:
+            out["disputed"] = True
+            out["bound_lo"], out["bound_hi"] = round(lo_b, 1), round(hi_b, 1)
+        return out
+    if hi_b < float("inf"):
+        return {"value": None, "lo": round(lo_b, 1), "hi": round(hi_b, 1),
+                "n": 0, "moves": used, "equalized": True}
+    return None
+
+
 def foe_skill_from(our_skill, wd_naive):
     """The opponent's combat SKILL, recovered from a naively-inverted defence weight.
 
@@ -1926,6 +1975,18 @@ def write_pack(per, moves):
                                         "contradictory": True})
         else:
             entry["defence_weight"] = None
+
+        # The SKILL, which is what the simulator now wants and what the corpus can actually
+        # recover. defence_weight above is kept because it is what the corpus literally
+        # observed - the naive inversion - but it is only equal to the opponent's block
+        # weight when the skills happen to sit outside the equalization band, and inside it
+        # the number is our own attack weight handed back. See foe_skill_from.
+        #
+        # A pack entry therefore says which of the three cases it is, and an equalized one
+        # carries a BOUND rather than a value. A simulator given a bound can run the fight
+        # at both ends and report an interval; given a fabricated point it would report a
+        # confident answer to a question the corpus never answered.
+        entry["skill"] = foe_skill_entry(rec)
 
         obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
         for mv, ticks in rec["cd"].items():

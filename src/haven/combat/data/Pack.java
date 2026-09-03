@@ -168,6 +168,29 @@ public final class Pack {
         public final int engagements;
         /** Bounds, or NaN where the corpus could not constrain the value at all. */
         public final double dwLo, dwHi, agiLo, agiHi, hpLo, hpHi;
+
+        /**
+         * The opponent's own combat skill, which is what a fight can actually recover.
+         *
+         * `defence_weight` above is what the corpus literally observed - the naive
+         * inversion of an opening gain - and it only equals the opponent's block weight
+         * when the two skills sit OUTSIDE the equalization band. Inside it the naive figure
+         * is our own attack weight handed back, and skillEqualized says so. When it is set,
+         * skillLo and skillHi are a bound rather than a measurement, and a simulator should
+         * run both ends rather than pick one.
+         */
+        public final double skill, skillLo, skillHi;
+        public final boolean skillEqualized, hasSkill;
+
+        /**
+         * Set when some moves equalized and the rest disagree with the bound they imply.
+         *
+         * Not an average waiting to be taken. A creature sitting near our own skill is
+         * where the branch test is least stable, so both the estimate and the bound are
+         * suspect - the badger reads 22 and 39 from two moves while four others bound it
+         * to 56-116. Treated as unmeasured rather than resolved.
+         */
+        public final boolean skillDisputed;
         public final double armLo, armHi;
         /** True when the hard/soft split is identified rather than only the total. */
         public final boolean armSplit;
@@ -178,6 +201,20 @@ public final class Pack {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
             this.engagements = j.optInt("engagements", 0);
+            JSONObject sk = j.optJSONObject("skill");
+            if(sk == null) {
+                this.skill = this.skillLo = this.skillHi = Double.NaN;
+                this.skillEqualized = false;
+                this.skillDisputed = false;
+                this.hasSkill = false;
+            } else {
+                this.skill = sk.isNull("value") ? Double.NaN : sk.getDouble("value");
+                this.skillLo = sk.optDouble("lo", Double.NaN);
+                this.skillHi = sk.optDouble("hi", Double.NaN);
+                this.skillEqualized = sk.optBoolean("equalized", false);
+                this.skillDisputed = sk.optBoolean("disputed", false);
+                this.hasSkill = true;
+            }
             double[] dw = range(j, "defence_weight");
             this.dwLo = dw[0];
             this.dwHi = dw[1];
@@ -215,7 +252,11 @@ public final class Pack {
 
         /** Whether enough is known to simulate a fight against this opponent at all. */
         public boolean simulable() {
-            return(!Double.isNaN(dwLo) && !Double.isNaN(hpLo));
+            /* A skill, not a defence weight. An equalized entry carries only a bound, and
+             * simulating against a bound's midpoint would be inventing the very number the
+             * corpus declined to produce. */
+            return(hasSkill && !skillEqualized && !skillDisputed && !Double.isNaN(skill)
+                   && !Double.isNaN(hpLo));
         }
 
         /**
@@ -238,13 +279,13 @@ public final class Pack {
          * end of an agility interval is its top.
          */
         public Combatant toughest() {
-            return(build(pick(dwHi, dwLo), pick(agiHi, agiLo), pick(hpHi, hpLo),
+            return(build(pick(skillHi, skill), pick(agiHi, agiLo), pick(hpHi, hpLo),
                          pick(armHi, armLo)));
         }
 
         /** The easiest fight the corpus allows. */
         public Combatant weakest() {
-            return(build(pick(dwLo, dwHi), pick(agiLo, agiHi), pick(hpLo, hpHi),
+            return(build(pick(skillLo, skill), pick(agiLo, agiHi), pick(hpLo, hpHi),
                          pick(armLo, armHi)));
         }
 
@@ -254,7 +295,11 @@ public final class Pack {
 
         private Combatant build(double dw, double agi, double hp, double arm) {
             Combatant c = new Combatant(name);
-            c.defenceWeight = dw;
+            /* A skill, because that is what the corpus can actually recover - see
+             * estimate.py's foe_skill_from. An animal holds no stance, so its multiplier
+             * is 1 and its block weight is its skill. */
+            c.blockSkill = dw;
+            c.blockMult = 1.0;
             c.agi = Double.isNaN(agi) ? 0 : agi;
             c.hp = c.maxHp = Double.isNaN(hp) ? 0 : hp;
             if(armSplit && !Double.isNaN(armHard)) {

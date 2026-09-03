@@ -181,10 +181,21 @@ public class CombatMatchup {
 
     static String missing(Pack.Opponent o) {
         List<String> want = new ArrayList<String>();
-        if(Double.isNaN(o.dwLo))
-            want.add("defence weight");
+        if(o.skillEqualized) {
+            /* Not a gap in the corpus - a fact about the matchup. Its combat skill is
+             * within a factor of two of ours, so every gain we logged equalized and told
+             * us only that it is somewhere in that band. Simulating the midpoint would be
+             * inventing the number the estimator refused to invent. */
+            want.add(String.format(java.util.Locale.ROOT,
+                                   "skill only bounded to %.0f-%.0f (equalized with ours)",
+                                   o.skillLo, o.skillHi));
+        } else if(o.skillDisputed) {
+            want.add("its moves disagree on its skill - some equalized, some did not");
+        } else if(!o.hasSkill || Double.isNaN(o.skill)) {
+            want.add("no combat skill");
+        }
         if(Double.isNaN(o.hpLo))
-            want.add("hitpoints");
-        return("no " + String.join(", no ", want));
+            want.add("no hitpoints");
+        return(String.join(", ", want));
     }
 }

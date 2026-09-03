@@ -76,7 +76,7 @@ public class CombatSimCheck {
         Combatant animal = new Combatant("boar");
         animal.hp = animal.maxHp = 1000;
         animal.armHard = 15;
-        animal.defenceWeight = 111;
+        animal.blockSkill = 111;
         check("an animal's armour is penetration-immune by default", animal.penetrable, false);
         Combatant a = me();
         a.ip = 9;
@@ -87,7 +87,7 @@ public class CombatSimCheck {
         Combatant player = new Combatant("player");
         player.hp = player.maxHp = 1000;
         player.armHard = 15;
-        player.defenceWeight = 111;
+        player.blockSkill = 111;
         player.penetrable = true;
         player.openings[Formulas.RED] = 46;
         Combatant b = me();
@@ -180,9 +180,24 @@ public class CombatSimCheck {
         bee.hp = bee.maxHp = 1000;
         bee.armHard = bee.armSoft = 0;
         Move m = kito();
-        bee.defenceWeight = Formulas.defenceWeight(a.attackWeight(m), 24, 20, 0);
-        near("swarm defence weight, from the first attack's +24",
-             bee.defenceWeight, 58 / 1.728, 0.01);
+        /* The first attack's +24 fixes the swarm, and under equalization it fixes its
+         * SKILL rather than a lumped defence weight. k = 24/20 so k^3 = 1.728, and the
+         * naive inversion gives 58/1.728 = 33.6 - which is well below our own 58, so the
+         * swarm is outside the band on the weak side and its skill is half that. The
+         * estimator recovers 16 from these same fights. */
+        double naive = Formulas.defenceWeight(a.attackWeight(m), 24, 20, 0);
+        near("the naive inversion of the first attack's +24", naive, 58 / 1.728, 0.01);
+        check("it is below our own 58, so the weak branch applies", naive < 58, true);
+        bee.blockSkill = naive / 2.0;
+        near("so the swarm's own skill is half of it", bee.blockSkill, 16.78, 0.05);
+        /* The branch has to be self-consistent, and the test is on the RECOVERED SKILL and
+         * not on the naive figure. Those differ by a factor of two, and 33.6 sits inside
+         * the band for 58 while 16.8 sits outside it - reading the band off the naive value
+         * would reject a branch that is in fact correct. */
+        check("and 16.8 really is outside the band, which is what makes the branch valid",
+              Formulas.equalized(58, bee.blockSkill), false);
+        near("and its block weight is that, holding no stance", bee.defenceWeight(),
+             16.78, 0.05);
 
         Sim sim = new Sim(a, bee);
         double[] wantDamage = {0, 5, 16, 27};
@@ -222,7 +237,7 @@ public class CombatSimCheck {
         boar.agi = 81;
         boar.hp = boar.maxHp = 1000;
         boar.armHard = 15; boar.armSoft = 0;
-        boar.defenceWeight = 111;
+        boar.blockSkill = 111;
         Move m = kito();
         Sim sim = new Sim(a, boar);
 
@@ -249,7 +264,7 @@ public class CombatSimCheck {
         System.out.println("\nTake Aim - cooldown reads the initiative held going in");
         Combatant a = me();
         Combatant foe = new Combatant("bee swarm");
-        foe.agi = 40; foe.hp = foe.maxHp = 1000; foe.defenceWeight = 100;
+        foe.agi = 40; foe.hp = foe.maxHp = 1000; foe.blockSkill = 100;
         Sim sim = new Sim(a, foe);
         Move m = takeAimMove();
         long[] want = {30, 36, 42, 48, 54, 60};
@@ -262,7 +277,7 @@ public class CombatSimCheck {
         /* A maneuver takes no relative-agility modifier, so a slower opponent changes nothing. */
         Combatant a2 = me();
         Combatant fast = new Combatant("faster");
-        fast.agi = 300; fast.hp = fast.maxHp = 100; fast.defenceWeight = 100;
+        fast.agi = 300; fast.hp = fast.maxHp = 100; fast.blockSkill = 100;
         Sim s2 = new Sim(a2, fast);
         check("unchanged against a far faster opponent", s2.use(a2, m).cooldown, 30L);
     }
@@ -281,7 +296,7 @@ public class CombatSimCheck {
         Move m = barrage();
         Combatant a = me();
         Combatant foe = new Combatant("Covert");
-        foe.agi = 81; foe.hp = foe.maxHp = 100; foe.defenceWeight = 111;
+        foe.agi = 81; foe.hp = foe.maxHp = 100; foe.blockSkill = 111;
         Sim sim = new Sim(a, foe);
 
         foe.openings[Formulas.RED] = 25;
@@ -297,7 +312,7 @@ public class CombatSimCheck {
          * experiment used: the bronze sword's 90 base at 25% share, quality 28.68, strength 82. */
         Combatant b = me();
         Combatant bare = new Combatant("Covert, armour off");
-        bare.agi = 81; bare.hp = bare.maxHp = 100; bare.defenceWeight = 111;
+        bare.agi = 81; bare.hp = bare.maxHp = 100; bare.blockSkill = 111;
         bare.armHard = bare.armSoft = 0;
         bare.openings[Formulas.RED] = 65;
         Sim s2 = new Sim(b, bare);
@@ -308,7 +323,7 @@ public class CombatSimCheck {
         System.out.println("\nrefusals");
         Combatant a = me();
         Combatant foe = new Combatant("foe");
-        foe.agi = 81; foe.hp = foe.maxHp = 100; foe.defenceWeight = 111;
+        foe.agi = 81; foe.hp = foe.maxHp = 100; foe.blockSkill = 111;
         Sim sim = new Sim(a, foe);
         Move m = barrage();
         Sim.Result first = sim.use(a, m);
@@ -335,7 +350,7 @@ public class CombatSimCheck {
         Combatant a = me();
         a.ip = 3;
         Combatant foe = new Combatant("Covert");
-        foe.agi = 81; foe.hp = foe.maxHp = 100; foe.defenceWeight = 111;
+        foe.agi = 81; foe.hp = foe.maxHp = 100; foe.blockSkill = 111;
         foe.ip = 4;
         Sim sim = new Sim(a, foe);
         Sim.Result r = sim.use(a, zigZagMove());

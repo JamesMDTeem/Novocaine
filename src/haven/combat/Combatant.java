@@ -50,14 +50,30 @@ public final class Combatant {
     public double hp, maxHp;
 
     /**
-     * The weight the defender opposes an attacker's weight with.
+     * The combat skill this combatant BLOCKS with, and the multiplier its stance puts on it.
      *
-     * This is an input, not something derived from the attributes above: no formula relating a
-     * creature's stats to its defence weight has been established. For an animal it comes from
-     * {@link Formulas#defenceWeight} applied to one clean logged attack; for a player it comes
-     * from whichever defensive stance they are holding.
+     * Split, because only the skill half equalizes. Two skills within a factor of two are
+     * compared as if equal ({@link Formulas#equalize}), and the stance multiplier is not part
+     * of that comparison at all - it is a plain factor on top. Lumping them into one "defence
+     * weight" made the two indistinguishable, which is how a boar came to be measured as two
+     * different creatures by two different moves.
+     *
+     * For a player, blockSkill is their Unarmed or Melee Combat, whichever their stance names,
+     * and blockMult is the stance's own multiplier - 2.5 for Shield Up with a shield, 0.75 for
+     * Bloodlust. For an animal, blockMult is 1: nothing in the logs shows an animal holding a
+     * stance, and animals have no visible one.
      */
-    public double defenceWeight;
+    public double blockSkill, blockMult = 1.0;
+
+    /**
+     * The lumped product, for reporting and for the old lumped call sites.
+     *
+     * Do not compute openings with this. It cannot be right on its own, because the skill half
+     * of it has to pass through equalization first and the multiplier half must not.
+     */
+    public double defenceWeight() {
+        return(blockSkill * blockMult);
+    }
 
     /**
      * What the stance being held does to THIS combatant's own attack weight, as a factor.
@@ -195,7 +211,7 @@ public final class Combatant {
         c.armHard = armHard; c.armSoft = armSoft;
         c.penetrable = penetrable;
         c.hp = hp; c.maxHp = maxHp;
-        c.defenceWeight = defenceWeight;
+        c.blockSkill = blockSkill; c.blockMult = blockMult;
         c.attackMult = attackMult;
         c.ip = ip;
         c.readyAt = readyAt;

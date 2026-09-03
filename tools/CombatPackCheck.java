@@ -240,7 +240,7 @@ public class CombatPackCheck {
         Combatant c = new Combatant("control");
         c.agi = 81;
         c.hp = c.maxHp = 1000;
-        c.defenceWeight = 111;
+        c.blockSkill = 111;
         return(c);
     }
 }
