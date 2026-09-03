@@ -23,6 +23,7 @@ import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Optimizer;
+import haven.combat.Sim;
 
 public class CombatOptimizerCheck {
     static int failures = 0;
@@ -138,6 +139,7 @@ public class CombatOptimizerCheck {
         paretoIsNotOneNumber();
         defenceEarnsItsPlace();
         clocksAreSeparate();
+        theCardThatGoesLast();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -337,5 +339,92 @@ public class CombatOptimizerCheck {
         check("both cooldowns still kill it", !Double.isNaN(fast) && !Double.isNaN(slug), true);
         check("the same move on a longer cooldown costs more hitpoints", slug > fast, true);
         System.out.printf("      cooldown 20: %.1f hp lost;  cooldown 40: %.1f%n", fast, slug);
+    }
+
+    /* Opportunity Knocks: 4 initiative, cooldown 45, multiplies the greatest standing
+     * opening by 40% * mu. No damage, no openings line, no weight term. */
+    static Move oppKnocks() {
+        return(Move.of("Opportunity Knocks").kind(Move.Kind.MANEUVER)
+               .boostGreatest(0.40).ipCost(4).cooldown(45).build());
+    }
+
+    /**
+     * The optimizer has to WORK OUT that Opportunity Knocks goes last. Nothing tells it.
+     *
+     * Every other opener in the deck is worth most against a fresh colour, because the
+     * (1 - Oc) falloff shrinks its gain as that colour fills. This one multiplies what is
+     * standing, so its gain grows instead - and a search that had absorbed the ordinary
+     * rule anywhere in its scoring would put it first and lose most of its value.
+     *
+     * Nothing in the optimizer encodes either rule. It steps the simulator and keeps what
+     * survives the frontier, so if the ordering comes out right it is because the model
+     * underneath is right. That makes this a test of the two together, which is the only
+     * place the inversion can actually be observed to matter.
+     */
+    static void theCardThatGoesLast() {
+        System.out.println("\nthe card that has to be thrown last");
+
+        /* First the mechanism, in the simulator alone, so that whatever the search decides
+         * afterwards can be read against a known fact rather than against an assumption. */
+        Combatant b = me();
+        b.ip = 8;
+        Combatant f = foe(200, 20);
+        new Sim(b, f).use(b, oppKnocks());
+        double firstGain = f.opening(Formulas.RED);
+
+        Combatant c = me();
+        c.ip = 8;
+        Combatant g = foe(200, 20);
+        Sim later = new Sim(c, g);
+        later.use(c, barrage());
+        later.advanceTo(c.readyAt);
+        later.use(c, barrage());
+        double before = g.opening(Formulas.RED);
+        later.advanceTo(c.readyAt);
+        later.use(c, oppKnocks());
+        double lateGain = g.opening(Formulas.RED) - before;
+
+        check("  thrown first it is worth exactly nothing", firstGain, 0.0);
+        check("  thrown after two barrages it is worth something", lateGain > 0, true);
+        System.out.printf("      first: %.3f    after two barrages: +%.3f%n",
+                          firstGain, lateGain);
+
+        /* Now the search, which is told none of that. It steps the simulator and keeps what
+         * survives the frontier, so what it does with this card is a consequence of the
+         * model rather than of any rule about openers.
+         *
+         * The two cases together are the test. A short fight and a long one, and the card
+         * has to be DECLINED in one and USED in the other - a search that always took it
+         * would pass a "not first" check just as well as one that weighed it, and so would
+         * a search that never saw it at all. */
+        check("  in a short fight it is declined - 45 ticks buys less than two barrages",
+              usesOppKnocks(200), 0);
+        int at = usesOppKnocks(3200);
+        check("  in a long one it is used", at > 0, true);
+        check("  and never on the first swing, where there is nothing to multiply",
+              at != 0, true);
+        System.out.printf("      declined against 200 hp; against 3200 hp thrown at"
+                          + " position %d%n", at);
+    }
+
+    /** Where the fastest killing plan first throws Opportunity Knocks, or 0 if never. */
+    static int usesOppKnocks(double foeHp) {
+        Combatant a = me();
+        a.ip = 8;
+        List<Move> deck = Optimizer.deck(barrage(), oppKnocks());
+        List<Optimizer.Plan> plans =
+            Optimizer.search(a, foe(foeHp, 20), deck, FoeModel.inert(), 150, 3000);
+        Optimizer.Plan best = null;
+        for(Optimizer.Plan pl : Optimizer.frontier(plans)) {
+            if((best == null) || (pl.ticks < best.ticks))
+                best = pl;
+        }
+        if(best == null)
+            return(0);
+        for(int i = 0; i < best.moves.size(); i++) {
+            if(best.moves.get(i).name.startsWith("Opportunity"))
+                return(i);
+        }
+        return(0);
     }
 }
