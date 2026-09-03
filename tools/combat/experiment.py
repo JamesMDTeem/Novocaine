@@ -39,6 +39,7 @@ small error in the base cooldown flips the answer. Both are reported, separately
 Stdlib only.
 """
 
+import json
 import os
 import sys
 from collections import defaultdict
@@ -241,6 +242,152 @@ def coverage(paths=None):
     return used, owned
 
 
+PACK = os.path.join(estimate.ROOT, "data", "combat", "opponents.json")
+
+
+def blockers(path=PACK):
+    """What stands between each opponent and a planned fight, counted by cause.
+
+    The list of things worth doing in-game was written by hand once, into the spec, and a
+    hand-written list is true on the day it is written. This computes it, so it stays true
+    as the corpus grows and so it cannot quietly describe a state the pack left behind.
+
+    Four causes, and they are not interchangeable - they have different fixes and only one
+    of them is answered by fighting the creature more:
+
+        planned      nothing is missing
+        no skill     no opening gain of ours against it was ever attributable. NOT a thin
+                     measurement, no measurement. These are the swarming species, where
+                     every logged fight has a third party in it.
+        equalized    its combat skill is within a factor of two of ours, so every gain we
+                     logged was pinned and returned our own weight back. Equalization
+                     compares SKILLS, so no change of card escapes it - only a different
+                     school, or a trained one.
+        no ceiling   it survived everything we ever did, so its hitpoints have a floor and
+                     no cap.
+
+    Getting this wrong is cheap to do and expensive to act on: the matchup report once
+    blamed equalization for all of them, which would have sent someone off to retrain a
+    skill when what was needed was to catch one ant on its own.
+    """
+    try:
+        with open(path, "r", encoding="utf8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    out = defaultdict(list)
+    for o in doc.get("opponents") or ():
+        sk, hp = o.get("skill"), o.get("hitpoints")
+        dw, eng = o.get("defence_weight"), o.get("engagements") or 0
+        name = "%s (%d)" % (o.get("name"), eng)
+        if not sk or sk.get("value") is None:
+            # Three different problems, and lumping them sends someone off to do the
+            # wrong thing. A creature we have never had a clean gain against needs a
+            # solo fight; one whose gains CONTRADICT each other has been measured and
+            # the measurements disagree, which more of the same will not settle.
+            if dw and dw.get("contradictory"):
+                out["contradictory"].append(name)
+            elif eng < 5:
+                out["barely fought"].append(name)
+            else:
+                out["no gains"].append(name)
+        elif sk.get("equalized") or sk.get("disputed"):
+            out["equalized"].append(name)
+        elif not hp or hp.get("hi") is None:
+            out["no ceiling"].append(name)
+        else:
+            out["planned"].append(name)
+    return out
+
+
+def report_todo():
+    """Everything the corpus cannot answer without going and doing something, ranked."""
+    b = blockers()
+    if not b:
+        return
+    print("=" * 78)
+    print("WHAT TO GO AND DO")
+    print("=" * 78)
+    print("  Computed from the pack, not written down, so it stays true as the corpus")
+    print("  grows. Ranked by how many species each action unblocks.\n")
+
+    jobs = []
+    if b.get("no gains"):
+        jobs.append((len(b["no gains"]),
+                     "Fight ONE of these, alone (engagements in brackets)",
+                     ["Fought plenty and measured nothing: no opening gain of ours against",
+                      "them was ever attributable. That is not a thin measurement, it is no",
+                      "measurement, and it is what a corpus of crowded fights looks like -",
+                      "the gate that keeps openings attributable needs us alone with one of",
+                      "them. More fights of the same shape add nothing; one clean solo",
+                      "engagement is the first skill measurement the species has ever had."],
+                     b["no gains"]))
+    if b.get("contradictory"):
+        jobs.append((len(b["contradictory"]),
+                     "Work out why these disagree with themselves",
+                     ["Measured, and the measurements do not intersect. Unlike everything",
+                      "else here this is not answered by fighting them more - either the",
+                      "creature varies in a way the model has no term for, or a move of ours",
+                      "is being read wrong against it. It is a question for the estimator."],
+                     b["contradictory"]))
+    if b.get("barely fought"):
+        jobs.append((len(b["barely fought"]),
+                     "Simply fight these more",
+                     ["Under five engagements each. Nothing subtle is wrong; there is just",
+                      "not enough yet."],
+                     b["barely fought"]))
+    if b.get("no ceiling"):
+        jobs.append((len(b["no ceiling"]),
+                     "Kill one of these",
+                     ["They survived everything we ever did, so the corpus has a floor on",
+                      "their hitpoints and no cap. One kill settles it."],
+                     b["no ceiling"]))
+    if b.get("equalized"):
+        jobs.append((len(b["equalized"]),
+                     "Fight these from a different school",
+                     ["Their combat skill is within a factor of two of ours, so every gain",
+                      "we logged equalized and handed our own weight back. More fights will",
+                      "not fix it. Equalization compares SKILLS, so no change of card",
+                      "escapes it either - only the other school, or a trained one."],
+                     b["equalized"]))
+
+    # The mu experiment, which is not about any opponent and so is not in the pack.
+    sole = LIVE[0] if LIVE else None
+    if sole:
+        fn_ = dict(HYPOTHESES)[sole]
+        owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+        have = owned.get("Take Aim")
+        reach = [l for l in range(1, min(have or 0, estimate.MU_LEVELS) + 1)
+                 if l not in estimate.MU_MEASURED] if have else []
+        if reach:
+            lvl = reach[0]
+            mu = fn_(lvl)
+            n0 = model._round_half_up(takeaim_raw(mu, 0))
+            lo, hi = pins_mu(n0, 0)
+            jobs.append((1,
+                         "Use Take Aim at level %d, holding initiative" % lvl,
+                         ["The card is already at level %d in the deck. One use pins mu to"
+                          % have,
+                          "%.3f-%.3f at zero initiative and tighter with more, which is the"
+                          % (lo, hi),
+                          "only live test of the surviving curve. It predicts %.3f." % mu],
+                         []))
+
+    for n, title, why, who in sorted(jobs, reverse=True):
+        print("  [%d] %s" % (n, title))
+        for line in why:
+            print("      %s" % line)
+        if who:
+            print("      %s" % ", ".join(sorted(who)[:12]))
+            if len(who) > 12:
+                print("      ... and %d more" % (len(who) - 12))
+        print()
+
+    done = len(b.get("planned") or ())
+    total = sum(len(v) for v in b.values())
+    print("  %d of %d opponents can be planned against end to end.\n" % (done, total))
+
+
 def report_discrimination():
     print("=" * 78)
     print("WHICH FIGHT WOULD SETTLE SOMETHING")
@@ -408,6 +555,7 @@ def report_coverage(paths=None):
 
 
 def main(argv):
+    report_todo()
     report_discrimination()
     report_coverage(argv[1:] or None)
     return 0

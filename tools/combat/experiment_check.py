@@ -170,6 +170,41 @@ def both_report_branches():
         check("report_%s produces a report" % name, ok, True)
 
 
+def what_to_do():
+    """The blocker diagnosis, which is a list someone acts on.
+
+    Worth checking precisely because the cost of being wrong is not a wrong number on a
+    page - it is a wasted evening. The matchup report once blamed equalization for every
+    opponent it could not plan against, which would have sent someone off to retrain a
+    skill when what was needed was to catch one ant on its own.
+    """
+    print("\nwhat to go and do")
+    b = experiment.blockers()
+    if not b:
+        print("  (no pack on this machine - skipped)")
+        return
+
+    everyone = [n for v in b.values() for n in v]
+    check("every opponent lands in exactly one bucket",
+          len(everyone), len(set(everyone)))
+    check("  and something is actually planned against", len(b.get("planned") or ()) > 0, True)
+
+    # The distinction the whole report turns on. These three all read as "no skill" and
+    # they need three different things: a solo fight, more fights, and a look at the
+    # estimator. Collapsing them is the error this replaced.
+    named = lambda k: set(n.split(" (")[0] for n in (b.get(k) or ()))
+    check("a creature fought often with nothing measured is its own case",
+          len(named("no gains")) > 0, True)
+    check("  apart from one barely fought at all",
+          named("no gains") & named("barely fought"), set())
+    check("  and apart from one whose measurements contradict each other",
+          named("no gains") & named("contradictory"), set())
+
+    # boar: 35 engagements, 7 defence-weight observations that do not intersect. Fighting
+    # more boars will not settle that, and listing it beside the swarms would say it will.
+    check("boar is a contradiction, not an absence", "boar" in named("contradictory"), True)
+
+
 def main():
     controls()
     both_report_branches()
@@ -177,6 +212,7 @@ def main():
     initiative_sharpens()
     fragility()
     coverage()
+    what_to_do()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1
