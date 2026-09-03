@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -65,7 +66,35 @@ import java.util.Set;
 public class Observed {
     private static final String FILE = "botmap.json";
     private static final Object LOCK = new Object();
-    private static final int VERSION = 1;
+    /**
+     * File format. Bumped to 2 when per-grid timestamps arrived.
+     *
+     * {@link #read} discards a file whose version it does not recognise, which is deliberately how
+     * the v1 records get cleared: every grid in one is undated, so there is no way to tell a base
+     * walked past this morning from a mine visited once three months ago, and keeping them all
+     * forever is exactly the problem timestamps exist to fix. The first run on this build starts
+     * the record again from what it can see.
+     *
+     * NOTE FOR CREWS: every client sharing a botmap.json has to move to this build together. An
+     * old client reads a v2 file, does not recognise it, starts fresh and writes v1 back; the new
+     * one then does the same in reverse. Mixed versions will wipe each other's record every few
+     * seconds rather than merge.
+     */
+    private static final int VERSION = 2;
+
+    /**
+     * How long a grid nobody has looked at survives before being dropped.
+     *
+     * Thirty days of not being seen by any crew member. The record used to be append-only in
+     * practice - the only forgetting was the {@link #SEES} wipe, which needs somebody to walk past
+     * the tile again - so a session's file grew without limit and never shrank: 165 segments and
+     * 7,186 grids by the time it was measured, every cave and mine level ever entered, at 8.8 MB.
+     *
+     * Generous on purpose. The cost of keeping a stale grid is bytes; the cost of dropping a live
+     * one is a bot re-exploring ground it already knew, so the bias is towards keeping. Anywhere
+     * bots actually work gets re-stamped continuously and never comes close to this.
+     */
+    private static final long STALE_MS = 30L * 24 * 60 * 60 * 1000;
 
     /** Nobody has looked. Passable on sufferance, and expensive - see {@link Router}. */
     public static final byte UNSEEN = 0;
@@ -338,6 +367,19 @@ public class Observed {
     /** segment -> segment grid coord -> one byte per tile, row-major. */
     private static Map<Long, Map<Coord, byte[]>> map;
     /**
+     * When each grid was last looked at by anybody, epoch millis, parallel to {@link #map}.
+     *
+     * Kept alongside rather than inside the grid because a grid is a {@code byte[]} of tiles and
+     * has nowhere to put it. Maintained per GRID, not per tile: the question eviction asks is
+     * "has anyone been near here lately", and a tile is far too fine a grain to ask it at - a
+     * per-tile stamp would be eight times the size of the record it is describing.
+     *
+     * Refreshed in bulk from {@link #looked} at save time rather than written by {@link #set},
+     * which runs thousands of times a sweep and would pay a map lookup for each. See
+     * {@link #stampLooked}.
+     */
+    private static Map<Long, Map<Coord, Long>> stamps = new HashMap<>();
+    /**
      * The same shape, one bit per tile, set where THIS RUN has looked.
      *
      * The difference between what we know and what we have seen for ourselves, which is what makes
@@ -459,9 +501,34 @@ public class Observed {
      * some array writes. The WRITE does not, because it re-reads the file to merge and doing that
      * from the client's tick would stutter it.
      */
+    /**
+     * Whether to keep the record up to date when no bot is running. Written by the checkbox in
+     * OptWnd, read here once a second; cached the way the other perf settings are so the sweep
+     * gate is a field read rather than a preferences lookup.
+     *
+     * Default off, i.e. observe only while botting. The sweep and the save it triggers are pure
+     * cost to a player who is not running anything: the sweep wipes and re-stamps an 89x89 tile
+     * square and walks every gob in range on the UI thread, and a changed tile makes the saver
+     * re-encode the WHOLE record - every grid ever seen, not the ones nearby - a few seconds
+     * later. In a base that is thousands of grids and hundreds of megabytes of garbage per save.
+     *
+     * The trade is real and worth stating: a bot started cold now begins with whatever the record
+     * held when botting last stopped, rather than with everything the player has walked past since.
+     * It re-observes as it goes, and its first route through somewhere the player rearranged in the
+     * meantime may take a detour it would not have taken before. Turn this on to get the old
+     * always-mapping behaviour back.
+     */
+    public static volatile boolean mapWhileIdle =
+        haven.Utils.getprefb("nbots.map_while_idle", false);
+
     public static void tick(GameUI gui) {
         long now = System.currentTimeMillis();
         if ((now - swept) < SWEEP_MS)
+            return;
+        /* Checked after the cadence gate so it costs one field read per frame rather than a
+         * registry walk, and before swept is stamped so that turning it back on - or starting a
+         * bot - takes effect on the very next tick rather than a second later. */
+        if (!mapWhileIdle && ((gui == null) || (gui.nbots == null) || !gui.nbots.anyActive()))
             return;
         swept = now;
         try {
@@ -475,20 +542,94 @@ public class Observed {
         startSaver();
     }
 
+    /**
+     * How long the saver keeps running after the last observation before standing down.
+     *
+     * It used to run for the rest of the session once anything had started it, which was the other
+     * half of the idle cost: a client that had botted an hour ago still woke every five seconds to
+     * stat the file, and still re-parsed the WHOLE record - eight megabytes - every time any
+     * crewmate saved theirs. Neither is worth anything to a client that is not botting; whatever
+     * the crew wrote gets adopted on the first pass after a bot next starts.
+     *
+     * Comfortably longer than SAVE_MS so a bot that stops and restarts does not thrash the thread,
+     * and long enough that a final dirty flush always gets its pass.
+     */
+    private static final long SAVER_IDLE_MS = 30_000;
+
+    /** When {@link #observe} last ran, so the saver can tell if anything is still feeding it. */
+    private static volatile long observedAt = 0;
+
+    /**
+     * Gives the record back to the heap now that nothing is using it.
+     *
+     * Only ever called on the standing-down path, which {@link #saverWanted} has already
+     * established is not dirty - so everything held here is on disk and nothing is lost. The next
+     * query calls {@link #load} and reads it back.
+     *
+     * Worth doing because the record is not small: 7,186 grids of ten thousand bytes each is
+     * about 69 MB, held for the whole session whether or not a bot ever runs again. The cost is a
+     * parse of the file the next time a bot starts, on whoever asks first - a few hundred
+     * milliseconds. That trade is deliberately the way round it is: the hitch lands on a bot
+     * starting up, where nobody is watching the framerate, and the memory comes back to the
+     * player, who is.
+     *
+     * Clearing {@code looked} with it is not incidental. The mask means "what THIS RUN has looked
+     * at", and it is what entitles this client to overrule the shared file; carrying it across a
+     * reload would have us assert authority over ground from a record we no longer hold.
+     */
+    private static void release() {
+        synchronized (LOCK) {
+            map = null;
+            looked = new HashMap<>();
+            stamps = new HashMap<>();
+            fileAt = -1;
+        }
+    }
+
+    /** Whether the saver still has a reason to exist: work pending, or somebody still looking. */
+    private static boolean saverWanted() {
+        synchronized (LOCK) {
+            if (dirty)
+                return true;
+        }
+        return (System.currentTimeMillis() - observedAt) < SAVER_IDLE_MS;
+    }
+
     private static synchronized void startSaver() {
         if (saver != null)
             return;
         saver = new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(SAVE_MS);
-                } catch (InterruptedException e) {
-                    return;
+            try {
+                while (true) {
+                    try {
+                        Thread.sleep(SAVE_MS);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                    try {
+                        save();
+                    } catch (RuntimeException e) {
+                        // Try again next pass rather than killing the thread.
+                    }
+                    /* Decided under the same monitor startSaver() takes, and the field is cleared
+                     * in the same breath. Split across two locks, a bot starting in the gap would
+                     * see a non-null saver, decline to start one, and then watch this thread exit
+                     * - leaving nothing to write the record it is about to dirty. */
+                    synchronized (Observed.class) {
+                        if (!saverWanted()) {
+                            release();
+                            saver = null;
+                            return;
+                        }
+                    }
                 }
-                try {
-                    save();
-                } catch (RuntimeException e) {
-                    // Try again next pass rather than killing the thread.
+            } finally {
+                /* Interrupted, or fell out some way the loop did not anticipate. Clearing the
+                 * field is what lets the next observe() start a fresh one; leaving it set would
+                 * strand the record with no writer for the rest of the session. */
+                synchronized (Observed.class) {
+                    if (saver == Thread.currentThread())
+                        saver = null;
                 }
             }
         }, "botmap-saver");
@@ -515,6 +656,15 @@ public class Observed {
     public static void observe(GameUI gui) {
         if ((gui == null) || (gui.map == null) || (gui.ui == null) || (gui.ui.sess == null))
             return;
+        /* Travel calls this directly, off the tick, and with the sweep now gated on a bot being
+         * active the tick is no longer guaranteed to have started the saver first. Idempotent and
+         * uncontended after the first call, so it costs nothing to ask here every time rather than
+         * reason about which entry point got there first.
+         *
+         * Stamped before starting rather than after, so a saver that reaches its idle check between
+         * these two lines sees the fresh observation and stays up. */
+        observedAt = System.currentTimeMillis();
+        startSaver();
         Gob me = gui.map.player();
         WorldAnchor here = WorldAnchor.capturePlayer(gui);
         if ((me == null) || (here == null))
@@ -1079,10 +1229,16 @@ public class Observed {
         if (map != null)
             return;
         map = new HashMap<>();
-        read(map);
+        stamps = new HashMap<>();
+        read(map, stamps);
+        /* The record and the marker now agree, so the next save has no reason to re-read what we
+         * just parsed. Without this a freshly loaded record paid an extra 8 MB parse on its first
+         * save pass, which matters more now that the map is dropped and reloaded per bot run. */
+        fileAt = stamp();
     }
 
-    private static boolean read(Map<Long, Map<Coord, byte[]>> into) {
+    private static boolean read(Map<Long, Map<Coord, byte[]>> into,
+                                Map<Long, Map<Coord, Long>> stampsInto) {
         try {
             Path f = file();
             if (!Files.exists(f))
@@ -1094,21 +1250,46 @@ public class Observed {
             JSONArray segs = root.optJSONArray("segs");
             if (segs == null)
                 return true;
+            long now = System.currentTimeMillis();
+            int dropped = 0, kept = 0;
             for (int i = 0; i < segs.length(); i++) {
                 JSONObject so = segs.getJSONObject(i);
                 long seg = so.getLong("seg");
-                Map<Coord, byte[]> byseg = into.computeIfAbsent(seg, k -> new HashMap<>());
                 JSONArray grids = so.optJSONArray("grids");
                 if (grids == null)
                     continue;
+                Map<Coord, byte[]> byseg = into.computeIfAbsent(seg, k -> new HashMap<>());
+                Map<Coord, Long> stseg = stampsInto.computeIfAbsent(seg, k -> new HashMap<>());
                 for (int j = 0; j < grids.length(); j++) {
                     JSONObject go = grids.getJSONObject(j);
+                    /* An undated grid is one we cannot reason about: it predates timestamps, or
+                     * it was written by something that did not set one. Dropping it is the point
+                     * - "no timestamp" is precisely the old unbounded data this is here to clear.
+                     * A grid still being walked past is re-observed and re-dated within seconds. */
+                    long t = go.optLong("t", 0L);
+                    if ((t <= 0) || ((now - t) > STALE_MS)) {
+                        dropped++;
+                        continue;
+                    }
                     JSONArray gc = go.getJSONArray("gc");
                     byte[] g = unrle(go.getJSONArray("rle"));
-                    if (g != null)
-                        byseg.put(new Coord(gc.getInt(0), gc.getInt(1)), g);
+                    if (g != null) {
+                        Coord at = new Coord(gc.getInt(0), gc.getInt(1));
+                        byseg.put(at, g);
+                        stseg.put(at, t);
+                        kept++;
+                    }
+                }
+                if (byseg.isEmpty()) {
+                    /* Every grid in the segment aged out. Leaving the empty shells behind would
+                     * keep 165 segment entries alive describing nothing, and encode them again. */
+                    into.remove(seg);
+                    stampsInto.remove(seg);
                 }
             }
+            if (dropped > 0)
+                NLog.log("observed.log", "botmap: kept " + kept + " grid(s), dropped " + dropped
+                    + " stale or undated");
             return true;
         } catch (IOException e) {
             // Locked by another client mid-write, or a disk hiccup. Not grounds for treating what
@@ -1170,13 +1351,14 @@ public class Observed {
              * is the parse that was holding the tick for hundreds of milliseconds every time any
              * crewmate saved. */
             Map<Long, Map<Coord, byte[]>> disk = new HashMap<>();
-            if (!read(disk))
+            Map<Long, Map<Coord, Long>> diskStamps = new HashMap<>();
+            if (!read(disk, diskStamps))
                 return;
             synchronized (LOCK) {
                 if (map == null)
                     return;
                 fileAt = stamp;
-                adopt(disk);
+                adopt(disk, diskStamps);
             }
             return;
         }
@@ -1210,13 +1392,16 @@ public class Observed {
                 known = fileAt;
             }
             Map<Long, Map<Coord, byte[]>> disk = null;
+            Map<Long, Map<Coord, Long>> diskStamps = null;
             if ((locked == UNKNOWN) || (locked != known)) {
                 disk = new HashMap<>();
-                if (!read(disk))
+                diskStamps = new HashMap<>();
+                if (!read(disk, diskStamps))
                     return;    // cannot see what we would be overwriting, so do not. Still dirty.
             }
 
             Map<Long, Map<Coord, byte[]>> snap;
+            Map<Long, Map<Coord, Long>> snapStamps;
             long snapGen, snapWipes;
             synchronized (LOCK) {
                 if (map == null)
@@ -1233,17 +1418,23 @@ public class Observed {
                  * what entitles us to overrule the file - does the work unchanged; it is simply
                  * asked a moment later than it used to be. */
                 if (disk != null)
-                    adopt(disk);
+                    adopt(disk, diskStamps);
                 fileAt = locked;
+                /* Date what this run has looked at, then drop what nobody has looked at in a
+                 * month - in that order, so ground being observed right now can never age out on
+                 * the same pass that would have refreshed it. */
+                stampLooked();
+                sweepStale();
                 snap = snapshot();
+                snapStamps = snapshotStamps();
                 snapGen = gen;
                 snapWipes = wipes;
             }
 
-            /* The encode - run-length coding every grid, building the JSON tree, and rendering
-             * it to a multi-megabyte string - is the other half of what used to sit on LOCK. It
-             * is a pure function of the snapshot, so it does not need the lock at all. */
-            byte[] out = encode(snap);
+            /* The encode - run-length coding every grid and rendering it to a multi-megabyte
+             * document - is the other half of what used to sit on LOCK. It is a pure function of
+             * the snapshot, so it does not need the lock at all. */
+            byte[] out = encode(snap, snapStamps);
 
             synchronized (LOCK) {
                 if (wipes != snapWipes) {
@@ -1276,9 +1467,22 @@ public class Observed {
      * file on, which is how a crewmate's discovery reaches this client without a protocol. Caller
      * holds {@link #LOCK}, and - if it intends to write - the cross-process lock too.
      */
-    private static void adopt(Map<Long, Map<Coord, byte[]>> disk) {
+    private static void adopt(Map<Long, Map<Coord, byte[]>> disk,
+                              Map<Long, Map<Coord, Long>> diskStamps) {
         for (Map.Entry<Long, Map<Coord, byte[]>> se : disk.entrySet()) {
             Map<Coord, byte[]> ours = map.computeIfAbsent(se.getKey(), k -> new HashMap<>());
+            /* Newest wins, per grid. A crewmate who walked somewhere this morning keeps it alive
+             * for everybody; taking ours unconditionally would let a client that has not been
+             * there in weeks age out ground the crew is actively working. */
+            Map<Coord, Long> theirTimes = (diskStamps == null) ? null : diskStamps.get(se.getKey());
+            if (theirTimes != null) {
+                Map<Coord, Long> ourTimes = stamps.computeIfAbsent(se.getKey(), k -> new HashMap<>());
+                for (Map.Entry<Coord, Long> te : theirTimes.entrySet()) {
+                    Long mine = ourTimes.get(te.getKey());
+                    if ((mine == null) || (te.getValue() > mine))
+                        ourTimes.put(te.getKey(), te.getValue());
+                }
+            }
             for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
                 byte[] theirs = ge.getValue();
                 byte[] mine = ours.get(ge.getKey());
@@ -1321,6 +1525,76 @@ public class Observed {
      * encode below safe to do while the client keeps observing. It is a memcpy of the whole
      * record and costs a few milliseconds against the hundreds this takes off the UI thread.
      */
+    /**
+     * Dates every grid this run has looked at as of now. Caller holds {@link #LOCK}.
+     *
+     * Driven off {@link #looked} rather than written by {@link #set}: the mask already records
+     * exactly the grids this run touched, and it is a handful of entries where set() is called
+     * thousands of times per sweep. Stamping there would put a map lookup on the per-tile path to
+     * learn something the per-grid path already knows.
+     */
+    private static void stampLooked() {
+        long now = System.currentTimeMillis();
+        for (Map.Entry<Long, Map<Coord, BitSet>> se : looked.entrySet()) {
+            Map<Coord, Long> st = stamps.computeIfAbsent(se.getKey(), k -> new HashMap<>());
+            for (Map.Entry<Coord, BitSet> ge : se.getValue().entrySet()) {
+                if (!ge.getValue().isEmpty())
+                    st.put(ge.getKey(), now);
+            }
+        }
+    }
+
+    /**
+     * Drops grids nobody has looked at inside {@link #STALE_MS}. Caller holds {@link #LOCK}.
+     *
+     * Undated grids go too. In a v2 record every grid that is still being visited carries a date,
+     * so the only way to be undated is to have arrived from something that did not set one - and
+     * an entry we cannot age is exactly the unbounded growth this exists to stop.
+     */
+    private static void sweepStale() {
+        long now = System.currentTimeMillis();
+        int dropped = 0;
+        for (Iterator<Map.Entry<Long, Map<Coord, byte[]>>> si = map.entrySet().iterator(); si.hasNext();) {
+            Map.Entry<Long, Map<Coord, byte[]>> se = si.next();
+            Map<Coord, Long> st = stamps.get(se.getKey());
+            for (Iterator<Map.Entry<Coord, byte[]>> gi = se.getValue().entrySet().iterator(); gi.hasNext();) {
+                Coord gc = gi.next().getKey();
+                Long t = (st == null) ? null : st.get(gc);
+                if ((t == null) || ((now - t) > STALE_MS)) {
+                    gi.remove();
+                    if (st != null)
+                        st.remove(gc);
+                    /* The looked-mask for a grid we are forgetting goes too, or the record would
+                     * keep claiming authority over ground it no longer holds and overrule a
+                     * crewmate who still has it. */
+                    Map<Coord, BitSet> lk = looked.get(se.getKey());
+                    if (lk != null)
+                        lk.remove(gc);
+                    dropped++;
+                }
+            }
+            if (se.getValue().isEmpty()) {
+                si.remove();
+                stamps.remove(se.getKey());
+                looked.remove(se.getKey());
+            }
+        }
+        if (dropped > 0) {
+            gen++;
+            dirty = true;
+            NLog.log("observed.log", "botmap: evicted " + dropped
+                + " grid(s) unseen for over " + (STALE_MS / (24 * 60 * 60 * 1000)) + " days");
+        }
+    }
+
+    /** Stamps to go with a {@link #snapshot}. Caller holds {@link #LOCK}. */
+    private static Map<Long, Map<Coord, Long>> snapshotStamps() {
+        Map<Long, Map<Coord, Long>> out = new HashMap<>();
+        for (Map.Entry<Long, Map<Coord, Long>> se : stamps.entrySet())
+            out.put(se.getKey(), new HashMap<>(se.getValue()));
+        return out;
+    }
+
     private static Map<Long, Map<Coord, byte[]>> snapshot() {
         Map<Long, Map<Coord, byte[]>> out = new HashMap<>();
         for (Map.Entry<Long, Map<Coord, byte[]>> se : map.entrySet()) {
@@ -1333,26 +1607,65 @@ public class Observed {
     }
 
     /** Serialises a snapshot. Pure function of its argument, so it runs off {@link #LOCK}. */
-    private static byte[] encode(Map<Long, Map<Coord, byte[]>> src) {
-        JSONArray segs = new JSONArray();
+    /**
+     * The whole record as JSON bytes, written straight out rather than built as a tree first.
+     *
+     * The tree version of this was the single largest allocator in the client. Building
+     * JSONObject/JSONArray for every grid boxed an Integer per run-length number, then
+     * {@code root.toString()} materialised the entire file as one String - eight megabytes of it,
+     * sixteen as UTF-16 chars - and {@code getBytes} copied it again. Sampled at over 350 MB of
+     * garbage per save, every five seconds, against an 8 GB heap that was already sawtoothing to
+     * 95% full.
+     *
+     * The output is byte-for-byte the same shape {@link #read} has always parsed. Nothing here
+     * needs escaping - every value is an integer and every key is a literal - so the writer can be
+     * this direct. Key order is ours to choose; read() looks keys up by name.
+     */
+    private static byte[] encode(Map<Long, Map<Coord, byte[]>> src,
+                                 Map<Long, Map<Coord, Long>> times) {
+        /* Sized from the last file we wrote rather than grown from nothing: the record changes by
+         * a few grids between saves, so the previous length is a near-exact estimate and saves
+         * ~20 doublings and the copy each one costs. */
+        StringBuilder sb = new StringBuilder(Math.max(1 << 16, lastEncoded + (lastEncoded >> 4)));
+        sb.append("{\"v\":").append(VERSION).append(",\"segs\":[");
+        boolean firstSeg = true;
         for (Map.Entry<Long, Map<Coord, byte[]>> se : src.entrySet()) {
-            JSONArray grids = new JSONArray();
+            if (!firstSeg)
+                sb.append(',');
+            firstSeg = false;
+            sb.append("{\"seg\":").append(se.getKey().longValue()).append(",\"grids\":[");
+            Map<Coord, Long> segTimes = (times == null) ? null : times.get(se.getKey());
+            boolean firstGrid = true;
             for (Map.Entry<Coord, byte[]> ge : se.getValue().entrySet()) {
-                JSONObject go = new JSONObject();
-                go.put("gc", new JSONArray(new int[] {ge.getKey().x, ge.getKey().y}));
-                go.put("rle", rle(ge.getValue()));
-                grids.put(go);
+                Long t = (segTimes == null) ? null : segTimes.get(ge.getKey());
+                /* A grid we cannot date does not go out. sweepStale() has already dropped these
+                 * from the live record, so reaching here means something raced; writing it
+                 * undated would hand the next reader an entry it can only throw away. */
+                if (t == null)
+                    continue;
+                if (!firstGrid)
+                    sb.append(',');
+                firstGrid = false;
+                sb.append("{\"gc\":[").append(ge.getKey().x).append(',').append(ge.getKey().y)
+                  .append("],\"t\":").append(t.longValue()).append(",\"rle\":[");
+                rle(sb, ge.getValue());
+                sb.append("]}");
             }
-            JSONObject so = new JSONObject();
-            so.put("seg", se.getKey());
-            so.put("grids", grids);
-            segs.put(so);
+            sb.append("]}");
         }
-        JSONObject root = new JSONObject();
-        root.put("v", VERSION);
-        root.put("segs", segs);
-        return root.toString().getBytes(StandardCharsets.UTF_8);
+        sb.append("]}");
+        lastEncoded = sb.length();
+        /* One copy, and an ASCII one: the whole document is digits and punctuation, so going
+         * through the UTF-8 encoder to discover that would be a second pass for nothing. */
+        int n = sb.length();
+        byte[] out = new byte[n];
+        for (int i = 0; i < n; i++)
+            out[i] = (byte) sb.charAt(i);
+        return out;
     }
+
+    /** Length of the last document written, as the sizing hint for the next. See {@link #encode}. */
+    private static int lastEncoded = 0;
 
     /** A modification time that can't be asked for. Never equal to the last one, so never skipped. */
     private static final long UNKNOWN = Long.MIN_VALUE;
@@ -1371,18 +1684,19 @@ public class Observed {
      * Run-length encoded, because a grid is ten thousand tiles and almost all of them say the same
      * thing as the one before. A base with walls through it comes out as a few hundred numbers.
      */
-    private static JSONArray rle(byte[] g) {
-        JSONArray out = new JSONArray();
+    private static void rle(StringBuilder out, byte[] g) {
         int i = 0;
+        boolean first = true;
         while (i < g.length) {
             int j = i;
             while ((j < g.length) && (g[j] == g[i]))
                 j++;
-            out.put((int) g[i]);
-            out.put(j - i);
+            if (!first)
+                out.append(',');
+            first = false;
+            out.append((int) g[i]).append(',').append(j - i);
             i = j;
         }
-        return out;
     }
 
     private static byte[] unrle(JSONArray a) {
@@ -1411,6 +1725,7 @@ public class Observed {
         synchronized (LOCK) {
             map = new HashMap<>();
             looked = new HashMap<>();
+            stamps = new HashMap<>();
             // The object registry too, or "forget everything" would leave the labels for a base that
             // has just been torn down attached to tiles the grid no longer says anything about.
             objects.clear();

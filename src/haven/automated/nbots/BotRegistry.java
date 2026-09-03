@@ -236,6 +236,31 @@ public class BotRegistry {
         return t != null && t.isAlive();
     }
 
+    /**
+     * Whether ANY bot is currently open or running.
+     *
+     * Asked once a second by {@link haven.automated.nbots.world.Observed#tick}, which uses it to
+     * decide whether the world sweep is worth doing at all. A window counts as active even before
+     * its bot has started doing anything: a player who has just opened one is about to run it, and
+     * the record wants to be warm by then rather than start empty.
+     */
+    public boolean anyActive() {
+        if (!open.isEmpty())
+            return true;
+        try {
+            for (Thread t : scripts.values()) {
+                if (t.isAlive())
+                    return true;
+            }
+        } catch (java.util.ConcurrentModificationException e) {
+            /* Something started or stopped while we were looking. Answer "active": the cost of a
+             * spurious sweep is one pass, and the cost of the other mistake is a bot routing on a
+             * record that quietly stopped being updated. */
+            return true;
+        }
+        return false;
+    }
+
     /** The open window for a windowed entry, or null if it is closed. */
     public Window open(String id) {
         return open.get(id);
