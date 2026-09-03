@@ -1,6 +1,7 @@
 package haven.combat.data;
 
 import haven.combat.Combatant;
+import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 
@@ -197,6 +198,21 @@ public final class Pack {
         public final double armHard, armSoft;
         public final List<String> moves;
 
+        /**
+         * What it does to US, or null when the corpus has never seen it act on us.
+         *
+         * Every other field on this class is our attacks on it, because that is the side a
+         * log can attribute. Without this one the optimizer has no second term: a frontier
+         * trades damage taken against time spent, and both are zero against an opponent
+         * that never swings.
+         *
+         * Null rather than an inert model, deliberately. An inert FoeModel is a real and
+         * useful thing - it answers "how fast could I kill this if it stood still" - but it
+         * is a DIFFERENT question, and handing it back here would let a matchup report a
+         * flawless plan against a creature we simply have no defensive data for.
+         */
+        public final FoeModel threat;
+
         Opponent(JSONObject j) {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
@@ -240,6 +256,55 @@ public final class Pack {
             for(int i = 0; (a != null) && (i < a.length()); i++)
                 mv.add(a.getString(i));
             this.moves = mv;
+            this.threat = threat(j.optJSONObject("threat"));
+        }
+
+        /**
+         * The opponent's own model, from the pack's threat block.
+         *
+         * Returns null unless the block carries a PERIOD. Pressure and damage are both
+         * optional - a creature we have watched act but never been hit by is worth
+         * modelling, and FoeModel already refuses to report damage it has not measured -
+         * but a period is not optional, because it is the clock. Without it there is no
+         * answer to how often any of the rest gets applied, and any default would be
+         * choosing the matchup's answer rather than computing it.
+         */
+        private static FoeModel threat(JSONObject t) {
+            if(t == null)
+                return(null);
+            JSONObject per = t.optJSONObject("period");
+            if((per == null) || per.isNull("ticks"))
+                return(null);
+            long period = Math.round(per.optDouble("ticks"));
+            if(period <= 0)
+                return(null);
+
+            double[] pressure = new double[4];
+            JSONObject pr = t.optJSONObject("pressure");
+            if(pr != null) {
+                for(Map.Entry<String, Integer> e : COLOUR.entrySet()) {
+                    if(e.getValue() < 4)
+                        pressure[e.getValue()] = pr.optDouble(e.getKey(), 0.0);
+                }
+            }
+            double against = t.isNull("pressure_against") ? 0.0
+                : t.optDouble("pressure_against", 0.0);
+
+            double coef = Double.NaN;
+            int nHits = 0;
+            JSONObject dm = t.optJSONObject("damage");
+            if(dm != null) {
+                coef = dm.optDouble("coef", Double.NaN);
+                nHits = dm.optInt("n", 0);
+            }
+            double flees = t.isNull("flees_below") ? Double.NaN
+                : t.optDouble("flees_below", Double.NaN);
+            JSONArray md = per.optJSONArray("modes");
+            int[] modes = new int[(md == null) ? 0 : md.length()];
+            for(int i = 0; i < modes.length; i++)
+                modes[i] = md.getInt(i);
+            return(new FoeModel(period, pressure, against, coef,
+                                per.optInt("n", 0), nHits, flees, modes));
         }
 
         private static double[] range(JSONObject j, String key) {

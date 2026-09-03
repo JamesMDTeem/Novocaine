@@ -868,6 +868,11 @@ def collect(paths):
         "myspd": [], "foespd": [],
         # (gob, wall time, our IP at the engagement's start, at its end) - see reaggro_cost.
         "ip_edges": [],
+        # Milliseconds between consecutive actions of ITS, within one engagement. The
+        # opponent's clock, which is the one term the optimizer cannot do without: a
+        # frontier is a trade between damage taken and time spent, and damage taken is
+        # pressure times how often it gets to apply it. See threat().
+        "foe_gaps": [],
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -876,6 +881,36 @@ def collect(paths):
         log = fightlog.read(p, opens)
         if not log.rows:
             continue
+        # A creature's own clock, measured per GOB across the whole file.
+        #
+        # Not per engagement, and not gated on defence_ok, which is where this started and
+        # where it was wrong in two ways at once. Engagements split on the SAMPLED
+        # opponent, so in a crowded fight one creature's actions are scattered across
+        # several of them and the gaps between them are lost at every boundary. And
+        # defence_ok excludes exactly the crowded fights - which for a swarming species is
+        # nearly all of them, so ants read 8 gaps out of 144 engagements.
+        #
+        # Neither confound applies to timing. A move row carries the gob that ACTED (see
+        # Fightview.Relation.use), so filtering on it gives one creature's own actions,
+        # and how often it swings does not depend on who else is in the fight. The gate
+        # stays where it belongs - on pressure and damage, which genuinely cannot be
+        # attributed when a second opponent is opening us at the same time.
+        bygob = defaultdict(list)
+        for r in log.rows:
+            if (r.get("ev") == "move") and (r.get("actor") == "foe") and r.get("gob"):
+                bygob[r["gob"]].append(r["t"])
+        gaps_for = {}
+        for g, ts in bygob.items():
+            ts.sort()
+            out = []
+            for a, b in zip(ts, ts[1:]):
+                d = b - a
+                # Under a tick is the same action arriving twice; over thirty seconds is a
+                # lull that is not a cooldown - it withdrew, or we did.
+                if 60 <= d <= 30000:
+                    out.append(d)
+            gaps_for[g] = out
+
         attrs = (log.header or {}).get("attr") or {}
         agi_me = attrs.get("agi")
         # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
@@ -884,6 +919,11 @@ def collect(paths):
         for eng in log.engagements:
             rec = per[bucket(eng)]
             rec["engagements"] += 1
+            # Once per gob per file, not once per engagement - an engagement is a slice of
+            # one creature's fight and adding its gaps again at every slice would count the
+            # same milliseconds several times over.
+            if eng.gob in gaps_for:
+                rec["foe_gaps"].extend(gaps_for.pop(eng.gob))
             if agi_me:
                 rec["agi_me"].add(agi_me)
 
@@ -2228,6 +2268,176 @@ def report(per, moves):
         print()
 
 
+def period_of(gaps_ms):
+    """How often this creature acts, in ticks, from the gaps between its own actions.
+
+    The MEAN of the gaps, with lulls trimmed, and the arithmetic settles it: over a fight
+    of T ticks with N actions, T is the sum of the gaps, so actions per tick is exactly
+    1 / mean(gap). The optimizer wants the long-run rate at which it gets hit, and that is
+    the mean and nothing else. A median is a different quantity that happens to look
+    similar, and on a two-card creature it is not even close.
+
+    Two things this deliberately does NOT do, both of which were tried here first.
+
+    IT DOES NOT FOLD DOUBLES. A gap at twice the period is one action that was never
+    logged, and folding it back looked like free evidence. The corpus says the doubles are
+    rare - one in sixty-one for ants - and that folding costs far more than it buys,
+    because a genuine second cooldown near a 2:1 ratio gets swallowed by the same rule.
+    Cattle acts on two clocks, 22 ticks and 38, and the fold turned every 38 into a 19 and
+    reported the creature as twice as dangerous as it is. The tell that 38 is real and not
+    a double is that NOTHING sits at 44, where a double of 22 would have to be.
+
+    IT DOES NOT COLLAPSE THE MODES. Multi-modality is the normal case, not the exception:
+    boar has clusters at 30, 38 and 49, caveangler at 30 and 41. The mean is still the
+    right single number for a rate, and the modes are reported beside it so that a number
+    which is a blend of two cards is visibly a blend rather than silently one.
+
+    Lulls - it withdrew, we withdrew, something walked between us - are cut at three times
+    the median, and the count of what was cut is carried out, because a filter whose
+    removals nobody counts is doing more than it says.
+
+    Returns None when there is nothing to measure.
+    """
+    ticks = sorted((g / 60.0) for g in gaps_ms)
+    if not ticks:
+        return None
+    med = ticks[len(ticks) // 2]
+    if med <= 0:
+        return None
+    cut = 3.0 * med
+    kept = [t for t in ticks if t <= cut]
+    if not kept:
+        return None
+
+    mean = sum(kept) / len(kept)
+    hist = defaultdict(int)
+    for t in kept:
+        hist[int(round(t))] += 1
+
+    # Peaks: a rounded value holding a real share of the mass, with nothing bigger within
+    # a quarter of it. Reported in order of weight, so the first is the dominant clock.
+    floor = max(2, int(0.08 * len(kept)))
+    peaks = []
+    for t, n in sorted(hist.items(), key=lambda kv: (-kv[1], kv[0])):
+        if n < floor:
+            continue
+        if any(abs(t - q) <= (0.25 * max(t, q)) for q in peaks):
+            continue
+        # A peak sitting on a whole multiple of one already found is the missed-action
+        # double, and listing it as a second clock would claim the creature has a card it
+        # does not have. This is the one place the doubles argument holds: it decides how
+        # a peak is LABELLED, and never what the mean is computed from.
+        # Doubles only, and tightly. A triple is rare enough not to matter, and the window
+        # that catches one is wide enough to swallow a real second clock: a player acting
+        # every 19 ticks also has a peak at 50, which is 12% off three times 19 and is not
+        # a missed action.
+        if any(abs(t - (2 * q)) <= (0.10 * t) for q in peaks):
+            continue
+        peaks.append(t)
+        if len(peaks) == 3:
+            break
+
+    return {"ticks": round(mean, 1), "n": len(kept), "dropped": len(ticks) - len(kept),
+            "median": round(med, 1), "lo": round(kept[0], 1), "hi": round(kept[-1], 1),
+            "modes": peaks}
+
+
+COLOURS = ("red", "green", "blue", "yellow")
+
+
+def threat(rec):
+    """What this opponent does to US, in the form the optimizer plans against.
+
+    Everything above in this file measures OUR attacks on THEM, because that is the side
+    a log can attribute. This is the other half, and the optimizer is useless without it:
+    a frontier trades damage taken against time spent, and neither term exists until the
+    opponent swings back.
+
+    Four quantities, each measured or explicitly absent.
+
+        period      the median gap between its own actions, in ticks. Taken only from
+                    engagements clean for defence - a fight with a third party in it has
+                    gaps that are the other player's timing as much as the creature's.
+
+        pressure    points it opens on a fresh colour per action, per colour. Built from
+                    the per-move pressures already measured, weighted by how often it
+                    actually throws each move: an ant that spits nineteen times in twenty
+                    should read as an ant that spits, not as the average of its two cards.
+                    Pressure is gain / (1 - Oc), so the falloff is already divided out and
+                    what remains is fully observed - it needs nothing about the creature's
+                    own attack weight, which is exactly the quantity equalization hides.
+
+        damage      SHP through our armour per unit of SQUARED combined opening, because
+                    their damage follows the same shape ours does. One coefficient stands
+                    in for their strength and their weapon, neither of which a log records.
+
+        flees       the share of its hitpoints below which it stops fighting. Needs the
+                    aggression state that schema 7 logs and no fight in this corpus
+                    carries yet, so it is null here rather than guessed.
+
+    Returns None when the corpus has not seen this creature act on us at all. A creature
+    we have only ever hit is not a creature we know how to fight.
+    """
+    period = period_of(rec.get("foe_gaps") or ())
+
+    # How often it throws each move, from every engagement - the weights.
+    freq = defaultdict(int)
+    for name, _ip, _alone in (rec.get("foe_moves") or ()):
+        if name:
+            freq[name] += 1
+
+    pressure, pn = dict((c, 0.0) for c in COLOURS), 0
+    bymove = defaultdict(dict)
+    for (mv, colour), vals in (rec.get("pressure") or {}).items():
+        if vals and (colour in pressure):
+            bymove[mv][colour] = sum(vals) / float(len(vals))
+            pn += len(vals)
+    if bymove:
+        # Weighted by use. A move we have measured but never counted still gets a vote of
+        # one, so a card seen twice does not vanish and does not dominate either.
+        total = 0.0
+        for mv, cols in bymove.items():
+            w = float(freq.get(mv) or 1)
+            total += w
+            for c, v in cols.items():
+                pressure[c] += w * v
+        for c in COLOURS:
+            pressure[c] = round(pressure[c] / total, 2) if total > 0 else 0.0
+
+    wds = sorted(rec.get("my_wd") or ())
+    # The block weight it was measured against, so the figure can be rescaled when ours
+    # changes. Without this the pressure is a number with no denominator: it was measured
+    # against SOMETHING of ours, and a pack that did not say what would be inviting the
+    # simulator to apply it at any defence at all.
+    against = (sum(wds) / len(wds)) if wds else None
+
+    coefs = []
+    for h in (rec.get("took") or ()):
+        o = [min(x, 100) / 100.0 for x in (h.get("openings") or [])]
+        if (len(o) != 4) or (h.get("shp", 0) <= 0):
+            continue
+        c = model.combined(o)
+        # An attack that landed against nothing standing is not evidence about the
+        # coefficient - it is evidence that the opening term is not the whole story, and
+        # dividing by a combined opening near zero would turn that into a huge number.
+        if c < 0.05:
+            continue
+        coefs.append(h["shp"] / (c * c))
+    coefs.sort()
+    damage = ({"coef": round(coefs[len(coefs) // 2], 1), "n": len(coefs),
+               "lo": round(coefs[0], 1), "hi": round(coefs[-1], 1)}
+              if coefs else None)
+
+    if (period is None) and (pn == 0) and (damage is None):
+        return None
+    return {"period": period, "pressure": pressure, "pressure_against": against,
+            "pressure_n": pn, "damage": damage,
+            # Measurable the moment a fight is logged on a schema 7 client: the second
+            # bit of the aggression state is its olive branch. Null, not zero - zero
+            # would mean "fights to the death", which is a claim.
+            "flees_below": None}
+
+
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")
 
 
@@ -2269,6 +2479,8 @@ def write_pack(per, moves):
         entry["skill"] = foe_skill_entry(rec)
         entry["policy"] = foe_policy(rec)
         entry["relative_speed"] = relative_speed(rec)
+        # What it does to us. Everything else in this entry is our attacks on it.
+        entry["threat"] = threat(rec)
 
         obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
         for mv, ticks in rec["cd"].items():

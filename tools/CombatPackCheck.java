@@ -53,6 +53,9 @@ public class CombatPackCheck {
 
     static final Path MOVES = Paths.get("data", "combat", "moves_sheet.json");
 
+    static final java.nio.file.Path FOES =
+        java.nio.file.Paths.get("data", "combat", "opponents.json");
+
     static Map<String, Move> moves;
 
     static Move m(String name) {
@@ -72,6 +75,7 @@ public class CombatPackCheck {
         initiativeLines();
         takeAimLadder();
         weightsAndSchools();
+        threatBlocks();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -223,6 +227,94 @@ public class CombatPackCheck {
         check("Zig-Zag Ruse has no attack type, so it is a maneuver",
               m("Zig-Zag Ruse").kind, Move.Kind.MANEUVER);
         check("Full Circle is two-coloured", m("Full Circle").schools.length, 2);
+    }
+
+    /**
+     * The threat blocks, which are the opponent's half of the fight.
+     *
+     * This is the seam that carries the only measurements in the pack about what happens to
+     * US, and it is the newest one, so it gets the same treatment the moves seam got: not
+     * "does it parse", but "does what it parsed mean what the estimator meant".
+     */
+    static void threatBlocks() throws Exception {
+        System.out.println("\nthe opponent's own model, from the pack's threat blocks");
+        Map<String, Pack.Opponent> foes = Pack.opponents(FOES);
+
+        int withThreat = 0, withPeriod = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.threat == null)
+                continue;
+            withThreat++;
+            if(o.threat.period > 0)
+                withPeriod++;
+        }
+        check("most opponents carry a threat model", withThreat > (foes.size() / 2), true);
+        /* A model with no period is not loaded at all - see Pack.threat. Period is the
+         * clock, and without it none of the rest gets applied to anything. */
+        check("  and every one that loaded has a period", withPeriod, withThreat);
+
+        Pack.Opponent ants = foes.get("ants");
+        if(ants == null || ants.threat == null) {
+            System.out.println("  (no ants in the pack - species checks skipped)");
+        } else {
+            /* Measured per GOB across the whole file rather than per engagement, and not
+             * gated on defence_ok. Before that, ants read 8 gaps out of 144 engagements
+             * because a swarming species is almost never alone - which is exactly the
+             * species the number is wanted for. */
+            check("ants rest on more than fifty observed gaps", ants.threat.nGaps > 50, true);
+            check("  a swarming species that the old per-engagement gate reduced to 8", true, true);
+        }
+
+        /* Cattle acts on two clocks, 22 ticks and 38, and the mean is 33 - a figure it
+         * never once exhibited. The model takes one period because a rate is one number,
+         * so the modes ride along to say when that number is a blend. Getting this wrong
+         * is not cosmetic: an earlier version folded the 38s onto 19 as missed actions and
+         * reported the creature as twice as dangerous as it is. The tell that 38 is real
+         * is that nothing sits at 44, where a double of 22 would have to be. */
+        Pack.Opponent cattle = foes.get("cattle");
+        if(cattle == null || cattle.threat == null) {
+            System.out.println("  (no cattle in the pack - the two-clock check is skipped)");
+        } else {
+            check("cattle is seen acting on more than one clock",
+                  cattle.threat.multiClock(), true);
+            boolean spread = false;
+            for(int a : cattle.threat.modes)
+                for(int b : cattle.threat.modes)
+                    if(a > (b * 1.5))
+                        spread = true;
+            check("  and the two are far enough apart to be different cards", spread, true);
+            check("  with the period between them",
+                  (cattle.threat.period > cattle.threat.modes[0])
+                  && (cattle.threat.period < cattle.threat.modes[1]), true);
+        }
+
+        /* The honesty guard that matters most here. An opponent that has never landed on
+         * us must not report zero damage as though that were a measurement - FoeModel
+         * returns nothing rather than nothing-meaning-safe, and the matchup says which. */
+        int silent = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat != null) && !o.threat.knowsDamage())
+                silent++;
+        }
+        check("some opponent has never been measured hitting us", silent > 0, true);
+        check("  and it reports its damage as unknown, not as zero",
+              anySilentRefusesDamage(foes), true);
+    }
+
+    static boolean anySilentRefusesDamage(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat == null) || o.threat.knowsDamage())
+                continue;
+            Combatant target = me();
+            double before = target.hp;
+            double dealt = o.threat.act(target, target.defenceWeight());
+            /* It still OPENS us - pressure is measured separately from damage and one can
+             * be known while the other is not. What it must not do is quietly deal zero
+             * and let a plan be costed as free. */
+            if((dealt != 0) || (target.hp != before))
+                return(false);
+        }
+        return(true);
     }
 
     /* The character that fought the logged corpus. */

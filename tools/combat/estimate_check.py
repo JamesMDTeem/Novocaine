@@ -662,6 +662,50 @@ def buckets():
           estimate.bucket(E(None, 9)), "?#9")
 
 
+def opponent_period():
+    """How often a creature acts - a mean, and specifically not a fold.
+
+    Written after getting it wrong twice in one sitting, in opposite directions.
+    """
+    print("\nthe opponent's clock")
+    ms = lambda ticks: [int(t * 60) for t in ticks]
+
+    # THE IDENTITY. Over T ticks with N actions, T is the sum of the gaps, so the rate is
+    # 1/mean. Anything but a mean answers a different question - here a median would say
+    # 20 where the creature actually gets 5 swings in 130 ticks, which is 26.
+    p = estimate.period_of(ms([20, 20, 20, 20, 50]))
+    near("five actions over 130 ticks reads 26, not the median's 20",
+         p["ticks"], 26.0, 0.05)
+
+    # THE CATTLE CASE. Two cards, 22 ticks and 38, which sit close enough to 2:1 that a
+    # fold-the-doubles rule swallows the second: every 38 becomes a 19 and the creature is
+    # reported as twice as dangerous as it is. The tell that 38 is a real cooldown and not
+    # a missed action is that NOTHING sits at 44, where a double of 22 would have to be.
+    p = estimate.period_of(ms([22] * 18 + [38] * 13 + [39] * 6 + [37] * 3))
+    check("two clocks near a 2:1 ratio are both kept", len(p["modes"]), 2)
+    check("  and neither is folded away",
+          sorted(p["modes"]) == [22, 38], True)
+    check("  so the period sits between them, not below both",
+          (p["ticks"] > 22) and (p["ticks"] < 38), True)
+
+    # THE SENTINEL BEE CASE, which is the one the fold rule was right about. A tight
+    # cluster at 50 with a couple at 94 is one clock with two missed actions, and calling
+    # 94 a second clock would claim a card the creature does not have. This is decided
+    # when a peak is LABELLED and never when the mean is computed - the 94s still count
+    # their full elapsed time, which is the conservative direction.
+    p = estimate.period_of(ms([50] * 12 + [49] * 4 + [51] * 2 + [94] * 3))
+    check("a peak at twice the period is not a second clock", p["modes"], [50])
+
+    # LULLS. It withdrew, or we did. Cut at three times the median and COUNTED, because a
+    # filter whose removals nobody counts is doing more than it says.
+    p = estimate.period_of(ms([44] * 20 + [246, 435]))
+    check("gross lulls are trimmed", p["dropped"], 2)
+    check("  and the rest survives", p["n"], 20)
+    near("  leaving the clock where the cluster is", p["ticks"], 44.0, 0.1)
+
+    check("nothing to measure returns nothing", estimate.period_of([]), None)
+
+
 def main():
     hitpoints()
     agility()
@@ -678,6 +722,7 @@ def main():
     tactics()
     armour()
     buckets()
+    opponent_period()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

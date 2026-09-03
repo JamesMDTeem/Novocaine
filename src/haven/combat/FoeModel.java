@@ -47,6 +47,19 @@ public final class FoeModel {
     public final int nGaps, nHits;
 
     /**
+     * The distinct clocks this creature was seen acting on, shortest first, or empty.
+     *
+     * {@link #period} is a mean, which is the right single number for a rate - over T
+     * ticks it acts T/period times, and that identity holds however its cooldowns are
+     * distributed. But cattle acts on two clocks, 22 ticks and 38, and a lone "33.3" is a
+     * number it never once exhibited. Nothing computes with this; it exists so a report
+     * that prints one number can say when that number is a blend, rather than letting a
+     * reader assume a creature is regular because the field it was given had room for
+     * only one value.
+     */
+    public final int[] modes;
+
+    /**
      * The share of its hitpoints below which it runs instead of fighting.
      *
      * An animal that has taken enough extends an olive branch and flees, and a fleeing
@@ -68,6 +81,14 @@ public final class FoeModel {
 
     public FoeModel(long period, double[] pressure, double pressureAgainst,
                     double damageCoef, int nGaps, int nHits, double fleesBelow) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, fleesBelow,
+             new int[0]);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow,
+                    int[] modes) {
+        this.modes = (modes == null) ? new int[0] : modes;
         this.fleesBelow = fleesBelow;
         this.period = period;
         this.pressure = pressure;
@@ -120,6 +141,11 @@ public final class FoeModel {
         double dealt = damageCoef * combined * combined;
         me.hp -= dealt;
         return(dealt);
+    }
+
+    /** Whether the one period is standing in for more than one clock. */
+    public boolean multiClock() {
+        return(modes.length > 1);
     }
 
     /** An opponent that never acts - for asking "how fast could I kill it if it stood still". */

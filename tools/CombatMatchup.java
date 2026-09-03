@@ -15,11 +15,20 @@
  * The policy is deliberately dumb - always throw the highest-damage move that is legal right
  * now. That is not the optimizer; it is the floor the optimizer has to beat, and having it
  * first means the optimizer can be measured against something instead of admired.
+ *
+ * The second half of the report runs the optimizer against the OPPONENT'S OWN MODEL, loaded
+ * from the pack's threat block. Until that block existed there was nothing on the other side
+ * of the fight: every plan cost zero hitpoints, so "least damage taken" ranked everything
+ * equally and the frontier collapsed to whatever was fastest. That is why the greedy floor
+ * came first and why it is still printed - a frontier that does not beat it is not evidence
+ * of a good plan, it is evidence of a broken search.
  */
 
 import haven.combat.Combatant;
+import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
+import haven.combat.Optimizer;
 import haven.combat.Sim;
 import haven.combat.data.Pack;
 
@@ -177,6 +186,103 @@ public class CombatMatchup {
                                       String.join(", ", hard.opening));
             }
         }
+
+        System.out.println("\nthe optimizer, against each opponent's own model");
+        System.out.println("time and hitpoints, every plan that is not beaten on both");
+        System.out.println("-".repeat(92));
+        int modelled = 0, planned = 0, blockedBySkill = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.threat != null)
+                modelled++;
+            if(!o.simulable() || !o.hpBounded()) {
+                if((o.threat != null) && !o.simulable())
+                    blockedBySkill++;
+                continue;
+            }
+            planned++;
+            frontier(o, deck);
+        }
+        /* Counted over EVERY opponent, not inside the loop above, which is where this was
+         * first written and where it was wrong by a factor of ten: the loop skips anything
+         * unsimulable, so it reported 3 threat models out of 35 when there are 30. The
+         * number that was really being reported is `planned`, and the two are worth
+         * keeping apart because they say different things about what is missing. */
+        System.out.printf("%n%d of %d opponents carry a threat model - we know what they"
+                          + " do to us.%n", modelled, foes.size());
+        System.out.printf("%d of those can be planned against.%n", planned);
+        if(blockedBySkill > 0) {
+            System.out.printf("%d are held back by OUR side of the fight, not theirs: their"
+                              + " combat%n", blockedBySkill);
+            System.out.println("skill is within a factor of two of ours, so equalization");
+            System.out.println("pinned every opening gain we logged and the corpus can only");
+            System.out.println("bound the skill rather than name it. More fights against");
+            System.out.println("those creatures will not fix it. A different attack weight");
+            System.out.println("will - one far enough from theirs to fall outside the band.");
+        }
+    }
+
+    /* Wide enough that the initiative curve comes out monotone - see
+     * Optimizer.beamWasEnough, which exists because a narrower beam silently reported that
+     * four initiative was WORSE than two. */
+    static final int BEAM = 120;
+
+    /**
+     * The frontier against one opponent, printed.
+     *
+     * Two numbers, not one. "Best" is not a thing a fight has: a plan that kills in nine
+     * seconds for forty hitpoints and one that takes twenty seconds for six are both
+     * correct answers, and which is wanted depends on what else is nearby and how far the
+     * hearth is. Collapsing them into a single score would be picking for the player.
+     */
+    static void frontier(Pack.Opponent o, List<Move> deck) {
+        FoeModel model = o.threat;
+        if(model == null) {
+            System.out.printf("  %-14s no threat model - never seen it act on us%n", o.name);
+            return;
+        }
+        List<Optimizer.Plan> all =
+            Optimizer.search(me(), o.toughest(), deck, model, BEAM, MAX_TICKS);
+        List<Optimizer.Plan> front = Optimizer.frontier(all);
+        if(front.isEmpty()) {
+            System.out.printf("  %-14s no plan kills it within the cap%n", o.name);
+            return;
+        }
+        /* The hitpoint figures below are the whole point of the frontier and they are the
+         * thinnest thing in this report, so the evidence travels with them. A "1.4 hp"
+         * that rests on four observed gaps and one landed hit is not the same claim as
+         * one resting on four hundred, and printed bare the two look identical. */
+        System.out.printf("  %-14s acts every %d ticks (%d gap%s), damage from %d hit%s%n",
+                          o.name, model.period, model.nGaps, model.nGaps == 1 ? "" : "s",
+                          model.nHits, model.nHits == 1 ? "" : "s");
+        if(model.multiClock()) {
+            StringBuilder sb = new StringBuilder();
+            for(int m : model.modes)
+                sb.append(sb.length() == 0 ? "" : " and ").append(m);
+            System.out.println("      two clocks, " + sb + " ticks - the period above is a"
+                               + " blend it never actually exhibits");
+        }
+        if(!model.knowsDamage()) {
+            System.out.println("      it has never landed on us, so damage taken reads zero"
+                               + " because it is UNMEASURED, not because it is safe");
+        } else if((model.nHits < 10) || (model.nGaps < 10)) {
+            System.out.println("      THIN - too few observations to trust the hitpoint"
+                               + " column; the ordering is likely right and the numbers"
+                               + " are not");
+        }
+        for(Optimizer.Plan pl : front) {
+            System.out.printf("      %5.1f s  %6.1f hp   %s%n",
+                              Formulas.ticksToSeconds(pl.ticks), pl.hpLost,
+                              names(pl.moves));
+        }
+    }
+
+    static String names(List<Move> ms) {
+        List<String> out = new ArrayList<String>();
+        for(Move m : ms)
+            out.add(m.name);
+        if(out.size() > 8)
+            return(String.join(", ", out.subList(0, 8)) + ", ...");
+        return(String.join(", ", out));
     }
 
     static String missing(Pack.Opponent o) {
