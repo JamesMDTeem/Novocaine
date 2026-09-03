@@ -46,14 +46,41 @@ public final class FoeModel {
     /** How many observations each figure rests on, for the report to carry. */
     public final int nGaps, nHits;
 
+    /**
+     * The share of its hitpoints below which it runs instead of fighting.
+     *
+     * An animal that has taken enough extends an olive branch and flees, and a fleeing
+     * animal STOPS FIGHTING BACK. That is not a detail: every point of initiative built
+     * after that moment, and every opening closed, is spent on nothing. A plan that keeps
+     * defending into a flight is buying protection from an opponent that has stopped
+     * swinging.
+     *
+     * It is visible in a log - the aggression state's second bit is the opponent's olive
+     * branch, which schema 7 records - so this is measurable rather than assumed. NaN when
+     * the corpus has not seen this species flee, and the model then fights it to zero.
+     */
+    public final double fleesBelow;
+
     public FoeModel(long period, double[] pressure, double pressureAgainst,
                     double damageCoef, int nGaps, int nHits) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, Double.NaN);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow) {
+        this.fleesBelow = fleesBelow;
         this.period = period;
         this.pressure = pressure;
         this.pressureAgainst = pressureAgainst;
         this.damageCoef = damageCoef;
         this.nGaps = nGaps;
         this.nHits = nHits;
+    }
+
+    /** Whether this opponent has given up and is running, and so has stopped hitting us. */
+    public boolean fleeing(Combatant foe) {
+        return(!Double.isNaN(fleesBelow) && (foe.maxHp > 0)
+               && ((foe.hp / foe.maxHp) < fleesBelow));
     }
 
     /** Whether this model can say anything about damage taken. */
@@ -71,6 +98,12 @@ public final class FoeModel {
      * damage benefits from the opening they just made. An optimizer that is wrong here is
      * wrong towards caution.
      */
+    public double act(Combatant me, double myBlockWeight, Combatant self) {
+        if((self != null) && fleeing(self))
+            return(0);
+        return(act(me, myBlockWeight));
+    }
+
     public double act(Combatant me, double myBlockWeight) {
         double scale = (pressureAgainst > 0 && myBlockWeight > 0)
             ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0;

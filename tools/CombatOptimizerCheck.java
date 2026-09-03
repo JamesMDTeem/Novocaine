@@ -42,8 +42,99 @@ public class CombatOptimizerCheck {
             failures++;
     }
 
+    /**
+     * A fleeing opponent has stopped fighting, so nothing bought after that buys anything.
+     *
+     * An animal that has taken enough extends an olive branch and runs, and it stops
+     * swinging when it does. Every point of initiative and every reduction spent past that
+     * moment is spent on an opponent that cannot hurt us. The frontier should therefore
+     * stop trading time for hitpoints once the flight starts - the cheapest plan and the
+     * fastest plan converge, because there is no longer anything to be cheap about.
+     */
+    static void fleeing() {
+        System.out.println("\na fleeing opponent stops fighting, so defence stops paying");
+        double[] press = {14, 0, 0, 0};
+        List<Move> deck = Optimizer.deck(barrage(), quickDodge());
+        Combatant tough = me();
+        tough.hp = tough.maxHp = 900;
+
+        FoeModel stands = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        FoeModel runs = new FoeModel(45, press, 312.5, 90.0, 20, 20, 0.60);
+        Combatant a = foe(400, 20), b = foe(400, 20);
+        check("one that fights to the death is not fleeing at full health",
+              stands.fleeing(a), false);
+        b.hp = 200;
+        check("one that runs at 60% is, once it is down to half", runs.fleeing(b), true);
+
+        List<Optimizer.Plan> fight = Optimizer.search(tough, a, deck, stands, 60, 2500);
+        List<Optimizer.Plan> flee = Optimizer.search(tough, b == null ? a : foe(400, 20),
+                                                     deck, runs, 60, 2500);
+        double fightSpread = spread(fight), fleeSpread = spread(flee);
+        check("against one that fights, the frontier trades time for hitpoints",
+              fightSpread > 0, true);
+        check("against one that runs, there is far less left to trade",
+              fleeSpread < fightSpread, true);
+        System.out.printf("      fights back: %d plan(s), %.1f hp between fastest and cheapest%n",
+                          fight.size(), fightSpread);
+        System.out.printf("      runs at 60%%: %d plan(s), %.1f hp%n", flee.size(), fleeSpread);
+        double a1 = cheapest(fight), a2 = cheapest(flee);
+        check("and it costs less overall", a2 < a1, true);
+        System.out.printf("      cheapest: %.1f hp against one that fights, %.1f against one that runs%n",
+                          a1, a2);
+    }
+
+    /**
+     * How much initiative is worth bringing, which is a question about the PROLOGUE.
+     *
+     * Take Aim is thrown at range before the fight, kiting, where the time is nearly free.
+     * So the question is not what a point costs but how many to collect, and the answer has
+     * to diminish: a deck that will throw one initiative-spender wants one point, and a
+     * second buys nothing. If the curve did not flatten, the search would be claiming that
+     * initiative helps without being spent.
+     */
+    static void startingInitiative() {
+        System.out.println("\nhow much initiative is worth bringing to the fight");
+        double[] press = {14, 0, 0, 0};
+        FoeModel steady = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        /* One spender, costing 2 - so the second point is the last one that can matter. */
+        Move kito = Move.of("Knock Its Teeth Out").kind(Move.Kind.ATTACK)
+            .weight(Move.Weight.UNARMED).school(Formulas.RED).opens(Formulas.RED, 20)
+            .flatDamage(30).ipCost(2).cooldown(35).build();
+        List<Move> deck = Optimizer.deck(barrage(), kito);
+        Combatant tough = me();
+        tough.hp = tough.maxHp = 900;
+        /* Beam 120, not 40. At 40 this curve RISES at four points - 95.4 against 63.5 at
+         * two - which cannot be true, since a plan available with two points is available
+         * with four and the extra goes unspent. The search simply missed it. */
+        double[] v = Optimizer.valueOfStartingIp(tough, foe(300, 20), deck, steady, 120,
+                                                 2500, 4);
+        for(int i = 0; i < v.length; i++)
+            System.out.printf("      %d IP: %s hp%n", i,
+                              Double.isNaN(v[i]) ? "no kill" : String.format("%.1f", v[i]));
+        check("bringing initiative never costs hitpoints, at any amount",
+              Optimizer.beamWasEnough(v), true);
+        check("  and the pool that gets spent is where the gain is", v[2] < v[0], true);
+        check("  past which a further point buys nothing", v[4], v[2]);
+        check("and the return diminishes rather than running away",
+              (v[0] - v[2]) >= (v[2] - v[4]) - 1e-9, true);
+        /* The same curve at a beam that is too narrow must be REJECTED rather than used. */
+        double[] narrow = Optimizer.valueOfStartingIp(tough, foe(300, 20), deck, steady, 40,
+                                                      2500, 4);
+        check("a too-narrow beam is caught rather than trusted",
+              Optimizer.beamWasEnough(narrow), false);
+    }
+
+    /** Hitpoints between the fastest plan on a frontier and the cheapest. */
+    static double spread(List<Optimizer.Plan> f) {
+        if(f.size() < 2)
+            return(0);
+        return(f.get(0).hpLost - f.get(f.size() - 1).hpLost);
+    }
+
     public static void main(String[] args) {
         inertFoe();
+        fleeing();
+        startingInitiative();
         paretoIsNotOneNumber();
         defenceEarnsItsPlace();
         clocksAreSeparate();

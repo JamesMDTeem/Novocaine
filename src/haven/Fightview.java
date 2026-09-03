@@ -387,6 +387,24 @@ public class Fightview extends Widget {
 	updrel();
     }
     
+    /**
+     * The tile the player is standing on, or null.
+     *
+     * Terrain gates our own speed - forest holds us to a run where grassland allows a
+     * sprint - so a logged speed cannot be compared against another without it.
+     */
+    private String tileUnder(Gob me) {
+	try {
+	    if(me == null)
+		return(null);
+	    return(ui.sess.glob.map.tileTypeName(
+		       ui.sess.glob.map.gettile(me.rc.floor(MCache.tilesz))));
+	} catch(Exception e) {
+	    /* an unloaded grid is a null tile, not a broken tick */
+	    return(null);
+	}
+    }
+
     public void tick(double dt) {
 	super.tick(dt);
 	/* Every opponent's openings, not only the sampled one's. The game draws the pips over
@@ -452,7 +470,12 @@ public class Fightview extends Widget {
 			 * that moves. Inferring it from how fast the gap opened could not tell
 			 * a fast creature from one we never backed away from. */
 			(me == null) ? 0 : me.gobSpeed,
-			(foe == null) ? 0 : foe.gobSpeed);
+			(foe == null) ? 0 : foe.gobSpeed,
+			/* Aggression state. Bit 2 is the opponent's olive branch, which an animal
+			 * extends when it has taken enough and starts to run - and a fleeing animal
+			 * stops fighting back, so initiative built after it is spent on nothing. */
+			rel.gst,
+			tileUnder(me));
 		} catch(Exception e) {
 		    /* telemetry must never break the tick loop */
 		}

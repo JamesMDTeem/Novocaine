@@ -243,7 +243,7 @@ public final class CombatRecorder {
 
     public static void sample(Openings mine, Openings foe, int myIp, int foeIp,
                               int hp, double stam, double energy, double dist, long gobId,
-                              double mySpeed, double foeSpeed) {
+                              double mySpeed, double foeSpeed, int gst, String tile) {
         if(!active())
             return;
         try {
@@ -261,12 +261,13 @@ public final class CombatRecorder {
              * change worth a sample even when nothing else moved - and because the whole
              * point of recording it is to catch the moments we were actually withdrawing. */
             String key = gobId + ":" + mine.toJson() + foe.toJson() + myIp + ":" + foeIp
-                + ":" + hp + ":" + (long)dist + ":" + (long)mySpeed + ":" + (long)foeSpeed;
+                + ":" + hp + ":" + (long)dist + ":" + (long)mySpeed + ":" + (long)foeSpeed
+                + ":" + gst + ":" + tile;
             if(key.equals(lastSample))
                 return;
             lastSample = key;
             log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId,
-                                  mySpeed, foeSpeed));
+                                  mySpeed, foeSpeed, gst, tile));
         } catch(Exception e) {
             /* never propagate into tick() */
         }

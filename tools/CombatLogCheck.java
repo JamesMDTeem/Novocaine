@@ -75,14 +75,14 @@ public class CombatLogCheck {
         System.out.println("\nCombatEvent");
         check("state",
               CombatEvent.state(1000L, new Openings(5, 0, 0, 0), new Openings(0, 0, 0, 9),
-                                2, 3, 875, 0.5, 0.9, 12.25, 42L, 18.5, 9.25),
+                                2, 3, 875, 0.5, 0.9, 12.25, 42L, 18.5, 9.25, 0, "gfx/tiles/field"),
               "{\"ev\":\"state\",\"t\":1000,\"gob\":42,\"mine\":[5,0,0,0],\"foe\":[0,0,0,9],"
-              + "\"myip\":2,\"foeip\":3,\"hpf\":875,\"stam\":0.5000,\"energy\":0.9000,\"dist\":12.2500,\"myspd\":18.5000,\"foespd\":9.2500}");
+              + "\"myip\":2,\"foeip\":3,\"hpf\":875,\"stam\":0.5000,\"energy\":0.9000,\"dist\":12.2500,\"myspd\":18.5000,\"foespd\":9.2500,\"gst\":0,\"tile\":\"gfx/tiles/field\"}");
         check("state (different foe gob)",
               CombatEvent.state(1004L, new Openings(0, 3, 0, 0), new Openings(1, 0, 2, 0),
-                                4, 1, 620, 0.75, 0.2, 6.5, 99L, 0.0, 0.0),
+                                4, 1, 620, 0.75, 0.2, 6.5, 99L, 0.0, 0.0, 2, null),
               "{\"ev\":\"state\",\"t\":1004,\"gob\":99,\"mine\":[0,3,0,0],\"foe\":[1,0,2,0],"
-              + "\"myip\":4,\"foeip\":1,\"hpf\":620,\"stam\":0.7500,\"energy\":0.2000,\"dist\":6.5000,\"myspd\":0.0000,\"foespd\":0.0000}");
+              + "\"myip\":4,\"foeip\":1,\"hpf\":620,\"stam\":0.7500,\"energy\":0.2000,\"dist\":6.5000,\"myspd\":0.0000,\"foespd\":0.0000,\"gst\":2,\"tile\":null}");
         check("move (own, target unknown)",
               CombatEvent.move(1001L, "me", "paginae/atk/cleave", "Cleave", 80.0, -1L),
               "{\"ev\":\"move\",\"t\":1001,\"actor\":\"me\",\"gob\":-1,\"move\":\"paginae/atk/cleave\","
@@ -141,10 +141,22 @@ public class CombatLogCheck {
          * the client draws in white under anything that moves. It replaces inferring a
          * speed from how fast the distance changed, which could not tell a fast creature
          * from one we never withdrew from. */
-        check("schema constant", CombatEvent.SCHEMA, 6);
+        /* 7 adds the aggression state and the tile underfoot. gst bit 2 is the opponent's
+         * olive branch - what an animal extends when it starts to run - and a fleeing
+         * animal stops fighting back. The tile matters because terrain gates OUR speed,
+         * so a logged speed cannot be compared against another without it. */
+        check("schema constant", CombatEvent.SCHEMA, 7);
+        /* gst bit 2 is the OPPONENT's olive branch, which an animal extends when it has
+         * taken enough and starts to run - and a fleeing animal stops fighting back, so
+         * everything bought after it is bought for nothing. A null tile is an unloaded
+         * grid, which is a real answer and not a failure. */
+        check("state carries the aggression state and the tile underfoot",
+              CombatEvent.state(1L, Openings.ZERO, Openings.ZERO, 0, 0, 10000, 1.0, 1.0,
+                                5.0, 9L, 0.0, 0.0, 2, "gfx/tiles/forest")
+                         .contains("\"gst\":2,\"tile\":\"gfx/tiles/forest\""), true);
         check("state carries both speeds",
               CombatEvent.state(1L, Openings.ZERO, Openings.ZERO, 0, 0, 10000, 1.0, 1.0,
-                                5.0, 9L, 18.5, 9.25)
+                                5.0, 9L, 18.5, 9.25, 0, null)
                          .contains("\"myspd\":18.5000,\"foespd\":9.2500"), true);
         check("buffs lists what a combatant is holding",
               CombatEvent.buffs(3L, 42L, "foe",

@@ -184,7 +184,12 @@ public final class Optimizer {
          * a window the opponent gets to swing in, and a short one is not. */
         long ready = Math.max(tick, me.readyAt);
         while((foeNext <= ready) && (foeNext < maxTicks)) {
-            hpLost += model.act(me, me.defenceWeight());
+            /* A fleeing opponent has stopped fighting back, so this window costs nothing -
+             * and every reduction or point of initiative bought during it buys nothing
+             * either. The frontier sorts that out on its own once the damage stops: a plan
+             * that keeps defending simply arrives later for the same hitpoints, and is
+             * dominated. */
+            hpLost += model.act(me, me.defenceWeight(), foe);
             foeNext += model.period;
             if(!me.alive())
                 break;
@@ -251,6 +256,68 @@ public final class Optimizer {
                 uniq.add(p);
         }
         return(uniq);
+    }
+
+    /**
+     * What a point of initiative brought to the fight is worth.
+     *
+     * Take Aim and its kin are thrown at range BEFORE the fight starts - kited in, building
+     * a pool while the opponent cannot reach us. That time is nearly free, so the question
+     * is not what a point costs but how many are worth collecting before engaging, and the
+     * answer is a diminishing return that has to be measured rather than guessed: a deck
+     * with one initiative-spender wants exactly as many points as it will throw, and a
+     * further point buys nothing at all.
+     *
+     * Runs the search from each starting pool and reports the cheapest killing plan at each.
+     * The point to stop at is where the column stops improving.
+     *
+     * NON-MONOTONICITY IS A BUG SIGNAL, and this reports it rather than hiding it. Bringing
+     * a point of initiative cannot make a fight worse: every plan available with two points
+     * is still available with four, since the extra simply goes unspent. So if the curve
+     * ever rises, the SEARCH failed to find a line it should have - the beam was too narrow
+     * for the wider branching that more initiative allows. Observed exactly: at a beam of 40
+     * this reads 95.4 at four points against 63.5 at two, and at 120 it reads 63.5
+     * throughout. Taking a running minimum would produce the right numbers and conceal an
+     * under-resourced search, so the raw result is returned and {@link #beamWasEnough} says
+     * whether to trust it.
+     *
+     * @return hitpoints lost by the cheapest killing plan at 0, 1, ... maxIp starting
+     *         initiative; NaN where nothing killed
+     */
+    public static double[] valueOfStartingIp(Combatant me, Combatant foe, List<Move> deck,
+                                             FoeModel model, int beam, long maxTicks,
+                                             int maxIp) {
+        double[] out = new double[maxIp + 1];
+        for(int ip = 0; ip <= maxIp; ip++) {
+            Combatant m = me.copy();
+            m.ip = ip;
+            double best = Double.NaN;
+            for(Plan p : search(m, foe, deck, model, beam, maxTicks)) {
+                if(p.killed && (Double.isNaN(best) || (p.hpLost < best)))
+                    best = p.hpLost;
+            }
+            out[ip] = best;
+        }
+        return(out);
+    }
+
+    /**
+     * Whether a starting-initiative curve is monotone, and so whether the beam sufficed.
+     *
+     * More initiative cannot cost hitpoints. A curve that rises has been produced by a
+     * search that missed a plan, and every number on it is suspect - not only the one that
+     * rose. Widen the beam and run it again.
+     */
+    public static boolean beamWasEnough(double[] curve) {
+        double best = Double.MAX_VALUE;
+        for(double v : curve) {
+            if(Double.isNaN(v))
+                continue;
+            if(v > (best + 1e-9))
+                return(false);
+            best = Math.min(best, v);
+        }
+        return(true);
     }
 
     /** The deck as a list, for callers holding a pack. */

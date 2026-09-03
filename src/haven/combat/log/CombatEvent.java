@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 6;
+    public static final int SCHEMA = 7;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -114,7 +114,7 @@ public final class CombatEvent {
      */
     public static String state(long t, Openings mine, Openings foe, int myIp, int foeIp,
                                int hpf, double stam, double energy, double dist, long gobId,
-                               double mySpeed, double foeSpeed) {
+                               double mySpeed, double foeSpeed, int gst, String tile) {
         return(new JsonObj()
                .put("ev", "state")
                .put("t", t)
@@ -136,6 +136,16 @@ public final class CombatEvent {
                 * species range, so this is a distribution rather than a constant. */
                .put("myspd", mySpeed)
                .put("foespd", foeSpeed)
+               /* The aggression state, which is how a flight shows up. Bit 1 is our olive
+                * branch and bit 2 is theirs, matching the colours the client draws - and an
+                * animal extends one when it has taken enough damage and starts to run. A
+                * fleeing animal stops fighting back, so every point of initiative and every
+                * reduction bought after this moment is spent on nothing. */
+               .put("gst", gst)
+               /* The tile underfoot. Terrain gates our own speed - forest holds us to a run
+                * where grassland allows a sprint - so a speed reading means nothing without
+                * knowing what we were standing on. */
+               .put("tile", tile)
                .end());
     }
 
