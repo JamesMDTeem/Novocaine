@@ -41,6 +41,43 @@ def dealt_damage(raw, hard, soft, armpen):
     return pen + r - (soft * (1.0 - ((1.0 - x) * (1.0 - x))))
 
 
+def equalize(skill_me, skill_foe):
+    """EQUALIZATION - the ratio two combat skills are actually compared at.
+
+    "If two combatants have UA/MC within a factor of 2, they are considered equal ... my UA
+    attacks against an opponent with less than 50 UA will do more openings, and my attacks
+    against an opponent with more than 200 UA will do less openings."
+
+    A dead zone. Inside it the skill ratio is pinned to 1, so a defence weight recovered
+    from an opening gain is not a measurement of the defender at all - the inversion hands
+    back the attacker's own weight. See Formulas.equalize for what that did to this
+    corpus."""
+    if skill_me <= 0 or skill_foe <= 0:
+        return 1.0
+    if skill_foe < (skill_me / 2.0):
+        return skill_me / (2.0 * skill_foe)
+    if skill_foe > (skill_me * 2.0):
+        return (2.0 * skill_me) / skill_foe
+    return 1.0
+
+
+def equalized(skill_me, skill_foe):
+    """Whether two skills fall inside the band, where no gain can measure the defender."""
+    return (skill_me > 0 and skill_foe > 0
+            and (skill_me / 2.0) <= skill_foe <= (skill_me * 2.0))
+
+
+def opening_gain_eq(skill_me, mult_me, skill_foe, mult_foe, ob, oc):
+    """Opening growth with the skills equalized and the multipliers not.
+
+    The guide's own figures are this: with skills equal, Shield Up's 250% block weight
+    gives cbrt(1/2.5) = 0.7368, "26.42% less openings"; Parry's 80% gives 1.0772."""
+    if mult_foe <= 0 or mult_me <= 0:
+        return 0.0
+    r = equalize(skill_me, skill_foe) * (mult_me / mult_foe)
+    return _cbrt(r) * ob * (1.0 - oc)
+
+
 def opening_gain(wa, wd, ob, oc):
     """How much a move raises one of the defender's openings: cbrt(Wa/Wd) * Ob * (1-Oc).
 

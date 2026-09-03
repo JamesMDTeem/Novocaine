@@ -92,6 +92,22 @@ public class CombatVectorGen {
                 vec("agilityCooldownFactor", args(m, f), Formulas.agilityCooldownFactor(m, f));
         }
 
+        /* Equalization, on its own grid so the BAND EDGES are covered exactly. The factor
+         * must be 1 across the whole dead zone including both ends - skillFoe = skillMe/2
+         * and skillFoe = 2*skillMe - and depart continuously outside it. A grid that
+         * straddles the edges without landing on them would pass while the comparison was
+         * strict where it should be inclusive. */
+        double[] mine = {1, 10, 50, 58, 81, 100, 125, 400};
+        for(double m : mine) {
+            for(double f : new double[] {0, m / 4, m / 2 - 1, m / 2, m / 2 + 1, m * 0.75,
+                                         m, m * 1.5, m * 2 - 1, m * 2, m * 2 + 1, m * 4,
+                                         m * 10}) {
+                vec("equalize", args(m, f), Formulas.equalize(m, f));
+                vec("openingGainEq", args(m, 0.8, f, 2.5, 20, 0.25),
+                    Formulas.openingGainEq(m, 0.8, f, 2.5, 20, 0.25));
+            }
+        }
+
         double[] base = {20, 30, 35, 40, 50, 80};
         double[] mu = {0.5, 1.0, 1.25, 1.5};
         double[] ipsc = {0, 0.2};

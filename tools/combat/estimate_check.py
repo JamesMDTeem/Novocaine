@@ -15,6 +15,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import estimate  # noqa: E402
+import model  # noqa: E402
 from estimate import summarise_hp  # noqa: E402
 
 failures = []
@@ -402,6 +403,56 @@ def mu_curve():
         check("  and the rivals that cap at 1.333 do not", 1.333 >= med, False)
 
 
+def equalization():
+    """The dead zone, and the artefact it produced for weeks.
+
+    Two skills within a factor of two are compared as if equal, so the skill term in
+    cbrt(Wa/Wd) is pinned to 1. Inverting an opening gain for the defender's weight then
+    returns the ATTACKER's own weight - which is what the boar's "anomaly" was: Knock Its
+    Teeth Out at Wa 58 read 51-73 and Quick Barrage at Wa 111 read 111-158, the same
+    creature reading as two numbers because two different weights went in.
+    """
+    print("\nequalization - the dead zone in the skill comparison")
+    eq = model.equalize
+    near("equal skills compare at 1", eq(100, 100), 1.0, 1e-12)
+    near("  and so does half", eq(100, 50), 1.0, 1e-12)
+    near("  and double", eq(100, 200), 1.0, 1e-12)
+    check("the band is inclusive at both edges",
+          model.equalized(100, 50) and model.equalized(100, 200), True)
+    # Outside, and continuous across the edge - a step here would show as a cliff in the
+    # openings a slightly weaker opponent takes.
+    near("a quarter our skill opens twice as hard", eq(100, 25), 2.0, 1e-12)
+    near("four times ours opens half as hard", eq(100, 400), 0.5, 1e-12)
+    near("continuous just below the lower edge", eq(100, 49.999), 1.0, 1e-4)
+    near("continuous just above the upper edge", eq(100, 200.001), 1.0, 1e-4)
+
+    # The guide's own worked block-weight figures, which are the multiplier half with the
+    # skills equal. If these drift, the cube root or the direction has gone.
+    for mult, pct in ((2.5, 0.7368), (1.5, 0.8736), (0.8, 1.0772), (0.75, 1.1006)):
+        near("  block weight %.2f gives %.4f" % (mult, pct),
+             model.opening_gain_eq(100, 1.0, 100, mult, 1.0, 0.0), pct, 5e-5)
+
+    # THE ARTEFACT ITSELF. Our own moves read different SKILLS - Knock Its Teeth Out uses
+    # Unarmed at 58, Quick Barrage uses Melee at 111 - and against one creature whose skill
+    # sits inside both bands, every gain equalizes to the move's listed opening. Inverting
+    # that for a defence weight returns the attack weight that went in, so the same animal
+    # reads as 58 through one move and 111 through the other. That is the boar.
+    foe = 80.0
+    for wa in (58.0, 111.0):
+        check("  skill %.0f is inside the band against %.0f" % (wa, foe),
+              model.equalized(wa, foe), True)
+        gain = model.opening_gain_eq(wa, 1.0, foe, 1.0, 20.0, 0.0)
+        near("    its gain is just the listed opening", gain, 20.0, 1e-9)
+        back = model.defence_weight(wa, gain, 20.0, 0.0)
+        near("    and inverting it hands back our own %.0f" % wa, back, wa, 0.5)
+    # Outside the band it is a real measurement again - a bee swarm, far weaker, is where
+    # three moves of different weight all agree on one number.
+    weak = 12.0
+    check("  a far weaker opponent is outside it", model.equalized(111.0, weak), False)
+    g = model.opening_gain_eq(111.0, 1.0, weak, 1.0, 20.0, 0.0)
+    check("    so its gain exceeds the listed opening", g > 20.0, True)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -490,6 +541,7 @@ def main():
     own_defence()
     mu_from_reductions()
     mu_curve()
+    equalization()
     armour()
     buckets()
     if failures:

@@ -1341,6 +1341,61 @@ def report_mu_reductions():
     print("  level 3 directly and separates it from everything else.\n")
 
 
+def equalization_verdict(rec):
+    """Whether a species' defence weight was measured or merely reflected back at us.
+
+    EQUALIZATION is a dead zone: two combat skills within a factor of two are compared as
+    if equal, so the skill term in cbrt(Wa/Wd) is pinned to 1. Inside it, inverting an
+    opening gain for Wd cannot work - it returns the attacker's own weight, dressed as the
+    defender's.
+
+    The tell is direct and needs no extra data. If a species' per-move answers track OUR
+    attack weight for each move, the skills are equalized and nothing was measured. If the
+    moves agree on one number regardless of their weights, the skills are far enough apart
+    that the ratio is live and the number is real.
+
+        boar        KITO at Wa 58 gave 51-73, Quick Barrage at Wa 111 gave 111-158
+                    -> equalized. Recorded as this corpus's one unresolved anomaly for
+                       weeks; it was never about the boar.
+        bee swarm   three moves at Wa 58, 112 and 125 all gave about 30
+                    -> live, and 30 is a measurement.
+
+    Returns (verdict, detail).
+    """
+    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi).
+    bymove = defaultdict(list)
+    for row in rec.get("wd") or ():
+        if row[3] >= MIN_GAIN and row[4] and row[5] > 0:
+            bymove[row[0]].append((row[4], row[5]))
+    pairs = []
+    for mv, rows in bymove.items():
+        if len(rows) < 2:
+            continue
+        wds = sorted(r[1] for r in rows)
+        pairs.append((mv, rows[0][0], wds[len(wds) // 2]))
+    if len(pairs) < 2:
+        return (None, None)
+    # Does the answer follow our weight, or ignore it?
+    was = [p[1] for p in pairs]
+    wds = [p[2] for p in pairs]
+    if (max(was) / min(was)) < 1.3:
+        return (None, None)   # our weights are too alike to tell the two apart
+    follow = sum(1 for _mv, wa, wd in pairs if 0.6 <= (wd / wa) <= 1.7)
+    spread_wd = max(wds) / max(min(wds), 1e-9)
+    spread_wa = max(was) / min(was)
+    if (follow >= (len(pairs) - 1)) and (spread_wd > (spread_wa * 0.6)):
+        return ("equalized",
+                "every move's answer tracks OUR OWN attack weight for that move, which is "
+                "what an equalized comparison returns - the skills are within a factor of "
+                "two and no gain here can measure this creature")
+    if spread_wd < (spread_wa * 0.5):
+        return ("live",
+                "the moves agree despite their attack weights differing by %.1fx, so the "
+                "skill ratio is outside the equalization band and this is a real figure"
+                % spread_wa)
+    return (None, None)
+
+
 def report_shared_moves(per):
     """One animal move seen against several species - the first cross-species comparison.
 
@@ -1584,15 +1639,26 @@ def report(per, moves):
             for mv, _c, _st, _g, wa, wd, lo, hi in rec["wd"]:
                 bymove[mv].append((wa, wd, lo, hi))
             if len(bymove) > 1:
-                print("                   per move - these should agree, and a gap between"
-                      " them is a ratio of their mu:")
+                print("                   per move. Read the Wd/Wa column, not the Wd one:")
+                print("                     ratios all near 1.0  -> EQUALIZED. The skills")
+                print("                       are within a factor of two, the skill term is")
+                print("                       pinned to 1, and inverting a gain returns OUR")
+                print("                       OWN weight. Nothing here measures the target.")
+                print("                     Wd agreeing while Wa differs -> a real figure.")
             for mv in sorted(bymove):
                 rows = bymove[mv]
                 mlo, mhi = max(r[2] for r in rows), min(r[3] for r in rows)
                 span = ("%.0f - %.0f" % (mlo, mhi)) if mlo <= mhi else "no overlap"
+                wa = rows[0][0]
+                med = sorted(r[1] for r in rows)[len(rows) // 2]
                 print("      %-20s Wa %-6.1f %2d obs   Wd %-14s midpoints %.0f - %.0f"
-                      % (mv[:20], rows[0][0], len(rows), span,
-                         min(r[1] for r in rows), max(r[1] for r in rows)))
+                      "   Wd/Wa %.2f"
+                      % (mv[:20], wa, len(rows), span,
+                         min(r[1] for r in rows), max(r[1] for r in rows),
+                         (med / wa) if wa else 0.0))
+            verdict, detail = equalization_verdict(rec)
+            if verdict:
+                print("                   -> %s" % detail)
             # mu is deliberately NOT compared here, though it used to be. It can only be
             # read between two moves thrown at the SAME creature, and a species bucket
             # holds several - so comparing a move used on one badger against a move used

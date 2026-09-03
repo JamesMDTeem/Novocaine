@@ -72,6 +72,68 @@ public final class Formulas {
     }
 
     /**
+     * EQUALIZATION. The ratio two combat skills are actually compared at.
+     *
+     * "If two combatants have UA/MC within a factor of 2, they are considered equal. For
+     * example, if I have 100 UA, my UA attacks will generate the same openings on someone
+     * with 50 UA, and someone with 200 UA. But my UA attacks against an opponent with less
+     * than 50 UA will do more openings, and my attacks against an opponent with more than
+     * 200 UA will do less openings." - DDDsDD999's combat guide.
+     *
+     * A dead zone, in other words, and it is the most consequential thing this project has
+     * learned. Every defence weight recovered from an opening gain assumed the skill ratio
+     * was free to take any value; inside the band it is pinned to 1, so the inversion hands
+     * back the attacker's own weight and calls it the defender's.
+     *
+     * The corpus shows this outright. Against a boar, Knock Its Teeth Out at attack weight
+     * 58 "measured" 51-73 and Quick Barrage at 111 "measured" 111-158 - the same creature
+     * reading as two different numbers, each equal to OUR weight for the move that read it.
+     * That was recorded as the corpus's one unresolved anomaly for weeks. Against a bee
+     * swarm, where the skills are far apart, three moves at weights 58, 112 and 125 all
+     * agree on about 30, which is what a real measurement looks like.
+     *
+     * Piecewise and continuous: exactly 1 across the band, and outside it the excess only.
+     *
+     * @return the factor the skills contribute to Wa/Wd, 1.0 when they are equalized
+     */
+    public static double equalize(double skillMe, double skillFoe) {
+        if((skillMe <= 0) || (skillFoe <= 0))
+            return(1.0);
+        if(skillFoe < (skillMe / 2.0))
+            return(skillMe / (2.0 * skillFoe));
+        if(skillFoe > (skillMe * 2.0))
+            return((2.0 * skillMe) / skillFoe);
+        return(1.0);
+    }
+
+    /** Whether two skills fall inside the equalization band, where no gain can measure them. */
+    public static boolean equalized(double skillMe, double skillFoe) {
+        return((skillMe > 0) && (skillFoe > 0)
+               && (skillFoe >= (skillMe / 2.0)) && (skillFoe <= (skillMe * 2.0)));
+    }
+
+    /**
+     * Opening growth with the skills equalized and the multipliers not.
+     *
+     * The skill comparison passes through {@link #equalize}; everything else - the move's
+     * own multiplier, the deck weighting, the defender's block multiplier - is a plain
+     * factor on top. The guide's own worked figures are this: with the skills equal, Shield
+     * Up's 250% block weight gives cbrt(1/2.5) = 0.7368, "so Shield Up has 26.42% less
+     * openings", and Parry's 80% gives cbrt(1/0.8) = 1.0772, "7.72% more".
+     *
+     * @param multMe  the attacker's multipliers - move multiplier x mu x any stance factor
+     * @param multFoe the defender's - block multiplier x their mu
+     */
+    public static double openingGainEq(double skillMe, double multMe,
+                                       double skillFoe, double multFoe,
+                                       double ob, double oc) {
+        if((multFoe <= 0) || (multMe <= 0))
+            return(0);
+        double r = equalize(skillMe, skillFoe) * (multMe / multFoe);
+        return(Math.cbrt(r) * ob * (1.0 - oc));
+    }
+
+    /**
      * How much a move raises one of the defender's openings.
      *
      * {@code cbrt(Wa / Wd) * Ob * (1 - Oc)}, where Ob is the move's listed opening for that

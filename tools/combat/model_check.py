@@ -36,6 +36,8 @@ DISPATCH = {
                                                     int(a[4]), bool(a[5]), a[6], a[7]),
     "muFromCooldown": lambda a: model.mu_from_cooldown(a[0], a[1], a[2], int(a[3])),
     "ticksToSeconds": lambda a: model.ticks_to_seconds(a[0]),
+    "equalize": lambda a: model.equalize(a[0], a[1]),
+    "openingGainEq": lambda a: model.opening_gain_eq(a[0], a[1], a[2], a[3], a[4], a[5]),
 }
 
 
