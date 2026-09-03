@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 7;
+    public static final int SCHEMA = 8;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -247,6 +247,50 @@ public final class CombatEvent {
                .put("move", moveRes)
                .put("name", moveName)
                .put("cd", cooldownTicks)
+               .end());
+    }
+
+    /**
+     * What the model expected this move to do, written at the moment it was thrown.
+     *
+     * THE POINT IS THAT IT IS WRITTEN DOWN. A residual can always be recomputed later by
+     * running today's model over an old log, and that is a different and worse thing: every
+     * change to the data pack silently rewrites the history, so a fix can never be shown to
+     * have helped because the "before" number moves with it. A prediction in the file is a
+     * fact about what the model believed on the day, and it stays that way.
+     *
+     * {@code pack} identifies the data the prediction came from, for the same reason.
+     *
+     * This is deliberately written on OUR moves during ordinary play, not on a bot's. A model
+     * that also chooses the fights only ever gets asked about the cases it already gets right:
+     * moves it dislikes are never thrown, so their errors are never measured, so it goes on
+     * disliking them - and the residuals FALL while that happens. Logging predictions against
+     * a human's choices is what keeps the sample honest.
+     *
+     * Absent for a move the model cannot predict - an unresolved weapon, an opponent whose
+     * skill the corpus never recovered - because a prediction of zero would enter the
+     * residuals as a large error by the model rather than as a gap in the inputs.
+     */
+    public static String predict(long t, long gobId, String moveRes, String pack,
+                                 double[] openings, double dealt, double grievous,
+                                 long cooldown) {
+        StringBuilder b = new StringBuilder("[");
+        for(int i = 0; i < openings.length; i++) {
+            if(i > 0)
+                b.append(',');
+            b.append(JsonObj.num(openings[i]));
+        }
+        b.append(']');
+        return(new JsonObj()
+               .put("ev", "predict")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("move", moveRes)
+               .put("pack", pack)
+               .raw("opened", b.toString())
+               .put("dealt", dealt)
+               .put("grievous", grievous)
+               .put("cd", cooldown)
                .end());
     }
 

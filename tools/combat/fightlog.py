@@ -51,6 +51,11 @@ class Engagement(object):
         self.states = []
         self.moves = []
         self.damage = []
+        # Schema 8: what the model expected, written by the client at the moment the move
+        # was thrown. Kept apart from `moves` because it is not something the game did - it
+        # is what we believed the game was about to do, and conflating the two would let a
+        # prediction be read as an observation.
+        self.predictions = []
         # States and moves in the order the client wrote them, plus the position of each
         # move within it. See brackets() for why file order and not timestamps.
         self.seq = []
@@ -247,6 +252,9 @@ def _segment(log):
                 log.engagements.append(cur)
             cur.states.append(r)
             cur.seq.append(r)
+        elif ev == "predict":
+            if cur is not None:
+                cur.predictions.append(r)
         elif ev in ("move", "dmg"):
             if cur is None:
                 # Events before the first state sample. Rare, but they belong to the

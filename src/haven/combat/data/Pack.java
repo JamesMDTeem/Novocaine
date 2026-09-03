@@ -49,10 +49,97 @@ public final class Pack {
         return(new JSONObject(new String(Files.readAllBytes(p), StandardCharsets.UTF_8)));
     }
 
+    /**
+     * The same files, from the classpath, for a client that has no repository around it.
+     *
+     * build.xml copies data/combat into the jar beside these classes, so the running game
+     * carries the pack it was built with. Returns null rather than throwing when a file is
+     * absent: a client built without the pack must lose the prediction, not the fight.
+     */
+    private static String slurp(String name) {
+        try(java.io.InputStream in = Pack.class.getResourceAsStream(name)) {
+            if(in == null)
+                return(null);
+            java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[8192];
+            for(int n = in.read(buf); n > 0; n = in.read(buf))
+                bo.write(buf, 0, n);
+            return(new String(bo.toByteArray(), StandardCharsets.UTF_8));
+        } catch(IOException e) {
+            return(null);
+        }
+    }
+
+    /** Every move in the packed sheet, or an empty map when the jar carries no pack. */
+    public static Map<String, Move> movesFromJar() {
+        String doc = slurp("moves_sheet.json");
+        return((doc == null) ? new LinkedHashMap<String, Move>()
+               : moves(new JSONObject(doc)));
+    }
+
+    /** Every opponent the corpus knows, from the jar. */
+    public static Map<String, Opponent> opponentsFromJar() {
+        String doc = slurp("opponents.json");
+        return((doc == null) ? new LinkedHashMap<String, Opponent>()
+               : opponents(new JSONObject(doc)));
+    }
+
+    /**
+     * Weapons by their resource BASENAME - "bronzesword" for gfx/invobjs/bronzesword.
+     *
+     * The wiki names a weapon and the client knows only its resource, so the two are joined on
+     * the name with everything but letters and digits removed. That is a real join and it can
+     * miss: a weapon whose article title does not reduce to its resource name simply will not
+     * be found, and the caller then declines to predict rather than predicting with a default
+     * weapon, which would be a fabricated number wearing a measurement's clothes.
+     */
+    public static Map<String, double[]> weaponsFromJar() {
+        Map<String, double[]> out = new LinkedHashMap<String, double[]>();
+        String doc = slurp("weapons.json");
+        if(doc == null)
+            return(out);
+        JSONArray arr = new JSONArray(doc);
+        for(int i = 0; i < arr.length(); i++) {
+            JSONObject w = arr.getJSONObject(i);
+            String name = w.optString("name", null);
+            if(name == null)
+                continue;
+            JSONObject dmg = w.optJSONObject("basedmg");
+            JSONObject pen = w.optJSONObject("armorpen");
+            if((dmg == null) || dmg.isNull("value"))
+                continue;
+            /* armorpen is genuinely absent on four of the twenty-six, and the scraper writes
+             * null rather than zero there for exactly this reason. NaN carries that through -
+             * a zero would be a claim that the weapon pierces nothing. */
+            out.put(key(name), new double[] {
+                dmg.getDouble("value"),
+                ((pen == null) || pen.isNull("value")) ? Double.NaN
+                    : (pen.getDouble("value") / 100.0)});
+        }
+        return(out);
+    }
+
+    /** A weapon or resource name reduced to letters and digits, for the join above. */
+    public static String key(String s) {
+        if(s == null)
+            return(null);
+        StringBuilder b = new StringBuilder();
+        for(int i = 0; i < s.length(); i++) {
+            char c = Character.toLowerCase(s.charAt(i));
+            if(((c >= 'a') && (c <= 'z')) || ((c >= '0') && (c <= '9')))
+                b.append(c);
+        }
+        return(b.toString());
+    }
+
     /** Every move the sheet describes, by its display name. */
     public static Map<String, Move> moves(Path path) throws IOException {
+        return(moves(read(path)));
+    }
+
+    private static Map<String, Move> moves(JSONObject doc) {
         Map<String, Move> out = new LinkedHashMap<String, Move>();
-        JSONArray arr = read(path).getJSONArray("moves");
+        JSONArray arr = doc.getJSONArray("moves");
         for(int i = 0; i < arr.length(); i++) {
             Move m = move(arr.getJSONObject(i));
             if(m != null)
@@ -388,8 +475,12 @@ public final class Pack {
 
     /** Every opponent the corpus has met, by name. */
     public static Map<String, Opponent> opponents(Path path) throws IOException {
+        return(opponents(read(path)));
+    }
+
+    private static Map<String, Opponent> opponents(JSONObject doc) {
         Map<String, Opponent> out = new LinkedHashMap<String, Opponent>();
-        JSONArray arr = read(path).getJSONArray("opponents");
+        JSONArray arr = doc.getJSONArray("opponents");
         for(int i = 0; i < arr.length(); i++) {
             Opponent o = new Opponent(arr.getJSONObject(i));
             out.put(o.name, o);

@@ -266,12 +266,46 @@ def completeness():
     check("and reports schema 1", log.schema, 1)
 
 
+def predictions():
+    """Schema 8: the model's own expectation, written at the moment the move was thrown.
+
+    Checked with a synthetic log because no real one exists yet - every fight in the corpus
+    predates the client that writes these, and a prediction cannot be added to an old fight
+    without destroying the only property that makes it worth having. So the reader has to be
+    verified before the first real fight rather than after it, or the first fight would be
+    the test.
+    """
+    print("\npredictions the client wrote down")
+    log = load([begin(), state(10), move(20),
+                {"ev": "predict", "t": 20, "gob": FOE, "move": "paginae/atk/knockteeth",
+                 "pack": "36m/35f/26w", "opened": [0, 0, 0, 14.0], "dealt": 7.7,
+                 "grievous": 1.9, "cd": 34},
+                state(30, foe=(0, 0, 0, 13)), end()])
+    eng = log.engagements[0]
+    check("a prediction is read", len(eng.predictions), 1)
+    check("  and kept apart from the moves", len(eng.moves), 1)
+    check("  carrying what the model expected", eng.predictions[0]["opened"][3], 14.0)
+    check("  and which pack said so", eng.predictions[0]["pack"], "36m/35f/26w")
+
+    # It must NOT become an observation. A prediction sitting in the damage or move lists
+    # would be read as something the game did, and the residual would then be the model
+    # measured against itself - which is always zero.
+    check("it is not counted as a move", [m.get("ev") for m in eng.moves], ["move"])
+    check("nor as damage", len(eng.damage), 0)
+
+    # A log without predictions still reads. Every existing log is one.
+    old = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 13)), end()])
+    check("a log with no predictions is still fine",
+          len(old.engagements[0].predictions), 0)
+
+
 def main():
     segmentation()
     contamination()
     pairing()
     damage()
     completeness()
+    predictions()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

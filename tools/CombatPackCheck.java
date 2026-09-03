@@ -76,6 +76,7 @@ public class CombatPackCheck {
         takeAimLadder();
         weightsAndSchools();
         threatBlocks();
+        packedInTheJar();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -334,5 +335,49 @@ public class CombatPackCheck {
         c.hp = c.maxHp = 1000;
         c.blockSkill = 111;
         return(c);
+    }
+
+    /**
+     * The same pack, read off the classpath instead of off disk.
+     *
+     * This is how the running client gets it: build.xml copies data/combat in beside the
+     * classes, so a client carries the pack it was built with and can predict without a
+     * repository around it. The failure worth catching is silent - a missing copy step leaves
+     * every loader returning an empty map, the predictor declines every move, and the log
+     * simply has no predictions in it, which looks exactly like a quiet fight.
+     */
+    static void packedInTheJar() {
+        System.out.println("\nthe pack, from the classpath");
+        int nm = Pack.movesFromJar().size();
+        int nf = Pack.opponentsFromJar().size();
+        int nw = Pack.weaponsFromJar().size();
+        if((nm == 0) && (nf == 0) && (nw == 0)) {
+            System.out.println("  (not on this classpath - run via tools\\check-combat.ps1)");
+            return;
+        }
+        check("moves load from the classpath", nm > 0, true);
+        check("  as do the opponents", nf > 0, true);
+        check("  and the weapons", nw > 0, true);
+
+        /* The join the client depends on: a resource basename against a wiki article title.
+         * "gfx/invobjs/bronzesword" has to find "Bronze Sword", and a weapon that does not
+         * reduce to its resource name simply will not be found - at which point the predictor
+         * declines rather than arming us with a default. */
+        Map<String, double[]> w = Pack.weaponsFromJar();
+        check("a weapon is found by its resource basename",
+              w.containsKey(Pack.key("bronzesword")), true);
+        check("  and the key ignores case and punctuation",
+              Pack.key("Butcher's Cleaver"), "butcherscleaver");
+        double[] bronze = w.get(Pack.key("bronzesword"));
+        check("  carrying a base damage", (bronze != null) && (bronze[0] > 0), true);
+
+        /* armorpen is genuinely absent on four of the twenty-six and the scraper keeps that
+         * as null. A zero would be a claim that the weapon pierces nothing. */
+        int unknownPen = 0;
+        for(double[] v : w.values()) {
+            if(Double.isNaN(v[1]))
+                unknownPen++;
+        }
+        check("  and an absent penetration stays absent, not zero", unknownPen > 0, true);
     }
 }

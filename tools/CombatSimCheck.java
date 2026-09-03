@@ -107,6 +107,7 @@ public class CombatSimCheck {
         zigZag();
         invertedOpener();
         grievousCap();
+        predictionIsFree();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -486,5 +487,49 @@ public class CombatSimCheck {
              over.dealt, full.dealt, 1e-9);
         check("  so it is smaller than the uncapped figure",
               over.grievous < full.grievous, true);
+    }
+
+    /**
+     * A prediction must change nothing at all.
+     *
+     * It runs the real use() against copies rather than reimplementing it, which is the only
+     * way the prediction and the simulation cannot drift apart - a second copy of the
+     * sequencing rules would eventually measure the drift instead of the game. The whole risk
+     * of doing it that way is that the copy is incomplete, and then predicting a move would
+     * quietly APPLY it: openings would rise, hitpoints would fall, and a cooldown would be set
+     * on a move that was never thrown.
+     *
+     * That failure is invisible in a log. It looks like the fight simply going differently.
+     */
+    static void predictionIsFree() {
+        System.out.println("\na prediction changes nothing");
+        Combatant a = me();
+        a.ip = 5;
+        Combatant f = target();
+        f.open(Formulas.RED, 40);
+        Sim sim = new Sim(a, f);
+
+        double hp0 = f.hp, open0 = f.opening(Formulas.RED);
+        int ip0 = a.ip;
+        long ready0 = a.readyAt, tick0 = sim.tick;
+
+        Sim.Result p = sim.predict(a, kito());
+        check("  it says what the move would do", p.ok, true);
+        check("    with damage", p.dealt > 0, true);
+        check("    and an opening", p.opened[Formulas.RED] > 0, true);
+
+        near("  the target's hitpoints are untouched", f.hp, hp0, 1e-12);
+        near("  its openings are untouched", f.opening(Formulas.RED), open0, 1e-12);
+        check("  our initiative is untouched", a.ip, ip0);
+        check("  our cooldown is untouched", a.readyAt, ready0);
+        check("  the clock is untouched", sim.tick, tick0);
+
+        /* And the prediction must match what actually happens when the move is then thrown -
+         * otherwise it is predicting some other fight. */
+        Sim.Result real = sim.use(a, kito());
+        near("  and it matches the move when it is really thrown", real.dealt, p.dealt, 1e-12);
+        near("    including the opening", real.opened[Formulas.RED],
+             p.opened[Formulas.RED], 1e-12);
+        check("    and the cooldown", real.cooldown, p.cooldown);
     }
 }

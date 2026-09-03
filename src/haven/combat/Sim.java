@@ -75,6 +75,27 @@ public final class Sim {
         }
     }
 
+    /**
+     * What {@link #use} WOULD do, without doing it.
+     *
+     * The point of this is that a prediction can be written into the log at the moment a move
+     * is thrown, so that the residual between what the model expected and what happened is a
+     * FACT IN THE FILE rather than something recomputed later. Recomputing is not the same
+     * thing and is worse in a way that hides itself: every change to the data pack silently
+     * rewrites the history, so a fix can never be shown to have helped, because the "before"
+     * number moves with it.
+     *
+     * It runs the real {@link #use} against copies rather than reimplementing it. A separate
+     * prediction path would be a second copy of the sequencing rules, and the two would drift -
+     * at which point the residual measures the drift instead of the game.
+     */
+    public Result predict(Combatant actor, Move m) {
+        Combatant ca = a.copy(), cb = b.copy();
+        Sim ghost = new Sim(ca, cb);
+        ghost.tick = tick;
+        return(ghost.use((actor == a) ? ca : cb, m));
+    }
+
     /** Whether a move is legal for this actor right now, without applying it. */
     public String refuse(Combatant actor, Move m) {
         if(tick < actor.readyAt)

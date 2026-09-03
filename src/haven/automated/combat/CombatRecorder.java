@@ -38,6 +38,16 @@ public final class CombatRecorder {
     private static volatile String lastSample = null;
     private static volatile String lastFoes = null;
     private static volatile String lastBuffs = null;
+    /* Our own side of the fight, built once from the same numbers the header is built from,
+     * so a prediction can never describe a different character than the log says fought. */
+    private static volatile Prediction.Me me = null;
+    /* The last state sampled, held so that onMove can predict against the fight as it stood
+     * BEFORE the move - which is the same rule the analysis uses when it reads a move's gain,
+     * and for the same reason: the state that arrives after a move already contains it. */
+    private static volatile int[] lastFoeOpen = null;
+    private static volatile int lastMyIp = 0;
+    private static volatile long lastFoeGob = -1;
+    private static volatile String foeRes = null;
     /* Opponents whose resource has already been logged, so the tick loop names each one once.
      * Concurrent because it is written from the UI thread and cleared from start(), which the
      * message loop calls. */
@@ -75,6 +85,11 @@ public final class CombatRecorder {
             lastFoes = null;
             lastBuffs = null;
             named.clear();
+            me = null;
+            lastFoeOpen = null;
+            lastMyIp = 0;
+            lastFoeGob = -1;
+            CombatRecorder.foeRes = foeRes;
             String safe = (charName == null ? "unknown" : charName.replaceAll("[^A-Za-z0-9_-]", "_"));
             Path p = Paths.get(Client.gameDir, "CombatLogs",
                                t0 + "-" + safe + "-" + seq.incrementAndGet() + ".jsonl");
@@ -89,10 +104,16 @@ public final class CombatRecorder {
         try {
             List<String> gear = new ArrayList<String>();
             int[] arm = readGear(eq, gear);
+            SortedMap<String, Integer> comp = readAttrs(glob, true);
             log(CombatEvent.begin(0, t0, CombatEvent.SCHEMA, charName, meGob, foeGob, foeRes,
-                                  readAttrs(glob, false), readAttrs(glob, true), arm[0], arm[1]));
+                                  readAttrs(glob, false), comp, arm[0], arm[1]));
             for(String g : gear)
                 log(g);
+            /* The COMPUTED attributes, not the base ones: a prediction has to use the numbers
+             * the server is actually fighting with, and food and buffs move them. */
+            String[] wpn = readWeapon(eq);
+            me = Prediction.me(comp, arm[0], arm[1], wpn[0],
+                               (wpn[1] == null) ? 0 : Double.parseDouble(wpn[1]));
         } catch(Exception e) {
             /* a header we could not build is still better than a lost fight */
         }
@@ -155,6 +176,35 @@ public final class CombatRecorder {
         return(new int[] {hard, soft});
     }
 
+    /**
+     * The equipped weapon's resource and quality, as {res, ql} - both null when there is none.
+     *
+     * Slots 6 and 7 are the hands. A tool is not a weapon, and nothing here decides which is
+     * which: the resource is handed to {@link Prediction}, which looks it up in the weapon
+     * table and finds nothing for a shovel. That keeps the judgement in the data rather than
+     * in a list of resource names maintained here.
+     */
+    private static String[] readWeapon(Equipory eq) {
+        if(eq == null)
+            return(new String[] {null, null});
+        for(int i = 6; (i <= 7) && (i < eq.slots.length); i++) {
+            WItem w = eq.slots[i];
+            if(w == null)
+                continue;
+            try {
+                String res = w.item.getres().name;
+                double ql = 0;
+                for(ItemInfo info : w.item.info()) {
+                    if(info instanceof Quality)
+                        ql = ((Quality)info).q;
+                }
+                return(new String[] {res, Double.toString(ql)});
+            } catch(Exception e) {
+            }
+        }
+        return(new String[] {null, null});
+    }
+
     public static void log(String line) {
         CombatLogWriter w = writer;
         if(w != null)
@@ -172,6 +222,35 @@ public final class CombatRecorder {
     }
 
     /**
+     * Writes down what the model expected this move to do, before anything happens.
+     *
+     * Ours only. An opponent's move is thrown with an attack weight and a deck no log records,
+     * so there is nothing to predict from - and a prediction against invented inputs would
+     * enter the residuals as a model error rather than as the gap it is.
+     *
+     * Silent whenever any input is unresolved. That is most of the time today: 27 of 35
+     * opponents in the pack have no recovered combat skill, so the model has nothing to
+     * predict against them WITH. A prediction from defaults would be worse than none, because
+     * it would look exactly like a measurement.
+     */
+    private static void predict(String actor, String moveRes, long gobId) {
+        if(!"me".equals(actor))
+            return;
+        Prediction.Me m = me;
+        int[] open = lastFoeOpen;
+        /* The cached state has to belong to the opponent this move was aimed at. A target
+         * switch between the last sample and this move would otherwise predict against the
+         * previous creature's openings. */
+        if((m == null) || (open == null) || (gobId != lastFoeGob))
+            return;
+        Prediction.Expect e = Prediction.of(m, foeRes, moveRes, open, lastMyIp);
+        if(e == null)
+            return;
+        log(CombatEvent.predict(now(), gobId, moveRes, e.pack, e.opened, e.dealt,
+                                e.grievous, e.cooldown));
+    }
+
+    /**
      * Records an opponent appearing, leaving, or becoming the one being sampled.
      *
      * See {@link CombatEvent#foe} for why: the header names one opponent and the client samples
@@ -182,6 +261,11 @@ public final class CombatRecorder {
         if(!active())
             return;
         try {
+            /* The pack is keyed by species, so the resource of whichever opponent is being
+             * sampled is what a prediction needs. Following the sampled one rather than the
+             * header's means a retargeted fight predicts against the creature in front of us. */
+            if((res != null) && !"gone".equals(how))
+                foeRes = res;
             log(CombatEvent.foe(now(), gobId, res, how));
         } catch(Exception e) {
             /* never propagate into the message loop */
@@ -210,6 +294,7 @@ public final class CombatRecorder {
             return;
         try {
             log(CombatEvent.move(now(), actor, moveRes, moveName, cooldownTicks, gobId));
+            predict(actor, moveRes, gobId);
         } catch(Exception e) {
             /* never propagate into the message loop */
         }
@@ -266,6 +351,9 @@ public final class CombatRecorder {
             if(key.equals(lastSample))
                 return;
             lastSample = key;
+            lastFoeOpen = new int[] {foe.green, foe.blue, foe.yellow, foe.red};
+            lastMyIp = myIp;
+            lastFoeGob = gobId;
             log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId,
                                   mySpeed, foeSpeed, gst, tile));
         } catch(Exception e) {

@@ -145,7 +145,21 @@ public class CombatLogCheck {
          * olive branch - what an animal extends when it starts to run - and a fleeing
          * animal stops fighting back. The tile matters because terrain gates OUR speed,
          * so a logged speed cannot be compared against another without it. */
-        check("schema constant", CombatEvent.SCHEMA, 7);
+        /* 8 adds the prediction: what the model expected a move to do, written by the
+         * client at the moment the move was thrown. The point is that it is written DOWN.
+         * A residual can always be recomputed later by running today's model over an old
+         * log, and that is a different and worse thing - every change to the data pack
+         * silently rewrites the history, so a fix can never be shown to have helped
+         * because the "before" number moves with it. */
+        check("schema constant", CombatEvent.SCHEMA, 8);
+
+        check("a prediction",
+              CombatEvent.predict(120, 7, "paginae/atk/knockteeth", "36m/35f/26w",
+                                  new double[] {0, 0, 0, 14.0}, 7.7, 1.9, 34),
+              "{\"ev\":\"predict\",\"t\":120,\"gob\":7,"
+              + "\"move\":\"paginae/atk/knockteeth\",\"pack\":\"36m/35f/26w\","
+              + "\"opened\":[0.0,0.0,0.0,14.0],\"dealt\":7.7000,\"grievous\":1.9000,"
+              + "\"cd\":34}");
         /* gst bit 2 is the OPPONENT's olive branch, which an animal extends when it has
          * taken enough and starts to run - and a fleeing animal stops fighting back, so
          * everything bought after it is bought for nothing. A null tile is an unloaded

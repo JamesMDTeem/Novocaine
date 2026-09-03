@@ -122,6 +122,13 @@ git-dirty-flag = ${git-dirty-flag}
     <copy todir="build/classes/haven" file="etc/res-preload" />
     <copy todir="build/classes/haven" file="etc/res-bgload" />
     <copy todir="build/classes/haven" file="etc/icon.png" />
+    <!-- The combat data pack, beside haven.combat.data.Pack, so a running client carries the
+         pack it was built with. Pack.slurp reads these off the classpath; a build without
+         them loses the in-fight prediction and nothing else. -->
+    <copy todir="build/classes/haven/combat/data">
+      <fileset dir="data/combat"
+               includes="moves_sheet.json,opponents.json,weapons.json,constants.json" />
+    </copy>
     <copy file="local-boot.properties" tofile="build/classes/haven/boot-props" failonerror="false" quiet="true" />
   </target>
 

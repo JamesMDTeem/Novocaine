@@ -66,6 +66,12 @@ function Invoke-JavaCheck($name, $sources, $mainClass, $sourcePath) {
         Add-Result $name $false 'did not compile'
         return
     }
+    # The pack check also exercises the CLASSPATH loaders, which is how the running client
+    # reads its data - build.xml copies these same files in beside the classes. Staging them
+    # here means a missing copy step fails a check instead of failing silently in a fight.
+    $data = Join-Path $dir 'haven\combat\data'
+    $null = New-Item -ItemType Directory -Force -Path $data
+    Copy-Item (Join-Path $root 'data\combat\*.json') $data -Force -ErrorAction SilentlyContinue
     $run = & $java -cp $dir $mainClass 2>&1
     $ok = ($LASTEXITCODE -eq 0)
     if (-not $Quiet) { $run | ForEach-Object { Write-Host "    $_" } }

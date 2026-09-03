@@ -268,6 +268,96 @@ def replay(paths):
     return stats, dmg, misses, skipped
 
 
+def logged_predictions(paths, opens=None):
+    """Predictions the CLIENT wrote at the time, against what actually followed.
+
+    Everything else in this file asks today's model what it would have said about an old
+    fight. That is useful and it is not the same measurement, in a way that hides itself:
+    the answer moves whenever the data pack changes, so the "before" number in any
+    before-and-after comparison moves too, and a fix can never be shown to have helped.
+
+    A prediction written into the log at the moment the move was thrown does not move. It
+    is a record of what the model believed on the day, and the residual against it is a
+    fact about that day.
+
+    Returns (rows, missing) where a row is
+    (species, move, colour, predicted, observed, file) and `missing` counts logs that
+    carry no predictions at all - which is every log written before schema 8, and every
+    fight against an opponent the pack cannot predict.
+    """
+    if opens is None:
+        opens = estimate.opens_map(estimate.load_moves())
+    rows, missing = [], 0
+    for pth in sorted(paths):
+        try:
+            log = fightlog.read(pth, opens)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        seen = False
+        for eng in log.engagements:
+            if not eng.predictions:
+                continue
+            seen = True
+            name = estimate.bucket(eng)
+            for pr in eng.predictions:
+                # The move this prediction belongs to is the one at the same instant. The
+                # client writes them back to back, so an exact timestamp match is right and
+                # a window would risk pairing with the NEXT move.
+                mv = None
+                for m in eng.moves:
+                    if (m.get("t") == pr.get("t")) and (m.get("actor") == "me"):
+                        mv = m
+                        break
+                if mv is None:
+                    continue
+                before, after = eng.brackets(mv)
+                if (before is None) or (after is None):
+                    continue
+                opened = pr.get("opened") or []
+                for c, colour in enumerate(("green", "blue", "yellow", "red")):
+                    if c >= len(opened):
+                        continue
+                    if opened[c] <= 0:
+                        continue
+                    obs = after["foe"][c] - before["foe"][c]
+                    rows.append((name, mv.get("name") or mv.get("move"), colour,
+                                 opened[c], obs, os.path.basename(log.path)))
+        if not seen:
+            missing += 1
+    return (rows, missing)
+
+
+def report_logged_predictions(paths, opens=None):
+    rows, missing = logged_predictions(paths, opens)
+    print()
+    print("=" * 78)
+    print("PREDICTIONS THE CLIENT WROTE DOWN")
+    print("=" * 78)
+    if not rows:
+        print("  none yet - %d log(s) carry no prediction." % missing)
+        print()
+        print("  Expected until a fight is logged on a schema 8 client. Every existing log")
+        print("  predates it, and a prediction cannot be added to an old fight: the whole")
+        print("  point is that it records what the model believed at the time.")
+        print()
+        return True
+
+    err = [abs(p - o) for _s, _m, _c, p, o in [(r[0], r[1], r[2], r[3], r[4]) for r in rows]]
+    rms = (sum(e * e for e in err) / len(err)) ** 0.5
+    print("  %d prediction(s) across %d log(s) without one." % (len(rows), missing))
+    print("  rms %.2f opening points\n" % rms)
+    worst = sorted(rows, key=lambda r: -abs(r[3] - r[4]))[:8]
+    print("  %-12s %-20s %-7s %-10s %-10s %s"
+          % ("species", "move", "colour", "predicted", "observed", "file"))
+    for name, mv, colour, pred, obs, f in worst:
+        print("  %-12s %-20s %-7s %-10.1f %-10.1f %s"
+              % (name[:12], (mv or "?")[:20], colour, pred, obs, f))
+    print()
+    return True
+
+
 def main(argv):
     paths = []
     for a in argv:
@@ -386,6 +476,8 @@ def main(argv):
         if pl_rms > 10.0:
             print("  FAIL - player damage rms above 10.0 points")
             ok = False
+    if not report_logged_predictions(paths):
+        ok = False
     print("\n" + ("ALL CHECKS PASSED" if ok else "CHECKS FAILED"))
     return 0 if ok else 1
 
