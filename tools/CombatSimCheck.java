@@ -105,6 +105,8 @@ public class CombatSimCheck {
         quickBarrage();
         refusals();
         zigZag();
+        invertedOpener();
+        grievousCap();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -357,5 +359,132 @@ public class CombatSimCheck {
         check("the user's initiative is untouched", a.ip, 3);
         check("the opponent gains two", foe.ip, 6);
         check("cooldown is the flat 50 reported against every opponent", r.cooldown, 50L);
+    }
+
+    /* "Opportunity Knocks: Initiative points: 4 / Cooldown: 45 / Opportunity Knocks increases
+     * your opponent's greatest opening by 40% * mu." No attack type, no openings line, no
+     * damage - the entire card is that one sentence. */
+    static Move oppknock() {
+        return(Move.of("Opportunity Knocks").res("paginae/atk/oppknock")
+               .kind(Move.Kind.MANEUVER).weight(Move.Weight.UNARMED)
+               .boostGreatest(0.40).ipCost(4).cooldown(45).build());
+    }
+
+    /* A plain opponent with room to be opened. Equal agility, so no cooldown factor. */
+    static Combatant target() {
+        Combatant c = new Combatant("target");
+        c.agi = 81;
+        c.hp = c.maxHp = 1000;
+        c.blockSkill = 111;
+        return(c);
+    }
+
+    /**
+     * Opportunity Knocks, the one card whose value RISES with the opening it finds.
+     *
+     * Every other opener takes the (1 - Oc) falloff, so it is worth most against a fresh
+     * colour and tails off as that colour fills. This multiplies instead, and takes no
+     * weight term at all - the guide states both exclusions outright: "most attacks open
+     * less the higher the opponent's openings are, but this does the opposite", and "it
+     * doesn't matter what you or your opponent's UA or MC are".
+     *
+     * The consequence inverts the usual advice: this card wants to be thrown LAST, onto the
+     * biggest opening the rest of the deck has built. Modelled through the openings loop it
+     * would be wrong in both directions at once - too small against a big opening and too
+     * large against a small one - which is the kind of error that cancels on average and
+     * never cancels inside a plan.
+     */
+    static void invertedOpener() {
+        System.out.println("\nOpportunity Knocks opens MORE the more that is already open");
+        Move ok = oppknock();
+        check("it carries a boost, not an openings line", ok.boostGreatest > 0, true);
+        check("  and opens nothing the ordinary way", ok.openings[Formulas.RED], 0.0);
+
+        double small = boostedAgainst(target(), 10.0);
+        double big = boostedAgainst(target(), 50.0);
+        near("  10 points becomes 14", small, 0.14, 1e-9);
+        near("  50 points becomes 70", big, 0.70, 1e-9);
+        check("  so the GAIN grew with the standing opening - the inversion",
+              (big - 0.50) > (small - 0.10), true);
+
+        /* Stat-free. A tenfold change in the opponent's block skill moves every other
+         * opening gain in the deck and must not move this one. */
+        Combatant weak = target();
+        weak.blockSkill = 10;
+        Combatant strong = target();
+        strong.blockSkill = 1000;
+        near("  a tenfold change in their skill moves it not at all",
+             boostedAgainst(weak, 40.0), boostedAgainst(strong, 40.0), 1e-9);
+
+        /* It finds the greatest, not the first. */
+        Combatant c = target();
+        c.open(Formulas.RED, 10);
+        c.open(Formulas.BLUE, 60);
+        Combatant a = me();
+        a.ip = 9;
+        new Sim(a, c).use(a, ok);
+        near("  it takes the GREATEST opening", c.opening(Formulas.BLUE), 0.84, 1e-9);
+        near("  and leaves the others alone", c.opening(Formulas.RED), 0.10, 1e-9);
+
+        /* mu scales the 40, as the card's two markers say. */
+        Combatant d = target();
+        d.open(Formulas.RED, 50);
+        Combatant e = me();
+        e.ip = 9;
+        new Sim(e, d).use(e, oppknock().withMu(1.5));
+        /* mu scales the 40, so at 1.5 the card adds 60% of what is standing: 50 -> 80.
+         * Not 87.5, which is what scaling the whole multiplier rather than the share
+         * would give - the card's two markers sit on the 40, not on the 1.4. */
+        near("  and mu scales it: at 1.5 a 50 becomes 80",
+             d.opening(Formulas.RED), 0.80, 1e-9);
+    }
+
+    static double boostedAgainst(Combatant f, double standing) {
+        Combatant a = me();
+        a.ip = 9;
+        f.open(Formulas.RED, standing);
+        new Sim(a, f).use(a, oppknock());
+        return(f.opening(Formulas.RED));
+    }
+
+    /**
+     * Grievous damage is capped by what the target has left.
+     *
+     * "If you hit someone for 1000, but they only have 100 HP, it's treated as 100 damage,
+     * and they will only lose 40 HHP." Uncapped, an overkill blow reports hard hitpoints the
+     * game never takes - and hard hitpoints are what decide whether a fight leaves a lasting
+     * wound, so the error lands squarely on the question a matchup gets asked.
+     */
+    static void grievousCap() {
+        System.out.println("\ngrievous damage is capped by what is left");
+        Move mv = kito();
+
+        /* The control first. With hitpoints to spare the cap must not bind at all -
+         * without this, a check that only tested the capped case would pass equally
+         * against a model that always returned zero. */
+        Combatant fat = target();
+        fat.hp = fat.maxHp = 10000;
+        fat.open(Formulas.RED, 60);
+        Combatant a = me();
+        a.ip = 9;
+        Sim.Result full = new Sim(a, fat).use(a, mv);
+        check("  it does something at all", full.grievous > 0, true);
+        near("  with hitpoints to spare, a share of the damage dealt",
+             full.grievous, full.dealt * mv.grievous, 1e-9);
+
+        /* The same blow against a target with one hitpoint left. */
+        Combatant thin = target();
+        thin.maxHp = 10000;
+        thin.hp = 1;
+        thin.open(Formulas.RED, 60);
+        Combatant b = me();
+        b.ip = 9;
+        Sim.Result over = new Sim(b, thin).use(b, mv);
+        near("  against one hitpoint, a share of ONE", over.grievous,
+             1.0 * mv.grievous, 1e-9);
+        near("  the damage itself is unchanged - only the grievous share is capped",
+             over.dealt, full.dealt, 1e-9);
+        check("  so it is smaller than the uncapped figure",
+              over.grievous < full.grievous, true);
     }
 }

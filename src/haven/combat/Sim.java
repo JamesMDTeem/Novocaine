@@ -150,7 +150,13 @@ public final class Sim {
             /* One observation, from a boar: 17 soft hitpoints alongside 4 hard, against a move
              * listed at 25% grievous. That reads as a share of the damage that got through
              * rather than of the damage swung, but one observation is one observation. */
-            grievous = dealt * m.grievous;
+            /* Capped by what is left, which is not a rounding detail. "If you hit someone
+             * for 1000, but they only have 100 HP, it's treated as 100 damage, and they
+             * will only lose 40 HHP." Uncapped, an overkill blow reports hard hitpoints
+             * that the game never takes - and hard hitpoints are what decide whether a
+             * fight leaves a lasting wound, so the error lands squarely on the question a
+             * matchup is asked. */
+            grievous = Math.min(dealt, Math.max(0, target.hp)) * m.grievous;
             target.hp -= dealt;
         }
 
@@ -165,6 +171,31 @@ public final class Sim {
         for(int c = 0; c < 4; c++) {
             if(m.reduces[c] > 0)
                 actor.close(c, m.reduces[c] * m.mu);
+        }
+
+        /* Opportunity Knocks, and nothing else in the sheet. It multiplies the single
+         * greatest standing opening, taking neither the weight ratio nor the (1 - Oc)
+         * falloff that every openings line takes - so it cannot go through the loop below,
+         * and putting it there would silently apply both.
+         *
+         * Before that loop, so it reads the opening the target ARRIVED with rather than
+         * one this same use just made. A card that boosts what it also opens would
+         * otherwise compound with itself in a single tick, which no card is documented to
+         * do and which would be invisible in the result. */
+        if(m.boostGreatest > 0) {
+            int best = -1;
+            for(int c = 0; c < 4; c++) {
+                if((best < 0) || (target.opening(c) > target.opening(best)))
+                    best = c;
+            }
+            if((best >= 0) && (target.opening(best) > 0)) {
+                /* opening() is a fraction and open() takes percentage POINTS. Mixing them
+                 * here made a 50-point opening grow by a fifth of a point instead of by
+                 * twenty, which is a boost of nothing at all - and it would have read as a
+                 * card that simply does not work rather than as a unit error. */
+                double points = target.opening(best) * 100.0;
+                target.open(best, points * m.boostGreatest * m.mu);
+            }
         }
 
         double[] opened = new double[4];

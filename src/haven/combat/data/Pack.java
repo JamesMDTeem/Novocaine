@@ -121,6 +121,7 @@ public final class Pack {
 
         b.damageShare(dbl(j, "damage_share", 0)).flatDamage(dbl(j, "damage_flat", 0))
             .grievous(dbl(j, "grievous_pct", 0) / 100.0)
+            .boostGreatest(j.isNull("boost_greatest") ? 0.0 : dbl(j, "boost_greatest", 0))
             /* "Initiative points: N" is what the move SPENDS - see Move.ipCost. The trailing
              * number of a "4+2" comes through separately and unresolved. */
             .ipCost(integer(j, "initiative", 0))

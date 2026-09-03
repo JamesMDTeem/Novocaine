@@ -86,6 +86,22 @@ public final class Move {
     public final double grievous;
 
     /**
+     * Share by which this card multiplies the opponent's single GREATEST opening, or 0.
+     *
+     * Opportunity Knocks and nothing else. It is kept apart from {@link #openings} because
+     * it obeys neither of the two rules an openings line obeys: the cube-root weight ratio
+     * and the {@code (1 - Oc)} falloff. The guide states both exclusions outright - "most
+     * attacks open less the higher the opponent's openings are, but this does the
+     * opposite", and "it doesn't matter what you or your opponent's UA or MC are".
+     *
+     * Which makes it the one card whose value RISES with the opening it finds, so it wants
+     * to be thrown last in a sequence rather than first - the opposite of every other
+     * opener in the deck. Filed separately so that nothing iterating openings can apply
+     * the two factors it does not take.
+     */
+    public final double boostGreatest;
+
+    /**
      * Initiative the move spends, from the sheet's "Initiative points: N".
      *
      * That line is a cost, not a gain, and the corpus settles it: every Knock Its Teeth Out
@@ -177,6 +193,7 @@ public final class Move {
         this.damageShare = b.damageShare;
         this.flatDamage = b.flatDamage;
         this.grievous = b.grievous;
+        this.boostGreatest = b.boostGreatest;
         this.ipCost = b.ipCost;
         this.ipGain = b.ipGain;
         this.foeIpGain = b.foeIpGain;
@@ -200,6 +217,7 @@ public final class Move {
         this.reduces = o.reduces;
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
         this.grievous = o.grievous;
+        this.boostGreatest = o.boostGreatest;
         this.ipCost = o.ipCost; this.ipGain = o.ipGain; this.foeIpGain = o.foeIpGain;
         this.gainColour = o.gainColour; this.gainAbove = o.gainAbove;
         this.cooldownBase = o.cooldownBase; this.cooldownMu = o.cooldownMu;
@@ -242,6 +260,7 @@ public final class Move {
         private final double[] openingsSelf = new double[4];
         private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
+        private double boostGreatest = 0;
         private int ipCost = 0, ipGain = 0, foeIpGain = 0, gainColour = -1;
         private double gainAbove = 0;
         private double cooldownBase = 0, ipScale = 0, weightMu = 1.0, mu = 1.0;
@@ -281,6 +300,7 @@ public final class Move {
         public Builder damageShare(double v) {this.damageShare = v; return(this);}
         public Builder flatDamage(double v) {this.flatDamage = v; return(this);}
         public Builder grievous(double v) {this.grievous = v; return(this);}
+        public Builder boostGreatest(double v) {this.boostGreatest = v; return(this);}
         public Builder ipCost(int v) {this.ipCost = v; return(this);}
         public Builder ipGain(int v) {this.ipGain = v; return(this);}
         public Builder foeIpGain(int v) {this.foeIpGain = v; return(this);}

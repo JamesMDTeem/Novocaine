@@ -218,6 +218,22 @@ IP_SCALE_RE = re.compile(
     re.I)
 
 
+# Opportunity Knocks: "Opportunity Knocks increases your opponent's greatest opening by
+# 40%." Read from prose because it is the only card in the sheet whose effect on an opening
+# is not an "Openings" line, and it cannot be one: an openings line is a base that gets the
+# cube-root weight ratio and the (1 - Oc) falloff applied to it, and this card takes
+# NEITHER. The guide is explicit on both counts - "most attacks open less the higher the
+# opponent's openings are, but this does the opposite", and "it doesn't matter what you or
+# your opponent's UA or MC are".
+#
+# So it multiplies. A standing opening of O becomes O * (1 + 0.40 * mu), which grows with O
+# rather than shrinking, and carries no term for either side's skill. Filed apart from
+# `openings` so that nothing which iterates openings can pick it up and apply the wrong two
+# factors to it.
+BOOST_RE = re.compile(
+    r"increases your opponent's greatest opening by\s*(\d+(?:\.\d+)?)\s*%", re.I)
+
+
 def parse_move(m, problems):
     raw = m.get("pagina")
     rec = OrderedDict()
@@ -341,6 +357,13 @@ def parse_move(m, problems):
     am = ATTACK_MULT_RE.search(" ".join(notes))
     if am:
         rec["attack_mult"] = float(am.group(1)) / 100.0
+    # The share by which this card multiplies the opponent's single greatest opening, or
+    # None. mu scales it, which is why it carries its own mu flag rather than being read
+    # off the openings list.
+    rec["boost_greatest"] = None
+    bg = BOOST_RE.search(" ".join(notes))
+    if bg:
+        rec["boost_greatest"] = float(bg.group(1)) / 100.0
     rec["block_requires"] = None
     rec["block_mult_without"] = None
     bif = BLOCK_IF_RE.search(" ".join(notes))
