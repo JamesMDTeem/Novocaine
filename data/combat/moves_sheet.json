@@ -53,7 +53,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/chinup",
@@ -85,7 +86,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/chop",
@@ -131,7 +133,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/cleave",
@@ -181,7 +184,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/combmed",
@@ -216,7 +220,8 @@
    "attack_mult": 0.25,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": true
   },
   {
    "res": "paginae/atk/dash",
@@ -250,7 +255,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/fdodge",
@@ -291,7 +297,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/fullcircle",
@@ -348,7 +355,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/gojug",
@@ -402,7 +410,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/haymaker",
@@ -446,7 +455,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/jump",
@@ -485,7 +495,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/kick",
@@ -529,7 +540,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/knockteeth",
@@ -573,7 +585,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/lefthook",
@@ -617,7 +630,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/lowblow",
@@ -663,7 +677,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/oppknock",
@@ -697,7 +712,8 @@
    "attack_mult": null,
    "boost_greatest": 0.4,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/parry",
@@ -738,7 +754,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/pow",
@@ -782,7 +799,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/punchboth",
@@ -832,7 +850,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/barrage",
@@ -879,7 +898,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/qdodge",
@@ -918,7 +938,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/ravenbite",
@@ -974,7 +995,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/regain",
@@ -1019,7 +1041,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/ripapart",
@@ -1093,7 +1116,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/shield",
@@ -1127,7 +1151,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": "shield",
-   "block_mult_without": 0.5
+   "block_mult_without": 0.5,
+   "stance": true
   },
   {
    "res": "paginae/atk/sidestep",
@@ -1166,7 +1191,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/sideswipe",
@@ -1212,7 +1238,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/stealthunder",
@@ -1262,7 +1289,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/sting",
@@ -1318,7 +1346,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/takeaim",
@@ -1353,7 +1382,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/takedown",
@@ -1401,7 +1431,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/toarms",
@@ -1433,7 +1464,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/uppercut",
@@ -1481,7 +1513,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/watchmoves",
@@ -1522,7 +1555,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/yieldground",
@@ -1580,7 +1614,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   },
   {
    "res": "paginae/atk/zigzag",
@@ -1625,7 +1660,8 @@
    "attack_mult": null,
    "boost_greatest": null,
    "block_requires": null,
-   "block_mult_without": null
+   "block_mult_without": null,
+   "stance": false
   }
  ]
 }

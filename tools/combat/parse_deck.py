@@ -239,11 +239,17 @@ def parse_move(m, problems):
     rec = OrderedDict()
     rec["res"] = m["res"]
     rec["name"] = m.get("name")
-    # How far THIS CHARACTER has learned the move, not the game's ceiling. Everything
-    # except stances goes to 5; a move showing a max of 1 has simply been picked up once.
-    # Misreading it as the cap is easy and costly - it makes a move at 1 of 1 look fully
-    # weighted, which would put its mu at the top of the range when it is really at the
-    # bottom.
+    # How far THIS CHARACTER has levelled the move, not the game's ceiling.
+    #
+    # Worth stating because the opposite was briefly believed here. Combat Meditation
+    # reports maxlevel 1 with decklevel 0, which looked like a ceiling for a card not in
+    # the deck - but twenty-one cards report 1, Quick Barrage and Cleave among them, and
+    # those plainly are not capped at 1. It is the high-water mark of what has been
+    # levelled, and a card at 1 of 1 has simply been picked up once.
+    #
+    # So nothing here says how far a card CAN go, and in particular nothing says whether
+    # Take Aim can pass level 3. See experiment.py, which chooses an instrument on
+    # resolving power rather than on an assumed ceiling.
     rec["maxlevel"] = m.get("maxlevel")
     rec["decklevel"] = m.get("decklevel")
     if not raw:
@@ -370,6 +376,18 @@ def parse_move(m, problems):
     if bif:
         rec["block_requires"] = bif.group(1).strip().lower()
         rec["block_mult_without"] = float(bif.group(2)) / 100.0
+    # A STANCE, not a card you throw. One sits on the bar at a time and it is on
+    # continuously - a passive - so "never used" is not a thing a stance can be, and a
+    # coverage report that lists one as unthrown is miscounting rather than finding
+    # something.
+    #
+    # Identified by what the card DOES rather than by any level: a stance is the only kind
+    # of card that changes your attack or block weight for as long as it is held. That
+    # picks out exactly Combat Meditation and Shield Up. maxlevel looked like a cleaner
+    # signal and is not one - see the note above.
+    rec["stance"] = ((rec.get("attack_mult") is not None)
+                     or (rec.get("block_mult_without") is not None))
+
     rec["pagina"] = raw
     if extras:
         problems.append("%s: unrecognised field label(s) %s" % (where, ", ".join(extras)))

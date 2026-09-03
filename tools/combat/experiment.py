@@ -40,6 +40,7 @@ Stdlib only.
 """
 
 import json
+import math
 import os
 import sys
 from collections import defaultdict
@@ -80,14 +81,15 @@ def _mu_ratio(level):
 # with more than one survivor the job is to separate them, and with exactly one the job
 # is to try to kill it.
 HYPOTHESES = (
-    ("sqrt", estimate.mu_curve),
     ("linear", estimate.mu_linear),
+    ("wiki", lambda L: {4: 1.4, 5: 1.5}.get(L)),
+    ("sqrt", estimate.mu_curve),
     ("invsqrt", _mu_invsqrt),
     ("ratio", _mu_ratio),
 )
 
 EXCLUDED = {
-    "linear": "level 2 measures 1.143-1.177; this wants 1.125",
+    "sqrt": "levels 2 and 3 read 1.111-1.154 and 1.200-1.250; this wants 1.168 and 1.296",
     "invsqrt": "caps at 1.276 for level 5, against reduction floors of 1.49 and up",
     "ratio": "caps at 1.333 for level 5, against the same floors",
 }
@@ -95,30 +97,77 @@ EXCLUDED = {
 LIVE = tuple(n for n, _f in HYPOTHESES if n not in EXCLUDED)
 
 
-def pins_mu(observed_ticks, ip):
-    """The interval one observed cooldown pins mu to, at this initiative.
+# The instruments. A card can measure the deck weighting only if its COOLDOWN divides by
+# it, and exactly two do.
+#
+# WHICH ONE TO USE IS A QUESTION OF RESOLUTION, not of any ceiling. The reading is an
+# integer number of ticks, so a card resolves a difference in the weighting only when that
+# difference moves the integer - and how far it moves scales with the card's base. At
+# level 4 the two surviving curves differ by 1.8%: Take Aim's base of 30 gives 21.8 and
+# 21.4 ticks, which both floor to 21 and settle nothing, while Dash's 80 gives 58.2 and
+# 57.1, which floor apart. A bigger base is a finer instrument.
+#
+# Take Aim earns its place for the levels it can reach because it carries an initiative
+# term, and a ladder of readings at rising initiative is many independent measurements of
+# one number rather than one repeated. Dash has no such term: one reading is every reading.
+#
+# Neither entry claims a maximum level. The deck dump's maxlevel is how far the character
+# has levelled a card, not how far it can go - twenty-one cards report 1, Quick Barrage
+# among them - so nothing available here says whether Take Aim can pass 3.
+INSTRUMENTS = {
+    "Take Aim": {"base": 30.0, "ip_scale": 0.20, "max_level": estimate.MU_LEVELS},
+    "Dash": {"base": 80.0, "ip_scale": 0.0, "max_level": estimate.MU_LEVELS},
+}
 
-    The whole point of a falsification test rather than a discrimination one. With a
-    single surviving curve there is nothing left to separate it FROM, so an experiment is
-    worth running to the extent it could prove the survivor wrong - and that is exactly
-    how narrowly one integer reading constrains mu. A reading that admits 1.28 to 1.33
-    can refute a curve claiming 1.25; one that admits 1.0 to 1.5 can refute nothing.
 
-    An observed N means the unrounded value was in [N - 0.5, N + 0.5), same as
-    estimate.mu_from_takeaim, which this deliberately mirrors rather than reimplements.
+def pins_mu(observed_ticks, ip, base=None, ip_scale=None):
+    """The interval one observed cooldown pins the deck weighting to.
+
+    The whole point of a falsification test rather than a discrimination one. With a single
+    surviving curve there is nothing left to separate it FROM, so an experiment is worth
+    running to the extent it could prove the survivor wrong - and that is exactly how
+    narrowly one integer reading constrains mu. A reading that admits 1.20 to 1.25 can
+    refute a curve claiming 1.296; one that admits 1.0 to 1.5 can refute nothing.
+
+    It inverts the DOUBLE floor. The card's own cooldown is an integer C = floor(base/mu),
+    and what is observed is floor(C * f). So the reading names a set of possible C, and
+    each C names an interval of mu. Inverting a single round-half-up instead is what
+    excluded the linear curve for a week.
     """
-    return estimate.mu_from_takeaim(observed_ticks, ip)
+    if base is None:
+        base = estimate.TAKE_AIM_BASE
+    if ip_scale is None:
+        ip_scale = estimate.TAKE_AIM_IP_SCALE
+    f = 1.0 + (ip_scale * ip)
+    cands = [c for c in range(1, int(base) + 1)
+             if int(math.floor(c * f)) == int(observed_ticks)]
+    if not cands:
+        return None
+    # floor(base / mu) == C  <=>  mu in (base / (C + 1), base / C]
+    return (base / (max(cands) + 1.0), base / float(min(cands)))
+
+
+def raw_cooldown(base, mu, ip_scale, ip):
+    """The cooldown a card would report, before the second floor.
+
+    The card's own cooldown is an INTEGER - base over the deck weighting, floored - and
+    initiative scales that integer. Both floors are load-bearing: reading this as a single
+    round-half-up is what excluded the linear curve for a week and sent the whole project
+    after a square-root one.
+    """
+    if not mu or mu <= 0:
+        return None
+    return math.floor(base / mu) * (1.0 + (ip_scale * ip))
 
 
 def takeaim_raw(mu, ip):
-    """The unrounded cooldown Take Aim would report at this mu and initiative.
+    """The cooldown Take Aim would report at this deck weighting and initiative.
 
-    Take Aim is a maneuver, so no agility term enters - which is the whole reason it is
-    the instrument for mu. An attack's cooldown carries a factor that depends on the
-    opponent, and that would have to be known before mu could be read out of it."""
-    if not mu or mu <= 0:
-        return None
-    return (estimate.TAKE_AIM_BASE / mu) * (1.0 + (estimate.TAKE_AIM_IP_SCALE * ip))
+    Take Aim is a maneuver, so no agility term enters - which is the whole reason it is an
+    instrument for the deck weighting at all. An attack's cooldown carries a factor that
+    depends on the opponent, and that would have to be known before mu could be read out
+    of it."""
+    return(raw_cooldown(estimate.TAKE_AIM_BASE, mu, estimate.TAKE_AIM_IP_SCALE, ip))
 
 
 def discriminate(level, ip, hyps=HYPOTHESES):
@@ -145,17 +194,18 @@ def discriminate(level, ip, hyps=HYPOTHESES):
 
     splits = defaultdict(list)
     for name, (_mu, r) in raw.items():
-        splits[model._round_half_up(r)].append(name)
+        splits[int(math.floor(r))].append(name)
 
     # Distance to the nearest rounding boundary, which is where a prediction is fragile.
-    robust = min(abs((r % 1.0) - 0.5) for _mu, r in raw.values())
+    # Distance to the nearest boundary, which for a floor is the fractional part.
+    robust = min(min(r % 1.0, 1.0 - (r % 1.0)) for _mu, r in raw.values())
 
     margin = None
     for a, (_ma, ra) in raw.items():
         for b, (_mb, rb) in raw.items():
             if a >= b:
                 continue
-            if model._round_half_up(ra) == model._round_half_up(rb):
+            if int(math.floor(ra)) == int(math.floor(rb)):
                 continue
             d = abs(ra - rb)
             if (margin is None) or (d < margin):
@@ -187,7 +237,7 @@ def separable(level, a, b, ips=range(0, 21), hyps=HYPOTHESES):
         rb = takeaim_raw(fns[b](level), ip)
         if (ra is None) or (rb is None):
             continue
-        if model._round_half_up(ra) != model._round_half_up(rb):
+        if int(math.floor(ra)) != int(math.floor(rb)):
             return ip
     return None
 
@@ -235,11 +285,16 @@ def coverage(paths=None):
                 if nm:
                     used[byres.get(nm, nm)][sp] += 1
 
-    # Everything the newest deck holds, so a card owned and never thrown still appears.
+    # Everything the newest deck holds, so a card owned and never thrown still appears -
+    # except a STANCE, which is not thrown at all. One sits on the bar at a time and is on
+    # continuously, so it has no uses to count and listing it as never used is miscounting
+    # rather than finding something. Reported separately instead.
     owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+    stances = set(nm for nm, m in estimate.load_moves().items() if m.get("stance"))
     for nm in owned:
-        used[nm]  # touch, so a zero-use card gets a row
-    return used, owned
+        if nm not in stances:
+            used[nm]  # touch, so a zero-use card gets a row
+    return used, owned, stances
 
 
 PACK = os.path.join(estimate.ROOT, "data", "combat", "opponents.json")
@@ -362,7 +417,7 @@ def report_todo():
         if reach:
             lvl = reach[0]
             mu = fn_(lvl)
-            n0 = model._round_half_up(takeaim_raw(mu, 0))
+            n0 = int(math.floor(takeaim_raw(mu, 0)))
             lo, hi = pins_mu(n0, 0)
             jobs.append((1,
                          "Use Take Aim at level %d, holding initiative" % lvl,
@@ -388,6 +443,33 @@ def report_todo():
     print("  %d of %d opponents can be planned against end to end.\n" % (done, total))
 
 
+def separable_with(level, a, b, instrument, ips=range(0, 21), hyps=HYPOTHESES):
+    """The lowest initiative at which this instrument splits these two, or None.
+
+    Instrument-aware, and that is the whole point rather than a detail. At level 4 the two
+    surviving curves differ by 1.8%, and Take Aim's base of 30 cannot resolve that - both
+    land on 21 ticks. Dash's base of 80 gives 58 and 57. A report that asked only the card
+    already in the deck would call the question unanswerable when another card answers it.
+    """
+    fns = dict(hyps)
+    if (a not in fns) or (b not in fns):
+        return None
+    spec = INSTRUMENTS[instrument]
+    if level > spec["max_level"]:
+        return None
+    for ip in ips:
+        ra = raw_cooldown(spec["base"], fns[a](level), spec["ip_scale"], ip)
+        rb = raw_cooldown(spec["base"], fns[b](level), spec["ip_scale"], ip)
+        if (ra is None) or (rb is None):
+            continue
+        if int(math.floor(ra)) != int(math.floor(rb)):
+            return ip
+        if spec["ip_scale"] == 0:
+            # No initiative term, so one reading is every reading.
+            return None
+    return None
+
+
 def report_discrimination():
     print("=" * 78)
     print("WHICH FIGHT WOULD SETTLE SOMETHING")
@@ -395,34 +477,45 @@ def report_discrimination():
     print("  Ranked by what the outcome would DECIDE, not by where the model is wrong.")
     print("  A residual says something is off across ten parameters at once; two")
     print("  hypotheses predicting different integers say which one is dead.\n")
-    print("  Take Aim's cooldown divides by mu and carries no agility term, so it reads")
-    print("  mu directly. The server sends whole ticks, so candidates are separable")
-    print("  exactly when they round apart - one observation settles it, or none do.\n")
+    print("  A card can measure the deck weighting only if its COOLDOWN divides by it.")
+    print("  Exactly two do, and a bigger base is a finer instrument:\n")
+    owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+    for nm, spec in INSTRUMENTS.items():
+        print("      %-10s base %-5.0f initiative scale %-5.2f (deck level: %d)"
+              % (nm, spec["base"], spec["ip_scale"], owned.get(nm, 0)))
+    print()
+    print("  The cooldown FLOORS, and it floors twice: the card's own cooldown is")
+    print("  base over the weighting, floored to the integer the card displays, and")
+    print("  initiative then scales that integer and floors again. Reading it as one")
+    print("  round-half-up is what excluded the linear curve for a week.\n")
 
-    print("  %-7s %-11s %-11s %-11s %-11s %s"
-          % ("level", "sqrt", "linear", "invsqrt", "ratio", "at 0 IP"))
-    for lvl in range(1, estimate.MU_LEVELS + 1):
-        d = discriminate(lvl, 0)
-        if d is None:
-            continue
-        cells = []
-        for name, _fn in HYPOTHESES:
-            if name in d["raw"]:
-                mu, r = d["raw"][name]
-                cells.append("%.3f/%d" % (mu, model._round_half_up(r)))
-            else:
-                cells.append("-")
-        verdict = ("SPLITS %s" % sorted(d["splits"])) if d["decisive"] else "all agree"
-        print("  %-7s %-11s %-11s %-11s %-11s %s"
-              % (lvl, cells[0], cells[1], cells[2], cells[3], verdict))
+    names = [n for n, _f in HYPOTHESES]
+    print("  what each card would report at 0 initiative, by level")
+    for nm, spec in INSTRUMENTS.items():
+        print("\n  %s (base %.0f)" % (nm, spec["base"]))
+        print("      %-7s %s" % ("level", "  ".join("%-12s" % n for n in names)))
+        for lvl in range(1, estimate.MU_LEVELS + 1):
+            if lvl > spec["max_level"]:
+                continue
+            cells, ints = [], set()
+            for n, fn in HYPOTHESES:
+                mu = fn(lvl)
+                r = raw_cooldown(spec["base"], mu, spec["ip_scale"], 0)
+                if r is None:
+                    cells.append("%-12s" % "-")
+                else:
+                    cells.append("%-12s" % ("%.3f/%d" % (mu, int(math.floor(r)))))
+                    ints.add(int(math.floor(r)))
+            note = ("SPLITS %s" % sorted(ints)) if len(ints) > 1 else "all agree"
+            print("      %-7d %s  %s" % (lvl, "  ".join(cells), note))
 
-    print("\n  Level 1 is the control. Every candidate is pinned to mu = 1.0 there, so no")
-    print("  observation at level 1 can separate them - and if this ever reports level 1")
-    print("  as decisive, the instrument is broken rather than the hypotheses.\n")
+    print("\n  Level 1 is the control. Every candidate is pinned to 1.0 there, so no")
+    print("  observation at level 1 can separate anything - and if this ever reports")
+    print("  level 1 as decisive, the instrument is broken and not the hypotheses.\n")
 
     measured = sorted(estimate.MU_MEASURED)
-    print("\n  Already measured: %s" % (", ".join("level %d" % l for l in measured)
-                                       if measured else "nothing"))
+    print("  Already measured: %s" % (", ".join("level %d" % l for l in measured)
+                                      if measured else "nothing"))
     print("  Still live: %s" % ", ".join(LIVE))
     for name in (n for n, _f in HYPOTHESES if n in EXCLUDED):
         print("      %-9s dead - %s" % (name, EXCLUDED[name]))
@@ -437,96 +530,47 @@ def report_discrimination():
 def report_separation(live):
     """More than one curve is standing, so the job is to split them."""
     print("  %d candidates survive, so the job is to SEPARATE them.\n" % len(live))
+    owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+    found = False
     for lvl in range(1, estimate.MU_LEVELS + 1):
         if lvl in estimate.MU_MEASURED:
             continue
-        found = False
         for i, a in enumerate(live):
             for b in live[i + 1:]:
-                ip = separable(lvl, a, b)
-                if ip is None:
-                    print("  level %d: %s and %s are INSEPARABLE - the curves meet here,"
+                hits = []
+                for nm in INSTRUMENTS:
+                    ip = separable_with(lvl, a, b, nm)
+                    if ip is not None:
+                        hits.append((nm, ip))
+                if not hits:
+                    print("  level %d: nothing in the deck separates %s from %s."
                           % (lvl, a, b))
-                    print("           so no initiative splits them and no fight will.")
-                else:
-                    print("  level %d: %s vs %s splits from %d IP" % (lvl, a, b, ip))
+                    continue
                 found = True
-        if not found:
-            print("  level %d: nothing to separate." % lvl)
+                for nm, ip in hits:
+                    spec = INSTRUMENTS[nm]
+                    ra = raw_cooldown(spec["base"], dict(HYPOTHESES)[a](lvl),
+                                      spec["ip_scale"], ip)
+                    rb = raw_cooldown(spec["base"], dict(HYPOTHESES)[b](lvl),
+                                      spec["ip_scale"], ip)
+                    print("  level %d: %s vs %s - use %s%s. %s reads %d ticks, %s reads %d."
+                          % (lvl, a, b, nm,
+                             "" if spec["ip_scale"] == 0 else " at %d initiative" % ip,
+                             a, int(math.floor(ra)), b, int(math.floor(rb))))
+                    have = owned.get(nm, 0)
+                    if have >= lvl:
+                        print("           %s is already at level %d in the deck - one use"
+                              " settles it." % (nm, have))
+                    else:
+                        print("           %s is at level %d and must be levelled to %d"
+                              " first." % (nm, have, lvl))
+    if not found:
+        print("  Nothing left that any card in the deck can settle.")
     print()
-
-
-def report_falsification(live):
-    """One curve is standing, so the job is to try to kill it.
-
-    A different question with a different answer, and conflating the two is how a model
-    ends up confirming itself. With rivals in the field an experiment is good when it
-    splits them. With one survivor there is nothing to split, and the experiment is good
-    when a single reading pins mu TIGHTLY enough that the survivor could have been wrong
-    and shown to be - which is what the interval width below measures. A test that admits
-    1.0 to 1.5 cannot refute anything and is not worth the walk.
-    """
-    sole = live[0]
-    fn = dict(HYPOTHESES)[sole]
-    print("  Only %s survives, so there is nothing left to separate. The job is now to" % sole)
-    print("  try to FALSIFY it, and an experiment is worth running exactly to the extent")
-    print("  that one reading could have come back refuting it.\n")
-    print("  %-7s %-8s %-6s %-8s %-16s %s"
-          % ("level", "predicts", "IP", "reads", "which pins mu to", "width"))
-    for lvl in range(1, estimate.MU_LEVELS + 1):
-        if lvl in estimate.MU_MEASURED:
-            continue
-        mu = fn(lvl)
-        if not mu:
-            continue
-        best = None
-        for ip in range(0, 11):
-            r = takeaim_raw(mu, ip)
-            n = model._round_half_up(r)
-            lo, hi = pins_mu(n, ip)
-            row = (hi - lo, ip, n, lo, hi, abs((r % 1.0) - 0.5))
-            if (best is None) or (row[0] < best[0]):
-                best = row
-            if ip == 0:
-                print("  %-7d %-8.3f %-6d %-8d %-16s %.3f"
-                      % (lvl, mu, ip, n, "%.3f - %.3f" % (lo, hi), hi - lo))
-        if best and best[1] != 0:
-            w, ip, n, lo, hi, rob = best
-            print("  %-7s %-8s %-6d %-8d %-16s %.3f   <- tightest"
-                  % ("", "", ip, n, "%.3f - %.3f" % (lo, hi), w))
-            if rob < ROBUST:
-                print("          FRAGILE: that prediction sits %.2f ticks from a rounding"
-                      % rob)
-                print("          boundary, so which integer comes back turns on the base")
-                print("          cooldown having been transcribed exactly right.")
-    print()
-    # Whether the recommended experiment can be run TODAY, which is the difference
-    # between a ranked list and an instruction.
-    owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
-    have = owned.get("Take Aim")
-    if have:
-        reach = [l for l in range(1, min(have, estimate.MU_LEVELS) + 1)
-                 if l not in estimate.MU_MEASURED]
-        print("  Take Aim stands at level %d in the current deck." % have)
-        if reach:
-            print("  So level%s %s %s reachable now - the card is already there, and the"
-                  % ("" if len(reach) == 1 else "s",
-                     ", ".join(str(l) for l in reach),
-                     "is" if len(reach) == 1 else "are"))
-            print("  measurement is one use of it at initiative.")
-        else:
-            print("  Every level it can reach is already measured; the rest needs the")
-            print("  card levelled further.")
-        print()
-    print("  Initiative tightens every one of these, because the cooldown scales by")
-    print("  (1 + 0.2 * ip) while the half-tick of rounding slop does not. Building")
-    print("  initiative before the measurement is worth more than repeating it at zero -")
-    print("  which is the same conclusion the optimizer reached about opening a fight,")
-    print("  arrived at from a different direction.\n")
 
 
 def report_coverage(paths=None):
-    counts, owned = coverage(paths)
+    counts, owned, stances = coverage(paths)
     if not counts:
         return
     print("=" * 78)
@@ -542,6 +586,12 @@ def report_coverage(paths=None):
         lvl = owned.get(mv)
         print("  %-28s %-6s %-6d %-8d%s"
               % (mv[:28], lvl if lvl is not None else "-", n, sp, flag))
+    held = sorted(nm for nm in owned if nm in stances)
+    if held:
+        print()
+        print("  Stances held, not thrown: %s." % ", ".join(held))
+        print("  A stance is a passive - one on the bar, on continuously - so it has no")
+        print("  uses to count, and a row saying otherwise would be miscounting.")
     blind = [mv for n, mv, _sp in tot if n == 0]
     if blind:
         print()

@@ -85,12 +85,23 @@ MU_LEVELS = 5
 
 
 def mu_linear(level):
-    """What the linear hypothesis would give - 1.0 to 1.5 across the five card levels.
+    """The deck weighting: 1.0 to 1.5, evenly, across the five card levels.
 
-    KEPT ONLY TO BE CONTRADICTED. Take Aim's cooldown now measures mu directly at level 2
-    as 1.143 to 1.177, and this predicts 1.125, which is outside it. Nothing may compute
-    with this; it exists so the report can show what the obvious guess would have said
-    next to what the corpus actually says, and so a check can pin the exclusion.
+    THE LEADING CURVE, and it was written off for a week by an error in the instrument
+    rather than in the hypothesis.
+
+    Take Aim's cooldown was read as round-half-up of a single division, which put level 2
+    at 1.143-1.177 and excluded this curve's 1.125. The game floors, and it floors TWICE:
+    the card's own cooldown is base/mu floored to an integer, and initiative then scales
+    that integer and floors again. Under the correct rule level 2 reads 1.111-1.154 and
+    level 3 reads 1.200-1.250, and this curve's 1.125 and 1.250 sit inside both.
+
+    Twenty-eight readings across three card levels, including a ladder of eighteen
+    consecutive Take Aims from 0 to 17 initiative. Linear matches all twenty-eight. The
+    square-root curve that replaced it matches eight.
+
+    Levels 4 and 5 remain unmeasured, and Take Aim caps at level 3 so it can never reach
+    them. See mu_curve for what is still open there.
     """
     if not level or level < 1:
         return None
@@ -124,11 +135,33 @@ TAKE_AIM_BASE, TAKE_AIM_IP_SCALE = 30.0, 0.20
 def mu_from_takeaim(cooldown, ip):
     """The deck weighting implied by one Take Aim cooldown, as an interval.
 
-    observed = round(base / mu * (1 + ipScale * ip)), and the server sends whole ticks, so
-    an observed N means the unrounded value was in [N - 0.5, N + 0.5). Inverting that
-    gives a band rather than a point, and the band is what makes two observations at
-    different initiative able to intersect into something tighter than either.
+    The card's own cooldown is an INTEGER - base divided by mu and floored, which is the
+    number the card displays. Initiative then scales that integer and the result is floored
+    again. So an observed N at initiative i means the card's integer C satisfies
+    floor(C * f) == N, and mu is then bounded by floor(base / mu) == C.
+
+    This used to invert a single round-half-up, and getting it wrong was not a small error.
+    It put level 2 at 1.143-1.177 where the truth is exactly 1.125, which EXCLUDED the
+    linear curve and sent the whole project after a square-root one for a week. A ladder of
+    eighteen consecutive Take Aims settled it: twenty-eight readings across three levels,
+    all twenty-eight matched by linear under the double floor, eighteen by round-half-up.
     """
+    if not cooldown or cooldown <= 0:
+        return None
+    f = 1.0 + (TAKE_AIM_IP_SCALE * ip)
+    # The integers C for which floor(C * f) == cooldown. Usually one; two when f is small.
+    cands = [c for c in range(1, int(TAKE_AIM_BASE) + 1)
+             if int(math.floor(c * f)) == int(cooldown)]
+    if not cands:
+        return None
+    # floor(base / mu) == C  <=>  mu in (base / (C + 1), base / C]
+    lo = TAKE_AIM_BASE / (max(cands) + 1.0)
+    hi = TAKE_AIM_BASE / float(min(cands))
+    return (lo, hi)
+
+
+def _mu_from_takeaim_old(cooldown, ip):
+    """Kept only so the correction above can be shown against what it replaced."""
     if not cooldown or cooldown <= 0:
         return None
     f = 1.0 + (TAKE_AIM_IP_SCALE * ip)
@@ -242,22 +275,27 @@ MU_WIKI_EXAMPLE = {4: 1.4, 5: 1.5}
 
 
 def mu_curve(level):
-    """The leading curve: 1 + 0.5*(sqrt(L)-1)/(sqrt(5)-1).
+    """The square-root curve: 1 + 0.5*(sqrt(L)-1)/(sqrt(5)-1). EXCLUDED.
 
-    Three independent lines pick this out, and each kills something the others do not.
+    KEPT ONLY TO BE CONTRADICTED, which is the exact wording this docstring used to carry
+    about mu_linear. The reversal is worth stating plainly rather than quietly deleting.
 
-        level 2   Take Aim's cooldown measures 1.143-1.177. The curve gives 1.168.
-                  The obvious linear curve gives 1.125 and is EXCLUDED here.
-        level 4   the wiki's worked example states 1.4. The curve gives 1.405; linear
-                  gives 1.375.
-        level 5   reduction floors put mu at 1.49 or above, and the wiki states 1.5. The
-                  curve gives exactly 1.5. Rivals that fit level 2 but cap out lower -
-                  1.5-0.5/sqrt(L) at 1.276, 1+0.5(L-1)/(L+1) at 1.333 - are EXCLUDED here.
+    This curve was adopted because Take Aim's cooldown appeared to measure 1.143-1.177 at
+    level 2, which excluded linear's 1.125 and admitted this curve's 1.168. That reading
+    came from inverting a round-half-up of a single division. The game floors twice, and
+    under the correct rule level 2 reads 1.111-1.154 and level 3 reads 1.200-1.250 - both
+    of which EXCLUDE this curve, at 1.168 and 1.296.
 
-    Nothing computes with this yet. mu_bounds still returns measured intervals and the
-    stated range elsewhere, because one curve fitting three points is a good hypothesis and
-    not a measurement. Take Aim's own maximum is 3: one further point in it reads level 3
-    to about +/-0.02, where this curve says 1.296 and linear says 1.250.
+    The lesson is not that the hypothesis was badly chosen. Three independent lines picked
+    it out and each was argued carefully; every one of them ran through the same broken
+    inversion, so agreeing with each other told us nothing. A shared instrument is a shared
+    assumption, and three results from one instrument are one result.
+
+    One thing it got right survives: the wiki's worked example states mu(4) = 1.4, which
+    is neither this curve's 1.405 nor linear's 1.375. Level 4 is genuinely open, and Take
+    Aim caps at 3 so it cannot settle it. Dash divides by mu, has no initiative term, and
+    at level 4 gives 58 ticks for linear, 57 for the wiki figure and 56 for this curve -
+    three distinct integers, one use.
     """
     if not level or level < 1:
         return None

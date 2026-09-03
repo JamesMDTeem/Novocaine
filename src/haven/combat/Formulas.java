@@ -233,16 +233,42 @@ public final class Formulas {
      * @param ipScale     extra fraction of the base per initiative point, 0 for most moves
      * @param isAttack    maneuvers do not take the agility modifier
      */
+    /**
+     * A move's cooldown in whole server ticks.
+     *
+     * It FLOORS, and it floors TWICE. Both were wrong here until a run of eighteen Take Aims
+     * at one level settled them, and the two errors together had put the deck weighting on
+     * the wrong curve entirely.
+     *
+     * The card's own cooldown is an integer: base divided by the deck weighting and floored,
+     * which is the number the card displays. Initiative then scales THAT integer, and the
+     * result is floored again. The two steps are not interchangeable with one - at deck
+     * weighting 1.125 the base is 30/1.125 = 26.667, and a single floor at the end gives
+     * 32 ticks at one initiative where the game gives 31. Flooring the base to 26 first
+     * gives 31.2, and so 31.
+     *
+     * The evidence is a ladder of eighteen consecutive Take Aims from 0 to 17 initiative,
+     * plus every earlier Take Aim in the corpus - twenty-eight readings across three card
+     * levels. This rule matches all twenty-eight. Rounding half up matches eighteen, and
+     * flooring only at the end matches twenty-seven.
+     *
+     * The agility factor is applied last and ROUNDS rather than floors, which is not a
+     * guess either - flooring it costs a tick on every attack the corpus has measured
+     * against a faster opponent. Knock Its Teeth Out reads 38 where flooring gives 37, and
+     * Full Circle 43 where flooring gives 42. So the two subsystems behave differently:
+     * the card's own cooldown is an integer the game floors into shape, and the matchup
+     * modifier is applied to that integer and rounded.
+     */
     public static long cooldownTicks(double base, boolean muDivides, double mu,
                                      double ipScale, int ip, boolean isAttack,
                                      double agiMe, double agiFoe) {
         double cd = base;
         if(muDivides && (mu > 0))
-            cd /= mu;
-        cd *= (1.0 + (ipScale * ip));
+            cd = Math.floor(cd / mu);
+        cd = Math.floor(cd * (1.0 + (ipScale * ip)));
         if(isAttack)
-            cd *= agilityCooldownFactor(agiMe, agiFoe);
-        return(Math.round(cd));
+            return(Math.round(cd * agilityCooldownFactor(agiMe, agiFoe)));
+        return((long)cd);
     }
 
     /**

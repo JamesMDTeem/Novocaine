@@ -196,9 +196,21 @@ def deck_weighting():
     near("and level 2 at 1.125", estimate.mu_linear(2), 1.125, 1e-9)
     check("nothing goes past the cap",
           estimate.mu_linear(9) == estimate.mu_linear(5), True)
-    # Which the measurement contradicts. This is the whole point of keeping it.
-    check("Take Aim's level-2 measurement excludes that 1.125",
-          estimate.mu_bounds(2)[0] <= 1.125 <= estimate.mu_bounds(2)[1], False)
+    # Which the measurement CONTAINS. This check asserted the opposite for a week, and it
+    # passed the whole time, because the interval it tested came from inverting the wrong
+    # rounding rule. A check can only ever be as right as its instrument.
+    check("Take Aim's level-2 measurement contains that 1.125",
+          estimate.mu_bounds(2)[0] <= 1.125 <= estimate.mu_bounds(2)[1], True)
+    check("  and level 3's contains 1.25",
+          estimate.mu_bounds(3)[0] <= 1.25 <= estimate.mu_bounds(3)[1], True)
+    # The square-root curve is what the corpus went after when the inversion was wrong. It
+    # is excluded at both measured levels now, and pinning that stops it coming back.
+    check("  while the square-root curve's 1.168 is excluded at level 2",
+          estimate.mu_bounds(2)[0] <= estimate.mu_curve(2) <= estimate.mu_bounds(2)[1],
+          False)
+    check("  and its 1.296 at level 3",
+          estimate.mu_bounds(3)[0] <= estimate.mu_curve(3) <= estimate.mu_bounds(3)[1],
+          False)
     # And the point estimate no longer comes off the excluded curve.
     check("an unlearned card has no weighting", estimate.mu_at_level(0), None)
     check("the point estimate now sits inside the measured band",
@@ -264,7 +276,11 @@ def mu_measurement():
     lo, hi = estimate.mu_from_takeaim(30, 0)
     check("30 ticks at 0 IP brackets mu = 1.0", lo < 1.0 <= hi, True)
     lo, hi = estimate.mu_from_takeaim(26, 0)
-    check("26 ticks at 0 IP gives about 1.15", round((lo + hi) / 2, 2), 1.15)
+    # The card's own cooldown is floor(30 / mu), so 26 ticks means that integer is 26,
+    # which brackets mu at (30/27, 30/26] = 1.111 to 1.154. The linear curve's 1.125 sits
+    # inside; the square-root curve's 1.168 does not.
+    check("26 ticks at 0 IP brackets 1.125 and not 1.168",
+          (lo < 1.125 <= hi, lo < 1.1676 <= hi), (True, False))
     # 26 at 0 IP and 31 at 1 IP are the SAME mu - the initiative term has to come off the
     # observation before the ratio is taken, and getting that backwards is what made an
     # earlier version of this read a different mu at every initiative.
@@ -290,11 +306,12 @@ def mu_measurement():
         check("  CONTROL: level 1 must contain exactly 1.0", (blo <= 1.0 <= bhi), True)
     if 2 in m:
         blo, bhi, _n, _s = m[2]
-        # The linear curve is what everyone reaches for first, and this corpus rules it
-        # out. Pinning the exclusion stops it being quietly reintroduced.
-        check("  the linear 1.0-1.5 curve predicts 1.125 and is excluded",
-              blo <= 1.125 <= bhi, False)
-        check("  linear across the card's own max predicts 1.25, also excluded",
+        # The linear curve is what everyone reaches for first, and it is right. This
+        # asserted the exclusion until an eighteen-reading Take Aim ladder showed the
+        # cooldown floors twice rather than rounding once.
+        check("  the linear 1.0-1.5 curve predicts 1.125, and it fits",
+              blo <= 1.125 <= bhi, True)
+        check("  linear across the card's own max predicts 1.25, which level 3 confirms",
               blo <= 1.25 <= bhi, False)
 
 
@@ -389,8 +406,9 @@ def mu_curve():
     near("level 5 reaches the devs' stated ceiling", c(5), 1.5, 1e-9)
     # Take Aim, measured.
     lo, hi = estimate.mu_bounds(2)
-    check("level 2 lands inside Take Aim's measured interval", lo <= c(2) <= hi, True)
-    check("  where the linear curve does not", lo <= 1.125 <= hi, False)
+    check("level 2 falls OUTSIDE Take Aim's measured interval - it is excluded",
+          lo <= c(2) <= hi, False)
+    check("  where the linear curve sits inside it", lo <= 1.125 <= hi, True)
     # The wiki's worked example.
     for level, stated in sorted(estimate.MU_WIKI_EXAMPLE.items()):
         near("level %d matches the wiki's worked example" % level, c(level), stated, 0.01)

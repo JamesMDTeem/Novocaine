@@ -13,9 +13,15 @@ at level 1 by construction, so NO observation there can separate them. If this e
 reports level 1 as decisive, the fault is in the instrument and not in the hypotheses -
 and that is the one failure mode which would otherwise look like progress.
 
+That failure has already happened once, in the other direction. The cooldown was read as
+a single round-half-up when the game floors twice, and every one of this file's checks
+passed while the instrument was wrong - because they tested the tool against itself. The
+checks that pin a VERDICT now name the readings behind it.
+
 Exits 0 when every check passes, 1 otherwise.
 """
 
+import math
 import os
 import sys
 
@@ -61,8 +67,8 @@ def controls():
     # And the opposite failure: an instrument that separates nothing is equally useless.
     # Level 3 must separate the leading curve from the linear one, or there is no
     # experiment left to recommend anywhere.
-    check("level 3 separates sqrt from linear at 0 IP",
-          experiment.separable(3, "sqrt", "linear"), 0)
+    check("level 3 separates linear from sqrt at 0 IP",
+          experiment.separable(3, "linear", "sqrt"), 0)
 
 
 def curves_that_meet():
@@ -72,33 +78,77 @@ def curves_that_meet():
     # sqrt and linear both reach 1.5 at level 5 by construction. A report that counted
     # only how many integers the field splits into would call level 5 decisive - it does
     # split three ways - while settling nothing between the two curves that matter.
-    check("sqrt and linear cannot be split at level 5",
-          experiment.separable(5, "sqrt", "linear"), None)
-    check("but they can at level 3", experiment.separable(3, "sqrt", "linear"), 0)
-    check("and at level 4", experiment.separable(4, "sqrt", "linear"), 0)
+    check("linear and sqrt cannot be split at level 5",
+          experiment.separable(5, "linear", "sqrt"), None)
+    check("but they can at level 3", experiment.separable(3, "linear", "sqrt"), 0)
+
+    # The live question, and the one that decides what to do in game. Linear and the
+    # wiki's stated 1.4 differ by 1.8% at level 4, which Take Aim's base of 30 cannot
+    # resolve - both land on 21 ticks - while Dash's base of 80 gives 58 and 57.
+    check("Take Aim cannot separate linear from the wiki figure at level 4",
+          experiment.separable_with(4, "linear", "wiki", "Take Aim"), None)
+    check("  but Dash can, with no initiative at all",
+          experiment.separable_with(4, "linear", "wiki", "Dash"), 0)
+    check("  and nothing separates them at level 5, where both say 1.5",
+          experiment.separable_with(5, "linear", "wiki", "Dash"), None)
 
 
-def initiative_sharpens():
-    """More initiative is a better measurement, not just a slower one."""
-    print("\ninitiative sharpens the reading")
+def the_reversal():
+    """The measured intervals, and which curves they admit.
 
-    w0 = experiment.pins_mu(model._round_half_up(
-        experiment.takeaim_raw(estimate.mu_curve(3), 0)), 0)
-    w10 = experiment.pins_mu(model._round_half_up(
-        experiment.takeaim_raw(estimate.mu_curve(3), 10)), 10)
-    check("level 3 reads tighter at 10 IP than at 0",
-          (w10[1] - w10[0]) < (w0[1] - w0[0]), True)
+    This is the check that would have caught the error, and did not exist. It names the
+    readings rather than the verdict: 30 ticks at level 1, 26 at level 2, 24 at level 3,
+    all at zero initiative, all straight out of the corpus. Whatever the inversion is
+    doing, those three integers have to come back out of it.
+    """
+    print("\nthe measured intervals, from three readings")
+    for level, cd, want_in, want_out in ((1, 30, 1.0, None),
+                                         (2, 26, 1.125, 1.1676),
+                                         (3, 24, 1.25, 1.2961)):
+        lo, hi = experiment.pins_mu(cd, 0)
+        check("level %d reads %d ticks -> linear's %.4f fits"
+              % (level, cd, want_in), lo < want_in <= hi, True)
+        if want_out is not None:
+            check("  and the square-root curve's %.4f does not" % want_out,
+                  lo < want_out <= hi, False)
 
-    # The whole cooldown scales by (1 + 0.2 * ip) and the rounding slop does not, so the
-    # width should fall roughly as 1/(1 + 0.2 * ip) - a factor of three from 0 to 10.
-    near("and by about the factor the scaling predicts",
-         (w0[1] - w0[0]) / (w10[1] - w10[0]), 3.0, 0.35)
 
-    # Against the hand arithmetic. mu_curve's own docstring says one further Take Aim
-    # reading at level 3 pins mu "to about +/-0.02", worked out by a person from the two
-    # formulas. This tool must land on the same place, or one of them is wrong.
-    near("level 3 at 0 IP pins mu to about +/-0.02, as the docstring says",
-         (w0[1] - w0[0]) / 2.0, 0.028, 0.005)
+def initiative_does_not_sharpen():
+    """Initiative adds NOTHING to a deck-weighting measurement, and it used to look as if
+    it added a great deal.
+
+    Under the old single-round model the whole cooldown scaled with initiative while the
+    slop stayed half a tick, so a reading at ten initiative looked three times tighter than
+    one at zero, and the advice that came out of it was to build initiative before
+    measuring. That advice was wrong.
+
+    The weighting enters only through the card's own integer cooldown, C = floor(base/mu).
+    Initiative scales C. So a reading at any initiative names the same C and therefore the
+    same interval of mu, and eighteen readings up a ladder are one measurement confirmed
+    eighteen times rather than eighteen measurements.
+
+    They were still worth having - eighteen consistent readings are what proved the rule,
+    since round-half-up cannot produce them - but they did not narrow the answer by one
+    part in a thousand.
+
+    What DOES narrow it is a bigger base. See INSTRUMENTS.
+    """
+    print("\ninitiative does not sharpen the reading")
+    w0 = experiment.pins_mu(int(math.floor(experiment.takeaim_raw(estimate.mu_linear(3), 0))), 0)
+    w10 = experiment.pins_mu(int(math.floor(experiment.takeaim_raw(estimate.mu_linear(3), 10))), 10)
+    near("level 3 at 10 IP reads exactly as wide as at 0",
+         w10[1] - w10[0], w0[1] - w0[0], 1e-9)
+    check("  and to the same interval, not merely the same width",
+          (abs(w10[0] - w0[0]) < 1e-9) and (abs(w10[1] - w0[1]) < 1e-9), True)
+
+    # A bigger base is what actually resolves more finely.
+    dash = experiment.pins_mu(
+        int(math.floor(experiment.raw_cooldown(80.0, estimate.mu_linear(3), 0.0, 0))),
+        0, base=80.0, ip_scale=0.0)
+    check("Dash's base of 80 reads level 3 more tightly than Take Aim's 30",
+          (dash[1] - dash[0]) < (w0[1] - w0[0]), True)
+    print("      Take Aim %.4f-%.4f   Dash %.4f-%.4f"
+          % (w0[0], w0[1], dash[0], dash[1]))
 
 
 def fragility():
@@ -112,17 +162,22 @@ def fragility():
     check("level 5 at 0 IP is decisive", d["decisive"], True)
     check("but is flagged fragile", d["robust"] < experiment.ROBUST, True)
 
-    # Level 3 at 0 IP is the counter-example: decisive AND comfortable.
+    # Level 3 at 0 IP is decisive AND fragile, which is not a contradiction and is worth
+    # seeing: linear predicts exactly 24.000 ticks, so a hair less than 1.25 would floor to
+    # 23. The reading came back 24 and the curve is confirmed - but the margin is nothing,
+    # and a report that called it comfortable would be overstating what one integer can
+    # carry.
     d3 = experiment.discriminate(3, 0)
     check("level 3 at 0 IP is decisive", d3["decisive"], True)
-    check("and is not fragile", d3["robust"] >= experiment.ROBUST, True)
+    check("and is flagged fragile - linear lands exactly on the boundary",
+          d3["robust"] < experiment.ROBUST, True)
 
 
 def coverage():
     """The corpus's blind spots, and the join that hides them when it breaks."""
     print("\ncoverage - what has never been tried")
 
-    used, owned = experiment.coverage()
+    used, owned, stances = experiment.coverage()
     if not owned:
         print("  (no deck dump on this machine - coverage not checked)")
         return
@@ -145,20 +200,27 @@ def coverage():
     # produce, and it is why the loop needs this counterweight.
     check("most of the deck has never been thrown", len(never) > len(thrown), True)
 
+    # A stance is not a card you throw - one sits on the bar and is on continuously - so
+    # it must not appear in either list. Counting it as never used is miscounting, and it
+    # is the kind of miscount that reads as a finding.
+    check("the stances are identified", sorted(stances),
+          ["Combat Meditation", "Shield Up"])
+    check("  and none of them is counted as an unthrown card",
+          [m for m in never if m in stances], [])
+
 
 def both_report_branches():
     """The branch that is unreachable today still has to run.
 
-    With one candidate standing, report_separation is never taken - and an untested
-    branch waiting for a new hypothesis to be added is precisely the code that has rotted
-    by the time it is needed. Both take the live field as an argument so both can be
-    exercised, here, with a field that has two names in it.
+    report_separation takes the live field as an argument rather than reading the module
+    global, so it can be exercised here with a chosen field instead of only whichever
+    curves happen to be standing today.
     """
     print("\nboth report branches run")
     import io as _io
     from contextlib import redirect_stdout
-    for name, fn, live in (("separation", experiment.report_separation, ("sqrt", "linear")),
-                           ("falsification", experiment.report_falsification, ("sqrt",))):
+    for name, fn, live in (("separation", experiment.report_separation,
+                            ("linear", "wiki")),):
         buf = _io.StringIO()
         try:
             with redirect_stdout(buf):
@@ -207,9 +269,10 @@ def what_to_do():
 
 def main():
     controls()
+    the_reversal()
+    initiative_does_not_sharpen()
     both_report_branches()
     curves_that_meet()
-    initiative_sharpens()
     fragility()
     coverage()
     what_to_do()

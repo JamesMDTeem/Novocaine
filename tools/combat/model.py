@@ -116,14 +116,15 @@ def agility_cooldown_factor(agi_me, agi_foe):
 
 
 def cooldown_ticks(base, mu_divides, mu, ip_scale, ip, is_attack, agi_me, agi_foe):
+    """A move's cooldown in whole server ticks. Floors, and floors TWICE - see the Java."""
     """A move's cooldown in whole server ticks."""
     cd = base
     if mu_divides and mu > 0:
-        cd /= mu
-    cd *= (1.0 + (ip_scale * ip))
+        cd = math.floor(cd / mu)
+    cd = math.floor(cd * (1.0 + (ip_scale * ip)))
     if is_attack:
-        cd *= agility_cooldown_factor(agi_me, agi_foe)
-    return _round_half_up(cd)
+        return _round_half_up(cd * agility_cooldown_factor(agi_me, agi_foe))
+    return int(cd)
 
 
 def mu_from_cooldown(base, observed_ticks, ip_scale, ip):
