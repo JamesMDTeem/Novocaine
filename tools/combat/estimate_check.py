@@ -453,6 +453,30 @@ def equalization():
     check("    so its gain exceeds the listed opening", g > 20.0, True)
 
 
+def foe_skill():
+    """Recovering an opponent's SKILL, with a round-trip as the control.
+
+    Simulate a gain from a known pair of skills, invert it the naive way, and the recovery
+    must hand the known skill back. That is a control in the strict sense - the answer is
+    known before the estimator runs - and it is what the defence-weight numbers never had.
+    """
+    print("\nrecovering the opponent's combat skill")
+    ours = 111.0
+    for foe, label in ((10.0, "far weaker"), (40.0, "weaker"), (400.0, "far stronger"),
+                       (600.0, "stronger")):
+        gain = model.opening_gain_eq(ours, 1.0, foe, 1.0, 20.0, 0.0)
+        wd = model.defence_weight(ours, gain, 20.0, 0.0)
+        got, _lo, _hi, _br = estimate.foe_skill_from(ours, wd)
+        near("  %-13s skill %.0f round-trips" % (label, foe), got, foe, 0.5)
+    # Inside the band nothing can be recovered, and it must say so rather than guess.
+    for foe in (60.0, 111.0, 200.0):
+        gain = model.opening_gain_eq(ours, 1.0, foe, 1.0, 20.0, 0.0)
+        wd = model.defence_weight(ours, gain, 20.0, 0.0)
+        got, lo, hi, _br = estimate.foe_skill_from(ours, wd)
+        check("  skill %.0f is inside the band and declines to guess" % foe, got, None)
+        check("    but is bounded", (lo, hi), (ours / 2.0, ours * 2.0))
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -542,6 +566,7 @@ def main():
     mu_from_reductions()
     mu_curve()
     equalization()
+    foe_skill()
     armour()
     buckets()
     if failures:

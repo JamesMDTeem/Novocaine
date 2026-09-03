@@ -1341,6 +1341,89 @@ def report_mu_reductions():
     print("  level 3 directly and separates it from everything else.\n")
 
 
+def foe_skill_from(our_skill, wd_naive):
+    """The opponent's combat SKILL, recovered from a naively-inverted defence weight.
+
+    This is what the defence-weight numbers were always trying to be, and could not be
+    while equalization was unmodelled.
+
+    Write k for the observed gain over the move's listed opening after falloff, so that
+    k**3 = equalize(S, F) * multMe (an animal holds no stance, so its own multiplier is 1).
+    The naive inversion reports Wd = Wa/k**3 = S*multMe/k**3. Substituting each branch of
+    equalize:
+
+        F < S/2   k**3 = S/(2F) * multMe   ->   Wd = 2F     so F = Wd / 2
+        F > 2S    k**3 = 2S/F * multMe     ->   Wd = F / 2   so F = 2 * Wd
+        in band   k**3 = multMe            ->   Wd = S       and F is only bounded
+
+    The middle case is the artefact: Wd comes back as our own skill and says nothing. The
+    outer two are real measurements, and the proof they are real is that moves reading
+    DIFFERENT skills of ours converge on one answer - a player read 482, 589 and 599 from
+    three moves across Unarmed 58 and Melee 81; another read 29 and 29; a bee swarm read 16
+    and 19. Nothing forces that agreement unless the branch arithmetic is right.
+
+    Returns (skill, lo, hi, branch). skill is None inside the band, where lo/hi bound it.
+    """
+    if (our_skill <= 0) or (wd_naive <= 0):
+        return (None, None, None, "no reading")
+    # The branch is decided by where the naive answer sits relative to OUR skill, because
+    # that is exactly what the middle case returns.
+    if wd_naive < (our_skill * 0.85):
+        return (wd_naive / 2.0, None, None, "weaker than us")
+    if wd_naive > (our_skill * 1.15):
+        return (wd_naive * 2.0, None, None, "stronger than us")
+    return (None, our_skill / 2.0, our_skill * 2.0, "equalized - only bounded")
+
+
+def report_foe_skill(rec):
+    """Per-move skill recovery, and what the moves agree on.
+
+    Prints the bound from equalized moves and the estimate from the rest, then intersects
+    them. A move that lands outside the intersection is shown rather than dropped: with
+    Sting at deck level 3 its mu is an interval and its attack weight with it, so it is the
+    one move here whose input is not pinned.
+    """
+    bymove = defaultdict(list)
+    for row in rec.get("wd") or ():
+        if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
+            bymove[row[0]].append((row[4], row[5]))
+    rows = []
+    for mv, obs in sorted(bymove.items()):
+        if len(obs) < 3:
+            continue
+        wa = obs[0][0]
+        wds = sorted(o[1] for o in obs)
+        rows.append((mv, wa, wds[len(wds) // 2], len(obs)))
+    if not rows:
+        return
+    print("\n  combat skill    what the opponent's own UA/MC actually is, per move")
+    lo_b, hi_b = 0.0, float("inf")
+    ests = []
+    for mv, wa, wd, n in rows:
+        m = load_moves().get(mv) or {}
+        mult = m.get("weight_mult") or 1.0
+        our = wa / mult if mult else wa
+        skill, lo, hi, branch = foe_skill_from(our, wd)
+        if skill is not None:
+            ests.append(skill)
+            print("      %-20s our %-6.0f %2d obs   -> %-6.0f  %s"
+                  % (mv[:20], our, n, skill, branch))
+        else:
+            lo_b, hi_b = max(lo_b, lo), min(hi_b, hi)
+            print("      %-20s our %-6.0f %2d obs   -> %-6s  %s (%.0f - %.0f)"
+                  % (mv[:20], our, n, "?", branch, lo, hi))
+    if ests:
+        ests.sort()
+        print("      the moves agree on about %.0f (%.0f to %.0f across %d move(s))"
+              % (ests[len(ests) // 2], ests[0], ests[-1], len(ests)))
+        if hi_b < float("inf") and not (lo_b <= ests[len(ests) // 2] <= hi_b):
+            print("      NB that sits outside the %.0f-%.0f the equalized moves bound it to"
+                  % (lo_b, hi_b))
+    elif hi_b < float("inf"):
+        print("      every move equalized, so the skill is only bounded: %.0f to %.0f"
+              % (lo_b, hi_b))
+
+
 def equalization_verdict(rec):
     """Whether a species' defence weight was measured or merely reflected back at us.
 
@@ -1659,6 +1742,7 @@ def report(per, moves):
             verdict, detail = equalization_verdict(rec)
             if verdict:
                 print("                   -> %s" % detail)
+            report_foe_skill(rec)
             # mu is deliberately NOT compared here, though it used to be. It can only be
             # read between two moves thrown at the SAME creature, and a species bucket
             # holds several - so comparing a move used on one badger against a move used
