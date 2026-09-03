@@ -39,7 +39,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 38.7,
+    "hi": 38.4,
     "lo": 24.1,
     "n": 4
    },
@@ -162,7 +162,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 38.7,
+    "hi": 38.4,
     "lo": 24.1,
     "n": 4
    },
@@ -357,39 +357,39 @@
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 313.6,
+    "pressure_against": 312.5,
     "pressure_n": 47
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 59.0,
-    "lo": 56.5,
-    "our_agility": 113
+    "hi": 61.1,
+    "lo": 58.5,
+    "our_agility": 117
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 70,
+    "n": 74,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
     "wiki": null
    },
    "defence_weight": {
-    "hi": 73.8,
+    "hi": 73.3,
     "lo": 72.8,
-    "n": 69
+    "n": 75
    },
-   "engagements": 7,
+   "engagements": 8,
    "hitpoints": {
-    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
+    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 246 with a last hit of 110, so that one had 136 to 246; died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
     "hi": 342,
     "lo": 110,
     "observed_hi": 342,
     "observed_lo": 110,
-    "verdict": "3 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
+    "verdict": "4 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
     "wiki": 250
    },
    "moves": [
@@ -401,23 +401,24 @@
     "mix": [
      [
       "Badgering",
-      0.679
+      0.633
      ],
      [
       "Fell Scratch",
-      0.321
+      0.367
      ]
     ],
-    "n": 28,
-    "solo_n": 26
+    "n": 30,
+    "solo_n": 28
    },
    "relative_speed": {
-    "informative": true,
-    "measured": false,
-    "median": 0.0,
-    "n": 729,
-    "p95": 18.2,
-    "withdrew": 0.37
+    "hi": 45.8,
+    "lo": 45.5,
+    "measured": true,
+    "median": 45.5,
+    "n": 1086,
+    "our_top": 50.5,
+    "we_outrun_it": true
    },
    "res": "gfx/kritter/badger/badger",
    "skill": {
@@ -425,7 +426,7 @@
     "bound_lo": 55.5,
     "disputed": true,
     "equalized": false,
-    "hi": 39.0,
+    "hi": 43.4,
     "lo": 21.9,
     "moves": [
      "Knock Its Teeth Out",
@@ -434,7 +435,7 @@
      "Sting"
     ],
     "n": 2,
-    "value": 39.0
+    "value": 43.4
    },
    "threat": {
     "damage": {
@@ -452,17 +453,17 @@
      "modes": [
       44
      ],
-     "n": 22,
-     "ticks": 48.4
+     "n": 23,
+     "ticks": 50.4
     },
     "pressure": {
      "blue": 0.0,
-     "green": 3.13,
-     "red": 9.15,
+     "green": 3.56,
+     "red": 8.54,
      "yellow": 0.0
     },
-    "pressure_against": 296.05,
-    "pressure_n": 19
+    "pressure_against": 295.0,
+    "pressure_n": 21
    }
   },
   {
@@ -591,7 +592,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 76.5,
+    "hi": 76.0,
     "lo": 62.1,
     "n": 8
    },
@@ -651,7 +652,7 @@
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 313.6,
+    "pressure_against": 312.5,
     "pressure_n": 3
    }
   },
@@ -1029,7 +1030,7 @@
    },
    "armour": null,
    "defence_weight": {
-    "hi": 182.0,
+    "hi": 180.7,
     "lo": 70.8,
     "n": 1
    },
@@ -1100,7 +1101,7 @@
    },
    "armour": null,
    "defence_weight": {
-    "hi": 30.0,
+    "hi": 29.8,
     "lo": 17.0,
     "n": 1
    },
@@ -1401,7 +1402,7 @@
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 313.6,
+    "pressure_against": 312.5,
     "pressure_n": 1
    }
   },
@@ -1523,7 +1524,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 70.9,
+    "hi": 70.4,
     "lo": 57.0,
     "n": 17
    },
@@ -1563,7 +1564,7 @@
    "skill": {
     "equalized": false,
     "hi": 32.0,
-    "lo": 25.4,
+    "lo": 30.5,
     "moves": [
      "Quick Barrage",
      "Sting"
@@ -1596,7 +1597,7 @@
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 296.05,
+    "pressure_against": 295.0,
     "pressure_n": 8
    }
   },
@@ -1780,7 +1781,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 233.4,
+    "hi": 231.8,
     "lo": 125.0,
     "n": 2
    },
@@ -2128,7 +2129,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 26.0,
+    "hi": 25.8,
     "lo": 17.7,
     "n": 3
    },
@@ -2191,7 +2192,7 @@
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 313.6,
+    "pressure_against": 312.5,
     "pressure_n": 2
    }
   },
@@ -2475,7 +2476,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 205.0,
+    "hi": 203.5,
     "lo": 79.7,
     "n": 1
    },
@@ -2741,7 +2742,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 53.3,
+    "hi": 52.9,
     "lo": 27.8,
     "n": 2
    },
@@ -2828,7 +2829,7 @@
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 313.6,
+    "pressure_against": 312.5,
     "pressure_n": 1
    }
   },
