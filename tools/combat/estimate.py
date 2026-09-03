@@ -858,8 +858,13 @@ def collect(paths):
         # What the opponent's moves do to US, against our own KNOWN defence weight.
         # move -> list of (pressure, our Wd, n) - see own_defence_weight.
         "pressure": defaultdict(list), "my_wd": set(),
-        # (move, the opponent's own initiative before it) - the raw material for foe_policy.
+        # (move, the opponent's own initiative before it, whether we were alone) - the raw
+        # material for foe_policy.
         "foe_moves": [],
+        # Rate of change of the distance between us, per second. See relative_speed.
+        "sep": [],
+        # (gob, wall time, our IP at the engagement's start, at its end) - see reaggro_cost.
+        "ip_edges": [],
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -966,6 +971,20 @@ def collect(paths):
             # on a creature we never touched, and this becomes decidable rather than
             # hopeful. That is the next step; until the logs carry it, the engagement gate
             # stands.
+            if eng.states:
+                rec["ip_edges"].append((eng.gob, (log.header or {}).get("wall") or 0,
+                                        eng.states[0].get("myip"),
+                                        eng.states[-1].get("myip")))
+
+            for a, b in zip(eng.states, eng.states[1:]):
+                da, db = a.get("dist"), b.get("dist")
+                dt = (b["t"] - a["t"]) / 1000.0
+                # A sample gap under a twentieth of a second divides by almost nothing and
+                # a gap over two seconds has any amount of movement hidden inside it.
+                if (da is None) or (db is None) or not (0.05 < dt < 2.0):
+                    continue
+                rec["sep"].append((db - da) / dt)
+
             for fm in eng.moves:
                 if fm.get("actor") != "foe":
                     continue
@@ -1367,6 +1386,94 @@ def animal_move_kinds():
                 for r in rows if isinstance(r, dict) and r.get("name"))
 
 
+# A hearthling on foot does not exceed this, so a faster reading is the distance jumping
+# rather than anything moving - a gob being replaced, a target switching, a position
+# correction. The corpus has separations of 2400 units per second in it, which is not a
+# bee swarm.
+MAX_REAL_SPEED = 60.0
+
+
+def reaggro_cost(per):
+    """What dropping and re-taking aggro costs, measured across the corpus.
+
+    Auto-reaggro is a real tactic, not a logging accident: a creature that flees is peaced
+    and re-aggroed to turn it round and make it fight again. It is also what fragments a
+    single fight across several log files, which is why hitpoints are summed per gob rather
+    than per file.
+
+    The question it raises is what the re-aggro costs, and the corpus answers it flatly.
+    Across every boundary where one engagement with a gob ended while we still held
+    initiative and another began, the initiative was gone 25 times out of 26.
+
+    That is the whole basis of the tactical rule. Against something we can outrun, staying
+    in combat and keeping the range as it flees preserves the pool - and Take Aim spends
+    thirty ticks a point to build one. Against something faster there is no choice, because
+    following it is not an option, so the pool is forfeit either way and the only question
+    is how quickly it can be rebuilt.
+
+    Returns (kept, lost, examples).
+    """
+    seen = defaultdict(list)
+    for name, rec in per.items():
+        for gob, when, first, last in rec.get("ip_edges") or ():
+            seen[gob].append((when, name, first, last))
+    kept = lost = 0
+    ex = []
+    for gob, v in seen.items():
+        v.sort()
+        for (_w1, sp, _f1, l1), (_w2, _sp2, f2, _l2) in zip(v, v[1:]):
+            if (l1 is None) or (f2 is None) or (l1 <= 0):
+                continue
+            if f2 == l1:
+                kept += 1
+            else:
+                lost += 1
+                if len(ex) < 6:
+                    ex.append((sp, l1, f2))
+    return (kept, lost, ex)
+
+
+def relative_speed(rec):
+    """How much faster we are than this species, from how fast the gap opens.
+
+    Measured, not looked up. Each state sample carries the distance to the opponent, so the
+    change between consecutive samples is the rate the gap is closing or opening. When we
+    withdraw, that rate is OUR speed minus THEIRS, and the high end of it over a whole
+    corpus is the cleanest estimate of the difference available - we spend a lot of a fight
+    backing away.
+
+    It checks out against creatures whose speed is common knowledge: a moose barely lets us
+    pull away at 3.1 units per second while ants shed us at 19.5. If those two had come out
+    the same way round the measurement would be meaningless.
+
+    WHY IT MATTERS, and it is not academic. A creature that flees faster than we can chase
+    cannot be finished by following it, so the only way to keep fighting is to drop aggro
+    and re-take it - which costs the whole initiative pool (see ip_lost_on_reaggro). A
+    creature slower than us can simply be kept in range while it runs, and the initiative
+    stays. That is the difference between a plan that opens with Take Aim and one that
+    cannot afford to.
+
+    Returns {p95, p50, n} in world units per second, or None. Roughly eleven units to a
+    tile.
+    """
+    v = sorted(r for r in (rec.get("sep") or ()) if abs(r) <= MAX_REAL_SPEED)
+    if len(v) < 40:
+        return None
+    # WHETHER WE EVER TRIED. The rate only measures a speed difference during a withdrawal,
+    # and a p95 near zero has two readings that look identical: the creature kept up with
+    # us, or we never backed away from it and there was nothing to keep up with. A fox
+    # comes out at 0.0 across 81 samples, and foxes are not slow - we simply stood and
+    # fought them. Without this the table would have said a fox outruns us.
+    moved = sum(1 for r in v if r > 2.0) / float(len(v))
+    return {"p95": round(v[int(0.95 * len(v))], 1),
+            "median": round(v[len(v) // 2], 1),
+            "n": len(v),
+            "withdrew": round(moved, 3),
+            # Below a tenth the sample is mostly a standing fight and the p95 says more
+            # about our own habits than about the creature.
+            "informative": moved >= 0.10}
+
+
 def foe_policy(rec):
     """What this species actually does, as something a simulator can act on.
 
@@ -1643,6 +1750,28 @@ def equalization_verdict(rec):
                 "skill ratio is outside the equalization band and this is a real figure"
                 % spread_wa)
     return (None, None)
+
+
+def report_reaggro(per):
+    kept, lost, ex = reaggro_cost(per)
+    if (kept + lost) == 0:
+        return
+    print("=" * 78)
+    print("WHAT RE-AGGRO COSTS")
+    print("=" * 78)
+    print("  Peacing a fleeing creature and re-aggroing it turns it round to fight again,")
+    print("  which is the standard way to finish something that runs. It also ends the")
+    print("  combat relation, and the initiative goes with it.\n")
+    print("  Across every boundary where a fight with one creature ended while we still")
+    print("  held initiative and another began:\n")
+    print("      kept it: %d        lost it: %d" % (kept, lost))
+    for sp, before, after in ex:
+        print("      %-14s ended on %d, resumed on %d" % (sp, before, after))
+    print()
+    print("  So re-aggro forfeits the pool, and Take Aim spends thirty ticks a point to")
+    print("  build one. Against a creature we can outrun, staying in combat and holding")
+    print("  the range as it flees is worth what the pool is worth. Against a faster one")
+    print("  there is nothing to weigh - following it is not on the table.\n")
 
 
 def report_shared_moves(per):
@@ -2105,6 +2234,7 @@ def write_pack(per, moves):
         # confident answer to a question the corpus never answered.
         entry["skill"] = foe_skill_entry(rec)
         entry["policy"] = foe_policy(rec)
+        entry["relative_speed"] = relative_speed(rec)
 
         obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
         for mv, ticks in rec["cd"].items():
@@ -2182,6 +2312,7 @@ def main(argv):
     report_mu(per)
     report_shared_moves(per)
     report_mu_reductions()
+    report_reaggro(per)
     if write:
         write_pack(per, moves)
     return 0

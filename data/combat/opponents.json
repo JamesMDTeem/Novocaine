@@ -10,6 +10,13 @@
    "moves": [],
    "name": "?#1649181853",
    "policy": null,
+   "relative_speed": {
+    "informative": true,
+    "median": 8.3,
+    "n": 45,
+    "p95": 21.4,
+    "withdrew": 0.689
+   },
    "res": null,
    "skill": null
   },
@@ -47,6 +54,13 @@
    "moves": [],
    "name": "?#598556427",
    "policy": null,
+   "relative_speed": {
+    "informative": true,
+    "median": 10.1,
+    "n": 211,
+    "p95": 18.7,
+    "withdrew": 0.749
+   },
    "res": null,
    "skill": {
     "equalized": false,
@@ -95,6 +109,13 @@
     "n": 4,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 82,
+    "p95": 8.9,
+    "withdrew": 0.256
+   },
    "res": null,
    "skill": null
   },
@@ -132,6 +153,13 @@
    "moves": [],
    "name": "?#675939166",
    "policy": null,
+   "relative_speed": {
+    "informative": true,
+    "median": 4.9,
+    "n": 124,
+    "p95": 13.3,
+    "withdrew": 0.637
+   },
    "res": null,
    "skill": {
     "equalized": false,
@@ -185,6 +213,7 @@
     "n": 3,
     "solo_n": 0
    },
+   "relative_speed": null,
    "res": "gfx/kritter/adder/adder",
    "skill": null
   },
@@ -233,6 +262,13 @@
     ],
     "n": 187,
     "solo_n": 30
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 1466,
+    "p95": 19.5,
+    "withdrew": 0.327
    },
    "res": "gfx/kritter/ants/ants",
    "skill": {
@@ -296,6 +332,13 @@
     ],
     "n": 28,
     "solo_n": 26
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 729,
+    "p95": 18.2,
+    "withdrew": 0.37
    },
    "res": "gfx/kritter/badger/badger",
    "skill": {
@@ -389,6 +432,13 @@
     "n": 32,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 2.2,
+    "n": 794,
+    "p95": 20.3,
+    "withdrew": 0.501
+   },
    "res": "gfx/kritter/bear/bear",
    "skill": null
   },
@@ -437,6 +487,7 @@
     "n": 4,
     "solo_n": 4
    },
+   "relative_speed": null,
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
     "equalized": false,
@@ -500,6 +551,13 @@
     "n": 20,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": -0.8,
+    "n": 164,
+    "p95": 16.6,
+    "withdrew": 0.232
+   },
    "res": "gfx/kritter/bees/beelarva",
    "skill": null
   },
@@ -557,6 +615,13 @@
     ],
     "n": 7,
     "solo_n": 0
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 899,
+    "p95": 18.1,
+    "withdrew": 0.435
    },
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
@@ -635,6 +700,13 @@
     "n": 70,
     "solo_n": 17
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 777,
+    "p95": 17.3,
+    "withdrew": 0.311
+   },
    "res": "gfx/kritter/boar/boar",
    "skill": null
   },
@@ -698,6 +770,13 @@
     "n": 23,
     "solo_n": 23
    },
+   "relative_speed": {
+    "informative": false,
+    "median": 0.0,
+    "n": 92,
+    "p95": 1.6,
+    "withdrew": 0.033
+   },
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -740,6 +819,13 @@
     "n": 8,
     "solo_n": 8
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 1.8,
+    "n": 60,
+    "p95": 33.7,
+    "withdrew": 0.483
+   },
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -761,6 +847,7 @@
    "moves": [],
    "name": "body#1965990376",
    "policy": null,
+   "relative_speed": null,
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -813,6 +900,13 @@
     ],
     "n": 11,
     "solo_n": 11
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 43,
+    "p95": 3.7,
+    "withdrew": 0.163
    },
    "res": "gfx/borka/body",
    "skill": {
@@ -875,6 +969,13 @@
     ],
     "n": 20,
     "solo_n": 20
+   },
+   "relative_speed": {
+    "informative": false,
+    "median": 0.0,
+    "n": 57,
+    "p95": 0.0,
+    "withdrew": 0.0
    },
    "res": "gfx/borka/body",
    "skill": null
@@ -948,6 +1049,13 @@
     "n": 91,
     "solo_n": 1
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 401,
+    "p95": 18.4,
+    "withdrew": 0.217
+   },
    "res": "gfx/kritter/cattle/cattle",
    "skill": null
   },
@@ -1017,6 +1125,13 @@
     "n": 52,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 381,
+    "p95": 16.3,
+    "withdrew": 0.131
+   },
    "res": "gfx/kritter/caveangler/caveangler",
    "skill": null
   },
@@ -1064,6 +1179,13 @@
     ],
     "n": 11,
     "solo_n": 8
+   },
+   "relative_speed": {
+    "informative": false,
+    "median": 0.0,
+    "n": 81,
+    "p95": 0.0,
+    "withdrew": 0.012
    },
    "res": "gfx/kritter/fox/fox",
    "skill": {
@@ -1119,6 +1241,7 @@
     "n": 4,
     "solo_n": 0
    },
+   "relative_speed": null,
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": null
   },
@@ -1183,6 +1306,13 @@
     "n": 46,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 293,
+    "p95": 11.9,
+    "withdrew": 0.16
+   },
    "res": "gfx/kritter/bees/honeybee",
    "skill": null
   },
@@ -1241,6 +1371,7 @@
     "n": 6,
     "solo_n": 1
    },
+   "relative_speed": null,
    "res": "gfx/kritter/horse/horse",
    "skill": null
   },
@@ -1294,6 +1425,13 @@
     ],
     "n": 23,
     "solo_n": 0
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 188,
+    "p95": 18.5,
+    "withdrew": 0.367
    },
    "res": "gfx/kritter/lynx/lynx",
    "skill": null
@@ -1382,6 +1520,13 @@
     "n": 72,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": false,
+    "median": 0.0,
+    "n": 384,
+    "p95": 3.1,
+    "withdrew": 0.062
+   },
    "res": "gfx/kritter/moose/moose",
    "skill": null
   },
@@ -1421,6 +1566,7 @@
     "n": 2,
     "solo_n": 0
    },
+   "relative_speed": null,
    "res": "gfx/kritter/bees/queenbee",
    "skill": null
   },
@@ -1474,6 +1620,13 @@
     "n": 54,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 1.9,
+    "n": 393,
+    "p95": 20.8,
+    "withdrew": 0.499
+   },
    "res": "gfx/kritter/ants/redants",
    "skill": null
   },
@@ -1522,6 +1675,13 @@
     ],
     "n": 14,
     "solo_n": 0
+   },
+   "relative_speed": {
+    "informative": false,
+    "median": 0.0,
+    "n": 49,
+    "p95": 4.2,
+    "withdrew": 0.061
    },
    "res": "gfx/kritter/reddeer/reddeer",
    "skill": null
@@ -1572,6 +1732,7 @@
     "n": 6,
     "solo_n": 0
    },
+   "relative_speed": null,
    "res": "gfx/kritter/reindeer/reindeer",
    "skill": null
   },
@@ -1649,6 +1810,13 @@
     "n": 80,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 6.2,
+    "n": 637,
+    "p95": 19.0,
+    "withdrew": 0.578
+   },
    "res": "gfx/kritter/ants/royalguardant",
    "skill": null
   },
@@ -1725,6 +1893,13 @@
     "n": 64,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 547,
+    "p95": 17.8,
+    "withdrew": 0.166
+   },
    "res": "gfx/kritter/bees/sentinelbee",
    "skill": null
   },
@@ -1769,6 +1944,7 @@
     "n": 3,
     "solo_n": 0
    },
+   "relative_speed": null,
    "res": "gfx/kritter/sheep/sheep",
    "skill": null
   },
@@ -1835,6 +2011,13 @@
     ],
     "n": 36,
     "solo_n": 0
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 269,
+    "p95": 12.0,
+    "withdrew": 0.13
    },
    "res": "gfx/kritter/bees/vulturebee",
    "skill": null
@@ -1907,6 +2090,13 @@
     "n": 47,
     "solo_n": 0
    },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 426,
+    "p95": 18.9,
+    "withdrew": 0.387
+   },
    "res": "gfx/kritter/ants/warriorant",
    "skill": null
   },
@@ -1970,6 +2160,13 @@
     ],
     "n": 37,
     "solo_n": 0
+   },
+   "relative_speed": {
+    "informative": true,
+    "median": 0.0,
+    "n": 195,
+    "p95": 15.9,
+    "withdrew": 0.19
    },
    "res": "gfx/kritter/bees/warriordrone",
    "skill": null

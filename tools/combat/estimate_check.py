@@ -531,6 +531,43 @@ def foe_policy():
           estimate.foe_policy({"foe_moves": atk + non})["ip_group_contaminated"], False)
 
 
+def tactics():
+    """Re-aggro's price, and whether a speed reading means anything.
+
+    Both come from the same fact: an engagement can END and be re-taken. That is a real
+    tactic against something that flees, and it is not free.
+    """
+    print("\nre-aggro, and relative speed")
+    # Synthetic, so the arithmetic is checkable without the corpus. One gob, two
+    # engagements, initiative held at the end of the first and gone at the start of the
+    # second.
+    per = {"boar": {"ip_edges": [(7, 100, 0, 5), (7, 200, 0, 3)]}}
+    kept, lost, _ex = estimate.reaggro_cost(per)
+    check("initiative held at a boundary and gone after it counts as lost", (kept, lost),
+          (0, 1))
+    per = {"boar": {"ip_edges": [(7, 100, 0, 5), (7, 200, 5, 6)]}}
+    check("  and carried across counts as kept", estimate.reaggro_cost(per)[0], 1)
+    # Ending on nothing says nothing either way.
+    per = {"boar": {"ip_edges": [(7, 100, 0, 0), (7, 200, 0, 2)]}}
+    check("  ending on no initiative is not evidence", estimate.reaggro_cost(per)[:2], (0, 0))
+
+    # Speed. The rate only measures a difference while we are actually withdrawing, so a
+    # standing fight has to read as uninformative rather than as "it kept up with us".
+    fast = {"sep": [18.0] * 30 + [0.0] * 30}
+    r = estimate.relative_speed(fast)
+    check("backing away freely reads as informative", r["informative"], True)
+    check("  and reports how much faster we are", r["p95"] >= 15, True)
+    still = {"sep": [0.0] * 60}
+    r = estimate.relative_speed(still)
+    check("a standing fight is NOT read as the creature matching us", r["informative"],
+          False)
+    near("  even though its p95 is zero", r["p95"], 0.0, 1e-9)
+    # A single teleporting sample must not become the answer.
+    jump = {"sep": [0.0] * 59 + [2400.0]}
+    check("a distance jump is discarded rather than believed",
+          estimate.relative_speed(jump)["p95"] < 60.0, True)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -622,6 +659,7 @@ def main():
     equalization()
     foe_skill()
     foe_policy()
+    tactics()
     armour()
     buckets()
     if failures:
