@@ -3,7 +3,7 @@
     Runs every check in the combat system and reports which passed.
 
 .DESCRIPTION
-    The combat work is spread across two languages and nine check harnesses, each with
+    The combat work is spread across two languages and ten check harnesses, each with
     its own javac incantation buried in a file header. Retyping those is how a check
     stops being run, so this runs all of them and prints one table.
 
@@ -99,6 +99,10 @@ Invoke-JavaCheck 'CombatFormulaCheck' (@('src\haven\combat\Formulas.java',
 
 Write-Host "`n== the state machine" -ForegroundColor Cyan
 Invoke-JavaCheck 'CombatSimCheck' ($model + @('tools\CombatSimCheck.java')) 'CombatSimCheck'
+
+Write-Host "`n== the plan search" -ForegroundColor Cyan
+Invoke-JavaCheck 'CombatOptimizerCheck' ($model + @('src\haven\combat\FoeModel.java',
+    'src\haven\combat\Optimizer.java', 'tools\CombatOptimizerCheck.java')) 'CombatOptimizerCheck'
 
 Write-Host "`n== the data pack, loaded the way the bot will load it" -ForegroundColor Cyan
 Invoke-JavaCheck 'CombatPackCheck' ($model + @('src\haven\combat\data\Pack.java',
