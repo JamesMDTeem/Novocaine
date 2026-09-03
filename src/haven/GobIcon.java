@@ -98,6 +98,16 @@ public class GobIcon extends GAttrib {
 	public boolean rot;
 	public double ao;
 	public int z;
+	/**
+	 * The value of {@link GobIcon#size} this icon's texture was built for.
+	 *
+	 * The rescale below preserves aspect ratio, so a non-square icon comes out with one
+	 * dimension SMALLER than size - which meant the old "is the texture the wrong size"
+	 * test in ImageIcon.draw could never be satisfied by anything it produced, and rebuilt
+	 * the texture on every single draw for the rest of the session. Recording what it was
+	 * built for is the question that actually has an answer.
+	 */
+	public int builtAt = size;
 
 	public Image(Resource res) {
 		this.res = res;
@@ -157,7 +167,14 @@ public class GobIcon extends GAttrib {
 	}
 
 	public void draw(GOut g, Coord cc) {
-		if (img.tex.sz().x != size || img.tex.sz().y != size) {
+		/* Only when the map-icon size setting has actually moved since this texture was
+		 * built. The old test asked whether the texture was exactly size x size, which an
+		 * aspect-preserving rescale never produces for a non-square icon - so for every such
+		 * icon this branch ran on EVERY draw, rebuilding and re-uploading the texture each
+		 * time and dropping the previous one without disposing it. Measured at 149 new TexI a
+		 * second from this line alone, and it mutates the shared cached Image, so one icon on
+		 * screen did it for every gob using that resource. */
+		if (img.builtAt != size) {
 			Resource.Image rimg = img.res.layer(Resource.imgc);
 			BufferedImage imgScaled = rimg.scaled();
 			BufferedImage buf = imgScaled;
@@ -168,8 +185,15 @@ public class GobIcon extends GAttrib {
 			else
 				tsz = new Coord((size * buf.getWidth()) / buf.getHeight(), size);
 			buf = PUtils.convolve(buf, tsz, filter);
+			/* The texture being replaced holds a GL texture that only dispose() frees
+			 * promptly; dropping the reference leaves it to the finalizer, which is what
+			 * turned a redundant rebuild into a leak. */
+			Tex old = img.tex;
 			img.tex = new TexI(img.img = buf);
 			img.cc = img.tex.sz().div(2);
+			img.builtAt = size;
+			if(old != null)
+				old.dispose();
 		}
 	    if(!img.rot)
 		g.image(img.tex, cc.sub(img.cc));

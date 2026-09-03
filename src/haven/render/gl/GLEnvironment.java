@@ -429,11 +429,21 @@ public abstract class GLEnvironment implements Environment {
 	synchronized(disposed) {
 	    if(disposed.isEmpty())
 		return(buf);
-	    /* Cap the number of GL deletes per frame to smooth out the driver-side
-	     * stall when many resources go down at once. Safety valve: if pending
-	     * grows past 8x cap, drain everything to prevent unbounded backlog. */
+	    /* Cap the number of GL deletes per frame to smooth out the driver-side stall when
+	     * many resources go down at once.
+	     *
+	     * The drain rate rises with the backlog rather than switching off at a threshold.
+	     * The old rule - cap normally, but Integer.MAX_VALUE once pending passed 8x cap -
+	     * had the valve backwards: a small backlog, which would not have stalled anything,
+	     * was throttled, while the big teardown the cap exists for was the one case that
+	     * got deleted all in one frame. That is the shape of the multi-hundred-millisecond
+	     * draw spikes in vmem.log.
+	     *
+	     * Proportional draining still bounds the queue - at pending/8 per frame a backlog
+	     * falls off geometrically, so it cannot run away - without ever handing the driver
+	     * the whole pile at once. */
 	    int pendingTotal = disposed.size();
-	    int effectiveCap = (cap > 0 && pendingTotal < cap * 8) ? cap : Integer.MAX_VALUE;
+	    int effectiveCap = (cap > 0) ? Math.max(cap, pendingTotal / 8) : Integer.MAX_VALUE;
 	    copy = new ArrayList<>(Math.min(pendingTotal, effectiveCap));
 	    int taken = 0;
 	    for(Iterator<GLObject> i = disposed.iterator(); i.hasNext();) {

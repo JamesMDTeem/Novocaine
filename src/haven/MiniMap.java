@@ -674,8 +674,6 @@ public class MiniMap extends Widget {
 	public final Area mapext;
 	public final Indir<? extends DataGrid> gref;
 	public Coord dc;
-	private Tex img = null;
-	private Defer.Future<Tex> nextimg = null;
 
 	public DisplayGrid(MiniMap mm, Segment seg, Coord sc, int lvl, Indir<? extends DataGrid> gref) {
 	    this.mm = mm;
@@ -699,17 +697,62 @@ public class MiniMap extends Widget {
 	    public Tex get() {
 		DataGrid grid = gref.get();
 		if(grid != cgrid || !valid()) {
-		    if(next != null)
+		    if(next != null) {
+			/* Take back a texture the future already finished before dropping it.
+			 * cancel() does not stop a future that is already done - the value stays
+			 * sitting in it - and a GL texture is only freed by dispose() or by the
+			 * finalizer once the Tex becomes unreachable. Letting it go the second way
+			 * is what made the texture pool ratchet upwards while walking: the heap is
+			 * under enough allocation pressure that GC reaches these late, so they pile
+			 * up in the driver long after the minimap stopped drawing them. */
+			discard(next);
 			next.cancel();
-			next = getNext(grid);
+		    }
+		    next = getNext(grid);
 		    cgrid = grid;
 		}
 		if(next != null) {
 		    try {
-			img = next.get();
+			Tex nx = next.get();
+			/* Only on the frame the replacement actually lands: get() returns the same
+			 * Tex on every later frame, and the old one has to stay drawable until the
+			 * new one is ready, so this is the one moment it is safe to free. */
+			if(nx != img) {
+			    if(img != null)
+				img.dispose();
+			    img = nx;
+			}
 		    } catch(Loading l) {}
 		}
 		return(img);
+	    }
+
+	    /** Frees a finished future's texture, if it produced one we are not already holding. */
+	    private void discard(Defer.Future<Tex> fut) {
+		if(!fut.done())
+		    return;
+		try {
+		    Tex stale = fut.get();
+		    if((stale != null) && (stale != img))
+			stale.dispose();
+		} catch(RuntimeException e) {
+		    /* Cancelled, still loading, or failed outright - nothing was produced, so
+		     * there is nothing to free. */
+		}
+	    }
+
+	    /** Frees everything this cache is holding. See {@link DisplayGrid#clearCache}. */
+	    void dispose() {
+		if(next != null) {
+		    discard(next);
+		    next.cancel();
+		    next = null;
+		}
+		if(img != null) {
+		    img.dispose();
+		    img = null;
+		}
+		cgrid = null;
 	    }
 
 		protected Defer.Future<Tex> getNext(DataGrid grid) {
@@ -784,8 +827,16 @@ public class MiniMap extends Widget {
 	}
 
 	public void clearCache() {
-		img_c = null;
+		/* Dropping the references is not enough: every one of these holds a GL texture that
+		 * only dispose() frees promptly. This is called on zoom and overlay changes, so what
+		 * it used to strand was a full screen of map tiles at a time. */
+		if(img_c != null) {
+			img_c.dispose();
+			img_c = null;
+		}
 		synchronized(olimg_c) {
+			for(CachedImage ci : olimg_c.values())
+				ci.dispose();
 			olimg_c.clear();
 		}
 	}
@@ -865,10 +916,24 @@ public class MiniMap extends Widget {
 	    UI.unscale(sz).div(cmaps).add(6, 6));
 	if((display == null) || (loc.seg != dseg) || (dlvl != calcDrawLevel()) || !next.equals(dgext)) {
 	    DisplayGrid[] nd = new DisplayGrid[next.rsz()];
-	    if((display != null) && (loc.seg == dseg) && (dlvl == calcDrawLevel())) {
+	    boolean carry = (display != null) && (loc.seg == dseg) && (dlvl == calcDrawLevel());
+	    if(carry) {
 		for(Coord c : dgext) {
 		    if(next.contains(c))
 			nd[next.ri(c)] = display[dgext.ri(c)];
+		}
+	    }
+	    /* Free the tiles that did not survive the move. Walking scrolls this extent a grid at
+	     * a time for as long as the character keeps going, so what falls off the trailing edge
+	     * here is the bulk of the minimap's texture turnover - and until this ran, each one
+	     * kept its GL texture until GC happened to reach the DisplayGrid. That is the ratchet
+	     * in the texture pool: it climbed while walking and only partly drained on standing
+	     * still, because collection, not disposal, was doing the freeing. */
+	    if((display != null) && (dgext != null)) {
+		for(Coord c : dgext) {
+		    DisplayGrid dg = display[dgext.ri(c)];
+		    if((dg != null) && !(carry && next.contains(c)))
+			dg.clearCache();
 		}
 	    }
 	    display = nd;
