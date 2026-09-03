@@ -142,6 +142,29 @@ def contamination():
     check("no attacks of ours means nothing to misattribute",
           log.engagements[0].offence_ok, True)
 
+    # AN INITIATIVE NUMBER OVER A STRANGER ALSO BLOCKS, and this is the surprising one, so
+    # it is pinned here with the reason.
+    #
+    # The client floats initiative over every creature in a combat relation and stamps a
+    # winner award when any fight ends. Both land on gobs that are neither us nor our
+    # opponent, so a swarm standing near us trips this gate without anybody having been
+    # hit - and it is expensive: 145 engagements, concentrated on exactly the species with
+    # almost nothing left (honeybee had 4 usable out of 35, vulturebee 2 out of 26).
+    #
+    # Narrowing it to SHP/HHP/ARM was tried, on that reasoning, and the corpus rejected it.
+    # replay.py's animal damage went from rms 1.63 to 19.70 with nine gross misses where
+    # there had been one, the worst a beeswarm Quick Barrage observed opening 34 points
+    # against a prediction of 14 to 17. So the gate is catching something real that the
+    # unattributed-rise test does not, and the initiative number is a usable PROXY for it
+    # even though it is not itself the contamination.
+    #
+    # Do not loosen this without running replay.py. It is the control that caught it, and
+    # the reasoning above is exactly as persuasive now as it was when it was wrong.
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                dmg(31, OTHER, "IP", 1), end()])
+    check("an initiative number over a stranger blocks too",
+          log.engagements[0].offence_ok, False)
+
 
 def pairing():
     print("\npairing moves with the states around them")

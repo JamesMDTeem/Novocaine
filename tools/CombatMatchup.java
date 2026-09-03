@@ -190,13 +190,17 @@ public class CombatMatchup {
         System.out.println("\nthe optimizer, against each opponent's own model");
         System.out.println("time and hitpoints, every plan that is not beaten on both");
         System.out.println("-".repeat(92));
-        int modelled = 0, planned = 0, blockedBySkill = 0;
+        int modelled = 0, planned = 0, noSkill = 0, equalized = 0, noCeiling = 0;
         for(Pack.Opponent o : foes.values()) {
             if(o.threat != null)
                 modelled++;
             if(!o.simulable() || !o.hpBounded()) {
-                if((o.threat != null) && !o.simulable())
-                    blockedBySkill++;
+                if(!o.hasSkill)
+                    noSkill++;
+                else if(o.skillEqualized || o.skillDisputed)
+                    equalized++;
+                else if(!o.hpBounded())
+                    noCeiling++;
                 continue;
             }
             planned++;
@@ -209,15 +213,34 @@ public class CombatMatchup {
          * keeping apart because they say different things about what is missing. */
         System.out.printf("%n%d of %d opponents carry a threat model - we know what they"
                           + " do to us.%n", modelled, foes.size());
-        System.out.printf("%d of those can be planned against.%n", planned);
-        if(blockedBySkill > 0) {
-            System.out.printf("%d are held back by OUR side of the fight, not theirs: their"
-                              + " combat%n", blockedBySkill);
-            System.out.println("skill is within a factor of two of ours, so equalization");
-            System.out.println("pinned every opening gain we logged and the corpus can only");
-            System.out.println("bound the skill rather than name it. More fights against");
-            System.out.println("those creatures will not fix it. A different attack weight");
-            System.out.println("will - one far enough from theirs to fall outside the band.");
+        System.out.printf("%d of those can be planned against. What stops the rest:%n%n",
+                          planned);
+        /* Counted apart, because they are three different problems with three different
+         * fixes and lumping them produced a confidently wrong diagnosis: this once blamed
+         * equalization for all of them, when equalization accounts for one. */
+        if(noSkill > 0) {
+            System.out.printf("  %2d  no combat skill recovered at all. Not a thin"
+                              + " measurement - NO%n", noSkill);
+            System.out.println("      measurement: every fight we have against them is");
+            System.out.println("      contaminated, because they swarm and the gate that");
+            System.out.println("      keeps openings attributable needs us alone with one");
+            System.out.println("      of them. Fighting more of them the same way adds");
+            System.out.println("      nothing. Fighting ONE of them, away from the rest,");
+            System.out.println("      adds everything.");
+        }
+        if(equalized > 0) {
+            System.out.printf("  %2d  skill only bounded, not named - equalization. Their"
+                              + " skill is%n", equalized);
+            System.out.println("      within a factor of two of ours, so every gain we");
+            System.out.println("      logged was pinned and returned our own weight. More");
+            System.out.println("      fights will not fix this either. Equalization compares");
+            System.out.println("      SKILLS, so no change of card escapes it - only a");
+            System.out.println("      different school, or a trained one.");
+        }
+        if(noCeiling > 0) {
+            System.out.printf("  %2d  nothing caps its hitpoints - it survived everything we"
+                              + "%n", noCeiling);
+            System.out.println("      ever did. Killing one settles it.");
         }
     }
 
