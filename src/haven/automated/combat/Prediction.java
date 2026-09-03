@@ -73,6 +73,25 @@ public final class Prediction {
         }
     }
 
+    /**
+     * The deck weighting a card at this level carries.
+     *
+     * Linear across the five levels - 1.0, 1.125, 1.25, 1.375, 1.5. Settled by a ladder of
+     * eighteen consecutive Take Aims: the card's cooldown is base over the weighting,
+     * floored, and linear reproduces all twenty-eight readings in the corpus where the
+     * square-root curve this project used for a week reproduces eight.
+     *
+     * It matters here twice over. The weighting divides a card's cooldown and multiplies
+     * its attack weight, so predicting a levelled card at 1.0 - which is what happened
+     * until the deck levels were passed in - reports a Take Aim cooldown of 42 ticks where
+     * the game gives 33, and understates the opening every levelled card makes.
+     */
+    public static double muAt(int level) {
+        if(level < 1)
+            return(1.0);
+        return(1.0 + (0.5 * (Math.min(level, 5) - 1) / 4.0));
+    }
+
     /** Which data pack a prediction came from, or null when none is loaded. */
     public static String pack() {
         load();
@@ -90,10 +109,14 @@ public final class Prediction {
         final double str, agi, unarmed, melee, armHard, armSoft;
         final double weaponDamage, weaponQl, weaponPen;
         final boolean armed;
+        /* Card resource -> the level it sits at in the deck we are fighting with. */
+        final Map<String, Integer> levels;
 
         Me(double str, double agi, double unarmed, double melee,
            double armHard, double armSoft,
-           double weaponDamage, double weaponQl, double weaponPen, boolean armed) {
+           double weaponDamage, double weaponQl, double weaponPen, boolean armed,
+           Map<String, Integer> levels) {
+            this.levels = levels;
             this.str = str;
             this.agi = agi;
             this.unarmed = unarmed;
@@ -121,32 +144,41 @@ public final class Prediction {
      * declines to predict while the unarmed ones carry on.
      */
     public static Me me(SortedMap<String, Integer> attrs, int armHard, int armSoft,
-                        String weaponRes, double weaponQl) {
+                        String[] handRes, double[] handQl, Map<String, Integer> levels) {
         load();
         if(attrs == null)
             return(null);
         double str = num(attrs, "str"), agi = num(attrs, "agi");
         double ua = num(attrs, "unarmed"), mc = num(attrs, "melee");
-        double dmg = 0, pen = 0;
+        double dmg = 0, pen = 0, weaponQl = 0;
         boolean armed = false;
-        if((weapons != null) && (weaponRes != null)) {
-            String base = weaponRes.substring(weaponRes.lastIndexOf('/') + 1);
-            double[] w = weapons.get(Pack.key(base));
-            if(w != null) {
-                dmg = w[0];
-                /* armorpen is absent on four of the twenty-six weapons and the scraper keeps
-                 * that as null. An absent penetration is not a zero one, so a weapon whose
-                 * penetration nobody recorded cannot be predicted with. */
-                if(!Double.isNaN(w[1])) {
-                    pen = w[1];
-                    armed = true;
-                }
-            }
+        /* Both hands, and whichever one is in the weapon table wins. A shield or a tool in
+         * the off hand finds nothing and is simply passed over - which is the point, since
+         * scanning only the first occupied hand meant a shield in slot 6 hid the sword in
+         * slot 7 and silently disabled every weapon prediction. */
+        for(int i = 0; (handRes != null) && (i < handRes.length); i++) {
+            if(handRes[i] == null)
+                continue;
+            String base = handRes[i].substring(handRes[i].lastIndexOf('/') + 1);
+            double[] w = (weapons == null) ? null : weapons.get(Pack.key(base));
+            if(w == null)
+                continue;
+            /* armorpen is absent on four of the twenty-six weapons and the scraper keeps
+             * that as null. An absent penetration is not a zero one, so a weapon whose
+             * penetration nobody recorded cannot be predicted with. */
+            if(Double.isNaN(w[1]))
+                continue;
+            dmg = w[0];
+            pen = w[1];
+            weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
+            armed = true;
+            break;
         }
         /* Armour of -1 means the equipment widget could not be read, which is not the same
          * fact as wearing none. */
         return(new Me(str, agi, ua, mc, Math.max(0, armHard), Math.max(0, armSoft),
-                      dmg, weaponQl, pen, armed));
+                      dmg, weaponQl, pen, armed,
+                      (levels == null) ? new LinkedHashMap<String, Integer>() : levels));
     }
 
     private static double num(SortedMap<String, Integer> a, String k) {
@@ -188,6 +220,11 @@ public final class Prediction {
         Move m = byRes.get(moveRes);
         if(m == null)
             return(null);
+        /* The card AS LEVELLED. The pack's sheet is character-free and so carries no deck
+         * levels; without this every prediction runs a levelled card at weighting 1.0. */
+        Integer lvl = (me.levels == null) ? null : me.levels.get(moveRes);
+        if((lvl != null) && (lvl > 1))
+            m = m.withMu(muAt(lvl));
         /* A weapon move with no resolved weapon has no damage and no attack weight. Predicting
          * it as if unarmed would be a different move. */
         if((m.weight == Move.Weight.WEAPON) && !me.armed)

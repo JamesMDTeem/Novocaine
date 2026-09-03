@@ -724,6 +724,41 @@ def opponent_period():
     check("nothing to measure returns nothing", estimate.period_of([]), None)
 
 
+def broken_gear():
+    """Worn-out gear: no armour, but a shield is still a shield.
+
+    Two different rules that look like one, and collapsing them would be wrong in both
+    directions. A broken item contributes NO armour - the client's own Armor Class readout
+    excludes it and the log mirrors that, so a character in three worn-out pieces really
+    does fight at zero. But Shield Up only asks whether a shield is EQUIPPED, and a broken
+    one still is, so its block multiplier applies exactly as it would with a fresh one.
+
+    Pinned because the natural tidy-up - filter broken items out of the gear list once, at
+    the top - would silently take the stance's multiplier away with the armour.
+    """
+    print("\nbroken gear: no armour, but a shield is still a shield")
+    moves = estimate.load_moves()
+    if "Shield Up" not in moves:
+        print("  (no Shield Up in the sheet - skipped)")
+        return
+    attrs = {"melee": 125, "unarmed": 81}
+    broken = [{"res": "gfx/invobjs/small/roundshield", "hard": 5, "soft": 2,
+               "broken": True}]
+    none = [{"res": "gfx/invobjs/small/bronzesword", "hard": 0, "soft": 0,
+             "broken": False}]
+    with_shield = estimate.block_weight(moves, "Shield Up", attrs, broken, 1)
+    without = estimate.block_weight(moves, "Shield Up", attrs, none, 1)
+    if (with_shield is None) or (without is None):
+        print("  (Shield Up carries no block weight in this sheet - skipped)")
+        return
+    check("a BROKEN shield still satisfies Shield Up's requirement",
+          with_shield[0] > without[0], True)
+    check("  so the reduced multiplier is not applied",
+          "no shield" in (with_shield[2] or ""), False)
+    check("  where an empty hand does apply it",
+          "no shield" in (without[2] or ""), True)
+
+
 def main():
     hitpoints()
     agility()
@@ -740,6 +775,7 @@ def main():
     tactics()
     armour()
     buckets()
+    broken_gear()
     opponent_period()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))

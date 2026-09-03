@@ -68,8 +68,41 @@ public final class CombatRecorder {
         return(System.currentTimeMillis() - t0);
     }
 
+    /**
+     * The deck as it stands, card resource to level, read live off the fight window.
+     *
+     * The same place CombatDeckDump reads, and for the same reason: the level is what the
+     * deck weighting is computed from, and the weighting divides every cooldown and
+     * multiplies every attack weight. Reading the dump file instead would mean a
+     * prediction depended on a probe having fired recently enough.
+     */
+    private static Map<String, Integer> readDeck(haven.GameUI gui) {
+        Map<String, Integer> out = new java.util.LinkedHashMap<String, Integer>();
+        try {
+            if((gui == null) || (gui.chrwdg == null) || (gui.chrwdg.fight == null))
+                return(out);
+            /* A copy: ALL is mutated from the message loop as the server sends actions. */
+            for(haven.FightWnd.Action a :
+                    new ArrayList<haven.FightWnd.Action>(gui.chrwdg.fight.ALL)) {
+                try {
+                    if(a.u > 0)
+                        out.put(a.res.get().name, a.u);
+                } catch(Exception e) {
+                    /* a still-loading action costs that card, not the deck */
+                }
+            }
+        } catch(Exception e) {
+        }
+        return(out);
+    }
+
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
                                           Glob glob, Equipory eq) {
+        start(charName, meGob, foeGob, foeRes, glob, eq, null);
+    }
+
+    public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
+                                          Glob glob, Equipory eq, haven.GameUI gui) {
         if(!OptWnd.combatTelemetryCheckBox.a)
             return;
         if(writer != null)
@@ -111,9 +144,13 @@ public final class CombatRecorder {
                 log(g);
             /* The COMPUTED attributes, not the base ones: a prediction has to use the numbers
              * the server is actually fighting with, and food and buffs move them. */
-            String[] wpn = readWeapon(eq);
-            me = Prediction.me(comp, arm[0], arm[1], wpn[0],
-                               (wpn[1] == null) ? 0 : Double.parseDouble(wpn[1]));
+            String[] hands = readHands(eq);
+            me = Prediction.me(comp, arm[0], arm[1],
+                               new String[] {hands[0], hands[2]},
+                               new double[] {
+                                   (hands[1] == null) ? 0 : Double.parseDouble(hands[1]),
+                                   (hands[3] == null) ? 0 : Double.parseDouble(hands[3])},
+                               readDeck(gui));
         } catch(Exception e) {
             /* a header we could not build is still better than a lost fight */
         }
@@ -177,32 +214,40 @@ public final class CombatRecorder {
     }
 
     /**
-     * The equipped weapon's resource and quality, as {res, ql} - both null when there is none.
+     * BOTH hands, as {res, ql} pairs - a slot we could not read comes back null.
      *
-     * Slots 6 and 7 are the hands. A tool is not a weapon, and nothing here decides which is
-     * which: the resource is handed to {@link Prediction}, which looks it up in the weapon
-     * table and finds nothing for a shovel. That keeps the judgement in the data rather than
-     * in a list of resource names maintained here.
+     * Both, and not the first one found, which is what this did and which quietly cost
+     * every weapon-based prediction for anyone carrying a shield. Slot 6 held a round
+     * shield and slot 7 the sword; the loop returned at slot 6, the shield resolved to no
+     * weapon, and every weapon move then declined to predict - a silent, total failure
+     * that looked exactly like a fight where nothing happened to be predictable.
+     *
+     * Nothing here decides which hand holds the weapon. Both resources go to
+     * {@link Prediction}, which looks each up in the weapon table and takes whichever one
+     * is in it - so a shovel, a shield and an empty hand all fall out on the same rule,
+     * and the judgement stays in the data rather than in a list of resource names
+     * maintained here.
      */
-    private static String[] readWeapon(Equipory eq) {
+    private static String[] readHands(Equipory eq) {
+        String[] out = new String[] {null, null, null, null};
         if(eq == null)
-            return(new String[] {null, null});
+            return(out);
         for(int i = 6; (i <= 7) && (i < eq.slots.length); i++) {
             WItem w = eq.slots[i];
             if(w == null)
                 continue;
             try {
-                String res = w.item.getres().name;
                 double ql = 0;
                 for(ItemInfo info : w.item.info()) {
                     if(info instanceof Quality)
                         ql = ((Quality)info).q;
                 }
-                return(new String[] {res, Double.toString(ql)});
+                out[(i - 6) * 2] = w.item.getres().name;
+                out[((i - 6) * 2) + 1] = Double.toString(ql);
             } catch(Exception e) {
             }
         }
-        return(new String[] {null, null});
+        return(out);
     }
 
     public static void log(String line) {

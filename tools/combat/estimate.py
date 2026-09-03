@@ -760,6 +760,11 @@ def block_weight(moves, stance, attrs, gear, level):
     why = ""
     need = m.get("block_requires")
     if need:
+            # A BROKEN shield still satisfies this. Worn-out gear stops contributing
+            # armour - the client's own Armor Class readout excludes it, and the log
+            # mirrors that - but the card only asks whether a shield is equipped, and a
+            # broken one still is. So this tests the gear list as logged, including
+            # broken entries, and must not be "fixed" to filter them.
         held = (gear is None) or any(need in (g.get("res") or "") for g in gear)
         if not held:
             mult = m.get("block_mult_without") or mult
@@ -809,6 +814,11 @@ def own_defence_weight(moves, attrs, gear, levels):
         why = ""
         need = m.get("block_requires")
         if need:
+            # A BROKEN shield still satisfies this. Worn-out gear stops contributing
+            # armour - the client's own Armor Class readout excludes it, and the log
+            # mirrors that - but the card only asks whether a shield is equipped, and a
+            # broken one still is. So this tests the gear list as logged, including
+            # broken entries, and must not be "fixed" to filter them.
             held = any(need in (g.get("res") or "") for g in gear)
             if not held:
                 mult = m.get("block_mult_without") or mult
