@@ -861,8 +861,11 @@ def collect(paths):
         # (move, the opponent's own initiative before it, whether we were alone) - the raw
         # material for foe_policy.
         "foe_moves": [],
-        # Rate of change of the distance between us, per second. See relative_speed.
+        # Rate of change of the distance between us, per second - the fallback for logs
+        # written before schema 6. See relative_speed.
         "sep": [],
+        # Schema 6: the speed the client itself reports for each side, units per second.
+        "myspd": [], "foespd": [],
         # (gob, wall time, our IP at the engagement's start, at its end) - see reaggro_cost.
         "ip_edges": [],
         # Damage per opponent GOB, accumulated across every file that gob appears in -
@@ -975,6 +978,12 @@ def collect(paths):
                 rec["ip_edges"].append((eng.gob, (log.header or {}).get("wall") or 0,
                                         eng.states[0].get("myip"),
                                         eng.states[-1].get("myip")))
+
+            for st in eng.states:
+                if st.get("foespd") is not None:
+                    rec["foespd"].append(st["foespd"])
+                if st.get("myspd") is not None:
+                    rec["myspd"].append(st["myspd"])
 
             for a, b in zip(eng.states, eng.states[1:]):
                 da, db = a.get("dist"), b.get("dist")
@@ -1456,6 +1465,30 @@ def relative_speed(rec):
     Returns {p95, p50, n} in world units per second, or None. Roughly eleven units to a
     tile.
     """
+    # MEASURED, where the log carries it. Schema 6 records Gob.gobSpeed for both sides -
+    # the Moving attribute's own velocity, the white figure the client draws under anything
+    # that moves. That is the creature's speed outright, so none of the inference below is
+    # needed and none of its confound applies: a fox that we never backed away from still
+    # reports its own speed the moment it moves.
+    #
+    # Reported as a RANGE. Speed is randomised per individual within a species band, so a
+    # single figure would be averaging over animals that genuinely differ - the same shape
+    # as the hitpoint spread already reported per gob.
+    spd = sorted(x for x in (rec.get("foespd") or ()) if 0 < x <= MAX_REAL_SPEED)
+    if len(spd) >= 10:
+        mine = sorted(x for x in (rec.get("myspd") or ()) if 0 < x <= MAX_REAL_SPEED)
+        out = {"measured": True, "n": len(spd),
+               "lo": round(spd[int(0.05 * len(spd))], 1),
+               "median": round(spd[len(spd) // 2], 1),
+               "hi": round(spd[int(0.95 * len(spd))], 1)}
+        if len(mine) >= 10:
+            ours = mine[int(0.95 * len(mine))]
+            out["our_top"] = round(ours, 1)
+            # Whether we can hold range while it runs, which is what decides between
+            # keeping the fight and re-aggroing away the initiative pool.
+            out["we_outrun_it"] = ours > out["hi"]
+        return out
+
     v = sorted(r for r in (rec.get("sep") or ()) if abs(r) <= MAX_REAL_SPEED)
     if len(v) < 40:
         return None
@@ -1465,7 +1498,8 @@ def relative_speed(rec):
     # comes out at 0.0 across 81 samples, and foxes are not slow - we simply stood and
     # fought them. Without this the table would have said a fox outruns us.
     moved = sum(1 for r in v if r > 2.0) / float(len(v))
-    return {"p95": round(v[int(0.95 * len(v))], 1),
+    return {"measured": False,
+            "p95": round(v[int(0.95 * len(v))], 1),
             "median": round(v[len(v) // 2], 1),
             "n": len(v),
             "withdrew": round(moved, 3),

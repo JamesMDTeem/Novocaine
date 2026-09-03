@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 5;
+    public static final int SCHEMA = 6;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -108,8 +108,13 @@ public final class CombatEvent {
                .end());
     }
 
+    /**
+     * @param mySpeed  our own movement speed in world units per second, 0 when standing
+     * @param foeSpeed the opponent's, the same figure the client draws in white under it
+     */
     public static String state(long t, Openings mine, Openings foe, int myIp, int foeIp,
-                               int hpf, double stam, double energy, double dist, long gobId) {
+                               int hpf, double stam, double energy, double dist, long gobId,
+                               double mySpeed, double foeSpeed) {
         return(new JsonObj()
                .put("ev", "state")
                .put("t", t)
@@ -122,6 +127,15 @@ public final class CombatEvent {
                .put("stam", stam)
                .put("energy", energy)
                .put("dist", dist)
+               /* Speed, straight from Gob.gobSpeed - the Moving attribute's own velocity,
+                * which is what the client already renders under every moving object. It
+                * replaces inferring a speed from how fast the gap opened, which could not
+                * tell "this creature is fast" from "we never backed away from it" and
+                * reported a fox as keeping pace with us because we always stood and
+                * fought them. Creature speed is randomised per individual within a
+                * species range, so this is a distribution rather than a constant. */
+               .put("myspd", mySpeed)
+               .put("foespd", foeSpeed)
                .end());
     }
 

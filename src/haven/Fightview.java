@@ -446,7 +446,13 @@ public class Fightview extends Widget {
 			(stm == null) ? -1 : stm.a,
 			(enm == null) ? -1 : enm.a,
 			dist,
-			rel.gobid);
+			rel.gobid,
+			/* Speed as the client already knows it - Gob.gobSpeed is the Moving
+			 * attribute's own velocity, and the white figure drawn under anything
+			 * that moves. Inferring it from how fast the gap opened could not tell
+			 * a fast creature from one we never backed away from. */
+			(me == null) ? 0 : me.gobSpeed,
+			(foe == null) ? 0 : foe.gobSpeed);
 		} catch(Exception e) {
 		    /* telemetry must never break the tick loop */
 		}

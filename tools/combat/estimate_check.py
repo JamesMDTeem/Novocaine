@@ -562,6 +562,22 @@ def tactics():
     check("a standing fight is NOT read as the creature matching us", r["informative"],
           False)
     near("  even though its p95 is zero", r["p95"], 0.0, 1e-9)
+    # Schema 6 records the speed outright, and it must WIN over the inference - the
+    # inference exists only for logs written before it. Reported as a range, because speed
+    # is randomised per individual within a species band.
+    real = {"foespd": [9.0] * 6 + [11.0] * 6 + [10.0] * 8, "myspd": [18.0] * 20,
+            "sep": [0.0] * 200}
+    r = estimate.relative_speed(real)
+    check("a logged speed is used instead of the inference", r["measured"], True)
+    check("  and it reports a range, not one number", (r["lo"] <= r["median"] <= r["hi"]),
+          True)
+    check("  we outrun it, so the fight can be held", r["we_outrun_it"], True)
+    slowus = {"foespd": [19.0] * 20, "myspd": [18.0] * 20, "sep": [0.0] * 200}
+    check("something faster than us reads so", estimate.relative_speed(slowus)["we_outrun_it"],
+          False)
+    check("  even from a standing fight the inference could not read",
+          estimate.relative_speed(slowus)["measured"], True)
+
     # A single teleporting sample must not become the answer.
     jump = {"sep": [0.0] * 59 + [2400.0]}
     check("a distance jump is discarded rather than believed",

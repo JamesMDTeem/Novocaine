@@ -242,7 +242,8 @@ public final class CombatRecorder {
     }
 
     public static void sample(Openings mine, Openings foe, int myIp, int foeIp,
-                              int hp, double stam, double energy, double dist, long gobId) {
+                              int hp, double stam, double energy, double dist, long gobId,
+                              double mySpeed, double foeSpeed) {
         if(!active())
             return;
         try {
@@ -256,11 +257,16 @@ public final class CombatRecorder {
              * still carries full-precision dist; only the gate key is quantised. The foe gob id is
              * also part of the key so a target switch always emits a fresh sample instead of being
              * suppressed as an unchanged state. */
-            String key = gobId + ":" + mine.toJson() + foe.toJson() + myIp + ":" + foeIp + ":" + hp + ":" + (long)dist;
+            /* Speed is part of the key, quantised, because starting or stopping is a state
+             * change worth a sample even when nothing else moved - and because the whole
+             * point of recording it is to catch the moments we were actually withdrawing. */
+            String key = gobId + ":" + mine.toJson() + foe.toJson() + myIp + ":" + foeIp
+                + ":" + hp + ":" + (long)dist + ":" + (long)mySpeed + ":" + (long)foeSpeed;
             if(key.equals(lastSample))
                 return;
             lastSample = key;
-            log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId));
+            log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId,
+                                  mySpeed, foeSpeed));
         } catch(Exception e) {
             /* never propagate into tick() */
         }
