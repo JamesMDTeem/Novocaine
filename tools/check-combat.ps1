@@ -117,6 +117,29 @@ Invoke-JavaCheck 'CombatPackCheck' ($model + @('src\haven\combat\data\Pack.java'
 Write-Host "`n== the Python follower, against the golden vectors" -ForegroundColor Cyan
 Invoke-PyCheck 'model_check.py' 'tools\combat\model_check.py'
 
+Write-Host "`n== the golden vectors match the Java they were generated from" -ForegroundColor Cyan
+$vdir = Join-Path $out 'vecgen'
+$null = New-Item -ItemType Directory -Force -Path $vdir
+$vcompile = & $javac -nowarn -d $vdir src\haven\combat\Formulas.java src\haven\combat\log\JsonObj.java tools\CombatVectorGen.java 2>&1
+if ($LASTEXITCODE -ne 0) {
+    if (-not $Quiet) { $vcompile | ForEach-Object { Write-Host "    $_" } }
+    Add-Result 'golden-vectors-fresh' $false 'did not compile'
+} else {
+    # Regeneration writes only the temporary copy: the checked-in file is never touched here.
+    $vfresh = Join-Path $vdir 'golden-vectors.json'
+    $vrun = & $java -cp $vdir CombatVectorGen $vfresh 2>&1
+    if (-not $Quiet) { $vrun | ForEach-Object { Write-Host "    $_" } }
+    # Text comparison with carriage returns stripped: a CRLF checkout of the JSON must not
+    # fail a check about the model.
+    $checkedIn = [System.IO.File]::ReadAllText((Join-Path $root 'data\combat\golden-vectors.json')).Replace("`r", "")
+    $freshGen = [System.IO.File]::ReadAllText($vfresh).Replace("`r", "")
+    if ($checkedIn -ceq $freshGen) {
+        Add-Result 'golden-vectors-fresh' $true 'regeneration matches the checked-in file'
+    } else {
+        Add-Result 'golden-vectors-fresh' $false 'Formulas.java changed without regenerating golden-vectors.json - run CombatVectorGen and review the diff'
+    }
+}
+
 Write-Host "`n== what a log is allowed to measure" -ForegroundColor Cyan
 Invoke-PyCheck 'fightlog_check.py' 'tools\combat\fightlog_check.py'
 

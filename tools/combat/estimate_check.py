@@ -363,14 +363,23 @@ def own_defence():
 def mu_from_reductions():
     """The second mu measurement, and the reason it is trusted only as a floor.
 
-    Its control is Zig-Zag Ruse at level 1, where mu must be exactly 1.0. That it comes
-    back BELOW 1.0 is the finding: a reduction cannot over-report, so the gap is the
-    opponent adding to the same colour while we defend. A method whose control reads low
-    gives floors, not estimates, and saying so is the difference between this settling the
-    mu curve and this quietly bending it.
+    Its control is Zig-Zag Ruse at level 1, where mu must be exactly 1.0 - and the control
+    is CONTAINMENT: every level-1 use must pin an interval that brackets 1.0. Each use
+    measures an interval rather than a point, because the display truncates the standing
+    value both before and after, so the honest question is whether the truth is inside it.
+
+    This asserted "the midpoint median reads at or below 1.0" instead, and passed until
+    the corpus grew from two level-1 readings to five. The median then reached 1.012 and
+    the check failed while every interval still contained 1.0 exactly - three of them with
+    1.0 as their LOWER bound, whose midpoints cannot be 1.0 or less. The measurement was
+    never wrong; the statistic was never a floor.
+
+    That the method reads low overall is separately true and separately evidenced - uses
+    of Quick Dodge at level 5 that reduced nothing at all, which a reduction cannot do -
+    and it is why the HIGHER levels are floors rather than estimates.
     """
     print("\nmu read from what a defensive card takes off us")
-    rows, inert = estimate.mu_from_reductions()
+    rows, inert, spans = estimate.mu_from_reductions()
     if not rows:
         print("  (no defensive card in this corpus at a known level)")
         return
@@ -380,11 +389,18 @@ def mu_from_reductions():
               % (level, nm[:15], len(vals), vals[len(vals) // 2],
                  "   %d use(s) reduced nothing" % inert[(level, nm)]
                  if inert.get((level, nm)) else ""))
-    lvl1 = [v for (lv, _n), vals in rows.items() if lv == 1 for v in vals]
+    lvl1 = [iv for (lv, _n), ivs in spans.items() if lv == 1 for iv in ivs]
     if lvl1:
-        med = sorted(lvl1)[len(lvl1) // 2]
-        check("  CONTROL: level 1 must be 1.0, and reads at or below it", med <= 1.02, True)
-        check("  which is why these are floors, not estimates", med <= 1.0 + 1e-9, True)
+        # Named, not summarised: the reading each interval came from is what a broken
+        # inversion would move, and a median is exactly what would hide it.
+        for lo, hi in sorted(lvl1):
+            check("  CONTROL: level 1 interval [%.3f, %.3f] contains 1.0" % (lo, hi),
+                  (lo - 1e-9) <= 1.0 <= (hi + 1e-9), True)
+        # The floors claim, stated where it is actually true. A reduction masked by the
+        # opponent's own gain can only ever read SMALLER, so at the level where mu is 1.0
+        # by definition no interval may sit wholly above it.
+        check("  and none sits wholly above it, which is what makes these floors",
+              [1 for lo, _h in lvl1 if lo > 1.0 + 1e-9], [])
     five = [v for (lv, _n), vals in rows.items() if lv == 5 for v in vals]
     if five:
         med = sorted(five)[len(five) // 2]
@@ -413,7 +429,7 @@ def mu_curve():
     for level, stated in sorted(estimate.MU_WIKI_EXAMPLE.items()):
         near("level %d matches the wiki's worked example" % level, c(level), stated, 0.01)
     # The reduction floors.
-    rows, _inert = estimate.mu_from_reductions()
+    rows, _inert, _spans = estimate.mu_from_reductions()
     five = [v for (lv, _n), vals in rows.items() if lv == 5 for v in vals]
     if five:
         med = sorted(five)[len(five) // 2]

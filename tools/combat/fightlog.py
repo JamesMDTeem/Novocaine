@@ -70,6 +70,11 @@ class Engagement(object):
         self.others_present = False
         self.third_party_rises = 0
         self.multi_opponent = False
+        # Set when the writer shed lines or its drain thread died. Unlike the other three
+        # this spoils BOTH directions at once, because what went missing is unknown: a
+        # lost move breaks attribution of our gains, a lost damage number breaks what the
+        # opponent did to us, and nothing in the file says which it was.
+        self.lines_lost = False
 
     @property
     def clean(self):
@@ -78,12 +83,14 @@ class Engagement(object):
     @property
     def offence_ok(self):
         """Whether what WE did to this opponent can be measured from it."""
-        return (not self.others_present) and (self.third_party_rises == 0)
+        return ((not self.lines_lost) and (not self.others_present)
+                and (self.third_party_rises == 0))
 
     @property
     def defence_ok(self):
         """Whether what this opponent did to US can be measured from it."""
-        return (not self.others_present) and (not self.multi_opponent)
+        return ((not self.lines_lost) and (not self.others_present)
+                and (not self.multi_opponent))
 
     @property
     def t0(self):
@@ -156,9 +163,24 @@ class Log(object):
         self.header = None
         self.gear = []
         self.end = None
+        # Schema 9: the writer's health as the fight closed. None on older logs,
+        # which is unknown rather than clean - they predate the accounting.
+        self.end_dropped = None
+        self.end_failed = None
         self.engagements = []
         # gob -> resource name, from every source in the file
         self.names = {}
+        # Schema 10 signals the client already had and never recorded: the party we
+        # fought with, the agility bracket Fightsess narrows from attack cooldowns, the
+        # weapon's own figures, and three server resources nothing consumes.
+        self.party = []
+        self.agility = []
+        self.weapons = []
+        self.atkres = []
+        # Schema 10 "hp" samples: a combatant's health as the SERVER states it, in
+        # quarters. Everything else this file knows about hitpoints is accumulated from
+        # damage numbers, which needs a kill to close and leaves survivors unbounded.
+        self.health = []
         # Schema 4 "foes" samples: every relation's openings at a moment, not only the
         # sampled opponent's. Empty for every log written before that existed.
         self.foes = []
@@ -217,8 +239,20 @@ def read(path, opens=None):
             log.gear.append(r)
         elif ev == "end":
             log.end = r
+            log.end_dropped = r.get("dropped")
+            log.end_failed = r.get("failed")
         elif ev == "foe" and r.get("res"):
             log.names[r["gob"]] = r["res"]
+        elif ev == "hp":
+            log.health.append(r)
+        elif ev == "party":
+            log.party.append(r)
+        elif ev == "agi":
+            log.agility.append(r)
+        elif ev == "wpn":
+            log.weapons.append(r)
+        elif ev == "atkres":
+            log.atkres.append(r)
         elif ev == "buffs":
             # Schema 5. The buff resources standing on a combatant, which is where a
             # STANCE lives - the missing term in an opponent's defence weight.
@@ -320,6 +354,26 @@ def _diagnose(log, opens=None):
     if not log.complete:
         for eng in log.engagements:
             eng.notes.append("no end event - the fight was cut off")
+
+    # Lines the writer shed on a full queue. This is a PROBLEM and not a note, because a
+    # dropped line is invisible in a way the other faults are not: a missing damage number
+    # or state widens a bracket, and a missing MOVE lets its gain merge into a neighbour's
+    # with nothing left behind to notice. Recording the count in the end event without
+    # gating on it here would leave the file honest and the analysis unchanged, which is
+    # the half-fix this exists to close.
+    if log.end_dropped:
+        for eng in log.engagements:
+            eng.lines_lost = True
+            eng.problems.append(
+                "the writer shed %d line(s) on a full queue - an unseen move merges its "
+                "gain into a neighbour's, so nothing in this file is safe to measure"
+                % log.end_dropped)
+    if log.end_failed:
+        for eng in log.engagements:
+            eng.lines_lost = True
+            eng.problems.append(
+                "the log writer's drain thread had already died - lines stopped reaching "
+                "disk at an unknown point before the end")
 
 
 def carried_in(eng):

@@ -338,7 +338,7 @@ def report_logged_predictions(paths, opens=None):
     if not rows:
         print("  none yet - %d log(s) carry no prediction." % missing)
         print()
-        print("  Expected until a fight is logged on a schema 8 client. Every existing log")
+        print("  Expected until a fight is logged on a schema 8-or-later client. Every existing log")
         print("  predates it, and a prediction cannot be added to an old fight: the whole")
         print("  point is that it records what the model believed at the time.")
         print()

@@ -388,6 +388,32 @@ public class Fightview extends Widget {
     }
     
     /**
+     * Records the three resources the server sends about the exchange.
+     *
+     * blk, batk and iatk are read into fields above and consumed by nothing in this
+     * client. Their names suggest a block and two attacks; that is a guess, and it is
+     * why they are logged rather than interpreted. Nothing stores them, so unlike
+     * anything derivable from render code they cannot be recovered after the fact.
+     */
+    private void logAtkRes() {
+	try {
+	    haven.automated.combat.CombatRecorder.onAtkRes(
+		nameOf(blk), nameOf(batk), nameOf(iatk));
+	} catch(Exception e) {
+	    /* telemetry must never break the message loop */
+	}
+    }
+
+    /** A resource's name, or null while it is still loading. */
+    private static String nameOf(Indir<Resource> r) {
+	try {
+	    return((r == null) || (r.get() == null) ? null : r.get().name);
+	} catch(Exception e) {
+	    return(null);
+	}
+    }
+
+    /**
      * The tile the player is standing on, or null.
      *
      * Terrain gates our own speed - forest holds us to a run where grassland allows a
@@ -443,6 +469,11 @@ public class Fightview extends Widget {
 	     * a relation can arrive before its gob does, and a null res there is what left one
 	     * three-opponent fight identifying none of them. */
 	    haven.automated.combat.CombatRecorder.nameFoe(rel.gobid, resOf(rel.gobid));
+	    /* The bracket Fightsess has narrowed for this opponent from its attack
+	     * cooldowns - an estimate of the same quantity the offline estimators
+	     * recover, arrived at a different way. Two methods that agree are a
+	     * control; two that disagree name a bug in one of them. */
+	    haven.automated.combat.CombatRecorder.onAgility(rel.gobid, rel.minAgi, rel.maxAgi);
 	    Widget inf = obinfo(rel.gobid, false);
 	    if(inf != null)
 		inf.tick(dt);
@@ -604,10 +635,12 @@ public class Fightview extends Widget {
 	    return;
 	} else if(msg == "blk") {
 	    blk = ui.sess.getresv(args[0]);
+	    logAtkRes();
 	    return;
 	} else if(msg == "atk") {
 	    batk = ui.sess.getresv(args[0]);
 	    iatk = ui.sess.getresv(args[1]);
+	    logAtkRes();
 	    return;
 	}
         super.uimsg(msg, args);

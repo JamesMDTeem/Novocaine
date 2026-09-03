@@ -145,6 +145,18 @@ public final class Prediction {
      */
     public static Me me(SortedMap<String, Integer> attrs, int armHard, int armSoft,
                         String[] handRes, double[] handQl, Map<String, Integer> levels) {
+        return(me(attrs, armHard, armSoft, handRes, handQl, levels, null));
+    }
+
+    /**
+     * @param live the game's OWN figures per hand, from the item's weapon tooltips, or
+     *             null when none were read. Preferred over the wiki table wherever it has
+     *             both damage and penetration - see the loop below for why that ordering
+     *             is the point rather than a convenience.
+     */
+    public static Me me(SortedMap<String, Integer> attrs, int armHard, int armSoft,
+                        String[] handRes, double[] handQl, Map<String, Integer> levels,
+                        java.util.List<Map<String, Double>> live) {
         load();
         if(attrs == null)
             return(null);
@@ -152,13 +164,31 @@ public final class Prediction {
         double ua = num(attrs, "unarmed"), mc = num(attrs, "melee");
         double dmg = 0, pen = 0, weaponQl = 0;
         boolean armed = false;
-        /* Both hands, and whichever one is in the weapon table wins. A shield or a tool in
+        /* Both hands, and whichever one resolves to a weapon wins. A shield or a tool in
          * the off hand finds nothing and is simply passed over - which is the point, since
          * scanning only the first occupied hand meant a shield in slot 6 hid the sword in
-         * slot 7 and silently disabled every weapon prediction. */
+         * slot 7 and silently disabled every weapon prediction.
+         *
+         * THE ITEM FIRST, THE TABLE SECOND. The wiki table is joined on the resource
+         * basename, which is a real join that misses silently, and it has no penetration
+         * at all for four of its twenty-six weapons - so a perfectly ordinary weapon could
+         * decline to predict for want of a number the item in hand was carrying. Asking
+         * the item removes both failures, and a weapon nobody has ever catalogued works
+         * the same as one that has. The table stays as the fallback for a tooltip that had
+         * not loaded yet. */
         for(int i = 0; (handRes != null) && (i < handRes.length); i++) {
             if(handRes[i] == null)
                 continue;
+            Map<String, Double> got = ((live != null) && (i < live.size())) ? live.get(i) : null;
+            Double lDmg = (got == null) ? null : got.get("damage");
+            Double lPen = (got == null) ? null : got.get("armpen");
+            if((lDmg != null) && (lPen != null)) {
+                dmg = lDmg.doubleValue();
+                pen = lPen.doubleValue();
+                weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
+                armed = true;
+                break;
+            }
             String base = handRes[i].substring(handRes[i].lastIndexOf('/') + 1);
             double[] w = (weapons == null) ? null : weapons.get(Pack.key(base));
             if(w == null)

@@ -266,6 +266,94 @@ def completeness():
     check("and reports schema 1", log.schema, 1)
 
 
+def gaps():
+    """Schema 9: the end event carries the writer's health at close.
+
+    A file that shed lines on a full queue must say so rather than read as
+    complete - a dropped move leaves no guard behind, so brackets() would merge
+    its gain into a neighbour's. Logs that predate the accounting report
+    unknown, which is not the same fact as clean.
+    """
+    print("\ngap accounting on the end event")
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                {"ev": "end", "t": 9999, "reason": "ended",
+                 "dropped": 0, "failed": False}])
+    check("a clean close reports zero dropped", log.end_dropped, 0)
+    check("and a live drain", log.end_failed, False)
+
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                {"ev": "end", "t": 9999, "reason": "ended",
+                 "dropped": 4, "failed": False}])
+    check("a close that shed lines says how many", log.end_dropped, 4)
+
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                end()])
+    check("an old log reports unknown, not clean", log.end_dropped, None)
+    check("and unknown for the drain too", log.end_failed, None)
+
+    # The accounting has to REACH the gates. Carrying the count in the file and leaving
+    # every engagement clean would be a tripwire that records and never trips - the file
+    # honest, the analysis unchanged, and a lossy fight still feeding the estimators.
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                {"ev": "end", "t": 9999, "reason": "ended",
+                 "dropped": 0, "failed": False}])
+    check("a clean close leaves the engagement measurable", log.engagements[0].clean, True)
+
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                {"ev": "end", "t": 9999, "reason": "ended",
+                 "dropped": 4, "failed": False}])
+    check("a fight that shed lines is NOT clean", log.engagements[0].clean, False)
+    check("  and neither direction may be measured from it",
+          (log.engagements[0].offence_ok, log.engagements[0].defence_ok), (False, False))
+
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                {"ev": "end", "t": 9999, "reason": "ended",
+                 "dropped": 0, "failed": True}])
+    check("a dead drain thread disqualifies it too", log.engagements[0].clean, False)
+
+    # An old log must not be silently promoted OR demoted by this: unknown is unknown.
+    log = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)), end()])
+    check("an old log is judged on its other evidence alone",
+          log.engagements[0].clean, True)
+
+
+def client_signals():
+    """Schema 10: things the client already knew and never wrote down.
+
+    Each is read onto its own list rather than folded into an existing one, because
+    each answers a different question and conflating them is how a signal ends up
+    being used for something it does not support. The agility bracket in particular
+    is an INDEPENDENT estimate of a quantity the estimators also recover - it is
+    only worth anything while it stays independent.
+    """
+    print("\nsignals the client had all along")
+    log = load([begin(),
+                {"ev": "party", "t": 0, "gobs": [1, 2, 3]},
+                {"ev": "wpn", "t": 0, "slot": 7, "res": "gfx/invobjs/bronzesword",
+                 "v": {"damage": 12.0, "armpen": 0.125}},
+                {"ev": "agi", "t": 5, "gob": 7, "min": 0.9, "max": 1.1},
+                {"ev": "hp", "t": 6, "gob": 7, "q": 3},
+                {"ev": "atkres", "t": 7, "blk": "a", "batk": "b", "iatk": "c"},
+                state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                {"ev": "end", "t": 99, "reason": "ended", "dropped": 0, "failed": False}])
+    check("the party is read", log.party[0]["gobs"], [1, 2, 3])
+    check("the weapon carries the game's own figures",
+          log.weapons[0]["v"], {"damage": 12.0, "armpen": 0.125})
+    check("  and penetration is the 0-1 fraction, not a percentage",
+          log.weapons[0]["v"]["armpen"] < 1.0, True)
+    check("the agility bracket is read", (log.agility[0]["min"], log.agility[0]["max"]),
+          (0.9, 1.1))
+    check("health is quarters, not a fraction", log.health[0]["q"], 3)
+    check("the undocumented resources are kept verbatim",
+          [log.atkres[0][k] for k in ("blk", "batk", "iatk")], ["a", "b", "c"])
+
+    # None of them may be mistaken for a move or a damage number - that is what would
+    # quietly corrupt every gain and every soak pair in the file.
+    check("none of it counts as a move", len(log.engagements[0].moves), 1)
+    check("nor as damage", len(log.engagements[0].damage), 0)
+    check("and the fight is still measurable", log.engagements[0].clean, True)
+
+
 def predictions():
     """Schema 8: the model's own expectation, written at the moment the move was thrown.
 
@@ -305,6 +393,8 @@ def main():
     pairing()
     damage()
     completeness()
+    gaps()
+    client_signals()
     predictions()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))

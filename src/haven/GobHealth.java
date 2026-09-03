@@ -66,6 +66,21 @@ public class GobHealth extends GAttrib implements Gob.SetupMod {
 	    int hp = msg.uint8();
 	    g.setattr(new GobHealth(g, hp / 4.0f));
 		g.setattr(new GobHealthInfo(g));
+		/* The opponent's own health, as the SERVER states it rather than as we infer
+		 * it. Everything the combat corpus knows about an opponent's hitpoints today
+		 * is accumulated from damage numbers, which needs a kill to close the interval
+		 * and leaves three species with no ceiling at all. This is coarse - a uint8 in
+		 * QUARTERS, so five distinguishable values - but it is direct, it arrives
+		 * without a kill, and it is the only reading that bounds a survivor.
+		 *
+		 * It also measures the one thing the model asserts and has never observed:
+		 * FoeModel.fleesBelow. An animal extending its olive branch shows in gst, and
+		 * gst against this says at what fraction it decided to run.
+		 *
+		 * The same delta carries object damage state elsewhere in the world - it is
+		 * what draws the crack texture - so the recorder keeps only gobs it already
+		 * knows are in the fight, and a passing wall never reaches the log. */
+		haven.automated.combat.CombatRecorder.onHealth(g.id, hp / 4.0f);
 	}
     }
 }

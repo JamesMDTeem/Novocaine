@@ -856,7 +856,23 @@ public class FightWnd extends Widget {
 	    actrawinfo.put(res, rawinfo);
 	} else if(nm == "used") {
 	    int a = 0;
-	    for(Action act : acts)
+	    /* ALL, not `acts`. `acts` is the FILTERED view this window is showing -
+	     * doFilter() replaces it with whichever school tab is selected - so clearing
+	     * levels over it left every card outside the current filter holding the level
+	     * it had when it was last in the deck. Nothing in the window shows that: the
+	     * card is not on the bar, and `order` is rebuilt from the message below.
+	     *
+	     * It leaks out through anything that asks the window what the deck IS rather
+	     * than what is on the bar - CombatRecorder.readDeck and CombatDeckDump both
+	     * walk ALL and treat u > 0 as "in the deck" - which then reports a phantom
+	     * card at a level the character no longer runs it at. Predictions were never
+	     * wrong by it, because a card you can throw is one findact() reaches below and
+	     * assigns correctly; the deck record was.
+	     *
+	     * `avail` above also leaves the `acts` FIELD pointing at the previous list
+	     * until the next doFilter(), so the old form could miss cards that had just
+	     * arrived as well as cards merely filtered away. ALL has neither problem. */
+	    for(Action act : ALL)
 		act.u(0);
 	    for(int i = 0; i < order.length; i++) {
 		int resid = Utils.iv(args[a++]);

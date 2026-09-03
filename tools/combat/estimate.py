@@ -900,6 +900,10 @@ def collect(paths):
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
+        # Moves refused by the Wd fits, and why, so a refusal is visible rather than a
+        # gap: openings that scale with mu invert differently, and boost moves do not
+        # invert at all.
+        "boost_moves": set(),
         "res": None, "hp": None, "wd_by_gob": {},
         "last_hit": {}, "partial": set(), "soak": [], "soak_clean": [],
         "mu_scaled_openings": set(), "wd_by_gob_move": {}, "deck_at": {},
@@ -1130,6 +1134,20 @@ def collect(paths):
                     # case does not arise; refusing it here is what keeps that from being
                     # a silent assumption.
                     rec["mu_scaled_openings"].add(name)
+                    continue
+                if m.get("boost_greatest"):
+                    # Opportunity Knocks MULTIPLIES the greatest standing opening. It takes
+                    # neither the cube root of the weight ratio nor the (1 - Oc) falloff -
+                    # the guide states both exclusions outright, and Sim keeps it out of
+                    # the openings loop for exactly that reason. So its gain is not a
+                    # function of Wd at all, and pushing one through defence_weight would
+                    # not read a wrong weight, it would read a meaningless one.
+                    #
+                    # No such move exists in this corpus today - the only sighting is an
+                    # overlay on another player - which is precisely when to write the
+                    # refusal down. The alternative is that the first OK-bearing log
+                    # silently poisons an opponent's Wd and nothing says which one.
+                    rec["boost_moves"].add(name)
                     continue
                 bounds = attack_weight_bounds(m, attrs, lv.get(name))
                 if not bounds or not bounds[0]:
@@ -1364,16 +1382,29 @@ def mu_from_reductions(logs=None):
     standing values are dropped: at a standing 4 the truncation is worth more than the
     reduction.
 
-    IT READS LOW, and the corpus says so rather than theory. The level-1 control - Zig-Zag
-    Ruse, where mu must be exactly 1.0 - comes back at 0.98, and three uses of Quick Dodge
-    at level 5 reduced NOTHING at all, which a reduction cannot do. Both are explained the
-    same way: the opponent is attacking while we defend, and a gain it puts on the same
-    colour inside the same bracket nets against the reduction. That can only ever make a
-    reduction look smaller, so these medians are floors on mu and not estimates of it.
+    IT READS LOW, and the corpus says so rather than theory: three uses of Quick Dodge at
+    level 5 reduced NOTHING at all, which a reduction cannot do. The opponent is attacking
+    while we defend, and a gain it puts on the same colour inside the same bracket nets
+    against the reduction. That can only ever make a reduction look smaller, so these
+    medians are floors on mu and not estimates of it.
 
     Which is what makes them useful. Take Aim measures mu(2) tightly at 1.143 to 1.177,
     and these say mu(5) is at least 1.49 - and the only curve satisfying both is the one
     that reaches the stated ceiling of 1.5 at level 5.
+
+    THE CONTROL IS CONTAINMENT, NOT THE MEDIAN. Each use pins mu to an INTERVAL, because
+    the display truncates the standing value both before and after; the midpoint returned
+    alongside is a convenience for ranking levels, and a midpoint is not a floor. All five
+    level-1 Zig-Zag Ruse readings bracket 1.0 exactly - (0.952,1.000], (0.960,1.000],
+    [1.000,1.024], [1.000,1.059] and [1.000,1.091] - so the inversion is exact and the
+    truncation is what carries the width. Their midpoint median is 1.012, ABOVE 1.0, and
+    has to be: three of the five have 1.0 as their LOWER bound, and the midpoint of such
+    an interval cannot be 1.0. A control asserting "median <= 1.0" tests that statistic
+    and not the measurement, and it began failing the moment the corpus grew past the two
+    readings the old "comes back at 0.98" wording was written from.
+
+    @return (midpoints, inert, spans) - midpoints and spans share keys and order, so
+            spans[k][i] is the interval that midpoints[k][i] is the midpoint of.
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
@@ -1382,6 +1413,7 @@ def mu_from_reductions(logs=None):
     red = dict((n, [(t["colour"], t["pct"]) for t in (m.get("reduces") or [])])
                for n, m in moves.items() if m.get("reduces"))
     out = defaultdict(list)
+    spans = defaultdict(list)
     inert = defaultdict(int)
     for path in sorted(logs):
         try:
@@ -1417,11 +1449,12 @@ def mu_from_reductions(logs=None):
                     lo = (1.0 - ((after + 1.0) / (before + 1.0))) / share
                     hi = (1.0 - (after / before)) / share
                     out[(level, nm)].append((lo + hi) / 2.0)
-    return out, inert
+                    spans[(level, nm)].append((lo, hi))
+    return out, inert, spans
 
 
 def report_mu_reductions():
-    rows, inert = mu_from_reductions()
+    rows, inert, _spans = mu_from_reductions()
     if not rows:
         return
     print("=" * 78)
@@ -1430,10 +1463,11 @@ def report_mu_reductions():
     print("  A defensive card removes a SHARE of a standing opening and mu scales that")
     print("  share linearly, so what it takes off measures mu with no opponent in it. This")
     print("  reaches level 5, where Take Aim stops at its own maximum of 3.")
-    print("  It reads LOW: the level-1 control must be exactly 1.0 and comes back under it,")
-    print("  and some uses reduce nothing at all - the opponent is attacking the same")
-    print("  colour while we defend, and that can only ever mask a reduction. Read these")
-    print("  as FLOORS on mu.\n")
+    print("  It reads LOW: some uses reduce nothing at all - the opponent is attacking")
+    print("  the same colour while we defend, and that can only ever mask a reduction.")
+    print("  Read these as FLOORS on mu. The level-1 control is CONTAINMENT, not the")
+    print("  median: every Zig-Zag Ruse interval brackets 1.0, and the midpoint median")
+    print("  sits just above it because a midpoint of an interval floored at 1.0 must.\n")
     print("  %-6s %-15s %-5s %-8s %-8s %s"
           % ("level", "card", "n", "median", "Take Aim", "uses that did nothing"))
     for (level, nm), vals in sorted(rows.items()):
@@ -2111,6 +2145,12 @@ def report(per, moves):
                 print("                   their attack weight, which makes the correction"
                       " cubed: %s"
                       % ", ".join(sorted(rec["mu_scaled_openings"])))
+            if rec["boost_moves"]:
+                print("                   excluded, because they MULTIPLY the greatest"
+                      " standing opening and take")
+                print("                   neither the cube root nor the falloff, so no"
+                      " weight inverts out: %s"
+                      % ", ".join(sorted(rec["boost_moves"])))
 
             # Per individual, because a species bucket assumes every one of them is the
             # same creature and that is not free. Hitpoints say otherwise outright - two

@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 8;
+    public static final int SCHEMA = 10;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -99,12 +99,24 @@ public final class CombatEvent {
     /**
      * The terminal line. Its absence is itself information: a file with no end event was cut off
      * by a crash or a kill, and must not be treated as a complete fight.
+     *
+     * It also carries the writer's health at the moment the fight ended. A full queue drops
+     * lines silently, and a dropped move - unlike a dropped state - leaves no guard behind:
+     * brackets() stops at moves it can see, so a move it cannot see lets its gain merge
+     * into a neighbour's. A file that lost lines must say so here rather than read as
+     * complete.
+     *
+     * @param dropped lines the queue shed on a full buffer over this fight's life
+     * @param failed  true when the drain thread had already died, so lines stopped
+     *                reaching disk before the end was written
      */
-    public static String end(long t, String reason) {
+    public static String end(long t, String reason, int dropped, boolean failed) {
         return(new JsonObj()
                .put("ev", "end")
                .put("t", t)
                .put("reason", reason)
+               .put("dropped", (long)dropped)
+               .put("failed", failed)
                .end());
     }
 
@@ -291,6 +303,145 @@ public final class CombatEvent {
                .put("dealt", dealt)
                .put("grievous", grievous)
                .put("cd", cooldown)
+               .end());
+    }
+
+    /**
+     * Who is in our party when the fight starts.
+     *
+     * This does NOT change a gate today, and saying so is the point. Whether our offence
+     * can be measured turns on somebody else hitting OUR opponent, and whether our defence
+     * can be measured turns on more than one thing hitting US; neither question cares
+     * whether the third party is a friend or a stranger, so both stay spoiled either way.
+     *
+     * It is recorded because it is the only thing that makes the question ANSWERABLE. The
+     * corpus cannot currently tell a fight a friend joined from one a stranger interfered
+     * in, so it cannot test whether the two behave differently - and a distinction that
+     * cannot be tested gets assumed instead. One line per fight settles it either way.
+     *
+     * @param gobs party members' gob ids, ours included
+     */
+    public static String party(long t, long[] gobs) {
+        StringBuilder b = new StringBuilder("[");
+        for(int i = 0; i < gobs.length; i++) {
+            if(i > 0)
+                b.append(',');
+            b.append(gobs[i]);
+        }
+        b.append(']');
+        return(new JsonObj()
+               .put("ev", "party")
+               .put("t", t)
+               .raw("gobs", b.toString())
+               .end());
+    }
+
+    /**
+     * The client's OWN agility bracket for an opponent, narrowed as the fight goes on.
+     *
+     * Not a measurement this project made. Fightsess already infers it: every attack's
+     * reported cooldown against that card's base pins a ratio between our agility and the
+     * opponent's, and the bracket tightens with each attack (Fightview.Relation.minAgi and
+     * maxAgi, narrowed through Config.attackCooldownNumbers).
+     *
+     * Which makes it the one thing this corpus is short of - an INDEPENDENT reading of a
+     * quantity the estimators also recover. Two methods that agree are a control; two that
+     * disagree name a bug in one of them. Every mu error this project has made survived
+     * because the quantity had no second opinion, so recording one costs a line per
+     * narrowing and buys the check that would have caught them.
+     *
+     * Logged only when the bracket moves. It starts at (0, 2) meaning "unknown".
+     */
+    public static String agility(long t, long gob, double min, double max) {
+        return(new JsonObj()
+               .put("ev", "agi")
+               .put("t", t)
+               .put("gob", gob)
+               .put("min", min)
+               .put("max", max)
+               .end());
+    }
+
+    /**
+     * Three resources the server sends about the exchange, whose meaning is not documented.
+     *
+     * "blk", and "atk" carrying two, arrive on the fight widget and are read into fields
+     * that NOTHING in this client consumes - they are set and dropped. Their names suggest
+     * a block and a pair of attacks, and that guess is not worth writing into a model.
+     *
+     * So this records them the same way overlays are recorded: broadly, without
+     * interpretation, on the grounds that one logged fight identifies them more reliably
+     * than reading render code does - and unlike render code they cannot be recovered
+     * retroactively, because nothing stores them.
+     *
+     * @param blk  the "blk" resource
+     * @param batk the first resource of "atk"
+     * @param iatk the second
+     */
+    public static String atkres(long t, String blk, String batk, String iatk) {
+        return(new JsonObj()
+               .put("ev", "atkres")
+               .put("t", t)
+               .put("blk", blk)
+               .put("batk", batk)
+               .put("iatk", iatk)
+               .end());
+    }
+
+    /**
+     * A weapon's own figures, as the server states them on the item.
+     *
+     * The data pack's weapon table is scraped from the wiki and joined on the resource
+     * BASENAME, which misses silently and leaves four of twenty-six weapons with no
+     * recorded penetration - so those declined to predict for want of a number the item
+     * was carrying all along. This records what the item itself says, so a log can be
+     * read back without the table and a weapon nobody has catalogued is still usable.
+     *
+     * Keys are the tooltip class in lower case - damage, armpen, coolmod, grievous,
+     * range. Penetration and grievous arrive as 0..1 fractions, already divided by the
+     * hundred, which is the form Formulas wants; damage is a flat integer.
+     */
+    public static String weapon(long t, int slot, String res, java.util.Map<String, Double> stats) {
+        JsonObj o = new JsonObj()
+            .put("ev", "wpn")
+            .put("t", t)
+            .put("slot", slot)
+            .put("res", res);
+        JsonObj v = new JsonObj();
+        if(stats != null) {
+            for(java.util.Map.Entry<String, Double> e : stats.entrySet())
+                v.put(e.getKey(), e.getValue().doubleValue());
+        }
+        return(o.raw("v", v.end()).end());
+    }
+
+    /**
+     * A combatant's health, as the server states it.
+     *
+     * Everything this corpus knows about an opponent's hitpoints is otherwise accumulated
+     * from damage numbers, which needs a KILL to close the interval - three species in the
+     * pack have no ceiling because nothing has died yet, and a survivor can only ever give
+     * a lower bound. This arrives unprompted, from the same object channel the damage
+     * floats do, and it bounds a live opponent.
+     *
+     * COARSE ON PURPOSE, and the log says so by carrying the raw quarter rather than a
+     * prettier number: the server sends a uint8 that the client divides by four, so the
+     * only distinguishable values are 0, 1, 2, 3 and 4. That is enough to bound a maximum
+     * and enough to time a flight, and it is not enough to read a single hit off.
+     *
+     * Its other use is FoeModel.fleesBelow, which the model asserts and no logged fight has
+     * ever measured: gst says an animal extended its olive branch, and this says at what
+     * fraction of its health it decided to.
+     *
+     * @param quarters the server's own figure, 0 to 4 - not a fraction, so that a reader
+     *                 cannot mistake the resolution for something finer than it is
+     */
+    public static String health(long t, long gobId, int quarters) {
+        return(new JsonObj()
+               .put("ev", "hp")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("q", quarters)
                .end());
     }
 

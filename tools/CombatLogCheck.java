@@ -151,7 +151,7 @@ public class CombatLogCheck {
          * log, and that is a different and worse thing - every change to the data pack
          * silently rewrites the history, so a fix can never be shown to have helped
          * because the "before" number moves with it. */
-        check("schema constant", CombatEvent.SCHEMA, 8);
+        check("schema constant", CombatEvent.SCHEMA, 10);
 
         check("a prediction",
               CombatEvent.predict(120, 7, "paginae/atk/knockteeth", "36m/35f/26w",
@@ -210,8 +210,25 @@ public class CombatLogCheck {
               "{\"ev\":\"gear\",\"t\":0,\"slot\":2,\"res\":\"gfx/invobjs/cuirass\","
               + "\"ql\":10.0000,\"hard\":8,\"soft\":3,\"broken\":true}");
         check("end",
-              CombatEvent.end(26999L, "ended"),
-              "{\"ev\":\"end\",\"t\":26999,\"reason\":\"ended\"}");
+              CombatEvent.end(26999L, "ended", 3, false),
+              "{\"ev\":\"end\",\"t\":26999,\"reason\":\"ended\",\"dropped\":3,\"failed\":false}");
+        /* Quarters, not a fraction. The server sends a uint8 the client divides by
+         * four, so 0 to 4 is the whole resolution - and a log that said 0.75 would
+         * invite a reader to believe three-quarters had been measured. */
+        check("health",
+              CombatEvent.health(4100L, 91L, 3),
+              "{\"ev\":\"hp\",\"t\":4100,\"gob\":91,\"q\":3}");
+        /* The weapon's own figures, which retire a wiki join that misses silently.
+         * Penetration and grievous arrive already divided by a hundred, so what is
+         * pinned here is the 0..1 fraction Formulas takes - not a percentage. */
+        java.util.Map<String, Double> wv = new java.util.LinkedHashMap<String, Double>();
+        wv.put("damage", 12.0);
+        wv.put("armpen", 0.125);
+        check("weapon",
+              CombatEvent.weapon(0, 7, "gfx/invobjs/bronzesword", wv),
+              "{\"ev\":\"wpn\",\"t\":0,\"slot\":7,"
+              + "\"res\":\"gfx/invobjs/bronzesword\","
+              + "\"v\":{\"damage\":12.0000,\"armpen\":0.1250}}");
     }
 
     static void writer() {

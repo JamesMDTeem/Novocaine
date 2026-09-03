@@ -113,6 +113,12 @@ def report_header(rows, path):
     print("  duration     %.1f s over %d events" % (span, len(rows)))
     print("  ended        %s" % (end[0].get("reason") if end
                                  else "? (no end event - log was cut off)"))
+    if end:
+        dd, ff = end[0].get("dropped"), end[0].get("failed")
+        if dd is None and ff is None:
+            print("  gaps         ? (predates schema 9 gap accounting)")
+        else:
+            print("  gaps         dropped=%s failed=%s" % (dd, ff))
     if sts:
         print("  distance     %.1f -> %.1f (closest %.1f)"
               % (sts[0]["dist"], sts[-1]["dist"], min(s["dist"] for s in sts)))

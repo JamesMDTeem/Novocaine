@@ -12,6 +12,13 @@
  *
  * Regenerate deliberately, after a change to Formulas, and review the diff: a vector file that
  * changes without an intended model change is the alarm this exists to raise.
+ * tools/check-combat.ps1 regenerates to a temporary file on every run and fails when it
+ * differs from the checked-in one, so a Formulas change without regenerated vectors cannot
+ * pass - but the review of the diff, when it does change, stays a human job.
+ *
+ * Takes an optional output path, so the check can regenerate without touching the file:
+ *
+ *   java -cp %TEMP%\vecgen CombatVectorGen %TEMP%\fresh-vectors.json
  */
 
 import haven.combat.Formulas;
@@ -152,8 +159,13 @@ public class CombatVectorGen {
             .put("count", out.size())
             .raw("vectors", b.toString())
             .end();
-        Path p = Paths.get("data", "combat", "golden-vectors.json");
-        Files.createDirectories(p.getParent());
+        Path p = (a.length > 0) ? Paths.get(a[0])
+                                : Paths.get("data", "combat", "golden-vectors.json");
+        /* getParent() is null for a bare filename, and createDirectories(null) throws -
+         * so an output path with no directory in it would fail here rather than write. */
+        Path dir = p.getParent();
+        if(dir != null)
+            Files.createDirectories(dir);
         Files.write(p, (json + "\n").getBytes(StandardCharsets.UTF_8));
         System.out.println("wrote " + p + " with " + out.size() + " vectors");
     }
