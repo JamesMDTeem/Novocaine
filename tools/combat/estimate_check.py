@@ -497,21 +497,38 @@ def foe_policy():
 
     # The mix must survive a pack round trip in FREQUENCY order, not alphabetical - the
     # writer sorts keys, so a dict here would silently reorder it.
-    rec = {"foe_moves": [("Ant Spit", 0)] * 9 + [("Fell Scratch", 0)] * 1}
+    rec = {"foe_moves": [("Ant Spit", 0, True)] * 9 + [("Fell Scratch", 0, True)] * 1}
     pol = estimate.foe_policy(rec)
     check("the mix is an ordered list, commonest first", pol["mix"][0][0], "Ant Spit")
     near("  and carries its share", pol["mix"][0][1], 0.9, 1e-9)
     check("  with too few initiative observations to condition on",
           "ip_conditioned" in pol, False)
+    # An animal holds one target at a time, so a mix drawn from group fights partly
+    # describes what it was doing to somebody ELSE. That is what withdrew the distance
+    # finding, so every mix carries how much of it came from a fight nobody else was in.
+    check("  and it says how much came from a solo fight", pol["solo_n"], 10)
+    grp = estimate.foe_policy({"foe_moves": [("Ant Spit", 0, False)] * 8})
+    check("a mix drawn entirely from group fights says so", grp["solo_n"], 0)
+    check("  while still reporting what it threw", grp["n"], 8)
 
     # Conditioning is claimed only on a real swing with real support behind it.
-    atk = [("Ant Spit", 0)] * 12 + [("Bristle", 0)] * 1
-    non = [("Ant Spit", 2)] * 6 + [("Bristle", 2)] * 6
+    atk = [("Ant Spit", 0, True)] * 12 + [("Bristle", 0, True)] * 1
+    non = [("Ant Spit", 2, True)] * 6 + [("Bristle", 2, True)] * 6
     pol = estimate.foe_policy({"foe_moves": atk + non})
     check("a large swing on enough observations is claimed", pol["ip_conditioned"], True)
-    flat = [("Ant Spit", 0)] * 10 + [("Bristle", 0)] * 2 +            [("Ant Spit", 2)] * 10 + [("Bristle", 2)] * 2
+    flat = ([("Ant Spit", 0, True)] * 10 + [("Bristle", 0, True)] * 2
+            + [("Ant Spit", 2, True)] * 10 + [("Bristle", 2, True)] * 2)
     check("an identical split is not", estimate.foe_policy({"foe_moves": flat})["ip_conditioned"],
           False)
+    # Initiative is relational, so a creature fighting somebody else can sit at zero
+    # against us while acting on them. A conditioning drawn from group fights is flagged.
+    dirty = ([("Ant Spit", 0, False)] * 12 + [("Bristle", 0, False)] * 1
+             + [("Ant Spit", 2, False)] * 6 + [("Bristle", 2, False)] * 6)
+    d = estimate.foe_policy({"foe_moves": dirty})
+    check("a swing seen only in group fights is flagged", d["ip_group_contaminated"], True)
+    check("  and the swing itself is still reported", d["ip_conditioned"], True)
+    check("one seen in solo fights is not flagged",
+          estimate.foe_policy({"foe_moves": atk + non})["ip_group_contaminated"], False)
 
 
 def armour():

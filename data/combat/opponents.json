@@ -92,7 +92,8 @@
       1.0
      ]
     ],
-    "n": 4
+    "n": 4,
+    "solo_n": 0
    },
    "res": null,
    "skill": null
@@ -181,7 +182,8 @@
       1.0
      ]
     ],
-    "n": 3
+    "n": 3,
+    "solo_n": 0
    },
    "res": "gfx/kritter/adder/adder",
    "skill": null
@@ -229,7 +231,8 @@
       0.048
      ]
     ],
-    "n": 187
+    "n": 187,
+    "solo_n": 30
    },
    "res": "gfx/kritter/ants/ants",
    "skill": {
@@ -291,7 +294,8 @@
       0.321
      ]
     ],
-    "n": 28
+    "n": 28,
+    "solo_n": 26
    },
    "res": "gfx/kritter/badger/badger",
    "skill": {
@@ -351,6 +355,7 @@
     "attack_share_above_0_ip": 0.455,
     "attack_share_at_0_ip": 0.762,
     "ip_conditioned": true,
+    "ip_group_contaminated": true,
     "ip_n": [
      21,
      11
@@ -381,7 +386,8 @@
       0.031
      ]
     ],
-    "n": 32
+    "n": 32,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bear/bear",
    "skill": null
@@ -428,7 +434,8 @@
       1.0
      ]
     ],
-    "n": 4
+    "n": 4,
+    "solo_n": 4
    },
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
@@ -490,7 +497,8 @@
       0.05
      ]
     ],
-    "n": 20
+    "n": 20,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bees/beelarva",
    "skill": null
@@ -547,7 +555,8 @@
       0.143
      ]
     ],
-    "n": 7
+    "n": 7,
+    "solo_n": 0
    },
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
@@ -600,6 +609,7 @@
     "attack_share_above_0_ip": 0.625,
     "attack_share_at_0_ip": 0.886,
     "ip_conditioned": true,
+    "ip_group_contaminated": false,
     "ip_n": [
      35,
      32
@@ -622,7 +632,8 @@
       0.029
      ]
     ],
-    "n": 70
+    "n": 70,
+    "solo_n": 17
    },
    "res": "gfx/kritter/boar/boar",
    "skill": null
@@ -684,7 +695,8 @@
       0.087
      ]
     ],
-    "n": 23
+    "n": 23,
+    "solo_n": 23
    },
    "res": "gfx/borka/body",
    "skill": null
@@ -725,7 +737,8 @@
       0.125
      ]
     ],
-    "n": 8
+    "n": 8,
+    "solo_n": 8
    },
    "res": "gfx/borka/body",
    "skill": null
@@ -798,7 +811,8 @@
       0.182
      ]
     ],
-    "n": 11
+    "n": 11,
+    "solo_n": 11
    },
    "res": "gfx/borka/body",
    "skill": {
@@ -859,7 +873,8 @@
       0.15
      ]
     ],
-    "n": 20
+    "n": 20,
+    "solo_n": 20
    },
    "res": "gfx/borka/body",
    "skill": null
@@ -903,6 +918,7 @@
     "attack_share_above_0_ip": 0.667,
     "attack_share_at_0_ip": 0.917,
     "ip_conditioned": true,
+    "ip_group_contaminated": true,
     "ip_n": [
      48,
      27
@@ -929,7 +945,8 @@
       0.033
      ]
     ],
-    "n": 91
+    "n": 91,
+    "solo_n": 1
    },
    "res": "gfx/kritter/cattle/cattle",
    "skill": null
@@ -997,7 +1014,8 @@
       0.058
      ]
     ],
-    "n": 52
+    "n": 52,
+    "solo_n": 0
    },
    "res": "gfx/kritter/caveangler/caveangler",
    "skill": null
@@ -1044,7 +1062,8 @@
       1.0
      ]
     ],
-    "n": 11
+    "n": 11,
+    "solo_n": 8
    },
    "res": "gfx/kritter/fox/fox",
    "skill": {
@@ -1097,7 +1116,8 @@
       1.0
      ]
     ],
-    "n": 4
+    "n": 4,
+    "solo_n": 0
    },
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": null
@@ -1160,7 +1180,8 @@
       0.022
      ]
     ],
-    "n": 46
+    "n": 46,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bees/honeybee",
    "skill": null
@@ -1217,7 +1238,8 @@
       0.167
      ]
     ],
-    "n": 6
+    "n": 6,
+    "solo_n": 1
    },
    "res": "gfx/kritter/horse/horse",
    "skill": null
@@ -1270,7 +1292,8 @@
       0.043
      ]
     ],
-    "n": 23
+    "n": 23,
+    "solo_n": 0
    },
    "res": "gfx/kritter/lynx/lynx",
    "skill": null
@@ -1317,6 +1340,7 @@
     "attack_share_above_0_ip": 0.744,
     "attack_share_at_0_ip": 0.762,
     "ip_conditioned": false,
+    "ip_group_contaminated": true,
     "ip_n": [
      21,
      43
@@ -1355,7 +1379,8 @@
       0.028
      ]
     ],
-    "n": 72
+    "n": 72,
+    "solo_n": 0
    },
    "res": "gfx/kritter/moose/moose",
    "skill": null
@@ -1393,7 +1418,8 @@
       1.0
      ]
     ],
-    "n": 2
+    "n": 2,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bees/queenbee",
    "skill": null
@@ -1445,7 +1471,8 @@
       0.074
      ]
     ],
-    "n": 54
+    "n": 54,
+    "solo_n": 0
    },
    "res": "gfx/kritter/ants/redants",
    "skill": null
@@ -1493,7 +1520,8 @@
       0.5
      ]
     ],
-    "n": 14
+    "n": 14,
+    "solo_n": 0
    },
    "res": "gfx/kritter/reddeer/reddeer",
    "skill": null
@@ -1541,7 +1569,8 @@
       0.333
      ]
     ],
-    "n": 6
+    "n": 6,
+    "solo_n": 0
    },
    "res": "gfx/kritter/reindeer/reindeer",
    "skill": null
@@ -1586,6 +1615,7 @@
     "attack_share_above_0_ip": 0.783,
     "attack_share_at_0_ip": 0.84,
     "ip_conditioned": false,
+    "ip_group_contaminated": true,
     "ip_n": [
      50,
      23
@@ -1616,7 +1646,8 @@
       0.013
      ]
     ],
-    "n": 80
+    "n": 80,
+    "solo_n": 0
    },
    "res": "gfx/kritter/ants/royalguardant",
    "skill": null
@@ -1664,6 +1695,7 @@
     "attack_share_above_0_ip": 0.909,
     "attack_share_at_0_ip": 0.979,
     "ip_conditioned": false,
+    "ip_group_contaminated": true,
     "ip_n": [
      48,
      11
@@ -1690,7 +1722,8 @@
       0.016
      ]
     ],
-    "n": 64
+    "n": 64,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bees/sentinelbee",
    "skill": null
@@ -1733,7 +1766,8 @@
       1.0
      ]
     ],
-    "n": 3
+    "n": 3,
+    "solo_n": 0
    },
    "res": "gfx/kritter/sheep/sheep",
    "skill": null
@@ -1776,6 +1810,7 @@
     "attack_share_above_0_ip": 1.0,
     "attack_share_at_0_ip": 0.913,
     "ip_conditioned": false,
+    "ip_group_contaminated": true,
     "ip_n": [
      23,
      10
@@ -1798,7 +1833,8 @@
       0.028
      ]
     ],
-    "n": 36
+    "n": 36,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bees/vulturebee",
    "skill": null
@@ -1841,6 +1877,7 @@
     "attack_share_above_0_ip": 0.895,
     "attack_share_at_0_ip": 0.833,
     "ip_conditioned": false,
+    "ip_group_contaminated": true,
     "ip_n": [
      24,
      19
@@ -1867,7 +1904,8 @@
       0.021
      ]
     ],
-    "n": 47
+    "n": 47,
+    "solo_n": 0
    },
    "res": "gfx/kritter/ants/warriorant",
    "skill": null
@@ -1930,7 +1968,8 @@
       0.027
      ]
     ],
-    "n": 37
+    "n": 37,
+    "solo_n": 0
    },
    "res": "gfx/kritter/bees/warriordrone",
    "skill": null

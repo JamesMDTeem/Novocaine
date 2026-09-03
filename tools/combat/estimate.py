@@ -971,7 +971,8 @@ def collect(paths):
                     continue
                 fb, _fa = eng.brackets(fm)
                 rec["foe_moves"].append((fm.get("name") or fm.get("move"),
-                                         fb.get("foeip") if fb else None))
+                                         fb.get("foeip") if fb else None,
+                                         eng.defence_ok and not eng.others_present))
 
             attributed = (fightlog.attributed_gains(eng, opens, log.me)
                           if eng.offence_ok else [])
@@ -1382,25 +1383,41 @@ def foe_policy(rec):
     slow the kill down by making it defend, which is worth knowing precisely because it is
     the intuitive expectation.
 
-    IT DOES NOT TARGET OUR WEAKEST COLOUR - and this one nearly got recorded as though it
-    did. Pooled, 74.8% of animal attacks land on whichever colour we were most open in,
-    against 59.5% for the same moves paired with shuffled states. Convincing, and an
-    artefact: per species it disappears entirely - ants 100% against a 99% null, red ants
-    98% against 97%, moose 78% against 78%, boar 42% against 53%. Ants are a fifth of the
+    IT DOES NOT TARGET OUR WEAKEST COLOUR - and this one took two separate controls to put
+    down, because it survived the first. Pooled, 74.8% of animal attacks land on whichever
+    colour we were most open in against a 59.5% shuffled null. Per species that vanished
+    (ants 100% against a 99% null), which is Simpson's paradox: ants are a fifth of the
     sample and Ant Spit opens green and blue, so "our most open colour" is the one the ants
-    themselves made. Simpson's paradox, and the same shape as the error that once had this
-    project comparing move weights across different badgers.
+    themselves made.
+
+    The second control is the one that makes the negative result stand. A species with only
+    one attack cannot target anything, so "does it choose well" is not even a question for
+    it - and a species that throws the same move 95% of the time has no choice to detect
+    either, whatever its theoretical repertoire. Restricted to the eight species that
+    genuinely vary - second-commonest move used at least a fifth of the time - not one
+    exceeds the 95th percentile of its own shuffled null. Royal guard ants 79% against 71%,
+    badgers 68% against 57%, moose 78% against 78%, boars 42% against 53%.
 
     IT DOES CHANGE WITH ITS OWN INITIATIVE, for some species. Attack share at 0 initiative
     against 1 or more: cattle 92% to 67%, boar 89% to 62%, bear 76% to 45% - and moose 76%
     to 74%, warrior ants 83% to 89%, vulture bees 91% to 100%. Five fall, two rise, one
     flat. So it is real and it is not a law, which means it belongs in a per-species record
     with its sample size rather than in the model as a rule.
+
+    AND A WITHDRAWN ONE. Attack share appeared to fall to 62% beyond eight tiles, matching
+    the guide's note that animals defend when out of attack range. It does not survive the
+    obvious control: an animal has one target at a time, so when WE are far away it may
+    simply be fighting somebody else, and its moves are still logged in our engagement.
+    Restricted to fights nobody else was in, the whole distance sample is 66 observations
+    and the beyond-eight-tiles band holds exactly one. There is no distance finding here,
+    only a multi-party artefact - which is why `solo_n` below travels with every mix.
     """
     kinds = animal_move_kinds()
-    mix, at0, at1 = defaultdict(int), [0, 0], [0, 0]
-    for mv, ip in rec.get("foe_moves") or ():
+    mix, at0, at1, solo = defaultdict(int), [0, 0], [0, 0], 0
+    for mv, ip, alone in rec.get("foe_moves") or ():
         mix[mv] += 1
+        if alone:
+            solo += 1
         known = kinds.get(mv)
         if (known is None) or (ip is None):
             continue
@@ -1412,6 +1429,12 @@ def foe_policy(rec):
     # A LIST of pairs, not a dict: the pack is written with sorted keys, which would put
     # this in alphabetical order and quietly destroy the one thing the mix is for.
     out = {"n": int(total),
+           # How much of this came from a fight nobody else was in. An animal holds one
+           # target at a time, so a mix drawn from group fights partly describes what it was
+           # doing to somebody else. Low solo_n does not invalidate the mix - it is what
+           # this creature throws - but it does forbid reading anything positional out of
+           # it, which is exactly the mistake the withdrawn distance finding was.
+           "solo_n": solo,
            "mix": [[k, round(v / total, 3)] for k, v in
                    sorted(mix.items(), key=lambda kv: (-kv[1], kv[0]))]}
     n0, n1 = sum(at0), sum(at1)
@@ -1424,6 +1447,14 @@ def foe_policy(rec):
         # are the same number with noise on it, and calling it a behaviour would be reading
         # the noise.
         out["ip_conditioned"] = abs(share0 - share1) >= 0.10
+        # And whether that conditioning can be believed. Initiative is RELATIONAL - the
+        # guide is explicit that points are held against one opponent and not another - so
+        # a creature fighting somebody else can sit at zero initiative against us while
+        # acting entirely on them. Cattle's 92%-to-67% swing rests on 91 observations of
+        # which ONE came from a fight nobody else was in. The finding is kept because the
+        # swing is large and repeats across species, and flagged because it cannot be
+        # cleaned up without solo fights that do not exist yet.
+        out["ip_group_contaminated"] = (solo < (0.2 * total))
     return out
 
 
