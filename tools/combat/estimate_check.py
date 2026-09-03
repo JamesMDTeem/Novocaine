@@ -477,6 +477,43 @@ def foe_skill():
         check("    but is bounded", (lo, hi), (ours / 2.0, ours * 2.0))
 
 
+def foe_policy():
+    """What a species does, and the two claims that did not survive being checked.
+
+    The negative results are the ones worth pinning, because each looked convincing first.
+    Targeting especially: pooled, animals appear to hit whichever colour we are most open
+    in three quarters of the time against a 59% null - and per species the effect is gone,
+    because ants are a fifth of the sample and Ant Spit makes the very opening it then
+    "targets". Recording that as a behaviour would have put a Simpson's paradox into the
+    optimizer's advice.
+    """
+    print("\nwhat a species does, per species")
+    per, _moves = None, None
+    kinds = estimate.animal_move_kinds()
+    check("animal moves are classed attack or not, from the wiki table", len(kinds) > 30,
+          True)
+    check("  Ant Spit is an attack", kinds.get("Ant Spit"), True)
+    check("  Bristle is not", kinds.get("Bristle"), False)
+
+    # The mix must survive a pack round trip in FREQUENCY order, not alphabetical - the
+    # writer sorts keys, so a dict here would silently reorder it.
+    rec = {"foe_moves": [("Ant Spit", 0)] * 9 + [("Fell Scratch", 0)] * 1}
+    pol = estimate.foe_policy(rec)
+    check("the mix is an ordered list, commonest first", pol["mix"][0][0], "Ant Spit")
+    near("  and carries its share", pol["mix"][0][1], 0.9, 1e-9)
+    check("  with too few initiative observations to condition on",
+          "ip_conditioned" in pol, False)
+
+    # Conditioning is claimed only on a real swing with real support behind it.
+    atk = [("Ant Spit", 0)] * 12 + [("Bristle", 0)] * 1
+    non = [("Ant Spit", 2)] * 6 + [("Bristle", 2)] * 6
+    pol = estimate.foe_policy({"foe_moves": atk + non})
+    check("a large swing on enough observations is claimed", pol["ip_conditioned"], True)
+    flat = [("Ant Spit", 0)] * 10 + [("Bristle", 0)] * 2 +            [("Ant Spit", 2)] * 10 + [("Bristle", 2)] * 2
+    check("an identical split is not", estimate.foe_policy({"foe_moves": flat})["ip_conditioned"],
+          False)
+
+
 def armour():
     print("\narmour")
     # Every hit past the soft ramp: hard H with soft S subtracts exactly H+S, so the
@@ -567,6 +604,7 @@ def main():
     mu_curve()
     equalization()
     foe_skill()
+    foe_policy()
     armour()
     buckets()
     if failures:

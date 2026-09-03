@@ -858,6 +858,8 @@ def collect(paths):
         # What the opponent's moves do to US, against our own KNOWN defence weight.
         # move -> list of (pressure, our Wd, n) - see own_defence_weight.
         "pressure": defaultdict(list), "my_wd": set(),
+        # (move, the opponent's own initiative before it) - the raw material for foe_policy.
+        "foe_moves": [],
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
@@ -964,6 +966,13 @@ def collect(paths):
             # on a creature we never touched, and this becomes decidable rather than
             # hopeful. That is the next step; until the logs carry it, the engagement gate
             # stands.
+            for fm in eng.moves:
+                if fm.get("actor") != "foe":
+                    continue
+                fb, _fa = eng.brackets(fm)
+                rec["foe_moves"].append((fm.get("name") or fm.get("move"),
+                                         fb.get("foeip") if fb else None))
+
             attributed = (fightlog.attributed_gains(eng, opens, log.me)
                           if eng.offence_ok else [])
             if eng.problems:
@@ -1339,6 +1348,83 @@ def report_mu_reductions():
     print("  2 at 1.168 - inside Take Aim's interval - and level 5 at exactly 1.5.")
     print("  Leading candidate, not a settled one. One more point in Take Aim measures")
     print("  level 3 directly and separates it from everything else.\n")
+
+
+ANIMAL_MOVES = os.path.join(ROOT, "data", "combat", "animal_moves.json")
+
+
+def animal_move_kinds():
+    """Animal move name -> True when it is an attack, from the wiki's own table."""
+    try:
+        with open(ANIMAL_MOVES, "r", encoding="utf8") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    rows = doc if isinstance(doc, list) else sum(
+        (v for v in doc.values() if isinstance(v, list)), [])
+    return dict((r["name"], bool(r.get("attack_types")))
+                for r in rows if isinstance(r, dict) and r.get("name"))
+
+
+def foe_policy(rec):
+    """What this species actually does, as something a simulator can act on.
+
+    NOT a general learned policy, and the corpus is why. 1065 logged opponent moves across
+    thirty species is one species over a hundred and most under fifty - enough to measure a
+    move mix and to test a named hypothesis, nowhere near enough to fit a behaviour model
+    over openings, initiative, distance and hitpoints at once. What follows is therefore a
+    mix plus the ONE conditioning the data supports, with the evidence attached.
+
+    Three hypotheses were tested and only one survived.
+
+    IT DOES NOT TURTLE WHEN HURT. Attack share against its own worst opening runs 89%, 89%,
+    87% across bands of 0-15, 16-40 and over 40. Flat. Openings we put on a creature do not
+    slow the kill down by making it defend, which is worth knowing precisely because it is
+    the intuitive expectation.
+
+    IT DOES NOT TARGET OUR WEAKEST COLOUR - and this one nearly got recorded as though it
+    did. Pooled, 74.8% of animal attacks land on whichever colour we were most open in,
+    against 59.5% for the same moves paired with shuffled states. Convincing, and an
+    artefact: per species it disappears entirely - ants 100% against a 99% null, red ants
+    98% against 97%, moose 78% against 78%, boar 42% against 53%. Ants are a fifth of the
+    sample and Ant Spit opens green and blue, so "our most open colour" is the one the ants
+    themselves made. Simpson's paradox, and the same shape as the error that once had this
+    project comparing move weights across different badgers.
+
+    IT DOES CHANGE WITH ITS OWN INITIATIVE, for some species. Attack share at 0 initiative
+    against 1 or more: cattle 92% to 67%, boar 89% to 62%, bear 76% to 45% - and moose 76%
+    to 74%, warrior ants 83% to 89%, vulture bees 91% to 100%. Five fall, two rise, one
+    flat. So it is real and it is not a law, which means it belongs in a per-species record
+    with its sample size rather than in the model as a rule.
+    """
+    kinds = animal_move_kinds()
+    mix, at0, at1 = defaultdict(int), [0, 0], [0, 0]
+    for mv, ip in rec.get("foe_moves") or ():
+        mix[mv] += 1
+        known = kinds.get(mv)
+        if (known is None) or (ip is None):
+            continue
+        slot = at0 if (ip == 0) else at1
+        slot[0 if known else 1] += 1
+    if not mix:
+        return None
+    total = float(sum(mix.values()))
+    # A LIST of pairs, not a dict: the pack is written with sorted keys, which would put
+    # this in alphabetical order and quietly destroy the one thing the mix is for.
+    out = {"n": int(total),
+           "mix": [[k, round(v / total, 3)] for k, v in
+                   sorted(mix.items(), key=lambda kv: (-kv[1], kv[0]))]}
+    n0, n1 = sum(at0), sum(at1)
+    if (n0 >= 10) and (n1 >= 10):
+        share0, share1 = at0[0] / float(n0), at1[0] / float(n1)
+        out["attack_share_at_0_ip"] = round(share0, 3)
+        out["attack_share_above_0_ip"] = round(share1, 3)
+        out["ip_n"] = [n0, n1]
+        # Ten points of swing on ten-plus observations each way. Below that the two bands
+        # are the same number with noise on it, and calling it a behaviour would be reading
+        # the noise.
+        out["ip_conditioned"] = abs(share0 - share1) >= 0.10
+    return out
 
 
 def foe_skill_entry(rec):
@@ -1987,6 +2073,7 @@ def write_pack(per, moves):
         # at both ends and report an interval; given a fabricated point it would report a
         # confident answer to a question the corpus never answered.
         entry["skill"] = foe_skill_entry(rec)
+        entry["policy"] = foe_policy(rec)
 
         obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
         for mv, ticks in rec["cd"].items():

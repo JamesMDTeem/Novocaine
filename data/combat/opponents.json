@@ -9,6 +9,7 @@
    "hitpoints": null,
    "moves": [],
    "name": "?#1649181853",
+   "policy": null,
    "res": null,
    "skill": null
   },
@@ -45,6 +46,7 @@
    },
    "moves": [],
    "name": "?#598556427",
+   "policy": null,
    "res": null,
    "skill": {
     "equalized": false,
@@ -83,6 +85,15 @@
     "paginae/atk/fscratch"
    ],
    "name": "?#67527879",
+   "policy": {
+    "mix": [
+     [
+      "paginae/atk/fscratch",
+      1.0
+     ]
+    ],
+    "n": 4
+   },
    "res": null,
    "skill": null
   },
@@ -119,6 +130,7 @@
    },
    "moves": [],
    "name": "?#675939166",
+   "policy": null,
    "res": null,
    "skill": {
     "equalized": false,
@@ -162,6 +174,15 @@
     "Roar of the Wild"
    ],
    "name": "adder",
+   "policy": {
+    "mix": [
+     [
+      "Roar of the Wild",
+      1.0
+     ]
+    ],
+    "n": 3
+   },
    "res": "gfx/kritter/adder/adder",
    "skill": null
   },
@@ -197,6 +218,19 @@
     "Fell Scratch"
    ],
    "name": "ants",
+   "policy": {
+    "mix": [
+     [
+      "Ant Spit",
+      0.952
+     ],
+     [
+      "Fell Scratch",
+      0.048
+     ]
+    ],
+    "n": 187
+   },
    "res": "gfx/kritter/ants/ants",
    "skill": {
     "equalized": false,
@@ -246,6 +280,19 @@
     "Fell Scratch"
    ],
    "name": "badger",
+   "policy": {
+    "mix": [
+     [
+      "Badgering",
+      0.679
+     ],
+     [
+      "Fell Scratch",
+      0.321
+     ]
+    ],
+    "n": 28
+   },
    "res": "gfx/kritter/badger/badger",
    "skill": {
     "bound_hi": 116.0,
@@ -300,6 +347,42 @@
     "Unstoppable"
    ],
    "name": "bear",
+   "policy": {
+    "attack_share_above_0_ip": 0.455,
+    "attack_share_at_0_ip": 0.762,
+    "ip_conditioned": true,
+    "ip_n": [
+     21,
+     11
+    ],
+    "mix": [
+     [
+      "Bear Down",
+      0.406
+     ],
+     [
+      "Unstoppable",
+      0.25
+     ],
+     [
+      "Fell Scratch",
+      0.156
+     ],
+     [
+      "Chomp",
+      0.094
+     ],
+     [
+      "Bristle",
+      0.062
+     ],
+     [
+      "Careful Approach",
+      0.031
+     ]
+    ],
+    "n": 32
+   },
    "res": "gfx/kritter/bear/bear",
    "skill": null
   },
@@ -338,6 +421,15 @@
     "Fell Scratch"
    ],
    "name": "beaver",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      1.0
+     ]
+    ],
+    "n": 4
+   },
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
     "equalized": false,
@@ -379,6 +471,27 @@
     "Thunder Over"
    ],
    "name": "beelarva",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      0.8
+     ],
+     [
+      "Bear Down",
+      0.1
+     ],
+     [
+      "Roar of the Wild",
+      0.05
+     ],
+     [
+      "Thunder Over",
+      0.05
+     ]
+    ],
+    "n": 20
+   },
    "res": "gfx/kritter/bees/beelarva",
    "skill": null
   },
@@ -419,6 +532,23 @@
     "Fell Scratch"
    ],
    "name": "beeswarm",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      0.714
+     ],
+     [
+      "Bear Down",
+      0.143
+     ],
+     [
+      "Careful Approach",
+      0.143
+     ]
+    ],
+    "n": 7
+   },
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
     "equalized": false,
@@ -466,6 +596,34 @@
     "Roar of the Wild"
    ],
    "name": "boar",
+   "policy": {
+    "attack_share_above_0_ip": 0.625,
+    "attack_share_at_0_ip": 0.886,
+    "ip_conditioned": true,
+    "ip_n": [
+     35,
+     32
+    ],
+    "mix": [
+     [
+      "Mule Kick",
+      0.529
+     ],
+     [
+      "Bear Down",
+      0.243
+     ],
+     [
+      "Roar of the Wild",
+      0.2
+     ],
+     [
+      "Bristle",
+      0.029
+     ]
+    ],
+    "n": 70
+   },
    "res": "gfx/kritter/boar/boar",
    "skill": null
   },
@@ -507,6 +665,27 @@
     "Zig-Zag Ruse"
    ],
    "name": "body#1420460144",
+   "policy": {
+    "mix": [
+     [
+      "Quick Barrage",
+      0.696
+     ],
+     [
+      "Zig-Zag Ruse",
+      0.13
+     ],
+     [
+      "Cleave",
+      0.087
+     ],
+     [
+      "Full Circle",
+      0.087
+     ]
+    ],
+    "n": 23
+   },
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -531,6 +710,23 @@
     "Take Aim"
    ],
    "name": "body#1744726637",
+   "policy": {
+    "mix": [
+     [
+      "Take Aim",
+      0.5
+     ],
+     [
+      "Flex",
+      0.375
+     ],
+     [
+      "Parry",
+      0.125
+     ]
+    ],
+    "n": 8
+   },
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -551,6 +747,7 @@
    "hitpoints": null,
    "moves": [],
    "name": "body#1965990376",
+   "policy": null,
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -590,6 +787,19 @@
     "Left Hook"
    ],
    "name": "body#787251591",
+   "policy": {
+    "mix": [
+     [
+      "Left Hook",
+      0.818
+     ],
+     [
+      "Chin Up",
+      0.182
+     ]
+    ],
+    "n": 11
+   },
    "res": "gfx/borka/body",
    "skill": {
     "equalized": false,
@@ -638,6 +848,19 @@
     "Quick Barrage"
    ],
    "name": "body#926133699",
+   "policy": {
+    "mix": [
+     [
+      "Quick Barrage",
+      0.85
+     ],
+     [
+      "Knock Its Teeth Out",
+      0.15
+     ]
+    ],
+    "n": 20
+   },
    "res": "gfx/borka/body",
    "skill": null
   },
@@ -676,6 +899,38 @@
     "Thunder Over"
    ],
    "name": "cattle",
+   "policy": {
+    "attack_share_above_0_ip": 0.667,
+    "attack_share_at_0_ip": 0.917,
+    "ip_conditioned": true,
+    "ip_n": [
+     48,
+     27
+    ],
+    "mix": [
+     [
+      "Mule Kick",
+      0.451
+     ],
+     [
+      "Low Horn Swipe",
+      0.319
+     ],
+     [
+      "Roar of the Wild",
+      0.121
+     ],
+     [
+      "Thunder Over",
+      0.077
+     ],
+     [
+      "Careful Approach",
+      0.033
+     ]
+    ],
+    "n": 91
+   },
    "res": "gfx/kritter/cattle/cattle",
    "skill": null
   },
@@ -715,6 +970,35 @@
     "Tail Splash"
    ],
    "name": "caveangler",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      0.327
+     ],
+     [
+      "Bristle",
+      0.192
+     ],
+     [
+      "Bear Down",
+      0.173
+     ],
+     [
+      "Roar of the Wild",
+      0.154
+     ],
+     [
+      "Shredding Paw",
+      0.096
+     ],
+     [
+      "Tail Splash",
+      0.058
+     ]
+    ],
+    "n": 52
+   },
    "res": "gfx/kritter/caveangler/caveangler",
    "skill": null
   },
@@ -753,6 +1037,15 @@
     "Fell Scratch"
    ],
    "name": "fox",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      1.0
+     ]
+    ],
+    "n": 11
+   },
    "res": "gfx/kritter/fox/fox",
    "skill": {
     "equalized": false,
@@ -797,6 +1090,15 @@
     "Fell Scratch"
    ],
    "name": "greyseal",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      1.0
+     ]
+    ],
+    "n": 4
+   },
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": null
   },
@@ -835,6 +1137,31 @@
     "Thunder Over"
    ],
    "name": "honeybee",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      0.848
+     ],
+     [
+      "Bear Down",
+      0.065
+     ],
+     [
+      "Roar of the Wild",
+      0.043
+     ],
+     [
+      "Chomp",
+      0.022
+     ],
+     [
+      "Thunder Over",
+      0.022
+     ]
+    ],
+    "n": 46
+   },
    "res": "gfx/kritter/bees/honeybee",
    "skill": null
   },
@@ -875,6 +1202,23 @@
     "Roar of the Wild"
    ],
    "name": "horse",
+   "policy": {
+    "mix": [
+     [
+      "Mule Kick",
+      0.5
+     ],
+     [
+      "Roar of the Wild",
+      0.333
+     ],
+     [
+      "Bear Down",
+      0.167
+     ]
+    ],
+    "n": 6
+   },
    "res": "gfx/kritter/horse/horse",
    "skill": null
   },
@@ -911,6 +1255,23 @@
     "Roar of the Wild"
    ],
    "name": "lynx",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      0.826
+     ],
+     [
+      "Bristle",
+      0.13
+     ],
+     [
+      "Roar of the Wild",
+      0.043
+     ]
+    ],
+    "n": 23
+   },
    "res": "gfx/kritter/lynx/lynx",
    "skill": null
   },
@@ -952,6 +1313,50 @@
     "Unstoppable"
    ],
    "name": "moose",
+   "policy": {
+    "attack_share_above_0_ip": 0.744,
+    "attack_share_at_0_ip": 0.762,
+    "ip_conditioned": false,
+    "ip_n": [
+     21,
+     43
+    ],
+    "mix": [
+     [
+      "Low Horn Swipe",
+      0.347
+     ],
+     [
+      "Unstoppable",
+      0.208
+     ],
+     [
+      "Thunder Over",
+      0.153
+     ],
+     [
+      "Breathing Rage",
+      0.125
+     ],
+     [
+      "Bear Down",
+      0.056
+     ],
+     [
+      "Bristle",
+      0.056
+     ],
+     [
+      "Mule Kick",
+      0.028
+     ],
+     [
+      "Roar of the Wild",
+      0.028
+     ]
+    ],
+    "n": 72
+   },
    "res": "gfx/kritter/moose/moose",
    "skill": null
   },
@@ -981,6 +1386,15 @@
     "Fell Scratch"
    ],
    "name": "queenbee",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      1.0
+     ]
+    ],
+    "n": 2
+   },
    "res": "gfx/kritter/bees/queenbee",
    "skill": null
   },
@@ -1020,6 +1434,19 @@
     "Fell Scratch"
    ],
    "name": "redants",
+   "policy": {
+    "mix": [
+     [
+      "Ant Spit",
+      0.926
+     ],
+     [
+      "Fell Scratch",
+      0.074
+     ]
+    ],
+    "n": 54
+   },
    "res": "gfx/kritter/ants/redants",
    "skill": null
   },
@@ -1055,6 +1482,19 @@
     "Mule Kick"
    ],
    "name": "reddeer",
+   "policy": {
+    "mix": [
+     [
+      "Low Horn Swipe",
+      0.5
+     ],
+     [
+      "Mule Kick",
+      0.5
+     ]
+    ],
+    "n": 14
+   },
    "res": "gfx/kritter/reddeer/reddeer",
    "skill": null
   },
@@ -1090,6 +1530,19 @@
     "Mule Kick"
    ],
    "name": "reindeer",
+   "policy": {
+    "mix": [
+     [
+      "Mule Kick",
+      0.667
+     ],
+     [
+      "Low Horn Swipe",
+      0.333
+     ]
+    ],
+    "n": 6
+   },
    "res": "gfx/kritter/reindeer/reindeer",
    "skill": null
   },
@@ -1129,6 +1582,42 @@
     "Shredding Paw"
    ],
    "name": "royalguardant",
+   "policy": {
+    "attack_share_above_0_ip": 0.783,
+    "attack_share_at_0_ip": 0.84,
+    "ip_conditioned": false,
+    "ip_n": [
+     50,
+     23
+    ],
+    "mix": [
+     [
+      "Fell Scratch",
+      0.5
+     ],
+     [
+      "Ant Spit",
+      0.287
+     ],
+     [
+      "Roar of the Wild",
+      0.125
+     ],
+     [
+      "Careful Approach",
+      0.037
+     ],
+     [
+      "Shredding Paw",
+      0.037
+     ],
+     [
+      "Bristle",
+      0.013
+     ]
+    ],
+    "n": 80
+   },
    "res": "gfx/kritter/ants/royalguardant",
    "skill": null
   },
@@ -1171,6 +1660,38 @@
     "Thunder Over"
    ],
    "name": "sentinelbee",
+   "policy": {
+    "attack_share_above_0_ip": 0.909,
+    "attack_share_at_0_ip": 0.979,
+    "ip_conditioned": false,
+    "ip_n": [
+     48,
+     11
+    ],
+    "mix": [
+     [
+      "Bear Down",
+      0.562
+     ],
+     [
+      "Fell Scratch",
+      0.391
+     ],
+     [
+      "Bristle",
+      0.016
+     ],
+     [
+      "Rampant Rage",
+      0.016
+     ],
+     [
+      "Thunder Over",
+      0.016
+     ]
+    ],
+    "n": 64
+   },
    "res": "gfx/kritter/bees/sentinelbee",
    "skill": null
   },
@@ -1205,6 +1726,15 @@
     "Low Horn Swipe"
    ],
    "name": "sheep",
+   "policy": {
+    "mix": [
+     [
+      "Low Horn Swipe",
+      1.0
+     ]
+    ],
+    "n": 3
+   },
    "res": "gfx/kritter/sheep/sheep",
    "skill": null
   },
@@ -1242,6 +1772,34 @@
     "Shredding Paw"
    ],
    "name": "vulturebee",
+   "policy": {
+    "attack_share_above_0_ip": 1.0,
+    "attack_share_at_0_ip": 0.913,
+    "ip_conditioned": false,
+    "ip_n": [
+     23,
+     10
+    ],
+    "mix": [
+     [
+      "Bear Down",
+      0.667
+     ],
+     [
+      "Fell Scratch",
+      0.25
+     ],
+     [
+      "Rampant Rage",
+      0.056
+     ],
+     [
+      "Shredding Paw",
+      0.028
+     ]
+    ],
+    "n": 36
+   },
    "res": "gfx/kritter/bees/vulturebee",
    "skill": null
   },
@@ -1279,6 +1837,38 @@
     "Roar of the Wild"
    ],
    "name": "warriorant",
+   "policy": {
+    "attack_share_above_0_ip": 0.895,
+    "attack_share_at_0_ip": 0.833,
+    "ip_conditioned": false,
+    "ip_n": [
+     24,
+     19
+    ],
+    "mix": [
+     [
+      "Ant Spit",
+      0.426
+     ],
+     [
+      "Fell Scratch",
+      0.426
+     ],
+     [
+      "Roar of the Wild",
+      0.106
+     ],
+     [
+      "Careful Approach",
+      0.021
+     ],
+     [
+      "Rampant Rage",
+      0.021
+     ]
+    ],
+    "n": 47
+   },
    "res": "gfx/kritter/ants/warriorant",
    "skill": null
   },
@@ -1317,6 +1907,31 @@
     "Thunder Over"
    ],
    "name": "warriordrone",
+   "policy": {
+    "mix": [
+     [
+      "Thunder Over",
+      0.568
+     ],
+     [
+      "Fell Scratch",
+      0.324
+     ],
+     [
+      "Chomp",
+      0.054
+     ],
+     [
+      "Rampant Rage",
+      0.027
+     ],
+     [
+      "Roar of the Wild",
+      0.027
+     ]
+    ],
+    "n": 37
+   },
    "res": "gfx/kritter/bees/warriordrone",
    "skill": null
   }
