@@ -4182,7 +4182,12 @@ public class OptWnd extends Window {
 				   adpy);
 			}
 			leftColumn = add(new Label("Gob info tick interval:"), leftColumn.pos("bl").adds(0, 8));
-			leftColumn.tooltip = "Throttle auxiliary gob info updates. Lower = more frequent, higher = less CPU.";
+			leftColumn.tooltip = "How often the labels drawn over objects - quality, durability, growth stage, " +
+			    "food/water, cheese and beeskep timers - are allowed to refresh.\n\n" +
+			    "Every object on screen checks these once per frame, so in a built-up base it is thousands " +
+			    "of checks a second to answer 'nothing has changed'. Throttling skips that; the cost is that " +
+			    "a label can take up to this long to appear or update after the value behind it changes.\n\n" +
+			    "'Off' means every frame, which is the most responsive and the most expensive.";
 			{
 			    Label idpy = new Label("");
 			    String[] inames = {"Off", "4/sec", "2/sec", "1/sec"};
@@ -4198,6 +4203,8 @@ public class OptWnd extends Window {
 				       public void changed() {
 					   Utils.setprefi("perf.gob_info_tick_idx", this.val);
 					   Utils.setprefd("perf.gob_info_tick_interval", ivals[this.val]);
+					   // Cached there; without this the slider only took effect on restart.
+					   haven.GobInfo.cachedTickInterval = ivals[this.val];
 					   dpy();
 				       }
 				   },
@@ -4606,6 +4613,16 @@ public class OptWnd extends Window {
             }, rightColumn.pos("bl").adds(0, 2));
             diagnosticLoggingCheckBox.tooltip = diagnosticLoggingTooltip;
 
+            rightColumn = add(mapWorldWhileIdleCheckBox = new CheckBox("Map The World While Not Botting"){
+                {a = (Utils.getprefb("nbots.map_while_idle", false));}
+                public void changed(boolean val) {
+                    Utils.setprefb("nbots.map_while_idle", val);
+                    // Cached in a field there, the way the other per-frame settings are.
+                    haven.automated.nbots.world.Observed.mapWhileIdle = val;
+                }
+            }, rightColumn.pos("bl").adds(0, 2));
+            mapWorldWhileIdleCheckBox.tooltip = mapWorldWhileIdleTooltip;
+
 
 			Widget backButton;
 			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), leftColumn.pos("bl").adds(0, 38));
@@ -4615,6 +4632,7 @@ public class OptWnd extends Window {
 	}
 
 	public static CheckBox diagnosticLoggingCheckBox;
+	public static CheckBox mapWorldWhileIdleCheckBox;
 	public static CheckBox toggleGobHidingCheckBox;
 	public static CheckBox alsoFillTheHidingBoxesCheckBox;
 	public static CheckBox dontHideObjectsThatHaveTheirMapIconEnabledCheckBox;
@@ -5927,6 +5945,17 @@ public class OptWnd extends Window {
         "asked for the logs, and turn it off again afterwards.\n\n" +
         "$col[218,163,32]{Normal logging is unaffected} - crashes, bot activity, combat and eating " +
         "data are always recorded regardless of this setting.", 300);
+    private static final Object mapWorldWhileIdleTooltip = RichText.render(
+        "Keeps the bot world-record ($col[218,163,32]{botmap.json}) up to date even when no bot is " +
+        "running.\n\n" +
+        "Off by default. The sweep that feeds it wipes and re-stamps a 44-tile square around you " +
+        "and walks every object in range, once a second, on the frame thread - and any tile that " +
+        "changes makes the saver re-encode the $col[218,163,32]{entire} record a few seconds later, " +
+        "every grid you have ever seen, not just the ones nearby. In a built-up base that is the " +
+        "single largest source of stutter during ordinary play.\n\n" +
+        "Bots always map while they run, whatever this is set to. The trade for leaving it off is " +
+        "that a bot starts with the record as it stood when botting last stopped, rather than with " +
+        "everything you have walked past since; it re-observes as it goes.", 300);
 
     private static final Object onlyRenderCameraVisibleObjectsTooltip = RichText.render("Render only objects within the camera’s view frustum. Objects behind the camera are not rendered, reducing GPU load and potentially improving performance." +
             "\n" +
