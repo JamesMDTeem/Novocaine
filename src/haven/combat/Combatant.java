@@ -28,6 +28,25 @@ public final class Combatant {
     /** Armour soak, hard and soft, as the equipment window totals them. */
     public double armHard, armSoft;
 
+    /**
+     * Whether armour penetration works against this combatant's armour at all.
+     *
+     * "Note that some animals have armor but armor penetration doesn't work on them. Their
+     * armor also doesn't break." - DDDsDD999's combat guide.
+     *
+     * The corpus caught this before the guide named it, and the two together are what make
+     * it safe to model. Unarmed attacks are stated twice to have a flat 30% penetration,
+     * but a boar soaked EXACTLY 15 from a Knock Its Teeth Out across four logged hits of
+     * raw 18, 26, 35 and 42 - which is a flat hard soak with nothing bypassing it. At 30%
+     * penetration the raw-18 hit would have soaked 12.6 and dealt 5.4; it dealt 3.
+     *
+     * So neither source was wrong and neither is sufficient: the 30% is real and this
+     * boar's armour is immune to it. Defaults to false, because every armoured opponent in
+     * this corpus is an animal and the one that could be tested is immune. A player's
+     * armour is penetrable and the caller sets this.
+     */
+    public boolean penetrable = false;
+
     public double hp, maxHp;
 
     /**
@@ -174,6 +193,7 @@ public final class Combatant {
         c.str = str; c.agi = agi; c.unarmed = unarmed; c.melee = melee;
         c.weaponDamage = weaponDamage; c.weaponQl = weaponQl; c.weaponPen = weaponPen;
         c.armHard = armHard; c.armSoft = armSoft;
+        c.penetrable = penetrable;
         c.hp = hp; c.maxHp = maxHp;
         c.defenceWeight = defenceWeight;
         c.attackMult = attackMult;

@@ -44,8 +44,62 @@ public class CombatSimCheck {
             failures++;
     }
 
+    /**
+     * Unarmed attacks penetrate 30% of armour, which the model gave as zero.
+     *
+     * Two sources state it - Jorb, quoted on the wiki, and DDDsDD999's combat guide - and
+     * the direction of the old error is the point: zero understated unarmed damage against
+     * anything armoured, so every unarmed-versus-armoured matchup this model judged came
+     * out pessimistic. That is the question the project was built to answer.
+     */
+    static void unarmedPenetration() {
+        System.out.println("\nunarmed attacks penetrate 30% of armour");
+        near("the constant", Formulas.UNARMED_ARMPEN, 0.30, 1e-9);
+        /* A bear's 65 hard soak against a Knock Its Teeth Out that swings 100 raw. With no
+         * penetration nothing lands; with 30% of it bypassing armour outright, 30 does. */
+        near("100 raw into 65 hard soak, penetrating nothing",
+             Formulas.dealtDamage(100, 65, 0, 0.0), 35.0, 1e-9);
+        near("  and penetrating the unarmed 30%",
+             Formulas.dealtDamage(100, 65, 0, Formulas.UNARMED_ARMPEN), 35.0, 1e-9);
+        /* Where it actually bites is armour big enough to stop the attack dead. */
+        near("40 raw into 65 hard soak is nothing without penetration",
+             Formulas.dealtDamage(40, 65, 0, 0.0), 0.0, 1e-9);
+        near("  but 12 gets through with it",
+             Formulas.dealtDamage(40, 65, 0, Formulas.UNARMED_ARMPEN), 12.0, 1e-9);
+        check("so an unarmed attack is never fully soaked",
+              Formulas.dealtDamage(10, 1000, 0, Formulas.UNARMED_ARMPEN) > 0, true);
+
+        /* But only against armour it can penetrate. The boar check below is four logged
+         * hits that soaked EXACTLY 15 from raw 18 to raw 42, which no penetration produces,
+         * and the guide names the exception: some animals' armour ignores penetration
+         * entirely. Both sources are right about different opponents. */
+        Combatant animal = new Combatant("boar");
+        animal.hp = animal.maxHp = 1000;
+        animal.armHard = 15;
+        animal.defenceWeight = 111;
+        check("an animal's armour is penetration-immune by default", animal.penetrable, false);
+        Combatant a = me();
+        a.ip = 9;
+        animal.openings[Formulas.RED] = 46;
+        Sim.Result r = new Sim(a, animal).use(a, kito());
+        near("  so the logged boar still soaks its flat 15", r.raw - r.dealt, 15.0, 1.5);
+
+        Combatant player = new Combatant("player");
+        player.hp = player.maxHp = 1000;
+        player.armHard = 15;
+        player.defenceWeight = 111;
+        player.penetrable = true;
+        player.openings[Formulas.RED] = 46;
+        Combatant b = me();
+        b.ip = 9;
+        Sim.Result pr = new Sim(b, player).use(b, kito());
+        check("  a player with the same armour soaks less", (pr.raw - pr.dealt) < 15.0, true);
+        check("  and takes more through it", pr.dealt > r.dealt, true);
+    }
+
     public static void main(String[] args) {
         beeSwarm();
+        unarmedPenetration();
         boarArmour();
         takeAim();
         quickBarrage();

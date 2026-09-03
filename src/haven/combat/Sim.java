@@ -130,12 +130,22 @@ public final class Sim {
             raw = Formulas.rawDamage(actor.damageBase(m), actor.damageShare(m),
                                      actor.damageQuality(m), actor.str,
                                      Formulas.combined(own));
-            /* Armour penetration belongs to the weapon, so a move that swings the weapon carries
-             * it and an unarmed move does not. The corpus cannot separate the two readings - the
-             * one opponent logged with penetrable armour had no soft soak, and with soft soak at
-             * zero both readings predict the same split - so this is a modelling choice, flagged
-             * as such rather than presented as measured. */
-            double pen = (m.damageShare > 0) ? actor.weaponPen : 0.0;
+            /* Armour penetration. A weapon move carries the weapon's; an unarmed move carries
+             * the flat 30% that ALL unarmed attacks have.
+             *
+             * This was a modelling choice giving unarmed moves ZERO, flagged as unmeasurable
+             * because the one opponent logged with penetrable armour had no soft soak, where
+             * both readings predict the same split. It is not a choice - two sources state it:
+             * "Unarmed attacks usually have around 30%" (Jorb, quoted on the wiki) and
+             * "UA attacks have a set 30% Armor penetration value" (DDDsDD999's combat guide).
+             *
+             * The direction matters. Zero understates unarmed damage against anything armoured,
+             * so every matchup this model has judged unarmed-versus-armoured was pessimistic -
+             * which is the whole "mammoth with a weapon, or unarmed with Knock Its Teeth Out"
+             * question this project exists to answer. */
+            double pen = target.penetrable
+                ? ((m.damageShare > 0) ? actor.weaponPen : Formulas.UNARMED_ARMPEN)
+                : 0.0;
             dealt = Formulas.dealtDamage(raw, target.armHard, target.armSoft, pen);
             /* One observation, from a boar: 17 soft hitpoints alongside 4 hard, against a move
              * listed at 25% grievous. That reads as a share of the damage that got through

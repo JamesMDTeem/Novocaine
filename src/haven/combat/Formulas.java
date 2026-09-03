@@ -16,6 +16,16 @@ package haven.combat;
 public final class Formulas {
     private Formulas() {}
 
+    /**
+     * Armour penetration shared by every unarmed attack, as a fraction.
+     *
+     * Stated twice and consistently: "Unarmed attacks usually have around 30%" (Jorb, quoted
+     * on the wiki's Combat moves page) and "UA attacks have a set 30% Armor penetration
+     * value" (DDDsDD999's combat guide). A weapon's own figure is per-weapon and lives in
+     * the data pack; this is the one number that is not.
+     */
+    public static final double UNARMED_ARMPEN = 0.30;
+
     /** Four openings, in the order used everywhere in this project. */
     public static final int GREEN = 0, BLUE = 1, YELLOW = 2, RED = 3;
 
