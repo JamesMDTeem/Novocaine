@@ -73,6 +73,58 @@ def gear():
     check("weapons missing armorpen are null", len(missing_pen), 4)
     check("every weapon has basedmg",
           all(w["basedmg"]["value"] is not None for w in weapons), True)
+    # Live WeaponInfo vs wiki table - the stone-axe factor-2 finding.
+    # The check NAMES the two readings by tooltip, quality, recovered base,
+    # and wiki value so a regression has to move a reading, not just a verdict.
+    try:
+        import estimate as _est
+        seen = _est.weapons_seen()
+        # Bronze sword: tooltip 176 at ql 38.0613 -> recovered 90.21 vs wiki 90
+        bs = seen.get("bronzesword") or seen.get("bronze_sword") or {}
+        # Stone axe: tooltip 71 at ql 56.2835 -> recovered 29.93 vs wiki 30, pen 20% vs 10%
+        sa = seen.get("stoneaxe") or {}
+        wiki_byname = {w["name"]: w for w in weapons}
+        bs_wiki = wiki_byname.get("Bronze Sword", {})
+        sa_wiki = wiki_byname.get("Stone Axe", {})
+        # Name the readings
+        bs_tooltip = (bs.get("damage") or [None])[0]
+        bs_ql = (bs.get("quality") or [None])[0]
+        bs_rec = (bs.get("recovered_base") or {}).get("lo")
+        bs_wiki_base = (bs_wiki.get("basedmg") or {}).get("value")
+        bs_wiki_pen = (bs_wiki.get("armorpen") or {}).get("value")
+        bs_live_pen = (bs.get("armpen") or [None])[0]
+        check("bronze sword tooltip 176.0", bs_tooltip, 176.0)
+        check("bronze sword ql 38.0613", bs_ql, 38.0613)
+        check("bronze sword recovered base ~90.21 vs wiki 90", round(bs_rec or 0, 2), 90.21)
+        check("bronze sword wiki base 90", bs_wiki_base, 90)
+        check("bronze sword wiki pen 12.5 vs live 0.125 agrees", bs_wiki_pen, 12.5)
+        check("bronze sword live pen 0.125", bs_live_pen, 0.125)
+        sa_tooltip = (sa.get("damage") or [None])[0]
+        sa_ql = (sa.get("quality") or [None])[0]
+        sa_rec = (sa.get("recovered_base") or {}).get("lo")
+        sa_wiki_base = (sa_wiki.get("basedmg") or {}).get("value")
+        sa_live_pen = (sa.get("armpen") or [None])[0]
+        check("stone axe tooltip 71.0", sa_tooltip, 71.0)
+        check("stone axe ql 56.2835", sa_ql, 56.2835)
+        check("stone axe recovered base ~29.93 vs wiki 30", round(sa_rec or 0, 2), 29.93)
+        check("stone axe wiki base 30", sa_wiki_base, 30)
+        # The corrected offline file: data/combat/weapons.json Stone Axe pen 20 (was wiki 10).
+        # Parse fixtures still say 10 - the correction is in the built data file, not the scrape.
+        import json as _json2, os as _os2
+        try:
+            with open(_os2.path.join(_est.ROOT, "data", "combat", "weapons.json"), encoding="utf8") as _f:
+                _built = {w.get("name"): w for w in _json2.load(_f)}
+            _built_pen = (_built.get("Stone Axe", {}).get("armorpen") or {}).get("value")
+        except Exception:
+            _built_pen = None
+        check("stone axe built weapons.json pen corrected to 20", _built_pen, 20)
+        check("stone axe live pen 0.20 vs built 20 agrees post-fix", sa_live_pen, 0.2)
+        # Offline join prefers live pen/base where present, wiki fallback documented in estimate.py
+        join = _est.weapon_offline_join()
+        check("offline join stoneaxe pen prefers live 0.20", join.get("stoneaxe", {}).get("armorpen"), 0.2)
+        check("offline join bronzesword pen prefers live 0.125", join.get("bronzesword", {}).get("armorpen"), 0.125)
+    except Exception as e:
+        check("weapon live vs wiki naming", str(e)[:28], "ok")
 
 
 def creatures():

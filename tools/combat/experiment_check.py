@@ -262,9 +262,22 @@ def what_to_do():
     check("  and apart from one whose measurements contradict each other",
           named("no gains") & named("contradictory"), set())
 
-    # boar: 35 engagements, 7 defence-weight observations that do not intersect. Fighting
-    # more boars will not settle that, and listing it beside the swarms would say it will.
-    check("boar is a contradiction, not an absence", "boar" in named("contradictory"), True)
+    # BOAR'S CONTRADICTION IS GONE, and what removed it is worth recording because the
+    # contradiction was carried as an open question from 2026-09-02 to 2026-09-03.
+    #
+    # It was 35 engagements and 7 defence-weight observations that would not intersect.
+    # The cause was the OVERLAY test in attributed_gains vetoing on any move announcement
+    # in a bracket - including our own, which plays over our own body every time we throw
+    # a card. It threw away 450 brackets against 69 genuine third-party ones, and the
+    # survivors were a biased remnant that did not agree with itself.
+    #
+    # Boar is now bounded by equalization instead: its skill is within a factor of two of
+    # ours, which no further boar will fix either, but it is a different fact and it wants
+    # a different answer.
+    check("boar is no longer contradicting itself", "boar" in named("contradictory"),
+          False)
+    check("  it is bounded by equalization, which is a different problem",
+          "boar" in named("equalized"), True)
 
 
 def main():

@@ -114,6 +114,20 @@ LIVE = tuple(n for n, _f in HYPOTHESES if n not in EXCLUDED)
 # Neither entry claims a maximum level. The deck dump's maxlevel is how far the character
 # has levelled a card, not how far it can go - twenty-one cards report 1, Quick Barrage
 # among them - so nothing available here says whether Take Aim can pass 3.
+# Opportunity Knocks' own multiplier, read from the sheet rather than restated, so this
+# cannot drift from what the parser found.
+def _boost():
+    try:
+        for m in estimate.load_moves().values():
+            if m.get("boost_greatest"):
+                return float(m["boost_greatest"])
+    except Exception:
+        pass
+    return 0.4
+
+
+BOOST = _boost()
+
 INSTRUMENTS = {
     "Take Aim": {"base": 30.0, "ip_scale": 0.20, "max_level": estimate.MU_LEVELS},
     "Dash": {"base": 80.0, "ip_scale": 0.0, "max_level": estimate.MU_LEVELS},
@@ -569,6 +583,83 @@ def report_separation(live):
     print()
 
 
+def boost_experiment(levels=None):
+    """Whether the deck weighting scales Opportunity Knocks, and what would show it.
+
+    A DIFFERENT SHAPE of question from the cooldown ladder above, and worth keeping
+    separate. There, two curves predict different integers for the same card and the game
+    reports one of them. Here there is one curve and two places it might apply: Sim
+    multiplies the boost by mu (Sim.java, `points * m.boostGreatest * m.mu`) and no
+    reading supports that. The card multiplies the greatest standing opening and takes
+    neither the cube root nor the falloff, so nothing else in the sheet constrains it.
+
+    ANSWERED ON 2026-09-03, AND THE ANSWER IS YES. This was written when the card had
+    never been thrown; fourteen uses later it has, all at level 2, and eleven of them
+    uncensored by the ceiling. The multiplier on the standing opening comes out in
+    [1.4394, 1.4516], which contains 0.4 * 1.125 = 1.45 and excludes 1.40 - so mu scales
+    it, and by a margin far outside the display's rounding.
+
+    One of those uses is worth more than the other thirteen: the card was thrown with
+    NOTHING standing and opened nothing. Under the ordinary rule an empty opening is the
+    easiest one to open and the gain would be at its largest. Only a share of what is
+    already there gives zero, so the shape is settled too, not just the constant.
+
+    The table below is kept because it is the record of what discriminated, and because
+    the level-1 control has still never been run - both hypotheses predict the same
+    number there, so a disagreement would say the card is not understood at all rather
+    than anything about mu. That is now a cheap confirmation rather than the experiment.
+
+    Returns a list of (level, standing, with_mu, without_mu) rows.
+    """
+    if levels is None:
+        levels = (1, 2)
+    out = []
+    for level in levels:
+        mu = estimate.mu_linear(level)
+        for standing in (30, 40, 50, 60):
+            out.append((level, standing, standing * BOOST * mu, standing * BOOST))
+    return out
+
+
+def report_boost():
+    print("=" * 78)
+    print("DOES THE DECK WEIGHTING SCALE OPPORTUNITY KNOCKS?")
+    print("=" * 78)
+    print("  SETTLED: it does. The card multiplies the greatest standing opening by %d%%,"
+          % int(BOOST * 100))
+    print("  taking neither the cube root nor the falloff, and mu scales that share.")
+    try:
+        uses, lo, hi = estimate.ok_boost()
+    except Exception:
+        uses, lo, hi = (), None, None
+    if lo is not None:
+        n = sum(1 for b, a, _l in uses if (b > 0) and (a < 100))
+        print()
+        print("  %d use(s), %d uncensored, giving a multiplier in [%.4f, %.4f]:"
+              % (len(uses), n, lo, hi))
+        print("      0.4 * mu at the linear curve's mu(2) = 1.125   %.4f   admitted"
+              % 1.45)
+        print("      0.4 flat, with mu not scaling it              %.4f   EXCLUDED"
+              % 1.40)
+        zeros = [a for b, a, _l in uses if b == 0]
+        if zeros:
+            print("  and one use against NOTHING standing, which opened %d - a share of what"
+                  % zeros[0])
+            print("  is there, not a number of points, which is the other half of the rule.")
+    print()
+    print("  %-7s %-9s %-12s %-12s %s"
+          % ("level", "standing", "if mu scales", "if it does not", "gap"))
+    for level, standing, a, b in boost_experiment():
+        gap = a - b
+        note = "  <- CONTROL: must agree" if abs(gap) < 1e-9 else ""
+        print("  %-7d %-9d %-12.1f %-12.1f %+.1f%s" % (level, standing, a, b, gap, note))
+    print()
+    print("  The level-1 control has still never been run, and it is now cheap rather than")
+    print("  necessary: both hypotheses predict the same number there, so a disagreement")
+    print("  would say the card is not understood at all rather than anything about mu.")
+    print()
+
+
 def report_coverage(paths=None):
     counts, owned, stances = coverage(paths)
     if not counts:
@@ -607,6 +698,7 @@ def report_coverage(paths=None):
 def main(argv):
     report_todo()
     report_discrimination()
+    report_boost()
     report_coverage(argv[1:] or None)
     return 0
 

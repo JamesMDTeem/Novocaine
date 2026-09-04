@@ -51,6 +51,11 @@ class Engagement(object):
         self.states = []
         self.moves = []
         self.damage = []
+        # Overlays on player bodies that fall inside this engagement. Time-scoped here
+        # rather than read off the log, because attribution asks whether somebody else
+        # acted inside ONE move's bracket, and a whole file's worth would reject
+        # everything in any fight a player was ever seen in.
+        self.overlays = []
         # Schema 8: what the model expected, written by the client at the moment the move
         # was thrown. Kept apart from `moves` because it is not something the game did - it
         # is what we believed the game was about to do, and conflating the two would let a
@@ -75,6 +80,12 @@ class Engagement(object):
         # lost move breaks attribution of our gains, a lost damage number breaks what the
         # opponent did to us, and nothing in the file says which it was.
         self.lines_lost = False
+        # Explicit fight outcome inferred from died() award + gst + HP trail, players
+        # excluded. Surfaced as a field, not a silent gate change - see inferred_outcome().
+        # Values: "killed", "fled", "player", "unknown". The gate truth tables do not read
+        # this; it is reported alongside problems so a later reader can decide.
+        self.outcome = "unknown"
+        self.outcome_detail = ""
 
     @property
     def clean(self):
@@ -173,6 +184,10 @@ class Log(object):
         # Schema 10 signals the client already had and never recorded: the party we
         # fought with, the agility bracket Fightsess narrows from attack cooldowns, the
         # weapon's own figures, and three server resources nothing consumes.
+        # Overlays on player bodies - the only trace a log carries of another PLAYER's
+        # move, since their moves never enter our fightview. Read here so attribution can
+        # consult them; a rise beside one of these is not safely ours.
+        self.overlays = []
         self.party = []
         self.agility = []
         self.weapons = []
@@ -245,6 +260,8 @@ def read(path, opens=None):
             log.names[r["gob"]] = r["res"]
         elif ev == "hp":
             log.health.append(r)
+        elif ev == "overlay":
+            log.overlays.append(r)
         elif ev == "party":
             log.party.append(r)
         elif ev == "agi":
@@ -289,6 +306,9 @@ def _segment(log):
         elif ev == "predict":
             if cur is not None:
                 cur.predictions.append(r)
+        elif ev == "overlay":
+            if cur is not None:
+                cur.overlays.append(r)
         elif ev in ("move", "dmg"):
             if cur is None:
                 # Events before the first state sample. Rare, but they belong to the
@@ -374,6 +394,28 @@ def _diagnose(log, opens=None):
             eng.problems.append(
                 "the log writer's drain thread had already died - lines stopped reaching "
                 "disk at an unknown point before the end")
+    # Outcome inference and its explicit per-engagement field. This does NOT change any
+    # gate verdict - offence_ok/defence_ok truth tables are untouched. It is reported
+    # alongside problems so a reader can see "killed" vs "fled" vs "unknown" without
+    # guessing, and because a later analysis that does gate on outcome can be judged
+    # on this reading rather than on a silent redefinition.
+    for eng in log.engagements:
+        eng.outcome, eng.outcome_detail = _infer_outcome(eng, me, log.health)
+        # Where lines were shed, every signal that would have arrived as a line is
+        # suspect - damage, state, overlay, and by the same token the sfx outcome
+        # sounds that say whether a swing connected. A file that lost lines and still
+        # reports hit 2 / miss 1 is reporting a count that was truncated in the same
+        # shed, so it is flagged here rather than left to read as a clean measurement.
+        if eng.lines_lost:
+            eng.notes.append(
+                "sfx outcomes and outcome inference may have shed with the %d dropped "
+                "line(s) - hit/miss counts and killed/fled reading are not trusted"
+                % (log.end_dropped or 0))
+        # Surface outcome as an explicit field consumed by problems/gates reporting,
+        # without silently changing gate verdicts. The note is always emitted so the
+        # field is visible even when it fails to decide.
+        eng.notes.append("outcome: %s%s" % (
+            eng.outcome, (" (%s)" % eng.outcome_detail) if eng.outcome_detail else ""))
 
 
 def carried_in(eng):
@@ -483,6 +525,213 @@ def opening_gains(eng):
     return out
 
 
+# The farthest we have ever been from an opponent at the start of a move that then
+# demonstrably landed a hit on it - 57.7 units over 1065 landed attacks, against a median
+# of 12.7 and a 99th percentile of 34.3.
+#
+# The spread is not measurement noise: `dist` is read from the state BEFORE the move, and
+# an attack closes the gap before it strikes, so a move begun far away still lands. That
+# is why this is set at the observed maximum with room over it rather than at anything
+# tighter - the question it answers is "could we possibly have caused this", not "were we
+# in range at the moment it happened", and only the first is answerable from a log.
+OUT_OF_REACH = 70.0
+
+
+# Which card an overlay announces, DERIVED rather than guessed.
+#
+# A combat move shows a brief icon over whoever used it. Matching every overlay on our own
+# body against the card we had just played gives a one-to-one map with no cross-talk at
+# all: barrage follows Quick Barrage 153 times out of 153, fullcircle follows Full Circle
+# 26 of 26, flex follows Take Aim 24 of 24, slide follows Quick Dodge 8 of 8. Not one
+# resource follows two different cards.
+#
+# THE POINT OF HAVING THIS IS THE OTHER SIDE OF THE FIGHT. The recorder used to keep
+# overlays only on player bodies, which meant an animal's announcement was discarded at
+# the door - and an animal's announcement is what says WHICH of five ants acted, in the
+# fights that have left twenty-one species with no measurement at all. From schema 12 the
+# filter is on the overlay resource instead, so every combatant's is kept.
+#
+# Animals may use cards with no icon of their own, or share one. That is a question for
+# the first corpus recorded after the change, not something to assume either way here.
+OVERLAY_MOVE = {
+    "gfx/fx/fight/barrage": "Quick Barrage",
+    "gfx/fx/fight/fullcircle": "Full Circle",
+    "gfx/fx/fight/cleave": "Cleave",
+    "gfx/fx/fight/sting": "Sting",
+    "gfx/fx/fight/oppknock": "Opportunity Knocks",
+    "gfx/fx/fight/flex": "Take Aim",
+    "gfx/fx/fight/slide": "Quick Dodge",
+    "gfx/fx/fight/dash": "Dash",
+    "gfx/fx/fight/jump": "Jump",
+    "gfx/fx/fight/zigzag": "Zig-Zag Ruse",
+}
+
+# Outcome sounds, which arrive by the same path and are NOT move announcements. hit1 and
+# miss say whether a swing connected, which nothing else in a log does; ip says a point of
+# initiative was taken. They follow many different cards, which is how they were told
+# apart from the icons above.
+OVERLAY_OUTCOME = {
+    "sfx/fight/hit1": "hit",
+    "sfx/fight/miss": "miss",
+    "sfx/fight/ip": "initiative",
+}
+
+
+def overlay_move(res):
+    """The card an overlay resource announces, or None if it announces no card."""
+    return OVERLAY_MOVE.get(res)
+
+
+def overlay_outcome(res):
+    """Whether an overlay is an outcome sound rather than a move announcement."""
+    return OVERLAY_OUTCOME.get(res)
+
+
+# Announcements (gfx/fx/fight/<slug>) name a card; outcome signals (sfx/fight/hit1,
+# miss, ip) say whether a swing connected, which nothing else in a log records. The
+# two are distinguished explicitly here - never decode an outcome signal as a card -
+# so a new sfx consumer cannot reintroduce self-veto by treating a hit sound as a move.
+PLAYER_RES = "borka"
+
+
+def _infer_outcome(eng, me_gob, health):
+    """Explicit fight-outcome inference, players excluded.
+
+    Signals, in priority order:
+      - died signal: #ffff (or C65535) award on a gob that is NOT the victim. The award
+        draws on whoever won, so it sits on the winner rather than the dead creature.
+        One such award landed on the OPPONENT's own gob in a fight we lost, so the
+        non-victim test is not cosmetic. Players are excluded outright - beating one is
+        a knockout, not a kill.
+      - gst: foe flight olive branch (bit 2) plus a damage trail. Bit 2 alone is not a
+        flight - moose etc. set it at zero damage because they never wanted the fight -
+        so the trail is the second condition.
+      - HP trail: quarters from the server (log.health), if any creature ever sends one.
+        Currently none do - kept as the third signal so the field is future-proof.
+    Returns (outcome, detail) where outcome is killed/fled/player/unknown. Detail is a
+    short human-readable reason for the reading, not a verdict.
+    """
+    res = eng.res or ""
+    if PLAYER_RES in res:
+        return ("player", "opponent is a player - knockout not death")
+    # Killed has to be checked before fled: a creature that dies also sets gst and the
+    # award is the decisive signal, not the branch.
+    has_award = any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
+                    for d in eng.damage)
+    if has_award:
+        return ("killed", "#ffff on non-victim")
+    # Flight needs both the bit and the trail.
+    if any((s.get("gst") or 0) & 2 for s in eng.states):
+        dmg = sum(d.get("v", 0) for d in eng.damage
+                  if d.get("gob") == eng.gob and d.get("ch") == "SHP")
+        if dmg > 0:
+            return ("fled", "gst bit 2 + damage trail")
+        return ("unknown", "gst bit 2 but no damage trail - not a flight")
+    # HP quarters, if any - filtered to this opponent's gob.
+    if health:
+        qs = [h.get("q") for h in health if h.get("gob") == eng.gob and h.get("q") is not None]
+        if qs and qs[-1] == 0:
+            return ("killed", "HP quarters 0")
+    return ("unknown", "no award, no flight, players excluded")
+
+
+def _bracket_sfx(eng, move):
+    """Outcome sounds inside one move's bracket, never confused with announcements.
+
+    Returns dict with counts and which-swings-connected - counts of hit1/miss/ip
+    whose timestamps fall within the bracket's state pair, plus a boolean for whether
+    this swing produced an explicit hit or miss at all. An announcement is gfx/fx/fight/*
+    and an outcome is sfx/fight/* - the two namespaces are disjoint and this function
+    only counts the second.
+    """
+    before, after = eng.brackets(move)
+    if before is None or after is None:
+        return {"hits": 0, "misses": 0, "ips": 0, "connected": None}
+    lo, hi = before["t"], after["t"]
+    hits = sum(1 for o in eng.overlays if lo <= o["t"] <= hi and o.get("res") == "sfx/fight/hit1")
+    misses = sum(1 for o in eng.overlays if lo <= o["t"] <= hi and o.get("res") == "sfx/fight/miss")
+    ips = sum(1 for o in eng.overlays if lo <= o["t"] <= hi and o.get("res") == "sfx/fight/ip")
+    connected = None
+    if hits and not misses:
+        connected = True
+    elif misses and not hits:
+        connected = False
+    elif hits and misses:
+        connected = None  # ambiguous - two sounds in one bracket, report counts not a boolean
+    return {"hits": hits, "misses": misses, "ips": ips, "connected": connected}
+
+
+def engagement_sfx(eng):
+    """Every bracket in this engagement paired with its outcome sounds.
+
+    Returns a list of (move_name, actor, bracket_t, counts_dict) plus aggregate counts.
+    The per-bracket hit/miss facts are the only place a log records which swings
+    connected - damage alone does not, because a miss produces no SHP and no ARM and so
+    leaves no channel at all. An announcement overlay is NEVER counted here - see the
+    namespace guard in _bracket_sfx.
+    """
+    rows = []
+    agg = {"hits": 0, "misses": 0, "ips": 0, "brackets_with_hit": 0, "brackets_with_miss": 0}
+    for m in eng.moves:
+        c = _bracket_sfx(eng, m)
+        agg["hits"] += c["hits"]
+        agg["misses"] += c["misses"]
+        agg["ips"] += c["ips"]
+        if c["hits"]:
+            agg["brackets_with_hit"] += 1
+        if c["misses"]:
+            agg["brackets_with_miss"] += 1
+        rows.append((m.get("name") or m.get("move"), m.get("actor"), m["t"], c))
+    return rows, agg
+
+
+def sfx_coverage(logs):
+    """Corpus coverage of the sfx outcome signals.
+
+    Returns dict with engagements, with_sfx, total hit/miss/ip counts, and a short
+    human-readable summary. Outcome sounds and announcements are counted separately - an
+    sfx hit is not an announcement and an announcement is not a hit.
+    """
+    total = with_sfx = hits = misses = ips = 0
+    with_hit = with_miss = 0
+    per_eng = []
+    for log in logs:
+        for eng in log.engagements:
+            total += 1
+            h = sum(1 for o in eng.overlays if o.get("res") == "sfx/fight/hit1")
+            mi = sum(1 for o in eng.overlays if o.get("res") == "sfx/fight/miss")
+            ip = sum(1 for o in eng.overlays if o.get("res") == "sfx/fight/ip")
+            if h or mi or ip:
+                with_sfx += 1
+            hits += h
+            misses += mi
+            ips += ip
+            if h:
+                with_hit += 1
+            if mi:
+                with_miss += 1
+            per_eng.append((h, mi, ip))
+    return {"engagements": total, "with_sfx": with_sfx,
+            "hits": hits, "misses": misses, "ips": ips,
+            "with_hit": with_hit, "with_miss": with_miss}
+
+
+def foe_aggression(row):
+    """Each relation's aggression state from a schema-11 `foes` row, as {gob: gst}.
+
+    Empty for anything earlier, which is not the same as "everyone was aggressive": those
+    logs recorded gst for the sampled opponent only, and the whole reason this exists is
+    that a pack does not give up all at once.
+
+    Bit 1 is our olive branch and bit 2 is theirs. Bit 2 alone does NOT mean the animal
+    fled - moose, red deer and walrus in this corpus set it after taking zero damage,
+    because they never wanted the fight - so a flight reading needs the damage trail too.
+    """
+    gobs = [r[0] for r in (row.get("o") or [])]
+    gst = row.get("g") or []
+    return dict(zip(gobs, gst))
+
+
 def attributed_gains(eng, opens, me_gob=None):
     """Gains that survive attribution PER OBSERVATION rather than per engagement.
 
@@ -508,13 +757,44 @@ def attributed_gains(eng, opens, me_gob=None):
     and a hit inside the bracket of a move that deals no damage at all means the hit was
     not ours.
 
+    OVERLAY. A player's combat move shows as a brief icon over their body, and that icon
+    is the only trace a log carries of what somebody else did. One inside the bracket
+    means another player acted in this window, whatever the colours and damage say.
+    Adding this test is not free and it is not optional: without it, wolf and walrus both
+    picked up defence weights out of fights another player was swinging in.
+
+    REACH. An opponent we could not have touched is one we did not open. This is the only
+    one of the four that does not require the third party to leave a trace: the other
+    three all ask whether something VISIBLE happened - a stray colour, a damage number, an
+    icon - and a hit that is fully soaked, thrown from off-screen, is none of those. Being
+    out of reach is evidence about us, so it holds whether or not anyone else was seen.
+
+    It rejects nothing in the corpus as it stands - 0 of 1126 attributed gains sit beyond
+    OUT_OF_REACH - and that is stated rather than hidden. It is a guard against a case
+    this corpus has not got yet, not a filter doing present work, and the number above is
+    what a later reader needs in order to tell whether it has started to matter.
+
     What survives is still not proof. A third party opening the SAME colour inside the
-    same bracket is invisible to both tests. The bias that leaves has a known direction,
-    which is worth more than a false sense of safety: it can only ADD to a gain, so it
-    makes an opponent's defence weight read LOW. An estimate that disagrees with a duel by
-    reading lower is therefore suspect in a way one reading higher is not.
+    same bracket, with no damage number and no overlay, is invisible to all three tests.
+    The bias that leaves has a known direction, which is worth more than a false sense of
+    safety: it can only ADD to a gain, so it makes an opponent's defence weight read LOW.
+    An estimate that disagrees with a duel by reading lower is therefore suspect in a way
+    one reading higher is not.
+
+    VALIDATED AGAINST THE STRICT GATE. This used to run only on engagements that passed
+    offence_ok, which threw away every observation in a fight that had anything else going
+    on anywhere in it - and for twelve species the clean engagements turned out to be
+    precisely the ones where we never attacked, so "fought plenty, measured nothing" was
+    the corpus reporting a selection effect rather than a fact about the creatures.
+    Running it everywhere is checked by the species that have BOTH: ants 10.3 against
+    10.3, beeswarm 31.2 against 30.5, redants 22.0 against 20.8, warriorant 38.6 against
+    36.2, sentinelbee 125.0 against 103.8, fox 61.0 against 72.3. Six of seven agree
+    within 25%; the seventh is horse, at two observations each side.
     """
     out = []
+    # Move announcements only, and only somebody else's - see the OVERLAY test below.
+    ols = [o for o in getattr(eng, "overlays", [])
+           if overlay_outcome(o.get("res")) is None]
     for m in eng.moves:
         name = m.get("name") or m.get("move")
         can = opens.get(name)
@@ -548,6 +828,43 @@ def attributed_gains(eng, opens, me_gob=None):
                 if lo <= d["t"] <= hi and d.get("ch") in ("SHP", "HHP", "ARM"):
                     groups.add(d["t"] // 2)
             if len(groups) > 1:
+                continue
+
+        # SOMEBODY ELSE'S move announcement inside the bracket. Unlike the colour and
+        # damage tests this catches a third party whose blow did no damage and whose
+        # colour happens to match ours, which is the case the other two are blind to.
+        #
+        # "Somebody else's" is doing the work, and it used to say "any". An announcement
+        # plays over WHOEVER USED THE MOVE, so our own Quick Barrage puts an icon on our
+        # own body every time we throw one - and vetoing on that vetoed our own move using
+        # its own announcement as the evidence against it. It threw away 450 brackets
+        # against 69 genuine third-party ones.
+        #
+        # Outcome sounds are excluded further up for the same reason in reverse: hit1,
+        # miss and ip say what happened to a swing, not that somebody swung, so they are
+        # not evidence of a third party at all.
+        if ols:
+            lo, hi = before["t"], after["t"]
+            actor = me_gob if mine else eng.gob
+            inwin = [o for o in ols if lo <= o["t"] <= hi]
+            if [o for o in inwin if o.get("gob") != actor]:
+                continue
+            # OUR OWN announcement is this move's own, but only one of them can be.
+            # Two means a second move of ours landed inside the bracket and the gain
+            # belongs to both - which is what the blanket veto used to catch by
+            # accident, and what dropping it entirely gave away.
+            if len(inwin) > 1:
+                continue
+            named = [overlay_move(o.get("res")) for o in inwin]
+            if [n for n in named if (n is not None) and (n != name)]:
+                continue
+
+        # Out of reach for the whole bracket. Only for our own moves: how far away we
+        # stood says nothing about whether the opponent reached US.
+        if mine:
+            d0, d1 = before.get("dist"), after.get("dist")
+            if (d0 is not None) and (d1 is not None) \
+               and (min(d0, d1) > OUT_OF_REACH):
                 continue
         for i in rose:
             out.append((m.get("actor"), name, COLOURS[i], bv[i], av[i] - bv[i]))

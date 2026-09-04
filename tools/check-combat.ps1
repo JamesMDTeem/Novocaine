@@ -17,13 +17,18 @@
 .PARAMETER Quiet
     Print only the summary table, not each harness's own output.
 
+.PARAMETER NoRefresh
+    Skip the regeneration stage and check whatever is on disk. Use it to reproduce a
+    failure exactly, not as the normal way to run this.
+
 .EXAMPLE
     powershell -File tools\check-combat.ps1
     powershell -File tools\check-combat.ps1 -Quiet
 #>
 [CmdletBinding()]
 param(
-    [switch]$Quiet
+    [switch]$Quiet,
+    [switch]$NoRefresh
 )
 
 $ErrorActionPreference = 'Continue'
@@ -85,6 +90,67 @@ function Invoke-PyCheck($name, $script) {
     if (-not $Quiet) { $run | ForEach-Object { Write-Host "    $_" } }
     $last = ($run | Select-Object -Last 1)
     Add-Result $name $ok "$last"
+}
+
+# ---------------------------------------------------------------------------------
+# REGENERATE FIRST, THEN CHECK.
+#
+# Half the data under data/combat is derived - the deck sheet from the client's own
+# dumps, the opponent pack and the weapon readings from the logged corpus - and it is
+# checked in, because the client is built with it and a running client has to carry the
+# pack it was built with. Which makes every one of those files a thing that can be stale.
+#
+# It went stale twice in one session. A change to the estimator left opponents.json on
+# disk describing the previous rule, and the check that reads it compared a fresh
+# computation against an old file and failed - a red check reporting nothing but the
+# order two commands were run in. Then a change to an attribution gate did it again.
+#
+# So the derived files are rebuilt here before anything reads them, and WHAT CHANGED IS
+# PRINTED. Regenerating silently would trade a false failure for a false pass, which is
+# the worse of the two: the point is not that the checks go green, it is that a change to
+# the estimator visibly moves the pack.
+#
+# Not regenerated: anything scraped from the wiki (build_datapack.py, which needs the
+# network), and the golden vectors, which have their own freshness check further down
+# that regenerates to a temporary file and diffs - the right pattern where the checked-in
+# copy is the thing under test.
+if (-not $NoRefresh) {
+    Write-Host "`n== regenerating what is derived" -ForegroundColor Cyan
+    $derived = @(
+        'data\combat\moves_sheet.json',
+        'data\combat\moves_ingame.json',
+        'data\combat\opponents.json',
+        'data\combat\weapons_seen.json'
+    )
+    $before = @{}
+    foreach ($f in $derived) {
+        $path = Join-Path $root $f
+        if (Test-Path $path) { $before[$f] = (Get-FileHash $path -Algorithm SHA256).Hash }
+    }
+    $gen = & python 'tools\combat\parse_deck.py' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  parse_deck.py failed - the deck sheet is whatever was on disk" -ForegroundColor Yellow
+        if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
+    }
+    $gen = & python 'tools\combat\estimate.py' '--write-pack' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  estimate.py failed - the pack is whatever was on disk" -ForegroundColor Red
+        if (-not $Quiet) { $gen | Select-Object -Last 20 | ForEach-Object { Write-Host "    $_" } }
+    }
+    $changed = @()
+    foreach ($f in $derived) {
+        $path = Join-Path $root $f
+        $now = if (Test-Path $path) { (Get-FileHash $path -Algorithm SHA256).Hash } else { $null }
+        if ($before[$f] -ne $now) { $changed += $f }
+    }
+    if ($changed.Count -gt 0) {
+        Write-Host "  REGENERATED, and the contents moved:" -ForegroundColor Yellow
+        $changed | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+        Write-Host "  Everything below is checked against the new files. Commit them with"
+        Write-Host "  whatever changed the estimator, or the next run starts stale again."
+    } else {
+        Write-Host "  up to date - nothing derived moved"
+    }
 }
 
 $model = @(

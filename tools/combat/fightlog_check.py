@@ -341,6 +341,19 @@ def client_signals():
           log.weapons[0]["v"], {"damage": 12.0, "armpen": 0.125})
     check("  and penetration is the 0-1 fraction, not a percentage",
           log.weapons[0]["v"]["armpen"] < 1.0, True)
+
+    # The tooltip's DAMAGE is the weapon at its quality, not a base, and the two are not
+    # interchangeable. A bronze sword of quality 38.06 reports 176 where the table's base
+    # is 90, and 90*sqrt(38.06/10) = 175.6 - so anything that feeds the tooltip figure to
+    # Formulas.rawDamage, which applies quality itself, counts quality twice. That is not
+    # hypothetical: it shipped, and three logged hits predicted 2.18x the damage dealt.
+    # Pinned as arithmetic rather than as a rule, so the relationship is visible.
+    import math
+    base, ql, reported = 90.0, 38.0613, 176.0
+    check("the tooltip figure is base scaled by quality, not the base",
+          abs(base * math.sqrt(ql / 10.0) - reported) < 0.5, True)
+    check("  so it must never be used as a base - that doubles quality",
+          round(reported / base, 2), 1.96)
     check("the agility bracket is read", (log.agility[0]["min"], log.agility[0]["max"]),
           (0.9, 1.1))
     check("health is quarters, not a fraction", log.health[0]["q"], 3)
@@ -387,6 +400,103 @@ def predictions():
           len(old.engagements[0].predictions), 0)
 
 
+def sfx_and_outcome():
+    print("\nsfx outcome signals and fight outcome inference")
+    # Announcements name a card (gfx), outcome signals say whether it landed (sfx).
+    # The two namespaces are disjoint; an outcome must never be decoded as a card.
+    # Map is 1:1, schema-12 overlays filtered by game's own icon gate.
+    lg_ann = load([begin(), state(10),
+                   {"ev": "overlay", "t": 22, "gob": FOE, "res": "gfx/fx/fight/takeaim", "from": 1},
+                   move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 10)), end()])
+    _, agg_ann = fightlog.engagement_sfx(lg_ann.engagements[0])
+    check("gfx announcement not counted as sfx hit/miss", (agg_ann["hits"], agg_ann["misses"], agg_ann["ips"]), (0, 0, 0))
+    lg_hit = load([begin(), state(10),
+                   {"ev": "overlay", "t": 22, "gob": FOE, "res": "sfx/fight/hit1", "from": 1},
+                   move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 10)), end()])
+    _, agg_hit = fightlog.engagement_sfx(lg_hit.engagements[0])
+    check("hit1 sfx counted as hit not card", agg_hit["hits"], 1)
+    lg_miss = load([begin(), state(10),
+                    {"ev": "overlay", "t": 22, "gob": FOE, "res": "sfx/fight/miss", "from": 1},
+                    move(20), state(30, foe=(0, 0, 0, 10)), end()])
+    _, agg_miss = fightlog.engagement_sfx(lg_miss.engagements[0])
+    check("miss sfx counted as miss", agg_miss["misses"], 1)
+    lg_ip = load([begin(), state(10),
+                  {"ev": "overlay", "t": 22, "gob": FOE, "res": "sfx/fight/ip", "from": 1},
+                  move(20), state(30, foe=(0, 0, 0, 10)), end()])
+    _, agg_ip = fightlog.engagement_sfx(lg_ip.engagements[0])
+    check("ip sfx counted as ip", agg_ip["ips"], 1)
+    rows = [
+        begin(), state(10),
+        {"ev": "overlay", "t": 22, "gob": FOE, "res": "sfx/fight/hit1", "from": 1},
+        {"ev": "overlay", "t": 23, "gob": FOE, "res": "sfx/fight/miss", "from": 1},
+        {"ev": "overlay", "t": 24, "gob": FOE, "res": "sfx/fight/ip", "from": 1},
+        move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 10)), end()]
+    lg = load(rows)
+    srows, agg = fightlog.engagement_sfx(lg.engagements[0])
+    check("sfx hit counted", agg["hits"], 1)
+    check("sfx miss counted", agg["misses"], 1)
+    check("sfx ip counted", agg["ips"], 1)
+    cov = fightlog.sfx_coverage([lg])
+    check("corpus coverage reports engagements", "engagements" in cov and "with_sfx" in cov, True)
+    # Per-bracket hit/miss facts: own-move announcement must not veto own bracket sfx
+    rows2 = [
+        begin(), state(10),
+        {"ev": "overlay", "t": 22, "gob": FOE, "res": "gfx/fx/fight/flex", "from": 1},
+        {"ev": "overlay", "t": 23, "gob": FOE, "res": "sfx/fight/hit1", "from": 1},
+        move(20, name="Take Aim"), state(30, foe=(0, 0, 0, 10)), end()]
+    lg2 = load(rows2)
+    srows2, agg2 = fightlog.engagement_sfx(lg2.engagements[0])
+    check("own-move announcement does not veto own bracket sfx", agg2["hits"], 1)
+    # Two announcements on own gob still veto; different-card vetoes (attributed_gains per-observation veto, not opening_gains)
+    opens = {"Quick Barrage": {0, 1, 2, 3}, "Take Aim": {0, 1, 2, 3}}
+    rows3 = [
+        begin(), state(10, foe=(0,0,0,20)),
+        {"ev": "overlay", "t": 22, "gob": 100, "res": "gfx/fx/fight/barrage", "from": 1},
+        {"ev": "overlay", "t": 23, "gob": 100, "res": "gfx/fx/fight/flex", "from": 1},
+        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,28)), end()]
+    lg3 = load(rows3)
+    gains3 = fightlog.attributed_gains(lg3.engagements[0], opens, me_gob=ME)
+    check("two announcements on own gob still veto", len(gains3), 0)
+    # Own-move announcement alone must not veto own bracket (450-vs-69 fix)
+    rows1b = [
+        begin(), state(10, foe=(0,0,0,20)),
+        {"ev": "overlay", "t": 22, "gob": 100, "res": "gfx/fx/fight/barrage", "from": 1},
+        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,28)), end()]
+    lg1b = load(rows1b)
+    gains1b = fightlog.attributed_gains(lg1b.engagements[0], opens, me_gob=ME)
+    check("own-move announcement alone does not veto", len(gains1b), 1)
+    # Outcome inference: died #ffff on non-victim (dmg ch) + damage trail; gst HP trail for fled.
+    # Surfaced as explicit field, not silent gate change; players excluded.
+    log_killed = load([begin(foeres="gfx/kritter/badger/badger"),
+                       state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                       dmg(32, ME, "#ffff", 1),
+                       dmg(31, FOE, "SHP", 10), end()])
+    check("killed outcome from #ffff on non-victim", log_killed.engagements[0].outcome, "killed")
+    # Fled needs gst bit 2 + damage trail
+    log_fled = load([begin(foeres="gfx/kritter/fox/fox"),
+                     state(10), move(20),
+                     {"ev": "state", "t": 30, "gob": FOE, "mine": [0, 0, 0, 0],
+                      "foe": [0, 0, 0, 10], "myip": 0, "foeip": 0, "hpf": 10000,
+                      "stam": 1.0, "energy": 1.0, "dist": 5.0, "gst": 2},
+                     dmg(31, FOE, "SHP", 5), end()])
+    check("fled outcome from gst + damage", log_fled.engagements[0].outcome, "fled")
+    log_unknown = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)), end()])
+    check("no kill no gst is unknown", log_unknown.engagements[0].outcome, "unknown")
+    # Player excluded - borka resource marks a player
+    log_player = load([begin(foeres="gfx/borka/player"),
+                       state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                       dmg(32, ME, "#ffff", 1), dmg(31, FOE, "SHP", 10), end()])
+    check("player engagement never killed", log_player.engagements[0].outcome, "player")
+    check("player outcome detected", "player" in log_player.engagements[0].outcome_detail.lower(), True)
+    # end_dropped/end_failed must TRIP into problems + lines_lost into both gates preserved
+    log_drop = load([begin(), state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                     {"ev": "end", "t": 9999, "reason": "ended", "dropped": 2, "failed": False}])
+    check("shed lines trips problems not silent", any("shed" in p for p in log_drop.engagements[0].problems), True)
+    check("lines_lost reflected in outcome report", log_drop.engagements[0].outcome in ("killed","fled","unknown","player"), True)
+    print("  note: sfx in ~8% of engagements (469 bracket sfx over 741 engagements);")
+    print("        outcome killed/fled vs unknown split reported per engagement as explicit field")
+
+
 def main():
     segmentation()
     contamination()
@@ -396,6 +506,7 @@ def main():
     gaps()
     client_signals()
     predictions()
+    sfx_and_outcome()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

@@ -74,6 +74,7 @@ public class CombatPackCheck {
         reductions();
         initiativeLines();
         takeAimLadder();
+        opportunityKnocks();
         weightsAndSchools();
         threatBlocks();
         packedInTheJar();
@@ -159,6 +160,52 @@ public class CombatPackCheck {
         check("  and carries a trailing two as well", m("Go for the Jugular").ipExtra, 2);
         check("Zig-Zag Ruse hands the opponent two", m("Zig-Zag Ruse").foeIpGain, 2);
         check("Punch's silent sheet means no cost, not an unread one", m("Punch").ipCost, 0);
+    }
+
+    /**
+     * Opportunity Knocks takes the agility modifier without declaring an attack type.
+     *
+     * Base 45, and the corpus reports it at 41 ticks against ants, fox, boar, badger,
+     * wolverine and adder - all of them pinned at the bottom of the agility band - and at
+     * 45 against a wildgoat, the one creature measured at about our own agility.
+     * round(45 * 0.9) = 41 and round(45 * 1.0) = 45, so the card is on the same curve as
+     * every attack, and the pack read it as a maneuver because it declares no attack
+     * TYPE. What it does declare is an attack skill, and that is the test.
+     *
+     * The control is beside it: Zig-Zag Ruse declares neither and has never moved a tick
+     * against anything, over the whole corpus.
+     */
+    static void opportunityKnocks() {
+        System.out.println("\nOpportunity Knocks, which moves without an attack type");
+        Move ok = m("Opportunity Knocks");
+        check("it declares no attack type", ok.schools.length, 0);
+        check("  and is still on the agility curve", ok.isAttack(), true);
+
+        Combatant me = me();
+        /* The card costs initiative to play, and a refused move reports a cooldown of
+         * zero - which would read here as a wrong cooldown rather than as a move that
+         * never happened. So the result is checked for having been allowed at all. */
+        me.ip = 8;
+        Combatant slow = foe();
+        slow.agi = 40;                     /* past the factor-two gap, so saturated */
+        me.readyAt = 0;
+        Sim.Result r = new Sim(me, slow).use(me, ok);
+        check("  the move is allowed at eight initiative", r.ok, true);
+        check("  41 ticks against anything at or past half our agility", r.cooldown, 41L);
+
+        Combatant even = foe();            /* agility 81, the same as ours */
+        me.readyAt = 0;
+        check("  and 45 against something as quick as we are",
+              new Sim(me, even).use(me, ok).cooldown, 45L);
+
+        Move ruse = m("Zig-Zag Ruse");
+        check("  the control declares neither type nor skill", ruse.isAttack(), false);
+        me.readyAt = 0;
+        long a = new Sim(me, slow).use(me, ruse).cooldown;
+        me.readyAt = 0;
+        long b = new Sim(me, even).use(me, ruse).cooldown;
+        check("  so it reports the same 50 ticks against both", (a == 50) && (b == 50),
+              true);
     }
 
     /**
@@ -370,6 +417,20 @@ public class CombatPackCheck {
               Pack.key("Butcher's Cleaver"), "butcherscleaver");
         double[] bronze = w.get(Pack.key("bronzesword"));
         check("  carrying a base damage", (bronze != null) && (bronze[0] > 0), true);
+
+        /* The overlay: where the client's own WeaponInfo disagrees with the scrape, the
+         * item wins. The wiki gives the stone axe 10% armour penetration and the live
+         * value is 0.20, while the bronze sword agrees exactly - so this is one wrong
+         * number in the table rather than a units error on our side. */
+        double[] axe = w.get(Pack.key("stoneaxe"));
+        if(axe != null) {
+            near("the stone axe carries the item's penetration, not the wiki's 10%",
+                 axe[1], 0.20, 1e-9);
+            near("  and a base damage recovered from a quality-scaled tooltip",
+                 axe[0], 30.0, 0.5);
+        }
+        near("  while the bronze sword, where the two agree, is unchanged",
+             bronze[1], 0.125, 1e-9);
 
         /* armorpen is genuinely absent on four of the twenty-six and the scraper keeps that
          * as null. A zero would be a claim that the weapon pierces nothing. */

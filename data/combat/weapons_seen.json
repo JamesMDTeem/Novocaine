@@ -1,0 +1,52 @@
+{
+ "note": "Damage is QUALITY-SCALED, as the tooltip gives it. recovered_base divides sqrt(ql/10) back out.",
+ "source": "the client's own WeaponInfo, over the corpus",
+ "weapons": {
+  "bronzesword": {
+   "armpen": [
+    0.125
+   ],
+   "damage": [
+    176.0
+   ],
+   "grievous": [
+    0.4
+   ],
+   "n": 34,
+   "quality": [
+    38.0613
+   ],
+   "range": [
+    1.2
+   ],
+   "recovered_base": {
+    "hi": 90.213,
+    "lo": 90.213
+   },
+   "res": "gfx/invobjs/small/bronzesword"
+  },
+  "stoneaxe": {
+   "armpen": [
+    0.2
+   ],
+   "damage": [
+    71.0
+   ],
+   "grievous": [
+    0.1
+   ],
+   "n": 1,
+   "quality": [
+    56.2835
+   ],
+   "range": [
+    1.0
+   ],
+   "recovered_base": {
+    "hi": 29.927,
+    "lo": 29.927
+   },
+   "res": "gfx/invobjs/stoneaxe"
+  }
+ }
+}

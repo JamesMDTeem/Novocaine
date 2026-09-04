@@ -36,6 +36,8 @@ public final class CombatRecorder {
     private static volatile CombatLogWriter writer = null;
     private static volatile long t0 = 0;
     private static volatile String lastSample = null;
+    /* When the last state line went out, for the heartbeat in sample(). */
+    private static volatile long lastBeat = 0;
     private static volatile String lastFoes = null;
     /* Per combatant, keyed by who+gob. A single shared key was wrong in both directions,
      * and which one it was wrong in depended on how many combatants carried buffs.
@@ -143,6 +145,9 @@ public final class CombatRecorder {
         try {
             t0 = System.currentTimeMillis();
             lastSample = null;
+            /* Reset with the rest of the sampler state, or the first fight after a
+             * long pause opens with a heartbeat it did not earn. */
+            lastBeat = 0;
             lastFoes = null;
             lastBuffs.clear();
             named.clear();
@@ -481,16 +486,16 @@ public final class CombatRecorder {
     }
 
     /**
-     * A combatant's health, straight from the server's own object channel.
+     * A combatant's health from the object channel - which creatures never send.
      *
-     * The corpus infers an opponent's hitpoints by accumulating damage numbers, which
-     * closes only on a kill - so three species in the pack carry no ceiling, and a
-     * survivor gives a lower bound and nothing else. This bounds a live one.
+     * Measured, not assumed: nineteen fights across four species produced zero of these
+     * with this method wired up and its gate verified to hold both gobs. OD_HEALTH is
+     * object decay, not creature hitpoints. See CombatEvent.health for why the path is
+     * kept rather than deleted.
      *
-     * Two gates, and both are load-bearing. The delta is a world channel that also carries
-     * object damage state, so only gobs already known to be in this fight are kept; and the
-     * value is logged only when it CHANGES, because the server restates it freely and the
-     * resolution is five values wide.
+     * The two gates stay correct whatever does arrive: only gobs already known to be in
+     * this fight, so a decaying wall in view cannot reach the log, and only on a CHANGE,
+     * because the resolution is five values wide.
      *
      * @param hp the fraction the client computed, 0.0 to 1.0 in quarter steps
      */
@@ -567,6 +572,13 @@ public final class CombatRecorder {
         }
     }
 
+    /* How long a fight may go without a state line. Chosen against what it is for: the
+     * opening decay's time constant is somewhere near 15 s and a point is lost every 2.4 s
+     * at low openings, so a cadence of half a second brackets each step to well inside the
+     * quantity being measured, and costs about two lines a second in a fight that is
+     * otherwise silent. */
+    private static final long HEARTBEAT = 500;
+
     public static void sample(Openings mine, Openings foe, int myIp, int foeIp,
                               int hp, double stam, double energy, double dist, long gobId,
                               double mySpeed, double foeSpeed, int gst, String tile) {
@@ -589,8 +601,26 @@ public final class CombatRecorder {
             String key = gobId + ":" + mine.toJson() + foe.toJson() + myIp + ":" + foeIp
                 + ":" + hp + ":" + (long)dist + ":" + (long)mySpeed + ":" + (long)foeSpeed
                 + ":" + gst + ":" + tile;
-            if(key.equals(lastSample))
+            /* THE VALUE GATE HIDES THE ONE THING THAT ONLY TIME REVEALS. Openings decay on
+             * their own, and a decay changes the value - so it does fire a sample - but it
+             * fires it whenever the next frame happens to land, not when the decay
+             * happened. Measured that way, the dwell between one point and the next has an
+             * interquartile spread of 1.75 times its own median, and our side reads a time
+             * constant of 20.9 s against the opponent's 15.3, which cannot both be right.
+             *
+             * A sample at a fixed cadence during a lull costs a line every HEARTBEAT ms
+             * while a fight is otherwise static, and turns that into an actual measurement:
+             * two consecutive heartbeats with no move between them bracket the decay to
+             * the cadence rather than to the frame rate. Everything else in this file is
+             * value-gated on purpose and stays that way.
+             *
+             * Not a substitute for the value gate - it is an addition. A change still emits
+             * immediately; this only stops silence from being unbounded. */
+            long ts = now();
+            boolean beat = (ts - lastBeat) >= HEARTBEAT;
+            if(key.equals(lastSample) && !beat)
                 return;
+            lastBeat = ts;
             lastSample = key;
             lastFoeOpen = new int[] {foe.green, foe.blue, foe.yellow, foe.red};
             lastMyIp = myIp;
@@ -615,33 +645,45 @@ public final class CombatRecorder {
      *
      * @param packed gob and four openings per relation, five entries each
      */
-    public static void sampleFoes(long[] packed) {
+    public static void sampleFoes(long[] packed, int[] gst) {
         if(!active() || (packed == null) || (packed.length == 0))
             return;
         try {
             StringBuilder k = new StringBuilder();
             for(long v : packed)
                 k.append(v).append(':');
+            /* The aggression state is part of the key. One animal in a pack extending its
+             * olive branch changes nothing about anyone's openings, so without this the
+             * moment it happens is suppressed as an unchanged state - and that moment is
+             * the whole point of recording it. */
+            for(int i = 0; (gst != null) && (i < gst.length); i++)
+                k.append(gst[i]).append(';');
             String key = k.toString();
             if(key.equals(lastFoes))
                 return;
             lastFoes = key;
-            log(CombatEvent.foes(now(), packed));
+            log(CombatEvent.foes(now(), packed, gst));
         } catch(Exception e) {
             /* never propagate into tick() */
         }
     }
 
     /**
-     * An overlay appearing on another player's body.
+     * An overlay appearing on anybody in the fight - the move they just used.
      *
-     * A player's combat move is announced by a brief icon over them, and nothing else in a
-     * log says what somebody other than us did - their moves are not in our fightview. Until
-     * the resource that carries the icon is identified from real fights, every overlay on a
-     * player gob is recorded and the analysis side decides which one matters.
+     * A combat move is announced by a brief icon over whoever used it, and nothing else in a
+     * log says what somebody other than us did: their moves are not in our fightview. The
+     * corpus has now named the resources - gfx/fx/fight/barrage, fullcircle, cleave,
+     * oppknock, dash, zigzag, sting, jump, flex, slide, artevade - one per card.
+     *
+     * WHICH IS WHY THE CALLER NOW FILTERS ON THE OVERLAY AND NOT ON THE GOB. Restricted to
+     * player bodies, this recorded 2729 announcements and every one of them was a player's;
+     * an ant's was discarded, and an ant's is the one that matters. Twenty-one species have
+     * no combat skill recovered at all, for exactly one reason - every fight against them
+     * has other creatures in it and no gain can be attributed. This is the signal that
+     * attributes them.
      *
      * Not value-gated: an overlay is an event, and two identical ones in a row are two moves.
-     * The player filter is what keeps the volume down.
      */
     public static void onGobOverlay(long gobId, String gobRes, String olRes) {
         if(!active() || (gobRes == null) || (olRes == null))

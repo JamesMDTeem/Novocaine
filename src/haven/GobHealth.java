@@ -66,20 +66,22 @@ public class GobHealth extends GAttrib implements Gob.SetupMod {
 	    int hp = msg.uint8();
 	    g.setattr(new GobHealth(g, hp / 4.0f));
 		g.setattr(new GobHealthInfo(g));
-		/* The opponent's own health, as the SERVER states it rather than as we infer
-		 * it. Everything the combat corpus knows about an opponent's hitpoints today
-		 * is accumulated from damage numbers, which needs a kill to close the interval
-		 * and leaves three species with no ceiling at all. This is coarse - a uint8 in
-		 * QUARTERS, so five distinguishable values - but it is direct, it arrives
-		 * without a kill, and it is the only reading that bounds a survivor.
+		/* MEASURED: this does not fire for creatures, and the hope that it would was
+		 * wrong. OD_HEALTH is object DECAY - the client's own option for it reads
+		 * "makes objects that took decay hits show a percentage number", and it is
+		 * what draws the crack texture. Nineteen logged fights across bear, red deer,
+		 * ants and moose produced zero of these events, with the hook in place and
+		 * the gate below verified to contain both gobs.
 		 *
-		 * It also measures the one thing the model asserts and has never observed:
-		 * FoeModel.fleesBelow. An animal extending its olive branch shows in gst, and
-		 * gst against this says at what fraction it decided to run.
+		 * So an opponent's hitpoints stay where they were: accumulated from damage
+		 * numbers, needing a kill to close the interval, leaving survivors bounded
+		 * only from below. FoeModel.fleesBelow is NOT measurable this way either -
+		 * that claim was made here and is withdrawn.
 		 *
-		 * The same delta carries object damage state elsewhere in the world - it is
-		 * what draws the crack texture - so the recorder keeps only gobs it already
-		 * knows are in the fight, and a passing wall never reaches the log. */
+		 * Kept because it costs nothing - it is gated to gobs already known to be in
+		 * the fight, so it cannot fill a log with scenery - and because a recorded
+		 * negative stops the question being asked a third time. If some creature does
+		 * one day send it, the log will say so. */
 		haven.automated.combat.CombatRecorder.onHealth(g.id, hp / 4.0f);
 	}
     }

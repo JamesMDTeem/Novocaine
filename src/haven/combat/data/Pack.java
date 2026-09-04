@@ -116,7 +116,55 @@ public final class Pack {
                 ((pen == null) || pen.isNull("value")) ? Double.NaN
                     : (pen.getDouble("value") / 100.0)});
         }
+        overlaySeen(out);
         return(out);
+    }
+
+    /**
+     * What the client itself said about a weapon we have actually held, laid over the scrape.
+     *
+     * The wiki table can be wrong and is: it gives the stone axe 10% armour penetration and
+     * the live {@code WeaponInfo} reads 0.20. The bronze sword agrees exactly at 12.5%, so it
+     * is one wrong number rather than a units mismatch on our side, and there is no way to
+     * tell which of the twenty-six others are wrong the same way.
+     *
+     * A weapon we have held needs no scraper, so where the two disagree the item wins. The
+     * damage is the only fiddly part: the tooltip gives it QUALITY-SCALED, and the base is
+     * recovered by dividing sqrt(ql/10) back out. That recovers the wiki's own base to within
+     * a quarter of a percent on both weapons the corpus has - 90.21 against 90, and 29.93
+     * against 30 - which is what makes the penetration disagreement a finding rather than a
+     * sign that the arithmetic is off.
+     *
+     * Absent, this changes nothing: a client built without the file keeps the scrape.
+     */
+    private static void overlaySeen(Map<String, double[]> out) {
+        String doc = slurp("weapons_seen.json");
+        if(doc == null)
+            return;
+        JSONObject w = new JSONObject(doc).optJSONObject("weapons");
+        if(w == null)
+            return;
+        for(String base : w.keySet()) {
+            JSONObject e = w.optJSONObject(base);
+            if(e == null)
+                continue;
+            JSONObject rb = e.optJSONObject("recovered_base");
+            JSONArray pen = e.optJSONArray("armpen");
+            double[] have = out.get(key(base));
+            double dmg = (rb == null) ? Double.NaN : rb.optDouble("lo", Double.NaN);
+            double p = ((pen == null) || (pen.length() == 0)) ? Double.NaN
+                : pen.getDouble(0);
+            /* A weapon read at two qualities that do not agree on the base is not overlaid:
+             * that would mean the quality division is wrong, and the scrape is then the more
+             * trustworthy of the two. */
+            if((rb != null) && (Math.abs(rb.optDouble("hi", dmg) - dmg) > 0.5))
+                dmg = Double.NaN;
+            if(Double.isNaN(dmg) && Double.isNaN(p))
+                continue;
+            out.put(key(base), new double[] {
+                Double.isNaN(dmg) ? ((have == null) ? Double.NaN : have[0]) : dmg,
+                Double.isNaN(p) ? ((have == null) ? Double.NaN : have[1]) : p});
+        }
     }
 
     /** A weapon or resource name reduced to letters and digits, for the join above. */
@@ -165,7 +213,23 @@ public final class Pack {
         if((name == null) || name.isEmpty())
             return(null);
         JSONArray types = j.optJSONArray("attack_types");
-        boolean attack = (types != null) && (types.length() > 0);
+        /* An attack for COOLDOWN purposes, which is the only thing Kind.ATTACK decides -
+         * see Move.isAttack. Having attack types is not the whole test, and the corpus
+         * says so: Opportunity Knocks declares no attack type at all and its cooldown
+         * still moves with the opponent. Base 45, it reports 41 ticks against ants, fox,
+         * boar, badger, wolverine and adder - every one of them at the bottom of the
+         * agility band - and 45 against a wildgoat, the one creature measured at roughly
+         * our own agility. round(45 * 0.9) is 41 and round(45 * 1.0) is 45.
+         *
+         * What those two have that the true maneuvers do not is an attack SKILL. Zig-Zag
+         * Ruse, Sidestep, Quick Dodge, Jump and Dash all declare neither, and none of
+         * them has ever moved a tick across the whole corpus.
+         *
+         * Watch Its Moves is the untested half of this: same shape as Opportunity Knocks,
+         * no attack type and an unarmed skill, but never once thrown at anything. It is
+         * predicted to take the modifier, not measured to. */
+        boolean attack = ((types != null) && (types.length() > 0))
+            || !j.optString("attack_skill", "").isEmpty();
 
         Move.Builder b = Move.of(name).res(j.optString("res", null))
             .kind(attack ? Move.Kind.ATTACK : Move.Kind.MANEUVER);

@@ -233,7 +233,13 @@ public final class Move {
         return((mu == this.mu) ? this : new Move(this, mu));
     }
 
-    /** Whether the move takes the relative-agility cooldown modifier. Attacks do; maneuvers do not. */
+    /**
+     * Whether the move takes the relative-agility cooldown modifier.
+     *
+     * Declaring an attack type is sufficient but not necessary: Opportunity Knocks has
+     * none and takes the modifier anyway. What decides it is whether the card has an
+     * attack skill at all - see Pack.move, which is where the two are read.
+     */
     public boolean isAttack() {
         return(kind == Kind.ATTACK);
     }

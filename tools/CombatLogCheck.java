@@ -151,7 +151,7 @@ public class CombatLogCheck {
          * log, and that is a different and worse thing - every change to the data pack
          * silently rewrites the history, so a fix can never be shown to have helped
          * because the "before" number moves with it. */
-        check("schema constant", CombatEvent.SCHEMA, 10);
+        check("schema constant", CombatEvent.SCHEMA, 12);
 
         check("a prediction",
               CombatEvent.predict(120, 7, "paginae/atk/knockteeth", "36m/35f/26w",
@@ -177,12 +177,25 @@ public class CombatLogCheck {
                                 new String[] {"paginae/atk/shieldup", "paginae/atk/cornered"}),
               "{\"ev\":\"buffs\",\"t\":3,\"gob\":42,\"who\":\"foe\","
               + "\"res\":[\"paginae/atk/shieldup\",\"paginae/atk/cornered\"]}");
-        check("foes packs gob and four openings per relation",
-              CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8}),
-              "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]]}");
+        /* 11 adds each relation's aggression state to the foes event, as a PARALLEL
+         * array, so every reader of the five-wide `o` rows keeps working unchanged. The
+         * state event carries gst for the sampled opponent only, which is wrong for the
+         * case it matters in: a pack aggroes together and gives up one at a time. */
+        check("foes packs gob and four openings per relation, and each one's gst",
+              CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8},
+                               new int[] {0, 2}),
+              "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]],"
+              + "\"g\":[0,2]}");
         check("foes with one relation is still an array of arrays",
-              CombatEvent.foes(1L, new long[] {9L, 0, 0, 0, 0}),
-              "{\"ev\":\"foes\",\"t\":1,\"o\":[[9,0,0,0,0]]}");
+              CombatEvent.foes(1L, new long[] {9L, 0, 0, 0, 0}, new int[] {0}),
+              "{\"ev\":\"foes\",\"t\":1,\"o\":[[9,0,0,0,0]],\"g\":[0]}");
+        /* The reason the field exists, so it gets its own row rather than being left
+         * implicit above: one of a pack disengaging while the rest stay on us. */
+        check("one of a pack can disengage while the rest do not",
+              CombatEvent.foes(9L, new long[] {1L, 0, 0, 0, 0, 2L, 0, 0, 0, 0,
+                                              3L, 0, 0, 0, 0},
+                               new int[] {2, 0, 0}).contains("\"g\":[2,0,0]"),
+              true);
         // The opponent events, added in schema 3. Without them a fight against more than one
         // opponent reads as one opponent whose openings jump for no reason.
         check("foe (appears)",

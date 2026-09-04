@@ -21,6 +21,7 @@ import glob
 import json
 import math
 import os
+import re
 import sys
 from collections import defaultdict
 
@@ -249,17 +250,26 @@ def measure_mu(logs=None):
 # Measured at import, so every defence weight this tool reports is corrected by a mu that
 # was read rather than assumed. What it currently finds:
 #
-#   level 1  ->  exactly 1.0        63 observations, the whole 30/36/42/48/54/60/66/72
-#                                   ladder at 0 through 7 initiative, without exception
-#   level 2  ->  1.143 to 1.177     six agreeing observations - five of "26 at 0 IP" and
-#                                   one of "31 at 1 IP", which are the same mu
+#   level 1  ->  exactly 1.0            the whole 30/36/42/48/54/60/66/72 ladder at 0
+#                                       through 7 initiative, without exception
+#   level 2  ->  (1.1111, 1.1290]       Take Aim's cooldown, narrowed by Opportunity
+#                                       Knocks - see _mu_measured
+#   level 3  ->  (1.2000, 1.2500]       Take Aim's cooldown
 #
-# What that EXCLUDES matters as much as what it says. The obvious curve, linear from 1.0
-# to 1.5 across the five card levels, predicts 1.125 at level 2 and is ruled out. So is
-# linear across a card's own maximum, which predicts 1.25. Shapes that still fit include
-# 1.5 - 0.5/sqrt(L) (1.146) and 1 + 0.5*(L-1)/(L+1) (1.167), and one level cannot separate
-# them. Take Aim's own maximum is 3: one further point in it, and a handful of uses logged
-# at 0 initiative, would discriminate between every surviving candidate.
+# THIS PARAGRAPH USED TO SAY THE OPPOSITE, and the reversal is worth keeping rather than
+# quietly deleting. It read "level 2 -> 1.143 to 1.177 ... the obvious curve, linear from
+# 1.0 to 1.5, predicts 1.125 at level 2 and is ruled out", and every word of that came
+# from inverting a round-half-up of a single division. The game floors twice. Under the
+# correct rule level 2 ADMITS linear's 1.125 and excludes the square-root curve that was
+# adopted in its place - see mu_curve, which is now kept only to be contradicted.
+#
+# What survives being excluded, at level 2: 1 + 0.5*(L-1)/(L+1) at 1.167, and
+# 1.5 - 0.5/sqrt(L) at 1.1464. The second of those was still standing this morning and is
+# now out, on Opportunity Knocks' multiplier. Level 4 is the one still open: the wiki's
+# worked example states mu(4) = 1.4, which is neither linear's 1.375 nor the square-root
+# curve's 1.405. Take Aim caps at 3 and cannot reach it. Dash divides by mu, has no
+# initiative term, and at level 4 gives 58 ticks for linear and 57 for the wiki figure -
+# two distinct integers, one use.
 
 
 # What the wiki's own worked example states, as opposed to what this corpus measured.
@@ -442,9 +452,131 @@ def levels_at(when):
     return best
 
 
+def ok_boost(logs=None):
+    """What Opportunity Knocks does to an opening, measured rather than taken on trust.
+
+    The card's own text says it "increases your opponent's greatest opening by 40% * mu",
+    and the simulator has implemented that since the sim was written, on the text alone.
+    Two things in it had never been checked against a fight: that the boost is a SHARE of
+    the standing opening rather than a flat number of points, and that mu scales it.
+
+    Both fall out of fourteen uses, all at card level 2, all on a red opening that was the
+    only one standing:
+
+        56 -> 82   67 -> 97   50 -> 73   54 -> 78   55 -> 80   65 -> 94   45 -> 66
+        62 -> 89   37 -> 54   54 -> 78   65 -> 95    0 ->  0   82 -> 100  71 -> 100
+
+    The last two are censored at the ceiling and are dropped. THE ZERO IS THE DECISIVE
+    ONE: under the ordinary opening rule, dO = cbrt(Wa/Wd) * Ob * (1 - Oc), an opponent
+    with nothing open is the EASIEST to open and the gain would be at its largest. It is
+    zero. Only a share of what is already standing does that.
+
+    Openings reach the log through `(int)(100 * ameteri)`, which truncates, so a printed
+    d means a true value in [d, d+1) and each use bounds the multiplier rather than
+    naming it. Eleven of those intervals intersect.
+
+    Returns (uses, lo, hi) - every uncensored (before, after, level) and the intersection.
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    uses = []
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        lv = levels_at((log.header or {}).get("wall"))
+        for eng in log.engagements:
+            states = sorted(eng.states, key=lambda st: st["t"])
+            for m in eng.moves:
+                if (m.get("actor") != "me") or (m.get("name") != "Opportunity Knocks"):
+                    continue
+                before = after = None
+                for st in states:
+                    if st["t"] <= m["t"]:
+                        before = st
+                    elif after is None:
+                        after = st
+                if (before is None) or (after is None):
+                    continue
+                fb, fa = before.get("foe"), after.get("foe")
+                if (not fb) or (not fa):
+                    continue
+                i = max(range(len(fb)), key=lambda k: fb[k])
+                uses.append((fb[i], fa[i], (lv or {}).get("Opportunity Knocks")))
+    lo, hi = 0.0, float("inf")
+    kept = []
+    for b, a, level in uses:
+        if (b <= 0) or (a >= 100):
+            # Nothing to divide by, or clipped at the ceiling.
+            continue
+        kept.append((b, a, level))
+        lo = max(lo, a / float(b + 1))
+        hi = min(hi, (a + 1) / float(b))
+    if not kept:
+        return (uses, None, None)
+    return (uses, lo, hi)
+
+
+
 LEVELS = DECKS[-1][1] if DECKS else {}
 
-MU_MEASURED = dict((lvl, (lo, hi)) for lvl, (lo, hi, _n, _s) in measure_mu().items())
+def _mu_measured():
+    """Every instrument that reads mu, intersected - and shouting if they disagree.
+
+    Take Aim's cooldown was the only one for a long time, and being the only one is how a
+    wrong rounding rule survived a week: three "independent" confirmations all ran through
+    the same inversion, and a shared instrument is a shared assumption.
+
+    Opportunity Knocks is a second, with nothing in common with the first. One is a chain
+    of two floors and a round on a whole-tick cooldown; the other is a multiplication of
+    an opening, read off a different field of a different event. Taking the card's own
+    "40% * mu" as given, eleven uncensored uses put mu(2) in [1.0985, 1.1290], against
+    Take Aim's (1.1111, 1.1538]. They agree, and between them they leave (1.1111, 1.1290]
+    - which admits the linear curve's 1.125 and excludes 1.5 - 0.5/sqrt(L) at 1.1464.
+
+    A DISAGREEMENT WOULD NOT BE RESOLVED BY INTERSECTING. Two sound instruments that do
+    not meet mean one of them is wrong, and quietly taking an empty interval - or the
+    narrow sliver either side of it - would bury the most informative thing the corpus
+    could ever say. So a level where they fail to meet keeps the wider reading and is
+    reported, rather than being reconciled.
+    """
+    out = dict((lvl, (lo, hi)) for lvl, (lo, hi, _n, _s) in measure_mu().items())
+    disputed = {}
+    try:
+        _uses, blo, bhi = ok_boost()
+    except Exception:
+        return (out, disputed)
+    if blo is None:
+        return (out, disputed)
+    levels = set(l for _b, _a, l in _uses if l)
+    if len(levels) != 1:
+        # The reading is one interval over whatever levels the uses came from, so it can
+        # only be attributed if they were all at the same level.
+        return (out, disputed)
+    level = levels.pop()
+    lo, hi = (blo - 1.0) / OK_BOOST, (bhi - 1.0) / OK_BOOST
+    have = out.get(level)
+    if have is None:
+        out[level] = (max(lo, MU_MIN_STATED), min(hi, MU_MAX))
+        return (out, disputed)
+    ilo, ihi = max(have[0], lo), min(have[1], hi)
+    if ilo > ihi:
+        disputed[level] = (have, (lo, hi))
+        return (out, disputed)
+    out[level] = (ilo, ihi)
+    return (out, disputed)
+
+
+# The card's own text: "increases your opponent's greatest opening by 40% * mu". Named
+# rather than inlined because mu(2) is now read through it - see _mu_measured.
+OK_BOOST = 0.40
+
+MU_MEASURED, MU_DISPUTED = _mu_measured()
+for _lvl, (_a, _b) in sorted(MU_DISPUTED.items()):
+    sys.stderr.write(
+        "mu at level %d DISPUTED: Take Aim says %s, Opportunity Knocks says %s - "
+        "they do not meet, so neither is folded in\n" % (_lvl, _a, _b))
 
 
 def load_moves():
@@ -512,6 +644,10 @@ def attack_weight_bounds(move, attrs, level=None):
     return (base * mult * lo, base * mult * hi)
 
 
+# How close to the clamp counts as on it. See agility_interval.
+SATURATED = 1e-9
+
+
 def agility_interval(observations, agi_me):
     """The opponent's agility, as the interval the reported cooldowns allow.
 
@@ -520,25 +656,847 @@ def agility_interval(observations, agi_me):
     multiplier is 1 - 0.1*clamp(log2(agiMe/agiFoe), -1, 1), so each observation is an
     interval on the opponent's agility and several of them intersect.
 
-    Returns (lo, hi, capped) where capped means the multiplier has reached its limit and
-    the interval is open on that side - all the observation says is "at least twice" or
-    "at most half".
+    EVERY OBSERVATION CARRIES ITS OWN agiMe. What a cooldown constrains is the RATIO of
+    the two agilities; the absolute only comes out by multiplying through by what our own
+    agility was AT THAT MOMENT. One agiMe for a pooled set of observations is right only
+    while ours never changed, and the corpus now holds fights at 112 and at 124.
+    Converting the 112 observations at 124 inflates them by 10.7%, which is exactly the
+    factor separating two groups of ants into intervals that do not overlap - [56.0, 61.1]
+    against [62.0, 67.6], for one species. Intersecting those yields nothing, and pooling
+    them under the larger agility yields something confidently wrong.
+
+    An observation may therefore be (base, ticks) - converted at the `agi_me` argument,
+    which is the right thing when they all came from one fight - or (base, ticks, agiMe),
+    carrying the agility that was ours when it was taken.
+
+    AT THE CLAMP AN OBSERVATION BOUNDS ONE SIDE ONLY, and the other side has to be given
+    up rather than filled in. The game computes the multiplier from clamp(L, -1, 1), so
+    once L exceeds 1 the cooldown stops moving: every opponent from half our agility down
+    to nothing produces the same ticks. Such an observation says "at most half of ours"
+    and nothing whatever about how much less. Returning agiMe/2 as the LOWER bound and
+    flagging it as capped fabricates a bound that then behaves like a real one - the
+    intersection takes the largest lower bound it is offered, and a fabricated one wins.
+
+    That went unseen while our own agility never changed, because every fabricated bound
+    scaled the same way and the intersection was really being taken in ratio space. With
+    fights at 81 through 124 in the corpus it stops being invisible: badger, fox, beeswarm
+    and bear all come out contradicting themselves, each one an agiMe/2 from our fastest
+    fight set against a real upper bound from a slower one.
+
+    Returns (lo, hi, capped) where capped means at least one observation saturated, so the
+    interval it contributed is open on that side. hi may be infinite: "at least twice our
+    agility, no ceiling" is what the cooldowns of a bear actually say, and it is worth
+    more than the None this used to collapse to. None now means only that nothing at all
+    was learned - no observation bounded either side.
     """
     lo, hi, capped = 0.0, float("inf"), False
-    for base, ticks in observations:
-        if base <= 0:
+    for obs in observations:
+        base, ticks = obs[0], obs[1]
+        mine = obs[2] if (len(obs) > 2) else agi_me
+        if (base <= 0) or not mine:
             continue
         flo, fhi = (ticks - 0.5) / base, (ticks + 0.5) / base
         # f = 1 - 0.1 L  ->  L = 10 (1 - f), and agiFoe = agiMe / 2^L.
         llo, lhi = 10.0 * (1.0 - fhi), 10.0 * (1.0 - flo)
-        if lhi >= 1.0 or llo <= -1.0:
+        # Saturated above: L may be anything at or past the clamp, so the opponent may be
+        # arbitrarily slower and there is no lower bound to take from this observation.
+        #
+        # THE COMPARISON NEEDS A TOLERANCE, and not for tidiness. A reading that lands
+        # exactly on the saturation point puts the edge of its interval exactly on the
+        # clamp, and whether the division represents that edge a hair above or a hair
+        # below decides whether a bound is taken. Base 35 saturated is round(31.5) = 32
+        # ticks, whose lhi comes out 0.99999999999999978 - and that one hair fabricated a
+        # lower bound of 48.0 for a badger whose every other reading said at most 42, cost
+        # the species its measurement, and read as "badgers disagree with each other".
+        # One tick moves lhi by 10/base, at least 0.125 here, so the tolerance is eight
+        # orders of magnitude below anything the ticks can resolve.
+        if lhi >= 1.0 - SATURATED:
             capped = True
-        llo, lhi = max(-1.0, min(1.0, llo)), max(-1.0, min(1.0, lhi))
-        a, b = agi_me / (2.0 ** lhi), agi_me / (2.0 ** llo)
-        lo, hi = max(lo, min(a, b)), min(hi, max(a, b))
-    if hi == float("inf"):
+        else:
+            lo = max(lo, mine / (2.0 ** lhi))
+        # Saturated below, the mirror case: arbitrarily faster, no upper bound.
+        if llo <= -1.0 + SATURATED:
+            capped = True
+        else:
+            hi = min(hi, mine / (2.0 ** llo))
+    if (lo <= 0.0) and (hi == float("inf")):
         return None
     return (lo, hi, capped)
+
+
+def weapons_seen(logs=None):
+    """What the client itself says about the weapons we have actually held.
+
+    `data/combat/weapons.json` is scraped from the wiki and the wiki can be wrong. The
+    stone axe is: the table gives its armour penetration as 10%, and the live `WeaponInfo`
+    reads 0.20. The bronze sword agrees exactly at 12.5%, so this is not a units problem
+    on our side, it is one wrong number in a table the matchup evaluator trusts.
+
+    The client's own tooltip values are logged as they are read, so a weapon we have held
+    needs no scraper. Damage arrives QUALITY-SCALED, which is worth stating because using
+    the tooltip figure as a base is a factor-of-two error waiting to happen - it was one,
+    in Prediction.java, until the corpus caught it. Dividing it back out recovers the
+    wiki's base damage to within a quarter of a percent on both weapons the corpus has:
+
+        bronze sword  176.0 at ql 38.06  ->  90.21   table 90
+        stone axe      71.0 at ql 56.28  ->  29.93   table 30
+
+    Which is the point: the two sources agree on damage on both weapons and disagree on
+    penetration on one, so the disagreement is a fact about the table rather than about
+    the arithmetic.
+
+    Returns basename -> dict of what was read, with the recovered base beside it.
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    out = {}
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        ql = {}
+        for g in (log.gear or []):
+            if g.get("res"):
+                ql[g["res"]] = g.get("ql")
+        for w in (log.weapons or []):
+            res = w.get("res")
+            v = w.get("v") or {}
+            if (not res) or ("damage" not in v):
+                continue
+            base = res.rsplit("/", 1)[-1]
+            q = ql.get(res)
+            rec = out.setdefault(base, {"res": res, "n": 0, "quality": [],
+                                        "recovered_base": []})
+            rec["n"] += 1
+            for k in ("damage", "armpen", "range", "grievous"):
+                if k in v:
+                    rec.setdefault(k, set()).add(round(float(v[k]), 4))
+            if q and (q > 0):
+                rec["quality"].append(round(q, 4))
+                rec["recovered_base"].append(round(v["damage"] / math.sqrt(q / 10.0), 3))
+    # Sets do not serialise, and a weapon read at two qualities has two damages and one
+    # base - so the tooltip figures are kept as sorted lists and the base as a range.
+    for base, rec in out.items():
+        for k in ("damage", "armpen", "range", "grievous"):
+            if k in rec:
+                rec[k] = sorted(rec[k])
+        rec["quality"] = sorted(set(rec["quality"]))
+        b = sorted(set(rec["recovered_base"]))
+        rec["recovered_base"] = {"lo": b[0], "hi": b[-1]} if b else None
+    return out
+
+
+def _wiki_weapons_by_key():
+    """Wiki weapon table keyed by normalised basename, or {} on failure."""
+    try:
+        with open(os.path.join(ROOT, "data", "combat", "weapons.json"),
+                  encoding="utf8") as f:
+            out = {}
+            for w in json.load(f):
+                out[re.sub(r"[^a-z0-9]", "", (w.get("name") or "").lower())] = w
+            return out
+    except Exception:
+        return {}
+
+
+def _live_weapons_by_key(seen=None):
+    """Live wpn readings keyed by normalised basename, or {} if none held."""
+    if seen is None:
+        seen = weapons_seen()
+    out = {}
+    for base, rec in (seen or {}).items():
+        out[re.sub(r"[^a-z0-9]", "", base.lower())] = rec
+    return out
+
+
+def weapon_offline_join(logs=None):
+    """Offline weapon join that prefers live wpn readings, wiki table as fallback.
+
+    Penetration is a pure fraction and comes directly from WeaponInfo.armpen
+    where the item has been held. Damage's tooltip is QUALITY-SCALED, so the
+    base is recovered as dmg / sqrt(ql/10) - validated on two weapons at two
+    very different qualities, both within a quarter of a percent of the wiki:
+
+        bronze sword  176.0 at ql 38.0613 -> 90.21  wiki 90   +0.24%
+        stone axe      71.0 at ql 56.2835 -> 29.93  wiki 30   -0.24%
+
+    Formulas.rawDamage applies quality itself via sqrt(sqrt(ql*str)/10), so
+    feeding the tooltip figure without dividing would double-count quality
+    (176/90 = 1.96x, observed 2.18x on three logged hits before the fix).
+
+    FALLBACK triggers (documented here because that is where callers must
+    decide whether a fallback is a measurement or a guess):
+
+        - No live reading at all for this basename -> wiki basedmg + armorpen
+          (wiki armorpen may itself be null for 4 of 26 weapons; absent stays
+          null, never 0, per the M1b contract - a zero would claim no piercing).
+        - Live armpen absent or empty -> wiki armorpen, even if damage was live.
+        - Live damage absent or quality missing -> cannot recover base, so wiki
+          basedmg even if armpen was live.
+        - Recovered base inconsistent across qualities (|hi-lo| > 0.5) -> wiki
+          basedmg, because the quality division is then suspect and the scrape
+          is the more trustworthy of the two (mirrors Pack.java overlaySeen).
+
+    Returns dict key -> {"basedmg": value or None, "armorpen": value or None
+    (fraction 0..1), "source": "live"|"wiki"|"mixed"} with raw strings
+    preserved alongside parsed numbers where present.
+    """
+    wiki = _wiki_weapons_by_key()
+    seen = weapons_seen(logs) if logs is not None else weapons_seen()
+    live = _live_weapons_by_key(seen)
+    # Union of keys from both sources so wiki-only weapons remain available.
+    keys = set(wiki.keys()) | set(live.keys())
+    out = {}
+    for k in keys:
+        w = wiki.get(k)
+        lv = live.get(k)
+        # Wiki values
+        w_dmg = ((w or {}).get("basedmg") or {}).get("value")
+        w_pen_raw = ((w or {}).get("armorpen") or {}).get("value")
+        w_pen = (w_pen_raw / 100.0) if isinstance(w_pen_raw, (int, float)) else None
+        # Live values
+        rb = (lv or {}).get("recovered_base") or {}
+        lo, hi = rb.get("lo"), rb.get("hi")
+        # live base is only trusted when both ends agree within 0.5 (same rule as
+        # Pack.java overlaySeen). Single-quality weapons have lo==hi, so pass.
+        live_base = None
+        if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+            if abs(hi - lo) <= 0.5:
+                live_base = lo
+        pen_list = (lv or {}).get("armpen") or []
+        live_pen = pen_list[0] if pen_list else None
+        # Prefer live where present, fallback per triggers above.
+        dmg = live_base if live_base is not None else w_dmg
+        pen = live_pen if isinstance(live_pen, (int, float)) else w_pen
+        # Source tag for callers that need to know whether they are measuring
+        # or falling back.
+        if (live_base is not None) and isinstance(live_pen, (int, float)):
+            src = "live"
+        elif (live_base is not None) or isinstance(live_pen, (int, float)):
+            src = "mixed"
+        else:
+            src = "wiki"
+        # Absent stays None, never 0.
+        out[k] = {"basedmg": dmg, "armorpen": pen, "source": src,
+                  "wiki_basedmg": w_dmg, "wiki_armorpen": w_pen,
+                  "live_basedmg": live_base, "live_armorpen": live_pen}
+    return out
+
+
+def report_weapons_seen():
+    seen = weapons_seen()
+    if not seen:
+        return
+    wiki = _wiki_weapons_by_key()
+    print("=" * 78)
+    print("WEAPONS, AS THE CLIENT REPORTS THEM")
+    print("=" * 78)
+    print("  The wiki table is scraped and can be wrong. These are read off the item.")
+    print()
+    print("  %-14s %-10s %-9s %-13s %-9s %s"
+          % ("weapon", "tooltip", "quality", "base recovered", "wiki base", "penetration"))
+    for base in sorted(seen):
+        rec = seen[base]
+        w = wiki.get(re.sub(r"[^a-z0-9]", "", base))
+        wbase = ((w or {}).get("basedmg") or {}).get("value")
+        wpen = ((w or {}).get("armorpen") or {}).get("value")
+        rb = rec.get("recovered_base") or {}
+        pen = rec.get("armpen") or []
+        note = ""
+        if (wpen is not None) and pen and (abs(pen[0] * 100 - wpen) > 0.01):
+            note = "   <-- wiki says %g%%, the item says %g%%" % (wpen, pen[0] * 100)
+        print("  %-14s %-10s %-9s %-13s %-9s %s%s"
+              % (base[:14],
+                 ",".join("%g" % d for d in rec.get("damage", [])),
+                 ",".join("%g" % q for q in rec["quality"]),
+                 ("%.2f" % rb["lo"]) if rb else "?",
+                 wbase if wbase is not None else "?",
+                 ",".join("%g%%" % (p * 100) for p in pen), note))
+    print()
+
+
+def report_ok_boost():
+    uses, lo, hi = ok_boost()
+    if not uses or (lo is None):
+        return
+    print("=" * 78)
+    print("WHAT OPPORTUNITY KNOCKS ACTUALLY DOES")
+    print("=" * 78)
+    print("  The card's text says 40% * mu of the greatest standing opening. The")
+    print("  simulator has implemented that on the text alone since it was written.")
+    print()
+    levels = sorted(set(l for _b, _a, l in uses if l))
+    print("  %d use(s), %d of them uncensored, at card level(s) %s"
+          % (len(uses), sum(1 for b, a, _l in uses if (b > 0) and (a < 100)),
+             ", ".join(str(l) for l in levels)))
+    zeros = [(b, a) for b, a, _l in uses if b == 0]
+    if zeros:
+        print("  and %d with NOTHING standing, which gained %s - a share, not a number of"
+              % (len(zeros), ", ".join(str(a) for _b, a in zeros)))
+        print("  points, and not the ordinary rule, under which an empty opening is the")
+        print("  easiest one to open.")
+    print()
+    print("  multiplier on the standing opening: [%.4f, %.4f]" % (lo, hi))
+    for label, value in (("0.4 * mu, with mu(2) = 1.125", 1.45),
+                         ("0.4 flat, mu not scaling it", 1.40),
+                         ("0.4 * mu, with mu(2) = 1.1464", 1.0 + 0.4 * 1.1464),
+                         ("0.4 * mu, with mu(2) = 1.168", 1.0 + 0.4 * 1.168)):
+        print("      %-34s %.4f   %s"
+              % (label, value, "admitted" if (lo <= value <= hi) else "EXCLUDED"))
+    if lo > 1.0:
+        print()
+        print("  Taking the card's 40%% as given, that reads mu(2) in [%.4f, %.4f]."
+              % ((lo - 1.0) / 0.4, (hi - 1.0) / 0.4))
+        print("  An instrument with nothing in common with Take Aim's cooldown: one is a")
+        print("  multiplication of an opening, the other a chain of two floors and a round.")
+    print()
+
+
+def agility_band(logs=None):
+    """The width of the agility cooldown band, read straight off the corpus.
+
+    The community combat guide states the band as plus or minus TWENTY percent. The model
+    uses ten, fitted from two sparring partners, and the spec has carried the disagreement
+    as unresolved since 2026-09-02. It is resolvable without a single new fight.
+
+    A card at level 1 with zero initiative has mu = 1 and no initiative term, so the only
+    thing left between its base cooldown and its reported ticks is the opponent. Take that
+    slice and the ratio IS the agility factor, with nothing to unpick.
+
+    The strongest form of the reading needs no assumption about any opponent's agility at
+    all: for one card at one level and one initiative, the ratio of the largest reported
+    cooldown to the smallest is the ratio of the two extreme factors. A ten percent band
+    allows at most 1.1/0.9 = 1.2222. A twenty percent band allows 1.5.
+
+    Returns (ratios, spreads, flat) - every level-1 zero-initiative attack ratio, the
+    per (card, level, initiative) max/min spreads, and the maneuvers, which take no
+    agility term and are the control.
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    moves = load_moves()
+    ratios = []
+    groups = defaultdict(set)
+    flat = defaultdict(set)
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        lv = levels_at((log.header or {}).get("wall"))
+        for eng in log.engagements:
+            sp = (eng.res or "?").split("/")[-1]
+            states = sorted(eng.states, key=lambda st: st["t"])
+            for m in eng.moves:
+                if m.get("actor") != "me":
+                    continue
+                name = m.get("name") or m.get("move")
+                mv = moves.get(name)
+                cd = m.get("cd")
+                if (not mv) or (not cd) or (cd <= 0) or (mv.get("cooldown") is None):
+                    continue
+                ip = None
+                for st in states:
+                    if st["t"] <= m["t"]:
+                        ip = st.get("myip")
+                    else:
+                        break
+                # Declaring an attack TYPE is sufficient and not necessary. Opportunity
+                # Knocks declares none, carries an attack skill, and rides the band -
+                # base 45 reporting 41 against everything at the bottom of it. Splitting
+                # on types alone put it in the control, where a card that moves 41 to 45
+                # was being used as evidence that maneuvers do not move.
+                attack = bool(mv.get("attack_types") or []) or bool(mv.get("attack_skill"))
+                key = (name, (lv or {}).get(name), ip)
+                if attack:
+                    groups[key].add(cd)
+                    if ((lv or {}).get(name) == 1) and (ip == 0):
+                        ratios.append((name, sp, cd / float(mv["cooldown"])))
+                elif not mv.get("ip_scale"):
+                    # The control has to hold everything else still, or it is not a
+                    # control. Level and initiative are held by the key; Take Aim is
+                    # excluded outright because its cooldown scales WITH initiative
+                    # (ip_scale 0.2), and the initiative here is read from the state
+                    # sample before the move, which is a tick or two stale. That
+                    # staleness alone gave Take Aim a spread of 1.2000 - one initiative
+                    # point - which would have read as agility and is not.
+                    flat[key].add(cd)
+    spreads = {}
+    for key, ticks in groups.items():
+        if len(ticks) > 1:
+            spreads[key] = max(ticks) / float(min(ticks))
+    # EVERY maneuver slice, including the ones that never moved - a control that reports
+    # only the slices that varied is a control that passes by being empty.
+    flats = dict((key, max(ticks) / float(min(ticks)))
+                 for key, ticks in flat.items())
+    return (ratios, spreads, flats)
+
+
+def report_agility_band():
+    ratios, spreads, flat = agility_band()
+    if not ratios:
+        return
+    lo = min(r for _n, _s, r in ratios)
+    hi = max(r for _n, _s, r in ratios)
+    print("=" * 78)
+    print("HOW WIDE THE AGILITY BAND IS")
+    print("=" * 78)
+    print("  The guide says plus or minus twenty percent. Card level 1 at zero initiative")
+    print("  leaves nothing between a base cooldown and its ticks except the opponent.")
+    print()
+    print("  %d attack cooldown(s) in that slice, ratio %.3f to %.3f"
+          % (len(ratios), lo, hi))
+    print("  none outside [0.9, 1.1]: %s"
+          % (not [r for _n, _s, r in ratios if (r < 0.9 - 1e-9) or (r > 1.1 + 1e-9)]))
+    if spreads:
+        w = max(spreads.values())
+        print("  widest spread for ONE card at one level and initiative: %.4f" % w)
+        print("      a band of +-10%% allows 1.1/0.9 = %.4f" % (1.1 / 0.9))
+        print("      a band of +-20%% would allow         %.4f" % (1.2 / 0.8))
+    # The control: maneuvers take no agility term, so at a fixed level and initiative
+    # they must not move at all however fast the opponent is.
+    if flat:
+        w = max(flat.values())
+        print("  control: %d maneuver slice(s) with more than one reading, widest %.4f"
+              % (len(flat), w))
+        for key in sorted(flat, key=str)[:6]:
+            print("      %-22s level %-4s initiative %-4s spread %.4f"
+                  % (key[0], key[1], key[2], flat[key]))
+    else:
+        print("  control: no maneuver at a fixed level and initiative ever moved")
+    print()
+    seen = defaultdict(set)
+    for _n, sp, r in ratios:
+        seen[round(r, 3)].add(sp)
+    print("  who sits where, on Quick Barrage's base of 20:")
+    for r in sorted(seen):
+        print("      %.3f  %s" % (r, ", ".join(sorted(seen[r]))[:72]))
+    print()
+
+
+def pooled_agility(rec):
+    """One species' agility, and what to say when its members do not agree.
+
+    A bucket is a species, and publishing one interval for it asserts that every badger
+    has a badger's agility. The intersection is what tests that assertion, and when it
+    comes out empty the assertion is what is being reported - not an absence of data,
+    which is how it currently reads to anyone opening the pack.
+
+    Two kinds of disagreement, and they are not the same finding:
+
+    An INDIVIDUAL that contradicts itself is a measurement fault. One creature does not
+    have two agilities, so at least one of its cooldowns is not what the inversion thinks
+    it is - a card level read from the wrong deck, a base cooldown wrong in the table, or
+    a reading taken across a re-aggro. Dropping it is sound, and it is recorded.
+
+    Individuals that are each consistent but disagree with each other is EVIDENCE, not a
+    fault: it says the species varies. Picking a winner there would launder the model's
+    assumption into clean-looking data. The union is published instead, flagged, so the
+    simulator's toughest and weakest readings still bracket the fight and nobody mistakes
+    the width for precision.
+
+    CLEAN EVIDENCE DECIDES WHERE THERE IS ANY. A cooldown belongs to whoever the swing
+    landed on, and the recorder can only tie it to the relation in force, so a fight with
+    six creatures on screen attributes some of its cooldowns to the wrong one. Every
+    self-contradictory individual in this corpus - an ant, a beelarva, a queen bee, a
+    warrior ant - comes from exactly such a fight, and each carries one reading that no
+    other member of its species comes near: an ant at 41 ticks on a base of 40, where a
+    hundred and twenty other ants report 36.
+
+    Gating on it outright is the wrong answer, and for the same reason it was the wrong
+    answer for the defence weights: thirteen species have no clean cooldown at all, and
+    dropping them trades a soft measurement for none. So clean decides where it exists,
+    contaminated fills in where it does not, and `from_contaminated` says which.
+
+    Returns (interval or None, note dict).
+    """
+    clean = sorted(rec.get("agi_obs_clean") or ())
+    if clean:
+        iv, why = _pool_agility(clean, rec.get("agi_obs_clean_by_gob") or {})
+        if iv is not None:
+            return (iv, why)
+    allobs = sorted(rec["agi_obs"])
+    if not allobs:
+        return (None, {})
+    iv, why = _pool_agility(allobs, rec.get("agi_obs_by_gob") or {})
+    if why:
+        why["from_contaminated"] = True
+    return (iv, why)
+
+
+def _pool_agility(allobs, by_gob):
+    """The reconciliation itself, over one body of observations. See pooled_agility."""
+    if not allobs:
+        return (None, {})
+    iv = agility_interval(allobs, None)
+    if (iv is not None) and (iv[0] <= iv[1]):
+        return (iv, {"n": len(allobs)})
+
+    per = {}
+    for gob, obs in by_gob.items():
+        one = agility_interval(sorted(obs), None)
+        if one is not None:
+            per[gob] = one
+    faulty = sorted(g for g, one in per.items() if one[0] > one[1])
+    kept = {g: one for g, one in per.items() if one[0] <= one[1]}
+    if not kept:
+        return (None, {"contradictory": True, "self_contradictory_gobs": faulty,
+                       "n": len(allobs)})
+
+    rest = sorted(set().union(*(by_gob[g] for g in kept)))
+    iv = agility_interval(rest, None)
+    if (iv is not None) and (iv[0] <= iv[1]):
+        return (iv, {"n": len(rest), "self_contradictory_gobs": faulty})
+
+    # Each member is coherent and they still do not meet. That is the species varying.
+    lo = min(one[0] for one in kept.values())
+    hi = max(one[1] for one in kept.values())
+    cap = any(one[2] for one in kept.values())
+    return ((lo, hi, cap), {"n": len(rest), "union": True,
+                            "self_contradictory_gobs": faulty,
+                            "members": len(kept)})
+
+
+def flee_points(logs=None):
+    """When an animal gave up, as the fraction of its health still standing.
+
+    FoeModel.fleesBelow has been asserted by the model and never measured, and the reason
+    was a measurement error rather than an absence of data. A first pass summed the damage
+    inside the ENGAGEMENT the flight appeared in and found moose, red deer and walrus
+    extending the olive branch after zero damage - which reads as "these animals never
+    wanted to fight" and is wrong. Auto-reaggro splits one fight across many files, and a
+    later fragment opens with the animal already hurt and already fleeing, so the damage
+    is in a different file from the flight.
+
+    Accumulating per GOB across every file instead: walrus 0 -> 729, moose 0 -> 615, red
+    deer 0 -> 147. The same conflation also counted one animal's flight once per fragment,
+    turning six fleeing creatures into twenty-two.
+
+    Two things are needed and both are per individual. The damage it had taken when it
+    first extended the branch, and its own maximum health - which is only known for one
+    that later DIED, since a survivor gives a floor and nothing more. An individual whose
+    health is a floor yields a bound on the fraction, not a value, and is returned as such.
+
+    Returns species -> list of (gob, damage_at_flight, hp_lo, hp_hi, frac_lo, frac_hi).
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    hits = defaultdict(list)
+    res, died_at, last_hit = {}, {}, {}
+    flee = {}
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        wall = (log.header or {}).get("wall") or 0
+        for eng in log.engagements:
+            if eng.res:
+                res[eng.gob] = eng.res
+            for d in eng.damage:
+                if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP"):
+                    hits[eng.gob].append((wall + d["t"], d["v"]))
+            # The first moment this individual extended its olive branch, on the same
+            # absolute clock as the damage, so the two can be compared across files.
+            for st in eng.states:
+                g = st.get("gst")
+                if (g is not None) and (g & 2):
+                    t = wall + st["t"]
+                    if (eng.gob not in flee) or (t < flee[eng.gob]):
+                        flee[eng.gob] = t
+                    break
+            if died(eng, log.me):
+                tot = sum(v for _t, v in hits.get(eng.gob, []))
+                died_at[eng.gob] = tot
+                shp = [d for d in eng.damage
+                       if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP")]
+                if shp:
+                    last_hit[eng.gob] = shp[-1]["v"]
+
+    out = defaultdict(list)
+    for gob, t in sorted(flee.items()):
+        dmg = sum(v for tt, v in hits.get(gob, []) if tt <= t)
+        if dmg <= 0:
+            # It gave up before we ever hurt it. That is a real observation about the
+            # creature and it is not a flight, so it says nothing about a threshold.
+            continue
+        if gob in died_at:
+            # It died later, so its health is bracketed by the total it took and that
+            # total less the overkill on the final blow.
+            hi = died_at[gob]
+            lo = hi - last_hit.get(gob, 0)
+        else:
+            # A survivor. Its health is at least everything it absorbed, and nothing here
+            # bounds it above, so the fraction standing can only be bounded one way.
+            lo = sum(v for _t, v in hits.get(gob, []))
+            hi = None
+        # The fraction standing is 1 - dmg/HP, which RISES with HP. So the smaller health
+        # bound gives the smaller fraction and the larger gives the larger - stated
+        # explicitly because getting it the wrong way round turned a walrus that had at
+        # least 27% left into one reported as having at most 0%.
+        frac_lo = (1.0 - (dmg / float(lo))) if (lo and dmg <= lo) else None
+        frac_hi = (1.0 - (dmg / float(hi))) if hi else None
+        out[(res.get(gob) or "?").split("/")[-1]].append((gob, dmg, lo, hi, frac_lo, frac_hi))
+    return out
+
+
+def report_flees():
+    rows = flee_points()
+    if not rows:
+        return
+    print("=" * 78)
+    print("WHEN AN ANIMAL GIVES UP")
+    print("=" * 78)
+    print("  The model asserts a flight threshold and has never measured one. Damage is")
+    print("  accumulated per INDIVIDUAL across every file, because auto-reaggro splits one")
+    print("  fight into many and a later fragment opens with the animal already hurt.")
+    print()
+    print("  %-12s %-6s %-8s %-16s %s"
+          % ("species", "gob", "damage", "its health", "health still standing"))
+    for sp in sorted(rows):
+        for gob, dmg, lo, hi, a, b in rows[sp]:
+            h = ("%d - %d" % (lo, hi)) if hi else ("more than %d" % lo)
+            if (a is not None) and (b is not None):
+                f = "%.0f%% - %.0f%%" % (100 * a, 100 * b)
+            elif a is not None:
+                # A survivor's health is only bounded below, so the fraction it still had
+                # is only bounded below too.
+                f = "at least %.0f%%" % (100 * a)
+            else:
+                f = "?"
+            print("  %-12s %-6s %-8d %-16s %s" % (sp[:12], str(gob)[-5:], dmg, h, f))
+    print()
+
+
+def agility_control(logs=None):
+    """The client's own agility bracket against ours, on the same opponents.
+
+    THIS IS A CONTROL, and it is the only one in this system that compares two independent
+    routes to the same quantity. Everything else here is checked against the corpus that
+    produced it, which is how a wrong rounding rule in one inversion survived a week and
+    three "independent" confirmations that all ran through it.
+
+    The two routes share only the observation. Ours (agility_interval) inverts
+    Formulas.agilityCooldownFactor analytically, from the move's base cooldown and the
+    reported ticks. The client's (Fightview.Relation.minAgi/maxAgi, narrowed in Fightsess)
+    reads a hand-built lookup table, Config.attackCooldownNumbers, that predates this
+    project and was not derived from our formula. Where they agree, the formula and the
+    table corroborate each other. Where they do not, one of them is wrong and the
+    disagreement is the finding.
+
+    The client's figures are a RATIO of the opponent's agility to ours - the table maps a
+    cooldown BELOW the card's base to a ratio below 1, which is the slow-opponent
+    direction - so they are multiplied up by our own agility to be comparable. Its
+    defaults are 0 and 2, meaning no bound on that side; 2 is the model's own factor-two
+    cap, so an upper bound sitting exactly on it carries no information.
+
+    Returns species -> list of (gob, client_lo, client_hi, ours_lo, ours_hi, agree).
+    """
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    moves = load_moves()
+    out = defaultdict(list)
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        if not log.agility:
+            continue
+        agi_me = ((log.header or {}).get("attr") or {}).get("agi")
+        if not agi_me:
+            continue
+        # Our own reading, per opponent, from the same fight - so the two routes are
+        # answering about the same individual and not about a species average.
+        obs = defaultdict(list)
+        for eng in log.engagements:
+            for m in eng.moves:
+                if m.get("actor") != "me":
+                    continue
+                nm = m.get("name")
+                mv = moves.get(nm)
+                cd = m.get("cd")
+                if (not mv) or (not cd) or (cd <= 0):
+                    continue
+                # Maneuvers take no agility term, so they say nothing about the opponent -
+                # the same test the per-opponent report uses, and for the same reason.
+                if not (mv.get("attack_types") or mv.get("attack_skill")):
+                    continue
+                if mv.get("cooldown") is None:
+                    continue
+                obs[eng.gob].append((mv["cooldown"], cd))
+        # The client narrows one bracket per opponent over the fight; the last is tightest.
+        best = {}
+        for r in log.agility:
+            best[r["gob"]] = (r.get("min"), r.get("max"))
+        for gob, (lo_r, hi_r) in best.items():
+            iv = agility_interval(obs.get(gob, []), agi_me) if obs.get(gob) else None
+            clo = (lo_r or 0.0) * agi_me
+            chi = float("inf") if (hi_r is None or hi_r >= 2.0) else hi_r * agi_me
+            if iv is None:
+                agree = None
+            else:
+                olo, ohi, _capped = iv
+                # Intervals agree when they intersect. Neither is a point estimate, so
+                # anything stricter would report a disagreement that is not one.
+                agree = (clo <= ohi) and (olo <= chi)
+            sp = (log.names.get(gob) or "?").split("/")[-1]
+            out[sp].append((gob, clo, chi, iv[0] if iv else None,
+                            iv[1] if iv else None, agree))
+    return out
+
+
+def report_agility_control():
+    rows = agility_control()
+    if not rows:
+        return
+    print("=" * 78)
+    print("AGILITY, MEASURED TWICE BY ROUTES THAT SHARE ONLY THE OBSERVATION")
+    print("=" * 78)
+    print("  Ours inverts the cooldown formula. The client's reads a hand-built table that")
+    print("  predates this project. Agreement corroborates both; disagreement means one is")
+    print("  wrong, and that is worth more than either number.\n")
+    print("  %-12s %-6s %-20s %-20s %s"
+          % ("opponent", "gob", "client says", "we say", "verdict"))
+    agreed = disagreed = unknown = 0
+    for sp in sorted(rows):
+        for gob, clo, chi, olo, ohi, agree in rows[sp]:
+            c = "%.0f - %s" % (clo, "?" if chi == float("inf") else "%.0f" % chi)
+            o = "?" if olo is None else "%.0f - %.0f" % (olo, ohi)
+            if agree is None:
+                v = "(no reading of ours)"
+                unknown += 1
+            elif agree:
+                v = "agree"
+                agreed += 1
+            else:
+                v = "DISAGREE"
+                disagreed += 1
+            print("  %-12s %-6s %-20s %-20s %s" % (sp[:12], str(gob)[-5:], c, o, v))
+    print("\n  %d agree, %d disagree, %d with only one route." % (agreed, disagreed, unknown))
+    if disagreed:
+        print("  A disagreement is a defect in the formula, the table, or the base cooldown")
+        print("  this used - and it is the one class of error the rest of the corpus cannot")
+        print("  see, because everything else here is checked against itself.")
+    print()
+
+
+def agi_records_by_species(logs=None):
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    out = defaultdict(list)
+    for path in sorted(logs):
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        if not log.agility:
+            continue
+        agi_me = ((log.header or {}).get("attr") or {}).get("agi")
+        if not agi_me:
+            continue
+        for r in log.agility:
+            mn = r.get("min")
+            mx = r.get("max")
+            if mn == 0 and mx == 2:
+                continue
+            if mn is None and mx is None:
+                continue
+            gob = r.get("gob")
+            sp = (log.names.get(gob) or "?").split("/")[-1]
+            lo = (mn or 0.0) * agi_me
+            hi = float("inf") if (mx is None or mx >= 2.0) else mx * agi_me
+            out[sp].append({
+                "gob": gob,
+                "min": mn,
+                "max": mx,
+                "agiMe": agi_me,
+                "lo": lo,
+                "hi": hi,
+                "file": os.path.basename(path),
+                "t": r.get("t"),
+            })
+    return out
+
+
+def agi_species_comparison(logs=None):
+    if logs is None:
+        logs, _dirs = fightlog.default_logs(ROOT)
+    per, _moves = collect(logs)
+    brackets = agi_records_by_species(logs)
+    out = {}
+    for sp in sorted(set(list(per.keys()) + list(brackets.keys()))):
+        rec = per.get(sp)
+        pooled = None
+        why = {}
+        if rec and rec.get("agi_obs"):
+            pooled, why = pooled_agility(rec)
+        rows = brackets.get(sp, [])
+        compared = []
+        for b in rows:
+            clo, chi = b["lo"], b["hi"]
+            if pooled is None:
+                agree = None
+            else:
+                plo, phi, _capped = pooled
+                agree = (clo <= phi) and (plo <= chi)
+            compared.append((b, agree))
+        if pooled is not None or rows:
+            out[sp] = {"pooled": pooled, "why": why, "brackets": compared}
+    return out
+
+
+def report_agi_species_comparison(logs=None):
+    comp = agi_species_comparison(logs)
+    if not comp:
+        return
+    print("=" * 78)
+    print("AGI BRACKETS AS AN INDEPENDENT SECOND OPINION ON AGILITY")
+    print("=" * 78)
+    print("  Logged Relation.minAgi/maxAgi brackets vs estimator-recovered")
+    print("  agility intervals per species. (0,2) suppressed as unknown,")
+    print("  one-sided narrowing kept one-sided. Disagreement is reported,")
+    print("  not narrowed away.\n")
+    print("  %-12s %-20s %-20s %s" % ("species", "pooled agility", "bracket", "verdict"))
+    agreed = disagreed = unknown = 0
+    for sp in sorted(comp):
+        pooled = comp[sp]["pooled"]
+        why = comp[sp].get("why") or {}
+        if pooled is None:
+            p_str = "?"
+        else:
+            plo, phi, capped = pooled
+            phi_s = "inf" if phi == float("inf") else "%.1f" % phi
+            p_str = "%.1f - %s%s" % (plo, phi_s, " capped" if capped else "")
+            if why.get("from_contaminated"):
+                p_str += " from_contaminated"
+            if why.get("union"):
+                p_str += " union"
+        for b, agree in comp[sp]["brackets"]:
+            mn, mx = b["min"], b["max"]
+            clo, chi = b["lo"], b["hi"]
+            raw = "%.3f - %.3f" % (mn if mn is not None else 0, mx if mx is not None else 2)
+            conv = "%.1f - %s" % (clo, "inf" if chi == float("inf") else "%.1f" % chi)
+            bracket_str = "%s (=> %s) agiMe=%s gob=%s" % (raw, conv, b["agiMe"], str(b["gob"])[-5:])
+            if agree is None:
+                v = "(no pooled interval)"
+                unknown += 1
+            elif agree:
+                v = "agree"
+                agreed += 1
+            else:
+                v = "DISAGREE"
+                disagreed += 1
+            print("  %-12s %-20s %-32s %s  %s" % (sp[:12], p_str[:20], bracket_str[:32], v, b["file"]))
+        if not comp[sp]["brackets"]:
+            print("  %-12s %-20s %-32s %s" % (sp[:12], p_str[:20], "(no bracket)", "(no bracket reading)"))
+            unknown += 1
+    print("\n  %d agree, %d disagree, %d with only one route." % (agreed, disagreed, unknown))
+    if disagreed:
+        print("  A disagreement is a finding: two sound instruments that do not meet.")
+        print("  Do not narrow either bound to make it pass.")
+    print()
 
 
 # How far a fit's root-mean-square residual may sit before it stops being a measurement.
@@ -900,6 +1858,19 @@ def collect(paths):
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
+        # (base cooldown, ticks, OUR agility at that fight). Kept beside "cd" rather than
+        # derived from it later, because "cd" has thrown the third away by then.
+        "agi_obs": set(),
+        # The same, split by individual. A species bucket asserts one agility for every
+        # member, and when the pooled intersection comes out empty this is what says
+        # whether that assertion is what broke - see pooled_agility.
+        "agi_obs_by_gob": defaultdict(set),
+        # And the same again, restricted to engagements with nobody else in them. A
+        # cooldown is a property of whoever the swing actually landed on, and the
+        # recorder can only tie it to the relation in force - which in a six-way swarm
+        # fight is not reliably the creature the bucket is about.
+        "agi_obs_clean": set(),
+        "agi_obs_clean_by_gob": defaultdict(set),
         # Moves refused by the Wd fits, and why, so a refusal is visible rather than a
         # gap: openings that scale with mu invert differently, and boost moves do not
         # invert at all.
@@ -928,6 +1899,16 @@ def collect(paths):
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
+        # Explicit outcome inference: per-engagement killed/fled/player/unknown kept
+        # alongside problems, not as a silent gate change. Surface the field so a
+        # later reader can gate on it deliberately rather than having it laundered
+        # into a verdict.
+        "outcomes": defaultdict(int),
+        "outcome_examples": [],
+        # Sfx hit/miss/ip per bracket - counts + which swings connected, the only
+        # place a log records that (damage has no channel for a miss).
+        "sfx": {"hits": 0, "misses": 0, "ips": 0, "brackets_with_hit": 0, "brackets_with_miss": 0},
+        "sfx_brackets": 0,
     })
     for p in sorted(paths):
         log = fightlog.read(p, opens)
@@ -971,6 +1952,28 @@ def collect(paths):
         for eng in log.engagements:
             rec = per[bucket(eng)]
             rec["engagements"] += 1
+            # Explicit outcome field, not a silent gate change - see fightlog._infer_outcome.
+            # Players excluded, award + gst + HP trail combined. Reported below alongside
+            # problems so a reader can see killed/fled/unknown without guessing which gate
+            # tripped.
+            oc = getattr(eng, "outcome", "unknown")
+            rec["outcomes"][oc] += 1
+            if len(rec["outcome_examples"]) < 4:
+                rec["outcome_examples"].append((eng.gob, oc, getattr(eng, "outcome_detail", "")))
+            # Sfx hit/miss/ip per bracket - counts + which swings connected. The only place
+            # a log records a miss, since a miss has no damage channel at all. Surfacing
+            # counts here so the per-species report can show hit rate beside defence weight
+            # without mixing it into the gate verdicts - lines_lost already covers shedding.
+            try:
+                _rows, _agg = fightlog.engagement_sfx(eng)
+                rec["sfx"]["hits"] += _agg["hits"]
+                rec["sfx"]["misses"] += _agg["misses"]
+                rec["sfx"]["ips"] += _agg["ips"]
+                rec["sfx"]["brackets_with_hit"] += _agg["brackets_with_hit"]
+                rec["sfx"]["brackets_with_miss"] += _agg["brackets_with_miss"]
+                rec["sfx_brackets"] += len(_rows)
+            except Exception:
+                pass
             # Once per gob per file, not once per engagement - an engagement is a slice of
             # one creature's fight and adding its gaps again at every slice would count the
             # same milliseconds several times over.
@@ -1094,8 +2097,22 @@ def collect(paths):
                                          fb.get("foeip") if fb else None,
                                          eng.defence_ok and not eng.others_present))
 
-            attributed = (fightlog.attributed_gains(eng, opens, log.me)
-                          if eng.offence_ok else [])
+            # PER OBSERVATION, not per engagement. attributed_gains applies three tests
+            # to each gain in turn - colour, damage and overlay - so an engagement being
+            # contaminated somewhere does not make every move inside it ambiguous.
+            #
+            # This used to be gated on eng.offence_ok as well, and that gate was doing
+            # something other than what it looked like. For twelve species the engagements
+            # that passed it were precisely the ones in which we never attacked, so the
+            # corpus reported "fought plenty, measured nothing" - which read as a fact
+            # about those creatures and was a selection effect in the gate.
+            #
+            # Removing it is checked against the species that have observations on BOTH
+            # sides: ants 10.3 vs 10.3, beeswarm 31.2 vs 30.5, redants 22.0 vs 20.8,
+            # warriorant 38.6 vs 36.2, sentinelbee 125.0 vs 103.8, fox 61.0 vs 72.3. Six
+            # of seven agree within 25%, the seventh being horse at two observations a
+            # side. Fifteen species get a first measurement they never had.
+            attributed = fightlog.attributed_gains(eng, opens, log.me)
             if eng.problems:
                 rec["skipped"].append((os.path.basename(p), eng.problems,
                                        len(attributed)))
@@ -1156,7 +2173,12 @@ def collect(paths):
                 wd = model.defence_weight(wa, gain, ob, standing / 100.0)
                 if wd > 0:
                     lo, hi = gain_interval(wa, gain, ob, standing, wa_hi)
-                    rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi))
+                    # The ninth field is PROVENANCE: whether the engagement this came
+                    # from was clean as a whole. Per-observation attribution earns the
+                    # contaminated ones their place, but they are not equal evidence and
+                    # the pack must be able to tell them apart - see write_pack.
+                    rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi,
+                                      eng.offence_ok))
                     rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
                     # Per individual AND per move. mu can only be read between two moves
                     # thrown at the same creature - see report_mu.
@@ -1173,6 +2195,18 @@ def collect(paths):
                     name = m.get("name") or m.get("move")
                     if m.get("cd", -1) > 0:
                         rec["cd"][name].add(m["cd"])
+                        mv = moves.get(name)
+                        # Maneuvers take no agility term, so they say nothing about the
+                        # opponent and are not observations of it. Opportunity Knocks
+                        # declares an attack_skill and no attack_types yet rides the band.
+                        if (agi_me and mv and (mv.get("cooldown") is not None)
+                                and (mv.get("attack_types") or mv.get("attack_skill"))):
+                            o = (mv["cooldown"], m["cd"], agi_me)
+                            rec["agi_obs"].add(o)
+                            rec["agi_obs_by_gob"][eng.gob].add(o)
+                            if eng.offence_ok:
+                                rec["agi_obs_clean"].add(o)
+                                rec["agi_obs_clean_by_gob"][eng.gob].add(o)
                 else:
                     rec["their_moves"][m.get("name") or m.get("move")].add(m.get("cd"))
 
@@ -1721,6 +2755,125 @@ def foe_policy(rec):
     return out
 
 
+def deepest_interval(intervals):
+    """The value the most of these intervals agree on, and the range where that holds.
+
+    INTERSECTION IS THE WRONG TOOL WHEN ONE OBSERVATION CAN BE WRONG. Every small-gain
+    reading of a defence weight is an interval, they mostly overlap, and taking the
+    intersection means a single contaminated one empties the answer - as it does for bear
+    (74 readings, no common point), boar (118), moose (91) and four others. The deepest
+    point, the one covered by the most intervals, is the same computation without that
+    failure mode: bear comes back at 70 of 74, boar at 111 of 118, moose at 87 of 91.
+
+    Returns (depth, (lo, hi)) or (0, None).
+    """
+    events = []
+    for lo, hi in intervals:
+        if (lo is None) or (hi is None) or (lo > hi):
+            continue
+        events.append((lo, 1))
+        events.append((hi, -1))
+    if not events:
+        return (0, None)
+    # Opens before closes at the same coordinate, so a point touched by two intervals
+    # counts as covered by both.
+    events.sort(key=lambda e: (e[0], -e[1]))
+    best, depth, start, span = 0, 0, None, None
+    for x, d in events:
+        prev = depth
+        depth += d
+        if (d == 1) and (depth > best):
+            best, start, span = depth, x, None
+        if (d == -1) and (prev == best) and (start is not None):
+            span = (start, x)
+            start = None
+    return (best, span)
+
+
+def wd_consensus(rec):
+    """An opponent's defence weight read from the gains that MIN_GAIN throws away.
+
+    MIN_GAIN IS A FILTER ON THE OPENING, NOT ON THE NOISE, and that was not the intent.
+    A gain is small mostly because the opening it landed on was already large - the
+    (1 - Oc) falloff - so cutting at ten points cuts the fight in half by phase: the
+    median standing opening under a gain of ten is 51, and over it, 16.5. At a standing
+    opening of 60-80, 98% of all gains are under ten. So every defence weight in this
+    pack was read from the opening minutes of fights, and the late phase - which is where
+    the damage model spends most of its time, since damage goes as the opening squared -
+    has never tested it.
+
+    What the discarded readings say is worth having even so, because each one is already
+    an interval and a wide interval is not a wrong one. Against the species that have
+    both, the consensus of the small gains contains the large-gain estimate for 22 of 29.
+
+    THE SEVEN THAT DISAGREE ARE NOT DISMISSED. Three of them - badger, boar, sentinelbee -
+    are the three the pack already marks disputed for an unrelated reason, which is some
+    corroboration that the disagreement is about those creatures rather than about this
+    method. The direction is mixed: five read low and three high, so it is not simply
+    third-party contamination, which can only ever add to a gain and so can only ever read
+    a defence weight low. The remaining candidate is the falloff term itself, which this
+    is the first reading to exercise at high standing openings.
+
+    So it is REPORTED and not folded into the skill. Returns a dict or None.
+    """
+    small = [(r[6], r[7]) for r in (rec.get("wd") or ())
+             if (r[3] < MIN_GAIN) and (r[6] is not None) and (r[7] is not None)]
+    if len(small) < 4:
+        return None
+    depth, span = deepest_interval(small)
+    if not span:
+        return None
+    big = [r[5] for r in (rec.get("wd") or ())
+           if (r[3] >= MIN_GAIN) and r[4] and (r[5] > 0)]
+    pt = None
+    if big:
+        v = sorted(big)
+        pt = v[len(v) // 2]
+    return {"lo": round(span[0], 1), "hi": round(span[1], 1),
+            "depth": depth, "n": len(small),
+            "against": (round(pt, 1) if pt is not None else None),
+            "agrees": (None if pt is None else bool(span[0] <= pt <= span[1]))}
+
+
+def report_wd_consensus(per):
+    rows = []
+    for k in sorted(per, key=str):
+        c = wd_consensus(per[k])
+        if c:
+            rows.append((str(k), c))
+    if not rows:
+        return
+    print("=" * 78)
+    print("WHAT THE DISCARDED GAINS SAY")
+    print("=" * 78)
+    print("  MIN_GAIN = %d drops every opening gain under ten points. That is a filter on"
+          % MIN_GAIN)
+    print("  the OPENING and not on the noise: the median standing opening under a gain of")
+    print("  ten is 51 and over it is 16.5, so the pack's defence weights come from the")
+    print("  opening minutes of fights and nothing has ever tested the late phase.")
+    print()
+    print("  %-15s %-16s %-22s %-10s %s"
+          % ("species", "pack reads", "the dropped gains say", "agreeing", "?"))
+    agree = dis = 0
+    for name, c in rows:
+        if c["agrees"] is True:
+            agree += 1
+        elif c["agrees"] is False:
+            dis += 1
+        print("  %-15s %-16s %-22s %-10s %s"
+              % (name[:15],
+                 ("%.1f" % c["against"]) if c["against"] is not None else "-",
+                 "%.1f - %.1f" % (c["lo"], c["hi"]),
+                 "%d/%d" % (c["depth"], c["n"]),
+                 "" if c["agrees"] is None else ("ok" if c["agrees"] else "DISAGREES")))
+    print()
+    print("  %d agree, %d do not. Reported and not folded into the skill: the direction of"
+          % (agree, dis))
+    print("  the disagreement is mixed, so it is not third-party contamination, which can")
+    print("  only ever read a defence weight low.")
+    print()
+
+
 def foe_skill_entry(rec):
     """What the pack should carry for an opponent's combat skill.
 
@@ -1874,7 +3027,7 @@ def equalization_verdict(rec):
 
     Returns (verdict, detail).
     """
-    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi).
+    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi, clean).
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if row[3] >= MIN_GAIN and row[4] and row[5] > 0:
@@ -2176,7 +3329,7 @@ def report(per, moves):
             # against one opponent therefore measure the RATIO of their mu, which is
             # otherwise only readable from moves whose cooldown divides by it.
             bymove = defaultdict(list)
-            for mv, _c, _st, _g, wa, wd, lo, hi in rec["wd"]:
+            for mv, _c, _st, _g, wa, wd, lo, hi, _clean in rec["wd"]:
                 bymove[mv].append((wa, wd, lo, hi))
             if len(bymove) > 1:
                 print("                   per move. Read the Wd/Wa column, not the Wd one:")
@@ -2213,32 +3366,32 @@ def report(per, moves):
             print("\n  defence weight   ? (no clean opening gain against this opponent)")
 
         # --- agility
-        obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
-        for mv, ticks in rec["cd"].items():
-            m = moves.get(mv)
-            if m is None or m.get("cooldown") is None:
-                continue
-            # Maneuvers take no agility term, so they say nothing about the opponent.
-            if not (m.get("attack_types") or []):
-                continue
-            for t in ticks:
-                obs.append((m["cooldown"], t))
+        obs = sorted(rec["agi_obs"])
+        agi_me = sorted(rec["agi_me"])[-1] if rec["agi_me"] else None
         if obs and agi_me:
-            iv = agility_interval(obs, agi_me)
+            iv, why = pooled_agility(rec)
             if iv is None:
-                print("\n  agility          ?")
+                print("\n  agility          CONTRADICTORY - every individual's own "
+                      "cooldowns disagree with themselves")
             else:
                 lo, hi, capped = iv
-                if lo > hi:
-                    print("\n  agility          CONTRADICTORY (%.0f - %.0f) - the cooldowns "
-                          "in this bucket cannot come from one opponent" % (lo, hi))
-                    obs = sorted(set(obs))
-                else:
-                    note = "  (at the cap - bounded, not pinned)" if capped else ""
-                    print("\n  agility          %.0f - %.0f%s   from our agility %d and %d "
-                          "cooldown observation(s)" % (lo, hi, note, agi_me, len(obs)))
-                for base, t in sorted(set(obs)):
-                    print("      base %-4d reported %-5g" % (base, t))
+                if why.get("self_contradictory_gobs"):
+                    print("\n  (%d individual(s) set aside, each contradicting itself: %s)"
+                          % (len(why["self_contradictory_gobs"]),
+                             ", ".join(str(g) for g in
+                                       why["self_contradictory_gobs"][:4])))
+                if why.get("union"):
+                    print("  (%d members each coherent and disagreeing with each other, "
+                          "so this is their UNION, not an intersection)" % why["members"])
+                note = "  (at the cap - bounded, not pinned)" if capped else ""
+                span = ("at least %.0f" % lo if hi == float("inf")
+                        else ("at most %.0f" % hi if lo <= 0
+                              else "%.0f - %.0f" % (lo, hi)))
+                print("\n  agility          %s%s   from %d cooldown observation(s)"
+                      % (span, note, len(obs)))
+                for o in sorted(set(obs)):
+                    print("      base %-4d reported %-5g at our agility %d"
+                          % (o[0], o[1], o[2] if len(o) > 2 else agi_me))
         else:
             print("\n  agility          ? (no attack cooldowns reported against this opponent)")
 
@@ -2353,6 +3506,19 @@ def report(per, moves):
             for mean, mv, colour, n, lo, hi in sorted(rows, reverse=True):
                 print("      %-22s %-7s n=%-4d %5.1f  (%.1f to %.1f)"
                       % (mv[:22], colour, n, mean, lo, hi))
+        if rec.get("outcomes"):
+            tot = sum(rec["outcomes"].values())
+            parts = ", ".join("%s %d" % (k, rec["outcomes"][k]) for k in sorted(rec["outcomes"]))
+            print("  outcome          %s   (%d)" % (parts, tot))
+            for gob, oc, det in (rec.get("outcome_examples") or [])[:3]:
+                if det:
+                    print("      gob %-12s %-8s %s" % (gob, oc, det))
+        if rec.get("sfx") and (rec["sfx"].get("hits") or rec["sfx"].get("misses") or rec["sfx"].get("ips")):
+            s = rec["sfx"]
+            tot_sw = s["hits"] + s["misses"]
+            hr = ("%.0f%%" % (100.0 * s["hits"] / tot_sw)) if tot_sw else "-"
+            print("  sfx              %d hit, %d miss, %d ip   hit rate %s   (%d bracket(s), %d with hit, %d with miss)"
+                  % (s["hits"], s["misses"], s["ips"], hr, rec.get("sfx_brackets", 0), s["brackets_with_hit"], s["brackets_with_miss"]))
         print()
 
 
@@ -2527,6 +3693,42 @@ def threat(rec):
 
 
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")
+SEEN = os.path.join(ROOT, "data", "combat", "weapons_seen.json")
+
+
+def report_sfx_and_outcomes(per):
+    tot_eng = sum(rec["engagements"] for rec in per.values())
+    by_outcome = defaultdict(int)
+    for rec in per.values():
+        for k, n in (rec.get("outcomes") or {}).items():
+            by_outcome[k] += n
+    sfx_hits = sum((rec.get("sfx") or {}).get("hits", 0) for rec in per.values())
+    sfx_misses = sum((rec.get("sfx") or {}).get("misses", 0) for rec in per.values())
+    sfx_ips = sum((rec.get("sfx") or {}).get("ips", 0) for rec in per.values())
+    sfx_brackets = sum(rec.get("sfx_brackets", 0) for rec in per.values())
+    sfx_bh = sum((rec.get("sfx") or {}).get("brackets_with_hit", 0) for rec in per.values())
+    sfx_bm = sum((rec.get("sfx") or {}).get("brackets_with_miss", 0) for rec in per.values())
+    print("=" * 78)
+    print("SFX OUTCOME OVERLAYS AND FIGHT OUTCOME")
+    print("=" * 78)
+    print("  sfx/fight/hit1+miss(+ip) are per-bracket hit/miss facts - the only place a")
+    print("  log records which swings connected, since a miss has no damage channel.")
+    if tot_eng:
+        have = sfx_bh + sfx_bm
+        print("  corpus: %d engagement(s), %d bracket(s) with sfx (%d hit, %d miss, %d ip)"
+              % (tot_eng, sfx_brackets, sfx_hits, sfx_misses, sfx_ips))
+        print("          brackets with hit %d, with miss %d, hit rate %s over %d bracket sfx"
+              % (sfx_bh, sfx_bm,
+                 ("%.0f%%" % (100.0 * sfx_hits / (sfx_hits + sfx_misses))) if (sfx_hits + sfx_misses) else "-",
+                 sfx_hits + sfx_misses))
+        print("          coverage: %d/%d engagements (%.0f%%) carried at least one sfx overlay"
+              % (have, tot_eng, 100.0 * have / tot_eng if tot_eng else 0))
+    if by_outcome:
+        print("  outcome (died #ffff on non-victim + gst + HP, players excluded): %s"
+              % ", ".join("%s %d" % (k, by_outcome[k]) for k in sorted(by_outcome)))
+        print("          surfaced as explicit per-engagement outcome field; verdicts unchanged")
+        print("          problems/gates reporting only - gate truth tables preserved")
+    print()
 
 
 def write_pack(per, moves):
@@ -2544,13 +3746,33 @@ def write_pack(per, moves):
                  "res": rec.get("res"), "moves": sorted(rec["their_moves"])}
 
         if rec["wd"]:
-            lo = max(w[6] for w in rec["wd"])
-            hi = min(w[7] for w in rec["wd"])
+            # CLEAN EVIDENCE FIRST, and never mixed with the rest.
+            #
+            # Every observation here survived per-observation attribution, but the ones
+            # from an engagement that was clean throughout are better evidence than the
+            # ones that merely had nothing visible inside their own bracket. The
+            # difference matters because this is an INTERSECTION: one interval sitting
+            # slightly low empties it, and a third party's contribution can only ever
+            # push a defence weight low. Mixing the two cost beeswarm, fox, redants,
+            # sentinelbee and warriorant their measurements outright - species that had
+            # been fine - while adding others.
+            #
+            # So they are ranked, not pooled. A species with clean observations is
+            # measured from those alone and is unaffected by anything else in the corpus;
+            # a species with none is measured from what per-observation attribution
+            # rescued, and the entry says so, so a reader can weigh it accordingly.
+            clean = [w for w in rec["wd"] if w[8]]
+            use = clean or rec["wd"]
+            lo = max(w[6] for w in use)
+            hi = min(w[7] for w in use)
             entry["defence_weight"] = ({"lo": round(lo, 1), "hi": round(hi, 1),
-                                        "n": len(rec["wd"])}
+                                        "n": len(use)}
                                        if lo <= hi else
-                                       {"lo": None, "hi": None, "n": len(rec["wd"]),
+                                       {"lo": None, "hi": None, "n": len(use),
                                         "contradictory": True})
+            if not clean:
+                # Stated on the entry rather than left to be inferred from the corpus.
+                entry["defence_weight"]["from_contaminated"] = True
         else:
             entry["defence_weight"] = None
 
@@ -2565,22 +3787,28 @@ def write_pack(per, moves):
         # at both ends and report an interval; given a fabricated point it would report a
         # confident answer to a question the corpus never answered.
         entry["skill"] = foe_skill_entry(rec)
+        # Reported beside the skill, never inside it - see wd_consensus.
+        entry["defence_weight_late"] = wd_consensus(rec)
         entry["policy"] = foe_policy(rec)
         entry["relative_speed"] = relative_speed(rec)
         # What it does to us. Everything else in this entry is our attacks on it.
         entry["threat"] = threat(rec)
 
-        obs, agi_me = [], (sorted(rec["agi_me"])[-1] if rec["agi_me"] else None)
-        for mv, ticks in rec["cd"].items():
-            m = moves.get(mv)
-            if m is None or m.get("cooldown") is None or not (m.get("attack_types") or []):
-                continue
-            for t in ticks:
-                obs.append((m["cooldown"], t))
-        iv = agility_interval(obs, agi_me) if (obs and agi_me) else None
-        entry["agility"] = (None if iv is None or iv[0] > iv[1] else
-                            {"lo": round(iv[0], 1), "hi": round(iv[1], 1),
-                             "capped": iv[2], "our_agility": agi_me})
+        obs = sorted(rec["agi_obs"])
+        agi_me = sorted(rec["agi_me"])[-1] if rec["agi_me"] else None
+        iv, why = pooled_agility(rec)
+        # A null bound is an open side, not a missing measurement: hi null reads "at
+        # least lo". The bot must not silently treat that as "unknown" and fall through
+        # to the wiki, so `capped` travels with it - and so does the reason the bounds
+        # are missing, when the corpus had observations and could not reconcile them.
+        if iv is None:
+            entry["agility"] = (dict(why) if why else None)
+        else:
+            entry["agility"] = dict(why)
+            entry["agility"].update(
+                {"lo": (round(iv[0], 1) if iv[0] > 0 else None),
+                 "hi": (round(iv[1], 1) if iv[1] != float("inf") else None),
+                 "capped": iv[2], "our_agility": agi_me})
 
         arm = fit_armour(rec["soak"], rec.get("soak_clean"))
         wiki_arm = wiki_value(rec.get("wiki"), "armor")
@@ -2612,6 +3840,22 @@ def write_pack(per, moves):
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
     print("wrote %s  (%d opponent(s))" % (os.path.relpath(PACK, ROOT), len(out)))
+
+    # What the client itself said about the weapons we held, which beats the scrape
+    # where the two disagree - see weapons_seen. Written beside the pack rather than
+    # into weapons.json, because that file is the scraper's output, and hand-merging
+    # a measured value into a generated file is how a scrape silently stops being
+    # reproducible.
+    seen = weapons_seen()
+    if seen:
+        with open(SEEN, "w", encoding="utf8") as f:
+            json.dump({"source": "the client's own WeaponInfo, over the corpus",
+                       "note": "Damage is QUALITY-SCALED, as the tooltip gives it. "
+                               "recovered_base divides sqrt(ql/10) back out.",
+                       "weapons": seen}, f, indent=1, sort_keys=True)
+            f.write("\n")
+        print("wrote %s  (%d weapon(s) actually held)"
+              % (os.path.relpath(SEEN, ROOT), len(seen)))
 
 
 def main(argv):
@@ -2646,7 +3890,15 @@ def main(argv):
     report_mu(per)
     report_shared_moves(per)
     report_mu_reductions()
+    report_agility_control()
+    report_agi_species_comparison()
+    report_agility_band()
+    report_ok_boost()
+    report_weapons_seen()
+    report_wd_consensus(per)
+    report_flees()
     report_reaggro(per)
+    report_sfx_and_outcomes(per)
     if write:
         write_pack(per, moves)
     return 0

@@ -5,6 +5,22 @@
    "agility": null,
    "armour": null,
    "defence_weight": null,
+   "defence_weight_late": null,
+   "engagements": 2,
+   "hitpoints": null,
+   "moves": [],
+   "name": "?#1326697404",
+   "policy": null,
+   "relative_speed": null,
+   "res": null,
+   "skill": null,
+   "threat": null
+  },
+  {
+   "agility": null,
+   "armour": null,
+   "defence_weight": null,
+   "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
    "moves": [],
@@ -23,10 +39,26 @@
    "threat": null
   },
   {
+   "agility": null,
+   "armour": null,
+   "defence_weight": null,
+   "defence_weight_late": null,
+   "engagements": 1,
+   "hitpoints": null,
+   "moves": [],
+   "name": "?#186036148",
+   "policy": null,
+   "relative_speed": null,
+   "res": null,
+   "skill": null,
+   "threat": null
+  },
+  {
    "agility": {
     "capped": true,
     "hi": 48.2,
-    "lo": 40.5,
+    "lo": null,
+    "n": 2,
     "our_agility": 81
    },
    "armour": {
@@ -43,6 +75,7 @@
     "lo": 24.1,
     "n": 4
    },
+   "defence_weight_late": null,
    "engagements": 2,
    "hitpoints": {
     "from": "survived taking 35, so that one had more than that",
@@ -89,6 +122,7 @@
     "wiki": null
    },
    "defence_weight": null,
+   "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
     "from": "died at 115 with a last hit of 23, so that one had 92 to 115",
@@ -149,7 +183,8 @@
    "agility": {
     "capped": true,
     "hi": 48.2,
-    "lo": 40.5,
+    "lo": null,
+    "n": 2,
     "our_agility": 81
    },
    "armour": {
@@ -166,6 +201,7 @@
     "lo": 24.1,
     "n": 4
    },
+   "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
     "from": "survived taking 35, so that one had more than that",
@@ -203,45 +239,73 @@
   {
    "agility": {
     "capped": true,
+    "from_contaminated": true,
     "hi": 67.2,
-    "lo": 56.5,
-    "our_agility": 113
+    "lo": null,
+    "n": 4,
+    "our_agility": 124
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 4,
+    "n": 9,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
-   "engagements": 1,
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 181.4,
+    "lo": 78.5,
+    "n": 8
+   },
+   "defence_weight_late": {
+    "against": 118.7,
+    "agrees": true,
+    "depth": 6,
+    "hi": 184.7,
+    "lo": 64.8,
+    "n": 6
+   },
+   "engagements": 2,
    "hitpoints": {
-    "from": "died at 66 with a last hit of 29, so that one had 37 to 66",
+    "from": "died at 31 with a last hit of 13, so that one had 18 to 31; died at 66 with a last hit of 29, so that one had 37 to 66",
     "hi": 70,
-    "lo": 37,
+    "lo": 18,
     "observed_hi": 66,
-    "observed_lo": 37,
-    "verdict": "1 of these died before taking the wiki's 70, so they were below its base quality (or already hurt when we met them)",
+    "observed_lo": 18,
+    "verdict": "2 of these died before taking the wiki's 70, so they were below its base quality (or already hurt when we met them)",
     "wiki": 70
    },
    "moves": [
-    "Roar of the Wild"
+    "Roar of the Wild",
+    "Serpent's Strike"
    ],
    "name": "adder",
    "policy": {
     "mix": [
      [
       "Roar of the Wild",
-      1.0
+      0.714
+     ],
+     [
+      "Serpent's Strike",
+      0.286
      ]
     ],
-    "n": 3,
-    "solo_n": 0
+    "n": 7,
+    "solo_n": 4
    },
-   "relative_speed": null,
+   "relative_speed": {
+    "hi": 41.3,
+    "lo": 41.3,
+    "measured": true,
+    "median": 41.3,
+    "n": 475,
+    "our_top": 59.4,
+    "we_outrun_it": true
+   },
    "res": "gfx/kritter/adder/adder",
    "skill": null,
    "threat": {
@@ -249,29 +313,37 @@
     "flees_below": null,
     "period": {
      "dropped": 0,
-     "hi": 30.0,
+     "hi": 43.0,
      "lo": 29.0,
      "median": 30.0,
-     "modes": [],
-     "n": 2,
-     "ticks": 29.5
+     "modes": [
+      30
+     ],
+     "n": 5,
+     "ticks": 32.8
     },
     "pressure": {
      "blue": 0.0,
      "green": 0.0,
      "red": 0.0,
-     "yellow": 0.0
+     "yellow": 10.49
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 395.0,
+    "pressure_n": 2
    }
   },
   {
-   "agility": null,
+   "agility": {
+    "capped": true,
+    "hi": 60.0,
+    "lo": null,
+    "n": 10,
+    "our_agility": 124
+   },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 259,
+    "n": 284,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -281,11 +353,19 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 58
+    "n": 79
    },
-   "engagements": 144,
+   "defence_weight_late": {
+    "against": 10.3,
+    "agrees": true,
+    "depth": 39,
+    "hi": 13.8,
+    "lo": 7.5,
+    "n": 39
+   },
+   "engagements": 156,
    "hitpoints": {
-    "from": "survived taking 21, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 47, so that one had more than that; survived taking 13, so that one had more than that; survived taking 41, so that one had more than that; survived taking 12, so that one had more than that; survived taking 31, so that one had more than that; survived taking 12, so that one had more than that; survived taking 42, so that one had more than that; survived taking 5, so that one had more than that; died at 4 with a last hit of 4, so that one had 0 to 4; survived taking 16, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 41, so that one had more than that; survived taking 10, so that one had more than that; survived taking 17, so that one had more than that; survived taking 12, so that one had more than that; survived taking 17, so that one had more than that; survived taking 3, so that one had more than that; survived taking 17, so that one had more than that; survived taking 8, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 11, so that one had more than that; survived taking 21, so that one had more than that; survived taking 45, so that one had more than that; survived taking 15, so that one had more than that; survived taking 11, so that one had more than that; died at 20 with a last hit of 15, so that one had 5 to 20; survived taking 15, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 22, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 21, so that one had more than that; survived taking 27, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 21, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 30, so that one had more than that; survived taking 5, so that one had more than that; survived taking 15, so that one had more than that; survived taking 54, so that one had more than that; survived taking 30, so that one had more than that; survived taking 42, so that one had more than that; survived taking 16, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 12, so that one had more than that; survived taking 49, so that one had more than that; survived taking 14, so that one had more than that; survived taking 41, so that one had more than that; survived taking 20, so that one had more than that; survived taking 50, so that one had more than that; survived taking 33, so that one had more than that; survived taking 31, so that one had more than that; survived taking 3, so that one had more than that; survived taking 10, so that one had more than that; survived taking 38, so that one had more than that; survived taking 21, so that one had more than that; survived taking 53, so that one had more than that; survived taking 15, so that one had more than that; survived taking 33, so that one had more than that; survived taking 11, so that one had more than that; survived taking 41, so that one had more than that; survived taking 38, so that one had more than that; survived taking 36, so that one had more than that; survived taking 31, so that one had more than that; survived taking 51, so that one had more than that; survived taking 32, so that one had more than that; survived taking 14, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 16, so that one had more than that; survived taking 41, so that one had more than that; survived taking 11, so that one had more than that; survived taking 15, so that one had more than that; survived taking 36, so that one had more than that; died at 25 with a last hit of 15, so that one had 10 to 25; survived taking 21, so that one had more than that; survived taking 15, so that one had more than that; survived taking 35, so that one had more than that; died at 13 with a last hit of 11, so that one had 2 to 13; survived taking 32, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 21, so that one had more than that; survived taking 29, so that one had more than that; survived taking 31, so that one had more than that; survived taking 16, so that one had more than that; survived taking 43, so that one had more than that; died at 36 with a last hit of 34, so that one had 2 to 36; survived taking 21, so that one had more than that; survived taking 5, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 6, so that one had more than that; survived taking 14, so that one had more than that; died at 41 with a last hit of 10, so that one had 31 to 41; survived taking 42, so that one had more than that; survived taking 18, so that one had more than that; survived taking 20, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 6, so that one had more than that; survived taking 4, so that one had more than that; survived taking 17, so that one had more than that; survived taking 16, so that one had more than that",
+    "from": "survived taking 21, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 47, so that one had more than that; survived taking 13, so that one had more than that; survived taking 41, so that one had more than that; survived taking 12, so that one had more than that; survived taking 31, so that one had more than that; survived taking 12, so that one had more than that; survived taking 42, so that one had more than that; survived taking 5, so that one had more than that; died at 4 with a last hit of 4, so that one had 0 to 4; survived taking 16, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 41, so that one had more than that; survived taking 14, so that one had more than that; survived taking 10, so that one had more than that; survived taking 17, so that one had more than that; survived taking 12, so that one had more than that; survived taking 17, so that one had more than that; survived taking 3, so that one had more than that; survived taking 17, so that one had more than that; survived taking 8, so that one had more than that; survived taking 32, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 11, so that one had more than that; survived taking 21, so that one had more than that; survived taking 45, so that one had more than that; survived taking 15, so that one had more than that; survived taking 11, so that one had more than that; died at 20 with a last hit of 15, so that one had 5 to 20; survived taking 15, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 22, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 21, so that one had more than that; survived taking 27, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 21, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 30, so that one had more than that; survived taking 5, so that one had more than that; survived taking 15, so that one had more than that; survived taking 54, so that one had more than that; survived taking 30, so that one had more than that; survived taking 42, so that one had more than that; survived taking 16, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 33, so that one had more than that; survived taking 12, so that one had more than that; survived taking 49, so that one had more than that; survived taking 14, so that one had more than that; survived taking 41, so that one had more than that; survived taking 20, so that one had more than that; survived taking 50, so that one had more than that; survived taking 33, so that one had more than that; survived taking 31, so that one had more than that; survived taking 3, so that one had more than that; survived taking 10, so that one had more than that; survived taking 38, so that one had more than that; survived taking 14, so that one had more than that; survived taking 21, so that one had more than that; survived taking 53, so that one had more than that; survived taking 15, so that one had more than that; survived taking 33, so that one had more than that; survived taking 11, so that one had more than that; survived taking 41, so that one had more than that; survived taking 38, so that one had more than that; survived taking 36, so that one had more than that; survived taking 31, so that one had more than that; survived taking 51, so that one had more than that; survived taking 32, so that one had more than that; survived taking 14, so that one had more than that; survived taking 32, so that one had more than that; survived taking 42, so that one had more than that; survived taking 41, so that one had more than that; survived taking 15, so that one had more than that; survived taking 5, so that one had more than that; survived taking 16, so that one had more than that; survived taking 41, so that one had more than that; survived taking 11, so that one had more than that; survived taking 15, so that one had more than that; survived taking 12, so that one had more than that; survived taking 36, so that one had more than that; died at 25 with a last hit of 15, so that one had 10 to 25; survived taking 21, so that one had more than that; survived taking 15, so that one had more than that; survived taking 35, so that one had more than that; died at 13 with a last hit of 11, so that one had 2 to 13; survived taking 32, so that one had more than that; survived taking 33, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 21, so that one had more than that; survived taking 29, so that one had more than that; survived taking 31, so that one had more than that; survived taking 16, so that one had more than that; survived taking 43, so that one had more than that; died at 36 with a last hit of 34, so that one had 2 to 36; survived taking 21, so that one had more than that; survived taking 5, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 6, so that one had more than that; survived taking 14, so that one had more than that; died at 41 with a last hit of 10, so that one had 31 to 41; survived taking 42, so that one had more than that; survived taking 18, so that one had more than that; survived taking 20, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 6, so that one had more than that; survived taking 4, so that one had more than that; survived taking 17, so that one had more than that; survived taking 47, so that one had more than that; survived taking 16, so that one had more than that",
     "hi": 55,
     "lo": 0,
     "observed_hi": 41,
@@ -302,23 +382,24 @@
     "mix": [
      [
       "Ant Spit",
-      0.952
+      0.959
      ],
      [
       "Fell Scratch",
-      0.048
+      0.041
      ]
     ],
-    "n": 187,
-    "solo_n": 30
+    "n": 219,
+    "solo_n": 45
    },
    "relative_speed": {
-    "informative": true,
-    "measured": false,
-    "median": 0.0,
-    "n": 1466,
-    "p95": 19.5,
-    "withdrew": 0.327
+    "hi": 20.2,
+    "lo": 17.7,
+    "measured": true,
+    "median": 18.5,
+    "n": 2652,
+    "our_top": 51.3,
+    "we_outrun_it": true
    },
    "res": "gfx/kritter/ants/ants",
    "skill": {
@@ -337,41 +418,42 @@
      "coef": 16.9,
      "hi": 73.8,
      "lo": 7.1,
-     "n": 6
+     "n": 7
     },
     "flees_below": null,
     "period": {
-     "dropped": 2,
-     "hi": 86.8,
+     "dropped": 8,
+     "hi": 95.1,
      "lo": 41.9,
      "median": 44.0,
      "modes": [
       44
      ],
-     "n": 59,
-     "ticks": 46.4
+     "n": 75,
+     "ticks": 47.1
     },
     "pressure": {
-     "blue": 4.51,
-     "green": 4.57,
+     "blue": 4.38,
+     "green": 4.73,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 312.5,
-    "pressure_n": 47
+    "pressure_against": 353.75,
+    "pressure_n": 232
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 61.1,
-    "lo": 58.5,
-    "our_agility": 117
+    "hi": 42.3,
+    "lo": null,
+    "n": 10,
+    "our_agility": 124
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 74,
+    "n": 80,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -382,14 +464,22 @@
     "lo": 72.8,
     "n": 75
    },
-   "engagements": 8,
+   "defence_weight_late": {
+    "against": 86.8,
+    "agrees": false,
+    "depth": 54,
+    "hi": 85.6,
+    "lo": 71.9,
+    "n": 54
+   },
+   "engagements": 9,
    "hitpoints": {
-    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 246 with a last hit of 110, so that one had 136 to 246; died at 210 with a last hit of 20, so that one had 190 to 210; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
+    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 246 with a last hit of 110, so that one had 136 to 246; died at 210 with a last hit of 20, so that one had 190 to 210; died at 223 with a last hit of 104, so that one had 119 to 223; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
     "hi": 342,
     "lo": 110,
     "observed_hi": 342,
     "observed_lo": 110,
-    "verdict": "4 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
+    "verdict": "5 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
     "wiki": 250
    },
    "moves": [
@@ -401,22 +491,22 @@
     "mix": [
      [
       "Badgering",
-      0.633
+      0.636
      ],
      [
       "Fell Scratch",
-      0.367
+      0.364
      ]
     ],
-    "n": 30,
-    "solo_n": 28
+    "n": 33,
+    "solo_n": 31
    },
    "relative_speed": {
-    "hi": 45.8,
+    "hi": 49.3,
     "lo": 45.5,
     "measured": true,
     "median": 45.5,
-    "n": 1086,
+    "n": 1349,
     "our_top": 50.5,
     "we_outrun_it": true
    },
@@ -426,15 +516,16 @@
     "bound_lo": 55.5,
     "disputed": true,
     "equalized": false,
-    "hi": 43.4,
+    "hi": 50.0,
     "lo": 21.9,
     "moves": [
+     "Full Circle",
      "Knock Its Teeth Out",
      "Punch",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 2,
+    "n": 3,
     "value": 43.4
    },
    "threat": {
@@ -453,43 +544,59 @@
      "modes": [
       44
      ],
-     "n": 23,
-     "ticks": 50.4
+     "n": 25,
+     "ticks": 51.8
     },
     "pressure": {
      "blue": 0.0,
-     "green": 3.56,
-     "red": 8.54,
+     "green": 3.5,
+     "red": 8.43,
      "yellow": 0.0
     },
-    "pressure_against": 295.0,
-    "pressure_n": 21
+    "pressure_against": 328.3333333333333,
+    "pressure_n": 24
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 226.0,
-    "lo": 216.4,
-    "our_agility": 113
+    "from_contaminated": true,
+    "hi": null,
+    "lo": 224.1,
+    "n": 7,
+    "our_agility": 117
    },
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 158,
+    "n": 309,
     "soft": null,
     "total_hi": 68,
     "total_lo": 66,
     "wiki": 65
    },
-   "defence_weight": null,
-   "engagements": 4,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 76
+   },
+   "defence_weight_late": {
+    "against": 158.0,
+    "agrees": false,
+    "depth": 70,
+    "hi": 125.0,
+    "lo": 96.6,
+    "n": 74
+   },
+   "engagements": 8,
    "hitpoints": {
-    "from": "died at 1127 with a last hit of 338, so that one had 789 to 1127; died at 1030 with a last hit of 324, so that one had 706 to 1030; died at 1143 with a last hit of 357, so that one had 786 to 1143; died at 863 with a last hit of 54, so that one had 809 to 863",
+    "from": "died at 897 with a last hit of 56, so that one had 841 to 897; died at 996 with a last hit of 218, so that one had 778 to 996; died at 939 with a last hit of 360, so that one had 579 to 939; died at 1127 with a last hit of 338, so that one had 789 to 1127; died at 1030 with a last hit of 324, so that one had 706 to 1030; died at 1143 with a last hit of 357, so that one had 786 to 1143; died at 863 with a last hit of 54, so that one had 809 to 863; died at 871 with a last hit of 295, so that one had 576 to 871",
     "hi": 1143,
-    "lo": 706,
+    "lo": 576,
     "observed_hi": 1143,
-    "observed_lo": 706,
+    "observed_lo": 576,
     "verdict": "every individual seen is consistent with the wiki's 850",
     "wiki": 850
    },
@@ -503,50 +610,50 @@
    ],
    "name": "bear",
    "policy": {
-    "attack_share_above_0_ip": 0.455,
-    "attack_share_at_0_ip": 0.762,
+    "attack_share_above_0_ip": 0.538,
+    "attack_share_at_0_ip": 0.808,
     "ip_conditioned": true,
     "ip_group_contaminated": true,
     "ip_n": [
-     21,
-     11
+     26,
+     26
     ],
     "mix": [
      [
       "Bear Down",
-      0.406
+      0.415
      ],
      [
       "Unstoppable",
-      0.25
+      0.226
      ],
      [
       "Fell Scratch",
-      0.156
+      0.132
      ],
      [
       "Chomp",
-      0.094
+      0.113
      ],
      [
       "Bristle",
-      0.062
+      0.094
      ],
      [
       "Careful Approach",
-      0.031
+      0.019
      ]
     ],
-    "n": 32,
+    "n": 53,
     "solo_n": 0
    },
    "relative_speed": {
     "informative": true,
     "measured": false,
-    "median": 2.2,
-    "n": 794,
-    "p95": 20.3,
-    "withdrew": 0.501
+    "median": 0.0,
+    "n": 1080,
+    "p95": 19.6,
+    "withdrew": 0.385
    },
    "res": "gfx/kritter/bear/bear",
    "skill": null,
@@ -554,32 +661,33 @@
     "damage": null,
     "flees_below": null,
     "period": {
-     "dropped": 1,
-     "hi": 93.0,
-     "lo": 22.1,
-     "median": 41.6,
+     "dropped": 2,
+     "hi": 111.9,
+     "lo": 9.8,
+     "median": 41.9,
      "modes": [
       42,
       24
      ],
-     "n": 27,
-     "ticks": 40.0
+     "n": 43,
+     "ticks": 43.3
     },
     "pressure": {
-     "blue": 0.0,
+     "blue": 14.59,
      "green": 0.0,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 328.3333333333333,
+    "pressure_n": 7
    }
   },
   {
    "agility": {
     "capped": true,
     "hi": 67.2,
-    "lo": 56.5,
+    "lo": null,
+    "n": 1,
     "our_agility": 113
    },
    "armour": {
@@ -595,6 +703,14 @@
     "hi": 76.0,
     "lo": 62.1,
     "n": 8
+   },
+   "defence_weight_late": {
+    "against": 88.1,
+    "agrees": true,
+    "depth": 5,
+    "hi": 146.1,
+    "lo": 51.2,
+    "n": 5
    },
    "engagements": 3,
    "hitpoints": {
@@ -657,7 +773,17 @@
    }
   },
   {
-   "agility": null,
+   "agility": {
+    "capped": true,
+    "from_contaminated": true,
+    "hi": 66.0,
+    "lo": null,
+    "n": 2,
+    "our_agility": 113,
+    "self_contradictory_gobs": [
+     446411754
+    ]
+   },
    "armour": {
     "hard": 0,
     "identified": true,
@@ -667,7 +793,13 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 25.0,
+    "lo": 16.4,
+    "n": 9
+   },
+   "defence_weight_late": null,
    "engagements": 22,
    "hitpoints": {
     "from": "died at 42 with a last hit of 18, so that one had 24 to 42; died at 160 with a last hit of 123, so that one had 37 to 160; died at 55 with a last hit of 51, so that one had 4 to 55; died at 42 with a last hit of 24, so that one had 18 to 42; died at 96 with a last hit of 73, so that one had 23 to 96; died at 88 with a last hit of 88, so that one had 0 to 88; died at 39 with a last hit of 25, so that one had 14 to 39; died at 77 with a last hit of 66, so that one had 11 to 77; survived taking 8, so that one had more than that; died at 74 with a last hit of 66, so that one had 8 to 74; died at 48 with a last hit of 20, so that one had 28 to 48; died at 42 with a last hit of 18, so that one had 24 to 42; died at 102 with a last hit of 15, so that one had 87 to 102; died at 75 with a last hit of 42, so that one had 33 to 75",
@@ -716,7 +848,16 @@
     "withdrew": 0.232
    },
    "res": "gfx/kritter/bees/beelarva",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 9.9,
+    "lo": 9.9,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 1,
+    "value": 9.9
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -732,26 +873,27 @@
      "ticks": 57.1
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
+     "blue": 0.98,
+     "green": 4.93,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 312.5,
+    "pressure_n": 6
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 62.2,
-    "lo": 57.0,
+    "hi": 44.2,
+    "lo": null,
+    "n": 6,
     "our_agility": 114
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 114,
+    "n": 117,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -762,9 +904,17 @@
     "lo": 29.0,
     "n": 14
    },
-   "engagements": 59,
+   "defence_weight_late": {
+    "against": 30.5,
+    "agrees": true,
+    "depth": 32,
+    "hi": 31.5,
+    "lo": 25.4,
+    "n": 32
+   },
+   "engagements": 60,
    "hitpoints": {
-    "from": "survived taking 10, so that one had more than that; survived taking 32, so that one had more than that; survived taking 10, so that one had more than that; survived taking 26, so that one had more than that; survived taking 30, so that one had more than that; survived taking 43, so that one had more than that; died at 48 with a last hit of 27, so that one had 21 to 48; survived taking 44, so that one had more than that; survived taking 43, so that one had more than that; died at 48 with a last hit of 18, so that one had 30 to 48; survived taking 25, so that one had more than that; survived taking 45, so that one had more than that; survived taking 44, so that one had more than that; survived taking 17, so that one had more than that; survived taking 5, so that one had more than that; survived taking 18, so that one had more than that; survived taking 45, so that one had more than that; survived taking 38, so that one had more than that; survived taking 25, so that one had more than that; survived taking 38, so that one had more than that; survived taking 45, so that one had more than that; survived taking 50, so that one had more than that; survived taking 3, so that one had more than that; survived taking 22, so that one had more than that; survived taking 39, so that one had more than that; survived taking 39, so that one had more than that; survived taking 49, so that one had more than that; survived taking 11, so that one had more than that; survived taking 21, so that one had more than that; survived taking 34, so that one had more than that; survived taking 2, so that one had more than that; survived taking 50, so that one had more than that; survived taking 5, so that one had more than that; survived taking 44, so that one had more than that; survived taking 22, so that one had more than that; survived taking 25, so that one had more than that; survived taking 8, so that one had more than that; survived taking 41, so that one had more than that; survived taking 44, so that one had more than that; survived taking 22, so that one had more than that",
+    "from": "survived taking 10, so that one had more than that; survived taking 32, so that one had more than that; survived taking 10, so that one had more than that; survived taking 26, so that one had more than that; survived taking 30, so that one had more than that; survived taking 43, so that one had more than that; died at 48 with a last hit of 27, so that one had 21 to 48; survived taking 44, so that one had more than that; survived taking 43, so that one had more than that; died at 48 with a last hit of 18, so that one had 30 to 48; survived taking 25, so that one had more than that; survived taking 45, so that one had more than that; survived taking 44, so that one had more than that; survived taking 17, so that one had more than that; survived taking 5, so that one had more than that; survived taking 18, so that one had more than that; survived taking 45, so that one had more than that; survived taking 38, so that one had more than that; survived taking 25, so that one had more than that; survived taking 38, so that one had more than that; survived taking 45, so that one had more than that; survived taking 50, so that one had more than that; survived taking 3, so that one had more than that; survived taking 22, so that one had more than that; survived taking 49, so that one had more than that; survived taking 39, so that one had more than that; survived taking 39, so that one had more than that; survived taking 49, so that one had more than that; survived taking 11, so that one had more than that; survived taking 21, so that one had more than that; survived taking 34, so that one had more than that; survived taking 2, so that one had more than that; survived taking 50, so that one had more than that; survived taking 5, so that one had more than that; survived taking 44, so that one had more than that; survived taking 22, so that one had more than that; survived taking 25, so that one had more than that; survived taking 8, so that one had more than that; survived taking 41, so that one had more than that; survived taking 44, so that one had more than that; survived taking 22, so that one had more than that",
     "hi": 51,
     "lo": 21,
     "observed_hi": 48,
@@ -797,12 +947,13 @@
     "solo_n": 0
    },
    "relative_speed": {
-    "informative": true,
-    "measured": false,
-    "median": 0.0,
-    "n": 899,
-    "p95": 18.1,
-    "withdrew": 0.435
+    "hi": 37.3,
+    "lo": 37.3,
+    "measured": true,
+    "median": 37.3,
+    "n": 60,
+    "our_top": 59.5,
+    "we_outrun_it": true
    },
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
@@ -810,20 +961,39 @@
     "hi": 16.5,
     "lo": 15.3,
     "moves": [
+     "Full Circle",
      "Knock Its Teeth Out",
      "Quick Barrage"
     ],
-    "n": 2,
-    "value": 16.5
+    "n": 3,
+    "value": 15.4
    },
-   "threat": null
+   "threat": {
+    "damage": null,
+    "flees_below": null,
+    "period": null,
+    "pressure": {
+     "blue": 0.0,
+     "green": 6.85,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pressure_against": 312.5,
+    "pressure_n": 3
+   }
   },
   {
-   "agility": null,
+   "agility": {
+    "capped": false,
+    "hi": 60.2,
+    "lo": 49.4,
+    "n": 2,
+    "our_agility": 124
+   },
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 7,
+    "n": 56,
     "soft": null,
     "total_hi": 15,
     "total_lo": 15,
@@ -835,9 +1005,17 @@
     "lo": null,
     "n": 7
    },
-   "engagements": 35,
+   "defence_weight_late": {
+    "against": 125.0,
+    "agrees": false,
+    "depth": 111,
+    "hi": 130.1,
+    "lo": 129.9,
+    "n": 118
+   },
+   "engagements": 37,
    "hitpoints": {
-    "from": "died at 499 with a last hit of 256, so that one had 243 to 499; died at 517 with a last hit of 94, so that one had 423 to 517; died at 464 with a last hit of 178, so that one had 286 to 464; died at 608 with a last hit of 170, so that one had 438 to 608; died at 454 with a last hit of 172, so that one had 282 to 454; survived taking 321, so that one had more than that; died at 677 with a last hit of 236, so that one had 441 to 677; died at 559 with a last hit of 280, so that one had 279 to 559; died at 504 with a last hit of 110, so that one had 394 to 504; died at 597 with a last hit of 219, so that one had 378 to 597; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 508 with a last hit of 185, so that one had 323 to 508; died at 529 with a last hit of 137, so that one had 392 to 529; survived taking 367, so that one had more than that; died at 453 with a last hit of 15, so that one had 438 to 453",
+    "from": "died at 499 with a last hit of 256, so that one had 243 to 499; died at 517 with a last hit of 94, so that one had 423 to 517; died at 464 with a last hit of 178, so that one had 286 to 464; died at 608 with a last hit of 170, so that one had 438 to 608; died at 454 with a last hit of 172, so that one had 282 to 454; died at 451 with a last hit of 33, so that one had 418 to 451; survived taking 321, so that one had more than that; died at 677 with a last hit of 236, so that one had 441 to 677; died at 559 with a last hit of 280, so that one had 279 to 559; died at 504 with a last hit of 110, so that one had 394 to 504; died at 597 with a last hit of 219, so that one had 378 to 597; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 508 with a last hit of 185, so that one had 323 to 508; died at 529 with a last hit of 137, so that one had 392 to 529; survived taking 367, so that one had more than that; died at 514 with a last hit of 209, so that one had 305 to 514; died at 453 with a last hit of 15, so that one had 438 to 453",
     "hi": 677,
     "lo": 238,
     "observed_hi": 677,
@@ -847,78 +1025,98 @@
    },
    "moves": [
     "Bear Down",
+    "Blood & Gore",
     "Bristle",
     "Mule Kick",
     "Roar of the Wild"
    ],
    "name": "boar",
    "policy": {
-    "attack_share_above_0_ip": 0.625,
-    "attack_share_at_0_ip": 0.886,
+    "attack_share_above_0_ip": 0.597,
+    "attack_share_at_0_ip": 0.878,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
-     35,
-     32
+     41,
+     62
     ],
     "mix": [
      [
       "Mule Kick",
-      0.529
+      0.453
      ],
      [
       "Bear Down",
-      0.243
+      0.255
      ],
      [
       "Roar of the Wild",
-      0.2
+      0.226
      ],
      [
       "Bristle",
-      0.029
+      0.057
+     ],
+     [
+      "Blood & Gore",
+      0.009
      ]
     ],
-    "n": 70,
-    "solo_n": 17
+    "n": 106,
+    "solo_n": 53
    },
    "relative_speed": {
-    "informative": true,
-    "measured": false,
-    "median": 0.0,
-    "n": 777,
-    "p95": 17.3,
-    "withdrew": 0.311
+    "hi": 41.3,
+    "lo": 39.7,
+    "measured": true,
+    "median": 41.3,
+    "n": 2172,
+    "our_top": 58.9,
+    "we_outrun_it": true
    },
    "res": "gfx/kritter/boar/boar",
-   "skill": null,
+   "skill": {
+    "bound_hi": 116.0,
+    "bound_lo": 55.5,
+    "disputed": true,
+    "equalized": false,
+    "hi": 308.8,
+    "lo": 308.8,
+    "moves": [
+     "Full Circle",
+     "Knock Its Teeth Out",
+     "Quick Barrage"
+    ],
+    "n": 1,
+    "value": 308.8
+   },
    "threat": {
     "damage": {
-     "coef": 4.5,
-     "hi": 4.5,
-     "lo": 4.5,
-     "n": 1
+     "coef": 4.6,
+     "hi": 100.0,
+     "lo": 2.6,
+     "n": 13
     },
     "flees_below": null,
     "period": {
-     "dropped": 0,
+     "dropped": 1,
      "hi": 68.0,
-     "lo": 29.0,
-     "median": 38.9,
+     "lo": 22.2,
+     "median": 39.0,
      "modes": [
       39
      ],
-     "n": 53,
-     "ticks": 39.9
+     "n": 86,
+     "ticks": 39.8
     },
     "pressure": {
-     "blue": 0.0,
+     "blue": 3.86,
      "green": 0.0,
-     "red": 0.0,
-     "yellow": 0.0
+     "red": 0.24,
+     "yellow": 6.86
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 328.3333333333333,
+    "pressure_n": 39
    }
   },
   {
@@ -926,6 +1124,7 @@
     "capped": true,
     "hi": 148.6,
     "lo": 136.2,
+    "n": 3,
     "our_agility": 81
    },
    "armour": {
@@ -941,6 +1140,14 @@
     "hi": 393.3,
     "lo": 205.2,
     "n": 23
+   },
+   "defence_weight_late": {
+    "against": 246.0,
+    "agrees": true,
+    "depth": 22,
+    "hi": 393.3,
+    "lo": 205.2,
+    "n": 22
    },
    "engagements": 1,
    "hitpoints": {
@@ -1026,6 +1233,7 @@
     "capped": false,
     "hi": 80.7,
     "lo": 57.1,
+    "n": 1,
     "our_agility": 96
    },
    "armour": null,
@@ -1034,6 +1242,7 @@
     "lo": 70.8,
     "n": 1
    },
+   "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
    "moves": [
@@ -1096,7 +1305,8 @@
    "agility": {
     "capped": true,
     "hi": 48.2,
-    "lo": 40.5,
+    "lo": null,
+    "n": 1,
     "our_agility": 81
    },
    "armour": null,
@@ -1105,6 +1315,7 @@
     "lo": 17.0,
     "n": 1
    },
+   "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
    "moves": [],
@@ -1119,7 +1330,8 @@
    "agility": {
     "capped": true,
     "hi": 48.2,
-    "lo": 40.5,
+    "lo": null,
+    "n": 1,
     "our_agility": 81
    },
    "armour": {
@@ -1135,6 +1347,14 @@
     "hi": 4.8,
     "lo": 3.4,
     "n": 16
+   },
+   "defence_weight_late": {
+    "against": 4.1,
+    "agrees": true,
+    "depth": 9,
+    "hi": 10.4,
+    "lo": 2.5,
+    "n": 9
    },
    "engagements": 3,
    "hitpoints": {
@@ -1213,6 +1433,7 @@
     "capped": false,
     "hi": 60.2,
     "lo": 52.5,
+    "n": 3,
     "our_agility": 81
    },
    "armour": {
@@ -1228,6 +1449,14 @@
     "hi": 59.3,
     "lo": 43.3,
     "n": 14
+   },
+   "defence_weight_late": {
+    "against": 47.2,
+    "agrees": true,
+    "depth": 9,
+    "hi": 73.8,
+    "lo": 43.3,
+    "n": 9
    },
    "engagements": 1,
    "hitpoints": {
@@ -1301,7 +1530,8 @@
    "agility": {
     "capped": true,
     "hi": 62.2,
-    "lo": 57.0,
+    "lo": null,
+    "n": 1,
     "our_agility": 114
    },
    "armour": {
@@ -1313,7 +1543,21 @@
     "total_lo": 16,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 50
+   },
+   "defence_weight_late": {
+    "against": 130.2,
+    "agrees": true,
+    "depth": 39,
+    "hi": 169.9,
+    "lo": 102.8,
+    "n": 40
+   },
    "engagements": 52,
    "hitpoints": {
     "from": "died at 389 with a last hit of 121, so that one had 268 to 389; survived taking 344, so that one had more than that; died at 515 with a last hit of 181, so that one had 334 to 515; died at 457 with a last hit of 144, so that one had 313 to 457; survived taking 268, so that one had more than that; survived taking 296, so that one had more than that; died at 374 with a last hit of 119, so that one had 255 to 374; died at 431 with a last hit of 140, so that one had 291 to 431; died at 342 with a last hit of 150, so that one had 192 to 342; died at 446 with a last hit of 126, so that one had 320 to 446; died at 213 with a last hit of 51, so that one had 162 to 213; survived taking 346, so that one had more than that",
@@ -1375,7 +1619,16 @@
     "withdrew": 0.217
    },
    "res": "gfx/kritter/cattle/cattle",
-   "skill": null,
+   "skill": {
+    "equalized": true,
+    "hi": 250.0,
+    "lo": 62.5,
+    "moves": [
+     "Full Circle"
+    ],
+    "n": 0,
+    "value": null
+   },
    "threat": {
     "damage": {
      "coef": 16.7,
@@ -1398,19 +1651,21 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 2.99,
+     "green": 4.44,
      "red": 0.0,
-     "yellow": 0.0
+     "yellow": 5.78
     },
     "pressure_against": 312.5,
-    "pressure_n": 1
+    "pressure_n": 15
    }
   },
   {
    "agility": {
     "capped": false,
+    "from_contaminated": true,
     "hi": 154.6,
     "lo": 141.8,
+    "n": 3,
     "our_agility": 96
    },
    "armour": {
@@ -1422,7 +1677,21 @@
     "total_lo": 40,
     "wiki": 40
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 29
+   },
+   "defence_weight_late": {
+    "against": 207.9,
+    "agrees": false,
+    "depth": 23,
+    "hi": 220.5,
+    "lo": 220.5,
+    "n": 26
+   },
    "engagements": 1,
    "hitpoints": {
     "from": "died at 1545 with a last hit of 90, so that one had 1455 to 1545",
@@ -1481,7 +1750,16 @@
     "withdrew": 0.131
    },
    "res": "gfx/kritter/caveangler/caveangler",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 415.8,
+    "lo": 415.8,
+    "moves": [
+     "Sting"
+    ],
+    "n": 1,
+    "value": 415.8
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1498,26 +1776,27 @@
      "ticks": 39.6
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
-     "red": 0.0,
+     "blue": 3.73,
+     "green": 7.23,
+     "red": 3.55,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 55.5,
+    "pressure_n": 15
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 60.6,
-    "lo": 56.5,
-    "our_agility": 113
+    "hi": 44.2,
+    "lo": null,
+    "n": 10,
+    "our_agility": 124
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 29,
+    "n": 48,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -1526,15 +1805,23 @@
    "defence_weight": {
     "hi": 70.4,
     "lo": 57.0,
-    "n": 17
+    "n": 30
    },
-   "engagements": 14,
+   "defence_weight_late": {
+    "against": 66.7,
+    "agrees": true,
+    "depth": 21,
+    "hi": 80.9,
+    "lo": 44.1,
+    "n": 21
+   },
+   "engagements": 17,
    "hitpoints": {
-    "from": "died at 133 with a last hit of 55, so that one had 78 to 133; survived taking 158, so that one had more than that; died at 126 with a last hit of 42, so that one had 84 to 126; died at 112 with a last hit of 26, so that one had 86 to 112; died at 157 with a last hit of 108, so that one had 49 to 157",
+    "from": "died at 133 with a last hit of 55, so that one had 78 to 133; survived taking 158, so that one had more than that; died at 145 with a last hit of 88, so that one had 57 to 145; died at 117 with a last hit of 72, so that one had 45 to 117; died at 126 with a last hit of 42, so that one had 84 to 126; died at 145 with a last hit of 123, so that one had 22 to 145; died at 112 with a last hit of 26, so that one had 86 to 112; died at 157 with a last hit of 108, so that one had 49 to 157",
     "hi": 159,
-    "lo": 49,
+    "lo": 22,
     "observed_hi": 157,
-    "observed_lo": 49,
+    "observed_lo": 22,
     "verdict": "1 of these held out past the wiki's 110, so they were above its base quality",
     "wiki": 110
    },
@@ -1549,28 +1836,29 @@
       1.0
      ]
     ],
-    "n": 11,
-    "solo_n": 8
+    "n": 21,
+    "solo_n": 18
    },
    "relative_speed": {
-    "informative": false,
-    "measured": false,
-    "median": 0.0,
-    "n": 81,
-    "p95": 0.0,
-    "withdrew": 0.012
+    "hi": 52.3,
+    "lo": 49.3,
+    "measured": true,
+    "median": 50.2,
+    "n": 413,
+    "our_top": 51.7,
+    "we_outrun_it": false
    },
    "res": "gfx/kritter/fox/fox",
    "skill": {
     "equalized": false,
-    "hi": 32.0,
+    "hi": 33.3,
     "lo": 30.5,
     "moves": [
      "Quick Barrage",
      "Sting"
     ],
     "n": 2,
-    "value": 32.0
+    "value": 33.3
    },
    "threat": {
     "damage": {
@@ -1582,30 +1870,32 @@
     "flees_below": null,
     "period": {
      "dropped": 0,
-     "hi": 51.0,
-     "lo": 49.2,
+     "hi": 51.1,
+     "lo": 48.4,
      "median": 50.8,
      "modes": [
       51
      ],
-     "n": 5,
-     "ticks": 50.4
+     "n": 12,
+     "ticks": 50.2
     },
     "pressure": {
      "blue": 0.0,
-     "green": 8.65,
+     "green": 8.22,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 295.0,
-    "pressure_n": 8
+    "pressure_against": 328.3333333333333,
+    "pressure_n": 19
    }
   },
   {
    "agility": {
     "capped": false,
+    "from_contaminated": true,
     "hi": 87.1,
     "lo": 73.3,
+    "n": 2,
     "our_agility": 113
    },
    "armour": {
@@ -1617,7 +1907,20 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 194.4,
+    "lo": 98.9,
+    "n": 5
+   },
+   "defence_weight_late": {
+    "against": 138.4,
+    "agrees": true,
+    "depth": 4,
+    "hi": 201.9,
+    "lo": 71.1,
+    "n": 4
+   },
    "engagements": 7,
    "hitpoints": {
     "from": "died at 389 with a last hit of 225, so that one had 164 to 389; survived taking 298, so that one had more than that",
@@ -1672,8 +1975,10 @@
   {
    "agility": {
     "capped": true,
-    "hi": 60.6,
-    "lo": 56.5,
+    "from_contaminated": true,
+    "hi": 60.5,
+    "lo": null,
+    "n": 5,
     "our_agility": 113
    },
    "armour": {
@@ -1685,7 +1990,21 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 48
+   },
+   "defence_weight_late": {
+    "against": 55.4,
+    "agrees": true,
+    "depth": 21,
+    "hi": 70.6,
+    "lo": 50.3,
+    "n": 22
+   },
    "engagements": 35,
    "hitpoints": {
     "from": "died at 86 with a last hit of 61, so that one had 25 to 86; died at 115 with a last hit of 90, so that one had 25 to 115; died at 84 with a last hit of 69, so that one had 15 to 84; died at 119 with a last hit of 88, so that one had 31 to 119; died at 193 with a last hit of 133, so that one had 60 to 193; died at 72 with a last hit of 20, so that one had 52 to 72; died at 115 with a last hit of 86, so that one had 29 to 115; died at 115 with a last hit of 46, so that one had 69 to 115; died at 76 with a last hit of 19, so that one had 57 to 76; died at 83 with a last hit of 66, so that one had 17 to 83; died at 180 with a last hit of 126, so that one had 54 to 180; died at 100 with a last hit of 56, so that one had 44 to 100; died at 82 with a last hit of 15, so that one had 67 to 82; died at 106 with a last hit of 40, so that one had 66 to 106; died at 103 with a last hit of 53, so that one had 50 to 103; died at 162 with a last hit of 117, so that one had 45 to 162; died at 79 with a last hit of 62, so that one had 17 to 79; died at 89 with a last hit of 69, so that one had 20 to 89; died at 73 with a last hit of 21, so that one had 52 to 73; died at 148 with a last hit of 104, so that one had 44 to 148; died at 101 with a last hit of 45, so that one had 56 to 101; died at 197 with a last hit of 29, so that one had 168 to 197; died at 136 with a last hit of 72, so that one had 64 to 136; died at 97 with a last hit of 34, so that one had 63 to 97; died at 83 with a last hit of 66, so that one had 17 to 83; died at 84 with a last hit of 69, so that one had 15 to 84; died at 81 with a last hit of 65, so that one had 16 to 81; died at 105 with a last hit of 83, so that one had 22 to 105",
@@ -1739,7 +2058,17 @@
     "withdrew": 0.16
    },
    "res": "gfx/kritter/bees/honeybee",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 28.4,
+    "lo": 25.6,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 28.4
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1755,20 +2084,21 @@
      "ticks": 47.5
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
+     "blue": 0.99,
+     "green": 7.23,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 312.5,
+    "pressure_n": 17
    }
   },
   {
    "agility": {
     "capped": false,
-    "hi": 87.9,
-    "lo": 80.6,
+    "hi": 95.0,
+    "lo": 67.2,
+    "n": 1,
     "our_agility": 114
    },
    "armour": {
@@ -1784,6 +2114,14 @@
     "hi": 231.8,
     "lo": 125.0,
     "n": 2
+   },
+   "defence_weight_late": {
+    "against": 150.0,
+    "agrees": true,
+    "depth": 10,
+    "hi": 169.9,
+    "lo": 125.0,
+    "n": 10
    },
    "engagements": 9,
    "hitpoints": {
@@ -1849,8 +2187,10 @@
   {
    "agility": {
     "capped": true,
-    "hi": 226.0,
-    "lo": 226.0,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": 162.0,
+    "n": 3,
     "our_agility": 113
    },
    "armour": {
@@ -1862,7 +2202,20 @@
     "total_lo": 35,
     "wiki": 35
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 143.9,
+    "lo": 94.4,
+    "n": 19
+   },
+   "defence_weight_late": {
+    "against": 111.0,
+    "agrees": true,
+    "depth": 18,
+    "hi": 143.9,
+    "lo": 94.4,
+    "n": 18
+   },
    "engagements": 13,
    "hitpoints": {
     "from": "died at 543 with a last hit of 332, so that one had 211 to 543; died at 524 with a last hit of 196, so that one had 328 to 524",
@@ -1923,134 +2276,181 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 0.0,
+     "green": 10.86,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 277.5,
+    "pressure_n": 11
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 226.0,
+    "from_contaminated": true,
+    "hi": null,
     "lo": 216.4,
+    "n": 6,
     "our_agility": 113
    },
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 238,
+    "n": 364,
     "soft": null,
-    "total_hi": 69,
-    "total_lo": 68,
+    "total_hi": 68,
+    "total_lo": 66,
     "wiki": 65
    },
-   "defence_weight": null,
-   "engagements": 21,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 95
+   },
+   "defence_weight_late": {
+    "against": 138.4,
+    "agrees": true,
+    "depth": 87,
+    "hi": 151.7,
+    "lo": 129.9,
+    "n": 91
+   },
+   "engagements": 33,
    "hitpoints": {
-    "from": "died at 819 with a last hit of 124, so that one had 695 to 819; survived taking 853, so that one had more than that; survived taking 657, so that one had more than that; died at 879 with a last hit of 163, so that one had 716 to 879; died at 838 with a last hit of 64, so that one had 774 to 838",
+    "from": "died at 819 with a last hit of 124, so that one had 695 to 819; survived taking 853, so that one had more than that; survived taking 657, so that one had more than that; died at 833 with a last hit of 386, so that one had 447 to 833; died at 879 with a last hit of 163, so that one had 716 to 879; died at 787 with a last hit of 90, so that one had 697 to 787; died at 834 with a last hit of 94, so that one had 740 to 834; died at 838 with a last hit of 64, so that one had 774 to 838",
     "hi": 879,
-    "lo": 695,
+    "lo": 447,
     "observed_hi": 879,
-    "observed_lo": 695,
-    "verdict": "1 of these held out past the wiki's 800, so they were above its base quality",
+    "observed_lo": 447,
+    "verdict": "individuals seen on both sides of the wiki's 800",
     "wiki": 800
    },
    "moves": [
     "Bear Down",
     "Breathing Rage",
     "Bristle",
+    "Dark Heart",
+    "Heavy Antlers",
     "Low Horn Swipe",
     "Mule Kick",
     "Roar of the Wild",
+    "Swift Evasion",
     "Thunder Over",
     "Unstoppable"
    ],
    "name": "moose",
    "policy": {
-    "attack_share_above_0_ip": 0.744,
-    "attack_share_at_0_ip": 0.762,
+    "attack_share_above_0_ip": 0.781,
+    "attack_share_at_0_ip": 0.839,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     21,
-     43
+     31,
+     73
     ],
     "mix": [
      [
       "Low Horn Swipe",
-      0.347
-     ],
-     [
-      "Unstoppable",
-      0.208
-     ],
-     [
-      "Thunder Over",
-      0.153
+      0.374
      ],
      [
       "Breathing Rage",
-      0.125
+      0.165
+     ],
+     [
+      "Unstoppable",
+      0.165
+     ],
+     [
+      "Thunder Over",
+      0.148
      ],
      [
       "Bear Down",
-      0.056
+      0.035
      ],
      [
       "Bristle",
-      0.056
+      0.035
      ],
      [
       "Mule Kick",
-      0.028
+      0.026
      ],
      [
       "Roar of the Wild",
-      0.028
+      0.026
+     ],
+     [
+      "Dark Heart",
+      0.009
+     ],
+     [
+      "Heavy Antlers",
+      0.009
+     ],
+     [
+      "Swift Evasion",
+      0.009
      ]
     ],
-    "n": 72,
+    "n": 115,
     "solo_n": 0
    },
    "relative_speed": {
     "informative": false,
     "measured": false,
     "median": 0.0,
-    "n": 384,
-    "p95": 3.1,
-    "withdrew": 0.062
+    "n": 619,
+    "p95": 3.2,
+    "withdrew": 0.061
    },
    "res": "gfx/kritter/moose/moose",
-   "skill": null,
+   "skill": {
+    "equalized": true,
+    "hi": 250.0,
+    "lo": 62.5,
+    "moves": [
+     "Full Circle"
+    ],
+    "n": 0,
+    "value": null
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
     "period": {
      "dropped": 0,
-     "hi": 65.1,
-     "lo": 17.7,
+     "hi": 71.0,
+     "lo": 17.0,
      "median": 23.9,
      "modes": [
       18
      ],
-     "n": 64,
-     "ticks": 26.7
+     "n": 102,
+     "ticks": 27.7
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
+     "blue": 3.03,
+     "green": 6.29,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 353.75,
+    "pressure_n": 27
    }
   },
   {
-   "agility": null,
+   "agility": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "n": 2,
+    "self_contradictory_gobs": [
+     1663192167
+    ]
+   },
    "armour": {
     "hard": 0,
     "identified": true,
@@ -2060,7 +2460,13 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 217.7,
+    "lo": 65.9,
+    "n": 1
+   },
+   "defence_weight_late": null,
    "engagements": 4,
    "hitpoints": {
     "from": "died at 357 with a last hit of 145, so that one had 212 to 357",
@@ -2115,8 +2521,9 @@
   {
    "agility": {
     "capped": true,
-    "hi": 60.5,
-    "lo": 55.5,
+    "hi": 60.0,
+    "lo": null,
+    "n": 2,
     "our_agility": 111
    },
    "armour": {
@@ -2132,6 +2539,14 @@
     "hi": 25.8,
     "lo": 17.7,
     "n": 3
+   },
+   "defence_weight_late": {
+    "against": 21.3,
+    "agrees": true,
+    "depth": 11,
+    "hi": 36.1,
+    "lo": 15.9,
+    "n": 11
    },
    "engagements": 36,
    "hitpoints": {
@@ -2171,7 +2586,17 @@
     "withdrew": 0.499
    },
    "res": "gfx/kritter/ants/redants",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 10.8,
+    "lo": 10.4,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 10.8
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2187,38 +2612,53 @@
      "ticks": 50.6
     },
     "pressure": {
-     "blue": 5.62,
-     "green": 5.62,
+     "blue": 5.47,
+     "green": 5.99,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 312.5,
-    "pressure_n": 2
+    "pressure_n": 40
    }
   },
   {
    "agility": {
     "capped": false,
-    "hi": 123.2,
+    "from_contaminated": true,
+    "hi": 122.1,
     "lo": 103.6,
+    "n": 4,
     "our_agility": 113
    },
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 31,
+    "n": 66,
     "soft": null,
-    "total_hi": 10,
+    "total_hi": 11,
     "total_lo": 10,
     "wiki": 10
    },
-   "defence_weight": null,
-   "engagements": 3,
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 169.9,
+    "lo": 129.9,
+    "n": 25
+   },
+   "defence_weight_late": {
+    "against": 158.0,
+    "agrees": true,
+    "depth": 21,
+    "hi": 169.9,
+    "lo": 129.9,
+    "n": 21
+   },
+   "engagements": 15,
    "hitpoints": {
-    "from": "died at 218 with a last hit of 110, so that one had 108 to 218; died at 212 with a last hit of 133, so that one had 79 to 212; died at 222 with a last hit of 112, so that one had 110 to 222",
-    "hi": 222,
+    "from": "died at 218 with a last hit of 110, so that one had 108 to 218; died at 212 with a last hit of 133, so that one had 79 to 212; died at 206 with a last hit of 109, so that one had 97 to 206; died at 213 with a last hit of 66, so that one had 147 to 213; died at 218 with a last hit of 114, so that one had 104 to 218; died at 231 with a last hit of 81, so that one had 150 to 231; died at 222 with a last hit of 112, so that one had 110 to 222",
+    "hi": 231,
     "lo": 79,
-    "observed_hi": 222,
+    "observed_hi": 231,
     "observed_lo": 79,
     "verdict": "every individual seen is consistent with the wiki's 200",
     "wiki": 200
@@ -2232,26 +2672,36 @@
     "mix": [
      [
       "Low Horn Swipe",
-      0.5
+      0.577
      ],
      [
       "Mule Kick",
-      0.5
+      0.423
      ]
     ],
-    "n": 14,
+    "n": 26,
     "solo_n": 0
    },
    "relative_speed": {
-    "informative": false,
-    "measured": false,
-    "median": 0.0,
-    "n": 49,
-    "p95": 4.2,
-    "withdrew": 0.061
+    "hi": 57.5,
+    "lo": 55.2,
+    "measured": true,
+    "median": 55.5,
+    "n": 437,
+    "our_top": 50.7,
+    "we_outrun_it": false
    },
    "res": "gfx/kritter/reddeer/reddeer",
-   "skill": null,
+   "skill": {
+    "equalized": true,
+    "hi": 351.1,
+    "lo": 87.8,
+    "moves": [
+     "Full Circle"
+    ],
+    "n": 0,
+    "value": null
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2259,49 +2709,62 @@
      "dropped": 0,
      "hi": 36.1,
      "lo": 19.9,
-     "median": 33.9,
+     "median": 22.0,
      "modes": [
-      34,
-      20
+      20,
+      34
      ],
-     "n": 11,
-     "ticks": 28.6
+     "n": 18,
+     "ticks": 26.8
     },
     "pressure": {
      "blue": 0.0,
-     "green": 0.0,
+     "green": 6.35,
      "red": 0.0,
-     "yellow": 0.0
+     "yellow": 4.67
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 353.75,
+    "pressure_n": 7
    }
   },
   {
    "agility": {
     "capped": false,
-    "hi": 134.4,
-    "lo": 95.0,
-    "our_agility": 113
+    "hi": 135.2,
+    "lo": 113.7,
+    "n": 2,
+    "our_agility": 124
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 16,
+    "n": 24,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
     "wiki": 0
    },
-   "defence_weight": null,
-   "engagements": 2,
+   "defence_weight": {
+    "hi": 220.2,
+    "lo": 129.9,
+    "n": 10
+   },
+   "defence_weight_late": {
+    "against": 158.0,
+    "agrees": true,
+    "depth": 13,
+    "hi": 233.0,
+    "lo": 129.9,
+    "n": 13
+   },
+   "engagements": 3,
    "hitpoints": {
-    "from": "died at 181 with a last hit of 104, so that one had 77 to 181; died at 199 with a last hit of 110, so that one had 89 to 199",
+    "from": "died at 181 with a last hit of 104, so that one had 77 to 181; died at 199 with a last hit of 110, so that one had 89 to 199; died at 185 with a last hit of 73, so that one had 112 to 185",
     "hi": 200,
     "lo": 77,
     "observed_hi": 199,
     "observed_lo": 77,
-    "verdict": "2 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
+    "verdict": "3 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 200
    },
    "moves": [
@@ -2313,48 +2776,71 @@
     "mix": [
      [
       "Mule Kick",
-      0.667
+      0.636
      ],
      [
       "Low Horn Swipe",
-      0.333
+      0.364
      ]
     ],
-    "n": 6,
-    "solo_n": 0
+    "n": 11,
+    "solo_n": 5
    },
-   "relative_speed": null,
+   "relative_speed": {
+    "informative": true,
+    "measured": false,
+    "median": 0.0,
+    "n": 50,
+    "p95": 9.2,
+    "withdrew": 0.1
+   },
    "res": "gfx/kritter/reindeer/reindeer",
-   "skill": null,
+   "skill": {
+    "equalized": true,
+    "hi": 250.0,
+    "lo": 62.5,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 0,
+    "value": null
+   },
    "threat": {
-    "damage": null,
+    "damage": {
+     "coef": 100.0,
+     "hi": 100.0,
+     "lo": 8.9,
+     "n": 2
+    },
     "flees_below": null,
     "period": {
      "dropped": 0,
-     "hi": 37.1,
-     "lo": 20.1,
-     "median": 37.0,
+     "hi": 55.0,
+     "lo": 20.0,
+     "median": 34.9,
      "modes": [
-      37
+      20
      ],
-     "n": 4,
+     "n": 8,
      "ticks": 32.3
     },
     "pressure": {
      "blue": 0.0,
-     "green": 0.0,
+     "green": 3.91,
      "red": 0.0,
-     "yellow": 0.0
+     "yellow": 7.15
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 353.75,
+    "pressure_n": 8
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 60.5,
-    "lo": 55.5,
+    "from_contaminated": true,
+    "hi": 60.0,
+    "lo": null,
+    "n": 4,
     "our_agility": 111
    },
    "armour": {
@@ -2366,7 +2852,21 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 64
+   },
+   "defence_weight_late": {
+    "against": 60.1,
+    "agrees": false,
+    "depth": 41,
+    "hi": 59.7,
+    "lo": 47.9,
+    "n": 41
+   },
    "engagements": 36,
    "hitpoints": {
     "from": "died at 187 with a last hit of 99, so that one had 88 to 187; died at 187 with a last hit of 101, so that one had 86 to 187; died at 141 with a last hit of 102, so that one had 39 to 141; died at 150 with a last hit of 109, so that one had 41 to 150; died at 205 with a last hit of 99, so that one had 106 to 205; died at 154 with a last hit of 90, so that one had 64 to 154; died at 146 with a last hit of 88, so that one had 58 to 146; died at 126 with a last hit of 53, so that one had 73 to 126; died at 219 with a last hit of 103, so that one had 116 to 219; died at 198 with a last hit of 81, so that one had 117 to 198; died at 124 with a last hit of 18, so that one had 106 to 124; died at 153 with a last hit of 110, so that one had 43 to 153; died at 167 with a last hit of 63, so that one had 104 to 167; died at 174 with a last hit of 113, so that one had 61 to 174; died at 188 with a last hit of 100, so that one had 88 to 188; died at 244 with a last hit of 150, so that one had 94 to 244; died at 83 with a last hit of 68, so that one had 15 to 83; died at 138 with a last hit of 68, so that one had 70 to 138; died at 110 with a last hit of 86, so that one had 24 to 110; died at 155 with a last hit of 58, so that one had 97 to 155; died at 150 with a last hit of 69, so that one had 81 to 150; died at 136 with a last hit of 72, so that one had 64 to 136; died at 192 with a last hit of 78, so that one had 114 to 192; died at 288 with a last hit of 167, so that one had 121 to 288; died at 123 with a last hit of 33, so that one had 90 to 123; died at 132 with a last hit of 20, so that one had 112 to 132; died at 124 with a last hit of 73, so that one had 51 to 124; died at 122 with a last hit of 18, so that one had 104 to 122; died at 173 with a last hit of 93, so that one had 80 to 173; died at 196 with a last hit of 123, so that one had 73 to 196",
@@ -2433,7 +2933,17 @@
     "withdrew": 0.578
    },
    "res": "gfx/kritter/ants/royalguardant",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 32.6,
+    "lo": 30.0,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 32.6
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2450,20 +2960,21 @@
      "ticks": 43.1
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
-     "red": 0.0,
+     "blue": 2.56,
+     "green": 7.73,
+     "red": 0.64,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 312.5,
+    "pressure_n": 21
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 60.6,
-    "lo": 56.5,
+    "hi": 67.2,
+    "lo": null,
+    "n": 1,
     "our_agility": 113
    },
    "armour": {
@@ -2479,6 +2990,14 @@
     "hi": 203.5,
     "lo": 79.7,
     "n": 1
+   },
+   "defence_weight_late": {
+    "against": 98.6,
+    "agrees": false,
+    "depth": 62,
+    "hi": 74.1,
+    "lo": 68.0,
+    "n": 66
    },
    "engagements": 46,
    "hitpoints": {
@@ -2541,7 +3060,21 @@
     "withdrew": 0.166
    },
    "res": "gfx/kritter/bees/sentinelbee",
-   "skill": null,
+   "skill": {
+    "bound_hi": 250.0,
+    "bound_lo": 62.5,
+    "disputed": true,
+    "equalized": false,
+    "hi": 56.3,
+    "lo": 44.1,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage",
+     "Sting"
+    ],
+    "n": 2,
+    "value": 56.3
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2557,86 +3090,123 @@
      "ticks": 59.1
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
+     "blue": 5.87,
+     "green": 3.77,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 312.5,
+    "pressure_n": 19
    }
   },
   {
    "agility": {
-    "capped": false,
-    "hi": 68.1,
-    "lo": 48.2,
-    "our_agility": 81
+    "capped": true,
+    "hi": 60.5,
+    "lo": null,
+    "n": 2,
+    "our_agility": 111
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 9,
+    "n": 18,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
-   "engagements": 1,
+   "defence_weight": {
+    "hi": 84.1,
+    "lo": 50.3,
+    "n": 9
+   },
+   "defence_weight_late": {
+    "against": 64.5,
+    "agrees": true,
+    "depth": 10,
+    "hi": 112.3,
+    "lo": 39.2,
+    "n": 10
+   },
+   "engagements": 2,
    "hitpoints": {
-    "from": "died at 166 with a last hit of 66, so that one had 100 to 166",
-    "hi": 200,
-    "lo": 100,
-    "observed_hi": 166,
-    "observed_lo": 100,
+    "from": "died at 212 with a last hit of 113, so that one had 99 to 212; died at 166 with a last hit of 66, so that one had 100 to 166",
+    "hi": 212,
+    "lo": 99,
+    "observed_hi": 212,
+    "observed_lo": 99,
     "verdict": "1 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 200
    },
    "moves": [
-    "Low Horn Swipe"
+    "Low Horn Swipe",
+    "Mule Kick"
    ],
    "name": "sheep",
    "policy": {
     "mix": [
      [
       "Low Horn Swipe",
-      1.0
+      0.6
+     ],
+     [
+      "Mule Kick",
+      0.4
      ]
     ],
-    "n": 3,
-    "solo_n": 0
+    "n": 5,
+    "solo_n": 2
    },
-   "relative_speed": null,
+   "relative_speed": {
+    "hi": 58.3,
+    "lo": 58.3,
+    "measured": true,
+    "median": 58.3,
+    "n": 177,
+    "our_top": 53.0,
+    "we_outrun_it": false
+   },
    "res": "gfx/kritter/sheep/sheep",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 32.2,
+    "lo": 32.2,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 1,
+    "value": 32.2
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
     "period": {
      "dropped": 0,
-     "hi": 22.1,
+     "hi": 40.0,
      "lo": 20.0,
      "median": 22.1,
      "modes": [],
-     "n": 2,
-     "ticks": 21.0
+     "n": 3,
+     "ticks": 27.4
     },
     "pressure": {
      "blue": 0.0,
      "green": 0.0,
      "red": 0.0,
-     "yellow": 0.0
+     "yellow": 6.67
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 395.0,
+    "pressure_n": 2
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 61.6,
-    "lo": 56.5,
+    "from_contaminated": true,
+    "hi": 60.5,
+    "lo": null,
+    "n": 4,
     "our_agility": 113
    },
    "armour": {
@@ -2648,7 +3218,21 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 42
+   },
+   "defence_weight_late": {
+    "against": 106.1,
+    "agrees": true,
+    "depth": 28,
+    "hi": 143.1,
+    "lo": 77.7,
+    "n": 28
+   },
    "engagements": 26,
    "hitpoints": {
     "from": "died at 78 with a last hit of 60, so that one had 18 to 78; survived taking 1, so that one had more than that; died at 89 with a last hit of 69, so that one had 20 to 89; died at 57 with a last hit of 48, so that one had 9 to 57; died at 203 with a last hit of 94, so that one had 109 to 203; died at 57 with a last hit of 46, so that one had 11 to 57; died at 50 with a last hit of 14, so that one had 36 to 50; died at 42 with a last hit of 38, so that one had 4 to 42; died at 59 with a last hit of 11, so that one had 48 to 59; died at 57 with a last hit of 46, so that one had 11 to 57; died at 80 with a last hit of 60, so that one had 20 to 80; died at 50 with a last hit of 13, so that one had 37 to 50; died at 78 with a last hit of 34, so that one had 44 to 78; died at 84 with a last hit of 42, so that one had 42 to 84; died at 54 with a last hit of 8, so that one had 46 to 54; died at 97 with a last hit of 75, so that one had 22 to 97; died at 57 with a last hit of 46, so that one had 11 to 57; died at 97 with a last hit of 62, so that one had 35 to 97; died at 51 with a last hit of 8, so that one had 43 to 51; died at 106 with a last hit of 75, so that one had 31 to 106; died at 98 with a last hit of 73, so that one had 25 to 98",
@@ -2705,7 +3289,16 @@
     "withdrew": 0.13
    },
    "res": "gfx/kritter/bees/vulturebee",
-   "skill": null,
+   "skill": {
+    "equalized": true,
+    "hi": 250.0,
+    "lo": 62.5,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 0,
+    "value": null
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2721,17 +3314,176 @@
      "ticks": 53.9
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 0.0,
-     "red": 0.0,
+     "blue": 7.22,
+     "green": 2.73,
+     "red": 0.5,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 312.5,
+    "pressure_n": 13
    }
   },
   {
-   "agility": null,
+   "agility": {
+    "capped": false,
+    "hi": 203.6,
+    "lo": 171.2,
+    "n": 1,
+    "our_agility": 111
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 124,
+    "soft": null,
+    "total_hi": 77,
+    "total_lo": 76,
+    "wiki": 75
+   },
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 209.1,
+    "lo": 168.8,
+    "n": 39
+   },
+   "defence_weight_late": {
+    "against": 154.4,
+    "agrees": false,
+    "depth": 31,
+    "hi": 214.7,
+    "lo": 168.8,
+    "n": 31
+   },
+   "engagements": 16,
+   "hitpoints": {
+    "from": "died at 1010 with a last hit of 35, so that one had 975 to 1010; survived taking 729, so that one had more than that; died at 1016 with a last hit of 40, so that one had 976 to 1016",
+    "hi": 1016,
+    "lo": 900,
+    "observed_hi": 1016,
+    "observed_lo": 975,
+    "verdict": "2 of these held out past the wiki's 900, so they were above its base quality",
+    "wiki": 900
+   },
+   "moves": [
+    "'Rus Tusk",
+    "Bear Down",
+    "Bristle",
+    "Careful Approach",
+    "Dive & Hide",
+    "Maddening Roar",
+    "Rampant Rage",
+    "Roar of the Wild",
+    "Tail Splash",
+    "Unstoppable"
+   ],
+   "name": "walrus",
+   "policy": {
+    "attack_share_above_0_ip": 0.576,
+    "attack_share_at_0_ip": 0.636,
+    "ip_conditioned": false,
+    "ip_group_contaminated": true,
+    "ip_n": [
+     11,
+     33
+    ],
+    "mix": [
+     [
+      "'Rus Tusk",
+      0.333
+     ],
+     [
+      "Bear Down",
+      0.244
+     ],
+     [
+      "Tail Splash",
+      0.133
+     ],
+     [
+      "Unstoppable",
+      0.133
+     ],
+     [
+      "Bristle",
+      0.044
+     ],
+     [
+      "Careful Approach",
+      0.022
+     ],
+     [
+      "Dive & Hide",
+      0.022
+     ],
+     [
+      "Maddening Roar",
+      0.022
+     ],
+     [
+      "Rampant Rage",
+      0.022
+     ],
+     [
+      "Roar of the Wild",
+      0.022
+     ]
+    ],
+    "n": 45,
+    "solo_n": 0
+   },
+   "relative_speed": {
+    "hi": 55.6,
+    "lo": 54.0,
+    "measured": true,
+    "median": 54.2,
+    "n": 857,
+    "our_top": 59.3,
+    "we_outrun_it": true
+   },
+   "res": "gfx/kritter/walrus/walrus",
+   "skill": {
+    "equalized": true,
+    "hi": 351.1,
+    "lo": 87.8,
+    "moves": [
+     "Full Circle"
+    ],
+    "n": 0,
+    "value": null
+   },
+   "threat": {
+    "damage": null,
+    "flees_below": null,
+    "period": {
+     "dropped": 0,
+     "hi": 105.9,
+     "lo": 21.9,
+     "median": 44.1,
+     "modes": [
+      42,
+      24
+     ],
+     "n": 39,
+     "ticks": 44.9
+    },
+    "pressure": {
+     "blue": 4.79,
+     "green": 0.0,
+     "red": 6.3,
+     "yellow": 0.0
+    },
+    "pressure_against": 395.0,
+    "pressure_n": 7
+   }
+  },
+  {
+   "agility": {
+    "capped": true,
+    "hi": 60.0,
+    "lo": null,
+    "n": 1,
+    "our_agility": 111
+   },
    "armour": {
     "hard": 0,
     "identified": true,
@@ -2745,6 +3497,14 @@
     "hi": 52.9,
     "lo": 27.8,
     "n": 2
+   },
+   "defence_weight_late": {
+    "against": 41.0,
+    "agrees": true,
+    "depth": 14,
+    "hi": 57.6,
+    "lo": 32.8,
+    "n": 14
    },
    "engagements": 29,
    "hitpoints": {
@@ -2807,7 +3567,17 @@
     "withdrew": 0.387
    },
    "res": "gfx/kritter/ants/warriorant",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 22.8,
+    "lo": 20.5,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 22.8
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2824,20 +3594,22 @@
      "ticks": 45.4
     },
     "pressure": {
-     "blue": 0.0,
-     "green": 7.78,
+     "blue": 3.23,
+     "green": 7.12,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 312.5,
-    "pressure_n": 1
+    "pressure_n": 15
    }
   },
   {
    "agility": {
     "capped": true,
-    "hi": 61.6,
-    "lo": 56.5,
+    "from_contaminated": true,
+    "hi": 60.5,
+    "lo": null,
+    "n": 3,
     "our_agility": 113
    },
    "armour": {
@@ -2849,7 +3621,21 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": null,
+   "defence_weight": {
+    "contradictory": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": null,
+    "n": 43
+   },
+   "defence_weight_late": {
+    "against": 74.1,
+    "agrees": false,
+    "depth": 30,
+    "hi": 52.0,
+    "lo": 51.2,
+    "n": 30
+   },
    "engagements": 32,
    "hitpoints": {
     "from": "died at 94 with a last hit of 46, so that one had 48 to 94; died at 123 with a last hit of 91, so that one had 32 to 123; died at 81 with a last hit of 66, so that one had 15 to 81; died at 98 with a last hit of 24, so that one had 74 to 98; died at 169 with a last hit of 115, so that one had 54 to 169; died at 197 with a last hit of 123, so that one had 74 to 197; died at 87 with a last hit of 76, so that one had 11 to 87; died at 75 with a last hit of 75, so that one had 0 to 75; died at 181 with a last hit of 121, so that one had 60 to 181; died at 135 with a last hit of 98, so that one had 37 to 135; survived taking 34, so that one had more than that; died at 112 with a last hit of 66, so that one had 46 to 112; died at 88 with a last hit of 30, so that one had 58 to 88; died at 120 with a last hit of 68, so that one had 52 to 120; died at 89 with a last hit of 59, so that one had 30 to 89; died at 107 with a last hit of 79, so that one had 28 to 107; died at 297 with a last hit of 117, so that one had 180 to 297; died at 138 with a last hit of 95, so that one had 43 to 138; died at 166 with a last hit of 114, so that one had 52 to 166; died at 145 with a last hit of 84, so that one had 61 to 145; died at 164 with a last hit of 108, so that one had 56 to 164; died at 136 with a last hit of 80, so that one had 56 to 136; died at 90 with a last hit of 25, so that one had 65 to 90",
@@ -2903,7 +3689,17 @@
     "withdrew": 0.19
    },
    "res": "gfx/kritter/bees/warriordrone",
-   "skill": null,
+   "skill": {
+    "equalized": false,
+    "hi": 38.6,
+    "lo": 37.0,
+    "moves": [
+     "Full Circle",
+     "Quick Barrage"
+    ],
+    "n": 2,
+    "value": 38.6
+   },
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -2922,12 +3718,337 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 0.0,
+     "green": 5.0,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": null,
-    "pressure_n": 0
+    "pressure_against": 312.5,
+    "pressure_n": 7
+   }
+  },
+  {
+   "agility": {
+    "capped": false,
+    "from_contaminated": true,
+    "hi": 133.9,
+    "lo": 114.8,
+    "n": 3,
+    "our_agility": 124
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 9,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 220.2,
+    "lo": 129.9,
+    "n": 9
+   },
+   "defence_weight_late": {
+    "against": 158.0,
+    "agrees": true,
+    "depth": 7,
+    "hi": 384.8,
+    "lo": 129.9,
+    "n": 7
+   },
+   "engagements": 1,
+   "hitpoints": {
+    "from": "died at 325 with a last hit of 142, so that one had 183 to 325",
+    "hi": 325,
+    "lo": 183,
+    "observed_hi": 325,
+    "observed_lo": 183,
+    "verdict": "every individual seen is consistent with the wiki's 300",
+    "wiki": 300
+   },
+   "moves": [
+    "Bear Down",
+    "Mule Kick"
+   ],
+   "name": "wildgoat",
+   "policy": {
+    "mix": [
+     [
+      "Mule Kick",
+      0.667
+     ],
+     [
+      "Bear Down",
+      0.333
+     ]
+    ],
+    "n": 6,
+    "solo_n": 6
+   },
+   "relative_speed": {
+    "informative": true,
+    "measured": false,
+    "median": -6.8,
+    "n": 91,
+    "p95": 13.2,
+    "withdrew": 0.198
+   },
+   "res": "gfx/kritter/goat/wildgoat",
+   "skill": null,
+   "threat": {
+    "damage": {
+     "coef": 9.8,
+     "hi": 14.6,
+     "lo": 7.0,
+     "n": 3
+    },
+    "flees_below": null,
+    "period": {
+     "dropped": 0,
+     "hi": 47.0,
+     "lo": 34.9,
+     "median": 35.0,
+     "modes": [
+      35
+     ],
+     "n": 5,
+     "ticks": 39.0
+    },
+    "pressure": {
+     "blue": 3.5,
+     "green": 0.0,
+     "red": 0.0,
+     "yellow": 7.27
+    },
+    "pressure_against": 395.0,
+    "pressure_n": 6
+   }
+  },
+  {
+   "agility": {
+    "capped": true,
+    "from_contaminated": true,
+    "hi": null,
+    "lo": 212.6,
+    "n": 3,
+    "our_agility": 111
+   },
+   "armour": {
+    "hard": null,
+    "identified": false,
+    "n": 235,
+    "soft": null,
+    "total_hi": 51,
+    "total_lo": 50,
+    "wiki": 50
+   },
+   "defence_weight": {
+    "from_contaminated": true,
+    "hi": 196.7,
+    "lo": 125.1,
+    "n": 117
+   },
+   "defence_weight_late": {
+    "against": 158.0,
+    "agrees": true,
+    "depth": 99,
+    "hi": 214.7,
+    "lo": 122.1,
+    "n": 99
+   },
+   "engagements": 14,
+   "hitpoints": {
+    "from": "died at 581 with a last hit of 172, so that one had 409 to 581; died at 536 with a last hit of 144, so that one had 392 to 536; died at 664 with a last hit of 208, so that one had 456 to 664; died at 553 with a last hit of 113, so that one had 440 to 553; died at 520 with a last hit of 106, so that one had 414 to 520; died at 514 with a last hit of 102, so that one had 412 to 514; died at 559 with a last hit of 86, so that one had 473 to 559; died at 547 with a last hit of 58, so that one had 489 to 547; died at 582 with a last hit of 147, so that one had 435 to 582; died at 603 with a last hit of 151, so that one had 452 to 603; died at 558 with a last hit of 59, so that one had 499 to 558",
+    "hi": 664,
+    "lo": 392,
+    "observed_hi": 664,
+    "observed_lo": 392,
+    "verdict": "every individual seen is consistent with the wiki's 500",
+    "wiki": 500
+   },
+   "moves": [
+    "Bristle",
+    "Chomp",
+    "Fell Scratch",
+    "Rampant Rage",
+    "Swift Evasion"
+   ],
+   "name": "wolf",
+   "policy": {
+    "attack_share_above_0_ip": 0.758,
+    "attack_share_at_0_ip": 0.973,
+    "ip_conditioned": true,
+    "ip_group_contaminated": true,
+    "ip_n": [
+     37,
+     62
+    ],
+    "mix": [
+     [
+      "Fell Scratch",
+      0.783
+     ],
+     [
+      "Bristle",
+      0.104
+     ],
+     [
+      "Chomp",
+      0.057
+     ],
+     [
+      "Rampant Rage",
+      0.047
+     ],
+     [
+      "Swift Evasion",
+      0.009
+     ]
+    ],
+    "n": 106,
+    "solo_n": 0
+   },
+   "relative_speed": {
+    "informative": false,
+    "measured": false,
+    "median": 0.0,
+    "n": 599,
+    "p95": 0.0,
+    "withdrew": 0.027
+   },
+   "res": "gfx/kritter/wolf/wolf",
+   "skill": {
+    "equalized": true,
+    "hi": 316.0,
+    "lo": 79.0,
+    "moves": [
+     "Full Circle"
+    ],
+    "n": 0,
+    "value": null
+   },
+   "threat": {
+    "damage": null,
+    "flees_below": null,
+    "period": {
+     "dropped": 0,
+     "hi": 104.0,
+     "lo": 29.0,
+     "median": 41.1,
+     "modes": [
+      42
+     ],
+     "n": 95,
+     "ticks": 43.0
+    },
+    "pressure": {
+     "blue": 0.94,
+     "green": 10.13,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pressure_against": 395.0,
+    "pressure_n": 38
+   }
+  },
+  {
+   "agility": {
+    "capped": false,
+    "hi": 72.0,
+    "lo": 66.0,
+    "n": 2,
+    "our_agility": 124
+   },
+   "armour": {
+    "hard": 0,
+    "identified": true,
+    "n": 17,
+    "soft": 0,
+    "total_hi": 0,
+    "total_lo": 0,
+    "wiki": null
+   },
+   "defence_weight": {
+    "hi": 187.6,
+    "lo": 92.4,
+    "n": 7
+   },
+   "defence_weight_late": {
+    "against": 115.2,
+    "agrees": true,
+    "depth": 13,
+    "hi": 147.7,
+    "lo": 92.4,
+    "n": 13
+   },
+   "engagements": 2,
+   "hitpoints": {
+    "from": "died at 161 with a last hit of 88, so that one had 73 to 161; died at 343 with a last hit of 272, so that one had 71 to 343",
+    "hi": 343,
+    "lo": 71,
+    "observed_hi": 343,
+    "observed_lo": 71,
+    "verdict": "1 of these died before taking the wiki's 300, so they were below its base quality (or already hurt when we met them)",
+    "wiki": 300
+   },
+   "moves": [
+    "Fell Scratch"
+   ],
+   "name": "wolverine",
+   "policy": {
+    "mix": [
+     [
+      "Fell Scratch",
+      1.0
+     ]
+    ],
+    "n": 9,
+    "solo_n": 9
+   },
+   "relative_speed": {
+    "hi": 54.7,
+    "lo": 54.7,
+    "measured": true,
+    "median": 54.7,
+    "n": 276,
+    "our_top": 59.5,
+    "we_outrun_it": true
+   },
+   "res": "gfx/kritter/wolverine/wolverine",
+   "skill": {
+    "equalized": false,
+    "hi": 57.6,
+    "lo": 57.6,
+    "moves": [
+     "Quick Barrage"
+    ],
+    "n": 1,
+    "value": 57.6
+   },
+   "threat": {
+    "damage": null,
+    "flees_below": null,
+    "period": {
+     "dropped": 0,
+     "hi": 49.1,
+     "lo": 48.0,
+     "median": 49.0,
+     "modes": [
+      49
+     ],
+     "n": 7,
+     "ticks": 48.8
+    },
+    "pressure": {
+     "blue": 0.0,
+     "green": 9.68,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pressure_against": 237.0,
+    "pressure_n": 8
    }
   }
  ],

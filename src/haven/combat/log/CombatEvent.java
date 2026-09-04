@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 10;
+    public static final int SCHEMA = 12;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -173,11 +173,27 @@ public final class CombatEvent {
      * bounds when.
      *
      * `o` is a flat array of gob, green, blue, yellow, red per relation, which keeps the line
-     * short in a file that already writes one state per sample.
+     * short in a file that already writes one state per sample. `g` is each relation's
+     * aggression state, in the same order.
+     *
+     * THE AGGRESSION STATE IS PER RELATION AND WAS RECORDED FOR ONE. The state event
+     * carries gst only for whichever opponent is currently sampled, which is exactly wrong
+     * for the case it matters in: a pack aggroes together, one of them takes enough and
+     * extends its olive branch, and the rest stay on us. Recording only the sampled one
+     * means the fight reads as "the opponent disengaged" when most of it did not.
+     *
+     * Reading it also needs care that has nothing to do with this event. Summing the
+     * damage inside the ENGAGEMENT a flight appears in says moose, red deer and walrus
+     * gave up after taking nothing at all - which is auto-reaggro, not pacifism: one fight
+     * spans many files and a later fragment opens with the animal already hurt. Per
+     * individual across every file those become 615, 147 and 729. The same conflation
+     * counts one animal's flight once per fragment, turning six fleeing creatures into
+     * twenty-two.
      *
      * @param packed gob and four openings per relation, five entries each
+     * @param gst    each relation's aggression state, one per relation, same order
      */
-    public static String foes(long t, long[] packed) {
+    public static String foes(long t, long[] packed, int[] gst) {
         StringBuilder b = new StringBuilder("[");
         for(int i = 0; i < packed.length; i += 5) {
             if(i > 0)
@@ -188,15 +204,27 @@ public final class CombatEvent {
             b.append(']');
         }
         b.append(']');
+        /* A PARALLEL array rather than a sixth column, so that every reader written
+         * against the five-wide form keeps working unchanged. The alternative - widening
+         * the rows - has no marker in the line saying which width it is, so a reader
+         * would have to consult the schema to parse a field it may not even want. */
+        StringBuilder g = new StringBuilder("[");
+        for(int i = 0; (gst != null) && (i < gst.length); i++) {
+            if(i > 0)
+                g.append(',');
+            g.append(gst[i]);
+        }
+        g.append(']');
         return(new JsonObj()
                .put("ev", "foes")
                .put("t", t)
                .raw("o", b.toString())
+               .raw("g", g.toString())
                .end());
     }
 
     /**
-     * An overlay that appeared on a player's body - a candidate move announcement.
+     * An overlay that appeared on a combatant - the move they used.
      *
      * `gob` and `gobres` say who, `res` says which overlay. Recorded broadly on purpose:
      * the resource carrying a move's icon is not documented, and one logged group fight
@@ -416,25 +444,23 @@ public final class CombatEvent {
     }
 
     /**
-     * A combatant's health, as the server states it.
+     * A combatant's health, in the server's own quarters - WHICH CREATURES DO NOT SEND.
      *
-     * Everything this corpus knows about an opponent's hitpoints is otherwise accumulated
-     * from damage numbers, which needs a KILL to close the interval - three species in the
-     * pack have no ceiling because nothing has died yet, and a survivor can only ever give
-     * a lower bound. This arrives unprompted, from the same object channel the damage
-     * floats do, and it bounds a live opponent.
+     * This event was added on the belief that OD_HEALTH carried an opponent's hitpoints,
+     * and it does not. That delta is object DECAY: it draws the crack texture, and the
+     * client's own option for it says "makes objects that took decay hits show a
+     * percentage number". Nineteen logged fights over bear, red deer, ants and moose
+     * produced none of these, with the hook live and its gate verified.
      *
-     * COARSE ON PURPOSE, and the log says so by carrying the raw quarter rather than a
-     * prettier number: the server sends a uint8 that the client divides by four, so the
-     * only distinguishable values are 0, 1, 2, 3 and 4. That is enough to bound a maximum
-     * and enough to time a flight, and it is not enough to read a single hit off.
+     * The event is kept, empty, because the alternative is that a later reader finds
+     * OD_HEALTH, reasons exactly the same way, and spends the same effort. An opponent's
+     * hitpoints remain what they were: accumulated from damage numbers, closed only by a
+     * kill, and bounded from below for anything that survives.
      *
-     * Its other use is FoeModel.fleesBelow, which the model asserts and no logged fight has
-     * ever measured: gst says an animal extended its olive branch, and this says at what
-     * fraction of its health it decided to.
+     * If a creature ever does send it, the quarter is what gets written - not a fraction,
+     * so that no reader mistakes five distinguishable values for something finer.
      *
-     * @param quarters the server's own figure, 0 to 4 - not a fraction, so that a reader
-     *                 cannot mistake the resolution for something finer than it is
+     * @param quarters the server's own figure, 0 to 4
      */
     public static String health(long t, long gobId, int quarters) {
         return(new JsonObj()

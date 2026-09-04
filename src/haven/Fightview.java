@@ -441,6 +441,12 @@ public class Fightview extends Widget {
 	if(haven.automated.combat.CombatRecorder.active() && !lsrel.isEmpty()) {
 	    try {
 		long[] packed = new long[lsrel.size() * 5];
+		/* Every relation's aggression state, not only the sampled one's. A pack
+		 * aggroes together and gives up one at a time: one animal extending its
+		 * olive branch while the rest stay on us reads, in a log that records only
+		 * the sampled one, as the whole fight disengaging. */
+		int[] gsts = new int[lsrel.size()];
+		int gi = 0;
 		int n = 0;
 		for(Relation rel : lsrel) {
 		    haven.combat.log.Openings o =
@@ -450,6 +456,7 @@ public class Fightview extends Widget {
 		    packed[n++] = o.blue;
 		    packed[n++] = o.yellow;
 		    packed[n++] = o.red;
+		    gsts[gi++] = rel.gst;
 		    /* The stance each opponent is holding. Their defence weight is skill x block
 		     * multiplier x mu, and without the stance the multiplier is missing - which is
 		     * the difference between Bloodlust's 75% of Unarmed and Shield Up's 250% of
@@ -458,7 +465,7 @@ public class Fightview extends Widget {
 			rel.gobid, "foe", rel.buffs.children(Buff.class));
 		}
 		haven.automated.combat.CombatRecorder.sampleBuffs(-1, "me", buffs.children(Buff.class));
-		haven.automated.combat.CombatRecorder.sampleFoes(packed);
+		haven.automated.combat.CombatRecorder.sampleFoes(packed, gsts);
 	    } catch(Exception e) {
 		/* telemetry must never break the tick loop */
 	    }

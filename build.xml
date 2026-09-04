@@ -127,7 +127,7 @@ git-dirty-flag = ${git-dirty-flag}
          them loses the in-fight prediction and nothing else. -->
     <copy todir="build/classes/haven/combat/data">
       <fileset dir="data/combat"
-               includes="moves_sheet.json,opponents.json,weapons.json,constants.json" />
+               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,constants.json" />
     </copy>
     <copy file="local-boot.properties" tofile="build/classes/haven/boot-props" failonerror="false" quiet="true" />
   </target>

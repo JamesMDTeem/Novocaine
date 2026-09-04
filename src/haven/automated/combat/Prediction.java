@@ -150,9 +150,9 @@ public final class Prediction {
 
     /**
      * @param live the game's OWN figures per hand, from the item's weapon tooltips, or
-     *             null when none were read. Preferred over the wiki table wherever it has
-     *             both damage and penetration - see the loop below for why that ordering
-     *             is the point rather than a convenience.
+     *             null when none were read. Only ARMOUR PENETRATION is taken from it - see
+     *             the loop below, where the reason the damage figure is not is measured
+     *             rather than argued.
      */
     public static Me me(SortedMap<String, Integer> attrs, int armHard, int armSoft,
                         String[] handRes, double[] handQl, Map<String, Integer> levels,
@@ -169,37 +169,45 @@ public final class Prediction {
          * scanning only the first occupied hand meant a shield in slot 6 hid the sword in
          * slot 7 and silently disabled every weapon prediction.
          *
-         * THE ITEM FIRST, THE TABLE SECOND. The wiki table is joined on the resource
-         * basename, which is a real join that misses silently, and it has no penetration
-         * at all for four of its twenty-six weapons - so a perfectly ordinary weapon could
-         * decline to predict for want of a number the item in hand was carrying. Asking
-         * the item removes both failures, and a weapon nobody has ever catalogued works
-         * the same as one that has. The table stays as the fallback for a tooltip that had
-         * not loaded yet. */
+         * PENETRATION FROM THE ITEM, DAMAGE FROM THE TABLE, and the split is measured.
+         *
+         * Penetration is a pure fraction of the weapon and nothing else scales it. The
+         * item and the wiki agree exactly where both exist - 0.125 against the table's
+         * "12.5" - so taking it from the item is free, and it rescues the four of
+         * twenty-six weapons whose penetration the scraper never recorded.
+         *
+         * Damage is NOT interchangeable, and using it cost a factor of two before this
+         * was caught. The tooltip's figure is the weapon's damage AT ITS QUALITY: a bronze
+         * sword of quality 38.06 reports 176 against the table's base of 90, and
+         * 90*sqrt(38.06/10) = 175.6. Formulas.rawDamage takes a BASE and applies quality
+         * itself, through sqrt(sqrt(ql*str)/10) - a different functional form again - so
+         * feeding it the tooltip figure applies quality twice. Three logged hits predicted
+         * 2.18x the damage actually dealt, against a double-count of 176/90 = 1.96x.
+         *
+         * The base is probably recoverable as dmg/sqrt(ql/10) - that reproduces 90.2
+         * against a table value of 90. One weapon at one quality cannot tell that form
+         * from its neighbours, so it is not used; the figure is logged in the wpn event
+         * and the experiment that would settle it is a second quality of any catalogued
+         * weapon. Until then a weapon absent from the table still declines to predict,
+         * which is the honest failure rather than a doubled one. */
         for(int i = 0; (handRes != null) && (i < handRes.length); i++) {
             if(handRes[i] == null)
                 continue;
             Map<String, Double> got = ((live != null) && (i < live.size())) ? live.get(i) : null;
-            Double lDmg = (got == null) ? null : got.get("damage");
             Double lPen = (got == null) ? null : got.get("armpen");
-            if((lDmg != null) && (lPen != null)) {
-                dmg = lDmg.doubleValue();
-                pen = lPen.doubleValue();
-                weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
-                armed = true;
-                break;
-            }
             String base = handRes[i].substring(handRes[i].lastIndexOf('/') + 1);
             double[] w = (weapons == null) ? null : weapons.get(Pack.key(base));
             if(w == null)
                 continue;
             /* armorpen is absent on four of the twenty-six weapons and the scraper keeps
-             * that as null. An absent penetration is not a zero one, so a weapon whose
-             * penetration nobody recorded cannot be predicted with. */
-            if(Double.isNaN(w[1]))
+             * that as null. An absent penetration is not a zero one - but the item knows
+             * it even when the table does not, so the table's gap only stops us when the
+             * tooltip has not loaded either. */
+            double p = (lPen != null) ? lPen.doubleValue() : w[1];
+            if(Double.isNaN(p))
                 continue;
             dmg = w[0];
-            pen = w[1];
+            pen = p;
             weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
             armed = true;
             break;

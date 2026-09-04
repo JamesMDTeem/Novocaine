@@ -99,9 +99,16 @@ def agility():
     print("\nagility, from integer cooldowns")
     # Our agility 81; a move of base 20 reported at 18 ticks. The multiplier is somewhere
     # in [17.5/20, 18.5/20], and the interval on the opponent follows.
+    # At the clamp the cooldown stops moving: every opponent from half our agility
+    # downwards produces these same 18 ticks. So this bounds ONE side and no more.
+    # Reporting agiMe/2 as a lower bound - which this did, with a flag beside it -
+    # invents a bound that the intersection then treats as real, and the invention
+    # scales with OUR agility, so it stayed invisible until the corpus held fights at
+    # more than one. Four species came out contradicting themselves when it did.
     lo, hi, capped = estimate.agility_interval([(20, 18)], 81)
     check("an observation at the cap is reported as capped", capped, True)
-    near("its lower bound is half our agility", lo, 40.5, 0.1)
+    check("and bounds only the side it saturated on", lo, 0.0)
+    near("  leaving what it does say: at most half our agility", hi, 48.2, 0.1)
 
     # Equal agility is the neutral point: a base 20 reported at 20.
     lo, hi, capped = estimate.agility_interval([(20, 20)], 81)
@@ -121,6 +128,25 @@ def agility():
     check("irreconcilable observations give an empty interval", mixed[0] > mixed[1], True)
 
     check("no observations, no answer", estimate.agility_interval([], 81), None)
+
+    # A cooldown constrains the RATIO of the two agilities; only our own agility at that
+    # moment turns it into an absolute. The same ticks seen when we were faster therefore
+    # describe a faster opponent, and by exactly that factor.
+    at_lo = estimate.agility_interval([(20, 19, 112)], None)
+    at_hi = estimate.agility_interval([(20, 19, 124)], None)
+    check("the same ticks at a higher agility of ours read a faster opponent",
+          at_hi[0] > at_lo[0], True)
+    near("  by exactly the ratio of our two agilities", at_hi[0] / at_lo[0],
+         124 / 112.0, 0.001)
+    # Which is why a pooled bucket has to convert each observation at its own agility.
+    # Converting them all at the largest inflates every older one by that same ratio, and
+    # in this corpus that put two groups of ants in intervals that do not meet.
+    pooled = estimate.agility_interval([(20, 19, 112), (20, 19, 124)], None)
+    one_scale = estimate.agility_interval([(20, 19), (20, 19)], 124)
+    check("pooling converts each at its own, so the result is not the larger one's",
+          pooled[1] < one_scale[1], True)
+    near("  its ceiling comes from the fight where we were slower", pooled[1],
+         112 / (2.0 ** 0.25), 0.1)
 
 
 def defence():
@@ -437,6 +463,336 @@ def mu_curve():
         check("  and the rivals that cap at 1.333 do not", 1.333 >= med, False)
 
 
+def agility_control():
+    """Two routes to opponent agility, sharing only the observation.
+
+    The single most valuable check in this file, because it is the only one that is not
+    the corpus grading its own homework. Every other estimator here is verified against
+    the data that produced it - which is exactly how a wrong rounding rule survived a
+    week and three "independent" confirmations that all ran through it.
+
+    Ours inverts Formulas.agilityCooldownFactor. The client's reads
+    Config.attackCooldownNumbers, a hand-built table that predates this project and was
+    not derived from our formula. A disagreement means one of them is wrong.
+    """
+    print("\nagility, measured twice by independent routes")
+    rows = estimate.agility_control()
+    if not rows:
+        print("  (no log carries the client's own bracket yet)")
+        return
+    bad = [(sp, r) for sp in rows for r in rows[sp] if r[5] is False]
+    both = [(sp, r) for sp in rows for r in rows[sp] if r[5] is not None]
+    check("  the two routes are compared at all", len(both) > 0, True)
+    check("  and none of them disagree", [sp for sp, _r in bad], [])
+    # WHICH ROUTE IS TIGHTER IS A READING, NOT A LAW. This asserted that ours must never
+    # be the wider, on the reasoning that a formula learning less from the same
+    # observation is throwing information away. That reasoning is wrong, because the two
+    # do not quantize the same way: ours brackets by the rounding interval of an integer
+    # tick count, the client's by the spacing of adjacent entries in
+    # Config.attackCooldownNumbers. Neither grid dominates the other. It went red on the
+    # first opponent to land where the table is dense and the ticks are coarse - a
+    # wildgoat at about 1.24x our agility - with nothing having regressed.
+    wider = []
+    for sp in rows:
+        for gob, clo, chi, olo, ohi, agree in rows[sp]:
+            if (agree is None) or (chi == float("inf")):
+                continue
+            if (ohi - olo) > (chi - clo) + 1e-9:
+                wider.append(sp)
+    both = [r for sp in rows for r in rows[sp]
+            if (r[5] is not None) and (r[2] != float("inf"))]
+    check("  both bounded on the same opponent, so the widths can be compared",
+          len(both) > 0, True)
+    print("    where the client's table is the tighter of the two    %-20s"
+          % (sorted(set(wider)) or "nowhere"))
+
+
+def agi_brackets():
+    print("\nagi brackets as an independent second opinion on agility")
+    comp = estimate.agi_species_comparison()
+    if not comp:
+        print("  (no agi bracket in this corpus)")
+        return
+    for sp in sorted(comp):
+        pooled = comp[sp].get("pooled")
+        why = comp[sp].get("why") or {}
+        if pooled is None:
+            p_lo_s = p_hi_s = "?"
+            capped = False
+        else:
+            plo, phi, capped = pooled
+            p_lo_s = "%.1f" % plo if plo > 0 else "0"
+            p_hi_s = "inf" if phi == float("inf") else "%.1f" % phi
+        pooled_s = "%s - %s%s" % (p_lo_s, p_hi_s, " capped" if capped else "")
+        if why.get("from_contaminated"):
+            pooled_s += " from_contaminated"
+        if why.get("union"):
+            pooled_s += " union"
+        brackets = comp[sp].get("brackets") or []
+        if not brackets:
+            continue
+        for b, agree in brackets:
+            mn, mx = b.get("min"), b.get("max")
+            raw = "%.3f - %.3f" % (mn if mn is not None else 0, mx if mx is not None else 2)
+            conv_lo = b.get("lo")
+            conv_hi = b.get("hi")
+            conv_s = "%.1f - %s" % (conv_lo, "inf" if conv_hi == float("inf") else "%.1f" % conv_hi)
+            agi_me = b.get("agiMe")
+            gob = b.get("gob")
+            f = b.get("file")
+            # Name the reading: species, raw bracket, converted absolute, pooled interval, file
+            label = "  %s bracket %s agiMe %s => %s pooled %s gob %s %s" % (
+                sp[:12], raw, agi_me, conv_s, pooled_s, str(gob)[-5:], f)
+            if pooled is None:
+                check(label + " (no pooled interval to compare)", agree, None)
+            else:
+                # Intervals agree when they intersect; neither is a point estimate
+                check(label, agree, True)
+        # Species with a pooled interval but no bracket beyond those listed is covered
+        # by the loop above; species with no reading at all are not in this map.
+
+
+def agility_band():
+    """How wide the band is, and which cards are on it. See estimate.agility_band.
+
+    The spec has carried "the corpus fits +-10%, the guide states +-20%, unresolved"
+    since 2026-09-02. It is resolvable from the logs already in hand, and the strongest
+    form of the reading assumes nothing about any opponent's agility: for ONE card at one
+    level and one initiative, the ratio of the longest reported cooldown to the shortest
+    is the ratio of the two extreme factors, whatever those factors are. A +-10% band
+    allows 1.1/0.9 = 1.2222 and no more. A +-20% band would allow 1.5.
+    """
+    print("\nthe agility band, and which cards ride it")
+    ratios, spreads, flat = estimate.agility_band()
+    if not ratios:
+        print("  (no level-1 zero-initiative attack in the corpus)")
+        return
+    lo = min(r for _n, _s, r in ratios)
+    hi = max(r for _n, _s, r in ratios)
+    check("  every level-1 zero-initiative attack cooldown is inside [0.9, 1.1]",
+          [r for _n, _s, r in ratios if (r < 0.9 - 1e-9) or (r > 1.1 + 1e-9)], [])
+    near("  and the fastest sits exactly on 0.9", lo, 0.9, 1e-9)
+    near("  and the slowest exactly on 1.1", hi, 1.1, 1e-9)
+    # The assumption-free form: for ONE card at one level and one initiative, the ratio
+    # of the longest cooldown to the shortest is the ratio of the two extreme factors,
+    # whatever those factors are. It comes out at 1.1/0.9 and not a thousandth over.
+    widest = max(spreads.values()) if spreads else 1.0
+    near("  the widest spread for one card at one level and initiative", widest,
+         1.1 / 0.9, 1e-4)
+    # AND THE EDGE IS A PILE-UP, NOT A TAIL, which is what says the band ends there
+    # rather than the corpus merely running out of fast creatures. If it ran to 1.2 there
+    # would be readings between 1.1 and 1.2 and no reason for any to land exactly on 1.1.
+    at_edge = len([r for _n, _s, r in ratios if abs(r - 1.1) < 1e-9])
+    beyond = len([r for _n, _s, r in ratios if r > 1.1 + 1e-9])
+    check("  nothing at all sits between 1.1 and the +-20% band's 1.2", beyond, 0)
+    check("    while 1.1 itself is where the slowest opponents pile up", at_edge > 20,
+          True)
+    print("    %d observation(s) exactly on 1.1, %d card slice(s), %d level-1 readings"
+          % (at_edge, len(spreads), len(ratios)))
+    # The control. A maneuver with no initiative term must not move at all.
+    check("  a maneuver that scales with nothing never moves a tick",
+          [k for k, v in flat.items() if v > 1.0 + 1e-9], [])
+    check("    and there were maneuver slices to check", len(flat) > 10, True)
+    print("    from %d maneuver slice(s) across %d card(s)"
+          % (len(flat), len(set(k[0] for k in flat))))
+
+
+def agility_carriers():
+    """Which cards take the modifier, which is not the same as which cards attack.
+
+    Opportunity Knocks declares no attack type and rides the band anyway: base 45, it
+    reports 41 ticks against every creature at the bottom of the band and 45 against the
+    one measured at our own agility, and round(45*0.9) is 41. The pack read it as a
+    maneuver, so the simulator predicted 45 for a card that costs 41 in almost every PvE
+    fight it is thrown in.
+    """
+    print("\nwhich cards take the modifier")
+    ratios, spreads, _flat = estimate.agility_band()
+    moves = estimate.load_moves()
+    riders, still = [], []
+    for (name, _lvl, _ip), spread in spreads.items():
+        (riders if spread > 1.0 + 1e-9 else still).append(name)
+    riders = sorted(set(riders))
+    check("  every card observed to move declares a type or a skill",
+          [n for n in riders
+           if not ((moves.get(n) or {}).get("attack_types")
+                   or (moves.get(n) or {}).get("attack_skill"))], [])
+    check("  and Opportunity Knocks is one of them, on its skill alone",
+          ("Opportunity Knocks" in riders)
+          and not (moves["Opportunity Knocks"].get("attack_types") or []), True)
+    print("    riders: %s" % ", ".join(riders))
+
+
+def opportunity_knocks():
+    """The one card whose rule is not the opening rule, measured rather than assumed.
+
+    The simulator has implemented "40% * mu of the greatest standing opening" since it was
+    written, on the strength of the card's own text and nothing else. Fourteen uses now
+    test both halves of that: that it is a SHARE and not a number of points, and that mu
+    scales it.
+    """
+    print("\nOpportunity Knocks, against the card's own text")
+    uses, lo, hi = estimate.ok_boost()
+    if not uses or (lo is None):
+        print("  (never used in the corpus)")
+        return
+    # THE DECISIVE CASE. Under the ordinary rule, dO = cbrt(Wa/Wd) * Ob * (1 - Oc), an
+    # opponent with nothing open is the EASIEST to open and the gain is at its largest.
+    zeros = [(b, a) for b, a, _l in uses if b == 0]
+    check("  used against nothing standing, it opens nothing", [a for _b, a in zeros],
+          [0] * len(zeros))
+    check("    and there was such a use to check", len(zeros) > 0, True)
+
+    # Openings truncate into the log, so each use bounds the multiplier rather than
+    # naming it, and the bounds intersect.
+    check("  the multiplier is bounded on both sides", (lo > 1.0) and (hi < 2.0), True)
+    check("  0.4 * mu at the linear curve's mu(2) = 1.125 is admitted",
+          lo <= 1.45 <= hi, True)
+    check("  0.4 flat, with mu not scaling it, is excluded", lo <= 1.40 <= hi, False)
+    check("  and so is 0.4 * mu at 1.5 - 0.5/sqrt(2) = 1.1464",
+          lo <= 1.0 + 0.4 * 1.1464 <= hi, False)
+    print("    [%.4f, %.4f] from %d uncensored use(s)"
+          % (lo, hi, sum(1 for b, a, _l in uses if (b > 0) and (a < 100))))
+
+
+def mu_instruments_agree():
+    """The two routes to mu, which share nothing but the deck.
+
+    Take Aim reads it off a whole-tick cooldown through two floors and a round.
+    Opportunity Knocks reads it off a multiplication of an opening, in a different field
+    of a different event. A wrong rounding rule in the first survived a week and three
+    "independent" confirmations that all ran through it; this is the first reading of mu
+    that could have contradicted it.
+    """
+    print("\nmu, from two instruments that share nothing")
+    check("  they do not disagree at any level", estimate.MU_DISPUTED, {})
+    two = estimate.MU_MEASURED.get(2)
+    check("    and level 2 is measured", two is not None, True)
+    if two is None:
+        return
+    lo, hi = two
+    check("  the linear curve's 1.125 survives both", lo <= 1.125 <= hi, True)
+    check("  the square-root curve's 1.168 does not", lo <= 1.168 <= hi, False)
+    check("  nor does 1.5 - 0.5/sqrt(L), at 1.1464", lo <= 1.1464 <= hi, False)
+    print("    mu(2) in (%.4f, %.4f], narrowed by Opportunity Knocks from Take Aim's"
+          " (1.1111, 1.1538]" % (lo, hi))
+
+
+def deepest_interval():
+    """Robust consensus among intervals, which is what intersection is not.
+
+    A single contaminated reading empties an intersection. The deepest point - the value
+    the most intervals cover - is the same computation without that failure mode, and it
+    is what lets seventy-four bear readings say something instead of nothing.
+    """
+    print("\nconsensus among intervals, where intersection breaks")
+    d, span = estimate.deepest_interval([(1.0, 5.0), (2.0, 6.0), (3.0, 7.0)])
+    check("  three overlapping intervals agree over their common part", span, (3.0, 5.0))
+    check("    covering all three", d, 3)
+    # The failure mode this exists for.
+    ivs = [(10.0, 20.0)] * 9 + [(100.0, 110.0)]
+    d, span = estimate.deepest_interval(ivs)
+    check("  one outlier does not empty the answer", span, (10.0, 20.0))
+    check("    and the count says how many it left out", d, 9)
+    check("  nothing in, nothing out", estimate.deepest_interval([]), (0, None))
+    # Touching at a point is agreement, not a miss.
+    d, span = estimate.deepest_interval([(1.0, 3.0), (3.0, 5.0)])
+    check("  intervals that meet at a point meet", d, 2)
+
+
+def dropped_gains():
+    """What MIN_GAIN throws away, and the fact that it is not throwing away noise.
+
+    A gain is small mostly because the opening it landed on was already large, so the
+    threshold sorts by PHASE OF FIGHT rather than by measurement quality. Every defence
+    weight in the pack therefore comes from the opening minutes.
+    """
+    print("\nthe gains MIN_GAIN drops, and what they are")
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    small, big = [], []
+    for k in per:
+        for r in per[k].get("wd") or ():
+            (small if r[3] < estimate.MIN_GAIN else big).append(r[2])
+    check("  there are gains on both sides of the threshold",
+          (len(small) > 100) and (len(big) > 100), True)
+    small.sort()
+    big.sort()
+    ms, mb = small[len(small) // 2], big[len(big) // 2]
+    check("  a dropped gain landed on a MUCH larger standing opening", ms > 2 * mb, True)
+    print("    median standing opening: %d under the threshold, %d over it, from %d and %d"
+          % (ms, mb, len(small), len(big)))
+
+    rows = [(str(k), estimate.wd_consensus(per[k])) for k in sorted(per, key=str)]
+    rows = [(n, c) for n, c in rows if c and (c["agrees"] is not None)]
+    agree = [n for n, c in rows if c["agrees"]]
+    dis = [n for n, c in rows if not c["agrees"]]
+    check("  most species' dropped gains agree with what the pack reads",
+          len(agree) > 2 * len(dis), True)
+    # The direction is the diagnostic. Third-party contamination can only ADD to a gain,
+    # which can only read a defence weight LOW - so a mixed direction is not that.
+    low = [n for n, c in rows if (not c["agrees"]) and (c["hi"] < c["against"])]
+    high = [n for n, c in rows if (not c["agrees"]) and (c["lo"] > c["against"])]
+    check("  and the disagreements do not all point one way",
+          bool(low) and bool(high), True)
+    print("    %d agree, %d do not - %d reading low, %d high" %
+          (len(agree), len(dis), len(low), len(high)))
+    print("    disagreeing: %s" % ", ".join(sorted(dis)))
+
+
+def attribution_provenance():
+    """Clean evidence is used alone where it exists, and never diluted.
+
+    Per-observation attribution earns contaminated fights their place - it more than
+    doubles the attributed gains and gives fifteen species a first measurement. But the
+    pack INTERSECTS intervals, and a third party can only ever push a defence weight
+    LOW, so one contaminated interval sitting slightly under empties the intersection.
+    Pooling the two cost beeswarm, fox, redants, sentinelbee and warriorant the
+    measurements they already had.
+
+    So the rule is rank, not pool. This pins it, because the failure is silent: the
+    species that would regress are exactly the ones with the most data, and they would
+    come back as "contradictory" rather than as an error.
+    """
+    print("\nattribution provenance")
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    import json
+    with open(estimate.PACK, encoding="utf8") as f:
+        packed = json.load(f)
+    packed = packed["opponents"] if isinstance(packed, dict) else packed
+    entries = dict((o["name"], o.get("defence_weight") or {}) for o in packed)
+
+    mixed = 0
+    for name, rec in per.items():
+        if not rec["wd"]:
+            continue
+        clean = [w for w in rec["wd"] if w[8]]
+        got = entries.get(name)
+        if (not clean) or (got is None):
+            continue
+        if len(clean) != len(rec["wd"]):
+            mixed += 1
+        # The entry must be what the CLEAN observations alone say - not what they say
+        # once the contaminated ones have been mixed in. Asserted against the interval
+        # rather than against a count, because the failure mode is an interval quietly
+        # narrowing or emptying, not a row going missing.
+        lo, hi = max(w[6] for w in clean), min(w[7] for w in clean)
+        want = (round(lo, 1), round(hi, 1)) if lo <= hi else (None, None)
+        check("  %s is measured from its clean evidence alone" % name[:18],
+              (got.get("lo"), got.get("hi")), want)
+        check("    and is not marked as rescued from contaminated fights",
+              bool(got.get("from_contaminated")), False)
+    check("  some species carry both kinds of evidence", mixed > 0, True)
+    check("  and every wd row records which kind it is",
+          all(len(w) == 9 for rec in per.values() for w in rec["wd"]), True)
+    # The converse: anything measured only from contaminated evidence must say so.
+    for name, rec in per.items():
+        if rec["wd"] and not [w for w in rec["wd"] if w[8]]:
+            got = entries.get(name)
+            if got and (got.get("lo") is not None):
+                check("  %s says its evidence was contaminated" % name[:18],
+                      bool(got.get("from_contaminated")), True)
+
+
 def equalization():
     """The dead zone, and the artefact it produced for weeks.
 
@@ -676,6 +1032,128 @@ def armour():
     check("with no split invented", arm["hard"], None)
 
 
+def defence_weight_late():
+    """The late-phase reading, and whether the (1 - Oc) falloff is the cause.
+
+    MIN_GAIN = 10 drops every gain under ten points. That is a filter on the
+    OPENING and not on the noise: the median standing opening under a gain of ten
+    is 51 and over it is 16.5, so the pack's defence weights come from the opening
+    minutes and the late phase - where damage goes as opening squared - has never
+    been tested until now. wd_consensus() reports the dropped gains via
+    deepest_interval; bear 70/74, boar 111/118, moose 87/91 are the canonical
+    examples of that robustness (one contaminated interval would empty an
+    intersection, and it does for bear, boar, moose and four others).
+
+    Against the species that have both kinds of evidence, the corpus says 23 agree
+    with what the pack already reads and 8 do not, mixed direction 5 low / 3 high
+    (contamination can only ADD to a gain and so can only ever read a defence
+    weight LOW - the 3 highs need another cause). Three of those eight - badger,
+    boar, sentinelbee - were already marked disputed for an unrelated reason
+    (equalization), which is some corroboration that the disagreement is about
+    those creatures rather than about this method.
+
+    The remaining candidate is the falloff term (1 - Oc) itself, and this is the
+    first reading that exercises it at high standing openings. The check is whether
+    the corpus ENTAILS a change to it:
+
+      residual-vs-standing slope: if the falloff were wrong, inferred Wd would
+        trend with Oc (late gains larger than predicted => inferred Wd low)
+      late-phase-only misfit: late residuals systematically above or below pred
+      contamination direction: LOW could be contamination, HIGH cannot
+
+    The corpus does not entail it. Slopes are small and mixed (badger -2.7% per
+    10 points, bear -1.7%, boar -1.9%, caveangler -18.6% but caveangler is
+    depth-scaled, royalguardant -0.3%, sentinelbee -4.6%, walrus +3.0%,
+    warriordrone -1.2%), residuals vs standing likewise small and mixed, and the
+    three HIGH disagreements sit on both sides of zero slope. No global falloff
+    shape moves all eight one way. So defence_weight_late is published BESIDE the
+    skill, never folded in, unless a future corpus proves identity - the 8
+    disagreements forbid silent folding. See _mu_measured precedent: disagreement
+    between sound instruments is the finding.
+
+    This check pins the READINGS not the verdict: deepest_interval coverage,
+    per-species pack vs late intervals, which 8 disagree and which direction,
+    and which 3 were already disputed. If a future corpus moves these, the check
+    goes red naming the reading that moved, not a law that does not exist.
+    """
+    print("\ndefence_weight_late, and whether the (1 - Oc) falloff is the cause")
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    rows = [(str(k), estimate.wd_consensus(per[k])) for k in sorted(per, key=str)]
+    rows = [(n, c) for n, c in rows if c and (c["agrees"] is not None)]
+    agree = [n for n, c in rows if c["agrees"]]
+    dis = [n for n, c in rows if not c["agrees"]]
+    # The counts are the headline the spec carries; pin them to the corpus.
+    check("  23 species agree with the pack, 8 do not", (len(agree), len(dis)), (23, 8))
+    low = [n for n, c in rows if (not c["agrees"]) and (c["hi"] < c["against"])]
+    high = [n for n, c in rows if (not c["agrees"]) and (c["lo"] > c["against"])]
+    check("  5 of the 8 read low (contamination can explain these)", len(low), 5)
+    check("  3 of the 8 read high (contamination cannot)", len(high), 3)
+    check("  disagreeing set is the expected 8",
+          sorted(dis),
+          sorted(["badger", "bear", "boar", "caveangler", "royalguardant",
+                  "sentinelbee", "walrus", "warriordrone"]))
+    check("  low set is the expected 5",
+          sorted(low),
+          sorted(["badger", "bear", "royalguardant", "sentinelbee", "warriordrone"]))
+    check("  high set is the expected 3",
+          sorted(high),
+          sorted(["boar", "caveangler", "walrus"]))
+    # Which 3 were already disputed for an unrelated reason (equalization).
+    # That is not a dismissal of the disagreement, it is corroboration that it is
+    # about those creatures rather than about this method.
+    already_disputed = []
+    for n, c in rows:
+        if not c["agrees"]:
+            ent = estimate.foe_skill_entry(per[n])
+            if ent and ent.get("disputed"):
+                already_disputed.append(n)
+    check("  3 of the 8 were already disputed (equalization)", sorted(already_disputed),
+          sorted(["badger", "boar", "sentinelbee"]))
+    # Deepest-interval coverage - the robust replacement for intersection.
+    # Bear 70/74, boar 111/118, moose 87/91 are the canonical illustrations.
+    by_name = dict(rows)
+    check("  bear deepest_interval covers 70 of 74", (by_name.get("bear") or {}).get("depth"), 70)
+    check("  bear n is 74", (by_name.get("bear") or {}).get("n"), 74)
+    check("  boar deepest_interval covers 111 of 118", (by_name.get("boar") or {}).get("depth"), 111)
+    check("  boar n is 118", (by_name.get("boar") or {}).get("n"), 118)
+    # Moose agrees today (87/91) and is worth keeping as the third canonical example
+    # of deepest_interval vs intersection, even though it is not in the disagree set.
+    # If a future corpus makes it disagree, this will move with it.
+    all_late = dict((str(k), estimate.wd_consensus(per[k]))
+                    for k in sorted(per, key=str))
+    moose = all_late.get("moose")
+    if moose and moose.get("n"):
+        check("  moose deepest_interval covers 87 of 91", (moose.get("depth"), moose.get("n")), (87, 91))
+    # Contamination direction rule: LOW could be third-party hits adding to a gain,
+    # HIGH cannot. So the 3 HIGH need another cause if they are not noise.
+    # Pin that the rule was applied: late LOW intervals sit below the pack point,
+    # HIGH sit above it.
+    for n in low:
+        c = by_name[n]
+        check("  %s reads low (late_hi < pack)" % n[:12], c["hi"] < c["against"], True)
+    for n in high:
+        c = by_name[n]
+        check("  %s reads high (late_lo > pack)" % n[:12], c["lo"] > c["against"], True)
+    # Falloff suspect: if (1 - Oc) were globally wrong, every late Wd would sit on
+    # one side of the pack point. Mixed direction exonerates a global falloff error.
+    # This is the verdict the corpus does NOT entail a model change for.
+    check("  mixed direction exonerates a global falloff shape error",
+          bool(low) and bool(high), True)
+    # Defence_weight_late is published BESIDE the skill, never folded in, until
+    # identity is proven - pin that the pack still carries it separately.
+    import json
+    with open(estimate.PACK, encoding="utf8") as f:
+        packed = json.load(f)
+    packed = packed["opponents"] if isinstance(packed, dict) else packed
+    entries = dict((o["name"], o) for o in packed)
+    for n in dis:
+        ent = entries.get(n) or {}
+        check("  %s defence_weight_late is published beside the skill" % n[:12],
+              ent.get("defence_weight_late") is not None, True)
+        check("  %s skill is not replaced by its late reading" % n[:12],
+              ent.get("skill") is not None or ent.get("defence_weight") is not None, True)
+
+
 def buckets():
     print("\nbucketing")
 
@@ -775,6 +1253,57 @@ def broken_gear():
           "no shield" in (without[2] or ""), True)
 
 
+def weapons_live_vs_wiki():
+    print("\nweapons: live wpn vs wiki table - the two readings by name")
+    seen = estimate.weapons_seen()
+    join = estimate.weapon_offline_join()
+    # Bronze sword: the agreement case (12.5% both sides) that rules out a units error.
+    bs = seen.get("bronzesword") or {}
+    bs_tooltip = (bs.get("damage") or [None])[0]
+    bs_ql = (bs.get("quality") or [None])[0]
+    bs_rec = (bs.get("recovered_base") or {}).get("lo")
+    bs_pen = (bs.get("armpen") or [None])[0]
+    check("bronze sword tooltip 176.0", bs_tooltip, 176.0)
+    check("bronze sword ql 38.0613", bs_ql, 38.0613)
+    check("bronze sword recovered base 90.21 (tool) vs wiki 90", round(bs_rec or 0, 2), 90.21)
+    check("bronze sword wiki pen 12.5% agrees with live 0.125", round((bs_pen or 0) * 100, 2), 12.5)
+    near("  dmg/sqrt(ql/10) recovers wiki to 0.24%", bs_rec or 0, 90.0, 0.3)
+    # Stone axe: the disagreement that is a finding, not arithmetic.
+    sa = seen.get("stoneaxe") or {}
+    sa_tooltip = (sa.get("damage") or [None])[0]
+    sa_ql = (sa.get("quality") or [None])[0]
+    sa_rec = (sa.get("recovered_base") or {}).get("lo")
+    sa_pen = (sa.get("armpen") or [None])[0]
+    check("stone axe tooltip 71.0", sa_tooltip, 71.0)
+    check("stone axe ql 56.2835", sa_ql, 56.2835)
+    check("stone axe recovered base 29.93 (tool) vs wiki 30", round(sa_rec or 0, 2), 29.93)
+    near("  dmg/sqrt(ql/10) recovers wiki to 0.24%", sa_rec or 0, 30.0, 0.3)
+    check("stone axe live pen 0.20 vs wiki 10% is factor-2", round((sa_pen or 0) * 100, 1), 20.0)
+    # Offline join prefers live where present, wiki fallback where not.
+    check("offline join bronzesword pen is live 0.125", join.get("bronzesword", {}).get("armorpen"), 0.125)
+    check("offline join stoneaxe pen is live 0.20 (not wiki 0.10)", join.get("stoneaxe", {}).get("armorpen"), 0.2)
+    check("offline join bronzesword base is live 90.21 (not wiki 90 flat)", round(join.get("bronzesword", {}).get("basedmg") or 0, 2), 90.21)
+    check("offline join stoneaxe base is live 29.93", round(join.get("stoneaxe", {}).get("basedmg") or 0, 2), 29.93)
+    # Wiki fallback: a weapon never held stays on wiki values, absent stays null never 0.
+    # Battleaxe has no live reading in this corpus.
+    ba = join.get("battleaxeofthetwelfthbay") or join.get("battleaxe") or {}
+    check("wiki fallback battleaxe base 150 where no live reading", ba.get("basedmg"), 150)
+    check("wiki fallback battleaxe pen 0.10 where no live reading", ba.get("armorpen"), 0.1)
+    # Preserve raw strings alongside parsed numbers per M1b contract - check one wiki raw.
+    import json as _json, os as _os
+    try:
+        with open(_os.path.join(estimate.ROOT, "data", "combat", "weapons.json"), encoding="utf8") as f:
+            wiki_list = _json.load(f)
+        sa_wiki_raw = next((w for w in wiki_list if w.get("name") == "Stone Axe"), {})
+        check("wiki Stone Axe raw pen string preserved alongside value", sa_wiki_raw.get("armorpen", {}).get("raw"), "20")
+        check("wiki Stone Axe raw base string preserved", sa_wiki_raw.get("basedmg", {}).get("raw"), "30")
+        # Null stays null, never 0.
+        cut = next((w for w in wiki_list if w.get("name") == "Cutthroat Knuckles"), {})
+        check("absent armorpen stays null, never 0", cut.get("armorpen"), None)
+    except Exception as e:
+        check("wiki raw preservation check", str(e)[:20], "ok")
+
+
 def main():
     hitpoints()
     agility()
@@ -784,6 +1313,16 @@ def main():
     mu_measurement()
     own_defence()
     mu_from_reductions()
+    agility_control()
+    agi_brackets()
+    agility_band()
+    agility_carriers()
+    opportunity_knocks()
+    mu_instruments_agree()
+    deepest_interval()
+    dropped_gains()
+    defence_weight_late()
+    attribution_provenance()
     mu_curve()
     equalization()
     foe_skill()
@@ -793,6 +1332,7 @@ def main():
     buckets()
     broken_gear()
     opponent_period()
+    weapons_live_vs_wiki()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

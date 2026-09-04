@@ -745,14 +745,27 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 				if(sdt != null && res.name.equals("gfx/fx/floatimg")) {
 					processDmg(sdt.clone());
 				} else {
-					/* Another player's combat move shows as a brief icon over their body,
-					 * and that icon is the ONLY record a log can carry of what they did:
+					/* A combat move shows as a brief icon over WHOEVER USED IT, and that
+					 * icon is the only record a log can carry of what anybody but us did:
 					 * their moves never enter our fightview, so every gain they cause is
-					 * otherwise unattributable and spoils ours along with it. Which overlay
-					 * resource carries it is not documented anywhere, so this records the
-					 * candidates rather than guessing - restricted to player gobs, which
-					 * keeps a fight's worth to a handful of lines. */
-					haven.automated.combat.CombatRecorder.onGobOverlay(this.id, playerRes(), res.name);
+					 * otherwise unattributable and spoils ours along with it.
+					 *
+					 * THE FILTER IS ON THE OVERLAY, NOT ON THE GOB. It used to be the other
+					 * way round - player bodies only - written when it was not known which
+					 * resource carried the icon, and the corpus has since answered that:
+					 * gfx/fx/fight/barrage, fullcircle, cleave, oppknock, dash, zigzag,
+					 * sting, jump, flex, slide, artevade. One per card. Filtering on the
+					 * player meant every one of the 2729 recorded so far sat on a
+					 * gfx/borka/body, and an animal's move announcement - the thing that
+					 * would say WHICH of five ants acted - was thrown away at the door.
+					 *
+					 * sfx/fight/hit1 and sfx/fight/miss come through the same path and say
+					 * whether a swing connected, which nothing else in the log does. */
+					String or = res.name;
+					if(or.startsWith("gfx/fx/fight/") || or.startsWith("sfx/fight/"))
+						haven.automated.combat.CombatRecorder.onGobOverlay(this.id, gobRes(), or);
+					else
+						haven.automated.combat.CombatRecorder.onGobOverlay(this.id, playerRes(), or);
 				}
 			}
 		}
@@ -2528,6 +2541,17 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	}
 
 	/** This gob's resource name when it is a player, else null - the overlay filter. */
+	/* Whoever this is, player or creature. playerRes below answers the narrower question
+	 * and is kept for the overlays that are only meaningful on a player. */
+	String gobRes() {
+		try {
+			Resource r = getres();
+			return((r == null) ? null : r.name);
+		} catch(Loading l) {
+			return(null);
+		}
+	}
+
 	private String playerRes() {
 		try {
 			Resource r = getres();
