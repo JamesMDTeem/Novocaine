@@ -970,8 +970,11 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
 	abstract class Grid<T> extends RenderTree.Node.Track1 {
 	    final Map<Coord, Pair<T, RenderTree.Slot>> cuts = new HashMap<>();
-	    final boolean position;
-	    Loading lastload = new Loading("Initializing map...");
+    final boolean position;
+    Loading lastload = new Loading("Initializing map...");
+    /* Hitch probe [WTICK-a4f2]: cuts churned by the last tick() call. Written on the
+     * UI thread, read on the UI thread; diag-only, ignored when the flag is off. */
+    int lastCutsAdded = 0, lastCutsRemoved = 0;
 
 	    Grid(boolean position) {
 		this.position = position;
@@ -982,47 +985,52 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    abstract T getcut(Coord cc);
 	    RenderTree.Node produce(T cut) {return((RenderTree.Node)cut);}
 
-	    void tick() {
-		if(slot == null)
-		    return;
-		Loading curload = null;
-		for(Coord cc : area) {
-		    try {
-			if(shouldCullCut(cc)) {
-			    Pair<T, RenderTree.Slot> cur = cuts.get(cc);
-			    if(cur != null) {
-				cur.b.remove();
-				cuts.remove(cc);
-			    }
-			    continue;
-			}
+    void tick() {
+	if(slot == null)
+	    return;
+	boolean wtdbg = haven.automated.nbots.core.NLog.diag();
+	int adds = 0, rems = 0;
+	Loading curload = null;
+	for(Coord cc : area) {
+	    try {
+		if(shouldCullCut(cc)) {
+		    Pair<T, RenderTree.Slot> cur = cuts.get(cc);
+		    if(cur != null) {
+			cur.b.remove();
+			cuts.remove(cc);
+		    }
+		    continue;
+		}
 
-			T cut = getcut(cc);
-			Pair<T, RenderTree.Slot> cur = cuts.get(cc);
-			if((cur == null) || (cur.a != cut)) {
-			    Coord2d pc = cc.mul(MCache.cutsz).mul(tilesz);
-			    RenderTree.Node draw = produce(cut);
-			    Pipe.Op cs = null;
-			    if(position)
-				cs = Location.xlate(new Coord3f((float)pc.x, -(float)pc.y, 0));
-			    cuts.put(cc, new Pair<>(cut, slot.add(draw, cs)));
-			    if(cur != null)
-				cur.b.remove();
-			}
-		    } catch(Loading l) {
-			l.boostprio(5);
-			curload = l;
-		    }
+		T cut = getcut(cc);
+		Pair<T, RenderTree.Slot> cur = cuts.get(cc);
+		if((cur == null) || (cur.a != cut)) {
+		    Coord2d pc = cc.mul(MCache.cutsz).mul(tilesz);
+		    RenderTree.Node draw = produce(cut);
+		    Pipe.Op cs = null;
+		    if(position)
+			cs = Location.xlate(new Coord3f((float)pc.x, -(float)pc.y, 0));
+		    cuts.put(cc, new Pair<>(cut, slot.add(draw, cs)));
+		    if(cur != null)
+			cur.b.remove();
+		    if(wtdbg) adds++;
 		}
-		this.lastload = curload;
-		for(Iterator<Map.Entry<Coord, Pair<T, RenderTree.Slot>>> i = cuts.entrySet().iterator(); i.hasNext();) {
-		    Map.Entry<Coord, Pair<T, RenderTree.Slot>> ent = i.next();
-		    if(!area.contains(ent.getKey())) {
-			ent.getValue().b.remove();
-			i.remove();
-		    }
-		}
+	    } catch(Loading l) {
+		l.boostprio(5);
+		curload = l;
 	    }
+	}
+	this.lastload = curload;
+	for(Iterator<Map.Entry<Coord, Pair<T, RenderTree.Slot>>> i = cuts.entrySet().iterator(); i.hasNext();) {
+	    Map.Entry<Coord, Pair<T, RenderTree.Slot>> ent = i.next();
+	    if(!area.contains(ent.getKey())) {
+		ent.getValue().b.remove();
+		i.remove();
+		if(wtdbg) rems++;
+	    }
+	}
+	if(wtdbg) { lastCutsAdded = adds; lastCutsRemoved = rems; }
+    }
 
 	    public void removed(RenderTree.Slot slot) {
 		super.removed(slot);
@@ -2045,6 +2053,8 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     }
 
     private Loading camload = null, lastload = null;
+    /* Hitch probe [WTICK-a4f2]: ms spent acquiring the map lock in the last tick. */
+    private double lockWaitMs = 0;
     public void draw(GOut g) {
 	/* Drawing keeps going when ticking does not, so this is the only vantage point from
 	 * which a stalled tick can be seen at all. */
@@ -2214,7 +2224,10 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	updsmap(amblight);
 	updweather();
 	long w4 = wtdbg ? System.nanoTime() : 0;
+	long wl0 = wtdbg ? System.nanoTime() : 0;
 	synchronized(glob.map) {
+	    long wl1 = wtdbg ? System.nanoTime() : 0;
+	    if(wtdbg) lockWaitMs = (wl1 - wl0) / 1e6;
 	    terrain.tick();
 	    oltick();
 	    if(gridlines != null)
@@ -2232,9 +2245,11 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	long w6 = wtdbg ? System.nanoTime() : 0;
 	if(wtdbg && ((w6 - w0) > 50000000L)) {
 	    haven.automated.nbots.core.NLog.diag("wtick.log", String.format(
-		"[WTICK-a4f2] slow MapView.tick total=%.1fms super=%.1f watch=%.1f cam=%.1f lightcam=%.1f terrain=%.1f place=%.1f",
+		"[WTICK-a4f2] slow MapView.tick total=%.1fms super=%.1f watch=%.1f cam=%.1f lightcam=%.1f terrain=%.1f place=%.1f lockwait=%.1fms cuts+=%d/%d cuts-=%d/%d",
 		(w6 - w0) / 1e6, (w1 - w0) / 1e6, (w2 - w1) / 1e6, (w3 - w2) / 1e6,
-		(w4 - w3) / 1e6, (w5 - w4) / 1e6, (w6 - w5) / 1e6));
+		(w4 - w3) / 1e6, (w5 - w4) / 1e6, (w6 - w5) / 1e6,
+		lockWaitMs, terrain.main.lastCutsAdded, terrain.flavobjs.lastCutsAdded,
+		terrain.main.lastCutsRemoved, terrain.flavobjs.lastCutsRemoved));
 	}
 
 	if (OptWnd.continuousWalkingCheckBox.a && holdingLeftClick) {

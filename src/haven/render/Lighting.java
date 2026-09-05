@@ -158,6 +158,8 @@ public interface Lighting {
 	private final int lswb;
 	private GridLights last, prev;
 	private Object[][] lastlights;
+	private static int lgRebuilds = 0;
+	private static long lgLastLog = 0;
 
 	public LightGrid(int w, int h, int d) {
 	    if(w != Integer.highestOneBit(w)) throw(new IllegalArgumentException("not a power of two: " + w));
@@ -515,9 +517,21 @@ public interface Lighting {
 	     * is built from the parameters and goes stale if they have changed.
 	     * The bbox is carried by the state too, as the shader's coordinate
 	     * transform reads it. */
-	    Volume3f bbox = viewbox(proj);
-	    if((last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
-		return(last);
+    Volume3f bbox = viewbox(proj);
+    if((last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
+	return(last);
+    if(haven.automated.nbots.core.NLog.diag()) {
+	/* Hitch probe [WTICK-a4f2]: count real lightgrid rebuilds (cache misses above).
+	 * Logged to wtick.log at most once per second so Tia's logs show rebuilds/sec. */
+	lgRebuilds++;
+	long now = System.currentTimeMillis();
+	if(now - lgLastLog > 1000) {
+	    haven.automated.nbots.core.NLog.diag("wtick.log", String.format(
+		"[WTICK-a4f2] lightgrid rebuilds=%d in last %.1fs", lgRebuilds, (now - lgLastLog) / 1000.0));
+	    lgRebuilds = 0;
+	    lgLastLog = now;
+	}
+    }
 	    Compiler c = new Compiler(bbox);
 	    int n = Math.min(lights.length, 65535);
 	    for(int i = 0; i < n; i++)

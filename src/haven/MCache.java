@@ -1346,6 +1346,8 @@ public class MCache implements MapSource {
 
     public void trimall() {
 	haven.automated.LeakDbg.transition("trimall");
+	if(haven.automated.nbots.core.NLog.diag())
+	    haven.automated.nbots.core.NLog.diag("wtick.log", "[WTICK-a4f2] trimall grids=" + grids.size());
 	cached.remove();
 	synchronized(grids) {
 	    synchronized(req) {
@@ -1360,6 +1362,8 @@ public class MCache implements MapSource {
 
     public void trim(Coord ul, Coord lr) {
 	haven.automated.LeakDbg.transition("trim");
+	boolean wtdbg = haven.automated.nbots.core.NLog.diag();
+	int before = wtdbg ? grids.size() : 0;
 	synchronized(grids) {
 	    synchronized(req) {
 		for(Iterator<Map.Entry<Coord, Grid>> i = grids.entrySet().iterator(); i.hasNext();) {
@@ -1379,6 +1383,9 @@ public class MCache implements MapSource {
 	    }
 	    gridwait.wnotify();
 	}
+	if(wtdbg)
+	    haven.automated.nbots.core.NLog.diag("wtick.log", String.format(
+		"[WTICK-a4f2] trim ul=%s lr=%s grids %d->%d", ul, lr, before, grids.size()));
     }
 
     public void request(Coord gc) {
