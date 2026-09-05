@@ -1408,6 +1408,58 @@
    "stance": false
   },
   {
+   "res": "paginae/atk/sos",
+   "name": "Storm of Swords",
+   "weapon": "Any sword",
+   "attack_weight": "According to weapon · µ",
+   "block_weight": null,
+   "attack_skill": null,
+   "block_skill": null,
+   "damage": "According to weapon",
+   "damage_share": 1.0,
+   "damage_flat": null,
+   "weight_mult": 1.0,
+   "block_mult": 1.0,
+   "grievous_pct": null,
+   "initiative": 4,
+   "initiative_extra": null,
+   "cooldown_raw": "50",
+   "cooldown_mu": false,
+   "cooldown": 50,
+   "attack_types": [
+    {
+     "name": "Backhanded",
+     "colour": "blue"
+    },
+    {
+     "name": "Sweeping",
+     "colour": "yellow"
+    }
+   ],
+   "openings": [
+    {
+     "pct": 30.0,
+     "name": "Reeling",
+     "colour": "yellow",
+     "mu": false
+    }
+   ],
+   "openings_on_self": [],
+   "reduces": [],
+   "when_attacked": null,
+   "opponent_initiative": null,
+   "notes": [
+    "Storm of Swords will attack up to five opponents in range, starting with your main target. The targets will receive 100%, 125%, 150%, 175% and 200%, respectively, of the weapon's damage.",
+    "Unless otherwise specified, weapons will use your character's value in Melee Combat for their attack weight."
+   ],
+   "ip_scale": 0.0,
+   "attack_mult": null,
+   "boost_greatest": null,
+   "block_requires": null,
+   "block_mult_without": null,
+   "stance": false
+  },
+  {
    "res": "paginae/atk/takeaim",
    "name": "Take Aim",
    "weapon": null,

@@ -615,7 +615,14 @@ public final class CombatRecorder {
              * value-gated on purpose and stays that way.
              *
              * Not a substitute for the value gate - it is an addition. A change still emits
-             * immediately; this only stops silence from being unbounded. */
+             * immediately; this only stops silence from being unbounded.
+             *
+             * 2026-09-04 re-measure on 76 schema-12 logs: the heartbeat removes
+             * value-gate jitter but the set is thin (19 decays: 9 foe, 10 mine)
+             * and still contradicts any single tau per side (foe max lower 46 s
+             * above min upper 19 s; mine max lower 19 s above min upper 1.9 s).
+             * The decay term stays out of Sim until a controlled still lull
+             * (30 s or more, standing, no third party) is logged on schema 12. */
             long ts = now();
             boolean beat = (ts - lastBeat) >= HEARTBEAT;
             if(key.equals(lastSample) && !beat)

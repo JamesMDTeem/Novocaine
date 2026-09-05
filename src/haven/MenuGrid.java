@@ -252,7 +252,7 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		}
 		Pipe.Op[] ops = new Pipe.Op[ols.size()];
 		for(int i = 0; i < ops.length; i++)
-		    ops[i] = ols.get(0).rstate();
+		    ops[i] = ols.get(i).rstate();
 		Pipe.Op cmp = Pipe.Op.compose(ops);
 		return(() -> cmp);
 	});

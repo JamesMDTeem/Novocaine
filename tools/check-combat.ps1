@@ -35,6 +35,13 @@ $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 
+# Fixed hash seed so every suite run iterates identically. Several estimator
+# censuses (deepest_interval, wd_consensus) walk structures whose order is
+# hash-dependent; without this, two runs on the same corpus can pin different
+# readings and the checks below would flap. Standalone python runs outside
+# this script must set PYTHONHASHSEED=0 themselves to reproduce suite numbers.
+$env:PYTHONHASHSEED = '0'
+
 # JDK 21 specifically. A jre1.8 also exists on this machine and picking it up produces
 # failures that look like source errors.
 $jdk = 'C:\Program Files\Java\jdk-21'

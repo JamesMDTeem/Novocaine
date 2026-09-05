@@ -12,7 +12,7 @@
    "grievous": [
     0.4
    ],
-   "n": 34,
+   "n": 108,
    "quality": [
     38.0613
    ],
@@ -25,6 +25,20 @@
    },
    "res": "gfx/invobjs/small/bronzesword"
   },
+  "huntersbow": {
+   "damage": [
+    62.0
+   ],
+   "n": 2,
+   "quality": [
+    43.3232
+   ],
+   "recovered_base": {
+    "hi": 29.787,
+    "lo": 29.787
+   },
+   "res": "gfx/invobjs/small/huntersbow"
+  },
   "stoneaxe": {
    "armpen": [
     0.2
@@ -35,7 +49,7 @@
    "grievous": [
     0.1
    ],
-   "n": 1,
+   "n": 2,
    "quality": [
     56.2835
    ],

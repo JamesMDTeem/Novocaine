@@ -248,13 +248,20 @@ def measure_mu(logs=None):
 
 
 # Measured at import, so every defence weight this tool reports is corrected by a mu that
-# was read rather than assumed. What it currently finds:
+# was read rather than assumed. CURRENT readings live in MU_MEASURED above and are printed
+# by the opportunity_knocks and mu_instruments_agree checks - this comment carries method
+# and dated history only, because the numbers move with the corpus:
 #
 #   level 1  ->  exactly 1.0            the whole 30/36/42/48/54/60/66/72 ladder at 0
 #                                       through 7 initiative, without exception
-#   level 2  ->  (1.1111, 1.1290]       Take Aim's cooldown, narrowed by Opportunity
-#                                       Knocks - see _mu_measured
 #   level 3  ->  (1.2000, 1.2500]       Take Aim's cooldown
+#   2026-09-03: level 2 read (1.1111, 1.1290], Take Aim narrowed by Opportunity Knocks;
+#   linear's 1.125 admitted, 1.5 - 0.5/sqrt(L) at 1.1464 excluded.
+#   2026-09-04: OK's intervals no longer intersect (23 uses, 18 uncensored, levels 1+2),
+#   so level 2 falls back to Take Aim alone (1.1111, 1.1538]; 1.1464 is readmitted and the
+#   verdict pins stay red until OK reads again. Level 4 reads (1.3636, 1.4286], 3 obs -
+#   Take Aim at 4, which the "caps at 3" note below predates; it admits both linear's
+#   1.375 and the wiki's 1.4, so the Dash-at-4 throw still separates them.
 #
 # THIS PARAGRAPH USED TO SAY THE OPPOSITE, and the reversal is worth keeping rather than
 # quietly deleting. It read "level 2 -> 1.143 to 1.177 ... the obvious curve, linear from
@@ -264,12 +271,11 @@ def measure_mu(logs=None):
 # adopted in its place - see mu_curve, which is now kept only to be contradicted.
 #
 # What survives being excluded, at level 2: 1 + 0.5*(L-1)/(L+1) at 1.167, and
-# 1.5 - 0.5/sqrt(L) at 1.1464. The second of those was still standing this morning and is
-# now out, on Opportunity Knocks' multiplier. Level 4 is the one still open: the wiki's
-# worked example states mu(4) = 1.4, which is neither linear's 1.375 nor the square-root
-# curve's 1.405. Take Aim caps at 3 and cannot reach it. Dash divides by mu, has no
-# initiative term, and at level 4 gives 58 ticks for linear and 57 for the wiki figure -
-# two distinct integers, one use.
+# 1.5 - 0.5/sqrt(L) at 1.1464. The second was out 2026-09-03 on OK's multiplier and is
+# back in on Take-Aim fallback while OK is empty - the verdict pin stays red either way
+# until OK reads again. The wiki's worked example states mu(4) = 1.4, which is neither
+# linear's 1.375 nor the square-root curve's 1.405; level 4 now reads (1.3636, 1.4286]
+# and admits both, so Dash at 4 (58 ticks linear, 57 wiki) still settles it - one use.
 
 
 # What the wiki's own worked example states, as opposed to what this corpus measured.
@@ -460,8 +466,8 @@ def ok_boost(logs=None):
     Two things in it had never been checked against a fight: that the boost is a SHARE of
     the standing opening rather than a flat number of points, and that mu scales it.
 
-    Both fall out of fourteen uses, all at card level 2, all on a red opening that was the
-    only one standing:
+    Both fall out of the original fourteen uses, all at card level 2, all on a red
+    opening that was the only one standing:
 
         56 -> 82   67 -> 97   50 -> 73   54 -> 78   55 -> 80   65 -> 94   45 -> 66
         62 -> 89   37 -> 54   54 -> 78   65 -> 95    0 ->  0   82 -> 100  71 -> 100
@@ -473,9 +479,13 @@ def ok_boost(logs=None):
 
     Openings reach the log through `(int)(100 * ameteri)`, which truncates, so a printed
     d means a true value in [d, d+1) and each use bounds the multiplier rather than
-    naming it. Eleven of those intervals intersect.
+    naming it. Eleven of those intervals intersected, back when the corpus held fourteen
+    uses. HISTORY, because the corpus moves: 2026-09-04 holds 23 uses, 18 uncensored,
+    at levels 1 and 2, and the intervals no longer intersect - CURRENT counts are printed
+    by report_ok_boost and pinned by the opportunity_knocks check.
 
-    Returns (uses, lo, hi) - every uncensored (before, after, level) and the intersection.
+    Returns (uses, lo, hi) - every uncensored (before, after, level) and the intersection,
+    or (uses, None, None) when the intersection is empty.
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
@@ -513,7 +523,10 @@ def ok_boost(logs=None):
         kept.append((b, a, level))
         lo = max(lo, a / float(b + 1))
         hi = min(hi, (a + 1) / float(b))
-    if not kept:
+    if (not kept) or (lo > hi):
+        # No uses, or uses that contradict: an empty intersection is not a wide
+        # interval, it is an unusable instrument. Callers treat None as "no OK
+        # reading" and the checks stay red until the uses agree again.
         return (uses, None, None)
     return (uses, lo, hi)
 
@@ -563,6 +576,10 @@ def _mu_measured():
     ilo, ihi = max(have[0], lo), min(have[1], hi)
     if ilo > ihi:
         disputed[level] = (have, (lo, hi))
+        # The union, not either side: one instrument is wrong but the dispute names
+        # both, so the measurement weakens to covering both rather than silently
+        # keeping Take Aim's.
+        out[level] = (min(have[0], lo), max(have[1], hi))
         return (out, disputed)
     out[level] = (ilo, ihi)
     return (out, disputed)
@@ -2804,12 +2821,12 @@ def wd_consensus(rec):
 
     What the discarded readings say is worth having even so, because each one is already
     an interval and a wide interval is not a wrong one. Against the species that have
-    both, the consensus of the small gains contains the large-gain estimate for 22 of 29.
+    both, the consensus of the small gains contains the large-gain estimate for 23 of 32.
 
-    THE SEVEN THAT DISAGREE ARE NOT DISMISSED. Three of them - badger, boar, sentinelbee -
+    THE NINE THAT DISAGREE ARE NOT DISMISSED. Three of them - badger, boar, sentinelbee -
     are the three the pack already marks disputed for an unrelated reason, which is some
     corroboration that the disagreement is about those creatures rather than about this
-    method. The direction is mixed: five read low and three high, so it is not simply
+    method. The direction is mixed: six read low and three high, so it is not simply
     third-party contamination, which can only ever add to a gain and so can only ever read
     a defence weight low. The remaining candidate is the falloff term itself, which this
     is the first reading to exercise at high standing openings.
