@@ -55,12 +55,13 @@ import java.util.Map;
  *
  * <h2>Calibration, and where it is still thin</h2>
  *
- * The variety coefficient prefers {@link CalibrationClient}'s server-measured value (pooled from
- * every character's uploaded {@code EatObserver} log) over the wiki's table, falling back for any
- * hunger-level bucket with fewer than {@link #MIN_CALIBRATION_SAMPLES} measurements; the status
- * line says which is in force.
+ * The variety reduction is no longer calibrated at all, because it no longer needs to be: it is a
+ * closed form of the hunger multiplier and the top stat, settled against the server's pooled log
+ * to float precision. See {@link EatPlanner} for the formula and the residual. What the server
+ * still does with the uploaded logs is check that form rather than supply it — a game patch that
+ * changed the constant would show up as a residual there instead of silently biasing every plan.
  *
- * Satiation no longer goes through that pipeline at all. It is joined directly, live
+ * Satiation never went through that pipeline. It is joined directly, live
  * {@code Constipations} entry to catalog dish, on the entry key both sides derive the same way —
  * see {@link #readLiveSatiation}. What remains uncertain is coverage, not correctness: a dish
  * nobody has hovered since the client started uploading its keys has none recorded, and the plan
@@ -84,77 +85,29 @@ public class EatHelperWindow extends Window {
     }
 
     /**
-     * Wiki Hunger-table coefficients (see the plan's evidence table), used for any hunger-level
-     * bucket the server has not measured enough of yet. Keyed by the Food Efficiency multiplier the
-     * wiki names each row after - gmod reads directly as that multiplier.
-     *
-     * Replaying the local EatObserver logs puts the top row at 1.117 +/- 0.113 over 128 single-food
-     * samples against the wiki's 1.097, so this table is a sound fallback rather than a placeholder
-     * - but it is still a fallback, and the status line says which one is in use.
+     * The character's highest base attribute — the FEP bar's base capacity, and the {@code topStat}
+     * term of the variety formula. Read from {@code CAttr.base} exactly as {@code EatObserver}
+     * stamps it, so the number the planner uses is the number the measurement was made against.
      */
-    private static final double[] WIKI_GMOD_TIERS = {3.0, 2.0, 1.5, 1.0, 0.9, 0.75, 0.5};
-    private static final double[] WIKI_COEFS = {1.097, 0.894, 0.632, 0.602, 0.447, 0.315, 0.315};
-
-    private static double wikiVarietyCoef(double gmod) {
+    private int topStat() {
         int best = 0;
-        double bestDist = Double.MAX_VALUE;
-        for (int i = 0; i < WIKI_GMOD_TIERS.length; i++) {
-            double dist = Math.abs(WIKI_GMOD_TIERS[i] - gmod);
-            if (dist < bestDist) {
-                bestDist = dist;
-                best = i;
-            }
+        Glob glob = ui.sess.glob;
+        for (String g : STAT_TO_GLOB.values()) {
+            Glob.CAttr a = glob.getcattr(g);
+            if (a != null)
+                best = Math.max(best, a.base);
         }
-        return WIKI_COEFS[best];
+        return best;
     }
-
-    /** Below this many pooled samples in its bucket, a measured coefficient isn't meaningfully
-     *  better than the wiki guess it would replace - fall back rather than trust a thin sample. */
-    private static final int MIN_CALIBRATION_SAMPLES = 3;
-
-    /** Nearest measured bucket within this much gmod is close enough to use; further than that,
-     *  the bucket is answering a different hunger level and the wiki's nearest-tier guess is the
-     *  more honest fallback. Half the wiki table's own tightest gap (Full 0.9 to Stuffed 0.75). */
-    private static final double MAX_CALIBRATION_GMOD_DIST = 0.1;
 
     /**
-     * The variety coefficient in force, and where it came from. Returned as a value rather than
-     * written to fields as a side effect: it is read from two places at different times (the
-     * once-per-tick status line and the on-click plan), and side-effecting fields shared between
-     * those two is how a status line ends up describing a different number than the plan used.
+     * The variety reduction the next distinct food of this bar will buy, given the live hunger
+     * multiplier and top stat. Delegates to {@link EatPlanner#varietyStep} rather than keeping a
+     * second copy of the constant: this is the status line's number and the planner's number, and
+     * they must be the same number.
      */
-    private static final class VarietyCoef {
-        final double value;
-        final boolean measured;
-        final int samples;
-
-        VarietyCoef(double value, boolean measured, int samples) {
-            this.value = value;
-            this.measured = measured;
-            this.samples = samples;
-        }
-
-        String source() {
-            return measured ? String.format("measured, %d samples", samples) : "wiki estimate";
-        }
-    }
-
-    private static VarietyCoef resolveVarietyCoef(double gmod) {
-        CalibrationClient.Calibration cal = CalibrationClient.cached();
-        if (cal != null) {
-            CalibrationClient.VarietySample best = null;
-            double bestDist = Double.MAX_VALUE;
-            for (CalibrationClient.VarietySample s : cal.variety) {
-                double dist = Math.abs(s.gmod - gmod);
-                if (dist < bestDist) {
-                    bestDist = dist;
-                    best = s;
-                }
-            }
-            if (best != null && best.samples >= MIN_CALIBRATION_SAMPLES && bestDist <= MAX_CALIBRATION_GMOD_DIST)
-                return new VarietyCoef(best.coefficient, true, best.samples);
-        }
-        return new VarietyCoef(wikiVarietyCoef(gmod), false, 0);
+    private static double nextVarietyStep(double gmod, double topStat, int spentSoFar) {
+        return EatPlanner.varietyStep(gmod, topStat, spentSoFar + 1);
     }
 
     private final GameUI gui;
@@ -303,9 +256,13 @@ public class EatHelperWindow extends Window {
         try {
             double cap = gui.chrwdg.battr.feps.cap;
             double gmod = gui.chrwdg.battr.glut.gmod;
-            VarietyCoef coef = resolveVarietyCoef(gmod);
-            lines.add(String.format("Cap %.1f  ·  FEP mult %.2fx  ·  variety %.3f (%s)",
-                    cap, gmod, coef.value, coef.source()));
+            int topStat = topStat();
+            // How much cap the next new food costs is the number a player is actually deciding
+            // against, so show that rather than the coefficient it is derived from.
+            double spent = Math.max(0, topStat - cap);
+            double step = nextVarietyStep(gmod, topStat, spent > 0 ? 1 : 0);
+            lines.add(String.format("Cap %.1f/%d  ·  FEP mult %.2fx  ·  next new food -%.2f cap",
+                    cap, topStat, gmod, step));
         } catch (Exception e) {
             lines.add("Character sheet not loaded yet.");
         }
@@ -323,6 +280,16 @@ public class EatHelperWindow extends Window {
         if (cal != null)
             second.append(String.format("  ·  %d satiation categories known", cal.satiationCategoryMap.size()));
         lines.add(second.toString());
+
+        // Silent while the formula holds, loud when it stops. A drifting residual means the game
+        // changed under us and every number above this line is wrong by an unknown amount - that
+        // is worth a line of screen space on the rare occasions it happens.
+        CalibrationClient.VarietyResidual res = (cal != null) ? cal.varietyResidual : null;
+        if (res != null && !res.holds()) {
+            lines.add(String.format(
+                    "Variety formula no longer matches the server log: %d/%d events, constant %.4f (expected %.2f).",
+                    res.matched, res.samples, res.constant, EatPlanner.VARIETY_CONST));
+        }
 
         // The table line only appears when it has something to say, so the normal case stays two
         // lines. A ticked override with nothing ever observed is the one case worth shouting about:
@@ -460,7 +427,8 @@ public class EatHelperWindow extends Window {
           .append(state.accountMult).append('|')
           .append(state.tableFoodEventBonus).append('|')
           .append(state.tableHungerMod).append('|')
-          .append(state.varietyCoefficient).append('|')
+          // No variety term: the reduction is a function of gmod and the top stat, and both are
+          // already watched - gmod by the epsilon below, the top stat by the attrs loop.
           .append(qualityMode).append('|')
           .append(qualityPct).append('|')
           .append(catalog.size()).append('|');
@@ -520,7 +488,6 @@ public class EatHelperWindow extends Window {
             double cap = gui.chrwdg.battr.feps.cap;
             double gmod = gui.chrwdg.battr.glut.gmod;
             double glut = gui.chrwdg.battr.glut.glut;
-            double variety = resolveVarietyCoef(gmod).value;
 
             Map<String, Double> satiation = readLiveSatiation();
 
@@ -545,7 +512,7 @@ public class EatHelperWindow extends Window {
             }
 
             return new EatPlanner.CharState(attrs, gmod, satiation, accountMult,
-                    tableFoodEventBonus, tableHungerMod, cap, variety, glut);
+                    tableFoodEventBonus, tableHungerMod, cap, glut);
         } catch (Exception e) {
             return null;
         }

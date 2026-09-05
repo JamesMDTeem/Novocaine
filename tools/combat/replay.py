@@ -25,7 +25,7 @@ so a prediction is an interval too. A move "agrees" when the observed gain falls
 it. That is a weaker claim than a point match and it is the honest one: the inputs are
 intervals, so the outputs are.
 
-Stdlib only.
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting.
 """
 
 import json
@@ -71,7 +71,7 @@ def opponent_bounds(name, pack):
 def load_pack():
     path = os.path.join(estimate.ROOT, "data", "combat", "opponents.json")
     try:
-        with open(path, "r", encoding="utf8") as f:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
             doc = json.load(f)
     except (OSError, ValueError):
         return {}
@@ -97,7 +97,7 @@ WEAPON_RES = {
 
 def load_weapons():
     try:
-        with open(WEAPONS, "r", encoding="utf8") as f:
+        with open(WEAPONS, "r", encoding="utf-8", errors="replace") as f:
             doc = json.load(f)
     except (OSError, ValueError):
         return {}

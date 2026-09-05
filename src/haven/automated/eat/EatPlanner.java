@@ -54,15 +54,43 @@ import java.util.Set;
  * second character. So a level-up in the current top stat raises the base cap by one, and nothing
  * else moves it.
  *
- * Variety pulls it back down for the duration of a bar. The server's own calibration defines the
- * coefficient as {@code reduction / sqrt(settledCap)} (see {@code EatLogService}), and the same
- * log replay confirms both the shape and the magnitude: at {@code gmod ~= 3.0} the measured
- * coefficient for a single unique food is <b>1.117 +/- 0.113 over 128 samples</b>, against the
- * wiki table's 1.097. The scaling past the first unique food is the part that is <i>not</i>
- * settled - the same replay gives 1.53 at n=2 and 1.57 at n=3 for that bucket, on 27 and 5
- * samples - so {@link #capFor} uses {@code sqrt(n)}, which reproduces the well-sampled n=1 case
- * exactly (and so stays consistent with the server's definition) and is inside the noise at n=2.
- * Treat n>=3 as a guess with the sample count attached, not as knowledge.
+ * Variety pulls it back down for the duration of a bar, by an amount that is now known exactly
+ * rather than estimated. For the {@code m}-th <i>distinct</i> food eaten in the current bar:
+ *
+ * <pre>
+ *   reduction += sqrt(0.4 * gmod * topStat / m)
+ *   cap        = topStat - sum(reduction)      // reset when the bar resolves
+ * </pre>
+ *
+ * where {@code topStat} is the character's highest base attribute and {@code gmod} is the FEP
+ * multiplier at the moment that food is eaten. Replaying the server's pooled eat log settles this
+ * to float precision: <b>717 of 718 cap-decrease events match for an integer m</b>, mean absolute
+ * error 4.75e-4, and over 584 fresh-bar ({@code m=1}) events the constant
+ * {@code dcap^2 / (gmod * topStat)} has median 0.399632 and maximum 0.400001 - it is 0.4, and the
+ * downward bias is {@code cap} and {@code gmod} arriving as float32 against an integer top stat.
+ *
+ * Two things this replaces. The wiki's Hunger table is <i>not</i> a table of independent
+ * measurements: its top two rows are {@code sqrt(0.4 * gmod)} to three decimals (1.097 vs 1.09545,
+ * 0.894 vs 0.89443), and the rows below it carry values that belong to a different gmod than the
+ * one they are labelled with - its "1.5" row is the {@code gmod = 1.0} value, its "0.9" row is the
+ * {@code gmod = 0.5} value. And the old {@code sqrt(n)} scaling past the first food was not, as
+ * previously believed, inside the noise: the true series is {@code sum(1/sqrt(i))}, which is
+ * 1.7071 at n=2 and 2.2845 at n=3 against {@code sqrt(n)}'s 1.4142 and 1.7321 - 17% and 24% low.
+ *
+ * <h2>Hunger drift</h2>
+ *
+ * {@code gmod} is a closed form of the hunger meter, verified against 2214 distinct
+ * {@code (glut, gmod)} pairs spanning {@code glut} 0 to 0.578 with a maximum absolute error of
+ * 1.5e-7 (float32 rounding):
+ *
+ * <pre>
+ *   gmod = 3^(1 - 2*glut)
+ * </pre>
+ *
+ * So the simulation advances {@code glut} by each bite's hunger cost and re-reads {@code gmod} from
+ * it, rather than holding the multiplier fixed at its starting value. That matters in both
+ * directions: FEP payout falls as the meter fills, and so does the variety reduction each new food
+ * buys. See {@link #gmodFor}.
  *
  * <h2>What this still cannot promise</h2>
  *
@@ -72,9 +100,8 @@ import java.util.Set;
  * Satiation is joined exactly, by live satiation-entry key, but it is still a <i>snapshot</i>: it does
  * not rise as the plan eats, because nothing measures the per-eat increment yet. A plan that leans
  * hard on one dish will therefore underperform, and says so through {@link Plan#warnings} rather
- * than pretending otherwise. The hunger multiplier {@code gmod} is likewise frozen at its current
- * value even though eating drives it down. The bite-by-bite greedy is a heuristic, not an exact
- * solve of what is genuinely a knapsack with a moving capacity.
+ * than pretending otherwise. The bite-by-bite greedy is a heuristic, not an exact solve of what is
+ * genuinely a knapsack with a moving capacity.
  */
 public final class EatPlanner {
     private EatPlanner() {}
@@ -141,18 +168,12 @@ public final class EatPlanner {
         public final double tableHungerMod;
         /** The live FEP cap, which may already carry this bar's variety reduction. */
         public final double startCap;
-        /**
-         * Variety coefficient for the current hunger level, in the server's units: the cap
-         * reduction one unique food buys is {@code coefficient * sqrt(settledCap)}. See the class
-         * doc for the measured values - this is a rate, never an absolute number of FEP.
-         */
-        public final double varietyCoefficient;
         /** Live hunger meter reading; 1.0 is one full bar, matching {@code BAttrWnd.GlutMeter.glut}. */
         public final double glut;
 
         public CharState(Map<String, Integer> attrs, double hungerMod, Map<String, Double> satiationPenalty,
                           double accountMult, double tableFoodEventBonus, double tableHungerMod,
-                          double startCap, double varietyCoefficient, double glut) {
+                          double startCap, double glut) {
             this.attrs = attrs;
             this.hungerMod = hungerMod;
             this.satiationPenalty = satiationPenalty;
@@ -160,7 +181,6 @@ public final class EatPlanner {
             this.tableFoodEventBonus = tableFoodEventBonus;
             this.tableHungerMod = tableHungerMod;
             this.startCap = startCap;
-            this.varietyCoefficient = varietyCoefficient;
             this.glut = glut;
         }
     }
@@ -265,12 +285,16 @@ public final class EatPlanner {
         }
     }
 
-    /** Resolved per-dish numbers for one simulation run - quality settled, formulas applied once. */
+    /**
+     * Resolved per-dish numbers for one simulation run - quality settled, formulas applied once.
+     * FEP here is at <b>unit gmod</b>: the hunger multiplier is the one input that moves during the
+     * run, so it is multiplied in at each use site instead of being folded in once.
+     */
     private static final class Resolved {
         final Dish dish;
         /** Tier already multiplied in - this is the expected-points numerator, never the bar fill. */
         final Map<String, Double> weightedFepByStat;
-        /** Untiered sum across every stat: what actually fills the bar. */
+        /** Untiered sum across every stat, at unit gmod: what actually fills the bar. */
         final double rawFep;
         final double hungerCost;
         final double satMod;
@@ -306,6 +330,34 @@ public final class EatPlanner {
     public static final double HUNGER_PER_FULL_BAR = 1000.0;
 
     /**
+     * The constant in {@code reduction = sqrt(VARIETY_CONST * gmod * topStat / m)}. Measured, not
+     * assumed - see the class doc for the sample and the residual. Exposed so the server-side
+     * residual check and this planner cannot drift apart silently.
+     */
+    public static final double VARIETY_CONST = 0.4;
+
+    /**
+     * The FEP multiplier at a given hunger-meter reading: {@code gmod = 3^(1 - 2*glut)}. Exact to
+     * float precision across every observation we have (class doc). {@code glut} is in bar units,
+     * so 0 is empty, 0.5 puts the multiplier at 1.0, and values above 1 are real - the meter wraps
+     * rather than clamping, which is why {@code BAttrWnd.GlutMeter.draw} renders
+     * {@code glut - floor(glut)}.
+     */
+    public static double gmodFor(double glut) {
+        return Math.pow(3.0, 1.0 - 2.0 * glut);
+    }
+
+    /**
+     * The cap reduction the {@code m}-th distinct food of a bar buys, at the hunger multiplier in
+     * force when it is eaten. {@code m} is one-based: the first food of a fresh bar is {@code m=1}.
+     */
+    public static double varietyStep(double gmod, double topStat, int m) {
+        if (m <= 0 || gmod <= 0 || topStat <= 0)
+            return 0;
+        return Math.sqrt(VARIETY_CONST * gmod * topStat / m);
+    }
+
+    /**
      * Above this share of a plan's bites on a single dish, the un-modelled rise in that dish's own
      * satiation stops being a rounding error and starts being the dominant term - worth saying out
      * loud rather than shipping a number that quietly assumes bite 400 pays like bite 1.
@@ -339,16 +391,25 @@ public final class EatPlanner {
         // one-for-one; leaving it at 0 would make every dish look like it overflows infinitely.
         double liveCap = state.startCap > 0 ? state.startCap : Math.max(CAP_FLOOR, initialTop);
 
-        List<Candidate> candidates = rankCandidates(resolved, liveCap, goal);
+        // Hunger is simulated, not frozen: glut advances with every bite and gmod is read back off
+        // it. The live gmod seeds it rather than being recomputed, because the server sends both
+        // and its value is authoritative for the starting bite even if the two ever disagree.
+        double glut = state.glut;
+        double gmod = state.hungerMod > 0 ? state.hungerMod : gmodFor(glut);
 
-        // The live cap may already be part-way through this bar's variety reduction. Recover the
-        // settled cap the same way EatLogService detects one - a settled cap is integral - and
-        // infer how much variety credit is already spent so the first bar continues from where the
-        // character actually is instead of restarting it.
-        double startBaseCap = settledBase(liveCap);
-        double baseCap = startBaseCap;
-        int varietyN = inferVarietyN(startBaseCap, liveCap, state.varietyCoefficient);
-        double cap = capFor(baseCap, varietyN, state.varietyCoefficient);
+        List<Candidate> candidates = rankCandidates(resolved, liveCap, gmod, goal);
+
+        // The base cap is the top base attribute outright. Across all 2638 pooled eat records the
+        // cap never exceeds it and equals it exactly whenever no variety has been bought, so there
+        // is nothing to infer here - the old settled-cap reconstruction was recovering a number the
+        // character sheet already states.
+        double baseCap = initialTop;
+        // The live cap may already be part-way through this bar's variety reduction. That spend is
+        // measured directly rather than inverted; only the *count* has to be inferred, and it is
+        // needed solely as the divisor for the next food.
+        double reduction = Math.max(0, baseCap - liveCap);
+        int varietyN = inferVarietyN(reduction, gmod, baseCap);
+        double cap = capOf(baseCap, reduction);
 
         Map<String, Double> settledGain = new LinkedHashMap<>();
         Map<String, Double> barWeighted = new LinkedHashMap<>();
@@ -371,18 +432,19 @@ public final class EatPlanner {
                 && !goalMet(goal, settledGain, barWeighted, barRaw, cap)) {
             Resolved best = null;
             double bestScore = 0;
-            double bestCap = cap;
             boolean bestIsNew = false;
 
             for (Resolved r : resolved) {
                 if (r.hungerCost <= 0 || !r.touchesGoal)
                     continue;
                 boolean isNew = !eatenThisBar.contains(r.dish.name);
-                double nCap = isNew ? capFor(baseCap, varietyN + 1, state.varietyCoefficient) : cap;
+                double nCap = isNew
+                        ? capOf(baseCap, reduction + varietyStep(gmod, baseCap, varietyN + 1))
+                        : cap;
                 // What this bar will actually resolve at if this bite is the one that fills it -
                 // which is also what the expected-points denominator will be. A bite that
                 // overshoots by 2x therefore scores half as well as its raw numbers suggest.
-                double projected = Math.max(nCap, barRaw + r.rawFep);
+                double projected = Math.max(nCap, barRaw + r.rawFep * gmod);
                 double gain = 0;
                 for (Map.Entry<String, Double> e : goal.targetPoints.entrySet()) {
                     Double w = r.weightedFepByStat.get(e.getKey());
@@ -393,7 +455,7 @@ public final class EatPlanner {
                         continue;
                     // Credit is capped at what is still wanted, so a dish stops being attractive
                     // the moment its stat is satisfied and the next goal stat takes over.
-                    gain += Math.min(w / projected, rem);
+                    gain += Math.min(w * gmod / projected, rem);
                 }
                 if (gain <= 0)
                     continue;
@@ -401,7 +463,6 @@ public final class EatPlanner {
                 if (best == null || score > bestScore) {
                     best = r;
                     bestScore = score;
-                    bestCap = nCap;
                     bestIsNew = isNew;
                 }
             }
@@ -414,17 +475,22 @@ public final class EatPlanner {
             if (bestIsNew) {
                 eatenThisBar.add(best.dish.name);
                 varietyN++;
-                cap = bestCap;
+                reduction += varietyStep(gmod, baseCap, varietyN);
+                cap = capOf(baseCap, reduction);
             }
-            barRaw += best.rawFep;
+            barRaw += best.rawFep * gmod;
             Map<String, Double> mine = barWeightedByDish
                     .computeIfAbsent(best.dish.name, k -> new LinkedHashMap<>());
             for (Map.Entry<String, Double> e : best.weightedFepByStat.entrySet()) {
-                barWeighted.merge(e.getKey(), e.getValue(), Double::sum);
-                mine.merge(e.getKey(), e.getValue(), Double::sum);
+                barWeighted.merge(e.getKey(), e.getValue() * gmod, Double::sum);
+                mine.merge(e.getKey(), e.getValue() * gmod, Double::sum);
             }
             totalHunger += best.hungerCost;
             totalBites++;
+            // The bite is eaten, so the meter has moved - every later bite is priced at the lower
+            // multiplier this leaves behind, and so is every later variety step.
+            glut += best.hungerCost / HUNGER_PER_FULL_BAR;
+            gmod = gmodFor(glut);
             bites.merge(best.dish.name, 1, Integer::sum);
             hungerByDish.merge(best.dish.name, best.hungerCost, Double::sum);
             fallbackByDish.putIfAbsent(best.dish.name, best.qualityFallback);
@@ -442,13 +508,14 @@ public final class EatPlanner {
                 barWeightedByDish.clear();
                 eatenThisBar.clear();
                 varietyN = 0;
+                reduction = 0;
                 barsSimulated++;
 
                 double top = initialTop;
                 for (Map.Entry<String, Integer> e : initialAttrs.entrySet())
                     top = Math.max(top, e.getValue() + settledGain.getOrDefault(e.getKey(), 0.0));
-                baseCap = startBaseCap + Math.max(0, top - initialTop);
-                cap = capFor(baseCap, 0, state.varietyCoefficient);
+                baseCap = top;
+                cap = capOf(baseCap, 0);
             }
         }
 
@@ -514,38 +581,40 @@ public final class EatPlanner {
      * is therefore a settled cap with variety credit already spent against it, and the settled
      * value it came from is the next integer up.
      */
-    private static double settledBase(double liveCap) {
-        if (liveCap <= 0)
-            return CAP_FLOOR;
-        double rounded = Math.round(liveCap);
-        if (Math.abs(liveCap - rounded) < 1e-6)
-            return rounded;
-        return Math.ceil(liveCap);
-    }
-
-    /** How many unique foods the live cap looks like it has already paid for this bar. */
-    private static int inferVarietyN(double baseCap, double liveCap, double coefficient) {
-        if (coefficient <= 0 || baseCap <= liveCap)
-            return 0;
-        double unit = coefficient * Math.sqrt(baseCap);
-        if (unit <= 0)
-            return 0;
-        double ratio = (baseCap - liveCap) / unit;
-        int n = (int) Math.round(ratio * ratio);
-        return Math.max(0, Math.min(n, 64));
+    /** The cap the character reads at, given how much variety this bar has already bought. */
+    private static double capOf(double baseCap, double reduction) {
+        return Math.max(CAP_FLOOR, baseCap - Math.max(0, reduction));
     }
 
     /**
-     * The effective cap after {@code n} unique foods this bar. See the class doc: the coefficient
-     * is a rate against {@code sqrt(settledCap)}, matching the server's own definition at n=1,
-     * with {@code sqrt(n)} carrying it past there.
+     * How many distinct foods the live cap looks like it has already paid for this bar.
+     *
+     * Only the count is inferred, never the spend - the spend is {@code topStat - cap} and is
+     * already exact. The count is needed for one thing: the divisor {@code m} of the <i>next</i>
+     * food. It is approximate by nature, because each earlier food was charged at whatever
+     * {@code gmod} was in force when it was eaten and the log of that is gone by the time a plan
+     * runs; pricing them all at the current multiplier is the closest recoverable answer, and it
+     * errs by at most one step of an already-decaying series.
      */
-    private static double capFor(double baseCap, int n, double coefficient) {
-        if (n <= 0 || coefficient <= 0)
-            return Math.max(CAP_FLOOR, baseCap);
-        double reduction = coefficient * Math.sqrt(baseCap) * Math.sqrt(n);
-        return Math.max(CAP_FLOOR, baseCap - reduction);
+    private static int inferVarietyN(double reduction, double gmod, double baseCap) {
+        if (reduction <= 0)
+            return 0;
+        double spent = 0;
+        for (int n = 1; n <= MAX_VARIETY_N; n++) {
+            double next = varietyStep(gmod, baseCap, n);
+            if (next <= 0)
+                return n - 1;
+            // Stop at the count whose cumulative spend is nearest the measured one, rather than
+            // the first that exceeds it - overshooting by a whisker should not cost a whole food.
+            if (spent + next > reduction)
+                return (reduction - spent < spent + next - reduction) ? n - 1 : n;
+            spent += next;
+        }
+        return MAX_VARIETY_N;
     }
+
+    /** Nothing observed has come near this; it exists so the inference above always terminates. */
+    private static final int MAX_VARIETY_N = 64;
 
     /** Points still wanted for one goal stat, counting the bar currently in progress. */
     private static double remaining(String stat, double target, Map<String, Double> settledGain,
@@ -572,19 +641,23 @@ public final class EatPlanner {
      * simulated plan: the plan answers "what is best", this answers "what would work", and the
      * second question is the one that gets asked when the first answer is not in the cellar.
      */
-    private static List<Candidate> rankCandidates(List<Resolved> resolved, double cap, Goal goal) {
+    private static List<Candidate> rankCandidates(List<Resolved> resolved, double cap, double gmod,
+                                                   Goal goal) {
         List<Candidate> out = new ArrayList<>();
         for (Resolved r : resolved) {
             if (!r.touchesGoal || r.hungerCost <= 0)
                 continue;
-            double projected = Math.max(cap, r.rawFep);
+            // Resolved carries FEP at unit gmod so the simulation can re-price it per bite; this
+            // list is "one bite, right now", so it is priced at the starting multiplier.
+            double rawFep = r.rawFep * gmod;
+            double projected = Math.max(cap, rawFep);
             Map<String, Double> perBite = new LinkedHashMap<>();
             double sum = 0;
             boolean coversAll = true;
             double worstBites = 0;
             for (Map.Entry<String, Double> e : goal.targetPoints.entrySet()) {
                 Double w = r.weightedFepByStat.get(e.getKey());
-                double points = (w == null) ? 0 : w / projected;
+                double points = (w == null) ? 0 : w * gmod / projected;
                 perBite.put(e.getKey(), points);
                 sum += points;
                 if (points <= 0)
@@ -594,9 +667,9 @@ public final class EatPlanner {
             }
             if (sum <= 0)
                 continue;
-            double waste = r.rawFep > cap ? 1.0 - (cap / r.rawFep) : 0.0;
+            double waste = rawFep > cap ? 1.0 - (cap / rawFep) : 0.0;
             int bitesAlone = coversAll ? (int) Math.ceil(worstBites) : -1;
-            out.add(new Candidate(r.dish.name, r.hungerCost, r.rawFep, perBite, sum / r.hungerCost,
+            out.add(new Candidate(r.dish.name, r.hungerCost, rawFep, perBite, sum / r.hungerCost,
                     bitesAlone, waste, r.qualityFallback, r.satMod));
         }
         out.sort((a, b) -> Double.compare(b.goalPointsPerHunger, a.goalPointsPerHunger));
@@ -641,13 +714,14 @@ public final class EatPlanner {
             warnings.add("Stopped at the bar limit before the goal was met.");
 
         if (totalHunger > HUNGER_PER_FULL_BAR) {
-            // gmod falls as the hunger meter fills, and nothing here models that curve - so a plan
-            // spanning more than a bar is quoted at a multiplier it will not hold for. Saying where
-            // the meter starts and where this would push it is the honest version of that.
+            // The drift is modelled now, so this states what the plan already priced in rather
+            // than apologising for holding gmod fixed. It stays a warning because the size of the
+            // fall is the thing worth seeing before committing to a multi-bar sitting.
             double endGlut = state.glut + (totalHunger / HUNGER_PER_FULL_BAR);
             warnings.add(String.format(
-                    "Costs %.0f‰ - about %.1f full hunger bars, taking you from %.2f to roughly %.2f. Your FEP multiplier falls as the meter fills, and this plan holds it fixed at %.2fx.",
-                    totalHunger, totalHunger / HUNGER_PER_FULL_BAR, state.glut, endGlut, state.hungerMod));
+                    "Costs %.0f‰ - about %.1f full hunger bars, taking you from %.2f to roughly %.2f. Your FEP multiplier falls from %.2fx to %.2fx over that, which this plan has priced in.",
+                    totalHunger, totalHunger / HUNGER_PER_FULL_BAR, state.glut, endGlut,
+                    state.hungerMod, gmodFor(endGlut)));
         }
 
         if (!rows.isEmpty() && totalBites >= SINGLE_DISH_WARN_MIN_BITES) {
@@ -708,7 +782,10 @@ public final class EatPlanner {
         for (String key : dish.satiationKeys)
             satMod *= (1.0 - state.satiationPenalty.getOrDefault(key, 0.0));
 
-        double fepMult = state.hungerMod * satMod * state.accountMult * state.tableFoodEventBonus;
+        // Deliberately without state.hungerMod: gmod moves as the plan eats, so it is applied per
+        // bite by the simulation rather than baked in here. Everything on this line is fixed for
+        // the run.
+        double fepMult = satMod * state.accountMult * state.tableFoodEventBonus;
         double qFepFactor = Math.sqrt(q / 10.0);
         double qHungerFactor = Math.pow(q / 10.0, 0.25);
 

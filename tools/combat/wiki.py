@@ -11,7 +11,8 @@
 # and the readers (later parsing scripts) can never derive a fixture's filename two different
 # ways and drift apart.
 
-import json, urllib.request, urllib.parse
+import json, urllib.request, urllib.parse, urllib.error
+import time as _time
 from pathlib import Path
 
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) NovocaineDataPack/0.1"}
@@ -25,16 +26,60 @@ def safe_filename(title):
     return "".join(c if c.isalnum() or c in "-_ " else "_" for c in title).strip() + ".wikitext"
 
 
-def _get(url):
-    req = urllib.request.Request(url, headers=UA)
-    return urllib.request.urlopen(req, timeout=30).read().decode("utf8", "replace")
+def _get(url, _retries=3):
+    """GET url with timeout, UA, and bounded retry for transient failures.
+
+    Retries on 429/5xx and on timeout/URLError with exponential backoff.
+    Non-retryable 4xx (except 429) fail immediately. Stdlib only -- avoids
+    adding requests/urllib3/tenacity for a single fetch script."""
+    last_exc = None
+    for attempt in range(_retries):
+        req = urllib.request.Request(url, headers=UA)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                # Surface HTTP error codes that urlopen doesn't raise for 2xx
+                status = getattr(resp, "status", 200)
+                body = resp.read()
+                if status == 429 or 500 <= status < 600:
+                    raise urllib.error.HTTPError(url, status, "retryable %d" % status, resp.headers, None)
+                return body.decode("utf8", "replace")
+        except urllib.error.HTTPError as e:
+            # Retry only 429 and 5xx; everything else is a hard failure
+            if e.code == 429 or 500 <= e.code < 600:
+                last_exc = e
+                if attempt < _retries - 1:
+                    # Honor Retry-After when present
+                    try:
+                        ra = e.headers.get("Retry-After")
+                        delay = float(ra) if ra is not None else (1.5 ** attempt)
+                    except Exception:
+                        delay = 1.5 ** attempt
+                    _time.sleep(min(delay, 10))
+                    continue
+            raise
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            last_exc = e
+            if attempt < _retries - 1:
+                _time.sleep(1.5 ** attempt)
+                continue
+            raise
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("unreachable _get retry")
 
 
 def api(**kw):
     kw.setdefault("action", "query")
     kw.setdefault("format", "json")
     q = "&".join("%s=%s" % (k, urllib.parse.quote(str(v))) for k, v in kw.items())
-    return json.loads(_get(BASE + "/api.php?" + q))
+    data = json.loads(_get(BASE + "/api.php?" + q))
+    # MediaWiki signals errors as {"error": {...}} -- surface immediately
+    if isinstance(data, dict) and "error" in data:
+        raise RuntimeError("wiki api error: %s" % data["error"])
+    if isinstance(data, dict) and "warnings" in data:
+        # Warnings are not fatal but worth surfacing when debugging
+        pass
+    return data
 
 
 def pages_in(category):
@@ -44,18 +89,29 @@ def pages_in(category):
         if cont:
             kw["cmcontinue"] = cont
         d = api(**kw)
-        out += [c["title"] for c in d["query"]["categorymembers"]]
+        try:
+            members = d["query"]["categorymembers"]
+        except KeyError:
+            raise RuntimeError("wiki api missing categorymembers: %r" % d)
+        out += [c["title"] for c in members]
         cont = d.get("continue", {}).get("cmcontinue")
         if not cont:
-            return out
+            return sorted(set(out))
 
 
 def contents(titles):
     res = {}
     for i in range(0, len(titles), 40):
-        d = api(titles="|".join(titles[i:i + 40]), prop="revisions",
+        batch = titles[i:i + 40]
+        if not batch:
+            continue
+        d = api(titles="|".join(batch), prop="revisions",
                 rvprop="content", rvslots="main")
-        for p in d["query"]["pages"].values():
+        try:
+            pages = d["query"]["pages"]
+        except KeyError:
+            raise RuntimeError("wiki api missing pages: %r" % d)
+        for p in pages.values():
             try:
                 res[p["title"]] = p["revisions"][0]["slots"]["main"]["*"]
             except Exception:
@@ -76,9 +132,26 @@ def extract_template(text, name):
     template -- raise instead of returning None, so a later consumer that treats
     None as "this record legitimately has no infobox" cannot silently absorb a
     parse failure into that same bucket."""
-    i = text.find("{{" + name)
+    # Case-insensitive and underscore/space tolerant: wiki normalises both.
+    # Use a lower-cased scan so {{Infobox creature}} matches name "infobox creature".
+    low = text.lower()
+    needle = "{{" + name.lower()
+    # MediaWiki treats underscores and spaces as equivalent in template names
+    needle_sp = needle.replace("_", " ")
+    needle_us = needle.replace(" ", "_")
+    i = low.find(needle)
     if i < 0:
-        return None
+        i = low.find(needle_sp)
+    if i < 0:
+        i = low.find(needle_us)
+    if i < 0:
+        # Also accept optional whitespace between {{ and name
+        import re as _re
+        pat = _re.compile(r"\{\{\s*" + _re.escape(name) + r"\b", _re.I)
+        m = pat.search(text)
+        if m is None:
+            return None
+        i = m.start()
     depth, j = 0, i
     while j < len(text):
         if text.startswith("{{", j):
@@ -90,6 +163,9 @@ def extract_template(text, name):
             j += 2
             if depth == 0:
                 return text[i:j]
+            # Defensive: depth must not go negative for well-formed input
+            if depth < 0:
+                raise ValueError("unbalanced {{%s}} block, never closed: %r" % (name, text[i:i + 60]))
             continue
         j += 1
     raise ValueError("unbalanced {{%s}} block, never closed: %r" % (name, text[i:i + 60]))
@@ -101,20 +177,34 @@ def fields(block):
     if block is None:
         return {}
     inner = block[2:-2] if block.startswith("{{") and block.endswith("}}") else block
-    depth, cur, parts = 0, "", []
+    # Track a stack so [[ is closed by ]] and {{ by }}, not interchangeably.
+    stack, cur, parts = [], "", []
     k = 0
     while k < len(inner):
         if inner.startswith("{{", k) or inner.startswith("[[", k):
-            depth += 1
+            stack.append(inner[k:k + 2])
             cur += inner[k:k + 2]
             k += 2
             continue
-        if inner.startswith("}}", k) or inner.startswith("]]", k):
-            depth -= 1
+        if inner.startswith("}}", k):
+            if stack and stack[-1] == "{{":
+                stack.pop()
+            # Mismatched close still pops if anything is open, to avoid
+            # infinite depth that would hide real separators.
+            elif stack:
+                stack.pop()
             cur += inner[k:k + 2]
             k += 2
             continue
-        if inner[k] == "|" and depth == 0:
+        if inner.startswith("]]", k):
+            if stack and stack[-1] == "[[":
+                stack.pop()
+            elif stack:
+                stack.pop()
+            cur += inner[k:k + 2]
+            k += 2
+            continue
+        if inner[k] == "|" and not stack:
             parts.append(cur)
             cur = ""
         else:

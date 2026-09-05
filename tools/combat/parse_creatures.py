@@ -22,7 +22,8 @@ import wiki
 OUT = wiki.DATA
 
 # The Combat Moves table on a creature page transcludes each move as {{:Move Name}}.
-MOVE_RE = re.compile(r"\{\{:([^}|]+)\}\}")
+# Also matches {{:Move Name|param}} form; pipe terminates the name.
+MOVE_RE = re.compile(r"\{\{\s*:\s*([^}|]+?)\s*(?:\|[^}]*)?\}\}")
 
 
 def _norm_move(name):

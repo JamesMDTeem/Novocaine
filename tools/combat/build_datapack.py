@@ -54,9 +54,14 @@ def schools_used(records):
     openings and reduces -- the three fields that carry school vocabulary."""
     s = set()
     for r in records:
-        s.update(r.get("attack_types") or [])
-        s.update(r.get("openings") or [])
-        s.update(r.get("reduces") or [])
+        if not isinstance(r, dict):
+            continue
+        for key in ("attack_types", "openings", "reduces"):
+            v = r.get(key)
+            if isinstance(v, (list, tuple, set)):
+                s.update(x for x in v if isinstance(x, str))
+            elif isinstance(v, str) and v:
+                s.add(v)
     return s
 
 
@@ -103,14 +108,27 @@ def school_vocab_check(player_sections, animal_records):
 def main():
     problems = []
 
-    weapons, wbad = parse_gear.parse_weapons()
-    armor, abad = parse_gear.parse_armor()
-    creatures, noinfo, cbad = parse_creatures.parse()
-    animal, anbad, anmalformed, _anmismatches = parse_animal_moves.parse()
-    player, pbad = parse_player_moves.parse()
+    try:
+        weapons, wbad = parse_gear.parse_weapons()
+    except Exception as e:
+        weapons, wbad = [], ["parse_weapons crashed: %s" % e]
+    try:
+        armor, abad = parse_gear.parse_armor()
+    except Exception as e:
+        armor, abad = [], ["parse_armor crashed: %s" % e]
+    try:
+        creatures, noinfo, cbad = parse_creatures.parse()
+    except Exception as e:
+        creatures, noinfo, cbad = [], [], ["parse creatures crashed: %s" % e]
+    try:
+        animal, anbad, anmalformed, _anmismatches = parse_animal_moves.parse()
+    except Exception as e:
+        animal, anbad, anmalformed, _anmismatches = [], ["parse animal_moves crashed: %s" % e], [], []
+    try:
+        player, pbad = parse_player_moves.parse()
+    except Exception as e:
+        player, pbad = {}, ["parse player_moves crashed: %s" % e]
 
-    # noinfo (creature pages with no infobox: butterflies, chicks, etc) is EXPECTED and does
-    # NOT fail the build. Only genuine parse failures do.
     for label, bad in (
         ("weapons", wbad),
         ("armor", abad),
@@ -122,8 +140,15 @@ def main():
         if bad:
             problems.append("UNPARSED/MALFORMED %s: %s" % (label, bad))
 
-    problems += move_join_check(creatures, animal)
-    problems += school_vocab_check(player, animal)
+    # Defensive: if any parser returned non-list, join checks would throw
+    try:
+        problems += move_join_check(creatures, animal)
+    except Exception as e:
+        problems.append("move_join_check crashed: %s" % e)
+    try:
+        problems += school_vocab_check(player, animal)
+    except Exception as e:
+        problems.append("school_vocab_check crashed: %s" % e)
     problems += cross_check()
 
     if problems:
@@ -132,6 +157,12 @@ def main():
             print("  - %s" % p)
         sys.exit(1)
 
+    # Stone Axe correction: wiki says pen 10, live WeaponInfo measures 20% (0.20).
+    # The built data file carries the corrected value so the estimator does not
+    # refit against fabricated data. Keep fix in build so a rebuild does not regress.
+    for w in weapons:
+        if w.get("name") == "Stone Axe":
+            w["armorpen"] = {"raw": "20", "value": 20}
     OUT.mkdir(parents=True, exist_ok=True)
     writes = {
         "weapons.json": weapons,

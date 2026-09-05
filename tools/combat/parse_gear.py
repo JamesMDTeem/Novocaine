@@ -28,17 +28,24 @@ def _parse(category, build):
         try:
             text = wiki.load_fixture(wiki.safe_filename(title))
         except FileNotFoundError:
-            unparsed.append(title)
+            unparsed.append(title + " (missing fixture)")
+            continue
+        except OSError as e:
+            unparsed.append("%s (%s)" % (title, e))
             continue
         try:
             block = wiki.extract_template(text, "infobox metaobj")
-        except ValueError:
-            unparsed.append(title)
+        except ValueError as e:
+            unparsed.append("%s (malformed: %s)" % (title, e))
             continue
         if block is None:
-            unparsed.append(title)
+            unparsed.append(title + " (no infobox metaobj)")
             continue
-        records.append(build(title, wiki.fields(block)))
+        fields = wiki.fields(block)
+        if not fields:
+            unparsed.append(title + " (empty infobox)")
+            continue
+        records.append(build(title, fields))
     records.sort(key=lambda r: r["name"])
     return records, unparsed
 

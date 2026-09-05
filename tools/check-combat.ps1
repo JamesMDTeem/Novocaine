@@ -216,6 +216,9 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "`n== what a log is allowed to measure" -ForegroundColor Cyan
 Invoke-PyCheck 'fightlog_check.py' 'tools\combat\fightlog_check.py'
 
+Write-Host "`n== the pooled corpus on disk" -ForegroundColor Cyan
+Invoke-PyCheck 'pool_check.py' 'tools\combat\pool_check.py'
+
 Write-Host "`n== the estimators" -ForegroundColor Cyan
 Invoke-PyCheck 'estimate_check.py' 'tools\combat\estimate_check.py'
 

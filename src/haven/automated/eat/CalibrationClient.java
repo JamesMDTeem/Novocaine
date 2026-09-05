@@ -1,7 +1,6 @@
 package haven.automated.eat;
 
 import haven.automated.cookbook.FoodService;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -16,36 +15,58 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * Fetches the server-measured Eating Helper calibration - {@code GET /client/{token}/
- * eatcalibration} - the same way {@link CookbookClient} fetches the food catalog: off
- * {@link FoodService#scheduler}, cached for the session, same endpoint/token. This is what
- * {@link EatLogService}-side aggregation (see the plan and {@code EatObserver}'s upload queue)
- * exists to produce: a variety-coefficient table with real sample counts instead of the wiki's
- * unverified one, and a satiation resource-to-category map, pooled across every character and
- * every tenant member who has EatObserver enabled.
+ * Fetches the server-side Eating Helper calibration - {@code GET /client/{token}/eatcalibration} -
+ * the same way {@link CookbookClient} fetches the food catalog: off {@link FoodService#scheduler},
+ * cached for the session, same endpoint/token.
+ *
+ * What this fetches changed when the variety reduction stopped being a thing to measure. It used
+ * to be a coefficient table the client chose between the wiki's guesses and the server's pooled
+ * measurements with. The reduction is now a closed form ({@link EatPlanner#varietyStep}), so there
+ * is no table to serve and nothing to choose - the server instead replays the same pooled log
+ * <i>against</i> that form and reports how well it holds. The client cares about exactly one thing
+ * from that: whether it still holds. A residual that starts drifting means a game patch moved the
+ * constant, and the status line should say so rather than every plan quietly being wrong.
+ *
+ * The satiation resource-to-name map is unchanged and is the other half of the response.
  */
 public class CalibrationClient {
-    /** One variety-coefficient measurement for a hunger-level bucket. */
-    public static final class VarietySample {
-        public final double gmod;
-        public final double coefficient;
+    /**
+     * How the server's pooled eat log scores against {@link EatPlanner#varietyStep}. This is a
+     * check, not an input: nothing here feeds a plan.
+     */
+    public static final class VarietyResidual {
+        /** Cap-decrease events replayed. */
         public final int samples;
+        /** How many of those matched the formula for some integer m. */
+        public final int matched;
+        /** Mean absolute error, in cap points, over the matched events. */
+        public final double meanAbsError;
+        /** Median of {@code dcap^2 / (gmod * topStat)} over fresh-bar events; expected 0.4. */
+        public final double constant;
 
-        public VarietySample(double gmod, double coefficient, int samples) {
-            this.gmod = gmod;
-            this.coefficient = coefficient;
+        public VarietyResidual(int samples, int matched, double meanAbsError, double constant) {
             this.samples = samples;
+            this.matched = matched;
+            this.meanAbsError = meanAbsError;
+            this.constant = constant;
+        }
+
+        /** True when the pooled log still agrees with the formula the planner is using. */
+        public boolean holds() {
+            return samples <= 0
+                    || (matched >= samples * 0.98 && Math.abs(constant - EatPlanner.VARIETY_CONST) < 0.01);
         }
     }
 
     public static final class Calibration {
-        public final java.util.List<VarietySample> variety;
+        /** Null when the server has no eat records to check against yet. */
+        public final VarietyResidual varietyResidual;
         public final Map<String, String> satiationCategoryMap;
         public final int eatRecordsAnalyzed;
 
-        Calibration(java.util.List<VarietySample> variety, Map<String, String> satiationCategoryMap,
+        Calibration(VarietyResidual varietyResidual, Map<String, String> satiationCategoryMap,
                     int eatRecordsAnalyzed) {
-            this.variety = variety;
+            this.varietyResidual = varietyResidual;
             this.satiationCategoryMap = satiationCategoryMap;
             this.eatRecordsAnalyzed = eatRecordsAnalyzed;
         }
@@ -150,16 +171,14 @@ public class CalibrationClient {
     }
 
     private static Calibration parse(JSONObject o) {
-        java.util.List<VarietySample> variety = new java.util.ArrayList<>();
-        JSONArray varietyArr = o.optJSONArray("varietyCoefficients");
-        if (varietyArr != null) {
-            for (int i = 0; i < varietyArr.length(); i++) {
-                try {
-                    JSONObject v = varietyArr.getJSONObject(i);
-                    variety.add(new VarietySample(v.getDouble("gmod"), v.getDouble("coefficient"), v.getInt("samples")));
-                } catch (JSONException e) {
-                    // One malformed row shouldn't lose the rest.
-                }
+        VarietyResidual residual = null;
+        JSONObject r = o.optJSONObject("varietyResidual");
+        if (r != null) {
+            try {
+                residual = new VarietyResidual(r.getInt("samples"), r.getInt("matched"),
+                        r.getDouble("meanAbsError"), r.getDouble("constant"));
+            } catch (JSONException e) {
+                // A malformed residual costs the check, not the satiation map underneath it.
             }
         }
 
@@ -173,6 +192,6 @@ public class CalibrationClient {
             }
         }
 
-        return new Calibration(variety, satiationMap, o.optInt("eatRecordsAnalyzed", 0));
+        return new Calibration(residual, satiationMap, o.optInt("eatRecordsAnalyzed", 0));
     }
 }

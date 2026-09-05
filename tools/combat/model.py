@@ -11,7 +11,7 @@ forward model thousands of times while varying parameters, which Python does wel
 Java does awkwardly; the bot must evaluate the same model inside a frame budget, which
 Java does and Python cannot. See the ADR for the argument.
 
-Stdlib only. Every function here is pure.
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting. Every function here is pure.
 """
 
 import math
@@ -110,14 +110,13 @@ def agility_cooldown_factor(agi_me, agi_foe):
     not modified by relative agility."""
     if agi_me <= 0 or agi_foe <= 0:
         return 1.0
-    l = math.log(agi_me / agi_foe) / math.log(2.0)
+    l = math.log2(agi_me / agi_foe)
     l = max(-1.0, min(1.0, l))
     return 1.0 - (0.1 * l)
 
 
 def cooldown_ticks(base, mu_divides, mu, ip_scale, ip, is_attack, agi_me, agi_foe):
     """A move's cooldown in whole server ticks. Floors, and floors TWICE - see the Java."""
-    """A move's cooldown in whole server ticks."""
     cd = base
     if mu_divides and mu > 0:
         cd = math.floor(cd / mu)
@@ -144,10 +143,12 @@ def ticks_to_seconds(ticks):
 
 
 def _cbrt(x):
-    """Java's Math.cbrt is defined for negatives; Python's ** is not."""
-    if x < 0:
-        return -((-x) ** (1.0 / 3.0))
-    return x ** (1.0 / 3.0)
+    """Cube root, matching Java's Math.cbrt (defined for negatives).
+
+    math.cbrt is exact at integer cubes and C-implemented (Python 3.11+);
+    the prior **(1/3) form erred by ~4e-16 at 64 and similar.
+    """
+    return math.cbrt(x)
 
 
 def _round_half_up(x):

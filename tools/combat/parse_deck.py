@@ -9,7 +9,7 @@ weight, attack type, openings inflicted and reduced, damage, grievous fraction a
 base cooldown - plus how many levels of each move the character has bought and how
 many are in the deck, which nothing outside the client knows.
 
-Stdlib only. Reads dumps, writes one JSON file, and cross-checks against the
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting. Reads dumps, writes one JSON file, and cross-checks against the
 wiki-derived pack. Like build_datapack.py it collects every problem first and writes
 nothing if any survive, so a partial parse can never be mistaken for a good one.
 """
@@ -55,9 +55,9 @@ KNOWN = [
     "Initiative points", "Cooldown", "When attacked", "Opponents' initiative points",
 ]
 
-FIELD_RE = re.compile(r"^([A-Z][A-Za-z' ]{2,32}):\s*(.*)$")
-# "+15% Cornered", "+7.5% Off Balance", "20% - mu Striking"
-TERM_RE = re.compile(r"([+-]?\d+(?:\.\d+)?)\s*%\s*(.*)$")
+FIELD_RE = re.compile(r"^([A-Z][A-Za-z' \-,()]{2,40}):\s*(.*)$")
+# "+15% Cornered", "+7.5% Off Balance", "20% - mu Striking", "20% - \u00b5 Striking"
+TERM_RE = re.compile(r"([+-]?\d+(?:\.\d+)?)\s*%\s*(.*)$", re.UNICODE)
 
 
 def strip_markup(t):

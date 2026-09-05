@@ -16,7 +16,7 @@ This module does that separation and nothing else. It fits nothing and infers no
         if eng.clean:
             ...
 
-Stdlib only, like everything else here.
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting.
 """
 
 import glob
@@ -234,15 +234,20 @@ def read(path, opens=None):
     sheet. Supplying it makes contamination detection exact - see unattributed_rises.
     """
     log = Log(path)
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             try:
-                log.rows.append(json.loads(line))
+                obj = json.loads(line)
             except ValueError:
                 log.unparseable += 1
+                continue
+            if not isinstance(obj, dict):
+                log.unparseable += 1
+                continue
+            log.rows.append(obj)
 
     for r in log.rows:
         ev = r.get("ev")
@@ -930,23 +935,41 @@ def soak_pairs(eng):
     the armour's capacity. Those are kept, because they are the only hits that land
     inside the soft-soak ramp and so the only ones that can ever separate hard from soft.
     """
-    byt = {}
+    # Collect per-gob ARM/SHP rows sorted by timestamp, then cluster by gap <= 1 ms.
+    # The previous t//2 bucketing is equivalent for even/odd pairs but splits an
+    # ARM at 98933 and SHP at 98934 (different buckets) while joining 98932+98933.
+    # Clustering by sorted gap is boundary-independent and matches the stated 1 ms slack.
+    rows = []
     for d in eng.damage:
         if d.get("gob") != eng.gob:
             continue
         ch = d.get("ch")
         if ch not in ("ARM", "SHP"):
             continue
-        # One millisecond of slack: the two are usually stamped identically, but one
-        # boar hit split across 98932 and 98933.
-        key = d["t"] // 2
-        slot = byt.setdefault(key, {"t": d["t"], "ARM": 0, "SHP": 0})
-        slot[ch] += d["v"]
+        t = d.get("t")
+        if not isinstance(t, int):
+            try:
+                t = int(t)
+            except (TypeError, ValueError):
+                continue
+        v = d.get("v")
+        if not isinstance(v, (int, float)):
+            continue
+        rows.append((t, ch, v))
+    rows.sort(key=lambda r: r[0])
+    clusters = []
+    cur = None
+    for t, ch, v in rows:
+        if cur is None or t - cur["hi"] > 1:
+            cur = {"t": t, "hi": t, "ARM": 0, "SHP": 0}
+            clusters.append(cur)
+        cur["hi"] = max(cur["hi"], t)
+        cur[ch] += v
     out = []
-    for _k, v in sorted(byt.items()):
-        if (v["ARM"] + v["SHP"]) > 0:
-            out.append({"t": v["t"], "soaked": v["ARM"], "shp": v["SHP"],
-                        "raw": v["ARM"] + v["SHP"]})
+    for c in clusters:
+        if (c["ARM"] + c["SHP"]) > 0:
+            out.append({"t": c["t"], "soaked": c["ARM"], "shp": c["SHP"],
+                        "raw": c["ARM"] + c["SHP"]})
     return out
 
 
@@ -996,7 +1019,7 @@ def find_log_dirs(root=None):
                             parts = line.split('"')
                             if len(parts) >= 4:
                                 roots.append(parts[3].replace("\\\\", os.sep))
-            except OSError:
+            except (OSError, ValueError):
                 pass
         for r in roots:
             out.extend(glob.glob(os.path.join(r, "steamapps", "workshop", "content",
@@ -1011,8 +1034,14 @@ def find_log_dirs(root=None):
         dirs.append(d)
 
     def newest(d):
-        files = glob.glob(os.path.join(d, "*.jsonl"))
-        return max((os.path.getmtime(f) for f in files), default=0)
+        try:
+            files = glob.glob(os.path.join(d, "*.jsonl"))
+        except OSError:
+            return 0
+        try:
+            return max((os.path.getmtime(f) for f in files), default=0)
+        except OSError:
+            return 0
 
     dirs.sort(key=newest, reverse=True)
     return dirs
@@ -1024,6 +1053,35 @@ def default_logs(root=None):
     paths = []
     for d in dirs:
         paths.extend(sorted(glob.glob(os.path.join(d, "*.jsonl"))))
+    # Pooled corpus pulled from the team server by tools/combat/sync_pool.py.
+    # Missing dir = no files, no error, so fresh checkouts are unaffected.
+    if root is None:
+        root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                            "..", ".."))
+    pool_dir = os.path.join(root, "data", "combat", "pool")
+    pool_files = sorted(glob.glob(os.path.join(pool_dir, "*.jsonl")))
+    if pool_files:
+        # Dedup against local files by fightId stem. Pool filenames carry a
+        # characterId- prefix (sanitized to [A-Za-z0-9_-]), so a pool copy and
+        # its local original must count ONCE. Compare suffix after hyphen boundary:
+        # pool stem "char-fightId" endswith "-localStem" means same fightId.
+        local_stems = set(os.path.splitext(os.path.basename(p))[0] for p in paths)
+        deduped = []
+        for pf in pool_files:
+            stem = os.path.splitext(os.path.basename(pf))[0]
+            # pool stem equals local stem, or ends with "-localStem"
+            is_dup = False
+            if stem in local_stems:
+                is_dup = True
+            else:
+                for ls in local_stems:
+                    if stem == ls or stem.endswith("-" + ls):
+                        is_dup = True
+                        break
+            if not is_dup:
+                deduped.append(pf)
+        # Sorted already; extend after dedup to keep overall sorted order per source
+        paths.extend(deduped)
     return paths, dirs
 
 

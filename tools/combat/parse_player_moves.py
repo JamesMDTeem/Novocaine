@@ -89,7 +89,9 @@ def _cells(chunk):
 
 def _name(cell):
     """The move cell is '[[File:icon_x.png|64px]]<br>Name', sometimes italicised."""
-    tail = cell.split("<br>")[-1]
+    # Handle <br>, <br/>, <br />, case-insensitive, with possible attributes
+    parts = re.split(r"<br\s*/?>", cell, flags=re.I)
+    tail = parts[-1] if parts else cell
     return tail.replace("''", "").strip()
 
 
@@ -106,9 +108,10 @@ def _openings_target(cell):
     """Who the Openings cell's schools land on. Only two rows in the fixture (Restorations:
     Flex, Yield Ground) say so explicitly; everything else is None, not guessed."""
     cell = cell or ""
-    if "On you:" in cell:
+    low = cell.lower()
+    if "on you:" in low:
         return "self"
-    if "On opponent:" in cell:
+    if "on opponent:" in low:
         return "opponent"
     return None
 

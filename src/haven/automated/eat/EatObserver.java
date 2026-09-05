@@ -77,14 +77,21 @@ import java.util.concurrent.TimeUnit;
  * "eat", "trig", "satiation" and "glut" records - not "food", which stays purely local - are
  * additionally queued and uploaded in batches to the mapper server's
  * {@code /client/{token}/eatlog}, tagged with the character that produced them. The server pools
- * these across every character and tenant member into IEatLogService's calibration: the same
- * variety-coefficient and satiation-category measurements this class's own doc above describes,
- * done once centrally with far more samples than any one character's local log can supply, and
- * served back to {@code EatHelperWindow} instead of the hardcoded wiki fallback. Uploads reuse the
+ * these across every character and tenant member, which is what makes them worth more than one
+ * character's local file: the variety formula {@code EatPlanner} now uses was settled against that
+ * pool, and the server keeps replaying it to check the formula still holds. Uploads reuse the
  * cookbook endpoint/token already configured for food uploads - nothing new to set up - and simply
  * don't happen while that's unconfigured, same as {@link CookbookClient}. "glut" uploads only at
  * change-points, which is what makes shipping it affordable: satiety is flat between events, so
  * the changes are the whole curve.
+ *
+ * <p>That last clause was aspirational for longer than it should have been. The client has always
+ * queued "glut", but the server's ingest accepted only "eat", "trig" and "satiation" and silently
+ * counted the rest as skipped - 13% of everything uploaded, and by unlucky coincidence the exact
+ * stream needed to measure the weekly hunger reduction, which is why the first reduction anyone
+ * tried to measure existed only in one character's local file. The two ends agree now; if this
+ * list and {@code EatLogService.IngestAsync}'s type filter ever diverge again, the symptom is a
+ * partial "n/m stored" in the server log rather than an error anywhere.
  *
  * <p>All per-character state lives in {@link Session}, keyed by {@link GameUI}. It used to be
  * static, which is fine for one client but wrong for this fork, which multi-boxes: every client
@@ -423,6 +430,11 @@ public class EatObserver {
             raw.put("ts", now);
             raw.put("glut", glut);
             raw.put("gmod", gmod);
+            // BAttrWnd hands us lglut alongside glut and we used to drop it. It costs one field and
+            // it is the only other number the server states about the hunger meter, so log it -
+            // the weekly reduction is the case where having both sides of the meter matters and
+            // there is no way to go back and collect it after the fact.
+            raw.put("lglut", lglut);
             stamp(sn, raw);
             writeLocal(sn, raw);
             if (changed) {

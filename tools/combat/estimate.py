@@ -14,7 +14,7 @@ estimate with the uncertainty quietly dropped. An interval that says "somewhere 
 40" is a useful thing to plan a fight around; a confident 38 that is really "somewhere
 below 40" is not.
 
-Stdlib only.
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting.
 """
 
 import glob

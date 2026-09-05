@@ -744,6 +744,32 @@
     "agi": null,
     "armor": null,
     "baseq": {
+      "raw": "25",
+      "value": 25
+    },
+    "deadly": false,
+    "fhp": {
+      "raw": "40",
+      "value": 40
+    },
+    "hp": {
+      "raw": "85",
+      "value": 85
+    },
+    "mc": null,
+    "moves": [
+      "Fell Scratch",
+      "Feather Flurry",
+      "Bristle"
+    ],
+    "name": "Garefowl",
+    "str": null,
+    "ua": null
+  },
+  {
+    "agi": null,
+    "armor": null,
+    "baseq": {
       "raw": "10",
       "value": 10
     },

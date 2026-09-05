@@ -130,8 +130,8 @@ def gear():
 def creatures():
     print("\ncreatures")
     recs, noinfo, malformed = parse_creatures.parse()
-    check("creature records", len(recs), 81)
-    check("pages without infobox", len(noinfo), 34)
+    check("creature records", len(recs), 82)
+    check("pages without infobox", len(noinfo), 33)
     check("malformed infobox pages", len(malformed), 0)
     bear = [c for c in recs if c["name"] == "Bear"][0]
     check("bear hp", bear["hp"]["value"], 850)
@@ -143,7 +143,7 @@ def creatures():
     # Hidden stats are the estimator's job, not the wiki's.
     check("hidden stats null", (bear["ua"], bear["mc"], bear["str"], bear["agi"]),
           (None, None, None, None))
-    # Only 20 of 81 creature infoboxes carry armour; the rest must be null, not 0.
+    # Only 20 of 82 creature infoboxes carry armour; the rest must be null, not 0.
     with_armor = [c for c in recs if c["armor"] is not None]
     check("creatures with armor field", len(with_armor), 20)
     # Some pages transclude a move in lowercase (Lynx: {{:bristle}}); MediaWiki resolves that

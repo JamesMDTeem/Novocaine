@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class CombatRecorder {
     private static final AtomicLong seq = new AtomicLong(0);
     private static volatile CombatLogWriter writer = null;
+    private static volatile Path curPath = null;
     private static volatile long t0 = 0;
     private static volatile String lastSample = null;
     /* When the last state line went out, for the heartbeat in sample(). */
@@ -168,6 +169,7 @@ public final class CombatRecorder {
             Path p = Paths.get(Client.gameDir, "CombatLogs",
                                t0 + "-" + safe + "-" + seq.incrementAndGet() + ".jsonl");
             writer = new CombatLogWriter(p, 4096);
+            curPath = p;
         } catch(Exception e) {
             writer = null;
             return;
@@ -769,16 +771,24 @@ public final class CombatRecorder {
         CombatLogWriter w = writer;
         if(w == null)
             return;
+        Path path = curPath;
         try {
             w.offer(CombatEvent.end(now(), outcome, w.dropped(), !w.alive()));
         } catch(Exception e) {
             /* never propagate */
         }
         writer = null;
+        curPath = null;
         try {
             w.close();
         } catch(Exception e) {
             /* never propagate */
+        }
+        try {
+            if(path != null)
+                CombatLogSync.enqueue(path);
+        } catch(Exception e) {
+            /* never propagate — upload is best-effort */
         }
     }
 }

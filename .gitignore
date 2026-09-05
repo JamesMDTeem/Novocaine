@@ -69,6 +69,10 @@ reasonix.toml
 # Agent runtime scratch (evidence, notepads, run state), same category as .claude/.
 .omo/
 
+# Pooled corpus pulled from the team server by tools/combat/sync_pool.py.
+# Each file is a fight re-exported from the server; the manifest tracks
+# receivedAt for paging. Nothing here is source.
+data/combat/pool/
 # Parsed from a client combat-deck dump. The move stats in it are universal, but the
 # file also carries the character name and that character's bought and equipped move
 # levels, and this repository is public. Regenerate with tools/combat/parse_deck.py.

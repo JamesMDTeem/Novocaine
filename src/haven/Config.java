@@ -1294,6 +1294,10 @@ public class Config {
             if (automapper != null)
                 automapper.SetPlayerName(OptWnd.liveLocationNameTextEntry.buf.line() + " (" + playername + ")");
         }
+		try {
+			haven.automated.combat.CombatLogSync.backfill();
+		} catch(Exception e) {
+		}
 	}
 
 	public static final Map<String, String> ORE_FULL_NAMES = new HashMap<>();

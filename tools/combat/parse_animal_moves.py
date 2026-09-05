@@ -69,7 +69,14 @@ def _schools_in(fragment):
     # though its label is "Off Balance").
     if not fragment:
         return []
-    return _dedup(m.lower() for m in ROBCOLOR_RE.findall(fragment) if m.lower() in SCHOOLS)
+    raw = [m.lower().strip() for m in ROBCOLOR_RE.findall(fragment)]
+    # Surface unknown school names rather than silently dropping them
+    unknown = [m for m in raw if m not in SCHOOLS]
+    if unknown:
+        # Keep trace via stderr so build doesn't silently absorb a new school
+        import sys as _sys
+        _sys.stderr.write("unknown school(s) %r in fragment %r\n" % (unknown, fragment[:80]))
+    return _dedup(m for m in raw if m in SCHOOLS)
 
 
 def _bullet(text, label):
@@ -106,12 +113,23 @@ def _from_template(title, block, mismatches):
     move_param = f.get("move", "").strip()
     if move_param and move_param != title:
         mismatches.append((title, move_param))
-    atk = _dedup(COLOUR_TO_SCHOOL.get(f.get(k, "").strip().lower())
-                 for k in ("inf1", "inf2", "inf3", "inf4"))
-    opn = _dedup(COLOUR_TO_SCHOOL.get(f.get(k, "").strip().lower())
-                 for k in ("opn1", "opn2", "opn3", "opn4"))
-    rdc = _dedup(COLOUR_TO_SCHOOL.get(f.get(k, "").strip().lower())
-                 for k in ("rdc1", "rdc2", "rdc3", "rdc4"))
+    def _colour_schools(keys):
+        out = []
+        for k in keys:
+            v = f.get(k, "").strip()
+            if not v:
+                continue
+            mapped = COLOUR_TO_SCHOOL.get(v.lower())
+            if mapped is None:
+                import sys as _sys
+                _sys.stderr.write("unknown colour %r in %s %s\n" % (v, title, k))
+                continue
+            if mapped not in out:
+                out.append(mapped)
+        return out
+    atk = _colour_schools(("inf1", "inf2", "inf3", "inf4"))
+    opn = _colour_schools(("opn1", "opn2", "opn3", "opn4"))
+    rdc = _colour_schools(("rdc1", "rdc2", "rdc3", "rdc4"))
     raw_note = f.get("note", "")
     m = NOTE_IP_RE.search(raw_note)
     ip = wiki.num(m.group(1)) if m else None

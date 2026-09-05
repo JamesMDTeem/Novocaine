@@ -685,7 +685,7 @@
     "identified": false,
     "n": 352,
     "soft": null,
-    "total_hi": 70,
+    "total_hi": 69,
     "total_lo": 68,
     "wiki": 65
    },
@@ -1107,12 +1107,12 @@
     "hi": 60.2,
     "lo": 49.4,
     "n": 4,
-    "our_agility": 129
+    "our_agility": 131
    },
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 86,
+    "n": 98,
     "soft": null,
     "total_hi": 15,
     "total_lo": 15,
@@ -1127,14 +1127,14 @@
    "defence_weight_late": {
     "against": 154.4,
     "agrees": false,
-    "depth": 197,
+    "depth": 208,
     "hi": 169.9,
     "lo": 158.0,
-    "n": 204
+    "n": 215
    },
-   "engagements": 66,
+   "engagements": 67,
    "hitpoints": {
-    "from": "died at 497 with a last hit of 214, so that one had 283 to 497; died at 562 with a last hit of 315, so that one had 247 to 562; died at 499 with a last hit of 256, so that one had 243 to 499; died at 517 with a last hit of 94, so that one had 423 to 517; died at 464 with a last hit of 178, so that one had 286 to 464; died at 608 with a last hit of 170, so that one had 438 to 608; died at 475 with a last hit of 238, so that one had 237 to 475; died at 454 with a last hit of 172, so that one had 282 to 454; died at 451 with a last hit of 33, so that one had 418 to 451; survived taking 321, so that one had more than that; died at 677 with a last hit of 236, so that one had 441 to 677; died at 501 with a last hit of 118, so that one had 383 to 501; died at 559 with a last hit of 280, so that one had 279 to 559; died at 659 with a last hit of 242, so that one had 417 to 659; died at 504 with a last hit of 110, so that one had 394 to 504; died at 549 with a last hit of 128, so that one had 421 to 549; died at 607 with a last hit of 207, so that one had 400 to 607; died at 476 with a last hit of 264, so that one had 212 to 476; died at 548 with a last hit of 106, so that one had 442 to 548; died at 597 with a last hit of 219, so that one had 378 to 597; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 508 with a last hit of 185, so that one had 323 to 508; died at 529 with a last hit of 137, so that one had 392 to 529; survived taking 367, so that one had more than that; died at 514 with a last hit of 209, so that one had 305 to 514; died at 453 with a last hit of 15, so that one had 438 to 453; died at 575 with a last hit of 247, so that one had 328 to 575; died at 537 with a last hit of 157, so that one had 380 to 537",
+    "from": "died at 497 with a last hit of 214, so that one had 283 to 497; died at 562 with a last hit of 315, so that one had 247 to 562; died at 499 with a last hit of 256, so that one had 243 to 499; died at 517 with a last hit of 94, so that one had 423 to 517; died at 464 with a last hit of 178, so that one had 286 to 464; died at 608 with a last hit of 170, so that one had 438 to 608; died at 475 with a last hit of 238, so that one had 237 to 475; died at 573 with a last hit of 138, so that one had 435 to 573; died at 454 with a last hit of 172, so that one had 282 to 454; died at 451 with a last hit of 33, so that one had 418 to 451; survived taking 321, so that one had more than that; died at 677 with a last hit of 236, so that one had 441 to 677; died at 501 with a last hit of 118, so that one had 383 to 501; died at 559 with a last hit of 280, so that one had 279 to 559; died at 659 with a last hit of 242, so that one had 417 to 659; died at 504 with a last hit of 110, so that one had 394 to 504; died at 549 with a last hit of 128, so that one had 421 to 549; died at 607 with a last hit of 207, so that one had 400 to 607; died at 476 with a last hit of 264, so that one had 212 to 476; died at 548 with a last hit of 106, so that one had 442 to 548; died at 597 with a last hit of 219, so that one had 378 to 597; survived taking 63, so that one had more than that; died at 483 with a last hit of 245, so that one had 238 to 483; died at 508 with a last hit of 185, so that one had 323 to 508; died at 529 with a last hit of 137, so that one had 392 to 529; survived taking 367, so that one had more than that; died at 514 with a last hit of 209, so that one had 305 to 514; died at 453 with a last hit of 15, so that one had 438 to 453; died at 575 with a last hit of 247, so that one had 328 to 575; died at 537 with a last hit of 157, so that one had 380 to 537",
     "hi": 677,
     "lo": 212,
     "observed_hi": 677,
@@ -1151,45 +1151,45 @@
    ],
    "name": "boar",
    "policy": {
-    "attack_share_above_0_ip": 0.659,
-    "attack_share_at_0_ip": 0.904,
+    "attack_share_above_0_ip": 0.67,
+    "attack_share_at_0_ip": 0.909,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
-     73,
-     85
+     77,
+     88
     ],
     "mix": [
      [
       "Mule Kick",
-      0.5
+      0.515
      ],
      [
       "Bear Down",
-      0.274
+      0.269
      ],
      [
       "Roar of the Wild",
-      0.171
+      0.164
      ],
      [
       "Bristle",
-      0.049
+      0.047
      ],
      [
       "Blood & Gore",
       0.006
      ]
     ],
-    "n": 164,
-    "solo_n": 71
+    "n": 171,
+    "solo_n": 78
    },
    "relative_speed": {
     "hi": 45.5,
     "lo": 38.3,
     "measured": true,
     "median": 40.7,
-    "n": 7969,
+    "n": 8423,
     "our_top": 58.9,
     "we_outrun_it": true
    },
@@ -1214,28 +1214,28 @@
      "coef": 7.0,
      "hi": 100.0,
      "lo": 2.6,
-     "n": 18
+     "n": 21
     },
     "flees_below": null,
     "period": {
      "dropped": 1,
-     "hi": 68.0,
+     "hi": 112.7,
      "lo": 22.2,
      "median": 39.0,
      "modes": [
       39
      ],
-     "n": 132,
-     "ticks": 40.8
+     "n": 138,
+     "ticks": 41.3
     },
     "pressure": {
-     "blue": 3.83,
+     "blue": 3.72,
      "green": 0.0,
-     "red": 0.14,
-     "yellow": 7.0
+     "red": 0.13,
+     "yellow": 7.13
     },
     "pressure_against": 266.0,
-    "pressure_n": 61
+    "pressure_n": 68
    }
   },
   {
@@ -2417,10 +2417,10 @@
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 364,
+    "n": 362,
     "soft": null,
     "total_hi": 68,
-    "total_lo": 66,
+    "total_lo": 67,
     "wiki": 65
    },
    "defence_weight": {
@@ -3115,7 +3115,7 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 293,
+    "n": 292,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,

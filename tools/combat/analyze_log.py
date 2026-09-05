@@ -3,7 +3,7 @@
 
     python tools/combat/analyze_log.py bin/CombatLogs/*.jsonl
 
-Stdlib only, like every other tool here. This reads logs; it never writes to the
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy/matplotlib (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting. This reads logs; it never writes to the
 data pack, and it never fills in a value the log did not record. Anything it
 could not determine is printed as "?" rather than guessed.
 
@@ -36,15 +36,20 @@ COLOURS = ("green", "blue", "yellow", "red")
 
 def load(path):
     rows, bad = [], 0
-    with open(path, "r", encoding="utf-8") as f:
+    with open(path, "r", encoding="utf-8", errors="replace") as f:
         for line in f:
             line = line.strip()
             if not line:
                 continue
             try:
-                rows.append(json.loads(line))
+                obj = json.loads(line)
             except ValueError:
                 bad += 1
+                continue
+            if not isinstance(obj, dict):
+                bad += 1
+                continue
+            rows.append(obj)
     return rows, bad
 
 
@@ -249,9 +254,7 @@ def weapon_of(rows):
         hit = byname.get(_norm(g["res"].split("/")[-1]))
         if hit is not None:
             return (hit, g.get("ql") or 0.0, g["res"])
-    # Nothing matched: say which slots were looked at, so a miss is visible.
-    held = [g["res"].split("/")[-1] for r in [0] for g in
-            [x for x in rows if x.get("ev") == "gear"]]
+    held = [g["res"].split("/")[-1] for g in rows if g.get("ev") == "gear" and g.get("res")]
     return ("unmatched", 0.0, ",".join(held[:4])) if held else None
 
 

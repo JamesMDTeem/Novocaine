@@ -69,9 +69,9 @@ def end(t=9999):
 
 def write(rows):
     fd, path = tempfile.mkstemp(suffix=".jsonl")
-    with os.fdopen(fd, "w", encoding="utf8") as f:
+    with os.fdopen(fd, "w", encoding="utf-8", errors="replace") as f:
         for r in rows:
-            f.write(json.dumps(r) + "\n")
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
     return path
 
 

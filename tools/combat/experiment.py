@@ -36,7 +36,7 @@ them do. That also means an experiment can be decisive on paper and fragile in f
 one candidate predicts 23.48 ticks and another 23.52 they differ as integers, but any
 small error in the base cooldown flips the answer. Both are reported, separately.
 
-Stdlib only.
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting.
 """
 
 import json
