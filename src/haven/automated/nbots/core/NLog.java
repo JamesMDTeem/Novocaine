@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.ByteBuffer;
+import java.nio.channels.SeekableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -117,23 +119,61 @@ public class NLog {
     }
 
     /**
+     * Upper bound on how much of a log is ever read in order to trim it. A full
+     * read of a hundred-megabyte log on the calling thread froze the UI for half
+     * a second (measured 483ms inside wtick: PlgobWatch.heartbeat -> log ->
+     * append -> trim, reading a 164MB vmem.log via Files.readAllLines), so
+     * trimming only ever looks at the tail of the file.
+     */
+    private static final int TRIM_TAIL_CAP = 2 * 1024 * 1024;
+
+    /** Banner prefix, kept in one place so the trim scan cannot drift from {@link #banner()}. */
+    private static final byte[] BANNER_PREFIX = "-- launch".getBytes(StandardCharsets.US_ASCII);
+
+    /**
      * Cuts a log file down to its last {@link #KEEP_LAUNCHES} launch blocks, so the current launch's
      * banner lands right after them and older runs fall off the end. A launch block is everything
      * between two banner lines; banner lines are the ones starting with {@link #banner()}'s prefix.
+     *
+     * Only the last {@link #TRIM_TAIL_CAP} bytes are ever read. When the tail holds at least
+     * {@link #KEEP_LAUNCHES} banners their positions are exact, so trimming from the oldest of
+     * them keeps precisely the last few launches. When it holds fewer (one launch block larger
+     * than the cap, or a small file) trimming is skipped for this launch rather than guessing -
+     * an untrimmed log is harmless, a guessed cut could eat the current run.
      */
     private static void trimToRecentLaunches(Path file) {
         if (!Files.exists(file))
             return;
         try {
-            List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+            long size = Files.size(file);
+            long start = Math.max(0, size - TRIM_TAIL_CAP);
+            byte[] tail = new byte[(int) (size - start)];
+            try (SeekableByteChannel ch = Files.newByteChannel(file, StandardOpenOption.READ)) {
+                ch.position(start);
+                ByteBuffer buf = ByteBuffer.wrap(tail);
+                while (buf.hasRemaining() && (ch.read(buf) != -1)) {
+                }
+            }
             List<Integer> banners = new ArrayList<>();
-            for (int i = 0; i < lines.size(); i++)
-                if (lines.get(i).startsWith("-- launch"))
+            for (int i = 0; i + BANNER_PREFIX.length <= tail.length; i++) {
+                if ((i > 0) && (tail[i - 1] != '\n'))
+                    continue;
+                boolean match = true;
+                for (int j = 0; j < BANNER_PREFIX.length; j++) {
+                    if (tail[i + j] != BANNER_PREFIX[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match)
                     banners.add(i);
+            }
             int extra = banners.size() - KEEP_LAUNCHES;
             if (extra > 0) {
                 int from = banners.get(banners.size() - KEEP_LAUNCHES);
-                Files.write(file, lines.subList(from, lines.size()), StandardCharsets.UTF_8);
+                byte[] keep = new byte[tail.length - from];
+                System.arraycopy(tail, from, keep, 0, keep.length);
+                Files.write(file, keep, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
             }
         } catch (IOException ignore) {
             // Trimming is best-effort; a locked/read-only log should not stop the client.
