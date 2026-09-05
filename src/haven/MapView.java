@@ -2162,9 +2162,15 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	/* Stamped before anything that can throw, so a tick that dies on the way to the camera
 	 * is distinguishable from one that never started. */
 	plgobwatch.enter();
+	/* Hitch probe: timestamp each block below and report the owner when a single tick
+	 * exceeds 50ms. Gated on the diagnostic flag, so zero extra cost when off. */
+	boolean wtdbg = haven.automated.nbots.core.NLog.diag();
+	long w0 = wtdbg ? System.nanoTime() : 0;
 	super.tick(dt);
+	long w1 = wtdbg ? System.nanoTime() : 0;
 	checkload();
 	plgobwatch.tick(this, dt);
+	long w2 = wtdbg ? System.nanoTime() : 0;
 	camload = null;
 	try {
 	    if((shake = shake * Math.pow(100, -dt)) < 0.01)
@@ -2177,6 +2183,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    e.boostprio(5);
 	    camload = e;
 	}
+	long w3 = wtdbg ? System.nanoTime() : 0;
 	/* The camera object is the same instance on every frame while the transform inside it
 	 * changes on every frame, and PView.basic only rebuilds the composed pipe state when the
 	 * op it is handed compares unequal to the one before. Handing it the camera therefore never
@@ -2206,6 +2213,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	amblight();
 	updsmap(amblight);
 	updweather();
+	long w4 = wtdbg ? System.nanoTime() : 0;
 	synchronized(glob.map) {
 	    terrain.tick();
 	    oltick();
@@ -2213,12 +2221,20 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		gridlines.tick();
 	    clickmap.tick();
 	}
+	long w5 = wtdbg ? System.nanoTime() : 0;
 	Loader.Future<Plob> placing = this.placing;
 	if((placing != null) && placing.done()) {
 	    Plob ob = placing.get();
 	    synchronized(ob) {
 		ob.ctick(dt);
 	    }
+	}
+	long w6 = wtdbg ? System.nanoTime() : 0;
+	if(wtdbg && ((w6 - w0) > 50000000L)) {
+	    haven.automated.nbots.core.NLog.diag("wtick.log", String.format(
+		"[WTICK-a4f2] slow MapView.tick total=%.1fms super=%.1f watch=%.1f cam=%.1f lightcam=%.1f terrain=%.1f place=%.1f",
+		(w6 - w0) / 1e6, (w1 - w0) / 1e6, (w2 - w1) / 1e6, (w3 - w2) / 1e6,
+		(w4 - w3) / 1e6, (w5 - w4) / 1e6, (w6 - w5) / 1e6));
 	}
 
 	if (OptWnd.continuousWalkingCheckBox.a && holdingLeftClick) {
