@@ -26,6 +26,38 @@ import os
 COLOURS = ("green", "blue", "yellow", "red")
 GREEN, BLUE, YELLOW, RED = 0, 1, 2, 3
 
+BOW_RES = frozenset({"huntersbow", "rangersbow"})
+
+# Archery cards, by move name as logged. EMPTY: moves_sheet.json names no
+# archery attack, and no true ranged log has been seen yet - logs -30 and -58
+# hold a Hunter's bow but fight melee cards throughout (Quick Barrage x9,
+# Full Circle, Take Aim; openings rose to 31 and 15), so a held bow is NOT a
+# ranged fight. Populate from the first real archer log (Japeck/Pikapolonica);
+# the BOW_RES pin in fightlog_check will demand it the moment pool logs arrive.
+RANGED_MOVES = frozenset()
+
+
+def is_ranged(rows):
+    """Whether this log fought with ranged attacks.
+
+    True when any of OUR move events names a card in RANGED_MOVES. Keyed on
+    moves used, not the weapon held: a bow in the hands changes nothing about
+    melee cards (logs -30/-58 prove it), while the damage channel is
+    weapon-independent either way - damage taken from the foe and damage dealt
+    both still show up and stay usable. Only the openings-gain inversions need
+    a real ranged fight excluded, and only a ranged move marks one.
+    """
+    # Accept a Log object (has .rows) or an iterable of row dicts.
+    raw = getattr(rows, "rows", rows)
+    for r in raw or []:
+        if not isinstance(r, dict):
+            continue
+        if r.get("ev") != "move" or r.get("actor") != "me":
+            continue
+        if (r.get("name") or r.get("move")) in RANGED_MOVES:
+            return True
+    return False
+
 # A move and the damage it caused arrive as separate messages a few milliseconds apart,
 # in either order, so the pairing window is symmetric.
 PAIR_MS = 150

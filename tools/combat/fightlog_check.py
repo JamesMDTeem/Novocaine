@@ -497,6 +497,72 @@ def sfx_and_outcome():
     print("        outcome killed/fled vs unknown split reported per engagement as explicit field")
 
 
+def ranged_routing():
+    print("\nranged routing (bows have no openings, raw-damage-only scaling)")
+    # BOW_RES must cover every weapons.json name containing 'bow' so a third
+    # bow added to the wiki fails loudly instead of leaking into melee stats.
+    import re
+    wk_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(
+        os.path.abspath(__file__)))), "data", "combat", "weapons.json")
+    # Fallback to estimate.ROOT layout when run from tools/combat.
+    try:
+        import estimate as _est
+        wk_path = os.path.join(_est.ROOT, "data", "combat", "weapons.json")
+    except Exception:
+        pass
+    try:
+        with open(wk_path, "r", encoding="utf-8", errors="replace") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        doc = []
+    rows = doc if isinstance(doc, list) else sum(
+        (v for v in doc.values() if isinstance(v, list)), [])
+    bow_names = [r.get("name") for r in rows if isinstance(r, dict)
+                 and r.get("name") and "bow" in (r.get("name") or "").lower()]
+    bow_keys = set(re.sub(r"[^a-z0-9]", "", (n or "").lower()) for n in bow_names)
+    check("BOW_RES covers every weapons.json bow", fightlog.BOW_RES, frozenset(bow_keys))
+
+    # A held bow is NOT a ranged fight: logs -30/-58 hold a Hunter's bow
+    # yet fight Quick Barrage / Full Circle / Take Aim throughout with real
+    # gains. Only a ranged MOVE marks a ranged log; RANGED_MOVES is empty
+    # until the first true archer log names an archery card.
+    def gear(t, res):
+        return {"ev": "gear", "t": t, "res": res, "ql": 10}
+    bow_rows = [begin(), gear(1, "gfx/invobjs/huntersbow"),
+                state(10), move(20), dmg(21, FOE, "SHP", 5),
+                state(30, foe=(0, 0, 0, 10)), end()]
+    sword_rows = [begin(), gear(1, "gfx/invobjs/bronzesword"),
+                  state(10), move(20), dmg(21, FOE, "SHP", 5),
+                  state(30, foe=(0, 0, 0, 10)), end()]
+    bow_log = load(bow_rows)
+    sword_log = load(sword_rows)
+    check("bow-held melee fight is not ranged", fightlog.is_ranged(bow_log), False)
+    check("sword fight is not ranged", fightlog.is_ranged(sword_log), False)
+    # Also via raw rows, not just Log.
+    check("bow-held melee rows not ranged", fightlog.is_ranged(bow_rows), False)
+    check("sword rows not ranged", fightlog.is_ranged(sword_rows), False)
+    # Melee collectors must KEEP a bow-held melee fight: its gains are real
+    # melee gains, and only ranged moves route a log out.
+    try:
+        import estimate as _est2
+        bow_path = write(bow_rows)
+        sword_path = write(sword_rows)
+        try:
+            bow_res = _est2.collect([bow_path])
+            sword_res = _est2.collect([sword_path])
+            bow_per = bow_res[0] if isinstance(bow_res, tuple) else bow_res
+            sword_per = sword_res[0] if isinstance(sword_res, tuple) else sword_res
+            bow_eng = sum(v["engagements"] for v in bow_per.values())
+            sword_eng = sum(v["engagements"] for v in sword_per.values())
+            check("melee collect() keeps bow-held melee fight", bow_eng > 0, True)
+            check("melee collect() keeps sword fight", sword_eng > 0, True)
+        finally:
+            os.unlink(bow_path)
+            os.unlink(sword_path)
+    except Exception as e:
+        check("collect ranged gate probe failed: %r" % (e,), False, True)
+
+
 def main():
     segmentation()
     contamination()
@@ -507,6 +573,7 @@ def main():
     client_signals()
     predictions()
     sfx_and_outcome()
+    ranged_routing()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

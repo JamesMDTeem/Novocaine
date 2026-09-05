@@ -206,6 +206,8 @@ def measure_mu(logs=None):
                 recs = [json.loads(ln) for ln in f if ln.strip()]
         except (OSError, ValueError):
             continue
+        if fightlog.is_ranged(recs):  # ranged: no openings, melee instruments do not apply
+            continue
         wall = next((r.get("wall") for r in recs if r.get("ev") == "begin"), None)
         level = levels_at(wall).get("Take Aim")
         if not level:
@@ -494,6 +496,8 @@ def ok_boost(logs=None):
         try:
             log = fightlog.read(path)
         except Exception:
+            continue
+        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
         lv = levels_at((log.header or {}).get("wall"))
         for eng in log.engagements:
@@ -866,6 +870,7 @@ def weapon_offline_join(logs=None):
     keys = set(wiki.keys()) | set(live.keys())
     out = {}
     for k in keys:
+        # ranged bow scaling: arrow pen not yet joined, see below
         w = wiki.get(k)
         lv = live.get(k)
         # Wiki values
@@ -1000,6 +1005,8 @@ def agility_band(logs=None):
         try:
             log = fightlog.read(path)
         except Exception:
+            continue
+        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
         lv = levels_at((log.header or {}).get("wall"))
         for eng in log.engagements:
@@ -1319,6 +1326,8 @@ def agility_control(logs=None):
             log = fightlog.read(path)
         except Exception:
             continue
+        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
+            continue
         if not log.agility:
             continue
         agi_me = ((log.header or {}).get("attr") or {}).get("agi")
@@ -1407,6 +1416,8 @@ def agi_records_by_species(logs=None):
         try:
             log = fightlog.read(path)
         except Exception:
+            continue
+        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
         if not log.agility:
             continue
@@ -1929,6 +1940,8 @@ def collect(paths):
     })
     for p in sorted(paths):
         log = fightlog.read(p, opens)
+        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
+            continue
         if not log.rows:
             continue
         # A creature's own clock, measured per GOB across the whole file.
@@ -2470,6 +2483,8 @@ def mu_from_reductions(logs=None):
         try:
             log = fightlog.read(path, opens)
         except Exception:
+            continue
+        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
         lv = levels_at((log.header or {}).get("wall"))
         for eng in log.engagements:

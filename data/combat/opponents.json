@@ -337,13 +337,13 @@
     "capped": true,
     "hi": 60.0,
     "lo": null,
-    "n": 12,
-    "our_agility": 129
+    "n": 14,
+    "our_agility": 131
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 306,
+    "n": 313,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -353,19 +353,19 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 88
+    "n": 99
    },
    "defence_weight_late": {
     "against": 10.3,
     "agrees": true,
-    "depth": 41,
+    "depth": 42,
     "hi": 13.8,
     "lo": 7.5,
-    "n": 41
+    "n": 42
    },
-   "engagements": 172,
+   "engagements": 175,
    "hitpoints": {
-    "from": "survived taking 21, so that one had more than that; survived taking 38, so that one had more than that; survived taking 50, so that one had more than that; survived taking 15, so that one had more than that; survived taking 47, so that one had more than that; survived taking 13, so that one had more than that; survived taking 41, so that one had more than that; survived taking 12, so that one had more than that; survived taking 31, so that one had more than that; survived taking 12, so that one had more than that; survived taking 42, so that one had more than that; survived taking 5, so that one had more than that; died at 4 with a last hit of 4, so that one had 0 to 4; survived taking 16, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 41, so that one had more than that; survived taking 14, so that one had more than that; survived taking 10, so that one had more than that; survived taking 17, so that one had more than that; survived taking 12, so that one had more than that; survived taking 17, so that one had more than that; survived taking 3, so that one had more than that; survived taking 17, so that one had more than that; survived taking 8, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 11, so that one had more than that; survived taking 5, so that one had more than that; survived taking 21, so that one had more than that; survived taking 45, so that one had more than that; survived taking 15, so that one had more than that; survived taking 11, so that one had more than that; died at 20 with a last hit of 15, so that one had 5 to 20; survived taking 15, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 22, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 21, so that one had more than that; survived taking 27, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 21, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 30, so that one had more than that; survived taking 5, so that one had more than that; survived taking 15, so that one had more than that; survived taking 54, so that one had more than that; survived taking 30, so that one had more than that; survived taking 42, so that one had more than that; survived taking 16, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 33, so that one had more than that; survived taking 12, so that one had more than that; survived taking 49, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 41, so that one had more than that; survived taking 15, so that one had more than that; survived taking 20, so that one had more than that; survived taking 50, so that one had more than that; survived taking 33, so that one had more than that; survived taking 31, so that one had more than that; survived taking 3, so that one had more than that; survived taking 10, so that one had more than that; survived taking 38, so that one had more than that; survived taking 14, so that one had more than that; survived taking 5, so that one had more than that; survived taking 21, so that one had more than that; survived taking 53, so that one had more than that; survived taking 15, so that one had more than that; survived taking 33, so that one had more than that; survived taking 11, so that one had more than that; survived taking 41, so that one had more than that; survived taking 38, so that one had more than that; survived taking 36, so that one had more than that; survived taking 20, so that one had more than that; survived taking 31, so that one had more than that; survived taking 51, so that one had more than that; survived taking 32, so that one had more than that; survived taking 14, so that one had more than that; survived taking 32, so that one had more than that; survived taking 42, so that one had more than that; survived taking 41, so that one had more than that; died at 14 with a last hit of 10, so that one had 4 to 14; survived taking 15, so that one had more than that; survived taking 5, so that one had more than that; survived taking 16, so that one had more than that; survived taking 41, so that one had more than that; survived taking 11, so that one had more than that; survived taking 15, so that one had more than that; survived taking 12, so that one had more than that; survived taking 36, so that one had more than that; survived taking 48, so that one had more than that; died at 25 with a last hit of 15, so that one had 10 to 25; survived taking 21, so that one had more than that; survived taking 15, so that one had more than that; survived taking 35, so that one had more than that; died at 13 with a last hit of 11, so that one had 2 to 13; survived taking 32, so that one had more than that; survived taking 33, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 21, so that one had more than that; survived taking 29, so that one had more than that; survived taking 31, so that one had more than that; survived taking 16, so that one had more than that; survived taking 43, so that one had more than that; died at 36 with a last hit of 34, so that one had 2 to 36; survived taking 21, so that one had more than that; survived taking 5, so that one had more than that; survived taking 14, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 6, so that one had more than that; survived taking 14, so that one had more than that; died at 41 with a last hit of 10, so that one had 31 to 41; survived taking 42, so that one had more than that; survived taking 18, so that one had more than that; survived taking 20, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 6, so that one had more than that; survived taking 4, so that one had more than that; survived taking 17, so that one had more than that; survived taking 47, so that one had more than that; survived taking 16, so that one had more than that",
+    "from": "survived taking 21, so that one had more than that; survived taking 38, so that one had more than that; survived taking 50, so that one had more than that; survived taking 15, so that one had more than that; survived taking 47, so that one had more than that; survived taking 13, so that one had more than that; survived taking 41, so that one had more than that; survived taking 12, so that one had more than that; survived taking 31, so that one had more than that; survived taking 12, so that one had more than that; survived taking 42, so that one had more than that; survived taking 5, so that one had more than that; died at 4 with a last hit of 4, so that one had 0 to 4; survived taking 16, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 41, so that one had more than that; survived taking 50, so that one had more than that; survived taking 14, so that one had more than that; survived taking 10, so that one had more than that; survived taking 17, so that one had more than that; survived taking 12, so that one had more than that; survived taking 17, so that one had more than that; survived taking 3, so that one had more than that; survived taking 17, so that one had more than that; survived taking 8, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 16, so that one had more than that; survived taking 22, so that one had more than that; survived taking 11, so that one had more than that; survived taking 5, so that one had more than that; survived taking 21, so that one had more than that; survived taking 45, so that one had more than that; survived taking 15, so that one had more than that; survived taking 11, so that one had more than that; died at 20 with a last hit of 15, so that one had 5 to 20; survived taking 15, so that one had more than that; survived taking 16, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 22, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 21, so that one had more than that; survived taking 27, so that one had more than that; survived taking 32, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 21, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 30, so that one had more than that; survived taking 5, so that one had more than that; survived taking 15, so that one had more than that; survived taking 54, so that one had more than that; survived taking 30, so that one had more than that; survived taking 42, so that one had more than that; survived taking 16, so that one had more than that; survived taking 32, so that one had more than that; survived taking 5, so that one had more than that; survived taking 33, so that one had more than that; survived taking 12, so that one had more than that; survived taking 49, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; survived taking 41, so that one had more than that; survived taking 15, so that one had more than that; survived taking 20, so that one had more than that; survived taking 50, so that one had more than that; survived taking 33, so that one had more than that; survived taking 31, so that one had more than that; survived taking 3, so that one had more than that; survived taking 10, so that one had more than that; survived taking 38, so that one had more than that; survived taking 14, so that one had more than that; survived taking 5, so that one had more than that; survived taking 21, so that one had more than that; survived taking 53, so that one had more than that; survived taking 15, so that one had more than that; survived taking 33, so that one had more than that; survived taking 11, so that one had more than that; survived taking 41, so that one had more than that; survived taking 38, so that one had more than that; survived taking 36, so that one had more than that; survived taking 20, so that one had more than that; survived taking 31, so that one had more than that; survived taking 51, so that one had more than that; survived taking 32, so that one had more than that; survived taking 14, so that one had more than that; survived taking 32, so that one had more than that; survived taking 42, so that one had more than that; survived taking 41, so that one had more than that; died at 14 with a last hit of 10, so that one had 4 to 14; survived taking 15, so that one had more than that; survived taking 5, so that one had more than that; survived taking 16, so that one had more than that; survived taking 41, so that one had more than that; survived taking 11, so that one had more than that; survived taking 15, so that one had more than that; survived taking 12, so that one had more than that; survived taking 36, so that one had more than that; survived taking 48, so that one had more than that; died at 25 with a last hit of 15, so that one had 10 to 25; survived taking 21, so that one had more than that; survived taking 15, so that one had more than that; survived taking 35, so that one had more than that; died at 13 with a last hit of 11, so that one had 2 to 13; survived taking 32, so that one had more than that; survived taking 33, so that one had more than that; survived taking 20, so that one had more than that; survived taking 15, so that one had more than that; survived taking 41, so that one had more than that; survived taking 21, so that one had more than that; survived taking 29, so that one had more than that; survived taking 31, so that one had more than that; survived taking 16, so that one had more than that; survived taking 43, so that one had more than that; died at 36 with a last hit of 34, so that one had 2 to 36; survived taking 21, so that one had more than that; survived taking 5, so that one had more than that; survived taking 14, so that one had more than that; survived taking 37, so that one had more than that; survived taking 38, so that one had more than that; survived taking 6, so that one had more than that; survived taking 14, so that one had more than that; died at 41 with a last hit of 10, so that one had 31 to 41; survived taking 42, so that one had more than that; survived taking 36, so that one had more than that; survived taking 18, so that one had more than that; survived taking 20, so that one had more than that; survived taking 11, so that one had more than that; survived taking 32, so that one had more than that; survived taking 6, so that one had more than that; survived taking 4, so that one had more than that; survived taking 17, so that one had more than that; survived taking 47, so that one had more than that; survived taking 16, so that one had more than that",
     "hi": 55,
     "lo": 0,
     "observed_hi": 41,
@@ -382,22 +382,22 @@
     "mix": [
      [
       "Ant Spit",
-      0.963
+      0.964
      ],
      [
       "Fell Scratch",
-      0.037
+      0.036
      ]
     ],
-    "n": 246,
-    "solo_n": 51
+    "n": 251,
+    "solo_n": 56
    },
    "relative_speed": {
-    "hi": 20.2,
+    "hi": 20.7,
     "lo": 17.3,
     "measured": true,
     "median": 18.5,
-    "n": 3732,
+    "n": 3958,
     "our_top": 58.3,
     "we_outrun_it": true
    },
@@ -418,7 +418,7 @@
      "coef": 13.0,
      "hi": 73.8,
      "lo": 7.1,
-     "n": 12
+     "n": 13
     },
     "flees_below": null,
     "period": {
@@ -429,17 +429,17 @@
      "modes": [
       44
      ],
-     "n": 89,
-     "ticks": 46.6
+     "n": 91,
+     "ticks": 46.5
     },
     "pressure": {
-     "blue": 4.36,
-     "green": 4.67,
+     "blue": 4.35,
+     "green": 4.66,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 353.75,
-    "pressure_n": 266
+    "pressure_n": 276
    }
   },
   {
@@ -447,13 +447,13 @@
     "capped": true,
     "hi": 42.3,
     "lo": null,
-    "n": 12,
-    "our_agility": 129
+    "n": 13,
+    "our_agility": 131
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 100,
+    "n": 110,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -462,19 +462,19 @@
    "defence_weight": {
     "hi": 73.3,
     "lo": 72.8,
-    "n": 84
+    "n": 93
    },
    "defence_weight_late": {
     "against": 90.8,
     "agrees": false,
-    "depth": 68,
+    "depth": 75,
     "hi": 85.6,
     "lo": 71.9,
-    "n": 68
+    "n": 75
    },
-   "engagements": 11,
+   "engagements": 12,
    "hitpoints": {
-    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 246 with a last hit of 110, so that one had 136 to 246; died at 210 with a last hit of 84, so that one had 126 to 210; died at 210 with a last hit of 20, so that one had 190 to 210; survived taking 233, so that one had more than that; died at 223 with a last hit of 104, so that one had 119 to 223; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
+    "from": "died at 306 with a last hit of 108, so that one had 198 to 306; died at 246 with a last hit of 110, so that one had 136 to 246; died at 210 with a last hit of 84, so that one had 126 to 210; died at 210 with a last hit of 20, so that one had 190 to 210; survived taking 147, so that one had more than that; survived taking 233, so that one had more than that; died at 223 with a last hit of 104, so that one had 119 to 223; died at 342 with a last hit of 171, so that one had 171 to 342; died at 216 with a last hit of 106, so that one had 110 to 216; died at 250 with a last hit of 65, so that one had 185 to 250; died at 210 with a last hit of 20, so that one had 190 to 210",
     "hi": 342,
     "lo": 110,
     "observed_hi": 342,
@@ -498,16 +498,16 @@
       0.341
      ]
     ],
-    "n": 41,
-    "solo_n": 39
+    "n": 44,
+    "solo_n": 42
    },
    "relative_speed": {
     "hi": 51.8,
     "lo": 45.5,
     "measured": true,
-    "median": 45.5,
-    "n": 1955,
-    "our_top": 58.3,
+    "median": 46.3,
+    "n": 2246,
+    "our_top": 58.5,
     "we_outrun_it": true
    },
    "res": "gfx/kritter/badger/badger",
@@ -540,21 +540,21 @@
      "dropped": 0,
      "hi": 95.1,
      "lo": 42.9,
-     "median": 44.3,
+     "median": 45.0,
      "modes": [
       44
      ],
-     "n": 31,
-     "ticks": 50.7
+     "n": 33,
+     "ticks": 52.5
     },
     "pressure": {
      "blue": 0.0,
-     "green": 3.25,
-     "red": 8.56,
+     "green": 3.23,
+     "red": 8.54,
      "yellow": 0.0
     },
-    "pressure_against": 328.3333333333333,
-    "pressure_n": 31
+    "pressure_against": 266.0,
+    "pressure_n": 33
    }
   },
   {
@@ -806,13 +806,13 @@
     "capped": true,
     "hi": 67.2,
     "lo": null,
-    "n": 1,
-    "our_agility": 113
+    "n": 3,
+    "our_agility": 131
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 10,
+    "n": 18,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -821,23 +821,23 @@
    "defence_weight": {
     "hi": 76.0,
     "lo": 62.1,
-    "n": 8
+    "n": 16
    },
    "defence_weight_late": {
-    "against": 88.1,
+    "against": 86.9,
     "agrees": true,
-    "depth": 5,
-    "hi": 146.1,
+    "depth": 10,
+    "hi": 130.0,
     "lo": 51.2,
-    "n": 5
+    "n": 10
    },
-   "engagements": 3,
+   "engagements": 4,
    "hitpoints": {
-    "from": "died at 107 with a last hit of 18, so that one had 89 to 107",
-    "hi": 107,
-    "lo": 89,
-    "observed_hi": 107,
-    "observed_lo": 89,
+    "from": "died at 107 with a last hit of 18, so that one had 89 to 107; died at 172 with a last hit of 99, so that one had 73 to 172",
+    "hi": 172,
+    "lo": 73,
+    "observed_hi": 172,
+    "observed_lo": 73,
     "verdict": "every individual seen is consistent with the wiki's 100",
     "wiki": 100
    },
@@ -852,43 +852,49 @@
       1.0
      ]
     ],
-    "n": 4,
-    "solo_n": 4
+    "n": 6,
+    "solo_n": 6
    },
-   "relative_speed": null,
+   "relative_speed": {
+    "hi": 55.2,
+    "lo": 55.2,
+    "measured": true,
+    "median": 55.2,
+    "n": 105
+   },
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
     "equalized": false,
-    "hi": 44.1,
-    "lo": 44.1,
+    "hi": 43.4,
+    "lo": 43.4,
     "moves": [
      "Quick Barrage"
     ],
     "n": 1,
-    "value": 44.1
+    "value": 43.4
    },
    "threat": {
     "damage": null,
     "flees_below": null,
     "period": {
      "dropped": 0,
-     "hi": 50.0,
+     "hi": 51.0,
      "lo": 50.0,
      "median": 50.0,
      "modes": [
       50
      ],
-     "n": 2,
-     "ticks": 50.0
+     "n": 3,
+     "ticks": 50.3
     },
     "pressure": {
      "blue": 0.0,
-     "green": 9.44,
+     "green": 9.01,
      "red": 0.0,
      "yellow": 0.0
     },
-    "pressure_against": 312.5,
-    "pressure_n": 3
+    "pressure_against": 353.75,
+    "pressure_n": 5
    }
   },
   {
@@ -1910,13 +1916,13 @@
     "capped": true,
     "hi": 44.2,
     "lo": null,
-    "n": 12,
-    "our_agility": 129
+    "n": 13,
+    "our_agility": 131
    },
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 51,
+    "n": 56,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -1925,19 +1931,19 @@
    "defence_weight": {
     "hi": 70.4,
     "lo": 57.0,
-    "n": 34
+    "n": 39
    },
    "defence_weight_late": {
-    "against": 66.7,
+    "against": 64.6,
     "agrees": true,
-    "depth": 22,
+    "depth": 24,
     "hi": 80.9,
     "lo": 44.1,
-    "n": 22
+    "n": 24
    },
-   "engagements": 19,
+   "engagements": 20,
    "hitpoints": {
-    "from": "died at 133 with a last hit of 55, so that one had 78 to 133; died at 40 with a last hit of 22, so that one had 18 to 40; survived taking 158, so that one had more than that; died at 145 with a last hit of 88, so that one had 57 to 145; died at 117 with a last hit of 72, so that one had 45 to 117; died at 126 with a last hit of 42, so that one had 84 to 126; died at 145 with a last hit of 123, so that one had 22 to 145; died at 112 with a last hit of 26, so that one had 86 to 112; died at 157 with a last hit of 108, so that one had 49 to 157",
+    "from": "died at 133 with a last hit of 55, so that one had 78 to 133; died at 40 with a last hit of 22, so that one had 18 to 40; survived taking 158, so that one had more than that; died at 145 with a last hit of 88, so that one had 57 to 145; died at 117 with a last hit of 72, so that one had 45 to 117; died at 126 with a last hit of 42, so that one had 84 to 126; survived taking 41, so that one had more than that; died at 145 with a last hit of 123, so that one had 22 to 145; died at 112 with a last hit of 26, so that one had 86 to 112; died at 157 with a last hit of 108, so that one had 49 to 157",
     "hi": 159,
     "lo": 18,
     "observed_hi": 157,
@@ -1956,17 +1962,17 @@
       1.0
      ]
     ],
-    "n": 24,
-    "solo_n": 21
+    "n": 25,
+    "solo_n": 22
    },
    "relative_speed": {
     "hi": 56.2,
     "lo": 49.3,
     "measured": true,
-    "median": 52.3,
-    "n": 677,
-    "our_top": 51.7,
-    "we_outrun_it": false
+    "median": 53.2,
+    "n": 971,
+    "our_top": 58.6,
+    "we_outrun_it": true
    },
    "res": "gfx/kritter/fox/fox",
    "skill": {
@@ -2002,12 +2008,12 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 8.18,
+     "green": 8.17,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 266.0,
-    "pressure_n": 22
+    "pressure_n": 23
    }
   },
   {
@@ -2746,42 +2752,40 @@
    "agility": {
     "capped": false,
     "hi": 140.7,
-    "lo": 118.3,
-    "n": 1,
-    "our_agility": 129
+    "lo": 120.1,
+    "n": 3,
+    "our_agility": 131
    },
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 128,
+    "n": 14,
     "soft": null,
-    "total_hi": 11,
+    "total_hi": 10,
     "total_lo": 10,
     "wiki": 10
    },
    "defence_weight": {
-    "contradictory": true,
-    "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 57
+    "hi": 159.1,
+    "lo": 114.3,
+    "n": 10
    },
    "defence_weight_late": {
     "against": 158.0,
     "agrees": true,
-    "depth": 46,
-    "hi": 169.9,
+    "depth": 55,
+    "hi": 159.1,
     "lo": 129.9,
-    "n": 47
+    "n": 56
    },
-   "engagements": 40,
+   "engagements": 41,
    "hitpoints": {
-    "from": "died at 232 with a last hit of 148, so that one had 84 to 232; died at 247 with a last hit of 69, so that one had 178 to 247; died at 218 with a last hit of 110, so that one had 108 to 218; died at 212 with a last hit of 133, so that one had 79 to 212; died at 206 with a last hit of 109, so that one had 97 to 206; died at 213 with a last hit of 113, so that one had 100 to 213; survived taking 173, so that one had more than that; died at 213 with a last hit of 66, so that one had 147 to 213; died at 209 with a last hit of 70, so that one had 139 to 209; died at 218 with a last hit of 114, so that one had 104 to 218; survived taking 237, so that one had more than that; died at 231 with a last hit of 81, so that one had 150 to 231; died at 222 with a last hit of 112, so that one had 110 to 222",
+    "from": "died at 232 with a last hit of 148, so that one had 84 to 232; died at 247 with a last hit of 69, so that one had 178 to 247; died at 218 with a last hit of 110, so that one had 108 to 218; died at 212 with a last hit of 133, so that one had 79 to 212; died at 206 with a last hit of 109, so that one had 97 to 206; died at 213 with a last hit of 113, so that one had 100 to 213; survived taking 173, so that one had more than that; died at 213 with a last hit of 66, so that one had 147 to 213; died at 209 with a last hit of 70, so that one had 139 to 209; died at 194 with a last hit of 90, so that one had 104 to 194; died at 218 with a last hit of 114, so that one had 104 to 218; survived taking 237, so that one had more than that; died at 231 with a last hit of 81, so that one had 150 to 231; died at 222 with a last hit of 112, so that one had 110 to 222",
     "hi": 247,
     "lo": 79,
     "observed_hi": 247,
     "observed_lo": 79,
-    "verdict": "1 of these held out past the wiki's 200, so they were above its base quality",
+    "verdict": "individuals seen on both sides of the wiki's 200",
     "wiki": 200
    },
    "moves": [
@@ -2792,37 +2796,37 @@
    "name": "reddeer",
    "policy": {
     "attack_share_above_0_ip": 1.0,
-    "attack_share_at_0_ip": 0.971,
+    "attack_share_at_0_ip": 0.974,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     35,
-     16
+     38,
+     20
     ],
     "mix": [
      [
       "Low Horn Swipe",
-      0.509
+      0.484
      ],
      [
       "Mule Kick",
-      0.436
+      0.468
      ],
      [
       "Roar of the Wild",
-      0.055
+      0.048
      ]
     ],
-    "n": 55,
-    "solo_n": 2
+    "n": 62,
+    "solo_n": 9
    },
    "relative_speed": {
     "hi": 59.5,
     "lo": 53.8,
     "measured": true,
-    "median": 55.5,
-    "n": 1024,
-    "our_top": 51.1,
+    "median": 55.6,
+    "n": 1144,
+    "our_top": 58.7,
     "we_outrun_it": false
    },
    "res": "gfx/kritter/reddeer/reddeer",
@@ -2838,28 +2842,33 @@
     "value": 351.1
    },
    "threat": {
-    "damage": null,
+    "damage": {
+     "coef": 13.7,
+     "hi": 13.7,
+     "lo": 5.8,
+     "n": 2
+    },
     "flees_below": null,
     "period": {
-     "dropped": 1,
-     "hi": 55.0,
+     "dropped": 0,
+     "hi": 70.0,
      "lo": 18.9,
-     "median": 22.0,
+     "median": 30.0,
      "modes": [
       20,
       36
      ],
-     "n": 38,
-     "ticks": 27.9
+     "n": 45,
+     "ticks": 29.5
     },
     "pressure": {
      "blue": 0.0,
-     "green": 5.78,
+     "green": 5.45,
      "red": 0.0,
-     "yellow": 5.08
+     "yellow": 5.37
     },
-    "pressure_against": 353.75,
-    "pressure_n": 24
+    "pressure_against": 262.1666666666667,
+    "pressure_n": 31
    }
   },
   {

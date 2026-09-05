@@ -193,6 +193,8 @@ def replay(paths):
     dmg = defaultdict(lambda: {"n": 0, "err": 0.0, "worst": 0.0})
     misses = []
     skipped = defaultdict(int)
+    ranged_skipped = 0
+    ranged_files = []
 
     for p in sorted(paths):
         try:
@@ -201,6 +203,10 @@ def replay(paths):
             skipped["unreadable"] += 1
             continue
         if not log.rows:
+            continue
+        if fightlog.is_ranged(log):
+            ranged_skipped += 1
+            ranged_files.append(os.path.basename(p))
             continue
         attrs = (log.header or {}).get("attr") or {}
         lv = estimate.levels_at((log.header or {}).get("wall"))
@@ -265,6 +271,8 @@ def replay(paths):
                     s["worst"] = max(s["worst"], off)
                     misses.append((off, name, mv, colour, standing, gain, lo, hi,
                                    os.path.basename(p)))
+    print("%d ranged fight(s) routed out of melee validation (%s)"
+          % (ranged_skipped, ", ".join(sorted(ranged_files))))
     return stats, dmg, misses, skipped
 
 
