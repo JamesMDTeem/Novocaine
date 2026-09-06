@@ -34,8 +34,13 @@ public class AlchemyService {
     private static final double POLL_INTERVAL = 5.0;
 
     private static double since = 0.0;
-    private static int lastHash = 0;
+    private static volatile int lastHash = 0;
     private static boolean warned = false;
+
+    /** Current book hash; changes when discoveries change. 0 before the first snapshot. */
+    public static int bookHash() {
+        return lastHash;
+    }
 
     /** Called every frame from GameUI.tick; self-throttles to POLL_INTERVAL. */
     public static void poll(UI ui, double dt) {

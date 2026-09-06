@@ -94,12 +94,18 @@ public class AlchemySuggestClient {
      *                  is: a catalog addition then needs no client change.
      */
     public void refresh(List<String> available, String mode, String types, String processes, int limit) {
+        refresh(available, mode, types, processes, limit, AlchemyService.bookHash());
+    }
+
+    public void refresh(List<String> available, String mode, String types, String processes,
+                        int limit, int discoveriesHash) {
         if (fetching)
             return;
 
         List<String> sorted = new ArrayList<String>(available);
         Collections.sort(sorted);
-        String signature = mode + "|" + types + "|" + processes + "|" + limit + "|" + String.join(",", sorted);
+        String signature = mode + "|" + types + "|" + processes + "|" + limit + "|"
+                + discoveriesHash + "|" + String.join(",", sorted);
         if (signature.equals(cachedRequest) && cached != null)
             return;
         if (System.currentTimeMillis() - lastFetchAt < MIN_INTERVAL_MS)

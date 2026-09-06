@@ -90,6 +90,7 @@ public class AlchemyHelperWindow extends Window {
     private final AlchemySuggestClient client = new AlchemySuggestClient();
 
     private double sinceRefresh = REFRESH_INTERVAL;
+    private int lastBookHash = 0;
     /**
      * What this window has asked to be, which is not the same as {@link #visible} -- Window.hide()
      * starts an animation and leaves visible true until it finishes. Driving the calls off our own
@@ -247,6 +248,12 @@ public class AlchemyHelperWindow extends Window {
         if (sinceRefresh < REFRESH_INTERVAL)
             return;
         sinceRefresh = 0;
+
+        int bookHash = AlchemyService.bookHash();
+        if (bookHash != lastBookHash) {
+            lastBookHash = bookHash;
+            client.invalidate();
+        }
 
         /* Nothing this window does is worth taking the client down for. Reading item info touches
          * resource loading, which throws more than Loading - a broken or half-arrived resource
