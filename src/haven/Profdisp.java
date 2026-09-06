@@ -104,6 +104,8 @@ public class Profdisp extends Widget {
 		sscl.dispose();
 	    sscl = Text.render(String.format("%.1f %s", dscale * Math.pow(10.0, u * 3), units[u])).tex();
 	}
+	if(display == null)
+	    return;
 	g.image(display.tex, Coord.z);
 	int sy = (int)Math.round((1 - (dscale / mt)) * h);
 	g.chcolor(192, 192, 192, 128);
