@@ -756,6 +756,10 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	    @SuppressWarnings("unchecked")
 	    public <T extends State> T get(State.Slot<T> slot) {
 		DepInfo bk = dstate();
+		/* Same removed-from-under-draw race as istate() below:
+		 * removech() nulls the dstate. */
+		if(bk == null)
+		    throw(new SlotRemoved(TreeSlot.this));
 		int idx = slot.id;
 		if((bk.states.length <= idx) || !bk.def[idx])
 		    throw(new RuntimeException("Reading undefined slot " + slot + " from slot-pipe"));
@@ -796,8 +800,12 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 		} else {
 		    Inheritance pi = parent.istate();
 		    DepInfo ds = dstate();
-			if (ds == null) // Kami: Handle NullPointerException with unknown side effects 19/11/2023 // ND: I'm adding this 1 year after him. I assume it's good.
-				return(istate);
+		    /* The 2D pass reads slot state without the tree lock, so the slot
+		     * can be removed out from under it - removech() nulls the dstate.
+		     * Say what actually happened instead of NPEing below or
+		     * propagating a null Pipe to callers. */
+		    if(ds == null)
+			throw(new SlotRemoved(this));
 		    Pipe[] istates = new Pipe[Math.max(pi.gstates.length, ds.def.length)];
 		    boolean f = false;
 		    for(int i = 0; i < istates.length; i++) {

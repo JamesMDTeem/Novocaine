@@ -420,7 +420,13 @@ public abstract class PView extends Widget {
 		copy = new ArrayList<>(cur);
 	    }
 	    for(Slot<? extends Render2D> slot : copy) {
-		slot.obj().draw(g, slot.state());
+		try {
+		    slot.obj().draw(g, slot.state());
+		} catch(RenderTree.SlotRemoved e) {
+		    /* This pass runs outside the tree lock, so a slot can be
+		     * removed between the snapshot above and the draw below.
+		     * Its overlay just doesn't get drawn this frame. */
+		}
 	    }
 	}
 
