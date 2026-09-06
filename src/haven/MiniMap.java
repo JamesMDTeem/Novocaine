@@ -1165,15 +1165,16 @@ public class MiniMap extends Widget {
 
         GroundSupportOverlay overlay = GroundSupportOverlay.getInstance();
         overlay.setMap(ui.sess.glob.map);
-        overlay.clear();
         mineSupportGobIds.clear();
 
+        Set<Coord> fresh = new HashSet<>();
         ui.sess.glob.oc.gobAction(gob -> {
             if (isMineSupport(gob)) {
-                overlay.addGobCoverage(gob);
+                GroundSupportOverlay.collectGobCoverage(gob, fresh);
                 mineSupportGobIds.add(gob.id);
             }
         });
+        overlay.replaceCoverage(fresh);
     }
 
     private void requestMineSupportUpdate() {

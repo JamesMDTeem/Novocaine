@@ -49,38 +49,56 @@ public class GroundSupportOverlay implements MCache.OverlayInfo {
     }
 
     public void addGobCoverage(Gob gob) {
-        Coverage coverage = gob.getattr(Coverage.class);
-        if ((coverage == null) || (gob.rc == Coord2d.z)) {
-            return;
-        }
-        Area area = coverage.extent(gob.rc, gob.a);
-        if (area == null) {
-            return;
-        }
-        coverage.cover(gob.rc, gob.a, area, highlightedTiles::add);
-        invalidateCache();
+	Set<Coord> fresh = new HashSet<>();
+	collectGobCoverage(gob, fresh);
+	if(highlightedTiles.addAll(fresh))
+	    invalidateCache();
+    }
+
+    public static void collectGobCoverage(Gob gob, Set<Coord> dst) {
+	Coverage coverage = gob.getattr(Coverage.class);
+	if ((coverage == null) || (gob.rc == Coord2d.z)) {
+	    return;
+	}
+	Area area = coverage.extent(gob.rc, gob.a);
+	if (area == null) {
+	    return;
+	}
+	coverage.cover(gob.rc, gob.a, area, dst::add);
+    }
+
+    public void replaceCoverage(Set<Coord> fresh) {
+	synchronized(highlightedTiles) {
+	    if(!highlightedTiles.equals(fresh)) {
+		highlightedTiles.clear();
+		highlightedTiles.addAll(fresh);
+		invalidateCache();
+	    }
+	}
     }
 
     public void addTilesInRadius(Coord2d supportPos, double radiusInGameUnits) {
-        int tilesToCheck = (int) Math.ceil(radiusInGameUnits / MCache.tilesz.x) + 1;
-        Coord supportTile = supportPos.floor(MCache.tilesz);
+	int tilesToCheck = (int) Math.ceil(radiusInGameUnits / MCache.tilesz.x) + 1;
+	Coord supportTile = supportPos.floor(MCache.tilesz);
+	Set<Coord> fresh = new HashSet<>();
 
-        for (int dx = -tilesToCheck; dx <= tilesToCheck; dx++) {
-            for (int dy = -tilesToCheck; dy <= tilesToCheck; dy++) {
-                Coord tileCoord = supportTile.add(dx, dy);
+	for (int dx = -tilesToCheck; dx <= tilesToCheck; dx++) {
+	    for (int dy = -tilesToCheck; dy <= tilesToCheck; dy++) {
+		Coord tileCoord = supportTile.add(dx, dy);
 
-                Coord2d tileCenter = new Coord2d(
-                    tileCoord.x * MCache.tilesz.x + MCache.tilesz.x / 2.0,
-                    tileCoord.y * MCache.tilesz.y + MCache.tilesz.y / 2.0
-                );
+		Coord2d tileCenter = new Coord2d(
+		    tileCoord.x * MCache.tilesz.x + MCache.tilesz.x / 2.0,
+		    tileCoord.y * MCache.tilesz.y + MCache.tilesz.y / 2.0
+		);
 
-                double distance = tileCenter.dist(supportPos);
-                if (distance <= radiusInGameUnits) {
-                    highlightedTiles.add(tileCoord);
-                }
-            }
-        }
-        invalidateCache();
+		double distance = tileCenter.dist(supportPos);
+		if (distance <= radiusInGameUnits) {
+		    fresh.add(tileCoord);
+		}
+	    }
+	}
+	if(highlightedTiles.addAll(fresh))
+	    invalidateCache();
     }
 
 
@@ -89,8 +107,12 @@ public class GroundSupportOverlay implements MCache.OverlayInfo {
     }
 
     public void clear() {
-        highlightedTiles.clear();
-        invalidateCache();
+	synchronized(highlightedTiles) {
+	    if(!highlightedTiles.isEmpty()) {
+		highlightedTiles.clear();
+		invalidateCache();
+	    }
+	}
     }
 
     public int getTileCount() {

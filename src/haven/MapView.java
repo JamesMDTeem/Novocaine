@@ -3323,16 +3323,20 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		} catch (NullPointerException ignored){}
 
         if (glob != null){
-            GroundSupportOverlay.getInstance().clear();
-            disol(GroundSupportOverlay.TAG);
+            GroundSupportOverlay overlay = GroundSupportOverlay.getInstance();
             if (OptWnd.showMineSupportCoverageCheckBox.a) {
-                GroundSupportOverlay.getInstance().setMap(glob.map);
+                overlay.setMap(glob.map);
                 enol(GroundSupportOverlay.TAG);
+                Set<Coord> fresh = new HashSet<>();
                 glob.oc.gobAction(gob -> {
                     if (GroundSupportOverlay.supportsMineCoverage(gob)) {
-                        GroundSupportOverlay.getInstance().addGobCoverage(gob);
+                        GroundSupportOverlay.collectGobCoverage(gob, fresh);
                     }
                 });
+                overlay.replaceCoverage(fresh);
+            } else {
+                overlay.clear();
+                disol(GroundSupportOverlay.TAG);
             }
         }
 	}
