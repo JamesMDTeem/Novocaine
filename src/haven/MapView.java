@@ -970,11 +970,8 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
 	abstract class Grid<T> extends RenderTree.Node.Track1 {
 	    final Map<Coord, Pair<T, RenderTree.Slot>> cuts = new HashMap<>();
-    final boolean position;
-    Loading lastload = new Loading("Initializing map...");
-    /* Hitch probe [WTICK-a4f2]: cuts churned by the last tick() call. Written on the
-     * UI thread, read on the UI thread; diag-only, ignored when the flag is off. */
-    int lastCutsAdded = 0, lastCutsRemoved = 0;
+	    final boolean position;
+	    Loading lastload = new Loading("Initializing map...");
 
 	    Grid(boolean position) {
 		this.position = position;
@@ -985,52 +982,47 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    abstract T getcut(Coord cc);
 	    RenderTree.Node produce(T cut) {return((RenderTree.Node)cut);}
 
-    void tick() {
-	if(slot == null)
-	    return;
-	boolean wtdbg = haven.automated.nbots.core.NLog.diag();
-	int adds = 0, rems = 0;
-	Loading curload = null;
-	for(Coord cc : area) {
-	    try {
-		if(shouldCullCut(cc)) {
-		    Pair<T, RenderTree.Slot> cur = cuts.get(cc);
-		    if(cur != null) {
-			cur.b.remove();
-			cuts.remove(cc);
-		    }
-		    continue;
-		}
+	    void tick() {
+		if(slot == null)
+		    return;
+		Loading curload = null;
+		for(Coord cc : area) {
+		    try {
+			if(shouldCullCut(cc)) {
+			    Pair<T, RenderTree.Slot> cur = cuts.get(cc);
+			    if(cur != null) {
+				cur.b.remove();
+				cuts.remove(cc);
+			    }
+			    continue;
+			}
 
-		T cut = getcut(cc);
-		Pair<T, RenderTree.Slot> cur = cuts.get(cc);
-		if((cur == null) || (cur.a != cut)) {
-		    Coord2d pc = cc.mul(MCache.cutsz).mul(tilesz);
-		    RenderTree.Node draw = produce(cut);
-		    Pipe.Op cs = null;
-		    if(position)
-			cs = Location.xlate(new Coord3f((float)pc.x, -(float)pc.y, 0));
-		    cuts.put(cc, new Pair<>(cut, slot.add(draw, cs)));
-		    if(cur != null)
-			cur.b.remove();
-		    if(wtdbg) adds++;
+			T cut = getcut(cc);
+			Pair<T, RenderTree.Slot> cur = cuts.get(cc);
+			if((cur == null) || (cur.a != cut)) {
+			    Coord2d pc = cc.mul(MCache.cutsz).mul(tilesz);
+			    RenderTree.Node draw = produce(cut);
+			    Pipe.Op cs = null;
+			    if(position)
+				cs = Location.xlate(new Coord3f((float)pc.x, -(float)pc.y, 0));
+			    cuts.put(cc, new Pair<>(cut, slot.add(draw, cs)));
+			    if(cur != null)
+				cur.b.remove();
+			}
+		    } catch(Loading l) {
+			l.boostprio(5);
+			curload = l;
+		    }
 		}
-	    } catch(Loading l) {
-		l.boostprio(5);
-		curload = l;
+		this.lastload = curload;
+		for(Iterator<Map.Entry<Coord, Pair<T, RenderTree.Slot>>> i = cuts.entrySet().iterator(); i.hasNext();) {
+		    Map.Entry<Coord, Pair<T, RenderTree.Slot>> ent = i.next();
+		    if(!area.contains(ent.getKey())) {
+			ent.getValue().b.remove();
+			i.remove();
+		    }
+		}
 	    }
-	}
-	this.lastload = curload;
-	for(Iterator<Map.Entry<Coord, Pair<T, RenderTree.Slot>>> i = cuts.entrySet().iterator(); i.hasNext();) {
-	    Map.Entry<Coord, Pair<T, RenderTree.Slot>> ent = i.next();
-	    if(!area.contains(ent.getKey())) {
-		ent.getValue().b.remove();
-		i.remove();
-		if(wtdbg) rems++;
-	    }
-	}
-	if(wtdbg) { lastCutsAdded = adds; lastCutsRemoved = rems; }
-    }
 
 	    public void removed(RenderTree.Slot slot) {
 		super.removed(slot);
@@ -1723,13 +1715,6 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	public void fuzzyget(Render out, Coord c, int rad, Consumer<ClickData> cb) {
 	    Coord gc = Coord.of(c.x, sz().y - 1 - c.y);
 	    Area area = new Area(gc.sub(rad, rad), gc.add(rad + 1, rad + 1)).overlap(Area.sized(Coord.z, this.sz()));
-	    /* KamiClient: the fuzz box can land entirely off the clickmap (mouse
-	     * outside the mapview, or a zero-sized widget), in which case overlap
-	     * gives null and pget NPEs on it. Just count that as a miss. */
-	    if(area == null) {
-		cb.accept(null);
-		return;
-	    }
 	    out.pget(basic, FragID.fragid, area, new VectorFormat(1, NumberFormat.SINT32), data -> {
 		    Clickslot cs;
 		    {
@@ -2053,8 +2038,6 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     }
 
     private Loading camload = null, lastload = null;
-    /* Hitch probe [WTICK-a4f2]: ms spent acquiring the map lock in the last tick. */
-    private double lockWaitMs = 0;
     public void draw(GOut g) {
 	/* Drawing keeps going when ticking does not, so this is the only vantage point from
 	 * which a stalled tick can be seen at all. */
@@ -2172,15 +2155,9 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	/* Stamped before anything that can throw, so a tick that dies on the way to the camera
 	 * is distinguishable from one that never started. */
 	plgobwatch.enter();
-	/* Hitch probe: timestamp each block below and report the owner when a single tick
-	 * exceeds 50ms. Gated on the diagnostic flag, so zero extra cost when off. */
-	boolean wtdbg = haven.automated.nbots.core.NLog.diag();
-	long w0 = wtdbg ? System.nanoTime() : 0;
 	super.tick(dt);
-	long w1 = wtdbg ? System.nanoTime() : 0;
 	checkload();
 	plgobwatch.tick(this, dt);
-	long w2 = wtdbg ? System.nanoTime() : 0;
 	camload = null;
 	try {
 	    if((shake = shake * Math.pow(100, -dt)) < 0.01)
@@ -2193,7 +2170,6 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    e.boostprio(5);
 	    camload = e;
 	}
-	long w3 = wtdbg ? System.nanoTime() : 0;
 	/* The camera object is the same instance on every frame while the transform inside it
 	 * changes on every frame, and PView.basic only rebuilds the composed pipe state when the
 	 * op it is handed compares unequal to the one before. Handing it the camera therefore never
@@ -2223,33 +2199,19 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	amblight();
 	updsmap(amblight);
 	updweather();
-	long w4 = wtdbg ? System.nanoTime() : 0;
-	long wl0 = wtdbg ? System.nanoTime() : 0;
 	synchronized(glob.map) {
-	    long wl1 = wtdbg ? System.nanoTime() : 0;
-	    if(wtdbg) lockWaitMs = (wl1 - wl0) / 1e6;
 	    terrain.tick();
 	    oltick();
 	    if(gridlines != null)
 		gridlines.tick();
 	    clickmap.tick();
 	}
-	long w5 = wtdbg ? System.nanoTime() : 0;
 	Loader.Future<Plob> placing = this.placing;
 	if((placing != null) && placing.done()) {
 	    Plob ob = placing.get();
 	    synchronized(ob) {
 		ob.ctick(dt);
 	    }
-	}
-	long w6 = wtdbg ? System.nanoTime() : 0;
-	if(wtdbg && ((w6 - w0) > 50000000L)) {
-	    haven.automated.nbots.core.NLog.diag("wtick.log", String.format(
-		"[WTICK-a4f2] slow MapView.tick total=%.1fms super=%.1f watch=%.1f cam=%.1f lightcam=%.1f terrain=%.1f place=%.1f lockwait=%.1fms cuts+=%d/%d cuts-=%d/%d",
-		(w6 - w0) / 1e6, (w1 - w0) / 1e6, (w2 - w1) / 1e6, (w3 - w2) / 1e6,
-		(w4 - w3) / 1e6, (w5 - w4) / 1e6, (w6 - w5) / 1e6,
-		lockWaitMs, terrain.main.lastCutsAdded, terrain.flavobjs.lastCutsAdded,
-		terrain.main.lastCutsRemoved, terrain.flavobjs.lastCutsRemoved));
 	}
 
 	if (OptWnd.continuousWalkingCheckBox.a && holdingLeftClick) {

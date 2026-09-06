@@ -156,10 +156,8 @@ public interface Lighting {
 	public final int wb, hb, db;
 	public int maxlights = defmax;
 	private final int lswb;
-	private GridLights last, prev;
+	private GridLights last;
 	private Object[][] lastlights;
-	private static int lgRebuilds = 0;
-	private static long lgLastLog = 0;
 
 	public LightGrid(int w, int h, int d) {
 	    if(w != Integer.highestOneBit(w)) throw(new IllegalArgumentException("not a power of two: " + w));
@@ -517,37 +515,19 @@ public interface Lighting {
 	     * is built from the parameters and goes stale if they have changed.
 	     * The bbox is carried by the state too, as the shader's coordinate
 	     * transform reads it. */
-    Volume3f bbox = viewbox(proj);
-    if((last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
-	return(last);
-    if(haven.automated.nbots.core.NLog.diag()) {
-	/* Hitch probe [WTICK-a4f2]: count real lightgrid rebuilds (cache misses above).
-	 * Logged to wtick.log at most once per second so Tia's logs show rebuilds/sec. */
-	lgRebuilds++;
-	long now = System.currentTimeMillis();
-	if(now - lgLastLog > 1000) {
-	    haven.automated.nbots.core.NLog.diag("wtick.log", String.format(
-		"[WTICK-a4f2] lightgrid rebuilds=%d in last %.1fs", lgRebuilds, (now - lgLastLog) / 1000.0));
-	    lgRebuilds = 0;
-	    lgLastLog = now;
-	}
-    }
+	    Volume3f bbox = viewbox(proj);
+	    if((last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
+		return(last);
 	    Compiler c = new Compiler(bbox);
 	    int n = Math.min(lights.length, 65535);
 	    for(int i = 0; i < n; i++)
 		c.addlight(i, lights[i]);
 	    c.compact();
 	    Debug.statprint(Utils.formatter("C-lights: %d lists, max %d, bounds %s, cell %s", c.nlists, c.maxlist, c.bbox, c.gsz), stats);
-	    /* KamiClient: this used to dispose the previous grid right here, but the light
-	     * recompile runs outside the tree lock - the loader thread can be halfway
-	     * through building drawlist settings off the old grid's textures, and it'd
-	     * blow up on a use-after-free. Hold it one extra compile before letting go:
-	     * by then the frame that could still have been reading it is long done.
-	     * Can't just leak it to the finalizer either - with ZONED lighting this runs
-	     * every frame, and that's two textures a frame for GC to chase. */
-	    if(prev != null)
-		prev.dispose();
-	    prev = last;
+	    if(last != null) {
+		last.dispose();
+		last = null;
+	    }
 	    lastlights = lights;
 	    return(last = new GridLights(lights, c.bbox, c.grid, c.listbuf, c.lboff));
 	}
