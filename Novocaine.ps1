@@ -160,14 +160,14 @@ if (-not $isSource -and -not (Test-Path -LiteralPath (Join-Path $root 'hafen.jar
 # -Xmx/-XX remains Play.bat line 31; hafen.hl duplicates ZGC via jvm-arg because
 # HL ignores -XX in command-file.
 
-# Heap auto-scaling: floor 4096m always; bump to 6144m if TotalRAM >=16G with
-# headroom, to 8192m if >=24G (or headroom allows) with headroom. Headroom =
-# TotalRAM - (Count * candidate) - 4G OS reserve must remain >=0. TotalRAM via
-# WMI Win32_ComputerSystem.TotalPhysicalMemory. Play.bat stays at 4096m as the
-# static fallback; this override is applied dynamically at launch (regex replace
-# -Xmx\d+m). HL launcher reads hafen.hl `heap-size` separately; when launching
-# via this wrapper the JVM -Xmx here wins, so hafen.hl can stay at 4096 as its
-# own fallback (Steam HL path without the wrapper uses the HL value). To make
+# Heap auto-scaling: floor 8192m always (8GB default per 2026-09-06); the 6144m
+# (>=16G) / 8192m (>=24G) tiers above remain but can no longer trigger below the
+# floor. Headroom = TotalRAM - (Count * candidate) - 4G OS reserve must remain
+# >=0. TotalRAM via WMI Win32_ComputerSystem.TotalPhysicalMemory. Play.bat stays
+# at 8192m as the static fallback; this override is applied dynamically at launch
+# (regex replace -Xmx\d+m). HL launcher reads hafen.hl `heap-size` separately;
+# when launching via this wrapper the JVM -Xmx here wins, so hafen.hl carries
+# 8192 as its own fallback (Steam HL path without the wrapper uses the HL value). To make
 # Steam auto-scale even without the wrapper, this script also patches hafen.hl
 # heap-size to the scaled value whenever it runs, so a subsequent Steam launch
 # inherits the scaling.
@@ -185,7 +185,7 @@ function Get-TotalPhysicalMemoryBytes {
 
 function Get-ScaledHeapMb {
     param([long]$totalBytes, [int]$clientCount)
-    $floor = 4096
+    $floor = 8192
     $mid = 6144
     $high = 8192
     $osReserveMb = 4096
@@ -243,7 +243,7 @@ function Get-JvmArgs($dir) {
     }
 
     # Heap auto-scaling: override -Xmx in place, preserving -Xms1024m and guard order.
-    # Play.bat is the static fallback at 4096m; this is the dynamic override.
+    # Play.bat is the static fallback at 8192m; this is the dynamic override.
     $totalBytes = Get-TotalPhysicalMemoryBytes
     $scaledMb = Get-ScaledHeapMb -totalBytes $totalBytes -clientCount $Count
     if ($a -match '-Xmx(\d+)m') {

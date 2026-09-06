@@ -997,7 +997,7 @@ public class OptWnd extends Window {
 		studyHelperCheckBox.tooltip = studyHelperTooltip;
 
 		leftColumn = add(eatObserverCheckBox = new CheckBox("Log eating data (Eating Helper calibration)"){
-			{a = (Utils.getprefb("eatObserver", true));}
+			{a = (Utils.getprefb("eatObserver", false));}
 			public void changed(boolean val) {
 				Utils.setprefb("eatObserver", val);
 			}
@@ -1527,7 +1527,7 @@ public class OptWnd extends Window {
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
 			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
-				{a = Utils.getprefb("combatTelemetry", true);}
+				{a = Utils.getprefb("combatTelemetry", false);}
 				public void changed(boolean val) {
 					Utils.setprefb("combatTelemetry", val);
 				}

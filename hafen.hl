@@ -3,8 +3,8 @@ require 1.0
 command-file Play.bat
 
 # The HL launcher reads command-file args for exports/props but manages heap itself;
-# without heap-size JVM falls back to 1/4-RAM ergonomic (multi-GB LeakDbg). Floor
-# 4096m; wrapper scales -Xmx to 6144m (>=16G)/8192m (>=24G or headroom Count*HEAP+4G).
+# without heap-size JVM falls back to 1/4-RAM ergonomic (multi-GB LeakDbg). 8GB
+# default per 2026-09-06 (heap-size 8192 below); wrapper floors -Xmx at 8192m.
 # Steam Play (hafen.hl command-file Play.bat) is ZGC by default via jvm-arg below;
 # standalone Play.bat is the single home for -Xmx/-XX (Novocaine.ps1 reads it).
 #
@@ -18,10 +18,11 @@ command-file Play.bat
 # ceiling is not somewhere the heap avoids, it is where it ends up.
 #
 # So the ceiling does the work:
-#   heap-size 6144       the hard bound, and the only one there is. 40% above the
-#                        highest used figure measured, ~3.8x the 1.6G live set (healthy
-#                        for a collector - overhead is flat above roughly 3x), and it
-#                        leaves ~10G free on a 16G machine, which was the whole point.
+#   heap-size 8192       8GB default per 2026-09-06 (hitch reports): headroom for
+#                        the observed ~4.4G working drift plus leak growth, at the
+#                        cost of a larger resident footprint on small machines.
+#                        (Was 6144: 40% above the highest used figure measured,
+#                        ~3.8x the 1.6G live set, leaving ~10G free on 16G boxes.)
 #   ZUncommitDelay       the default 300s returned nothing across the window measured;
 #                        120s gets idle pages back to the OS while play continues.
 #
@@ -33,7 +34,7 @@ command-file Play.bat
 # start cycles earlier and re-mark a 1.6G live set more often, on 32G machines that
 # were never the problem as much as on the 16G ones that were. If it is ever
 # reintroduced, set it above the observed working range, not below it.
-heap-size 6144
+heap-size 8192
 jvm-arg -XX:+IgnoreUnrecognizedVMOptions
 jvm-arg -XX:+UseZGC
 jvm-arg -XX:+ZGenerational

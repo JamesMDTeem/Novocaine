@@ -336,7 +336,10 @@ public class EatObserver {
     }
 
     private static boolean enabled() {
-        return haven.OptWnd.eatObserverCheckBox != null && haven.OptWnd.eatObserverCheckBox.a;
+        /* Auto eat-logging disabled 2026-09-06 (hitch reports): off for everyone
+         * regardless of stored pref. Cookbook/map/planner paths are untouched.
+         * Re-enable by restoring the checkbox read below. */
+        return false;
     }
 
     // ------------------------------------------------------------------ BAttrWnd hooks

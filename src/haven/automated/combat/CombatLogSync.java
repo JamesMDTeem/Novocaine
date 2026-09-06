@@ -99,10 +99,9 @@ public final class CombatLogSync {
     }
 
     private static boolean shouldSkip() {
-        if (!Utils.getprefb("combatTelemetry", true))
-            return true;
-        String ep = Utils.getpref("webMapEndpoint", "");
-        return ep == null || ep.trim().isEmpty();
+        /* Auto combat telemetry disabled 2026-09-06 (hitch reports): never
+         * upload or backfill. Re-enable by restoring the pref read below. */
+        return true;
     }
 
     private static void doUpload(Path path) {

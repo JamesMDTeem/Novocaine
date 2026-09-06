@@ -84,6 +84,65 @@ public final class CombatRecorder {
     private static final java.util.Map<Long, String> lastAgi =
         new java.util.concurrent.ConcurrentHashMap<Long, String>();
     private static volatile String lastAtkRes = null;
+    private static volatile Equipory curEq = null;
+    private static volatile java.util.Map<Integer, GearSnap> lastGear = null;
+    private static volatile java.util.Map<Integer, WpnSnap> lastWpn = null;
+
+    private static final class GearSnap {
+        final String res;
+        final double ql;
+        final int hard;
+        final int soft;
+        final boolean broken;
+        GearSnap(String res, double ql, int hard, int soft, boolean broken) {
+            this.res = res;
+            this.ql = ql;
+            this.hard = hard;
+            this.soft = soft;
+            this.broken = broken;
+        }
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof GearSnap)) return false;
+            GearSnap g = (GearSnap)o;
+            return broken == g.broken && hard == g.hard && soft == g.soft
+                && Double.doubleToLongBits(ql) == Double.doubleToLongBits(g.ql)
+                && ((res == null) ? g.res == null : res.equals(g.res));
+        }
+        @Override public int hashCode() {
+            int h = (res == null) ? 0 : res.hashCode();
+            h = 31 * h + Double.hashCode(ql);
+            h = 31 * h + hard;
+            h = 31 * h + soft;
+            h = 31 * h + (broken ? 1 : 0);
+            return h;
+        }
+    }
+
+    private static final class WpnSnap {
+        final String res;
+        final double ql;
+        final java.util.Map<String, Double> stats;
+        WpnSnap(String res, double ql, java.util.Map<String, Double> stats) {
+            this.res = res;
+            this.ql = ql;
+            this.stats = (stats == null)
+                ? java.util.Collections.emptyMap()
+                : new java.util.LinkedHashMap<String, Double>(stats);
+        }
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof WpnSnap)) return false;
+            WpnSnap w = (WpnSnap)o;
+            return Double.doubleToLongBits(ql) == Double.doubleToLongBits(w.ql)
+                && ((res == null) ? w.res == null : res.equals(w.res))
+                && stats.equals(w.stats);
+        }
+        @Override public int hashCode() {
+            int h = (res == null) ? 0 : res.hashCode();
+            h = 31 * h + Double.hashCode(ql);
+            h = 31 * h + stats.hashCode();
+            return h;
+        }
+    }
 
     private CombatRecorder() {}
 
@@ -127,6 +186,12 @@ public final class CombatRecorder {
         return(out);
     }
 
+    /* Kill switch for auto combat telemetry (2026-09-06 hitch reports). A method
+     * rather than a constant so the gate in start() still compiles. */
+    private static boolean telemetryDisabled() {
+        return true;
+    }
+
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
                                           Glob glob, Equipory eq) {
         start(charName, meGob, foeGob, foeRes, glob, eq, null);
@@ -134,7 +199,11 @@ public final class CombatRecorder {
 
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
                                           Glob glob, Equipory eq, haven.GameUI gui) {
-        if(!OptWnd.combatTelemetryCheckBox.a)
+        /* Auto combat telemetry disabled 2026-09-06 (hitch reports): off for
+         * everyone regardless of stored pref. start() is the sole choke point
+         * (writer is only created here; all other entry points check active()).
+         * Re-enable by restoring the checkbox read below. */
+        if(!OptWnd.combatTelemetryCheckBox.a || telemetryDisabled())
             return;
         if(writer != null)
             stop("superseded");
@@ -156,6 +225,9 @@ public final class CombatRecorder {
             lastHp.clear();
             lastAgi.clear();
             lastAtkRes = null;
+            curEq = null;
+            lastGear = null;
+            lastWpn = null;
             if(meGob >= 0)
                 combatants.add(meGob);
             if(foeGob >= 0)
@@ -217,6 +289,9 @@ public final class CombatRecorder {
                 if((res != null) && !wstats.get(i).isEmpty())
                     log(CombatEvent.weapon(0, 6 + i, res, wstats.get(i)));
             }
+            curEq = eq;
+            lastGear = snapshotGear(eq);
+            lastWpn = snapshotWeapon(eq);
             me = Prediction.me(comp, arm[0], arm[1],
                                new String[] {hands[0], hands[2]},
                                new double[] {
@@ -370,6 +445,96 @@ public final class CombatRecorder {
         } catch(Exception e) {
         }
         return(out);
+    }
+
+    private static java.util.Map<Integer, GearSnap> snapshotGear(Equipory eq) {
+        java.util.Map<Integer, GearSnap> out = new java.util.TreeMap<Integer, GearSnap>();
+        if (eq == null)
+            return out;
+        for (int i = 0; i < eq.slots.length; i++) {
+            WItem w = eq.slots[i];
+            if (w == null)
+                continue;
+            try {
+                String res = w.item.getres().name;
+                double ql = 0;
+                int h = 0, sf = 0;
+                boolean broken = false;
+                for (ItemInfo info : w.item.info()) {
+                    if (info instanceof Quality)
+                        ql = ((Quality)info).q;
+                    else if (info instanceof Armor) {
+                        h = ((Armor)info).hard;
+                        sf = ((Armor)info).soft;
+                    } else if (info instanceof haven.res.ui.tt.wear.Wear) {
+                        haven.res.ui.tt.wear.Wear wr = (haven.res.ui.tt.wear.Wear)info;
+                        broken = ((wr.m - wr.d) == 0);
+                    }
+                }
+                out.put(i, new GearSnap(res, ql, h, sf, broken));
+            } catch (Exception e) {
+            }
+        }
+        return out;
+    }
+
+    private static java.util.Map<Integer, WpnSnap> snapshotWeapon(Equipory eq) {
+        java.util.Map<Integer, WpnSnap> out = new java.util.TreeMap<Integer, WpnSnap>();
+        if (eq == null)
+            return out;
+        String[] hands = readHands(eq);
+        java.util.List<java.util.Map<String, Double>> wstats = new java.util.ArrayList<java.util.Map<String, Double>>();
+        for (int i = 6; i <= 7; i++)
+            wstats.add(readWeaponStats(((eq == null) || (i >= eq.slots.length)) ? null : eq.slots[i]));
+        for (int i = 0; i < wstats.size(); i++) {
+            int slot = 6 + i;
+            String res = hands[i * 2];
+            String qlStr = hands[i * 2 + 1];
+            double ql = 0;
+            try {
+                if (qlStr != null)
+                    ql = Double.parseDouble(qlStr);
+            } catch (Exception e) {
+            }
+            out.put(slot, new WpnSnap(res, ql, wstats.get(i)));
+        }
+        return out;
+    }
+
+    private static void pollEquipment() {
+        Equipory eq = curEq;
+        java.util.Map<Integer, GearSnap> lg = lastGear;
+        java.util.Map<Integer, WpnSnap> lw = lastWpn;
+        if (eq == null || lg == null || lw == null)
+            return;
+        try {
+            java.util.Map<Integer, GearSnap> curGear = snapshotGear(eq);
+            if (!curGear.equals(lg)) {
+                long t = now();
+                for (java.util.Map.Entry<Integer, GearSnap> e : curGear.entrySet()) {
+                    GearSnap prev = lg.get(e.getKey());
+                    if (!e.getValue().equals(prev)) {
+                        GearSnap g = e.getValue();
+                        log(CombatEvent.gear(t, e.getKey(), g.res, g.ql, g.hard, g.soft, g.broken));
+                    }
+                }
+                lastGear = curGear;
+            }
+            java.util.Map<Integer, WpnSnap> curWpn = snapshotWeapon(eq);
+            if (!curWpn.equals(lw)) {
+                long t = now();
+                for (java.util.Map.Entry<Integer, WpnSnap> e : curWpn.entrySet()) {
+                    WpnSnap prev = lw.get(e.getKey());
+                    if (!e.getValue().equals(prev)) {
+                        WpnSnap w = e.getValue();
+                        if (w.res != null && !w.stats.isEmpty())
+                            log(CombatEvent.weapon(t, e.getKey(), w.res, w.stats));
+                    }
+                }
+                lastWpn = curWpn;
+            }
+        } catch (Exception e) {
+        }
     }
 
     public static void log(String line) {
@@ -587,6 +752,7 @@ public final class CombatRecorder {
         if(!active())
             return;
         try {
+            pollEquipment();
             /* Gate on the value, not the clock: openings change rarely relative to frame rate,
              * and a per-frame stream would bloat the log without adding information. Distance IS
              * part of the key, quantised to whole units: the dominant player strategy against
@@ -779,6 +945,9 @@ public final class CombatRecorder {
         }
         writer = null;
         curPath = null;
+        curEq = null;
+        lastGear = null;
+        lastWpn = null;
         try {
             w.close();
         } catch(Exception e) {
