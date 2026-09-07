@@ -1,5 +1,6 @@
 package haven.automated.survey;
 
+import haven.Area;
 import haven.Coord;
 import haven.GameUI;
 import haven.Loading;
@@ -83,10 +84,28 @@ public class Heights {
      * entirely wrong.
      */
     public static Heights read(GameUI gui) {
-        MCache map = gui.ui.sess.glob.map;
         Coord pt = gui.map.player().rc.floor(MCache.tilesz);
-        Coord ul = map.getgridt(pt).ul;
-        int w = MCache.cmaps.x + 1, h = MCache.cmaps.y + 1;
+        Coord ul = gui.ui.sess.glob.map.getgridt(pt).ul;
+        return read(gui, Area.sized(ul, MCache.cmaps));
+    }
+
+    /**
+     * An arbitrary rectangle of tiles, as a vertex field one row and column larger.
+     *
+     * {@code tiles.br} is exclusive, like every other {@link Area} in the client, so an NxN region
+     * reads (N+1)x(N+1) vertices - the far edge belongs to the last survey drawn against it and
+     * levelling moves it like any other.
+     *
+     * <p>Nothing here is grid-aligned. {@code getfz} takes absolute tile coordinates and does its
+     * own grid lookup, so a region straddling four grids costs no more than one sitting inside a
+     * single grid; only the {@link #missing} count differs, and only because more of the ground has
+     * to have been walked.
+     */
+    public static Heights read(GameUI gui, Area tiles) {
+        MCache map = gui.ui.sess.glob.map;
+        Coord ul = tiles.ul;
+        Coord sz = tiles.sz();
+        int w = sz.x + 1, h = sz.y + 1;
         double[] z = new double[w * h];
         int missing = 0;
         for (int y = 0; y < h; y++) {

@@ -186,10 +186,12 @@ public final class CombatRecorder {
         return(out);
     }
 
-    /* Kill switch for auto combat telemetry (2026-09-06 hitch reports). A method
-     * rather than a constant so the gate in start() still compiles. */
+    /* Local combat logging re-enabled 2026-09-06: the kill switch below now
+     * returns false, so start() is gated only by the "Record Combat Telemetry
+     * (JSONL logs)" checkbox again. Upload stays off: CombatLogSync.shouldSkip()
+     * still returns true, so finished logs never leave <gameDir>/CombatLogs. */
     private static boolean telemetryDisabled() {
-        return true;
+        return false;
     }
 
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
@@ -199,10 +201,9 @@ public final class CombatRecorder {
 
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
                                           Glob glob, Equipory eq, haven.GameUI gui) {
-        /* Auto combat telemetry disabled 2026-09-06 (hitch reports): off for
-         * everyone regardless of stored pref. start() is the sole choke point
-         * (writer is only created here; all other entry points check active()).
-         * Re-enable by restoring the checkbox read below. */
+        /* Local-only logging (2026-09-06): gated by the checkbox. start() is the
+         * sole choke point (writer is only created here; all other entry points
+         * check active()). Upload stays off in CombatLogSync.shouldSkip(). */
         if(!OptWnd.combatTelemetryCheckBox.a || telemetryDisabled())
             return;
         if(writer != null)

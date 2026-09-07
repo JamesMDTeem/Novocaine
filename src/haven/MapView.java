@@ -2123,6 +2123,10 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		} catch (Exception ignored) {
 		}
 	}
+	/* The survey planner's ground rectangles are MCache overlays and draw themselves, but a
+	 * tinted rectangle has nowhere to put its number, and the number is the part that says
+	 * which one to draw first. Hence a 2D pass here, after the map is on screen. */
+	haven.automated.survey.SurveyOverlay.draw(g, this);
 
 
     }

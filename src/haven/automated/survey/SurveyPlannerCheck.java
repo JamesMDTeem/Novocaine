@@ -1,7 +1,13 @@
 package haven.automated.survey;
 
+import haven.Area;
+import haven.Coord;
+
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Set;
 
 /**
  * Offline verification for the planner, run as a plain main() because this tree has no test
@@ -129,7 +135,7 @@ public class SurveyPlannerCheck {
         String json = SurveyPlanStore.toJson(plan);
         SurveyPlan back = SurveyPlanStore.fromJson(json);
         eq(back.targetZ, plan.targetZ, 1e-9, "target survives a round trip");
-        check(back.ul.equals(plan.ul), "the region origin survives a round trip");
+        check(back.region.equals(plan.region), "the region survives a round trip");
         check(back.surveys.size() == plan.surveys.size(), "every survey survives a round trip");
         check(back.transfers.size() == plan.transfers.size(), "every transfer survives a round trip");
         check(back.surveys.get(3).tiles.equals(plan.surveys.get(3).tiles),
@@ -141,8 +147,280 @@ public class SurveyPlannerCheck {
             && back.transfers.get(0).to == plan.transfers.get(0).to,
             "transfer endpoints survive a round trip");
 
+        SurveyPlan rect = rectangular(hs);
+        corners();
+        ordering(plan);
+        reachZones(plan);
+        rebasing(plan);
+        doneMarks(plan, rect);
+
         System.out.println(failures == 0 ? "ALL CHECKS PASSED" : (failures + " CHECK(S) FAILED"));
         System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /**
+     * A region that is neither square nor grid-aligned.
+     *
+     * The planner took one span for both axes for as long as a plan was always exactly one grid,
+     * which is a bug you cannot see while every region is 100x100. Cropping the fixture to 60x100
+     * tiles at an arbitrary origin is the cheapest thing that would have caught it.
+     */
+    private static SurveyPlan rectangular(Heights hs) {
+        int rw = 61, rh = 101;
+        double[] rz = new double[rw * rh];
+        for (int y = 0; y < rh; y++)
+            System.arraycopy(hs.z, y * hs.w, rz, y * rw, rw);
+        Coord origin = Coord.of(-987, 1043);
+        Heights rect = new Heights(origin, rw, rh, rz, 0);
+
+        SurveyPlan p = SurveyPlanner.compute(rect, 31, 1.0);
+        check(p.region.equals(Area.corn(origin, origin.add(rw - 1, rh - 1))),
+            "a 60x100 region plans as 60x100, got " + p.region);
+        // 60 tiles needs two parts, 100 needs four; anything else means a span was reused.
+        check(p.surveys.size() == 8, "60x100 at a 31 cap is eight surveys, got " + p.surveys.size());
+
+        int area = 0;
+        for (SurveyPlan.SurveySpec s : p.surveys) {
+            Coord sz = s.tiles.sz();
+            check(sz.x >= 1 && sz.x <= 31 && sz.y >= 1 && sz.y <= 31,
+                "survey " + s.index + " is " + sz + ", outside the 31-tile cap");
+            check(p.region.contains(s.tiles), "survey " + s.index + " sits inside the region");
+            area += sz.x * sz.y;
+        }
+        Coord rsz = p.region.sz();
+        check(area == rsz.x * rsz.y,
+            "the surveys tile the region exactly - covered " + area + " of " + (rsz.x * rsz.y));
+
+        double net = 0;
+        for (SurveyPlan.SurveySpec s : p.surveys)
+            net += s.net;
+        eq(net, 0.0, 1e-6, "a rectangular region's nets sum to zero");
+        return p;
+    }
+
+    /**
+     * Marking corners two at a time, over several selections.
+     *
+     * A complete pair is a FINISHED selection, not one corner short of a new one. Getting that
+     * backwards meant the first press of a fresh pair combined where the player was standing with
+     * a corner set for a previous region - and since the second corner plans automatically, it
+     * planned that nonsense region immediately, on what the player experienced as the FIRST press.
+     */
+    private static void corners() {
+        Coord p1 = Coord.of(10, 10), p2 = Coord.of(40, 50), p3 = Coord.of(100, 7);
+        Corners c = new Corners();
+
+        c.press(true, p1);
+        check(p1.equals(c.a) && c.b == null, "pressing A first sets only A");
+        check(c.partial() && !c.complete(), "one corner is a selection part-way through");
+        check(c.region() == null, "an incomplete pair describes no region");
+
+        c.press(false, p2);
+        check(p1.equals(c.a) && p2.equals(c.b), "pressing B then completes the pair");
+        check(c.complete() && !c.partial(), "two corners is a finished selection");
+        // Inclusive of BOTH marked tiles: standing on a corner means that tile is in the region.
+        check(c.region().equals(Area.corn(Coord.of(10, 10), Coord.of(41, 51))),
+            "the region covers both marked tiles, got " + c.region());
+
+        // Pressing A against a complete pair starts over rather than re-pairing with the old B.
+        c.press(true, p3);
+        check(p3.equals(c.a) && c.b == null,
+            "pressing A on a complete pair starts a new selection, got A=" + c.a + " B=" + c.b);
+
+        // And the same from the B side.
+        Corners d = new Corners();
+        d.press(true, p1);
+        d.press(false, p2);
+        d.press(false, p3);
+        check(d.a == null && p3.equals(d.b),
+            "pressing B on a complete pair starts a new selection, got A=" + d.a + " B=" + d.b);
+
+        // Pressing the same corner twice corrects it instead of completing anything.
+        Corners e = new Corners();
+        e.press(true, p1);
+        e.press(true, p2);
+        check(p2.equals(e.a) && e.b == null, "pressing A twice moves A and leaves B unset");
+
+        // B first is just as valid as A first, and the corners may be marked in any order.
+        Corners f = new Corners();
+        f.press(false, p2);
+        f.press(true, p1);
+        check(p1.equals(f.a) && p2.equals(f.b), "B first then A completes a pair too");
+        check(f.region().equals(c0(p1, p2)), "and describes the same region either way");
+
+        // A pair marked from the opposite diagonal describes the same rectangle.
+        Corners g = new Corners();
+        g.press(true, Coord.of(40, 10));
+        g.press(false, Coord.of(10, 50));
+        check(g.region().equals(c0(p1, p2)),
+            "the other diagonal gives the same region, got " + g.region());
+
+        Corners h = new Corners();
+        h.press(true, p1);
+        h.clear();
+        check(h.a == null && h.b == null && !h.partial(), "clear drops both marks");
+    }
+
+    /** The region two corner tiles describe, both inclusive. */
+    private static Area c0(Coord a, Coord b) {
+        return Area.corn(a.min(b), a.max(b).add(1, 1));
+    }
+
+    /**
+     * A stockpile band really is ground both surveys can reach.
+     *
+     * This is the whole claim the violet highlight makes, and it is the kind of claim that is easy
+     * to get subtly wrong by an off-by-one and impossible to notice in game - a band one tile too
+     * far over still looks perfectly reasonable, and the soil simply cannot be picked up from the
+     * other side. So it is checked against the reach rule directly: every tile of every band must
+     * be inside the survey or within one tile of its boundary, for BOTH surveys.
+     */
+    private static void reachZones(SurveyPlan plan) {
+        int adjacent = 0;
+        for (SurveyPlan.Transfer t : plan.transfers) {
+            Area from = plan.surveys.get(t.from).tiles, to = plan.surveys.get(t.to).tiles;
+            Area z = plan.reachZone(t);
+            if (z == null) {
+                check(!touching(from, to),
+                    "surveys " + t.from + " and " + t.to + " touch but got no band");
+                continue;
+            }
+            adjacent++;
+            check(z.sz().x > 0 && z.sz().y > 0, "a band is not empty");
+            for (Coord c : z) {
+                check(reaches(from, c),
+                    "band tile " + c + " is out of survey " + t.from + "'s reach");
+                check(reaches(to, c),
+                    "band tile " + c + " is out of survey " + t.to + "'s reach");
+            }
+        }
+        check(adjacent > 0, "at least some transfers are between neighbours with a shared band");
+
+        // Two neighbours sharing a vertical edge: the band is the two columns either side of it.
+        Area a = Area.corn(Coord.of(0, 0), Coord.of(10, 10));
+        Area b = Area.corn(Coord.of(10, 0), Coord.of(20, 10));
+        Area z = SurveyPlan.reachZone(a, b);
+        check(z != null && z.equals(Area.corn(Coord.of(9, -1), Coord.of(11, 11))),
+            "neighbours share a two-wide band along their edge, got " + z);
+
+        // A gap of one tile still leaves a band, because reach is one tile outside each.
+        Area c = Area.corn(Coord.of(11, 0), Coord.of(21, 10));
+        check(SurveyPlan.reachZone(a, c) != null, "a one-tile gap is still within reach of both");
+
+        // Two tiles apart is out of reach of one another, and must produce nothing.
+        Area d = Area.corn(Coord.of(12, 0), Coord.of(22, 10));
+        check(SurveyPlan.reachZone(a, d) == null,
+            "surveys two tiles apart share no ground, got " + SurveyPlan.reachZone(a, d));
+    }
+
+    /** Whether a tile is inside a survey or within its one-tile reach. */
+    private static boolean reaches(Area survey, Coord c) {
+        return c.x >= survey.ul.x - SurveyPlan.REACH && c.x < survey.br.x + SurveyPlan.REACH
+            && c.y >= survey.ul.y - SurveyPlan.REACH && c.y < survey.br.y + SurveyPlan.REACH;
+    }
+
+    /** Whether two rectangles are near enough that a stockpile could serve both. */
+    private static boolean touching(Area a, Area b) {
+        return a.ul.x - SurveyPlan.REACH < b.br.x + SurveyPlan.REACH
+            && b.ul.x - SurveyPlan.REACH < a.br.x + SurveyPlan.REACH
+            && a.ul.y - SurveyPlan.REACH < b.br.y + SurveyPlan.REACH
+            && b.ul.y - SurveyPlan.REACH < a.br.y + SurveyPlan.REACH;
+    }
+
+    /**
+     * Translating a plan into another session's coordinates changes coordinates and nothing else.
+     *
+     * The case this stands in for is a relog: absolute tile coordinates are relative to a floating
+     * map origin, so a plan read off disk describes the right rectangles at the wrong numbers, and
+     * the whole overlay lands on ground the player has never seen.
+     */
+    private static void rebasing(SurveyPlan plan) {
+        Coord d = Coord.of(517, -283);
+        SurveyPlan moved = plan.rebase(plan.region.ul.add(d));
+
+        check(moved.region.equals(Area.corn(plan.region.ul.add(d), plan.region.br.add(d))),
+            "the region translates, got " + moved.region);
+        check(moved.surveys.size() == plan.surveys.size(), "every survey survives a rebase");
+        eq(moved.targetZ, plan.targetZ, 1e-9, "the target level is untouched by a rebase");
+
+        for (int i = 0; i < plan.surveys.size(); i++) {
+            SurveyPlan.SurveySpec a = plan.surveys.get(i), b = moved.surveys.get(i);
+            check(b.index == a.index, "survey indices are untouched by a rebase");
+            check(b.tiles.equals(Area.corn(a.tiles.ul.add(d), a.tiles.br.add(d))),
+                "survey " + a.index + " translates by exactly the offset");
+            eq(b.net, a.net, 1e-9, "survey " + a.index + "'s balance is untouched by a rebase");
+            check(moved.step(a.index) == plan.step(a.index), "the work order is untouched");
+        }
+        for (int i = 0; i < plan.transfers.size(); i++) {
+            SurveyPlan.Transfer a = plan.transfers.get(i), b = moved.transfers.get(i);
+            check(b.stockpile.equals(a.stockpile.add(d)),
+                "stockpile hints move with their surveys - a hint that stayed put would point at "
+                + "ground in the old frame");
+            check(moved.surveys.get(b.from).tiles.contains(b.stockpile),
+                "and still land inside the survey that produces the soil");
+        }
+        check(plan.rebase(plan.region.ul) == plan, "rebasing to where it already is changes nothing");
+    }
+
+    /** Every survey has exactly one place in the work order, and the order is 1..n. */
+    private static void ordering(SurveyPlan plan) {
+        boolean[] seen = new boolean[plan.surveys.size() + 1];
+        for (SurveyPlan.SurveySpec s : plan.surveys) {
+            int st = plan.step(s.index);
+            check(st >= 1 && st <= plan.surveys.size(),
+                "survey " + s.index + " has step " + st + ", outside 1.." + plan.surveys.size());
+            if (st >= 1 && st < seen.length) {
+                check(!seen[st], "step " + st + " is claimed by two surveys");
+                seen[st] = true;
+            }
+        }
+        java.util.List<SurveyPlan.SurveySpec> ord = plan.order();
+        for (int i = 0; i < ord.size(); i++)
+            check(plan.step(ord.get(i).index) == i + 1,
+                "step " + plan.step(ord.get(i).index) + " disagrees with order() position " + (i + 1));
+        check(plan.step(-1) == 0, "a survey this plan does not contain has no step");
+    }
+
+    /**
+     * Done-marks round-trip, and do not leak across a replan.
+     *
+     * The second half is the one that matters. A done-mark is permanent where a claim expires, so
+     * a mark surviving into a plan whose rectangles have moved would tell a crew that work nobody
+     * has done is finished - which is worse than showing no progress at all.
+     */
+    private static void doneMarks(SurveyPlan plan, SurveyPlan other) {
+        try {
+            Path dir = Files.createTempDirectory("surveydone");
+            System.setProperty("novocaine.surveydonefile", dir.resolve("done.json").toString());
+        } catch (IOException e) {
+            check(false, "could not make a temp directory for the done-mark checks: " + e);
+            return;
+        }
+        check(SurveyPlanStore.done(plan).isEmpty(), "nothing is marked done to begin with");
+
+        SurveyPlanStore.setDone(plan, 3, true);
+        SurveyPlanStore.setDone(plan, 7, true);
+        Set<Integer> got = SurveyPlanStore.done(plan);
+        check(got.contains(3) && got.contains(7) && got.size() == 2,
+            "both marks are recorded, got " + got);
+
+        SurveyPlanStore.setDone(plan, 3, false);
+        got = SurveyPlanStore.done(plan);
+        check(got.contains(7) && !got.contains(3), "unmarking takes one off and leaves the rest");
+
+        /* The relog case, and the reason the stamp holds no absolute coordinates. The same plan
+         * restated in another session's numbers is the same work, so a crew's whole progress
+         * record has to come back with it. Keyed on coordinates this returned empty and the plan
+         * reported nothing done. */
+        SurveyPlan moved = plan.rebase(plan.region.ul.add(517, -283));
+        check(SurveyPlanStore.done(moved).contains(7),
+            "marks survive a rebase into another session's coordinates");
+
+        // A genuinely different partition must not inherit them.
+        check(SurveyPlanStore.done(other).isEmpty(),
+            "marks do not carry over to a plan with different rectangles");
+        check(SurveyPlanStore.done(plan).contains(7),
+            "and the original plan's marks are still there");
     }
 
     static void check(boolean cond, String what) {

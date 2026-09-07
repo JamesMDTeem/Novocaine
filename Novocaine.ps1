@@ -36,6 +36,47 @@
     instant is how one of them fails on a driver timeout; a few seconds apart costs
     nothing. Default 3.
 
+.PARAMETER Multibox
+    Size the crew to fit the machine instead of giving every client the single-client
+    heap. Without it, -Count N launches N clients at -Xmx8192m each, because the heap
+    tiers below only ever scale UP - the 8192m floor is unconditional. Eight of those is
+    a 64G ceiling on a 32G box.
+
+    -Multibox divides what is actually there, then caps the result per crew size:
+
+        perClient = (TotalRAM - 4096 OS reserve) / Count - 768 non-heap
+        heap      = clamp(perClient rounded down to 256m, 1536m, cap(Count))
+
+        cap(Count):  1 -> 8192m    3 -> 5120m    5-6 -> 3072m    9-12 -> 2048m
+                     2 -> 6144m    4 -> 4096m    7-8 -> 2560m     13+ -> 1536m
+
+    The 768m is the part that is not heap and is charged per JVM anyway: metaspace, code
+    cache, thread stacks (-Xss8m x threads), and the GL driver's own textures and direct
+    ByteBuffers. Dividing all of RAM into -Xmx and ignoring that is how a crew that looks
+    like it fits starts swapping.
+
+    The cap exists because the division alone is too generous at the small end: on a 32G
+    box it leaves 2 clients on the full 8192m and 4 on 6144m, most of the machine handed
+    to characters that are usually idling. The lower of the two wins, so on a machine
+    smaller than this one the arithmetic still binds and the heap still drops below cap.
+
+    It also implies -G1, because the collector choice dominates the footprint at this
+    scale: measured 3632M floating heap on ZGC against 1515M on G1 for the same 45s
+    session. Pass -ZGC alongside it to keep ZGC anyway and take the pause-time win
+    instead. And it drops -Xms to 256m, so N clients do not commit N GB before anything
+    has loaded.
+
+    On a 32G box: Count 1 -> 8192m (unchanged), 2 -> 6144m, 4 -> 4096m, 8 -> 2560m,
+    12 -> 1536m with a warning that the crew is oversubscribed.
+
+.PARAMETER HeapMb
+    Per-client -Xmx in megabytes, overriding both the floor and -Multibox arithmetic. For
+    when you have measured your own crew and want that number, not a derived one.
+
+    Neither this nor -Multibox writes its value back into hafen.hl. The Steam HL path
+    reads heap-size from there, and leaving a 2560m crew value behind would quietly
+    cripple the next single-client Steam launch.
+
 .PARAMETER Console
     Attach a console window and wait for the client to exit. The default is javaw.exe: no
     console, and this script returns as soon as the game is up.
@@ -92,9 +133,12 @@
     .\Novocaine.ps1                      # update-or-build, then play (ZGC by default)
     .\Novocaine.ps1 -NoLaunch            # build only (the typecheck gate)
     .\Novocaine.ps1 -Count 8             # build once, launch a crew of eight
+    .\Novocaine.ps1 -Count 8 -Multibox   # ... sized to fit the machine, on G1
     .\Novocaine.ps1 -Count 2 -NoBuild    # two more clients against the build you have
     .\Novocaine.ps1 -Console             # with a console to read GC logs in
     .\Novocaine.ps1 -NoZGC -Console      # G1 instead of ZGC, with console
+    .\Novocaine.ps1 -Count 8 -Multibox -NoBuild -DryRun   # what would that crew run with?
+    .\Novocaine.ps1 -Count 6 -HeapMb 3072 # your own number instead of the derived one
     .\Novocaine.ps1 -Check               # is there a newer release?
 #>
 
@@ -102,6 +146,8 @@
 param(
     [int]$Count = 1,
     [int]$StaggerSeconds = 3,
+    [switch]$Multibox,
+    [int]$HeapMb = 0,
     [switch]$Console,
     [switch]$NoZGC,
     [switch]$G1,
@@ -140,6 +186,11 @@ function Die($m)  {
 }
 
 if ($Count -lt 1) { Die "Count must be at least 1 (got $Count)." }
+# 512m is below what the client can even reach the login screen in; 65536m is past any
+# machine this runs on and is far more likely to be a typo for 6553 than a real ask.
+if ($HeapMb -ne 0 -and ($HeapMb -lt 512 -or $HeapMb -gt 65536)) {
+    Die "HeapMb must be between 512 and 65536 (got $HeapMb)."
+}
 
 $isSource = Test-Path -LiteralPath (Join-Path $root 'build.xml')
 if (-not $isSource -and -not (Test-Path -LiteralPath (Join-Path $root 'hafen.jar'))) {
@@ -210,6 +261,57 @@ function Get-ScaledHeapMb {
     return $floor
 }
 
+# -Multibox: the above can only scale UP, because $floor is returned unconditionally when
+# the headroom test fails. That is right for one client and wrong for a crew - eight
+# clients at the 8192m floor is a 64G ceiling on a 32G box. This divides what is there.
+#
+# The 768m subtracted per client is the non-heap cost the JVM pays anyway and -Xmx does
+# not cover: metaspace, code cache, thread stacks at -Xss8m, and the GL driver's textures
+# and direct ByteBuffers. Budgeting all of RAM as heap is how a crew that looks like it
+# fits ends up swapping.
+#
+# The division alone is too generous at small crew sizes - on a 32G box it leaves 2
+# clients at the full 8192m and 4 at 6144m, which is most of the machine committed to two
+# or four characters that are usually idling in a queue. Get-MultiboxHeapCapMb caps each
+# crew size at a chosen ceiling and the lower of the two wins, so the RAM arithmetic still
+# binds (and goes lower) on a machine smaller than this one.
+function Get-MultiboxHeapCapMb {
+    param([int]$clientCount)
+    if ($clientCount -le 1) { return 8192 }
+    if ($clientCount -eq 2) { return 6144 }
+    if ($clientCount -eq 3) { return 5120 }
+    if ($clientCount -eq 4) { return 4096 }
+    if ($clientCount -le 6) { return 3072 }
+    if ($clientCount -le 8) { return 2560 }
+    if ($clientCount -le 12) { return 2048 }
+    return 1536
+}
+
+function Get-MultiboxHeapMb {
+    param([long]$totalBytes, [int]$clientCount)
+    $minMb = 1536
+    $maxMb = Get-MultiboxHeapCapMb -clientCount $clientCount
+    $osReserveMb = 4096
+    $nonHeapMb = 768
+    if ($totalBytes -le 0) {
+        Warn "Couldn't read total RAM, so -Multibox has nothing to divide; using ${minMb}m per client."
+        return $minMb
+    }
+    $totalMb = [math]::Floor($totalBytes / 1MB)
+    $budgetMb = [math]::Floor(($totalMb - $osReserveMb) / $clientCount) - $nonHeapMb
+    # Round down to a 256m boundary so the number in the command line is a readable one.
+    $heapMb = [math]::Floor($budgetMb / 256) * 256
+    if ($heapMb -lt $minMb) {
+        $wantGb = [math]::Round((($minMb + $nonHeapMb) * $clientCount + $osReserveMb) / 1024.0, 1)
+        $haveGb = [math]::Round($totalMb / 1024.0, 1)
+        Warn "$clientCount clients want about $wantGb GB and this machine has $haveGb GB."
+        Warn "Holding at the ${minMb}m floor -- expect GC thrash, or launch fewer clients."
+        return $minMb
+    }
+    if ($heapMb -gt $maxMb) { return $maxMb }
+    return [int]$heapMb
+}
+
 function Get-JvmArgs($dir) {
     $playBat = Join-Path $dir 'Play.bat'
     if (-not (Test-Path -LiteralPath $playBat)) { Die "No Play.bat in $dir - the JVM flags live there." }
@@ -229,7 +331,11 @@ function Get-JvmArgs($dir) {
     # a JDK 24+ to ignore rather than reject it, and this way that holds however Play.bat
     # orders its own flags. The guard itself (-XX:+IgnoreUnrecognizedVMOptions) stays
     # first so Play.bat's standalone launch also tolerates unknown flags.
+    # -Multibox implies G1: at crew scale the collector choice dominates footprint
+    # (measured 3632M floating heap on ZGC against 1515M on G1, same 45s session), so the
+    # pause-time win is not worth 2G per client. -ZGC overrides and keeps ZGC anyway.
     $useZGC = -not $NoZGC -and -not $G1
+    if ($Multibox -and -not $ZGC) { $useZGC = $false }
     if ($useZGC) {
         if ($a -notmatch 'UseZGC') {
             $a = '-XX:+IgnoreUnrecognizedVMOptions -XX:+UseZGC -XX:+ZGenerational ' + $a
@@ -244,8 +350,17 @@ function Get-JvmArgs($dir) {
 
     # Heap auto-scaling: override -Xmx in place, preserving -Xms1024m and guard order.
     # Play.bat is the static fallback at 8192m; this is the dynamic override.
+    #
+    # Three sources, most explicit first: -HeapMb is taken as given, -Multibox divides the
+    # machine by Count, and otherwise the original scale-up-only tiers apply unchanged.
     $totalBytes = Get-TotalPhysicalMemoryBytes
-    $scaledMb = Get-ScaledHeapMb -totalBytes $totalBytes -clientCount $Count
+    if ($HeapMb -gt 0) {
+        $scaledMb = $HeapMb
+    } elseif ($Multibox) {
+        $scaledMb = Get-MultiboxHeapMb -totalBytes $totalBytes -clientCount $Count
+    } else {
+        $scaledMb = Get-ScaledHeapMb -totalBytes $totalBytes -clientCount $Count
+    }
     if ($a -match '-Xmx(\d+)m') {
         $currentXmx = [int]$Matches[1]
         if ($scaledMb -ne $currentXmx) {
@@ -253,14 +368,28 @@ function Get-JvmArgs($dir) {
         }
     }
 
+    # -Xms is COMMITTED, so Play.bat's 1024m floor is 8G gone the moment a crew of eight
+    # starts, before any of them has drawn a frame. Drop it for a crew and let each client
+    # grow into what it actually uses. Never raise it above the ceiling we just set.
+    if ($Multibox -or $HeapMb -gt 0) {
+        $msMb = 256
+        if ($msMb -gt $scaledMb) { $msMb = $scaledMb }
+        $a = $a -replace '-Xms\d+m', "-Xms${msMb}m"
+    }
+
     # Keep hafen.hl heap-size in sync so Steam HL path (which ignores Play.bat -Xmx)
     # also auto-scales on the next Steam launch, even without this wrapper.
     # For source checkouts $dir is bin\ — patch only the staged copy, not the
     # repo source (hafen.hl at $root stays at 4096 floor). For installed
     # clients $dir -eq $root, so the single hafen.hl there is patched.
+    #
+    # NOT for -Multibox or -HeapMb. Those are per-run crew numbers, and writing one back
+    # would leave the next single-client Steam launch — which reads heap-size from here
+    # and never sees this wrapper — silently capped at a crew's share of the machine.
+    $syncHl = -not ($Multibox -or $HeapMb -gt 0)
     try {
         $hlPath = Join-Path $dir 'hafen.hl'
-        if (Test-Path -LiteralPath $hlPath) {
+        if ($syncHl -and (Test-Path -LiteralPath $hlPath)) {
             $hlText = [IO.File]::ReadAllText($hlPath)
             if ($hlText -match '(?m)^heap-size\s+(\d+)') {
                 $cur = [int]$Matches[1]
@@ -321,6 +450,13 @@ function Start-Client($dir, $n) {
     if (($n -gt 1) -and ($jvmArgs -match '-Xms(\d+)m')) {
         $floorGb = [math]::Round(([int]$Matches[1] * $n) / 1024.0, 1)
         Warn "$n clients reserve about $floorGb GB of heap between them before anything loads."
+        if ($jvmArgs -match '-Xmx(\d+)m') {
+            $ceilGb = [math]::Round(([int]$Matches[1] * $n) / 1024.0, 1)
+            Warn "Their -Xmx ceilings total $ceilGb GB."
+        }
+        if (-not $Multibox -and $HeapMb -le 0) {
+            Warn 'Add -Multibox to size the heap to this machine instead of the single-client default.'
+        }
     }
 
     Step "Launching $n client(s) from $dir"

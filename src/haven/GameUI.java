@@ -1625,6 +1625,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	haven.automated.alchemy.AlchemyService.poll(ui, dt);
 	haven.automated.lp.LpContext.tick();
 	haven.automated.nbots.world.PlaceOverlay.tick(this);
+	haven.automated.survey.SurveyOverlay.tick(this);
 	haven.automated.nbots.world.Observed.tick(this);
 	haven.automated.mapper.MappingClient mc = haven.automated.mapper.MappingClient.getInstance();
 	if(mc != null)
@@ -2418,9 +2419,24 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	return(0);
     }
 
+    /** One week and one day, in seconds - the two steps the weeks rounding below moves by. */
+    private static final long WEEK_SECS = 604800, DAY_SECS = 86400;
+
     /**
      * Seconds until ready, from an inspected collectable's chat line, or 0 if the line is
      * not a countdown at all.
+     *
+     * A weeks reading is rounded UP by the game, so the number on screen is an upper bound
+     * and not the time remaining: "3 weeks" means more than two weeks and at most three.
+     * Taking it literally overstated every long timer by up to a week, and because the
+     * mapper keeps the longest duration it has ever seen for a species, a single such
+     * reading pinned that species high for good - Fairy Stone had learned 14 days against a
+     * table value of 4, Abyssal Chasm 42. So a weeks reading drops one week, and "1 week",
+     * which carries no whole week of certainty at all, drops to six days.
+     *
+     * Days and below are taken as reported. Only the weeks wording has been observed to
+     * round, and guessing the same about days would shorten every existing day-scale timer
+     * on no evidence.
      */
     private static long parseCollectableCountdown(String message) {
 	if(message == null)
@@ -2429,7 +2445,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	if(!lead.find())
 	    return(0);
 	Matcher part = COLLECTABLE_COMPONENT.matcher(message.substring(lead.end()));
-	long secs = 0;
+	long secs = 0, weeks = 0;
 	while(part.find()) {
 	    long n;
 	    try {
@@ -2437,7 +2453,18 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    } catch(NumberFormatException e) {
 		continue;
 	    }
-	    secs += n * unitSeconds(part.group(2));
+	    /* Weeks are held back rather than added, so the rounding below sees the count
+	     * itself and not a total it can no longer pick the weeks out of. */
+	    if(part.group(2).toLowerCase().startsWith("w"))
+		weeks += n;
+	    else
+		secs += n * unitSeconds(part.group(2));
+	}
+	if(weeks > 0) {
+	    long rounded = (weeks - 1) * WEEK_SECS;
+	    if(rounded == 0)
+		rounded = 6 * DAY_SECS;		/* "1 week" rounds down into days, not to nothing */
+	    secs += rounded;
 	}
 	return(secs);
     }

@@ -148,13 +148,14 @@ public class SurveyPlanner {
      * is what lets {@link SurveyPlannerCheck} assert a bound on the result at all.
      */
     public static int[][] optimise(Heights hs, int maxSide, double t, double w) {
-        int span = hs.w - 1;
-        int[] bx = even(span, maxSide), by = even(span, maxSide);
+        int spanX = hs.w - 1, spanY = hs.h - 1;
+        int[] bx = even(spanX, maxSide), by = even(spanY, maxSide);
         double best = carrying(nets(hs, bx, by, t), bx.length - 1, by.length - 1, w);
         Random rnd = new Random(12345);
-        for (int restart = 0; restart < 24; restart++) {
-            int[] x = (restart == 0) ? even(span, maxSide) : random(span, maxSide, rnd);
-            int[] y = (restart == 0) ? even(span, maxSide) : random(span, maxSide, rnd);
+        int restarts = restarts((bx.length - 1) * (by.length - 1));
+        for (int restart = 0; restart < restarts; restart++) {
+            int[] x = (restart == 0) ? even(spanX, maxSide) : random(spanX, maxSide, rnd);
+            int[] y = (restart == 0) ? even(spanY, maxSide) : random(spanY, maxSide, rnd);
             double cur = carrying(nets(hs, x, y, t), x.length - 1, y.length - 1, w);
             boolean moved = true;
             while (moved) {
@@ -189,6 +190,29 @@ public class SurveyPlanner {
             }
         }
         return new int[][] {bx, by};
+    }
+
+    /**
+     * How many restarts a region of {@code n} surveys can afford.
+     *
+     * Every hill-climb step re-solves a min-cost flow whose edge count grows with the SQUARE of
+     * the survey count, and the number of steps grows with the cut count on top of that, so the
+     * search is somewhere near quartic in the side of the region. A grid is sixteen surveys and
+     * twenty-four restarts of it is a moment; the same twenty-four over a region four grids across
+     * is minutes, on a thread the player is waiting on.
+     *
+     * <p>A grid keeps all twenty-four, so the numbers {@link SurveyPlannerCheck} asserts against
+     * real terrain still describe what the planner does for the case they were measured on.
+     * Anything larger trades restarts for an answer that arrives - and it is the cheaper trade
+     * than it looks, since the even split the search starts from is already a decent partition and
+     * the restarts only ever bought the last few percent.
+     */
+    private static int restarts(int n) {
+        if (n <= 16)
+            return 24;
+        if (n <= 36)
+            return 8;
+        return 3;
     }
 
     /** A random valid cut vector, for a restart that is not the even split. */
@@ -228,7 +252,8 @@ public class SurveyPlanner {
                 surveys.add(new SurveyPlan.SurveySpec(j * nx + i, tiles, sd[j * nx + i]));
             }
         }
-        return new SurveyPlan(hs.ul, t, surveys, transfers(sd, nx, ny, w, surveys));
+        Area region = Area.corn(hs.ul, hs.ul.add(hs.w - 1, hs.h - 1));
+        return new SurveyPlan(region, t, surveys, transfers(sd, nx, ny, w, surveys));
     }
 
     /**
