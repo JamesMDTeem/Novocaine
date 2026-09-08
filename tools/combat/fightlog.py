@@ -1091,7 +1091,13 @@ def default_logs(root=None):
         root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                             "..", ".."))
     pool_dir = os.path.join(root, "data", "combat", "pool")
-    pool_files = sorted(glob.glob(os.path.join(pool_dir, "*.jsonl")))
+    # Recursive on purpose. sync_pool.py writes the pool flat, but a pool that has been
+    # reorganised by hand - one directory per character is the obvious way to do it, and
+    # it has happened - would otherwise go completely unseen: a single-level glob returns
+    # nothing, default_logs silently falls back to the local logs only, and every
+    # estimator downstream reports numbers from a fraction of the corpus without saying
+    # so. Reading both layouts costs nothing and removes a silent-wrong-answer mode.
+    pool_files = sorted(glob.glob(os.path.join(pool_dir, "**", "*.jsonl"), recursive=True))
     if pool_files:
         # Dedup against local files by fightId stem. Pool filenames carry a
         # characterId- prefix (sanitized to [A-Za-z0-9_-]), so a pool copy and

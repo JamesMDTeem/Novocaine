@@ -54,7 +54,11 @@ def pooled_corpus():
                 check("manifest is valid JSON", False, True)
         return
 
-    files = sorted(glob.glob(os.path.join(POOL_DIR, "*.jsonl")))
+    # Recursive: sync_pool.py writes the pool flat, but a hand-reorganised pool (one
+    # directory per character) must still be seen. fightlog.default_logs reads it the
+    # same way, and a check that looked shallower than the reader it is checking would
+    # report a healthy pool as empty - which is exactly what it did.
+    files = sorted(glob.glob(os.path.join(POOL_DIR, "**", "*.jsonl"), recursive=True))
     print("  pool files: %d" % len(files))
     check("pool file count reported", len(files), len(files))
 
@@ -128,7 +132,7 @@ def pooled_corpus():
 def default_logs_includes_pool():
     print("\ndefault_logs includes pool")
     paths, dirs = fightlog.default_logs(ROOT)
-    pool_files = sorted(glob.glob(os.path.join(POOL_DIR, "*.jsonl")))
+    pool_files = sorted(glob.glob(os.path.join(POOL_DIR, "**", "*.jsonl"), recursive=True))
     if not pool_files:
         print("  pool empty - default_logs returns %d local files" % len(paths))
         check("default_logs with empty pool returns local files", isinstance(paths, list), True)
