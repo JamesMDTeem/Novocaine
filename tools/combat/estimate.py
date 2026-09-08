@@ -208,8 +208,9 @@ def measure_mu(logs=None):
             continue
         if fightlog.is_ranged(recs):  # ranged: no openings, melee instruments do not apply
             continue
-        wall = next((r.get("wall") for r in recs if r.get("ev") == "begin"), None)
-        level = levels_at(wall).get("Take Aim")
+        begin = next((r for r in recs if r.get("ev") == "begin"), {})
+        wall = begin.get("wall")
+        level = levels_at(wall, begin.get("char")).get("Take Aim")
         if not level:
             continue
         before = None
@@ -399,7 +400,12 @@ def deck_history():
     before it.
     """
     out = []
-    for d in fightlog.find_log_dirs(ROOT):
+    # Local installs, plus the team's dumps pulled by tools/combat/sync_pool.py. The pooled
+    # files are named exactly as the client names them - deck-<character>-<wall>.json - so both
+    # sources parse through this one loop and neither needs to know where it came from.
+    dirs = list(fightlog.find_log_dirs(ROOT))
+    dirs.append(os.path.join(ROOT, "data", "combat", "pool", "decks"))
+    for d in dirs:
         for p in glob.glob(os.path.join(d, "deck-*.json")):
             stamp = os.path.basename(p).rsplit("-", 1)[-1].split(".")[0]
             try:
@@ -413,12 +419,19 @@ def deck_history():
                 continue
             body = doc.get("body", doc)
             moves = body.get("moves") or []
+            # Whose deck this is. A dump carries it in body.char and in its own filename;
+            # both were thrown away here until the corpus stopped being one character's.
+            char = body.get("char") or doc.get("char")
+            if not char:
+                base = os.path.basename(p)
+                if base.startswith("deck-") and base.count("-") >= 2:
+                    char = base[len("deck-"):].rsplit("-", 1)[0]
             # A probe fired while the sheet was still loading has the text but no levels.
             levels = dict((m.get("name"), m.get("decklevel")) for m in moves
                           if m.get("name") and m.get("decklevel") is not None)
             if levels and any(v > 0 for v in levels.values()):
-                out.append((when, levels))
-    out.sort()
+                out.append((when, levels, char))
+    out.sort(key=lambda e: e[0])
     # A probe that fires while the sheet is still loading carries a handful of cards
     # rather than the deck. One here holds 8 where every dump either side holds 33, and
     # left in place it reports every card it is missing as absent for the eight minutes
@@ -429,16 +442,33 @@ def deck_history():
     # Quick Barrage were swapped out for Punch and Knock Its Teeth Out and then swapped
     # back, which is an experiment rather than an artefact.
     if out:
-        full = max(len(l) for _w, l in out)
-        out = [(w, l) for w, l in out if len(l) >= (full * 0.75)]
+        # Per character: a "full" deck is that character's own biggest dump. Taking the
+        # max across everyone would judge a 20-card character against a 33-card one and
+        # discard every dump they ever made.
+        biggest = {}
+        for _w, l, c in out:
+            biggest[c] = max(biggest.get(c, 0), len(l))
+        out = [(w, l, c) for w, l, c in out if len(l) >= (biggest.get(c, 0) * 0.75)]
     return out
 
 
 DECKS = deck_history()
 
 
-def levels_at(when):
-    """The deck in force at a wall time - the newest dump at or before it, or {} if none.
+def levels_at(when, char):
+    """The deck in force for a CHARACTER at a wall time, or {} if that is not known.
+
+    The character half is not optional. Deck dumps come from this machine, so they cover
+    our own characters only, while the corpus is pooled from the whole team: of 3022
+    fights, 604 are ZzxcuV3's (who has dumps) and 2418 belong to Shade, BonkiDonki,
+    Pikapolonica, Japcek and Stealth (who have none). Keyed on time alone, this handed
+    every one of those 2418 fights ZzxcuV3's card levels - so another player's level-5
+    Zig-Zag Ruse was filed as level 1, and mu_from_reductions' level-1 control, which
+    must contain 1.0 by definition, came back with intervals as high as [1.500, 1.636].
+
+    A character we hold no dump for is UNKNOWN, exactly as a fight older than every dump
+    is unknown, and for the same reason: a level-keyed measurement must skip it rather
+    than credit it to somebody else's deck.
 
     An unknown deck is reported as unknown. It used to fall back: a fight with no wall
     stamp walked the whole list and came back with TODAY'S deck, and a fight older than
@@ -450,10 +480,13 @@ def levels_at(when):
     Returning {} costs nothing that matters: a level-keyed measurement skips the fight,
     which is the correct treatment for a fight whose deck is not known.
     """
-    if not DECKS or when is None or when < DECKS[0][0]:
+    if not DECKS or when is None or char is None:
+        return {}
+    mine = [(w, l) for w, l, c in DECKS if c == char]
+    if not mine or when < mine[0][0]:
         return {}
     best = {}
-    for stamp, levels in DECKS:
+    for stamp, levels in mine:
         if stamp > when:
             break
         best = levels
@@ -499,7 +532,7 @@ def ok_boost(logs=None):
             continue
         if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
-        lv = levels_at((log.header or {}).get("wall"))
+        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
         for eng in log.engagements:
             states = sorted(eng.states, key=lambda st: st["t"])
             for m in eng.moves:
@@ -536,7 +569,26 @@ def ok_boost(logs=None):
 
 
 
-LEVELS = DECKS[-1][1] if DECKS else {}
+def _latest_deck():
+    """Today's deck, for the character who has the most dumps on this machine.
+
+    DECKS now spans several characters, so "the last entry" is whoever happened to dump
+    most recently - which for a crew is arbitrary. Ownership questions ("do we own this
+    card") mean the main character, so pick the one we actually have a history for.
+    """
+    if not DECKS:
+        return {}
+    counts = {}
+    for _w, _l, c in DECKS:
+        counts[c] = counts.get(c, 0) + 1
+    main = max(counts, key=lambda c: counts[c])
+    for w, l, c in reversed(DECKS):
+        if c == main:
+            return l
+    return DECKS[-1][1]
+
+
+LEVELS = _latest_deck()
 
 def _mu_measured():
     """Every instrument that reads mu, intersected - and shouting if they disagree.
@@ -1008,7 +1060,7 @@ def agility_band(logs=None):
             continue
         if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
-        lv = levels_at((log.header or {}).get("wall"))
+        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
         for eng in log.engagements:
             sp = (eng.res or "?").split("/")[-1]
             states = sorted(eng.states, key=lambda st: st["t"])
@@ -1150,12 +1202,33 @@ def pooled_agility(rec):
 
 
 def _pool_agility(allobs, by_gob):
-    """The reconciliation itself, over one body of observations. See pooled_agility."""
+    """The reconciliation itself, over one body of observations. See pooled_agility.
+
+    INTERSECT WITHIN AN INDIVIDUAL, ENVELOPE ACROSS THEM. Every observation of ONE
+    creature constrains that one creature's agility, so those intersect - that is what
+    agility_interval does and it is right. Observations of DIFFERENT creatures of the
+    same species do not, because individuals differ: the wiki lists a base quality
+    beside every creature, and summarise_hp has treated several fights as an envelope
+    rather than an intersection for exactly this reason since the boar was pinned at 64
+    on the strength of one that walked away from 63 damage.
+
+    This used to intersect everything first and only fall back to the envelope when the
+    intersection came out EMPTY. An empty intersection is not the failure mode that
+    matters. The one that matters is an intersection that stays coherent while quietly
+    excluding a real individual, and it needs no contradiction to happen: greenooze,
+    every reading from one character at a constant agiMe of 78, has individuals at
+    69.4-87.5, 65.4-92.7 and 0.0-45.2. Intersecting those yields 0.0-71.6, which is
+    perfectly coherent, is accepted, and then disagrees with the very individual at
+    72.8-83.6 that helped produce it. The species does not have one agility, so no
+    intersection across its members can be right.
+
+    The envelope is wider, and that is the honest answer rather than a worse one. The
+    matchup evaluator already simulates each fight twice, against the toughest and the
+    weakest reading the data allows, and reports "not known" when only the weakest is
+    beaten - so a wide interval costs a confident answer we were not entitled to.
+    """
     if not allobs:
         return (None, {})
-    iv = agility_interval(allobs, None)
-    if (iv is not None) and (iv[0] <= iv[1]):
-        return (iv, {"n": len(allobs)})
 
     per = {}
     for gob, obs in by_gob.items():
@@ -1164,20 +1237,22 @@ def _pool_agility(allobs, by_gob):
             per[gob] = one
     faulty = sorted(g for g, one in per.items() if one[0] > one[1])
     kept = {g: one for g, one in per.items() if one[0] <= one[1]}
+
     if not kept:
+        # Either nothing carried a gob, or every individual contradicted itself. A flat
+        # intersection is all that is left; it is only sound here because with no usable
+        # per-individual split there is nothing to envelope.
+        iv = agility_interval(allobs, None)
+        if (iv is not None) and (iv[0] <= iv[1]):
+            return (iv, {"n": len(allobs), "ungrouped": True,
+                         "self_contradictory_gobs": faulty})
         return (None, {"contradictory": True, "self_contradictory_gobs": faulty,
                        "n": len(allobs)})
 
-    rest = sorted(set().union(*(by_gob[g] for g in kept)))
-    iv = agility_interval(rest, None)
-    if (iv is not None) and (iv[0] <= iv[1]):
-        return (iv, {"n": len(rest), "self_contradictory_gobs": faulty})
-
-    # Each member is coherent and they still do not meet. That is the species varying.
     lo = min(one[0] for one in kept.values())
     hi = max(one[1] for one in kept.values())
     cap = any(one[2] for one in kept.values())
-    return ((lo, hi, cap), {"n": len(rest), "union": True,
+    return ((lo, hi, cap), {"n": len(allobs), "union": True,
                             "self_contradictory_gobs": faulty,
                             "members": len(kept)})
 
@@ -1464,7 +1539,15 @@ def agi_species_comparison(logs=None):
         compared = []
         for b in rows:
             clo, chi = b["lo"], b["hi"]
-            if pooled is None:
+            if clo > chi:
+                # The bracket contradicts ITSELF - agility_interval crosses lo past hi
+                # when one creature's own observations disagree, which is how it reports
+                # a faulty individual (_pool_agility drops exactly these as `faulty`).
+                # A crossed interval cannot agree or disagree with anything, and scoring
+                # it as a disagreement invents a finding out of known-bad data. Unknown,
+                # like a species with no pooled reading at all.
+                agree = None
+            elif pooled is None:
                 agree = None
             else:
                 plo, phi, _capped = pooled
@@ -1977,7 +2060,7 @@ def collect(paths):
         attrs = (log.header or {}).get("attr") or {}
         agi_me = attrs.get("agi")
         # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
-        lv = levels_at((log.header or {}).get("wall"))
+        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
         my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv)
         for eng in log.engagements:
             rec = per[bucket(eng)]
@@ -2486,7 +2569,7 @@ def mu_from_reductions(logs=None):
             continue
         if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
-        lv = levels_at((log.header or {}).get("wall"))
+        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
         for eng in log.engagements:
             for m in eng.moves:
                 nm = m.get("name")

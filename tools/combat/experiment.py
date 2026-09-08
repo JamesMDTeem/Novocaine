@@ -303,7 +303,9 @@ def coverage(paths=None):
     # except a STANCE, which is not thrown at all. One sits on the bar at a time and is on
     # continuously, so it has no uses to count and listing it as never used is miscounting
     # rather than finding something. Reported separately instead.
-    owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+    # estimate.LEVELS, not DECKS[-1]: DECKS now spans every character that has a deck dump
+    # on this machine, so its last entry is whoever dumped most recently, not ours.
+    owned = estimate.LEVELS
     stances = set(nm for nm, m in estimate.load_moves().items() if m.get("stance"))
     for nm in owned:
         if nm not in stances:
@@ -424,7 +426,7 @@ def report_todo():
     sole = LIVE[0] if LIVE else None
     if sole:
         fn_ = dict(HYPOTHESES)[sole]
-        owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+        owned = estimate.LEVELS
         have = owned.get("Take Aim")
         reach = [l for l in range(1, min(have or 0, estimate.MU_LEVELS) + 1)
                  if l not in estimate.MU_MEASURED] if have else []
@@ -493,7 +495,7 @@ def report_discrimination():
     print("  hypotheses predicting different integers say which one is dead.\n")
     print("  A card can measure the deck weighting only if its COOLDOWN divides by it.")
     print("  Exactly two do, and a bigger base is a finer instrument:\n")
-    owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+    owned = estimate.LEVELS
     for nm, spec in INSTRUMENTS.items():
         print("      %-10s base %-5.0f initiative scale %-5.2f (deck level: %d)"
               % (nm, spec["base"], spec["ip_scale"], owned.get(nm, 0)))
@@ -544,7 +546,7 @@ def report_discrimination():
 def report_separation(live):
     """More than one curve is standing, so the job is to split them."""
     print("  %d candidates survive, so the job is to SEPARATE them.\n" % len(live))
-    owned = estimate.DECKS[-1][1] if estimate.DECKS else {}
+    owned = estimate.LEVELS
     found = False
     for lvl in range(1, estimate.MU_LEVELS + 1):
         if lvl in estimate.MU_MEASURED:

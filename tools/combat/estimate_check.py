@@ -258,21 +258,34 @@ def deck_history():
     saved = estimate.DECKS
     try:
         estimate.DECKS = [
-            (1000, {"Quick Barrage": 1, "Punch": 0}),
-            (2000, {"Quick Barrage": 1, "Punch": 3}),
-            (3000, {"Quick Barrage": 0, "Punch": 5}),
+            (1000, {"Quick Barrage": 1, "Punch": 0}, "Us"),
+            (2000, {"Quick Barrage": 1, "Punch": 3}, "Us"),
+            (3000, {"Quick Barrage": 0, "Punch": 5}, "Us"),
+            # Another player, in the pooled corpus, whose deck we do not hold.
+            (2400, {"Punch": 5}, "Them"),
         ]
         check("a fight between dumps uses the one before it",
-              estimate.levels_at(2500)["Punch"], 3)
+              estimate.levels_at(2500, "Us")["Punch"], 3)
         check("a fight after the last dump uses the last",
-              estimate.levels_at(9999)["Punch"], 5)
+              estimate.levels_at(9999, "Us")["Punch"], 5)
         check("exactly on a dump counts as that dump",
-              estimate.levels_at(2000)["Punch"], 3)
+              estimate.levels_at(2000, "Us")["Punch"], 3)
         # The whole point: a move dropped since is still read at the level it was used at.
         check("a move dropped since is read at the level it was used at",
-              estimate.levels_at(2500)["Quick Barrage"], 1)
-        check("and today's deck would have said 0", estimate.DECKS[-1][1]["Quick Barrage"],
+              estimate.levels_at(2500, "Us")["Quick Barrage"], 1)
+        check("and today's deck would have said 0", estimate.DECKS[-2][1]["Quick Barrage"],
               0)
+        # The pooled-corpus error this cost us: keyed on time alone, a fight of Them's at
+        # 2500 came back with OUR deck. 2418 of 3022 fights belong to characters we hold
+        # no dump for, so this silently credited every one of them to ZzxcuV3's card
+        # levels - and mu_from_reductions' level-1 control, which must contain 1.0 by
+        # definition, came back with intervals as high as [1.500, 1.636].
+        check("another character's fight does not borrow our deck",
+              estimate.levels_at(2500, "Them"), {"Punch": 5})
+        check("a character we hold no dump for is unknown, not ours",
+              estimate.levels_at(2500, "Nobody"), {})
+        check("a fight with no character is unknown too",
+              estimate.levels_at(2500, None), {})
         # A fight older than every dump is UNKNOWN, not guessed. It used to fall back to
         # the earliest deck, and a fight with no wall stamp at all walked the whole list
         # and came back with TODAY's - which credited the corpus's oldest Take Aim fight
@@ -280,10 +293,12 @@ def deck_history():
         # 1.0 it plainly is. A level-keyed measurement should skip a fight whose deck it
         # does not know, and it can only do that if this says so.
         check("a fight older than every dump is unknown, not guessed",
-              estimate.levels_at(1), {})
-        check("a fight with no timestamp is unknown too", estimate.levels_at(None), {})
+              estimate.levels_at(1, "Us"), {})
+        check("a fight with no timestamp is unknown too",
+              estimate.levels_at(None, "Us"), {})
         estimate.DECKS = []
-        check("no dumps at all is empty rather than wrong", estimate.levels_at(500), {})
+        check("no dumps at all is empty rather than wrong",
+              estimate.levels_at(500, "Us"), {})
     finally:
         estimate.DECKS = saved
 
@@ -1265,37 +1280,70 @@ def broken_gear():
           "no shield" in (without[2] or ""), True)
 
 
+def recovers_wiki(name, w, wiki, spread_pct=1.5, tol=1.0):
+    """A weapon's base damage is a constant; its tooltip is not.
+
+    Tooltip damage and quality are properties of the individual weapon that happened to
+    be logged, so pinning them (as this check used to: "bronze sword tooltip 176.0",
+    "bronze sword ql 38.0613") only passes against the exact corpus they were read from.
+    Growing the corpus from 605 to 3023 fights turned six such assertions red without a
+    single thing being wrong with the model - there was simply a second bronze sword in
+    the data, at ql 30.4 instead of 38.1.
+
+    What IS constant is what the quality curve divides out: base = dmg / sqrt(ql/10).
+    So assert that instead, in the two ways that can actually fail:
+
+      1. every sighting recovers the SAME base - recovered_base spans [lo, hi] across all
+         observed (damage, quality) pairs, and a wide span means the curve is wrong;
+      2. that base agrees with the wiki figure.
+
+    More instances make this check stronger rather than breaking it. With one sighting
+    each, lo == hi and (1) was vacuous - the old corpus could not test the quality
+    relationship at all.
+    """
+    rb = w.get("recovered_base") or {}
+    lo, hi = rb.get("lo"), rb.get("hi")
+    if lo is None or hi is None:
+        check("%s has a recovered base" % name, False, True)
+        return
+    n_dmg = len(w.get("damage") or [])
+    n_ql = len(w.get("quality") or [])
+    spread = (abs(hi - lo) / lo * 100.0) if lo else 0.0
+    print("  %s: %d tooltip(s) over %d quality(s), base %.3f-%.3f"
+          % (name, n_dmg, n_ql, lo, hi))
+    ok = spread <= spread_pct
+    print("  %-58s %-20s %s"
+          % ("  every sighting recovers the same base (<=%.1f%%)" % spread_pct,
+             "%.3f%%" % spread, "ok" if ok else "WANT <=%.1f%%" % spread_pct))
+    if not ok:
+        failures.append("%s recovered base spread" % name)
+    near("  and that base is the wiki's %.0f" % wiki, (lo + hi) / 2.0, wiki, tol)
+
+
 def weapons_live_vs_wiki():
     print("\nweapons: live wpn vs wiki table - the two readings by name")
     seen = estimate.weapons_seen()
     join = estimate.weapon_offline_join()
     # Bronze sword: the agreement case (12.5% both sides) that rules out a units error.
     bs = seen.get("bronzesword") or {}
-    bs_tooltip = (bs.get("damage") or [None])[0]
-    bs_ql = (bs.get("quality") or [None])[0]
-    bs_rec = (bs.get("recovered_base") or {}).get("lo")
     bs_pen = (bs.get("armpen") or [None])[0]
-    check("bronze sword tooltip 176.0", bs_tooltip, 176.0)
-    check("bronze sword ql 38.0613", bs_ql, 38.0613)
-    check("bronze sword recovered base 90.21 (tool) vs wiki 90", round(bs_rec or 0, 2), 90.21)
+    recovers_wiki("bronze sword", bs, 90.0)
     check("bronze sword wiki pen 12.5% agrees with live 0.125", round((bs_pen or 0) * 100, 2), 12.5)
-    near("  dmg/sqrt(ql/10) recovers wiki to 0.24%", bs_rec or 0, 90.0, 0.3)
     # Stone axe: the disagreement that is a finding, not arithmetic.
     sa = seen.get("stoneaxe") or {}
-    sa_tooltip = (sa.get("damage") or [None])[0]
-    sa_ql = (sa.get("quality") or [None])[0]
-    sa_rec = (sa.get("recovered_base") or {}).get("lo")
     sa_pen = (sa.get("armpen") or [None])[0]
-    check("stone axe tooltip 71.0", sa_tooltip, 71.0)
-    check("stone axe ql 56.2835", sa_ql, 56.2835)
-    check("stone axe recovered base 29.93 (tool) vs wiki 30", round(sa_rec or 0, 2), 29.93)
-    near("  dmg/sqrt(ql/10) recovers wiki to 0.24%", sa_rec or 0, 30.0, 0.3)
+    recovers_wiki("stone axe", sa, 30.0)
     check("stone axe live pen 0.20 vs wiki 10% is factor-2", round((sa_pen or 0) * 100, 1), 20.0)
     # Offline join prefers live where present, wiki fallback where not.
     check("offline join bronzesword pen is live 0.125", join.get("bronzesword", {}).get("armorpen"), 0.125)
     check("offline join stoneaxe pen is live 0.20 (not wiki 0.10)", join.get("stoneaxe", {}).get("armorpen"), 0.2)
-    check("offline join bronzesword base is live 90.21 (not wiki 90 flat)", round(join.get("bronzesword", {}).get("basedmg") or 0, 2), 90.21)
-    check("offline join stoneaxe base is live 29.93", round(join.get("stoneaxe", {}).get("basedmg") or 0, 2), 29.93)
+    # The join must carry a LIVE-derived base, not the wiki's flat figure. "Live" is
+    # asserted as "recovered from our own sightings, and within measurement error of the
+    # wiki number" - not as one exact decimal, for the same reason as recovers_wiki above.
+    near("offline join bronzesword base is live, near wiki 90",
+         join.get("bronzesword", {}).get("basedmg") or 0, 90.0, 1.0)
+    near("offline join stoneaxe base is live, near wiki 30",
+         join.get("stoneaxe", {}).get("basedmg") or 0, 30.0, 1.0)
     # Wiki fallback: a weapon never held stays on wiki values, absent stays null never 0.
     # Battleaxe has no live reading in this corpus.
     ba = join.get("battleaxeofthetwelfthbay") or join.get("battleaxe") or {}

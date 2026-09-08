@@ -209,7 +209,8 @@ def replay(paths):
             ranged_files.append(os.path.basename(p))
             continue
         attrs = (log.header or {}).get("attr") or {}
-        lv = estimate.levels_at((log.header or {}).get("wall"))
+        lv = estimate.levels_at((log.header or {}).get("wall"),
+                                 (log.header or {}).get("char"))
         for eng in log.engagements:
             name = estimate.bucket(eng)
             if not eng.offence_ok:
