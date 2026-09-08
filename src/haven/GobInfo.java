@@ -18,7 +18,7 @@ public abstract class GobInfo extends GAttrib implements RenderTree.Node, PView.
      * preferences lookup is a synchronized call, not a field read.
      */
     public static volatile double cachedTickInterval =
-	Utils.getprefd("perf.gob_info_tick_interval", 0.25);
+        Utils.getprefd("perf.gob_info_tick_interval", 0.25);
 
     /**
      * Where in the interval this instance sits, as a fraction. Fixed per gob.

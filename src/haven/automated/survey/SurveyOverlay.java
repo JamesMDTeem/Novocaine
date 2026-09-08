@@ -128,6 +128,18 @@ public class SurveyOverlay {
     private static volatile int next = -1;
     /** Chequerboard phase per survey index; see {@link #parityOf}. Rebuilt with the plan. */
     private static volatile Map<Integer, Boolean> parity = new HashMap<>();
+    /**
+     * Ground height per survey index, sampled on the tick.
+     *
+     * draw() runs every frame and used to call {@code MCache.getzp} once per survey to
+     * place each number, so a full-size region (250x250 tiles, ~500 surveys) charged the
+     * render thread ~500 map-cache lookups per frame - each one able to throw Loading -
+     * before anything was culled. Terrain height changes on a human timescale, and this
+     * overlay exists precisely because the player is about to change it, so sampling it
+     * on the same 0.5s tick as the done set is accurate enough and costs nothing per
+     * frame. A survey with no entry yet is simply not drawn, exactly as before.
+     */
+    private static volatile Map<Integer, Float> groundz = new HashMap<>();
     private static double nextTick = 0;
 
     private SurveyOverlay() {}
@@ -186,8 +198,12 @@ public class SurveyOverlay {
 
             Set<Integer> wanted = new HashSet<>();
             if (enabled && p != null) {
+                Map<Integer, Float> zs = new HashMap<>();
                 for (SurveyPlan.SurveySpec s : p.surveys) {
                     wanted.add(s.index);
+                    Float z = groundzOf(mcache, s.tiles);
+                    if (z != null)
+                        zs.put(s.index, z);
                     MCache.OverlayInfo want = infoFor(s, fin);
                     Shown cur = shown.get(s.index);
                     /* An overlay's colour is fixed when it is built, so a state change means a
@@ -206,6 +222,7 @@ public class SurveyOverlay {
                         cur.ol.update(s.tiles);
                     }
                 }
+                groundz = zs;
             }
             shown.entrySet().removeIf(e -> {
                 if (wanted.contains(e.getKey()))
@@ -322,15 +339,18 @@ public class SurveyOverlay {
             SurveyPlan p = plan;
             if (!enabled || p == null || mv == null || mv.ui == null || mv.ui.sess == null)
                 return;
-            MCache mcache = mv.ui.sess.glob.map;
             /* Reset the colour first. Drawing an image modulates it by whatever chcolor was last
              * set to, and the path-drawing blocks that run just before this in MapView.draw leave
              * theirs behind - without this the numbers come out tinted by the pathfinder. */
             g.chcolor();
             Set<Integer> fin = done;
             int nx = next;
+            Map<Integer, Float> zs = groundz;
             for (SurveyPlan.SurveySpec s : p.surveys) {
-                Coord sc = centre(mv, mcache, s.tiles);
+                Float z = zs.get(s.index);
+                if (z == null)
+                    continue;
+                Coord sc = centre(mv, s.tiles, z);
                 if (sc == null)
                     continue;
                 if (sc.x < -MARGIN || sc.y < -MARGIN
@@ -345,17 +365,33 @@ public class SurveyOverlay {
         }
     }
 
-    /** Where a rectangle's middle lands on screen, or null if it cannot be worked out yet. */
-    private static Coord centre(MapView mv, MCache mcache, Area tiles) {
+    /**
+     * The ground height at a rectangle's middle, or null if the map cannot answer yet.
+     *
+     * Called from the tick, never from draw: this is the half of the old centre() that
+     * could touch the map cache and throw Loading. Ground nobody has walked near yet has
+     * no height to put a number on; it resolves a tick or two later.
+     */
+    private static Float groundzOf(MCache mcache, Area tiles) {
         try {
             Coord mid = tiles.ul.add(tiles.br).div(2);
             Coord2d wc = Coord2d.of(mid.x + 0.5, mid.y + 0.5).mul(MCache.tilesz);
-            Coord3f sc = mv.screenxf(new Coord3f((float) wc.x, (float) wc.y, mcache.getzp(wc).z));
+            return (float) mcache.getzp(wc).z;
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** Where a rectangle's middle lands on screen, given a height already sampled. */
+    private static Coord centre(MapView mv, Area tiles, float z) {
+        try {
+            Coord mid = tiles.ul.add(tiles.br).div(2);
+            Coord2d wc = Coord2d.of(mid.x + 0.5, mid.y + 0.5).mul(MCache.tilesz);
+            Coord3f sc = mv.screenxf(new Coord3f((float) wc.x, (float) wc.y, z));
             return (sc == null) ? null : sc.round2();
         } catch (RuntimeException e) {
-            /* Loading, most often: ground nobody has walked near yet has no height to put a number
-             * on. It draws a frame or two later, and a Loading escaping into MapView.draw would
-             * blank the whole map view behind a "Loading..." panel. */
+            /* A projection that cannot be worked out this frame. A RuntimeException escaping
+             * into MapView.draw would blank the whole map view behind a "Loading..." panel. */
             return null;
         }
     }
