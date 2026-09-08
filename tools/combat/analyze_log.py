@@ -3,7 +3,7 @@
 
     python tools/combat/analyze_log.py bin/CombatLogs/*.jsonl
 
-Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy/matplotlib (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting. This reads logs; it never writes to the
+Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting. This reads logs; it never writes to the
 data pack, and it never fills in a value the log did not record. Anything it
 could not determine is printed as "?" rather than guessed.
 
