@@ -186,14 +186,6 @@ public final class CombatRecorder {
         return(out);
     }
 
-    /* Local combat logging re-enabled 2026-09-06: the kill switch below now
-     * returns false, so start() is gated only by the "Record Combat Telemetry
-     * (JSONL logs)" checkbox again. Upload stays off: CombatLogSync.shouldSkip()
-     * still returns true, so finished logs never leave <gameDir>/CombatLogs. */
-    private static boolean telemetryDisabled() {
-        return false;
-    }
-
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
                                           Glob glob, Equipory eq) {
         start(charName, meGob, foeGob, foeRes, glob, eq, null);
@@ -201,10 +193,12 @@ public final class CombatRecorder {
 
     public static synchronized void start(String charName, long meGob, long foeGob, String foeRes,
                                           Glob glob, Equipory eq, haven.GameUI gui) {
-        /* Local-only logging (2026-09-06): gated by the checkbox. start() is the
-         * sole choke point (writer is only created here; all other entry points
-         * check active()). Upload stays off in CombatLogSync.shouldSkip(). */
-        if(!OptWnd.combatTelemetryCheckBox.a || telemetryDisabled())
+        /* Gated by the "Record Combat Telemetry" checkbox, which is the only gate:
+         * start() is the sole choke point (the writer is created here and nowhere
+         * else; every other entry point checks active()). A finished log is handed
+         * to CombatLogSync, which uploads it and then deletes the local file, so
+         * this checkbox governs the whole pipeline rather than just the disk copy. */
+        if(!OptWnd.combatTelemetryCheckBox.a)
             return;
         if(writer != null)
             stop("superseded");

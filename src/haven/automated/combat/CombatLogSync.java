@@ -34,6 +34,13 @@ import java.util.concurrent.ScheduledExecutorService;
  * on launch. Every entry point is a no-op when the feature is disabled and never throws
  * into the caller.
  *
+ * <p>The local file is staging, not storage: a log the server has confirmed it holds is
+ * deleted from disk, either straight after its own 200 or - for logs uploaded by an older
+ * client - when the launch backfill finds its fightId already in {@code /combatlog/ids}.
+ * Confirmation is the only trigger. A log that fails to upload for any reason stays on
+ * disk and is retried by the next launch, so a broken token or an offline server costs
+ * nothing but disk.
+ *
  * Threading: {@link CombatRecorder#stop()} calls {@link #enqueue(Path)} on the UI/message
  * thread. That method only enqueues a task (microseconds); all file I/O and network I/O
  * runs on a single daemon scheduler thread so gameplay is never stalled.
@@ -72,6 +79,27 @@ public final class CombatLogSync {
     }
 
     /**
+     * Enqueue a combat-deck dump for upload. Same contract as {@link #enqueue}: returns in
+     * microseconds, all I/O on the scheduler thread, never propagates.
+     *
+     * A deck is what makes a fight readable. The log says which move was thrown; only the deck
+     * says what LEVEL that move was, and mu - a factor in every attack weight - cannot be
+     * recovered without it. Uploading fights without decks is what left 2418 of 3022 pooled
+     * fights unusable for every level-keyed measurement.
+     */
+    public static void enqueueDeck(Path path) {
+        if (path == null)
+            return;
+        if (shouldSkip())
+            return;
+        try {
+            scheduler.execute(() -> doUploadDeck(path));
+        } catch (RejectedExecutionException e) {
+            // scheduler shut down - drop silently
+        }
+    }
+
+    /**
      * Launch-time backfill: uploads every *.jsonl under CombatLogs that has a terminal
      * {@code end} line and whose fightId is not already on the server. Runs once per
      * launch; re-entry is guarded. Sequential with 500 ms gaps.
@@ -99,9 +127,30 @@ public final class CombatLogSync {
     }
 
     private static boolean shouldSkip() {
-        /* Auto combat telemetry disabled 2026-09-06 (hitch reports): never
-         * upload or backfill. Re-enable by restoring the pref read below. */
-        return true;
+        if (!Utils.getprefb("combatTelemetry", true))
+            return true;
+        String ep = Utils.getpref("webMapEndpoint", "");
+        return ep == null || ep.trim().isEmpty();
+    }
+
+    /**
+     * Delete a log the server has confirmed it holds.
+     *
+     * The local file is a staging area, not an archive: once the fight is on the server
+     * it is the server's copy that the estimator reads, and leaving the local one behind
+     * only grows {@code <gameDir>/CombatLogs} without bound. Deletion is therefore tied
+     * strictly to confirmation - a 200 from {@code /combatlog}, or the fightId appearing
+     * in {@code /combatlog/ids} - and never to merely having attempted an upload. A log
+     * that fails to upload stays on disk and is retried by the next launch's backfill.
+     */
+    private static void deleteUploaded(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (Exception e) {
+            // A log we cannot delete is harmless: the server already has it, so the next
+            // backfill sees its id in the remote set and skips straight back to here.
+            System.out.println("[CombatLogSync] could not delete uploaded log (debug): " + e.getMessage());
+        }
     }
 
     private static void doUpload(Path path) {
@@ -133,9 +182,73 @@ public final class CombatLogSync {
                 return;
             }
             String token = bearerToken();
-            postWithRetry(endpoint, body, token);
+            if (postWithRetry(endpoint, body, token))
+                deleteUploaded(path);
         } catch (Exception e) {
             System.out.println("[CombatLogSync] upload failed (debug): " + e.getMessage());
+        }
+    }
+
+    /**
+     * The deck-dump filename stem, minus the "deck-" prefix: "&lt;character&gt;-&lt;wall&gt;".
+     * This is the server's DeckId, and it is also what sync_pool names the pulled file, so the
+     * three sides agree without anyone parsing the document to find out what it is.
+     */
+    private static String deckIdFromPath(Path path) {
+        String name = path.getFileName().toString();
+        if (name.endsWith(".json"))
+            name = name.substring(0, name.length() - ".json".length());
+        if (name.startsWith("deck-"))
+            name = name.substring("deck-".length());
+        return name;
+    }
+
+    private static void doUploadDeck(Path path) {
+        try {
+            if (shouldSkip())
+                return;
+            if ((path == null) || !Files.exists(path))
+                return;
+            long sz = Files.size(path);
+            // A 40-card sheet is tens of KB. Anything at 4MB is not a deck.
+            if (sz > MAX_BYTES) {
+                System.out.println("[CombatLogSync] skip deck >4MB: " + path);
+                return;
+            }
+            String doc = new String(Files.readAllBytes(path), StandardCharsets.UTF_8);
+            if (doc.trim().isEmpty())
+                return;
+            String endpoint = combatDeckEndpoint();
+            if (endpoint == null)
+                return;
+            String deckId = deckIdFromPath(path);
+            JSONObject src = new JSONObject(doc);
+            JSONObject body = src.optJSONObject("body");
+            String characterId = (body == null) ? "" : body.optString("char", "");
+            if (characterId.isEmpty())
+                return;
+            String world = WorldTag.current();
+            JSONObject payload = new JSONObject();
+            payload.put("characterId", characterId);
+            payload.put("deckId", deckId);
+            payload.put("wall", src.optLong("wall", 0L));
+            if (world == null)
+                payload.put("world", JSONObject.NULL);
+            else
+                payload.put("world", world);
+            payload.put("payload", doc);
+            byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+            if (bytes.length > MAX_BYTES) {
+                System.out.println("[CombatLogSync] skip deck payload >4MB: " + path);
+                return;
+            }
+            // Deliberately NOT deleted on success, unlike a fight log. A dump is a few tens of
+            // KB, there are only a few hundred of them, and they are the local record of what
+            // this character's cards were worth at a given moment - the thing every level-keyed
+            // measurement is read against. Cheap to keep, expensive to be wrong about.
+            postWithRetry(endpoint, bytes, bearerToken());
+        } catch (Exception e) {
+            System.out.println("[CombatLogSync] deck upload failed (debug): " + e.getMessage());
         }
     }
 
@@ -181,7 +294,26 @@ public final class CombatLogSync {
         return name;
     }
 
-    private static String combatLogEndpoint() {
+    /**
+     * The endpoints this class can be pointed at, longest first.
+     *
+     * The stored pref is whatever the player pasted, which may already name any one of these
+     * (or {@code /food}, the setting's original purpose). Stripping the longest match first
+     * matters: {@code /combatlog} is a prefix of {@code /combatlog/ids}, so testing it first
+     * would leave a stray {@code /ids} behind.
+     */
+    private static final String[] KNOWN_SUFFIXES = {
+        "/combatlog/ids", "/combatdeck/ids", "/combatlog", "/combatdeck", "/food"
+    };
+
+    /**
+     * The client base URL with {@code suffix} on it, or null when nothing is configured.
+     *
+     * One derivation for four endpoints. The two hand-written ones this replaced had already
+     * drifted into differently-shaped special cases for the same inputs, and adding a third
+     * and fourth copy for the deck endpoints would have made four places to get it wrong.
+     */
+    private static String clientEndpoint(String suffix) {
         String raw = Utils.getpref("webMapEndpoint", "");
         if (raw == null)
             return null;
@@ -193,41 +325,31 @@ public final class CombatLogSync {
         String query = (q < 0) ? "" : raw.substring(q);
         while (path.endsWith("/") && path.length() > 1)
             path = path.substring(0, path.length() - 1);
-        if (path.endsWith("/food")) {
-            path = path.substring(0, path.length() - "/food".length()) + "/combatlog";
-        } else if (!path.endsWith("/combatlog")) {
-            // handle already /combatlog/ids case
-            if (path.endsWith("/combatlog/ids")) {
-                path = path.substring(0, path.length() - "/ids".length());
-            } else {
-                path = path + "/combatlog";
+        for (String known : KNOWN_SUFFIXES) {
+            if (path.endsWith(known)) {
+                path = path.substring(0, path.length() - known.length());
+                break;
             }
         }
-        return withWorld(path + query);
+        while (path.endsWith("/") && path.length() > 1)
+            path = path.substring(0, path.length() - 1);
+        return withWorld(path + suffix + query);
+    }
+
+    private static String combatLogEndpoint() {
+        return clientEndpoint("/combatlog");
     }
 
     private static String combatLogIdsEndpoint() {
-        String raw = Utils.getpref("webMapEndpoint", "");
-        if (raw == null)
-            return null;
-        raw = raw.trim();
-        if (raw.isEmpty())
-            return null;
-        int q = raw.indexOf('?');
-        String path = (q < 0) ? raw : raw.substring(0, q);
-        String query = (q < 0) ? "" : raw.substring(q);
-        while (path.endsWith("/") && path.length() > 1)
-            path = path.substring(0, path.length() - 1);
-        if (path.endsWith("/food")) {
-            path = path.substring(0, path.length() - "/food".length()) + "/combatlog/ids";
-        } else if (path.endsWith("/combatlog")) {
-            path = path + "/ids";
-        } else if (path.endsWith("/combatlog/ids")) {
-            // already ids
-        } else {
-            path = path + "/combatlog/ids";
-        }
-        return withWorld(path + query);
+        return clientEndpoint("/combatlog/ids");
+    }
+
+    private static String combatDeckEndpoint() {
+        return clientEndpoint("/combatdeck");
+    }
+
+    private static String combatDeckIdsEndpoint() {
+        return clientEndpoint("/combatdeck/ids");
     }
 
     private static String withWorld(String url) {
@@ -271,7 +393,12 @@ public final class CombatLogSync {
         return "";
     }
 
-    private static void postWithRetry(String url, byte[] body, String token) {
+    /**
+     * @return true only if the server accepted the log with HTTP 200. Anything else -
+     *         throttled twice, a non-200, a timeout, a transport failure - is false, and
+     *         the caller must leave the local file alone so the next backfill retries it.
+     */
+    private static boolean postWithRetry(String url, byte[] body, String token) {
         try {
             int code = doPost(url, body, token);
             if (code == 429) {
@@ -281,17 +408,21 @@ public final class CombatLogSync {
                     Thread.sleep(delayMs);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    return;
+                    return false;
                 }
                 int retryCode = doPost(url, body, token);
                 if (retryCode == 429) {
                     System.out.println("[CombatLogSync] throttled twice, dropping: " + url);
                 }
+                return retryCode == 200;
             }
+            return code == 200;
         } catch (java.net.SocketTimeoutException e) {
             System.out.println("[CombatLogSync] timeout (debug): " + e.getMessage());
+            return false;
         } catch (Exception e) {
             System.out.println("[CombatLogSync] post failed (debug): " + e.getMessage());
+            return false;
         }
     }
 
@@ -361,8 +492,15 @@ public final class CombatLogSync {
                     if (name.startsWith("Deck-"))
                         continue;
                     String fightId = fightIdFromPath(p);
-                    if (remoteIds.contains(fightId))
+                    if (remoteIds.contains(fightId)) {
+                        // The server already holds this fight, which is precisely the
+                        // condition deleteUploaded waits for. Collect it here rather than
+                        // letting logs from before the delete-on-upload change pile up:
+                        // without this, every log uploaded by an older client stays on disk
+                        // for ever, because it is skipped by exactly this branch.
+                        deleteUploaded(p);
                         continue;
+                    }
                     // size and line caps are enforced in doUpload; check end-line here
                     // to avoid uploading incomplete fights
                     if (!hasTerminalEnd(p))
@@ -376,8 +514,43 @@ public final class CombatLogSync {
                     }
                 }
             }
+            doBackfillDecks(dir, token);
         } catch (Exception e) {
             System.out.println("[CombatLogSync] backfill failed (debug): " + e.getMessage());
+        }
+    }
+
+    /**
+     * The deck half of the launch backfill.
+     *
+     * Runs after the fights rather than beside them so a first sync sends the logs first: a
+     * deck with no fights to explain is worth less than fights with no decks, and if the run is
+     * interrupted that is the better half to have finished. Decks are small and few, so this
+     * costs a fraction of what the fight backfill does.
+     */
+    private static void doBackfillDecks(Path dir, String token) {
+        try {
+            String idsUrl = combatDeckIdsEndpoint();
+            if (idsUrl == null)
+                return;
+            Set<String> remoteIds = fetchIds(idsUrl, token);
+            if (remoteIds == null)
+                return;
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(dir, "deck-*.json")) {
+                for (Path p : ds) {
+                    if (remoteIds.contains(deckIdFromPath(p)))
+                        continue;
+                    doUploadDeck(p);
+                    try {
+                        Thread.sleep(BACKFILL_GAP_MS);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("[CombatLogSync] deck backfill failed (debug): " + e.getMessage());
         }
     }
 

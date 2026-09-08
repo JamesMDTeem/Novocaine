@@ -335,11 +335,17 @@ public class EatObserver {
         }
     }
 
+    /**
+     * Food/glut logging is opt-in and stays that way.
+     *
+     * Unlike combat telemetry, this stream is high-frequency by nature - hunger decays in
+     * real time, so glut pushes arrive roughly every 0.8s (see {@link #onGlut}) - and it was
+     * the half of the 2026-09-06 shutdown that stayed off. The checkbox backing it defaults
+     * to false in OptWnd, so nothing is recorded or uploaded until someone deliberately
+     * turns it on for a calibration session.
+     */
     private static boolean enabled() {
-        /* Auto eat-logging disabled 2026-09-06 (hitch reports): off for everyone
-         * regardless of stored pref. Cookbook/map/planner paths are untouched.
-         * Re-enable by restoring the checkbox read below. */
-        return false;
+        return haven.OptWnd.eatObserverCheckBox != null && haven.OptWnd.eatObserverCheckBox.a;
     }
 
     // ------------------------------------------------------------------ BAttrWnd hooks

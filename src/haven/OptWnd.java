@@ -1527,7 +1527,7 @@ public class OptWnd extends Window {
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
 			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
-				{a = Utils.getprefb("combatTelemetry", false);}
+				{a = Utils.getprefb("combatTelemetry", true);}
 				public void changed(boolean val) {
 					Utils.setprefb("combatTelemetry", val);
 				}

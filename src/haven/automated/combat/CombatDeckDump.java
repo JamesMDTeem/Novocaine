@@ -97,6 +97,12 @@ public final class CombatDeckDump {
             Path p = dir.resolve("deck-" + safe + "-" + System.currentTimeMillis() + ".json");
             Files.write(p, json.getBytes(StandardCharsets.UTF_8));
             last = body;
+            /* Ship it. Only a NEW dump reaches this line - the `last` comparison above means a
+             * character fighting all evening with one deck writes, and so uploads, exactly one -
+             * so this is at most a handful of small posts per session. Enqueue returns in
+             * microseconds and never throws; a failed upload is retried by the next launch's
+             * backfill, which is why the file is kept either way. */
+            CombatLogSync.enqueueDeck(p);
         } catch(Exception e) {
             /* never disturb the client, and never cost the caller its fight log */
         }
