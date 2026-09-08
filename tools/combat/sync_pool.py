@@ -335,7 +335,120 @@ def main(argv=None):
             _save_manifest(manifest_path, manifest)
 
     print("pool sync: downloaded %d  skipped %d  present %d" % (downloaded, skipped, present + downloaded))
+
+    _sync_decks(endpoint, token, root, dry_run)
     return 0
+
+
+def _sync_decks(endpoint, token, root, dry_run):
+    """Pull the team's combat-deck dumps alongside their fights.
+
+    A fight log names the move that was thrown; only the deck says what LEVEL it was, and mu -
+    a factor in every attack weight - is not recoverable without that. Pulling fights without
+    decks is what left 2418 of 3022 pooled fights unusable for every level-keyed measurement:
+    estimate.levels_at() correctly reports a character we hold no dump for as unknown, so those
+    fights are skipped rather than credited to somebody else's card levels.
+
+    Written as deck-<character>-<wall>.json, byte-identical in NAME to what the client writes
+    locally, so estimate.deck_history() parses a pooled dump and a local one with one code path
+    and neither has to know where it came from.
+
+    A failure here never fails the fight sync: the fights are the expensive half and are
+    already on disk by the time this runs.
+    """
+    deck_endpoint = endpoint
+    for suffix in ("/combatlog/ids", "/combatlog"):
+        if deck_endpoint.endswith(suffix):
+            deck_endpoint = deck_endpoint[: -len(suffix)] + "/combatdeck"
+            break
+    else:
+        if not deck_endpoint.endswith("/combatdeck"):
+            deck_endpoint = deck_endpoint + "/combatdeck"
+
+    decks_dir = os.path.join(root, "data", "combat", "pool", "decks")
+    manifest_path = os.path.join(decks_dir, "manifest.json")
+    manifest = _load_manifest(manifest_path)
+    since = 0
+    if manifest:
+        try:
+            since = max(int(v) for v in manifest.values())
+        except (ValueError, TypeError):
+            since = 0
+
+    seen = set(manifest.keys())
+    downloaded = 0
+    skipped = 0
+    would = []
+    paging_since = since
+
+    while True:
+        export_url = "%s/export?since=%d" % (deck_endpoint, paging_since)
+        batch = _get_json_soft(export_url, token if token else None, deck_endpoint)
+        if not isinstance(batch, list):
+            # An older server has no /combatdeck at all. Say so once and leave the fights alone.
+            _eprint("deck sync: no usable /combatdeck export at %s - skipping decks"
+                    % _redact_url(deck_endpoint, deck_endpoint))
+            return
+        if not batch:
+            break
+        try:
+            batch_max = max(int(e.get("receivedAt", paging_since)) for e in batch
+                            if isinstance(e.get("receivedAt"), int))
+        except ValueError:
+            batch_max = paging_since
+
+        for entry in batch:
+            if not isinstance(entry, dict):
+                continue
+            deck_id = entry.get("deckId")
+            payload = entry.get("payload")
+            received_at = entry.get("receivedAt")
+            if not deck_id or not payload:
+                continue
+            key = str(deck_id)
+            if key in seen:
+                skipped += 1
+                continue
+            if dry_run:
+                would.append(key)
+                seen.add(key)
+                continue
+            fname = "deck-%s.json" % _sanitize(key)
+            fpath = os.path.join(decks_dir, fname)
+            try:
+                if not os.path.exists(decks_dir):
+                    os.makedirs(decks_dir, exist_ok=True)
+                tmp = fpath + ".tmp"
+                with open(tmp, "w", encoding="utf-8", newline="\n") as out:
+                    out.write(payload if isinstance(payload, str) else json.dumps(payload))
+                os.replace(tmp, fpath)
+            except OSError as e:
+                _eprint("failed to write %s: %s" % (fname, e))
+                return
+            manifest[key] = int(received_at) if isinstance(received_at, int) else paging_since
+            seen.add(key)
+            downloaded += 1
+
+        if len(batch) < 500:
+            break
+        if batch_max <= paging_since:
+            break
+        paging_since = batch_max
+
+    if dry_run:
+        print("deck sync: would download %d deck(s)" % len(would))
+        return
+
+    if downloaded > 0 or not os.path.exists(manifest_path):
+        try:
+            if not os.path.exists(decks_dir):
+                os.makedirs(decks_dir, exist_ok=True)
+            _save_manifest(manifest_path, manifest)
+        except OSError as e:
+            _eprint("failed to write deck manifest: %s" % e)
+
+    print("deck sync: downloaded %d  skipped %d  present %d"
+          % (downloaded, skipped, len(manifest)))
 
 
 if __name__ == "__main__":
