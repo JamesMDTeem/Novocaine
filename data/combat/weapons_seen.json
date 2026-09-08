@@ -7,58 +7,105 @@
     0.125
    ],
    "damage": [
-    176.0
+    157.0,
+    176.0,
+    186.0,
+    187.0,
+    224.0,
+    236.0
    ],
    "grievous": [
     0.4
    ],
-   "n": 113,
+   "n": 1103,
    "quality": [
-    38.0613
+    30.3664,
+    38.0613,
+    42.799,
+    43.3391,
+    61.8481,
+    68.536
    ],
    "range": [
     1.2
    ],
    "recovered_base": {
     "hi": 90.213,
-    "lo": 90.213
+    "lo": 89.826
    },
    "res": "gfx/invobjs/small/bronzesword"
   },
   "huntersbow": {
    "damage": [
-    62.0
+    46.0,
+    55.0,
+    62.0,
+    89.0
    ],
-   "n": 8,
+   "n": 612,
    "quality": [
-    43.3232
+    23.9841,
+    33.2856,
+    43.3232,
+    88.0017
    ],
    "recovered_base": {
-    "hi": 29.787,
-    "lo": 29.787
+    "hi": 30.146,
+    "lo": 29.703
    },
    "res": "gfx/invobjs/small/huntersbow"
+  },
+  "pickaxe": {
+   "armpen": [
+    0.3
+   ],
+   "damage": [
+    116.0
+   ],
+   "grievous": [
+    0.15
+   ],
+   "n": 2,
+   "quality": [
+    31.7554
+   ],
+   "range": [
+    1.2
+   ],
+   "recovered_base": {
+    "hi": 65.095,
+    "lo": 65.095
+   },
+   "res": "gfx/invobjs/small/pickaxe"
   },
   "stoneaxe": {
    "armpen": [
     0.2
    ],
    "damage": [
-    71.0
+    71.0,
+    76.0,
+    80.0,
+    86.0,
+    105.0
    ],
    "grievous": [
     0.1
    ],
-   "n": 2,
+   "n": 28,
    "quality": [
-    56.2835
+    56.2835,
+    63.8715,
+    71.2268,
+    82.2954,
+    123.4989
    ],
    "range": [
     1.0
    ],
    "recovered_base": {
-    "hi": 29.927,
-    "lo": 29.927
+    "hi": 30.072,
+    "lo": 29.878
    },
    "res": "gfx/invobjs/stoneaxe"
   }
