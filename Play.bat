@@ -26,6 +26,7 @@ rem load-bearing: it keeps this launcher working on a system JDK 21 with no bund
 rem ZGC is the default (opt out with Novocaine.bat -NoZGC / -G1 or
 rem Novocaine.ps1 -NoZGC); see Novocaine.ps1 for trade (ZGC peaks 3632M vs
 rem G1 1515M — budget accordingly when running Count > 1).
-rem Heap floor 8192m here (static fallback, line 28); Novocaine.ps1 scales -Xmx to
-rem 6144m (>=16G) / 8192m (>=24G or headroom for Count*HEAP+4G OS) at launch.
+rem Heap floor 8192m here, in the -Xmx below; Novocaine.ps1 applies the same 8192m
+rem floor at launch. Its 6144m/8192m headroom tiers are clamped to that floor, so
+rem they only bite again if the floor is ever lowered. Crews scale down: -Multibox.
 "%JAVA%" -XX:+IgnoreUnrecognizedVMOptions -XX:+UseZGC -XX:+ZGenerational -XX:+UseCompactObjectHeaders -Dsun.java2d.uiScale.enabled=false -Dsun.java2d.win.uiScaleX=1.0 -Dsun.java2d.win.uiScaleY=1.0 -Xss8m -Xms1024m -Xmx8192m --add-exports java.base/java.lang=ALL-UNNAMED --add-exports java.desktop/sun.awt=ALL-UNNAMED --add-exports java.desktop/sun.java2d=ALL-UNNAMED -DrunningThroughSteam=false -jar hafen.jar

@@ -2,11 +2,14 @@
 # --------------------------------------------
 # Hafen launcher script for Linux/macOS
 # Equivalent to the Windows .bat version
-# JVM flags single source: Play.bat line 28 is the Windows static fallback
-# at 4096m; this script mirrors that floor but auto-scales at launch:
-#   floor 4096m always; 6144m if TotalRAM >=16G with headroom;
-#   8192m if >=24G with headroom. Headroom =
-#   TotalRAM - Count*HEAP - 4G OS reserve. Count via NOV_CLIENT_COUNT env (default 1).
+# JVM flags single source: Play.bat carries the Windows static fallback and its -Xmx
+# is the number this script mirrors. Both floor at 8192m as of 2026-09-06 - before
+# that date this script floored at 4096m and silently gave Linux and macOS half the
+# heap the same change had already given Windows.
+#   floor 8192m always; the 6144m (>=16G) and 8192m (>=24G) headroom tiers are
+#   clamped to that floor, so they only bite again if the floor is lowered.
+#   Headroom = TotalRAM - Count*HEAP - 4G OS reserve.
+#   Count via NOV_CLIENT_COUNT env (default 1).
 # Detection: /proc/meminfo MemTotal, fallback to getconf _PHYS_PAGES.
 # --------------------------------------------
 
@@ -36,7 +39,7 @@ get_total_mb() {
 }
 
 OS_RESERVE=4096
-FLOOR=4096
+FLOOR=8192
 MID=6144
 HIGH=8192
 COUNT=${NOV_CLIENT_COUNT:-1}
@@ -58,6 +61,10 @@ if [ "$TOTAL_MB" -gt 0 ] 2>/dev/null; then
   elif [ "$TOTAL_MB" -ge 16384 ] && $HAS_MID; then
     HEAP=$MID
   fi
+  # The ladder is only ever allowed to scale UP. With FLOOR at 8192 a 16-24G box
+  # matches MID and would otherwise come back with 6144 - less heap than the 8G box
+  # that never entered the ladder at all.
+  if [ "$HEAP" -lt "$FLOOR" ] 2>/dev/null; then HEAP=$FLOOR; fi
 fi
 
 # ZGC is the default (opt out: NOV_ZGC=0 / NO_ZGC=1 / G1=1 -> G1); footprint 3632M vs 1515M on G1.

@@ -24,8 +24,10 @@
     existing anyway: hafen.hl names it as the Steam launcher's `command-file`, and that is
     where the HL launcher reads the --add-exports and -D properties from. One file holds
     the flags, two readers agree on them. Steam Play (HL path via hafen.hl) is ZGC
-    by default with heap auto-scale 6144/8192 when headroom allows, without needing
-    this wrapper or -ZGC flag - Play.bat and hafen.hl jvm-arg carry the flags.
+    by default at the 8192m floor set on 2026-09-06, without needing this wrapper or
+    the -ZGC flag - Play.bat and hafen.hl jvm-arg carry the flags. The old 6144/8192
+    auto-scale is still in Get-ScaledHeapMb but is clamped to that floor, so it has no
+    effect until the floor is lowered.
 
 .PARAMETER Count
     How many clients to start. One Haven client is one character, so a crew of eight is
@@ -252,13 +254,21 @@ function Get-ScaledHeapMb {
     # 6144 requires Total >=16G && headroom. 8192 requires Total >=24G && headroom
     # (spec's "or headroom" clause is implemented as headroom being mandatory, not
     # as an alternative to the 24G threshold, to avoid overcommitting 16G boxes).
+    #
+    # Every branch is clamped to $floor on the way out, because this ladder is only
+    # ever allowed to scale UP. Without the clamp the 2026-09-06 floor raise
+    # (4096 -> 8192) inverted it: a 16-24G box matched $mid and came back with 6144,
+    # i.e. LESS heap than the 8G box that fell straight through to the floor. While
+    # $floor is 8192 the ladder is inert by construction; it comes back to life on
+    # its own if the floor is ever lowered again.
+    $tier = $floor
     if ($totalMb -ge 24576 -and $hasHigh) {
-        return $high
+        $tier = $high
+    } elseif ($totalMb -ge 16384 -and $hasMid) {
+        $tier = $mid
     }
-    if ($totalMb -ge 16384 -and $hasMid) {
-        return $mid
-    }
-    return $floor
+    if ($tier -lt $floor) { return $floor }
+    return $tier
 }
 
 # -Multibox: the above can only scale UP, because $floor is returned unconditionally when
@@ -380,13 +390,19 @@ function Get-JvmArgs($dir) {
     # Keep hafen.hl heap-size in sync so Steam HL path (which ignores Play.bat -Xmx)
     # also auto-scales on the next Steam launch, even without this wrapper.
     # For source checkouts $dir is bin\ — patch only the staged copy, not the
-    # repo source (hafen.hl at $root stays at 4096 floor). For installed
-    # clients $dir -eq $root, so the single hafen.hl there is patched.
+    # repo source (the checked-in hafen.hl carries the 8192 default set on
+    # 2026-09-06). For installed clients $dir -eq $root, so the single hafen.hl
+    # there is patched.
     #
     # NOT for -Multibox or -HeapMb. Those are per-run crew numbers, and writing one back
     # would leave the next single-client Steam launch — which reads heap-size from here
     # and never sees this wrapper — silently capped at a crew's share of the machine.
-    $syncHl = -not ($Multibox -or $HeapMb -gt 0)
+    #
+    # NOT for -DryRun either. This function is called before the -DryRun guard in
+    # Start-Client, so without this term the one mode documented as starting nothing
+    # would still rewrite the launcher descriptor on its way to printing what it
+    # would have done.
+    $syncHl = -not ($Multibox -or $HeapMb -gt 0 -or $DryRun)
     try {
         $hlPath = Join-Path $dir 'hafen.hl'
         if ($syncHl -and (Test-Path -LiteralPath $hlPath)) {
@@ -405,7 +421,13 @@ function Get-JvmArgs($dir) {
                 }
             }
         }
-    } catch {}
+    } catch {
+        # Say so rather than swallowing it. A silent failure here is invisible until a
+        # Steam launch comes up on the wrong heap and somebody spends an evening working
+        # out why the client reports 4GB - which is the exact bug this sync exists to
+        # prevent. The launch itself is fine either way, so this warns and carries on.
+        Warn "Could not sync hafen.hl heap-size: $($_.Exception.Message)"
+    }
 
     return $a
 }
