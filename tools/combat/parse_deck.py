@@ -51,7 +51,8 @@ for _rgb, (_c, _open, _school) in COLOUR.items():
 # rather than dropped, and reported - an unknown label is new game data, not noise.
 KNOWN = [
     "Weapon", "Attack weight", "Block weight", "Attack type", "Attack types",
-    "Openings", "Openings on you", "Reduces", "Damage", "Grievous damage",
+    "Openings", "Openings on you", "Openings on opponent", "Reduces", "Damage",
+    "Grievous damage",
     "Initiative points", "Cooldown", "When attacked", "Opponents' initiative points",
 ]
 
@@ -334,8 +335,18 @@ def parse_move(m, problems):
                 problems.append("%s: no colour for attack type %r" % (where, t))
                 continue
             rec["attack_types"].append(OrderedDict([("name", t), ("colour", colour)]))
-    rec["openings"] = parse_terms(fields["Openings"], problems, where + " Openings") \
-        if "Openings" in fields else []
+    # "Openings" and "Openings on opponent" are the same thing: an opening this move
+    # puts on the target. An attack card says the short form; Flex, which is defensive
+    # and so has to be explicit about which side the opening lands on, says the long
+    # one. It is the only card in 480 deck dumps that uses it, and because an
+    # unrecognised label is a hard problem under the write-nothing guarantee, that one
+    # card blocked the WHOLE deck sheet from regenerating - which is why "parse_deck.py
+    # failed - the deck sheet is whatever was on disk" stood as a red rather than a
+    # finding, and why Flex's +15% Dizzy was missing from the model entirely.
+    rec["openings"] = []
+    for _lbl in ("Openings", "Openings on opponent"):
+        if _lbl in fields:
+            rec["openings"] += parse_terms(fields[_lbl], problems, where + " " + _lbl)
     # Openings the move puts on the user, not the opponent. Folding these into
     # `openings` would record a cost as a benefit.
     rec["openings_on_self"] = parse_terms(fields["Openings on you"], problems,
