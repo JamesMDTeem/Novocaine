@@ -9,6 +9,7 @@ import haven.MCache;
 import haven.Resource;
 import haven.UI;
 import haven.automated.nbots.core.Alias;
+import haven.automated.nbots.core.NLog;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.task.TravelTo;
 import haven.automated.nbots.world.BotNav;
@@ -43,7 +44,9 @@ import static haven.OCache.posres;
  *   <li>Upkeep between legs instead of four copy-pasted stamina checks, so the character eats as
  *       well as drinks and comes back to where it left off.</li>
  *   <li>A bounded number of legs, so a misread area cannot drive for ever.</li>
- *   <li>The plough is put back down at the end rather than abandoned wherever it stopped.</li>
+ *   <li>The plough is put back down on every way out of the shift, not only the successful one.
+ *       A run that ends early is exactly the run that would otherwise leave a plough on the
+ *       character's back, where nothing else the player does will work until they take it off.</li>
  * </ul>
  */
 public class NPlowBot extends NBot {
@@ -55,7 +58,9 @@ public class NPlowBot extends NBot {
      *
      * "banzai" is what this client actually observes for a lifted object - see
      * WagonNearestLiftable, which is the working lift in this tree. nurgling waits on
-     * "borka/carry" instead; matched as a substring so either spelling satisfies it.
+     * "borka/carry" instead, and that spelling cannot be used here at all: {@code Composite}
+     * stores {@code Resource.basename()}, so the poses this client can see are bare names with no
+     * path on them and any test containing a slash matches nothing.
      */
     private static final String LIFTED_POSE = "banzai";
     /** How long to wait for a lift or a set-down to take, in ticks (~25ms each). */
@@ -72,6 +77,27 @@ public class NPlowBot extends NBot {
      * with no counter behind it is a bot that drives until the client is killed.
      */
     private static final int MAX_STEPS = 20000;
+    /**
+     * How far to look for the plough, in world units.
+     *
+     * The search used to be unbounded, so "no plough in sight - leave one near the field" was a
+     * message the bot could not actually produce: it would happily pick a plough three villages
+     * away and spend the shift walking to it.
+     */
+    private static final double PLOW_RANGE = MCache.tilesz.x * 40;
+    /** How many times to re-send a put-down before believing the server has refused it. */
+    private static final int SETDOWN_TRIES = 3;
+    /** Consecutive tiles we may fail to get hold of the plough before giving up on the field. */
+    private static final int LOST_LIMIT = 3;
+
+    /**
+     * The plough this shift is working, by gob id. -1 before one is chosen.
+     *
+     * By id rather than "the nearest plough", because that is not a stable answer: a field
+     * ploughed towards a shed with spare ploughs standing in it ends with one of those nearer than
+     * the one in our hands, and right-clicking that one lets go of nothing.
+     */
+    private long plowId = -1;
 
     public NPlowBot(GameUI gui) {
         super(gui, "NPlowBot", "Plower (crew)", LOG, UI.scale(240, 96));
@@ -114,10 +140,23 @@ public class NPlowBot extends NBot {
         if (!there.isOk())
             return there;
 
+        plowId = -1;
         Gob plow = nearest(PLOW);
         if (plow == null)
             return Outcome.failed("no plough in sight - leave one near the field");
+        plowId = plow.id;
 
+        /* The put-away is a finally rather than a last statement. Every return below it leaves the
+         * plough in a state the player has to undo by hand - on the character's back, or dragging
+         * behind it - and those are precisely the returns a run that went wrong takes. */
+        try {
+            return sweep(field, plow);
+        } finally {
+            putAway();
+        }
+    }
+
+    private Outcome sweep(Place field, Gob plow) throws InterruptedException {
         Outcome o = lift(plow);
         if (!o.isOk())
             return o;
@@ -133,34 +172,49 @@ public class NPlowBot extends NBot {
 
         /* Right-click takes the handles. Until this happens the plough is an object standing in a
          * field and driving simply walks the character away from it. */
-        Gob live = nearest(PLOW);
+        Gob live = plow();
         if (live == null)
             return Outcome.blocked("lost track of the plough after setting it down");
         o = takeHandles(live);
         if (!o.isOk())
             return o;
 
-        int steps = 0;
+        /* One leg is one column of the sweep, which is what "between legs" below means. */
+        int legLen = Math.max(field.h, 1);
+        int last = Math.min(furrow.size(), MAX_STEPS + 1);
         int done = 0;
-        for (int i = 1; i < furrow.size() && running() && steps < MAX_STEPS; i++) {
-            steps++;
+        int lost = 0;
+        for (int i = 1; (i < last) && running(); i++) {
             /* Between legs, never mid-furrow: walking off to drink halfway down a column leaves
-             * the furrow half drawn, and coming back does not resume it. */
-            if (!upkeep())
+             * the furrow half drawn, and coming back does not resume it. This used to run on every
+             * tile, which is the thing the sentence above says not to do. */
+            if ((((i - 1) % legLen) == 0) && !upkeep())
                 return Outcome.failed(fatalStop);
-            if (!ctx.poseContains(LIFTED_POSE) && !holdingPlow())
-                takeHandles(nearest(PLOW));
+            /* An upkeep trip lets go of the handles, and a set-down the server refused leaves the
+             * plough overhead. Both have to be undone before the next tile or the rest of the
+             * sweep draws nothing at all - and being overhead is emphatically not a reason to skip
+             * re-taking the handles, which is what the old guard here did. */
+            if (ctx.poseContains(LIFTED_POSE))
+                setDown(furrow.get(i - 1));
+            if (!holdingPlow()) {
+                if (takeHandles(plow()).isOk()) {
+                    lost = 0;
+                } else if (++lost >= LOST_LIMIT) {
+                    return Outcome.blocked("lost hold of the plough and couldn't get it back");
+                }
+            }
             if (drive(furrow.get(i)))
                 done++;
             if ((i % 10) == 0)
-                setStatus("Ploughing (" + done + "/" + (furrow.size() - 1) + " tiles)");
+                setStatus("Ploughing (" + done + "/" + (last - 1) + " tiles)");
         }
 
-        if (settings.on("putaway"))
-            putAway();
-
-        report("ploughed " + done + " of " + (furrow.size() - 1) + " tiles in " + field.name);
+        report("ploughed " + done + " of " + (last - 1) + " tiles in " + field.name);
         setStatus("Done: " + done + " tiles.");
+        /* Driving the whole field without reaching a single tile is not a successful shift, and
+         * reporting it as one is how a bot that ploughed nothing gets left running all night. */
+        if ((done == 0) && (last > 1))
+            return Outcome.blocked("drove " + field.name + " without ploughing a tile");
         return Outcome.ok();
     }
 
@@ -237,13 +291,41 @@ public class NPlowBot extends NBot {
         return Outcome.ok();
     }
 
+    /**
+     * Puts whatever is on the character's back down at {@code spot}.
+     *
+     * Button 3, and the button is the whole of it. A LEFT click is how you WALK while carrying
+     * something - it has to be, or a lifted object could never be moved anywhere - so the button-1
+     * click this used to send was just another move order and the plough stayed up for the rest of
+     * the shift. The right click is what the server reads as "put the load here": aimed at a gob
+     * it loads that gob, which is how {@link haven.automated.WagonNearestLiftable} - the working
+     * lift in this tree - fills a wagon, and aimed at bare ground it sets the load down there.
+     */
+    private void dropLifted(Coord2d spot) {
+        gui.map.wdgmsg("click", Coord.z, spot.floor(posres), 3, 0);
+    }
+
+    /**
+     * Re-sends the put-down until the plough is off our back, or the tries run out.
+     *
+     * More than one attempt because a single refusal is common and recoverable - the spot is
+     * occupied, or the character was still sliding into place when the click landed - and because
+     * every caller's alternative to succeeding here is leaving the player with a plough they have
+     * to put down by hand.
+     */
+    private boolean dropUntilDown(Coord2d spot) throws InterruptedException {
+        for (int i = 0; (i < SETDOWN_TRIES) && ctx.poseContains(LIFTED_POSE); i++) {
+            dropLifted(spot);
+            nav.waitUntil(() -> !ctx.poseContains(LIFTED_POSE), LIFT_TICKS);
+        }
+        return !ctx.poseContains(LIFTED_POSE);
+    }
+
     /** Carries the plough to a spot and puts it down there. */
     private Outcome setDown(Coord2d spot) throws InterruptedException {
         if (!drive(spot) && (nav.player() != null) && (nav.player().rc.dist(spot) > MCache.tilesz.x))
             return Outcome.blocked("couldn't carry the plough to the corner of the field");
-        gui.map.wdgmsg("click", Coord.z, spot.floor(posres), 1, 0);
-        nav.waitUntil(() -> !ctx.poseContains(LIFTED_POSE), LIFT_TICKS);
-        if (ctx.poseContains(LIFTED_POSE))
+        if (!dropUntilDown(spot))
             return Outcome.blocked("the plough wouldn't go down");
         return Outcome.ok();
     }
@@ -254,11 +336,15 @@ public class NPlowBot extends NBot {
             return Outcome.blocked("no plough to take hold of");
         if (!nav.approach(plow, BotNav.REACH))
             return Outcome.blocked("couldn't get to the plough");
-        gui.map.wdgmsg("click", Coord.z, plow.rc.floor(posres), 3, 0, 0, (int) plow.id,
-            plow.rc.floor(posres), 0, -1);
+        rightClick(plow);
         nav.waitUntil(this::holdingPlow, LIFT_TICKS);
         return holdingPlow() ? Outcome.ok()
             : Outcome.blocked("couldn't get hold of the plough's handles");
+    }
+
+    private void rightClick(Gob g) {
+        gui.map.wdgmsg("click", Coord.z, g.rc.floor(posres), 3, 0, 0, (int) g.id,
+            g.rc.floor(posres), 0, -1);
     }
 
     /**
@@ -272,15 +358,43 @@ public class NPlowBot extends NBot {
         return ctx.poseContains("carry") || ctx.poseContains("plow");
     }
 
-    /** Lets go, and leaves the plough standing where the last furrow ended. */
-    private void putAway() throws InterruptedException {
-        Gob plow = nearest(PLOW);
-        if ((plow == null) || !holdingPlow())
-            return;
-        setStatus("Putting the plough down...");
-        gui.map.wdgmsg("click", Coord.z, plow.rc.floor(posres), 3, 0, 0, (int) plow.id,
-            plow.rc.floor(posres), 0, -1);
-        nav.waitUntil(() -> !holdingPlow(), LIFT_TICKS);
+    /**
+     * Leaves the plough on the ground rather than on our back or dragging behind us.
+     *
+     * Runs on every way out of the shift, the failures included, which is the point: the states
+     * worth cleaning up are exactly the ones a run that went wrong leaves behind.
+     *
+     * A plough still overhead comes down whatever the setting says, because that is a stuck state
+     * rather than a choice - the character cannot work, and the player has to find the put-down
+     * gesture by hand before anything else they do will take. Only letting go of the HANDLES is
+     * optional, since "leave it standing where the last furrow ended" is a reasonable thing to
+     * want and is what the setting is actually asking about.
+     */
+    private void putAway() {
+        try {
+            if (ctx.poseContains(LIFTED_POSE)) {
+                setStatus("Putting the plough down...");
+                Gob me = nav.player();
+                if (me != null)
+                    dropUntilDown(me.rc);
+            }
+            if (!settings.on("putaway") || !holdingPlow())
+                return;
+            Gob plow = plow();
+            if (plow == null)
+                return;
+            setStatus("Letting go of the plough...");
+            rightClick(plow);
+            nav.waitUntil(() -> !holdingPlow(), LIFT_TICKS);
+        } catch (InterruptedException e) {
+            /* Stop was pressed, or the shift is already unwinding from one - every wait in BotNav
+             * throws the moment the bot stops. The put-down has been SENT either way, which is the
+             * part that matters. Swallowed rather than rethrown because this runs from a finally,
+             * where throwing would replace the shift's own outcome; and the interrupt flag is
+             * deliberately not restored, because NBot's run loop sleeps after a shift and a live
+             * flag there kills the bot thread outright. */
+            NLog.log(log, "put-away interrupted before it finished: " + e);
+        }
     }
 
     // ------------------------------------------------------------------ finding things
@@ -294,12 +408,25 @@ public class NPlowBot extends NBot {
         return (here != null) ? here : Places.nearest(gui, PlaceRoles.WORK);
     }
 
+    /**
+     * The plough this shift is working: the one we found, by id, else the nearest.
+     *
+     * Every use of "the nearest plough" after the first is a bug waiting for a second plough to
+     * exist. Ploughing a field that ends beside a shed puts a spare plough nearer than the one in
+     * our hands, and right-clicking a spare lets go of nothing.
+     */
+    private Gob plow() {
+        Gob g = (plowId >= 0) ? ctx.gob(plowId) : null;
+        return (g != null) ? g : nearest(PLOW);
+    }
+
+    /** The nearest match within {@link #PLOW_RANGE}, or null. */
     private Gob nearest(Alias what) {
         Gob me = nav.player();
         if (me == null)
             return null;
         Gob best = null;
-        double bestd = Double.MAX_VALUE;
+        double bestd = PLOW_RANGE;
         synchronized (gui.map.glob.oc) {
             for (Gob g : gui.map.glob.oc) {
                 if (!what.matchesPart(resname(g)))
