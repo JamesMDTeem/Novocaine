@@ -528,7 +528,7 @@ def main(argv):
     # one session. The low set agrees with the ant skill every other card recovers; the
     # high set needs an ant about a third as strong. Nothing yet separates the two sets.
     #
-    # THREE EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
+    # FOUR EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
     # nobody spends the afternoon on them again:
     #
     #   A swarm weakening as it is killed. The obvious reading of "a swarm is not one
@@ -540,6 +540,12 @@ def main(argv):
     #   out, so a card thrown holding six of them was the candidate. Across 2953 gains
     #   with an initiative reading, the median gain against its own cell is 1.000 at every
     #   initiative from zero to six.
+    #
+    #   Our own card level. Flex sits at deck level 3 for the character that shows the
+    #   split and the gains do not track it, but the card settles it outright: its sheet
+    #   reads "Openings on opponent: +15% Dizzy" with no mu on it, identically at every
+    #   maxlevel from 1 to 5 across six characters' deck dumps. The mu is on the line
+    #   below, where Flex reduces the user's own Backhanded and Oppressive by 10%.
     #
     #   An opponent's card opening the OPPONENT. Ant Spit precedes several of the high
     #   Flex readings, and the ants' blue does rise in its bracket, so it looked like a
