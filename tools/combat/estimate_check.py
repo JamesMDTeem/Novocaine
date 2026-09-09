@@ -95,6 +95,46 @@ def hitpoints():
     check("nothing at all is still nothing", summarise_hp({}, set(), {}, None), None)
 
 
+def _wd_rows(per):
+    """The defence-weight census, one row per species, read in ONE character's frame.
+
+    A defence weight recovered from an opening gain is in the recovering character's skill
+    frame: equalization compares two combat skills within a factor of two as if equal, so
+    inside that dead zone the skill term in cbrt(Wa/Wd) is pinned to 1 and the inversion
+    hands back the ATTACKER's own weight. Whether a creature sits in the dead zone depends
+    on who is fighting it, so two players recover different numbers for the same creature
+    and blending them averages two different quantities rather than averaging noise.
+
+    Pooling inverts this census. One character at a time the small-gain consensus contains
+    the large-gain estimate for roughly two species in three - ZzxcuV3 22 to 10, Shade 24
+    to 13, Santa Samus 24 to 13, BonkiDonki 17 to 10. Pool the four and it reads 19 agree
+    to 29 disagree, 23 of the disagreements HIGH, a direction third-party contamination
+    cannot produce because contamination only ever adds to a gain.
+
+    That is a Simpson's paradox, the third of this shape the corpus has produced - the
+    cross-badger error and the "targets our weakest colour" finding were both pooled
+    effects that vanished per species. The corpus stopped being one player's, so the unit
+    of analysis had to stop being the species alone.
+
+    The species key is kept, because everything downstream looks the pack up by it. The
+    reading is whichever character has the most evidence on that species, named in the row
+    so a shift in the census can be traced to a shift in who was fighting.
+    """
+    rows = []
+    for k in sorted(per, key=str):
+        bychar = estimate.wd_consensus_by_char(per[k])
+        usable = [(ch, c) for ch, c in sorted(bychar.items())
+                  if c and (c["agrees"] is not None)]
+        if not usable:
+            continue
+        ch, c = max(usable, key=lambda e: e[1]["n"])
+        c = dict(c)
+        c["char"] = ch
+        c["chars"] = {name: v["agrees"] for name, v in usable}
+        rows.append((str(k), c))
+    return rows
+
+
 def agility():
     print("\nagility, from integer cooldowns")
     # Our agility 81; a move of base 20 reported at 18 ticks. The multiplier is somewhere
@@ -580,6 +620,19 @@ def agi_brackets():
                 sp[:12], raw, agi_me, conv_s, pooled_s, str(gob)[-5:], f)
             if pooled is None:
                 check(label + " (no pooled interval to compare)", agree, None)
+            elif why.get("depth_scaled"):
+                # Floors 1 to 9, and no log records which. The pooled interval is an
+                # envelope over depths, the bracket is one individual, and whether they
+                # intersect measures the spread of the species rather than either
+                # instrument. Two greenoozes here read "at most 34" and "88 to 112".
+                check(label + " (depth-scaled: no species value to compare)", agree, None)
+            elif conv_lo > conv_hi:
+                # agility_interval crosses lo past hi when one creature's own observations
+                # disagree - that is how it reports a faulty individual, and _pool_agility
+                # drops exactly these. A crossed interval cannot agree or disagree with
+                # anything. estimate reports it as unknown and this check used to demand
+                # True anyway, so a known-bad reading always failed.
+                check(label + " (bracket contradicts itself)", agree, None)
             else:
                 # Intervals agree when they intersect; neither is a point estimate
                 check(label, agree, True)
@@ -774,8 +827,7 @@ def dropped_gains():
     print("    median standing opening: %d under the threshold, %d over it, from %d and %d"
           % (ms, mb, len(small), len(big)))
 
-    rows = [(str(k), estimate.wd_consensus(per[k])) for k in sorted(per, key=str)]
-    rows = [(n, c) for n, c in rows if c and (c["agrees"] is not None)]
+    rows = _wd_rows(per)
     agree = [n for n, c in rows if c["agrees"]]
     dis = [n for n, c in rows if not c["agrees"]]
     check("  most species' dropped gains agree with what the pack reads",
@@ -834,8 +886,13 @@ def attribution_provenance():
         check("    and is not marked as rescued from contaminated fights",
               bool(got.get("from_contaminated")), False)
     check("  some species carry both kinds of evidence", mixed > 0, True)
-    check("  and every wd row records which kind it is",
-          all(len(w) == 9 for rec in per.values() for w in rec["wd"]), True)
+    # Ten fields since the character joined the row: (move, colour, standing, gain, wa,
+    # wd, lo, hi, clean, char). The ninth is still provenance and the tenth is whose
+    # reading it is, which _wd_rows needs to keep the frames apart.
+    check("  and every wd row records which kind it is, and whose it is",
+          all(len(w) == 10 for rec in per.values() for w in rec["wd"]), True)
+    check("  and every wd row names a character",
+          all(w[9] for rec in per.values() for w in rec["wd"]), True)
     # The converse: anything measured only from contaminated evidence must say so.
     for name, rec in per.items():
         if rec["wd"] and not [w for w in rec["wd"] if w[8]]:
@@ -1131,8 +1188,7 @@ def defence_weight_late():
     """
     print("\ndefence_weight_late, and whether the (1 - Oc) falloff is the cause")
     per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
-    rows = [(str(k), estimate.wd_consensus(per[k])) for k in sorted(per, key=str)]
-    rows = [(n, c) for n, c in rows if c and (c["agrees"] is not None)]
+    rows = _wd_rows(per)
     agree = [n for n, c in rows if c["agrees"]]
     dis = [n for n, c in rows if not c["agrees"]]
     # The census, printed exact for the human. The checks assert PROPERTIES of it:
@@ -1140,7 +1196,7 @@ def defence_weight_late():
     # the agreeing set mid-session), so pinning them flaps the suite on every new
     # creature. Regime changes redden instead: no disagreements at all, disagreements
     # outnumbering agreements, one-sided direction, or a canonical depth collapsing.
-    print("  %d species agree with the pack, %d do not: %s"
+    print("  %d species-and-character readings agree with the pack, %d do not: %s"
           % (len(agree), len(dis), ", ".join(sorted(dis))))
     check("  most species agree with the pack", len(agree) > len(dis), True)
     check("  disagreements exist and are reported, not empty", bool(dis), True)

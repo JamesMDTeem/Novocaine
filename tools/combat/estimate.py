@@ -1578,8 +1578,23 @@ def agi_species_comparison(logs=None):
             pooled, why = pooled_agility(rec)
         rows = brackets.get(sp, [])
         compared = []
+        # A depth-scaled creature has no single species agility to compare against. The
+        # logged bracket is a reading of ONE individual; the pooled interval is an envelope
+        # over floors 1 to 9, and agreement or disagreement between them measures the
+        # spread of the species rather than the accuracy of either instrument. Two
+        # greenoozes in this corpus bracket at "at most 34" and "between 88 and 112" - both
+        # readings sound, and no single number is compatible with both.
+        depth = is_depth_scaled(sp, (rec or {}).get("wiki", {}).get("name")
+                                if isinstance((rec or {}).get("wiki"), dict) else None)
+        if depth:
+            why = dict(why)
+            why["depth_scaled"] = True
         for b in rows:
             clo, chi = b["lo"], b["hi"]
+            if depth:
+                agree = None
+                compared.append((b, agree))
+                continue
             if clo > chi:
                 # The bracket contradicts ITSELF - agility_interval crosses lo past hi
                 # when one creature's own observations disagree, which is how it reports
@@ -2331,8 +2346,13 @@ def collect(paths):
                     # from was clean as a whole. Per-observation attribution earns the
                     # contaminated ones their place, but they are not equal evidence and
                     # the pack must be able to tell them apart - see write_pack.
+                    # The tenth field is WHOSE reading this is. A defence weight recovered
+                    # from an opening gain is in the recovering character's skill frame -
+                    # inside the equalization dead zone the skill term is pinned to 1 and
+                    # the inversion hands back the ATTACKER's own weight - so readings from
+                    # two characters are not interchangeable and must not be pooled.
                     rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi,
-                                      eng.offence_ok))
+                                      eng.offence_ok, (log.header or {}).get("char")))
                     rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
                     # Per individual AND per move. mu can only be read between two moves
                     # thrown at the same creature - see report_mu.
@@ -2433,6 +2453,26 @@ def depth_scaled():
         doc = json.load(f)
     return set(norm(n) for n in
                (doc.get("depth_scaled") or {}).get("creatures") or [])
+
+
+def is_depth_scaled(key, wiki_name=None):
+    """True when this creature's stats scale with the mine floor it was found on.
+
+    Creatures on mine floors scale over floors 1 to 9, and NOTHING in a combat log records
+    which floor a fight happened on - not the tile, which reads gfx/tiles/mine at every
+    depth. So a species bucket for one of these does not pool individuals of one size; it
+    pools individuals of genuinely different sizes, and its envelope is a range over depths.
+
+    That makes a pooled species value the wrong thing to compare a per-individual reading
+    against. The set has been recorded in creature-notes.json since it was first written
+    down, and until now it was consulted only to print a note at the bottom of a report.
+
+    Accepts a bare key ("greenooze"), a resource path, or a wiki name.
+    """
+    for cand in (key, (key or "").rsplit("/", 1)[-1], wiki_name):
+        if cand and norm(cand) in DEPTH:
+            return True
+    return False
 
 
 def wiki_creatures():
@@ -3017,6 +3057,39 @@ def wd_consensus(rec):
             "agrees": (None if pt is None else bool(span[0] <= pt <= span[1]))}
 
 
+def wd_consensus_by_char(rec):
+    """wd_consensus computed within each character that has enough readings.
+
+    POOLING CHARACTERS IS THE ERROR THIS EXISTS TO AVOID, and the corpus shows it as a
+    textbook Simpson's paradox. Taken one character at a time the small-gain consensus
+    contains the large-gain estimate for most species - ZzxcuV3 22 agree to 10, Shade 24 to
+    13, Santa Samus 24 to 13, BonkiDonki 17 to 10. Pool the four and it inverts to 19
+    agree, 29 disagree, 23 of them reading HIGH, which contamination cannot produce.
+
+    The mechanism is equalization. Two combat skills within a factor of two are compared as
+    if equal, so inside that dead zone the skill term in cbrt(Wa/Wd) is pinned to 1 and
+    inverting a gain returns the attacker's own weight rather than the creature's. Whether
+    a given creature sits in the dead zone depends on the SKILL OF WHOEVER IS FIGHTING IT,
+    so the same creature yields different weights to different players. Blending those is
+    not averaging noise; it is averaging two different quantities.
+
+    This is the third time this corpus has produced that shape - the cross-badger error and
+    the "targets our weakest colour" finding were both pooled effects that vanished per
+    species. Per character is the honest unit here.
+
+    Returns {char: consensus dict}, characters with fewer than the minimum omitted.
+    """
+    out = {}
+    chars = set(r[9] for r in (rec.get("wd") or ()) if len(r) > 9 and r[9])
+    for c in chars:
+        sub = dict(rec)
+        sub["wd"] = [r for r in rec["wd"] if len(r) > 9 and r[9] == c]
+        got = wd_consensus(sub)
+        if got:
+            out[c] = got
+    return out
+
+
 def report_wd_consensus(per):
     rows = []
     for k in sorted(per, key=str):
@@ -3209,7 +3282,7 @@ def equalization_verdict(rec):
 
     Returns (verdict, detail).
     """
-    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi, clean).
+    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi, clean, char).
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if row[3] >= MIN_GAIN and row[4] and row[5] > 0:
