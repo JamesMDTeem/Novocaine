@@ -528,7 +528,7 @@ def main(argv):
     # one session. The low set agrees with the ant skill every other card recovers; the
     # high set needs an ant about a third as strong. Nothing yet separates the two sets.
     #
-    # FOUR EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
+    # FIVE EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
     # nobody spends the afternoon on them again:
     #
     #   A swarm weakening as it is killed. The obvious reading of "a swarm is not one
@@ -571,11 +571,15 @@ def main(argv):
     #   Oak Stance       while active, every attack of ours is at 50% weight
     #   Death or Glory   0.75 initiative per blow taken
     #
-    # Three of those move the two quantities this file predicts from. Bloodlust fits the
-    # ant split arithmetically - the gain ratio 51/37 needs an attack weight 2.62 times
-    # larger, which is Bloodlust charged to 40% - and it fits the timing, since three of
-    # the four high readings have a blow landing on us immediately before the Flex and the
-    # low one does not.
+    # Three of those move the two quantities this file predicts from, and one of them,
+    # Parry, is measured and handled - see below. BLOODLUST IS TESTED AND FAILS. It charges
+    # 25% per blow taken and spends on the next attack for four times the charge, so a card
+    # thrown after N blows should raise its opening by (1+N)**(1/3): 1.26 after one blow,
+    # 1.44 after two. Binning every attributed gain against the median of its own species,
+    # card, colour and character cell gives 1.000 at every count from zero to four, on 9113
+    # observations at zero and 843 at one. It fails on the ant readings in particular too -
+    # two of the three surviving 51s had no blow land on us anywhere in the fight, and
+    # neither did any of the forty readings at 36 to 38.
     #
     # PARRY IS MEASURED AND IS NOW REJECTED AT SOURCE. Dividing our own gains out makes
     # it visible: for each colour, how often it rises in a state step where the opponent's
@@ -588,11 +592,10 @@ def main(argv):
     # blow resolve inside it. That took the gross misses from 15 to 9 and agreement from
     # 99.3% to 99.5%, at a cost of 34 observations.
     #
-    # It does not catch all of them. Three of the surviving nine are the ant Flex 51s, and
-    # in those the opponent's blow had already resolved before the bracket opened - which
-    # Parry's own rise apparently had not. Bloodlust is still open and still fits: it needs
-    # our attack weight 2.62 times larger, which is a 40% charge, and it charges on blows
-    # taken.
+    # It does not catch all of them. Three of the surviving nine are the ant Flex readings
+    # at 51, and in those the opponent's blow had already resolved before the bracket
+    # opened - which Parry's own rise apparently had not. Nothing yet accounts for those
+    # three.
     #
     # What IS established is that a gain often arrives after the state row that closes its
     # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first
