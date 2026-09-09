@@ -1536,9 +1536,23 @@ def agility_control(logs=None):
                 agree = None
             else:
                 olo, ohi, _capped = iv
-                # Intervals agree when they intersect. Neither is a point estimate, so
-                # anything stricter would report a disagreement that is not one.
-                agree = (clo <= ohi) and (olo <= chi)
+                if (olo > ohi) or (clo > chi):
+                    # A CROSSED interval - lo past hi - is how either route reports that
+                    # one creature's own observations contradict each other, and
+                    # _pool_agility drops exactly these as faulty. It cannot agree or
+                    # disagree with anything, so scoring it as a disagreement invents a
+                    # finding out of data the estimator has already flagged as bad.
+                    #
+                    # It was inventing five: greenooze with the client's bracket crossed at
+                    # 72.8 past 45.2, and beeswarm, honeybee, warriordrone and goldeneagle
+                    # with ours crossed. Against 1767 genuine agreements, five fabricated
+                    # disagreements were enough to keep this check - the only one here that
+                    # is not the corpus grading its own homework - permanently red.
+                    agree = None
+                else:
+                    # Intervals agree when they intersect. Neither is a point estimate, so
+                    # anything stricter would report a disagreement that is not one.
+                    agree = (clo <= ohi) and (olo <= chi)
             sp = (log.names.get(gob) or "?").split("/")[-1]
             out[sp].append((gob, clo, chi, iv[0] if iv else None,
                             iv[1] if iv else None, agree))

@@ -558,6 +558,14 @@ def agility_control():
     bad = [(sp, r) for sp in rows for r in rows[sp] if r[5] is False]
     both = [(sp, r) for sp in rows for r in rows[sp] if r[5] is not None]
     check("  the two routes are compared at all", len(both) > 0, True)
+    # Readings set aside, said out loud. A crossed interval - lo past hi - is either route
+    # reporting that one creature's own observations contradict each other, and it can
+    # neither agree nor disagree with the other route. Naming the count keeps the
+    # exclusion visible instead of it looking like the check simply found nothing.
+    unusable = [sp for sp in rows for r in rows[sp] if r[5] is None]
+    print("    %d reading(s) compared, %d set aside as unusable%s"
+          % (len(both), len(unusable),
+             (" (%s)" % ", ".join(sorted(set(unusable)))) if unusable else ""))
     check("  and none of them disagree", [sp for sp, _r in bad], [])
     # WHICH ROUTE IS TIGHTER IS A READING, NOT A LAW. This asserted that ours must never
     # be the wider, on the reasoning that a formula learning less from the same
