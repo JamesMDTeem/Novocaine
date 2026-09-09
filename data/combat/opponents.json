@@ -8447,7 +8447,7 @@
    "defence_weight": {
     "hi": 84.3,
     "lo": 80.1,
-    "n": 34
+    "n": 33
    },
    "defence_weight_late": {
     "against": 68.5,
@@ -8533,7 +8533,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 65,
+    "obs": 63,
     "value": 51.3
    },
    "threat": {
@@ -8590,7 +8590,7 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 733
+    "n": 722
    },
    "defence_weight_late": {
     "against": 7.2,
@@ -8672,7 +8672,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 1326,
+    "obs": 1311,
     "value": 5.0
    },
    "threat": {
@@ -8695,13 +8695,13 @@
      "ticks": 45.8
     },
     "pressure": {
-     "blue": 4.01,
+     "blue": 4.02,
      "green": 4.26,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 376.875,
-    "pressure_n": 986
+    "pressure_n": 958
    }
   },
   {
@@ -8728,10 +8728,10 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 173
+    "n": 172
    },
    "defence_weight_late": {
-    "against": 74.0,
+    "against": 73.5,
     "agrees": true,
     "depth": 184,
     "hi": 85.6,
@@ -8811,7 +8811,7 @@
      "Sting"
     ],
     "n": 5,
-    "obs": 123,
+    "obs": 122,
     "value": 40.8
    },
    "threat": {
@@ -8866,7 +8866,7 @@
    "defence_weight": {
     "hi": 35.8,
     "lo": 35.2,
-    "n": 529
+    "n": 526
    },
    "defence_weight_late": {
     "against": 29.2,
@@ -8944,7 +8944,7 @@
      "Sting"
     ],
     "n": 5,
-    "obs": 548,
+    "obs": 545,
     "value": 14.8
    },
    "threat": {
@@ -9006,10 +9006,10 @@
    "defence_weight_late": {
     "against": 124.6,
     "agrees": false,
-    "depth": 362,
+    "depth": 361,
     "hi": 154.2,
     "lo": 145.7,
-    "n": 375
+    "n": 374
    },
    "engagements": 63,
    "fought_in": {
@@ -9129,13 +9129,13 @@
      "ticks": 45.3
     },
     "pressure": {
-     "blue": 8.35,
+     "blue": 8.36,
      "green": 4.56,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 451.75,
-    "pressure_n": 96
+    "pressure_n": 95
    }
   },
   {
@@ -9162,10 +9162,10 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 79
+    "n": 78
    },
    "defence_weight_late": {
-    "against": 64.9,
+    "against": 66.1,
     "agrees": false,
     "depth": 44,
     "hi": 102.2,
@@ -9238,7 +9238,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 62,
+    "obs": 61,
     "value": 32.4
    },
    "threat": {
@@ -9399,7 +9399,7 @@
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 77
+    "pressure_n": 75
    }
   },
   {
@@ -9425,15 +9425,15 @@
    "defence_weight": {
     "hi": 32.8,
     "lo": 31.1,
-    "n": 248
+    "n": 233
    },
    "defence_weight_late": {
     "against": 21.2,
     "agrees": false,
-    "depth": 107,
+    "depth": 103,
     "hi": 31.5,
     "lo": 31.1,
-    "n": 109
+    "n": 105
    },
    "engagements": 260,
    "fought_in": {
@@ -9490,7 +9490,7 @@
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
     "equalized": false,
-    "hi": 15.3,
+    "hi": 15.2,
     "lo": 9.3,
     "moves": [
      "Full Circle",
@@ -9499,8 +9499,8 @@
      "Quick Barrage"
     ],
     "n": 4,
-    "obs": 469,
-    "value": 15.2
+    "obs": 433,
+    "value": 14.8
    },
    "threat": {
     "damage": null,
@@ -9540,15 +9540,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 104
+    "n": 101
    },
    "defence_weight_late": {
-    "against": 132.0,
+    "against": 132.9,
     "agrees": false,
-    "depth": 597,
+    "depth": 594,
     "hi": 130.1,
     "lo": 129.9,
-    "n": 622
+    "n": 618
    },
    "engagements": 181,
    "fought_in": {
@@ -9636,7 +9636,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 134,
+    "obs": 131,
     "value": 57.7
    },
    "threat": {
@@ -9662,10 +9662,10 @@
      "blue": 3.41,
      "green": 0.0,
      "red": 0.09,
-     "yellow": 7.16
+     "yellow": 7.13
     },
     "pressure_against": 318.4642857142857,
-    "pressure_n": 255
+    "pressure_n": 251
    }
   },
   {
@@ -9856,12 +9856,7 @@
     "union": true
    },
    "armour": null,
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 278.6,
-    "lo": 84.7,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "fought_in": {
@@ -9932,11 +9927,7 @@
     "union": true
    },
    "armour": null,
-   "defence_weight": {
-    "hi": 180.7,
-    "lo": 70.8,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
@@ -10534,10 +10525,10 @@
    "defence_weight_late": {
     "against": 113.7,
     "agrees": false,
-    "depth": 167,
+    "depth": 166,
     "hi": 145.8,
     "lo": 127.5,
-    "n": 174
+    "n": 173
    },
    "engagements": 167,
    "fought_in": {
@@ -10660,10 +10651,10 @@
      "blue": 0.0,
      "green": 5.36,
      "red": 0.07,
-     "yellow": 3.76
+     "yellow": 3.77
     },
     "pressure_against": 384.0625,
-    "pressure_n": 129
+    "pressure_n": 125
    }
   },
   {
@@ -10806,7 +10797,7 @@
    "skill": {
     "equalized": false,
     "hi": 461.9,
-    "lo": 64.8,
+    "lo": 65.2,
     "moves": [
      "Cleave",
      "Flex",
@@ -10816,7 +10807,7 @@
      "Sting"
     ],
     "n": 6,
-    "obs": 83,
+    "obs": 82,
     "value": 350.1
    },
    "threat": {
@@ -10841,12 +10832,12 @@
     },
     "pressure": {
      "blue": 3.07,
-     "green": 7.94,
+     "green": 7.93,
      "red": 2.32,
      "yellow": 0.0
     },
     "pressure_against": 377.57142857142856,
-    "pressure_n": 124
+    "pressure_n": 122
    }
   },
   {
@@ -11327,12 +11318,12 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 7.41,
+     "green": 7.37,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 354.8,
-    "pressure_n": 79
+    "pressure_n": 77
    }
   },
   {
@@ -11488,12 +11479,12 @@
     "n": 133
    },
    "defence_weight_late": {
-    "against": 63.9,
+    "against": 60.2,
     "agrees": false,
-    "depth": 197,
+    "depth": 196,
     "hi": 115.0,
     "lo": 112.6,
-    "n": 206
+    "n": 205
    },
    "engagements": 83,
    "fought_in": {
@@ -11572,7 +11563,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 137,
+    "obs": 136,
     "value": 52.8
    },
    "threat": {
@@ -11628,7 +11619,7 @@
    "defence_weight": {
     "hi": 132.6,
     "lo": 86.0,
-    "n": 32
+    "n": 31
    },
    "defence_weight_late": {
     "against": 99.5,
@@ -11681,14 +11672,14 @@
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": {
     "equalized": false,
-    "hi": 63.1,
+    "hi": 85.3,
     "lo": 28.5,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 11,
+    "obs": 10,
     "value": 49.8
    },
    "threat": {
@@ -11748,10 +11739,10 @@
    "defence_weight_late": {
     "against": 35.0,
     "agrees": false,
-    "depth": 58,
+    "depth": 57,
     "hi": 70.6,
     "lo": 50.3,
-    "n": 59
+    "n": 58
    },
    "engagements": 124,
    "fought_in": {
@@ -11825,14 +11816,14 @@
    "res": "gfx/kritter/bees/honeybee",
    "skill": {
     "equalized": false,
-    "hi": 24.4,
+    "hi": 23.8,
     "lo": 14.8,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 230,
+    "obs": 224,
     "value": 17.5
    },
    "threat": {
@@ -11851,12 +11842,12 @@
     },
     "pressure": {
      "blue": 0.74,
-     "green": 6.55,
+     "green": 6.61,
      "red": 0.47,
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 81
+    "pressure_n": 73
    }
   },
   {
@@ -11887,10 +11878,10 @@
    "defence_weight_late": {
     "against": 143.7,
     "agrees": true,
-    "depth": 41,
+    "depth": 40,
     "hi": 169.9,
     "lo": 125.4,
-    "n": 41
+    "n": 40
    },
    "engagements": 21,
    "fought_in": {
@@ -11999,13 +11990,13 @@
      "ticks": 37.1
     },
     "pressure": {
-     "blue": 3.38,
+     "blue": 3.44,
      "green": 0.0,
      "red": 0.0,
-     "yellow": 6.83
+     "yellow": 6.67
     },
-    "pressure_against": 470.8333333333333,
-    "pressure_n": 6
+    "pressure_against": 576.25,
+    "pressure_n": 4
    }
   },
   {
@@ -12184,17 +12175,17 @@
     "wiki": 125
    },
    "defence_weight": {
-    "hi": 543.7,
+    "hi": 588.5,
     "lo": 158.9,
-    "n": 15
+    "n": 14
    },
    "defence_weight_late": {
     "against": 249.0,
     "agrees": true,
-    "depth": 12,
-    "hi": 543.7,
+    "depth": 11,
+    "hi": 588.5,
     "lo": 151.6,
-    "n": 12
+    "n": 11
    },
    "engagements": 6,
    "hitpoints": {
@@ -12333,15 +12324,15 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 428
+    "n": 427
    },
    "defence_weight_late": {
     "against": 133.7,
     "agrees": false,
-    "depth": 360,
+    "depth": 359,
     "hi": 139.8,
     "lo": 139.7,
-    "n": 377
+    "n": 376
    },
    "engagements": 83,
    "fought_in": {
@@ -12484,12 +12475,12 @@
     },
     "pressure": {
      "blue": 2.6,
-     "green": 5.61,
+     "green": 5.62,
      "red": 0.13,
      "yellow": 1.01
     },
     "pressure_against": 390.8125,
-    "pressure_n": 147
+    "pressure_n": 137
    }
   },
   {
@@ -12988,12 +12979,12 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 9.76,
+     "green": 10.36,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 493.3333333333333,
-    "pressure_n": 6
+    "pressure_n": 5
    }
   },
   {
@@ -13062,7 +13053,7 @@
     "n": 75
    },
    "defence_weight_late": {
-    "against": 14.4,
+    "against": 14.5,
     "agrees": false,
     "depth": 42,
     "hi": 26.5,
@@ -13129,7 +13120,7 @@
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 287,
+    "obs": 286,
     "value": 9.6
    },
    "threat": {
@@ -13158,7 +13149,7 @@
      "yellow": 0.0
     },
     "pressure_against": 372.5,
-    "pressure_n": 279
+    "pressure_n": 269
    }
   },
   {
@@ -13307,7 +13298,7 @@
      "yellow": 5.05
     },
     "pressure_against": 341.40909090909093,
-    "pressure_n": 94
+    "pressure_n": 92
    }
   },
   {
@@ -13448,7 +13439,7 @@
      "yellow": 5.01
     },
     "pressure_against": 376.0833333333333,
-    "pressure_n": 116
+    "pressure_n": 114
    }
   },
   {
@@ -13600,7 +13591,7 @@
      "Quick Barrage"
     ],
     "n": 3,
-    "obs": 246,
+    "obs": 245,
     "value": 23.0
    },
    "threat": {
@@ -13624,13 +13615,13 @@
      "ticks": 45.8
     },
     "pressure": {
-     "blue": 3.49,
-     "green": 7.92,
+     "blue": 3.47,
+     "green": 7.89,
      "red": 0.1,
      "yellow": 0.0
     },
     "pressure_against": 372.5,
-    "pressure_n": 199
+    "pressure_n": 184
    }
   },
   {
@@ -13779,13 +13770,13 @@
      "ticks": 57.2
     },
     "pressure": {
-     "blue": 5.52,
-     "green": 3.02,
+     "blue": 5.58,
+     "green": 2.99,
      "red": 0.46,
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 104
+    "pressure_n": 93
    }
   },
   {
@@ -13814,7 +13805,7 @@
     "n": 46
    },
    "defence_weight_late": {
-    "against": 43.7,
+    "against": 43.2,
     "agrees": true,
     "depth": 32,
     "hi": 88.6,
@@ -13888,7 +13879,7 @@
    "res": "gfx/kritter/sheep/sheep",
    "skill": {
     "equalized": false,
-    "hi": 28.5,
+    "hi": 27.1,
     "lo": 19.1,
     "moves": [
      "Full Circle",
@@ -13896,7 +13887,7 @@
      "Quick Barrage"
     ],
     "n": 3,
-    "obs": 36,
+    "obs": 35,
     "value": 21.9
    },
    "threat": {
@@ -14015,7 +14006,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 46,
+    "obs": 45,
     "value": 51.3
    },
    "threat": {
@@ -14178,15 +14169,15 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 182
+    "n": 180
    },
    "defence_weight_late": {
     "against": 73.1,
     "agrees": false,
-    "depth": 73,
+    "depth": 72,
     "hi": 143.1,
     "lo": 135.5,
-    "n": 73
+    "n": 72
    },
    "engagements": 65,
    "fought_in": {
@@ -14262,7 +14253,7 @@
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 103,
+    "obs": 102,
     "value": 49.9
    },
    "threat": {
@@ -14280,13 +14271,13 @@
      "ticks": 57.5
     },
     "pressure": {
-     "blue": 5.87,
+     "blue": 5.88,
      "green": 2.61,
      "red": 0.39,
      "yellow": 0.0
     },
     "pressure_against": 420.25,
-    "pressure_n": 49
+    "pressure_n": 43
    }
   },
   {
@@ -14450,7 +14441,7 @@
      "yellow": 0.0
     },
     "pressure_against": 471.25,
-    "pressure_n": 33
+    "pressure_n": 32
    }
   },
   {
@@ -14591,13 +14582,13 @@
      "ticks": 43.4
     },
     "pressure": {
-     "blue": 3.17,
-     "green": 6.88,
+     "blue": 3.15,
+     "green": 6.86,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 372.5,
-    "pressure_n": 199
+    "pressure_n": 192
    }
   },
   {
@@ -14628,10 +14619,10 @@
    "defence_weight_late": {
     "against": 49.5,
     "agrees": false,
-    "depth": 139,
+    "depth": 137,
     "hi": 52.0,
     "lo": 51.2,
-    "n": 140
+    "n": 138
    },
    "engagements": 133,
    "fought_in": {
@@ -14737,7 +14728,7 @@
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 265,
+    "obs": 264,
     "value": 33.0
    },
    "threat": {
@@ -14762,7 +14753,7 @@
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 136
+    "pressure_n": 126
    }
   },
   {
@@ -14935,15 +14926,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 489
+    "n": 488
    },
    "defence_weight_late": {
     "against": 160.0,
     "agrees": false,
-    "depth": 1390,
+    "depth": 1389,
     "hi": 154.2,
     "lo": 153.0,
-    "n": 1407
+    "n": 1406
    },
    "engagements": 458,
    "fought_in": {
@@ -15093,7 +15084,7 @@
      "yellow": 0.06
     },
     "pressure_against": 356.0625,
-    "pressure_n": 838
+    "pressure_n": 833
    }
   },
   {
@@ -15261,7 +15252,7 @@
    "defence_weight": {
     "hi": 61.7,
     "lo": 34.0,
-    "n": 7
+    "n": 6
    },
    "defence_weight_late": null,
    "engagements": 10,
@@ -15303,13 +15294,13 @@
    "res": "gfx/kritter/woodscorpion/woodscorpion",
    "skill": {
     "equalized": false,
-    "hi": 22.1,
+    "hi": 22.8,
     "lo": 17.8,
     "moves": [
      "Quick Barrage"
     ],
     "n": 1,
-    "obs": 11,
+    "obs": 10,
     "value": 20.3
    },
    "threat": {

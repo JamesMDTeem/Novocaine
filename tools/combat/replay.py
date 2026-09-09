@@ -577,13 +577,22 @@ def main(argv):
     # the four high readings have a blow landing on us immediately before the Flex and the
     # low one does not.
     #
-    # IT IS NOT PROVEN, and the reason is worth stating. A rise in the opponent's blue is
-    # a hundred times more likely in a state step where their blow lands on us than in one
-    # where it does not: 12.3% of 956 steps against 0.1% of 61658, in ant fights, with no
-    # card of ours immediately before. That is the same instant a charged Bloodlust would
-    # act, so the two cannot be separated here. It is also not Parry on its own - the rise
-    # is no more blue than any other colour (10.3% against 10.1% with a sword equipped),
-    # and Parry opens blue and nothing else.
+    # PARRY IS MEASURED AND IS NOW REJECTED AT SOURCE. Dividing our own gains out makes
+    # it visible: for each colour, how often it rises in a state step where the opponent's
+    # blow landed on us against how often it rises in a quiet step, over 855107 steps -
+    # green 3x, yellow 0x, red 3x, and blue 80x. Blue is what Parry opens. The first pass
+    # at this compared blue against the other colours pooled and found nothing, because
+    # our own Quick Barrage opens red constantly and drowned the contrast.
+    #
+    # fightlog.attributed_gains now drops any observation whose bracket had the opponent's
+    # blow resolve inside it. That took the gross misses from 15 to 9 and agreement from
+    # 99.3% to 99.5%, at a cost of 34 observations.
+    #
+    # It does not catch all of them. Three of the surviving nine are the ant Flex 51s, and
+    # in those the opponent's blow had already resolved before the bracket opened - which
+    # Parry's own rise apparently had not. Bloodlust is still open and still fits: it needs
+    # our attack weight 2.62 times larger, which is a 40% charge, and it charges on blows
+    # taken.
     #
     # What IS established is that a gain often arrives after the state row that closes its
     # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first

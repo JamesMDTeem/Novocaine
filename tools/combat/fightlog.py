@@ -914,6 +914,26 @@ def attributed_gains(eng, opens, me_gob=None):
             if (d0 is not None) and (d1 is not None) \
                and (min(d0, d1) > OUT_OF_REACH):
                 continue
+        # A CARD OF OURS FIRING BECAUSE WE WERE HIT. Parry's sheet reads "When attacked:
+        # Openings: +10% Dizzy", and it is a block-weight card - it answers the opponent's
+        # swing, so no move row is ever written for it and nothing in a log says whether
+        # it was in the deck at all. Its rise lands in whatever bracket happens to be open.
+        #
+        # It is visible in aggregate, and only once our own gains are divided out. Taking
+        # for each colour how often it rises in a state step where the opponent's blow
+        # landed on us against how often it rises in a quiet step, over 855107 steps:
+        # green 3x, yellow 0x, red 3x - and blue 80x. Comparing blue against the other
+        # colours WITHOUT that normalisation says nothing, because our own Quick Barrage
+        # opens red constantly; that comparison is what made this look like nothing.
+        #
+        # So when the opponent's blow resolved inside this bracket - our own openings are
+        # higher at the far end than the near one - a rise on the opponent may be Parry's
+        # and not this card's, and the two are not separable.
+        if bv and av:
+            ours = "mine" if mine else "foe"
+            ob_, oa_ = before.get(ours), after.get(ours)
+            if ob_ and oa_ and any(oa_[i] > ob_[i] for i in range(4)):
+                continue
         for i in rose:
             out.append((m.get("actor"), name, COLOURS[i], bv[i], av[i] - bv[i]))
     return out
