@@ -34,18 +34,29 @@ BOW_RES = frozenset({"huntersbow", "rangersbow"})
 # Full Circle, Take Aim; openings rose to 31 and 15), so a held bow is NOT a
 # ranged fight. Populate from the first real archer log (Japeck/Pikapolonica);
 # the BOW_RES pin in fightlog_check will demand it the moment pool logs arrive.
+# EMPTY, AND CORRECTLY SO. There is no ranged attack CARD in this game - shooting is its
+# own action and never enters the fightview as a move - so no move name can mark a fight
+# as ranged and this set has nothing to hold. Dodges and the rest of the defensive cards
+# are thrown with a bow in hand like any other, which is why a bow in the gear list is not
+# evidence of a ranged fight either.
+#
+# What a bow in the gear DOES mean is that the weapon was swapped during the fight, since
+# the melee cards in the same log cannot be thrown with it. That costs those hits rather
+# than corrupting them: gear is snapshotted at t=0, replay.weapon_of finds no melee weapon
+# and skips every weapon-share move in the log. 333 logs hold a bow and they carry about
+# twenty melee moves between them.
 RANGED_MOVES = frozenset()
 
 
 def is_ranged(rows):
-    """Whether this log fought with ranged attacks.
+    """Whether this log fought with ranged attacks. Always False - see RANGED_MOVES.
 
-    True when any of OUR move events names a card in RANGED_MOVES. Keyed on
-    moves used, not the weapon held: a bow in the hands changes nothing about
-    melee cards (logs -30/-58 prove it), while the damage channel is
-    weapon-independent either way - damage taken from the foe and damage dealt
-    both still show up and stay usable. Only the openings-gain inversions need
-    a real ranged fight excluded, and only a ranged move marks one.
+    Kept as the gate rather than deleted because the callers read better for it and
+    because the question is a real one; the answer is simply that the game gives no move
+    that could make it true. Keyed on moves used, not the weapon held: a bow in the hands
+    changes nothing about melee cards (logs -30/-58 prove it), while the damage channel is
+    weapon-independent either way - damage taken from the foe and damage dealt both still
+    show up and stay usable.
     """
     # Accept a Log object (has .rows) or an iterable of row dicts.
     raw = getattr(rows, "rows", rows)
