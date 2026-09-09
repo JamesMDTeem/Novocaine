@@ -559,6 +559,32 @@ def main(argv):
     #   rise in the other cases is OUR gain arriving inside their bracket, which is the
     #   same late-arrival problem as below and not a mechanic.
     #
+    # THE LEADING CANDIDATE IS A CARD THAT NEVER APPEARS IN THE LOG. Five cards in the
+    # corpus's own deck dumps carry a "When attacked" clause, and they are block-weight
+    # cards: they fire when the OPPONENT swings, so no move row is ever written for them
+    # and nothing here can tell an active one from an absent one.
+    #
+    #   Parry            +10% Dizzy on the opponent, sword required
+    #   Bloodlust        charges 25% per blow taken; our attack weight rises by four
+    #                    times the charge
+    #   Combat Meditation while active, every attack of ours is at 25% weight
+    #   Oak Stance       while active, every attack of ours is at 50% weight
+    #   Death or Glory   0.75 initiative per blow taken
+    #
+    # Three of those move the two quantities this file predicts from. Bloodlust fits the
+    # ant split arithmetically - the gain ratio 51/37 needs an attack weight 2.62 times
+    # larger, which is Bloodlust charged to 40% - and it fits the timing, since three of
+    # the four high readings have a blow landing on us immediately before the Flex and the
+    # low one does not.
+    #
+    # IT IS NOT PROVEN, and the reason is worth stating. A rise in the opponent's blue is
+    # a hundred times more likely in a state step where their blow lands on us than in one
+    # where it does not: 12.3% of 956 steps against 0.1% of 61658, in ant fights, with no
+    # card of ours immediately before. That is the same instant a charged Bloodlust would
+    # act, so the two cannot be separated here. It is also not Parry on its own - the rise
+    # is no more blue than any other colour (10.3% against 10.1% with a sword equipped),
+    # and Parry opens blue and nothing else.
+    #
     # What IS established is that a gain often arrives after the state row that closes its
     # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first
     # state row after the move, 28% are still climbing and 19% are already decaying.
