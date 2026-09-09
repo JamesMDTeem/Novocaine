@@ -2121,6 +2121,13 @@ def collect(paths):
         for eng in log.engagements:
             rec = per[bucket(eng)]
             rec["engagements"] += 1
+            # Where it was fought. Carried so the inside/outside question is answerable
+            # from the pack rather than only from a fresh pass over the logs - see
+            # location_of() for what the corpus can and cannot say about it today.
+            loc = location_of(eng)
+            if loc:
+                rec.setdefault("fought_in", {})
+                rec["fought_in"][loc] = rec["fought_in"].get(loc, 0) + 1
             # Explicit outcome field, not a silent gate change - see fightlog._infer_outcome.
             # Players excluded, award + gst + HP trail combined. Reported below alongside
             # problems so a reader can see killed/fled/unknown without guessing which gate
@@ -2482,6 +2489,44 @@ def is_depth_scaled(key, wiki_name=None):
         if cand and norm(cand) in DEPTH:
             return True
     return False
+
+
+# Tile basenames that mean the fight was inside rather than on the surface. The client
+# logs the tile underfoot on every state sample (schema 7), and it is the only locational
+# thing a log carries - there is no grid, no segment and no floor number, so this
+# distinguishes inside from outside and nothing finer.
+INSIDE_TILES = ("beehive", "honeyriver", "rock-dungeon", "mine", "cave")
+
+
+def location_of(eng):
+    """"inside" or "outside" for an engagement, from the tile underfoot, or None.
+
+    Whether a creature found inside is the same creature as one found outside is a real
+    question and this is what would answer it. The corpus cannot yet: of 43 species with a
+    tile reading, six are fought both ways, and every control that admits the inside kills
+    excludes the outside ones. Wolf looks like a factor of two in damage-to-kill - 593
+    outside against 1145 inside over 135 and 176 kills - but requiring a clean engagement
+    leaves 13 outside and none inside, and requiring one foe in the log moves the outside
+    median from 593 to 150. The difference is confounded with how the two sets of fights
+    are fought, not established.
+
+    What IS measured, and points the other way: defence weight read through opening gains
+    is the same in both settings. Wolf gives a median gain of 11.0 in each, on a fresh
+    opening, for two different attackers independently; bat gives 16.0 in each. So if
+    anything differs it is hitpoints and not defence.
+
+    Ants cannot be tested at all - every ant fight in this corpus is on a surface tile -
+    and most bee species are only ever fought inside a hive.
+    """
+    tiles = {}
+    for st in eng.states:
+        t = st.get("tile")
+        if t:
+            tiles[t] = tiles.get(t, 0) + 1
+    if not tiles:
+        return None
+    base = max(tiles, key=lambda t: tiles[t]).split("/")[-1]
+    return "inside" if any(k in base for k in INSIDE_TILES) else "outside"
 
 
 def is_splitter(key, wiki_name=None):
@@ -4054,6 +4099,8 @@ def write_pack(per, moves):
         rec = per[name]
         entry = {"name": name, "engagements": rec["engagements"],
                  "res": rec.get("res"), "moves": sorted(rec["their_moves"])}
+        if rec.get("fought_in"):
+            entry["fought_in"] = dict(sorted(rec["fought_in"].items()))
         blended = pooling_caveats(name, rec)
         if blended:
             # This entry's intervals span a POPULATION, not an individual. "depth" means
