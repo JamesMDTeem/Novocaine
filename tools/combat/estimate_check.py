@@ -731,28 +731,43 @@ def opportunity_knocks():
     check("  used against nothing standing, it opens nothing", [a for _b, a in zeros],
           [0] * len(zeros))
     check("    and there was such a use to check", len(zeros) > 0, True)
-    if lo is None:
-        n = sum(1 for b, a, _l in uses if (b > 0) and (a < 100))
-        print("    EMPTY interval from %d uncensored use(s) - the uses contradict, so the" % n)
-        print("    instrument is unusable until they agree again; the verdicts below stay red.")
-        # DELIBERATIVE-PINs: the verdicts did not change, only the plumbing did. An empty
-        # instrument admits nothing and bounds nothing.
-        check("  the multiplier is bounded on both sides", False, True)
-        check("  0.4 * mu at the linear curve's mu(2) = 1.125 is admitted", False, True)
-        check("  0.4 flat, with mu not scaling it, is excluded", False, False)
-        check("  and so is 0.4 * mu at 1.5 - 0.5/sqrt(2) = 1.1464", False, False)
-        return
-
-    # Openings truncate into the log, so each use bounds the multiplier rather than
-    # naming it, and the bounds intersect.
-    check("  the multiplier is bounded on both sides", (lo > 1.0) and (hi < 2.0), True)
-    check("  0.4 * mu at the linear curve's mu(2) = 1.125 is admitted",
-          lo <= 1.45 <= hi, True)
-    check("  0.4 flat, with mu not scaling it, is excluded", lo <= 1.40 <= hi, False)
-    check("  and so is 0.4 * mu at 1.5 - 0.5/sqrt(2) = 1.1464",
-          lo <= 1.0 + 0.4 * 1.1464 <= hi, False)
-    print("    [%.4f, %.4f] from %d uncensored use(s)"
-          % (lo, hi, sum(1 for b, a, _l in uses if (b > 0) and (a < 100))))
+    # PER LEVEL. The card multiplies by 1 + 0.4*mu and mu is a function of the level it
+    # is HELD at, so a level-1 use and a level-2 use bound two different constants.
+    # Intersecting them together is guaranteed to empty once the corpus holds enough of
+    # both, and it did - the instrument reported itself unusable from 2026-09-04, and the
+    # fault was this arithmetic rather than the data.
+    bylv = estimate.ok_boost_by_level()
+    lvl1 = bylv.get(1)
+    check("  level 1 is measured, and it is the control", lvl1 is not None, True)
+    if lvl1:
+        print("    level 1: [%.4f, %.4f] from %d use(s), %d agreeing"
+              % (lvl1["lo"], lvl1["hi"], len(lvl1["uses"]), lvl1["agree"]))
+        # mu is 1.0 at level 1 by definition, so the card's own text names the answer
+        # before any fitting: 1 + 0.4 * 1.0. Nothing here is free to move.
+        check("    every level-1 use agrees", lvl1["agree"] == len(lvl1["uses"]), True)
+        check("    and the interval contains the text's own 1.4000",
+              lvl1["lo"] <= 1.40 <= lvl1["hi"], True)
+        check("    the multiplier is bounded on both sides",
+              (lvl1["lo"] > 1.0) and (lvl1["hi"] < 2.0), True)
+    lvl2 = bylv.get(2)
+    if lvl2:
+        print("    level 2: [%.4f, %.4f] from %d use(s), %d agreeing, outlier(s) %s"
+              % (lvl2["lo"], lvl2["hi"], len(lvl2["uses"]), lvl2["agree"], lvl2["outliers"]))
+        check("    almost every level-2 use agrees",
+              lvl2["agree"] >= len(lvl2["uses"]) - 1, True)
+        # Sixteen separate uses put the square-root curve outside. That is a real
+        # exclusion and it is asserted.
+        check("    the square-root curve's 1.4670 is excluded",
+              lvl2["lo"] <= 1.0 + 0.4 * 1.1676 <= lvl2["hi"], False)
+        # The linear curve's 1.4500 sits 0.0007 above the interval. NOT asserted either
+        # way, and deliberately not fed into MU_MEASURED. The bound turns on two uses that
+        # recorded an after of 99, one of which is the outlier named above - the only use
+        # in the set where a second opening moved inside the same window. This project has
+        # already adopted and retracted a mu curve once on an instrument that looked
+        # tighter than it was; 0.0007 is not the margin to do it on again.
+        print("      the linear curve's 1.4500 sits %.4f outside this interval - reported,"
+              % (1.45 - lvl2["hi"]))
+        print("      not asserted, and not folded into mu until the outlier is understood")
 
 
 def mu_instruments_agree():

@@ -610,6 +610,62 @@ def ok_boost(logs=None):
 
 
 
+def ok_boost_by_level(logs=None):
+    """Opportunity Knocks measured WITHIN each card level, which is the only way it works.
+
+    The card multiplies the greatest standing opening by 1 + 0.4*mu, and mu is a function
+    of the level the card is HELD at - so a level-1 use and a level-2 use bound two
+    different constants. ok_boost() intersected them together, which is guaranteed to go
+    empty once the corpus holds enough of both, and it did: the instrument has reported
+    itself unusable since 2026-09-04 and the reason was the arithmetic, not the data.
+
+    Split by level it works. Level 1 is the control, where mu is 1.0 by definition and the
+    card's own text predicts 1.4000 exactly: eight uses, all agreeing, 1.3971 to 1.4194.
+
+    Level 2 holds 34 uses across two characters and 33 of them agree on 1.4423 to 1.4493.
+    Pooling the two characters is legitimate here in a way it is not for defence weight -
+    mu depends on the card's level and nothing about who is holding it, so no skill frame
+    enters - and they do agree: ZzxcuV3's thirteen give 1.4394 to 1.4493 on their own.
+
+    THE ONE THAT DISAGREES IS NAMED, NOT DROPPED. It is the only use in the set whose
+    before-state has a second large opening (green 71 beside red 69) and the only one where
+    another opening moved inside the same window (red fell 69 to 68), so something other
+    than this card was acting. That is a reason to distrust the reading and not a rule to
+    filter on, so it is reported and left in the count.
+
+    What the level-2 interval implies for mu is 1.1058 to 1.1232, which sits just BELOW the
+    linear curve's 1.1250 - excluded by 0.0007 - and well below the square-root curve's
+    1.1676, which sixteen separate uses rule out. Do not read the linear exclusion as
+    settled: it turns on two uses that recorded an after of 99, and one of them is the
+    contaminated reading above.
+
+    Returns {level: {"uses": [(before, after)], "lo", "hi", "outliers": [(before, after)]}}
+    with the interval taken over the largest agreeing subset.
+    """
+    uses, _lo, _hi = ok_boost(logs)
+    out = {}
+    bylv = defaultdict(list)
+    for b, a, level in uses:
+        if (b <= 0) or (a >= 100):
+            continue
+        bylv[level].append((b, a))
+    for level, v in bylv.items():
+        rows = [(a / float(b + 1), (a + 1) / float(b), b, a) for b, a in v]
+        cands = sorted(set([r[0] for r in rows] + [r[1] for r in rows]))
+        if not cands:
+            continue
+        best = max(cands, key=lambda c: sum(1 for lo, hi, _b, _a in rows if lo <= c <= hi))
+        agree = [r for r in rows if r[0] <= best <= r[1]]
+        out[level] = {
+            "uses": v,
+            "lo": max(r[0] for r in agree),
+            "hi": min(r[1] for r in agree),
+            "agree": len(agree),
+            "outliers": [(r[2], r[3]) for r in rows if not (r[0] <= best <= r[1])],
+        }
+    return out
+
+
 def _latest_deck():
     """Today's deck, for the character who has the most dumps on this machine.
 
