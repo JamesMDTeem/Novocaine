@@ -78,15 +78,29 @@ public final class CombatDeckDump {
         try {
             if((fw == null) || (Client.gameDir == null))
                 return;
-            /* Compare the body, not the finished file: the finished file carries a wall
-             * clock, so comparing that would make every payload look new and the probe
-             * would write a fresh copy every few seconds. It did, 128 times. */
-            String body = build(fw);
-            if((body == null) || body.equals(last))
+            /* Compare a DECK SIGNATURE, not the finished file and not the whole body.
+             *
+             * The finished file carries a wall clock, so comparing that would make every
+             * payload look new and the probe would write a fresh copy every few seconds.
+             * It did, 128 times.
+             *
+             * Comparing the body has the same shape of fault, more slowly: the body
+             * carries each move's `info`, which the server sends per move on demand, so
+             * a payload keeps changing as tooltips trickle in even though the deck has
+             * not moved. Measured over one teammate's dumps, that wrote 112 files for 22
+             * distinct deck states. The signature covers what a deck IS - the moves, the
+             * levels bought and held, the point budget and the save slot - so a dump is
+             * written when the deck changes and not when a tooltip arrives. */
+            List<FightWnd.Action> all = new ArrayList<FightWnd.Action>(fw.ALL);
+            String sig = signature(fw, all);
+            if((sig == null) || sig.equals(last))
+                return;
+            String body = build(fw, all);
+            if(body == null)
                 return;
             String json = new JsonObj()
                 .put("kind", "combat-deck")
-                .put("schema", 2)
+                .put("schema", 3)
                 .put("wall", System.currentTimeMillis())
                 .raw("body", body)
                 .end();
@@ -96,7 +110,7 @@ public final class CombatDeckDump {
             Files.createDirectories(dir);
             Path p = dir.resolve("deck-" + safe + "-" + System.currentTimeMillis() + ".json");
             Files.write(p, json.getBytes(StandardCharsets.UTF_8));
-            last = body;
+            last = sig;
             /* Ship it. Only a NEW dump reaches this line - the `last` comparison above means a
              * character fighting all evening with one deck writes, and so uploads, exactly one -
              * so this is at most a handful of small posts per session. Enqueue returns in
@@ -108,11 +122,9 @@ public final class CombatDeckDump {
         }
     }
 
-    private static String build(FightWnd fw) {
+    private static String build(FightWnd fw, List<FightWnd.Action> all) {
         StringBuilder acts = new StringBuilder("[");
         boolean first = true;
-        /* A copy: ALL is mutated from the message loop as the server sends actions. */
-        List<FightWnd.Action> all = new ArrayList<FightWnd.Action>(fw.ALL);
         for(FightWnd.Action a : all) {
             String one = action(a);
             if(one == null)
@@ -134,8 +146,59 @@ public final class CombatDeckDump {
                .put("maxpoints", fw.maxact)
                .put("nsave", fw.nsave)
                .put("usesave", fw.usesave)
+               /* How many slots the bar HAS and how many the server has filled. Without
+                * these a dump where every level is zero is ambiguous, and the two readings
+                * want opposite treatment: a character who has bought nothing has no deck to
+                * record and should be skipped, while a character whose levels never arrived
+                * is a client fault worth chasing. Telling them apart from the payload alone
+                * took a day and a cross-character comparison. */
+               .put("nact", fw.order.length)
+               .put("barused", barused(fw))
                .raw("moves", acts.toString())
                .end());
+    }
+
+    /** How many of the bar's slots hold a move. */
+    private static int barused(FightWnd fw) {
+        int n = 0;
+        for(FightWnd.Action a : fw.order) {
+            if(a != null)
+                n++;
+        }
+        return(n);
+    }
+
+    /**
+     * What the deck IS, as a string, for the write-only-on-change test in write().
+     *
+     * Deliberately excludes `info` and everything else the server fills in over time - see
+     * the argument in write(). Null when no move has resolved yet, which is the state
+     * before "avail" and mirrors build()'s own empty-list guard.
+     */
+    private static String signature(FightWnd fw, List<FightWnd.Action> all) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(Config.playername).append('|')
+          .append(fw.maxact).append('|')
+          .append(fw.nsave).append('|')
+          .append(fw.usesave).append('|')
+          .append(fw.order.length).append('|')
+          .append(barused(fw)).append(';');
+        boolean any = false;
+        for(FightWnd.Action a : all) {
+            String name;
+            try {
+                Resource res = a.res.get();
+                name = (res == null) ? null : res.name;
+            } catch(Exception e) {
+                /* still loading - it will differ once it resolves, which is a real change */
+                continue;
+            }
+            if(name == null)
+                continue;
+            any = true;
+            sb.append(name).append(':').append(a.a).append(':').append(a.u).append(';');
+        }
+        return(any ? sb.toString() : null);
     }
 
     private static String action(FightWnd.Action a) {

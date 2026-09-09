@@ -830,6 +830,54 @@ public class FightWnd extends Widget {
 	return(null);
     }
 
+    /* The last "used" the server sent, so a later `avail` that rebuilds ALL can put the
+     * deck back. Consumed by the `avail` branch of uimsg. */
+    private Object[] lastused = null;
+
+    /**
+     * Apply a server "used" message: clear every level, then set the ones on the bar.
+     *
+     * ALL, not `acts`. `acts` is the FILTERED view this window is showing - doFilter()
+     * replaces it with whichever school tab is selected - so clearing levels over it left
+     * every card outside the current filter holding the level it had when it was last in
+     * the deck. Nothing in the window shows that: the card is not on the bar, and `order`
+     * is rebuilt from the message itself.
+     *
+     * It leaks out through anything that asks the window what the deck IS rather than what
+     * is on the bar - CombatRecorder.readDeck and CombatDeckDump both walk ALL and treat
+     * u > 0 as "in the deck" - which then reports a phantom card at a level the character
+     * no longer runs it at. Predictions were never wrong by it, because a card you can
+     * throw is one findact() reaches correctly; the deck record was.
+     *
+     * A resid ALL does not know is skipped rather than dereferenced. It used to throw an
+     * NPE straight out of uimsg, which discarded every remaining slot in the same message -
+     * one unknown card cost the whole deck. The length checks are the same argument for a
+     * message shorter than `order`.
+     */
+    private void applyused(Object[] args) {
+	if(args == null)
+	    return;
+	int a = 0;
+	for(Action act : ALL)
+	    act.u(0);
+	for(int i = 0; i < order.length; i++) {
+	    if(a >= args.length)
+		break;
+	    int resid = Utils.iv(args[a++]);
+	    if(resid < 0) {
+		order[i] = null;
+		continue;
+	    }
+	    if(a >= args.length)
+		break;
+	    int us = Utils.iv(args[a++]);
+	    Action act = findact(resid);
+	    order[i] = act;
+	    if(act != null)
+		act.u(us);
+	}
+    }
+
     public void uimsg(String nm, Object... args) {
 	if(nm == "avail") {
 	    List<Action> acts = new ArrayList<Action>();
@@ -850,39 +898,37 @@ public class FightWnd extends Widget {
 		this.ALL = acts;
 	    actlist.loading = true;
 		needFilter = true;
+	    /* `avail` rebuilds ALL, and any move it has not seen before is constructed with
+	     * u = 0. When it arrives after the deck did, that zeroes the whole deck, and the
+	     * server has no reason to send "used" again - so the window, and everything that
+	     * asks it what the deck is, reports every card at level 0 for the rest of the
+	     * session. One teammate's client sat in that state for eight days: 112 deck dumps
+	     * across 22 distinct sheet states, 40 cards each, not one level above zero, while
+	     * 428 of their fights went into the pool unusable for any level-keyed measurement.
+	     *
+	     * Re-apply the last deck the server sent, but ONLY when nothing is holding a level.
+	     * A deck that survived the rebuild came through findact() above with its level
+	     * intact and must not be overwritten by an older message; an all-zero deck has
+	     * nothing to lose. `lastused` is per widget, so a relog builds a new FightWnd and
+	     * cannot inherit another character's deck. */
+	    if(lastused != null) {
+		boolean empty = true;
+		for(Action act : ALL) {
+		    if(act.u > 0) {
+			empty = false;
+			break;
+		    }
+		}
+		if(empty)
+		    applyused(lastused);
+	    }
 	} else if(nm == "tt") {
 	    Indir<Resource> res = ui.sess.getresv(args[0]);
 	    Object[] rawinfo = (Object[])args[1];
 	    actrawinfo.put(res, rawinfo);
 	} else if(nm == "used") {
-	    int a = 0;
-	    /* ALL, not `acts`. `acts` is the FILTERED view this window is showing -
-	     * doFilter() replaces it with whichever school tab is selected - so clearing
-	     * levels over it left every card outside the current filter holding the level
-	     * it had when it was last in the deck. Nothing in the window shows that: the
-	     * card is not on the bar, and `order` is rebuilt from the message below.
-	     *
-	     * It leaks out through anything that asks the window what the deck IS rather
-	     * than what is on the bar - CombatRecorder.readDeck and CombatDeckDump both
-	     * walk ALL and treat u > 0 as "in the deck" - which then reports a phantom
-	     * card at a level the character no longer runs it at. Predictions were never
-	     * wrong by it, because a card you can throw is one findact() reaches below and
-	     * assigns correctly; the deck record was.
-	     *
-	     * `avail` above also leaves the `acts` FIELD pointing at the previous list
-	     * until the next doFilter(), so the old form could miss cards that had just
-	     * arrived as well as cards merely filtered away. ALL has neither problem. */
-	    for(Action act : ALL)
-		act.u(0);
-	    for(int i = 0; i < order.length; i++) {
-		int resid = Utils.iv(args[a++]);
-		if(resid < 0) {
-		    order[i] = null;
-		    continue;
-		}
-		int us = Utils.iv(args[a++]);
-		(order[i] = findact(resid)).u(us);
-	    }
+	    lastused = args;
+	    applyused(args);
 	} else if(nm == "saved") {
 	    int fl = Utils.iv(args[0]);
 	    for(int i = 0; i < nsave; i++) {
