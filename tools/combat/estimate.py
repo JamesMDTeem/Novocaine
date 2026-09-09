@@ -2455,6 +2455,15 @@ def depth_scaled():
                (doc.get("depth_scaled") or {}).get("creatures") or [])
 
 
+def splitters():
+    """Creature keys that divide during a fight, spawning weaker copies of themselves."""
+    if not os.path.exists(NOTES):
+        return set()
+    with open(NOTES, "r", encoding="utf8") as f:
+        doc = json.load(f)
+    return set(norm(n) for n in (doc.get("splits") or {}).get("creatures") or [])
+
+
 def is_depth_scaled(key, wiki_name=None):
     """True when this creature's stats scale with the mine floor it was found on.
 
@@ -2473,6 +2482,44 @@ def is_depth_scaled(key, wiki_name=None):
         if cand and norm(cand) in DEPTH:
             return True
     return False
+
+
+def is_splitter(key, wiki_name=None):
+    """True when this creature divides in combat, so a bucket holds parents AND offspring.
+
+    Green oozes spawn further oozes as they are damaged, and the spawned ones are weaker.
+    Measured inside single fights, which holds depth, player and deck fixed: the ooze
+    present at the start brackets agility 70-98 and absorbs 219 damage, while four that
+    appear later bracket at most 34 and absorb 67 to 111.
+
+    There is no way to tell a split from an ooze that simply wandered in - see
+    creature-notes.json, which records the counterexample - so this flags the bucket
+    rather than partitioning it.
+    """
+    for cand in (key, (key or "").rsplit("/", 1)[-1], wiki_name):
+        if cand and norm(cand) in SPLITS:
+            return True
+    return False
+
+
+def pooling_caveats(name, rec):
+    """Reasons this species' bucket holds individuals that are not the same creature.
+
+    Both reasons have the same consequence and neither can be undone after the fact: the
+    entry's intervals span a population rather than an individual, so a consumer that
+    reads them as one creature's stats will be confident about a number nothing measured.
+    Recorded ON the pack entry rather than only printed in a report, because the report is
+    not what the simulator loads.
+    """
+    wiki = rec.get("wiki") if isinstance(rec.get("wiki"), dict) else None
+    wname = (wiki or {}).get("name")
+    key = rec.get("res") or name
+    out = []
+    if is_depth_scaled(key, wname) or is_depth_scaled(name, wname):
+        out.append("depth")
+    if is_splitter(key, wname) or is_splitter(name, wname):
+        out.append("splits")
+    return out
 
 
 def wiki_creatures():
@@ -2594,6 +2641,7 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
 
 
 DEPTH = depth_scaled()
+SPLITS = splitters()
 
 def mu_from_reductions(logs=None):
     """mu per card level, read off what a defensive card takes off our own openings.
@@ -3713,13 +3761,20 @@ def report(per, moves):
                       "list it)")
 
         # --- what it does back
-        if norm(rec.get("res")) in DEPTH or (rec.get("wiki")
-                                            and norm(rec["wiki"].get("name")) in DEPTH):
-            print("\n  NOTE             this creature scales with mine depth (floors 1-9),"
-                  " so the range below")
-            print("                   spans DEPTHS, not individual variation - and nothing"
-                  " in a log records")
-            print("                   which floor a fight happened on")
+        for why in pooling_caveats(rec.get("name") or rec.get("res"), rec):
+            if why == "depth":
+                print("\n  NOTE             this creature scales with mine depth (floors"
+                      " 1-9), so the range below")
+                print("                   spans DEPTHS, not individual variation - and"
+                      " nothing in a log records")
+                print("                   which floor a fight happened on")
+            elif why == "splits":
+                print("\n  NOTE             this creature divides in combat and the"
+                      " offspring are weaker, so")
+                print("                   the range below spans PARENTS AND OFFSPRING -"
+                      " one fight has a starter")
+                print("                   at agility 70-98 beside four later arrivals at"
+                      " most 34")
 
         hp = rec["hp"]
         if hp:
@@ -3999,6 +4054,13 @@ def write_pack(per, moves):
         rec = per[name]
         entry = {"name": name, "engagements": rec["engagements"],
                  "res": rec.get("res"), "moves": sorted(rec["their_moves"])}
+        blended = pooling_caveats(name, rec)
+        if blended:
+            # This entry's intervals span a POPULATION, not an individual. "depth" means
+            # mine floors 1 to 9 and nothing in a log says which; "splits" means the
+            # creature spawns weaker copies of itself mid-fight. Neither is separable
+            # after the fact, so the honest thing is to say so on the entry.
+            entry["blended"] = blended
 
         if rec["wd"]:
             # CLEAN EVIDENCE FIRST, and never mixed with the rest.

@@ -10284,6 +10284,9 @@
     "total_lo": 40,
     "wiki": 31
    },
+   "blended": [
+    "depth"
+   ],
    "defence_weight": {
     "hi": 1514.6,
     "lo": 34.0,
@@ -10571,6 +10574,9 @@
     "total_lo": 40,
     "wiki": 40
    },
+   "blended": [
+    "depth"
+   ],
    "defence_weight": {
     "hi": 214.2,
     "lo": 203.7,
@@ -11337,6 +11343,10 @@
     "total_lo": 0,
     "wiki": null
    },
+   "blended": [
+    "depth",
+    "splits"
+   ],
    "defence_weight": {
     "contradictory": true,
     "hi": null,
@@ -13861,6 +13871,9 @@
     "total_lo": 125,
     "wiki": 125
    },
+   "blended": [
+    "depth"
+   ],
    "defence_weight": {
     "from_contaminated": true,
     "hi": 411.4,

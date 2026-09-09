@@ -13,5 +13,14 @@
    "Cave Lice",
    "Cave Louse"
   ]
+ },
+ "splits": {
+  "note": "Green oozes divide while fighting: a damaged ooze spawns further oozes, and the spawned ones are weaker - lower stats and fewer hitpoints than the one they came from. So a greenooze species bucket pools two populations, exactly as a depth-scaled bucket pools floors, and its envelope spans the difference between a parent and its offspring rather than individual variation.",
+  "measured": "Within single fights, which holds depth, player and deck fixed: in Santa_Samus-1788563841919 the ooze present at the start brackets agility 70.2-97.9 and absorbs 219 damage, while four that appear later all bracket at most 34.2 and absorb 67 to 111. In Santa_Samus-1788695780809 the starter is 72.5-101.2 on 259 damage against four later arrivals at most 35.3 on 48 to 75. Across the corpus the oozes present at a fight's start give two-sided brackets from 57 to 122; the ones that appear mid-fight are almost all upper bounds at or below 41.",
+  "why_it_cannot_be_detected_automatically": "Appearing mid-fight is NOT sufficient - a separate ooze that aggros partway through looks identical in the log. Gob 1927266921 brackets 84.4-117.8, a full-strength reading, and appears as a mid-fight arrival in a later fight; labelling every mid-fight arrival as a split moves it and others into the weak bucket and destroys the separation. Gob ids are not ordered by creation, so they do not identify a newly spawned object either. Nothing in a log records that one creature came from another.",
+  "creatures": [
+   "Green Ooze",
+   "Slime"
+  ]
  }
 }
