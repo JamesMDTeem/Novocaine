@@ -325,6 +325,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 9.0
    },
    "threat": {
@@ -2114,6 +2115,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 21.8
    },
    "threat": {
@@ -3854,6 +3856,7 @@
      "Knock Its Teeth Out"
     ],
     "n": 1,
+    "obs": 3,
     "value": 22.0
    },
    "threat": {
@@ -4570,6 +4573,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 23.6
    },
    "threat": {
@@ -5132,6 +5136,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 22.4
    },
    "threat": {
@@ -5428,6 +5433,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 9.8
    },
    "threat": {
@@ -5630,6 +5636,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 10.3
    },
    "threat": {
@@ -6013,6 +6020,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 10.3
    },
    "threat": {
@@ -6436,6 +6444,7 @@
      "Knock Its Teeth Out"
     ],
     "n": 1,
+    "obs": 3,
     "value": 15.6
    },
    "threat": null
@@ -6938,6 +6947,7 @@
      "Knock Its Teeth Out"
     ],
     "n": 1,
+    "obs": 3,
     "value": 15.6
    },
    "threat": null
@@ -7736,6 +7746,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 5.5
    },
    "threat": null
@@ -7892,6 +7903,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 13.4
    },
    "threat": {
@@ -8231,6 +8243,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 3,
     "value": 20.5
    },
    "threat": {
@@ -8512,7 +8525,7 @@
    "skill": {
     "equalized": false,
     "hi": 52.0,
-    "lo": 34.0,
+    "lo": 29.2,
     "moves": [
      "Flex",
      "Full Circle",
@@ -8520,6 +8533,7 @@
      "Sting"
     ],
     "n": 4,
+    "obs": 65,
     "value": 51.3
    },
    "threat": {
@@ -8649,8 +8663,8 @@
    "res": "gfx/kritter/ants/ants",
    "skill": {
     "equalized": false,
-    "hi": 5.2,
-    "lo": 3.5,
+    "hi": 5.3,
+    "lo": 3.3,
     "moves": [
      "Flex",
      "Full Circle",
@@ -8658,6 +8672,7 @@
      "Sting"
     ],
     "n": 4,
+    "obs": 1326,
     "value": 5.0
    },
    "threat": {
@@ -8785,8 +8800,8 @@
    "res": "gfx/kritter/badger/badger",
    "skill": {
     "equalized": false,
-    "hi": 46.3,
-    "lo": 21.9,
+    "hi": 50.8,
+    "lo": 27.6,
     "moves": [
      "Flex",
      "Full Circle",
@@ -8796,7 +8811,8 @@
      "Sting"
     ],
     "n": 5,
-    "value": 43.4
+    "obs": 123,
+    "value": 40.8
    },
    "threat": {
     "damage": {
@@ -8918,8 +8934,8 @@
    "res": "gfx/kritter/bat/bat",
    "skill": {
     "equalized": false,
-    "hi": 21.0,
-    "lo": 13.8,
+    "hi": 19.0,
+    "lo": 11.9,
     "moves": [
      "Flex",
      "Full Circle",
@@ -8928,6 +8944,7 @@
      "Sting"
     ],
     "n": 5,
+    "obs": 548,
     "value": 14.8
    },
    "threat": {
@@ -9076,11 +9093,11 @@
    "res": "gfx/kritter/bear/bear",
    "skill": {
     "bound_hi": 249.6,
-    "bound_lo": 81.5,
+    "bound_lo": 77.0,
     "disputed": true,
     "equalized": false,
-    "hi": 62.3,
-    "lo": 55.8,
+    "hi": 81.9,
+    "lo": 8.2,
     "moves": [
      "Cleave",
      "Flex",
@@ -9089,6 +9106,7 @@
      "Sting"
     ],
     "n": 3,
+    "obs": 44,
     "value": 59.7
    },
    "threat": {
@@ -9211,8 +9229,8 @@
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
     "equalized": false,
-    "hi": 43.0,
-    "lo": 27.4,
+    "hi": 44.1,
+    "lo": 26.1,
     "moves": [
      "Flex",
      "Full Circle",
@@ -9220,6 +9238,7 @@
      "Sting"
     ],
     "n": 4,
+    "obs": 62,
     "value": 32.4
    },
    "threat": {
@@ -9349,12 +9368,13 @@
    "skill": {
     "equalized": false,
     "hi": 9.8,
-    "lo": 6.9,
+    "lo": 6.5,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
+    "obs": 177,
     "value": 9.8
    },
    "threat": {
@@ -9470,8 +9490,8 @@
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
     "equalized": false,
-    "hi": 16.5,
-    "lo": 10.1,
+    "hi": 15.3,
+    "lo": 9.3,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
@@ -9479,6 +9499,7 @@
      "Quick Barrage"
     ],
     "n": 4,
+    "obs": 469,
     "value": 15.2
    },
    "threat": {
@@ -9600,12 +9621,12 @@
    },
    "res": "gfx/kritter/boar/boar",
    "skill": {
-    "bound_hi": 300.0,
-    "bound_lo": 86.0,
+    "bound_hi": 310.0,
+    "bound_lo": 79.0,
     "disputed": true,
     "equalized": false,
-    "hi": 62.2,
-    "lo": 36.5,
+    "hi": 82.8,
+    "lo": 28.5,
     "moves": [
      "Cleave",
      "Flex",
@@ -9614,8 +9635,9 @@
      "Quick Barrage",
      "Sting"
     ],
-    "n": 3,
-    "value": 55.2
+    "n": 4,
+    "obs": 134,
+    "value": 57.7
    },
    "threat": {
     "damage": {
@@ -10134,6 +10156,7 @@
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 7,
     "value": 2.1
    },
    "threat": {
@@ -10439,15 +10462,19 @@
    },
    "res": "gfx/kritter/boreworm/boreworm",
    "skill": {
+    "bound_hi": 428.9,
+    "bound_lo": 107.2,
+    "disputed": true,
     "equalized": false,
-    "hi": 386.0,
-    "lo": 47.0,
+    "hi": 41.1,
+    "lo": 41.1,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 2,
-    "value": 386.0
+    "n": 1,
+    "obs": 4,
+    "value": 41.1
    },
    "threat": {
     "damage": {
@@ -10599,13 +10626,14 @@
    "res": "gfx/kritter/cattle/cattle",
    "skill": {
     "equalized": false,
-    "hi": 66.0,
-    "lo": 55.8,
+    "hi": 74.3,
+    "lo": 31.9,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
+    "obs": 52,
     "value": 66.0
    },
    "threat": {
@@ -10776,12 +10804,9 @@
    },
    "res": "gfx/kritter/caveangler/caveangler",
    "skill": {
-    "bound_hi": 306.0,
-    "bound_lo": 91.5,
-    "disputed": true,
     "equalized": false,
-    "hi": 431.3,
-    "lo": 341.6,
+    "hi": 461.9,
+    "lo": 64.8,
     "moves": [
      "Cleave",
      "Flex",
@@ -10790,8 +10815,9 @@
      "Quick Barrage",
      "Sting"
     ],
-    "n": 3,
-    "value": 395.5
+    "n": 6,
+    "obs": 83,
+    "value": 350.1
    },
    "threat": {
     "damage": {
@@ -10896,12 +10922,13 @@
    "res": "gfx/kritter/rat/caverat",
    "skill": {
     "equalized": false,
-    "hi": 28.2,
-    "lo": 28.2,
+    "hi": 35.4,
+    "lo": 24.7,
     "moves": [
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 13,
     "value": 28.2
    },
    "threat": {
@@ -11042,13 +11069,14 @@
    "res": "gfx/kritter/crane/crane",
    "skill": {
     "equalized": false,
-    "hi": 40.4,
-    "lo": 27.7,
+    "hi": 44.8,
+    "lo": 26.8,
     "moves": [
      "Flex",
      "Sting"
     ],
     "n": 2,
+    "obs": 65,
     "value": 40.4
    },
    "threat": {
@@ -11265,8 +11293,8 @@
    "res": "gfx/kritter/fox/fox",
    "skill": {
     "equalized": false,
-    "hi": 30.8,
-    "lo": 21.0,
+    "hi": 33.3,
+    "lo": 18.5,
     "moves": [
      "Flex",
      "Full Circle",
@@ -11275,7 +11303,8 @@
      "Sting"
     ],
     "n": 5,
-    "value": 25.7
+    "obs": 158,
+    "value": 25.2
    },
    "threat": {
     "damage": {
@@ -11389,14 +11418,15 @@
    },
    "res": "gfx/kritter/goldeneagle/goldeneagle",
    "skill": {
-    "equalized": true,
-    "hi": 356.0,
-    "lo": 89.0,
+    "equalized": false,
+    "hi": 101.4,
+    "lo": 62.7,
     "moves": [
      "Quick Barrage"
     ],
-    "n": 0,
-    "value": null
+    "n": 1,
+    "obs": 14,
+    "value": 91.3
    },
    "threat": {
     "damage": {
@@ -11533,8 +11563,8 @@
    "res": "gfx/kritter/ooze/greenooze",
    "skill": {
     "equalized": false,
-    "hi": 58.9,
-    "lo": 26.2,
+    "hi": 57.5,
+    "lo": 18.5,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
@@ -11542,6 +11572,7 @@
      "Sting"
     ],
     "n": 4,
+    "obs": 137,
     "value": 52.8
    },
    "threat": {
@@ -11649,18 +11680,16 @@
    },
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": {
-    "bound_hi": 208.0,
-    "bound_lo": 52.0,
-    "disputed": true,
     "equalized": false,
-    "hi": 276.7,
-    "lo": 276.7,
+    "hi": 63.1,
+    "lo": 28.5,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 1,
-    "value": 276.7
+    "n": 2,
+    "obs": 11,
+    "value": 49.8
    },
    "threat": {
     "damage": {
@@ -11796,13 +11825,14 @@
    "res": "gfx/kritter/bees/honeybee",
    "skill": {
     "equalized": false,
-    "hi": 17.5,
-    "lo": 17.1,
+    "hi": 24.4,
+    "lo": 14.8,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
+    "obs": 230,
     "value": 17.5
    },
    "threat": {
@@ -11933,19 +11963,20 @@
    "res": "gfx/kritter/horse/horse",
    "skill": {
     "bound_hi": 310.0,
-    "bound_lo": 77.5,
+    "bound_lo": 121.1,
     "disputed": true,
     "equalized": false,
-    "hi": 327.6,
-    "lo": 63.5,
+    "hi": 81.9,
+    "lo": 57.5,
     "moves": [
      "Flex",
      "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 3,
-    "value": 69.2
+    "n": 2,
+    "obs": 8,
+    "value": 81.9
    },
    "threat": {
     "damage": {
@@ -12086,12 +12117,12 @@
    },
    "res": "gfx/kritter/lynx/lynx",
    "skill": {
-    "bound_hi": 326.0,
-    "bound_lo": 81.5,
+    "bound_hi": 310.0,
+    "bound_lo": 77.5,
     "disputed": true,
     "equalized": false,
-    "hi": 79.4,
-    "lo": 55.5,
+    "hi": 70.6,
+    "lo": 41.3,
     "moves": [
      "Flex",
      "Full Circle",
@@ -12099,7 +12130,8 @@
      "Sting"
     ],
     "n": 3,
-    "value": 57.5
+    "obs": 25,
+    "value": 65.9
    },
    "threat": {
     "damage": {
@@ -12416,16 +12448,20 @@
    },
    "res": "gfx/kritter/moose/moose",
    "skill": {
+    "bound_hi": 484.4,
+    "bound_lo": 121.1,
+    "disputed": true,
     "equalized": false,
-    "hi": 99.8,
-    "lo": 62.5,
+    "hi": 91.3,
+    "lo": 5.0,
     "moves": [
      "Cleave",
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 3,
-    "value": 63.8
+    "n": 2,
+    "obs": 37,
+    "value": 62.3
    },
    "threat": {
     "damage": {
@@ -12534,6 +12570,7 @@
      "Quick Barrage"
     ],
     "n": 2,
+    "obs": 8,
     "value": 51.5
    },
    "threat": {
@@ -12633,14 +12670,15 @@
    "res": "gfx/kritter/pelican/pelican",
    "skill": {
     "equalized": false,
-    "hi": 48.2,
-    "lo": 27.6,
+    "hi": 53.2,
+    "lo": 26.2,
     "moves": [
      "Flex",
      "Quick Barrage",
      "Sting"
     ],
     "n": 3,
+    "obs": 33,
     "value": 33.5
    },
    "threat": {
@@ -13084,13 +13122,14 @@
    "res": "gfx/kritter/ants/redants",
    "skill": {
     "equalized": false,
-    "hi": 9.6,
-    "lo": 7.0,
+    "hi": 10.9,
+    "lo": 6.5,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
+    "obs": 287,
     "value": 9.6
    },
    "threat": {
@@ -13227,18 +13266,19 @@
    },
    "res": "gfx/kritter/reddeer/reddeer",
    "skill": {
-    "bound_hi": 336.0,
-    "bound_lo": 84.0,
+    "bound_hi": 351.1,
+    "bound_lo": 87.8,
     "disputed": true,
     "equalized": false,
-    "hi": 66.9,
-    "lo": 66.9,
+    "hi": 91.3,
+    "lo": 14.5,
     "moves": [
      "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
     "n": 2,
+    "obs": 35,
     "value": 66.9
    },
    "threat": {
@@ -13370,18 +13410,16 @@
    },
    "res": "gfx/kritter/reindeer/reindeer",
    "skill": {
-    "bound_hi": 356.0,
-    "bound_lo": 89.0,
-    "disputed": true,
     "equalized": false,
-    "hi": 70.3,
-    "lo": 70.3,
+    "hi": 100.1,
+    "lo": 41.3,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 1,
-    "value": 70.3
+    "n": 2,
+    "obs": 80,
+    "value": 100.1
    },
    "threat": {
     "damage": {
@@ -13554,14 +13592,15 @@
    "res": "gfx/kritter/ants/royalguardant",
    "skill": {
     "equalized": false,
-    "hi": 25.5,
-    "lo": 21.9,
+    "hi": 32.3,
+    "lo": 17.8,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
      "Quick Barrage"
     ],
     "n": 3,
+    "obs": 246,
     "value": 23.0
    },
    "threat": {
@@ -13709,15 +13748,16 @@
    "res": "gfx/kritter/bees/sentinelbee",
    "skill": {
     "equalized": false,
-    "hi": 56.3,
-    "lo": 35.4,
+    "hi": 51.3,
+    "lo": 8.9,
     "moves": [
      "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 2,
-    "value": 56.3
+    "n": 3,
+    "obs": 217,
+    "value": 51.3
    },
    "threat": {
     "damage": {
@@ -13848,14 +13888,15 @@
    "res": "gfx/kritter/sheep/sheep",
    "skill": {
     "equalized": false,
-    "hi": 24.6,
-    "lo": 20.6,
+    "hi": 28.5,
+    "lo": 19.1,
     "moves": [
      "Full Circle",
      "Punch",
      "Quick Barrage"
     ],
     "n": 3,
+    "obs": 36,
     "value": 21.9
    },
    "threat": {
@@ -13964,20 +14005,18 @@
    },
    "res": "gfx/kritter/swan/swan",
    "skill": {
-    "bound_hi": 208.0,
-    "bound_lo": 52.0,
-    "disputed": true,
     "equalized": false,
-    "hi": 53.2,
-    "lo": 35.2,
+    "hi": 59.4,
+    "lo": 33.5,
     "moves": [
      "Flex",
      "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 3,
-    "value": 37.9
+    "n": 4,
+    "obs": 46,
+    "value": 51.3
    },
    "threat": {
     "damage": {
@@ -14215,18 +14254,16 @@
    },
    "res": "gfx/kritter/bees/vulturebee",
    "skill": {
-    "bound_hi": 208.0,
-    "bound_lo": 52.0,
-    "disputed": true,
     "equalized": false,
-    "hi": 36.0,
-    "lo": 36.0,
+    "hi": 49.9,
+    "lo": 29.0,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 1,
-    "value": 36.0
+    "n": 2,
+    "obs": 103,
+    "value": 49.9
    },
    "threat": {
     "damage": null,
@@ -14378,15 +14415,19 @@
    },
    "res": "gfx/kritter/walrus/walrus",
    "skill": {
+    "bound_hi": 351.1,
+    "bound_lo": 87.8,
+    "disputed": true,
     "equalized": false,
-    "hi": 308.8,
+    "hi": 39.1,
     "lo": 39.1,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 2,
-    "value": 308.8
+    "n": 1,
+    "obs": 7,
+    "value": 39.1
    },
    "threat": {
     "damage": null,
@@ -14523,14 +14564,15 @@
    "res": "gfx/kritter/ants/warriorant",
    "skill": {
     "equalized": false,
-    "hi": 16.7,
-    "lo": 13.6,
+    "hi": 20.9,
+    "lo": 11.8,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
      "Quick Barrage"
     ],
     "n": 3,
+    "obs": 294,
     "value": 15.2
    },
    "threat": {
@@ -14689,12 +14731,13 @@
    "skill": {
     "equalized": false,
     "hi": 33.0,
-    "lo": 24.7,
+    "lo": 22.0,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
+    "obs": 265,
     "value": 33.0
    },
    "threat": {
@@ -14828,14 +14871,15 @@
    "res": "gfx/kritter/goat/wildgoat",
    "skill": {
     "equalized": false,
-    "hi": 67.9,
-    "lo": 64.4,
+    "hi": 82.8,
+    "lo": 30.1,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "value": 67.9
+    "obs": 32,
+    "value": 66.0
    },
    "threat": {
     "damage": {
@@ -15008,19 +15052,20 @@
    },
    "res": "gfx/kritter/wolf/wolf",
    "skill": {
-    "bound_hi": 356.0,
-    "bound_lo": 89.0,
+    "bound_hi": 484.4,
+    "bound_lo": 121.1,
     "disputed": true,
     "equalized": false,
-    "hi": 66.9,
-    "lo": 66.9,
+    "hi": 91.3,
+    "lo": 40.1,
     "moves": [
      "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
     "n": 2,
-    "value": 66.9
+    "obs": 161,
+    "value": 69.5
    },
    "threat": {
     "damage": {
@@ -15152,8 +15197,8 @@
    "res": "gfx/kritter/wolverine/wolverine",
    "skill": {
     "equalized": false,
-    "hi": 63.9,
-    "lo": 40.0,
+    "hi": 59.8,
+    "lo": 34.9,
     "moves": [
      "Flex",
      "Full Circle",
@@ -15161,6 +15206,7 @@
      "Sting"
     ],
     "n": 4,
+    "obs": 41,
     "value": 59.8
    },
    "threat": {
@@ -15257,12 +15303,13 @@
    "res": "gfx/kritter/woodscorpion/woodscorpion",
    "skill": {
     "equalized": false,
-    "hi": 20.3,
-    "lo": 20.3,
+    "hi": 22.1,
+    "lo": 17.8,
     "moves": [
      "Quick Barrage"
     ],
     "n": 1,
+    "obs": 11,
     "value": 20.3
    },
    "threat": {

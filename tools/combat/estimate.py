@@ -3359,39 +3359,70 @@ def foe_skill_entry(rec):
     {value, lo, hi, n, moves, equalized} - value is None when every move equalized, and
     lo/hi then bound it. Disagreement between moves is reported rather than averaged: a
     creature sitting near our own skill is exactly where the branch test is least stable.
+
+    THE INTERVAL BELONGS TO THE OBSERVATIONS AND NOT TO THE MOVES. Every row carries its
+    own attack weight, and within a single move those differ by more than the answer does:
+    the ants hold a thousand Quick Barrage rows across four characters whose weights run
+    from 104 to 187. So each row is inverted against the weight it was actually thrown
+    with, and lo/hi are the tenth and ninetieth percentiles of what comes back.
+
+    This used to invert one arbitrary row's weight against the median of all of them, and
+    report the min and max of the per-MOVE answers as the interval. Both halves were wrong
+    in the same direction. The move medians agree to a few percent because a median over
+    hundreds of rows is stable, while the rows behind them scatter by thirty. An interval
+    built from the medians is far too tight to hold a single observation, and a single
+    observation is exactly what replay compares against it.
     """
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
             bymove[row[0]].append((row[4], row[5]))
-    ests, lo_b, hi_b, used = [], 0.0, float("inf"), []
+    ests, spread, lo_b, hi_b, used = [], [], 0.0, float("inf"), []
     for mv, obs in sorted(bymove.items()):
         if len(obs) < 3:
             continue
-        wa = obs[0][0]
-        wds = sorted(o[1] for o in obs)
         m = load_moves().get(mv) or {}
         mult = m.get("weight_mult") or 1.0
-        our = (wa / mult) if mult else wa
-        skill, lo, hi, _branch = foe_skill_from(our, wds[len(wds) // 2])
+        got, bounds = [], []
+        for wa, wd in obs:
+            our = (wa / mult) if mult else wa
+            skill, lo, hi, _branch = foe_skill_from(our, wd)
+            if skill is not None:
+                got.append(skill)
+            elif lo is not None:
+                bounds.append((lo, hi))
         used.append(mv)
-        if skill is not None:
-            ests.append(skill)
-        else:
-            lo_b, hi_b = max(lo_b, lo), min(hi_b, hi)
+        # A move whose rows mostly land inside the band has measured nothing, whatever the
+        # minority outside it say. Bound from it and take no estimate.
+        if len(got) <= len(bounds):
+            if bounds:
+                bounds.sort()
+                mid = bounds[len(bounds) // 2]
+                lo_b, hi_b = max(lo_b, mid[0]), min(hi_b, mid[1])
+            continue
+        got.sort()
+        ests.append(got[len(got) // 2])
+        spread.extend(got)
     if not used:
         return None
     if ests:
         ests.sort()
         med = ests[len(ests) // 2]
+        spread.sort()
+        k = len(spread)
+        if k >= 10:
+            lo, hi = spread[int(k * 0.10)], spread[min(k - 1, int(k * 0.90))]
+        else:
+            lo, hi = ests[0], ests[-1]
+        lo, hi = min(lo, med), max(hi, med)
         # Some moves equalized and some did not, and they disagree. That is not an average
         # waiting to be taken: a creature near our own skill is exactly where the branch
         # test is least stable, so the estimate and the bound are both suspect. The badger
         # is the case - four moves bound it to 56-116 while Punch and Sting read 22 and 39.
         disputed = (hi_b < float("inf")) and not (lo_b <= med <= hi_b)
         out = {"value": round(med, 1),
-               "lo": round(ests[0], 1), "hi": round(ests[-1], 1),
-               "n": len(ests), "moves": used, "equalized": False}
+               "lo": round(lo, 1), "hi": round(hi, 1),
+               "n": len(ests), "obs": k, "moves": used, "equalized": False}
         if disputed:
             out["disputed"] = True
             out["bound_lo"], out["bound_hi"] = round(lo_b, 1), round(hi_b, 1)

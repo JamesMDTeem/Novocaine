@@ -515,17 +515,47 @@ def main(argv):
         ok = False
     # Misses split into two kinds and only one of them is a finding.
     #
-    # A miss under a point is the interval's edge. The prediction band is built from the
-    # skill's spread across moves, and where a species sits near an equalization boundary
-    # one end of that band lands on the wrong side of it - the fox misses by 0.1, the
-    # beaver by 0.4. Failing on those would be failing on arithmetic that is right.
+    # A miss under a point is the interval's edge. The prediction band spans the tenth to
+    # ninetieth percentile of the skills the corpus recovered, so a tenth of the readings
+    # are meant to fall outside it, and where a species sits near an equalization boundary
+    # one end lands on the wrong side of that too - the fox misses by 0.1, the beaver by
+    # 0.4. Failing on those would be failing on arithmetic that is right.
     #
-    # A miss of tens of points is a real disagreement. There is exactly one: an ant swarm
-    # taking 47 points of Cornered from a single Quick Barrage listed at 10%, which needs
-    # an attack weight a hundred times the target's. It is the same observation that first
-    # made the ant bucket contradictory, and the likeliest explanation is that a swarm is
-    # not one creature - its strength should fall as it is killed, and nothing in this
-    # model has a term for that.
+    # A miss of tens of points is a real disagreement, and the ants own nearly all of them.
+    # The shape is specific enough to write down. Flex is listed at 15% Dizzy, and against
+    # ants at a standing zero it reads 36, 37 or 38 in one set of fights and 51, 52 or 53
+    # in another - the same character, the same attribute block, fights minutes apart in
+    # one session. The low set agrees with the ant skill every other card recovers; the
+    # high set needs an ant about a third as strong. Nothing yet separates the two sets.
+    #
+    # THREE EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
+    # nobody spends the afternoon on them again:
+    #
+    #   A swarm weakening as it is killed. The obvious reading of "a swarm is not one
+    #   creature", and it is false: binned by how far through an engagement's damage each
+    #   gain sits, the ants' implied skill RISES 19% from the first fifth to the last and
+    #   the bee swarm's 6%. Nothing falls except the badger, at 13%.
+    #
+    #   Initiative. Take Aim grants a point and nothing else in the corpus reads one back
+    #   out, so a card thrown holding six of them was the candidate. Across 2953 gains
+    #   with an initiative reading, the median gain against its own cell is 1.000 at every
+    #   initiative from zero to six.
+    #
+    #   An opponent's card opening the OPPONENT. Ant Spit precedes several of the high
+    #   Flex readings, and the ants' blue does rise in its bracket, so it looked like a
+    #   creature exposing itself as it swings. It is not. A card that opened its user
+    #   would do so every time, and the base rate says otherwise: across 867 uses of Ant
+    #   Spit the ants' own blue rises in 12% of them, and the same holds everywhere -
+    #   Fell Scratch 8% blue over 2476 wolf uses, Mule Kick 12% over 363. What the rates
+    #   actually track is whether the card is an attack. The opponent's non-attacking
+    #   cards, thrown while nothing of ours is in flight, sit at nothing at all: Roar of
+    #   the Wild 0.4% of 241, Careful Approach 0 of 139, Swift Evasion 0.9% of 115. The
+    #   rise in the other cases is OUR gain arriving inside their bracket, which is the
+    #   same late-arrival problem as below and not a mechanic.
+    #
+    # What IS established is that a gain often arrives after the state row that closes its
+    # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first
+    # state row after the move, 28% are still climbing and 19% are already decaying.
     GROSS = 1.0
     gross = [m for m in misses if m[0] >= GROSS]
     edge = len(misses) - len(gross)
