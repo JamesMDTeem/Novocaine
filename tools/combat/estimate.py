@@ -493,6 +493,47 @@ def levels_at(when, char):
     return best
 
 
+def levels_for_log(log):
+    """The deck in force for a whole fight, or {} when the fight itself contradicts it.
+
+    levels_at() answers "what deck was recorded most recently before this moment", which is
+    the best a timeline of dumps can do. It is not always the deck the fight was fought
+    with, and the fight says so: a log that records us throwing Take Aim five times cannot
+    have been fought with a deck holding Take Aim at level 0.
+
+    That is not hypothetical. Santa Samus logged in at 01:10:27, and the dumps at 01:10:27
+    and 01:10:33 record an UNARMED deck - Punch 5, Punch 'em Both 5, Jump 3, Zig-Zag Ruse 1
+    - while the dump at 01:10:48 records a weapon deck with Quick Barrage 5, Take Aim 3 and
+    Zig-Zag Ruse 3. The fight at 01:10:36 falls between them, threw Take Aim five times, and
+    was dated by the unarmed deck. Nine level-1 Zig-Zag Ruse readings entered
+    mu_from_reductions from a card really held at 3; they measured 1.21 to 1.30, close to
+    the linear curve's mu(3) = 1.25, and broke the level-1 control whose entire job is to
+    contain 1.0. The deck had changed between two dumps and the fight sat in the gap.
+
+    A cheaper rule was tried first and abandoned: drop a dump the next one supersedes within
+    a minute, on the theory that the deck was still arriving. The two dumps are not partial
+    versions of the third - they are a different deck - so that rule was built on a wrong
+    reading of the same data and dropped 101 dumps for it.
+
+    This one asks the log, which is the only witness to what was actually held. It costs 4
+    of 3303 dated fights. The four are the contradictions themselves.
+    """
+    h = log.header or {}
+    lv = levels_at(h.get("wall"), h.get("char"))
+    if not lv:
+        return {}
+    for eng in log.engagements:
+        for m in eng.moves:
+            if m.get("actor") != "me":
+                continue
+            nm = m.get("name")
+            if nm and not lv.get(nm):
+                # Thrown but not held: the dump does not describe this fight. Unknown is
+                # the correct answer, exactly as it is for a fight older than every dump.
+                return {}
+    return lv
+
+
 def ok_boost(logs=None):
     """What Opportunity Knocks does to an opening, measured rather than taken on trust.
 
@@ -532,7 +573,7 @@ def ok_boost(logs=None):
             continue
         if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
-        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
+        lv = levels_for_log(log)
         for eng in log.engagements:
             states = sorted(eng.states, key=lambda st: st["t"])
             for m in eng.moves:
@@ -1060,7 +1101,7 @@ def agility_band(logs=None):
             continue
         if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
-        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
+        lv = levels_for_log(log)
         for eng in log.engagements:
             sp = (eng.res or "?").split("/")[-1]
             states = sorted(eng.states, key=lambda st: st["t"])
@@ -2060,7 +2101,7 @@ def collect(paths):
         attrs = (log.header or {}).get("attr") or {}
         agi_me = attrs.get("agi")
         # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
-        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
+        lv = levels_for_log(log)
         my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv)
         for eng in log.engagements:
             rec = per[bucket(eng)]
@@ -2551,7 +2592,9 @@ def mu_from_reductions(logs=None):
     readings the old "comes back at 0.98" wording was written from.
 
     @return (midpoints, inert, spans) - midpoints and spans share keys and order, so
-            spans[k][i] is the interval that midpoints[k][i] is the midpoint of.
+            spans[k][i] describes the reading midpoints[k][i] is the midpoint of. Each
+            span is (lo, hi, before, after, share): the interval, and the two standing
+            values it was inverted from, which decayed_span() needs.
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
@@ -2569,7 +2612,7 @@ def mu_from_reductions(logs=None):
             continue
         if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
             continue
-        lv = levels_at((log.header or {}).get("wall"), (log.header or {}).get("char"))
+        lv = levels_for_log(log)
         for eng in log.engagements:
             for m in eng.moves:
                 nm = m.get("name")
@@ -2598,8 +2641,32 @@ def mu_from_reductions(logs=None):
                     lo = (1.0 - ((after + 1.0) / (before + 1.0))) / share
                     hi = (1.0 - (after / before)) / share
                     out[(level, nm)].append((lo + hi) / 2.0)
-                    spans[(level, nm)].append((lo, hi))
+                    # The raw pair travels with the interval. A reading that misses
+                    # containing 1.0 at level 1 needs the standing values to say by how
+                    # much, and (lo, hi) alone cannot: adding a point back to `after` is
+                    # not a transformation of the interval. See decayed_span().
+                    spans[(level, nm)].append((lo, hi, before, after, share))
     return out, inert, spans
+
+
+def decayed_span(span):
+    """The same reading with one display point handed back to `after`.
+
+    Openings decay while a combatant stands still, and this project does not model the rate
+    - the corpus contradicts itself on it. Decay can only ever REMOVE points, so a standing
+    value read after a reduction can be one lower than the reduction alone would leave, and
+    the interval computed from it then sits above the true mu rather than around it.
+
+    One point, not a free parameter. It is the smallest correction the display can express,
+    and it is deliberately too small to rescue a real error: the level-1 reading that came
+    from a mislabelled deck went 20 -> 7 where the card should have left 10, and is still
+    excluded three points later.
+    """
+    _lo, _hi, before, after, share = span
+    after = min(after + 1, before - 1)
+    lo = (1.0 - ((after + 1.0) / (before + 1.0))) / share
+    hi = (1.0 - (after / before)) / share
+    return (lo, hi)
 
 
 def report_mu_reductions():

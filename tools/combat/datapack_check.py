@@ -24,6 +24,35 @@ def check(what, got, want):
     if not ok:
         failures += 1
 
+# Tolerance on the recovered base against the wiki's stated one. The two weapons the
+# corpus holds sit at 0.2% and 0.5%, so 1% passes today with room and still fails the
+# factor-of-two error this pair of checks exists to catch.
+RECOVER_TOL = 0.01
+
+
+def _span(name, rec):
+    """The reading, named: how many sightings, over what quality range, recovering what."""
+    b = rec.get("recovered_base") or {}
+    q = rec.get("quality") or []
+    return ("%s n=%s ql %s-%s -> base %s-%s"
+            % (name, rec.get("n"), q[0] if q else "?", q[-1] if q else "?",
+               b.get("lo"), b.get("hi")))
+
+
+def _agrees(rec, wiki_base):
+    """True when EVERY recovered base in the corpus is within RECOVER_TOL of the wiki's.
+
+    Both ends, not the lowest: a scaling law that drifts with quality would still put one
+    end on the wiki figure, and that is exactly the failure mode worth catching.
+    """
+    b = rec.get("recovered_base") or {}
+    lo, hi = b.get("lo"), b.get("hi")
+    if (lo is None) or (hi is None) or not wiki_base:
+        return False
+    return (abs(lo - wiki_base) <= RECOVER_TOL * wiki_base
+            and abs(hi - wiki_base) <= RECOVER_TOL * wiki_base)
+
+
 def primitives():
     print("wiki primitives")
     # Brace-depth: a nested {{#expr:}} must not terminate extraction early.
@@ -74,8 +103,18 @@ def gear():
     check("every weapon has basedmg",
           all(w["basedmg"]["value"] is not None for w in weapons), True)
     # Live WeaponInfo vs wiki table - the stone-axe factor-2 finding.
-    # The check NAMES the two readings by tooltip, quality, recovered base,
-    # and wiki value so a regression has to move a reading, not just a verdict.
+    #
+    # The check NAMES the readings so a regression has to move a reading, not just flip a
+    # verdict - but it names the RANGE the corpus has seen, not one arbitrary member of it.
+    # It used to pin damage[0] and quality[0] to the literals 176.0 and 38.0613, which is
+    # an index into a sorted list of every sighting: the pool grew by one lower-quality
+    # bronze sword and four checks went red while nothing about the model had moved.
+    #
+    # What carries the meaning is that dividing the quality scaling back out of a live
+    # tooltip returns the wiki's stated base. Asserting that over the whole span is a
+    # stricter test than the old one as well as a stable one - the sword now spans ql
+    # 30.4 to 68.7 and the axe 56.3 to 158.1, so agreeing at both ends is agreeing across
+    # a factor of two in quality rather than at a single point.
     try:
         import estimate as _est
         seen = _est.weapons_seen()
@@ -87,26 +126,18 @@ def gear():
         bs_wiki = wiki_byname.get("Bronze Sword", {})
         sa_wiki = wiki_byname.get("Stone Axe", {})
         # Name the readings
-        bs_tooltip = (bs.get("damage") or [None])[0]
-        bs_ql = (bs.get("quality") or [None])[0]
-        bs_rec = (bs.get("recovered_base") or {}).get("lo")
         bs_wiki_base = (bs_wiki.get("basedmg") or {}).get("value")
         bs_wiki_pen = (bs_wiki.get("armorpen") or {}).get("value")
         bs_live_pen = (bs.get("armpen") or [None])[0]
-        check("bronze sword tooltip 176.0", bs_tooltip, 176.0)
-        check("bronze sword ql 38.0613", bs_ql, 38.0613)
-        check("bronze sword recovered base ~90.21 vs wiki 90", round(bs_rec or 0, 2), 90.21)
+        check("bronze sword seen at all", (bs.get("n") or 0) > 0, True)
+        check(_span("bronze sword", bs), _agrees(bs, bs_wiki_base), True)
         check("bronze sword wiki base 90", bs_wiki_base, 90)
         check("bronze sword wiki pen 12.5 vs live 0.125 agrees", bs_wiki_pen, 12.5)
         check("bronze sword live pen 0.125", bs_live_pen, 0.125)
-        sa_tooltip = (sa.get("damage") or [None])[0]
-        sa_ql = (sa.get("quality") or [None])[0]
-        sa_rec = (sa.get("recovered_base") or {}).get("lo")
         sa_wiki_base = (sa_wiki.get("basedmg") or {}).get("value")
         sa_live_pen = (sa.get("armpen") or [None])[0]
-        check("stone axe tooltip 71.0", sa_tooltip, 71.0)
-        check("stone axe ql 56.2835", sa_ql, 56.2835)
-        check("stone axe recovered base ~29.93 vs wiki 30", round(sa_rec or 0, 2), 29.93)
+        check("stone axe seen at all", (sa.get("n") or 0) > 0, True)
+        check(_span("stone axe", sa), _agrees(sa, sa_wiki_base), True)
         check("stone axe wiki base 30", sa_wiki_base, 30)
         # The corrected offline file: data/combat/weapons.json Stone Axe pen 20 (was wiki 10).
         # Parse fixtures still say 10 - the correction is in the built data file, not the scrape.
