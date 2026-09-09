@@ -2039,6 +2039,8 @@ def collect(paths):
         "foe_moves_by": defaultdict(lambda: defaultdict(list)),
         "foe_gaps_by": defaultdict(lambda: defaultdict(list)),
         "engagements_by": defaultdict(lambda: defaultdict(int)),
+        "soak_by": defaultdict(lambda: defaultdict(list)),
+        "soak_clean_by": defaultdict(lambda: defaultdict(list)),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         # (base cooldown, ticks, OUR agility at that fight). Kept beside "cd" rather than
         # derived from it later, because "cd" has thrown the third away by then.
@@ -2186,7 +2188,7 @@ def collect(paths):
             # Armour reads off every hit the creature took, whoever threw it: the ratio
             # of absorbed to through is a property of the armour, not of the attacker.
             pairs = fightlog.soak_pairs(eng)
-            rec["soak"].extend(pairs)
+            rec["soak_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
             # Hits from a fight nobody else was in. soak_pairs deliberately takes hits
             # from every attacker, on the argument that the absorbed/through split is a
             # property of the armour - but that argument has a hole. Penetration bypasses
@@ -2195,7 +2197,7 @@ def collect(paths):
             # bucket merge into one synthetic hit with both their ARM and both their SHP.
             # Neither can happen when we are the only one swinging.
             if not eng.others_present:
-                rec["soak_clean"].extend(pairs)
+                rec["soak_clean_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
             # The killing blow, for the overkill bound - it is the last damage this
             # opponent took, and however much of it exceeded the opponent's remaining
             # health is not evidence of anything.
@@ -2438,6 +2440,24 @@ def collect(paths):
         for gob, byc in rec["foe_gaps_by"].items():
             if byc:
                 rec["foe_gaps"].extend(max(byc.values(), key=len))
+        # Soak folds the same way, and the alternative was tested rather than assumed. A
+        # union with deduplication comes out at 13472 pairs against 14851 for the fullest
+        # witness - LOWER, because it collapses genuinely repeated hits that happen to
+        # share a (raw, soaked, through) triple, and a creature hit twice for the same
+        # damage is two observations. Witnesses here are redundant rather than
+        # complementary: 742 of the 1129 shared individuals have 90%-identical sets and
+        # another 229 overlap by half.
+        #
+        # It changes little that is trusted. soak_clean is gated on no third party being
+        # present, which nearly rules out a second witness by construction - 4038 pairs
+        # become 3999 - so the armour figures the project relies on were never inflated.
+        # The mixed set was, 26990 to 14851, and so was the `n` published beside it.
+        for gob, byc in rec["soak_by"].items():
+            if byc:
+                rec["soak"].extend(max(byc.values(), key=len))
+        for gob, byc in rec["soak_clean_by"].items():
+            if byc:
+                rec["soak_clean"].extend(max(byc.values(), key=len))
         rec["wiki"] = wiki_for(wiki, rec["res"])
         rec["hp"] = summarise_hp(rec["dealt"], rec["killed"], rec["last_hit"],
                                  wiki_for(wiki, rec["res"]))
