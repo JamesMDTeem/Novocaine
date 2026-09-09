@@ -2024,6 +2024,21 @@ def collect(paths):
     opens = opens_map(moves)
     per = defaultdict(lambda: {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
+        # Damage dealt to each individual, kept PER LOGGING CHARACTER. The client draws
+        # every damage number landing on a target, whoever threw it, so each party member
+        # fighting the same creature records the same numbers - and 41% of the gobs in
+        # this corpus appear in more than one character's logs. Summing those counted a
+        # creature's hitpoints once per witness: a boar's 483 became 966, a bear's 1143
+        # became 3429 across three loggers, and the corpus total came out 1.84x what the
+        # creatures actually had. See where this is folded into "dealt".
+        "dealt_by": defaultdict(lambda: defaultdict(int)),
+        # The same problem for everything else a witness records about the CREATURE
+        # rather than about itself: how often it acted, what it threw, and how many
+        # separate engagements it gave us. Buffered per (individual, witness) and folded
+        # to the fullest witness below, exactly as the damage is.
+        "foe_moves_by": defaultdict(lambda: defaultdict(list)),
+        "foe_gaps_by": defaultdict(lambda: defaultdict(list)),
+        "engagements_by": defaultdict(lambda: defaultdict(int)),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         # (base cooldown, ticks, OUR agility at that fight). Kept beside "cd" rather than
         # derived from it later, because "cd" has thrown the third away by then.
@@ -2120,7 +2135,7 @@ def collect(paths):
         my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv)
         for eng in log.engagements:
             rec = per[bucket(eng)]
-            rec["engagements"] += 1
+            rec["engagements_by"][eng.gob][(log.header or {}).get("char")] += 1
             # Where it was fought. Carried so the inside/outside question is answerable
             # from the pack rather than only from a fresh pass over the logs - see
             # location_of() for what the corpus can and cannot say about it today.
@@ -2154,7 +2169,8 @@ def collect(paths):
             # one creature's fight and adding its gaps again at every slice would count the
             # same milliseconds several times over.
             if eng.gob in gaps_for:
-                rec["foe_gaps"].extend(gaps_for.pop(eng.gob))
+                rec["foe_gaps_by"][eng.gob][(log.header or {}).get("char")].extend(
+                    gaps_for.pop(eng.gob))
             if agi_me:
                 rec["agi_me"].add(agi_me)
 
@@ -2165,7 +2181,8 @@ def collect(paths):
             rec["res"] = rec["res"] or eng.res
             hits = [d for d in eng.damage
                     if d.get("ch") == "SHP" and d.get("gob") == eng.gob]
-            rec["dealt"][eng.gob] += sum(d["v"] for d in hits)
+            rec["dealt_by"][eng.gob][(log.header or {}).get("char")] += sum(
+                d["v"] for d in hits)
             # Armour reads off every hit the creature took, whoever threw it: the ratio
             # of absorbed to through is a property of the armour, not of the attacker.
             pairs = fightlog.soak_pairs(eng)
@@ -2269,9 +2286,10 @@ def collect(paths):
                 if fm.get("actor") != "foe":
                     continue
                 fb, _fa = eng.brackets(fm)
-                rec["foe_moves"].append((fm.get("name") or fm.get("move"),
-                                         fb.get("foeip") if fb else None,
-                                         eng.defence_ok and not eng.others_present))
+                rec["foe_moves_by"][eng.gob][(log.header or {}).get("char")].append(
+                    (fm.get("name") or fm.get("move"),
+                     fb.get("foeip") if fb else None,
+                     eng.defence_ok and not eng.others_present))
 
             # PER OBSERVATION, not per engagement. attributed_gains applies three tests
             # to each gain in turn - colour, damage and overlay - so an engagement being
@@ -2397,6 +2415,29 @@ def collect(paths):
                         rec["took"].append(h)
 
     for rec in per.values():
+        # Fold the per-logger tallies into one figure per individual: the FULLEST witness,
+        # not the sum. Every witness sees the whole fight's damage drawn on the target, so
+        # any one of them is a complete reading and adding them is double counting; the
+        # largest is the right choice because a witness who arrived late or left early
+        # holds a short one. Within a single character the tally is still a sum, which is
+        # correct - a creature fought in two sittings really did take both.
+        for gob, byc in rec["dealt_by"].items():
+            if byc:
+                rec["dealt"][gob] = max(byc.values())
+        # Same fold for what the creature DID. A creature's actions are drawn for every
+        # party member watching, so two witnesses to one fight recorded 16148 foe moves
+        # where the creatures threw 10794, and 6571 engagements where 4245 happened. The
+        # mix a duplicated set implies is unchanged, but n is not, and this project claims
+        # findings on thresholds like "a 10-point swing with 10 observations each side" -
+        # so the duplication buys confidence nothing earned.
+        for gob, byc in rec["engagements_by"].items():
+            rec["engagements"] += max(byc.values()) if byc else 0
+        for gob, byc in rec["foe_moves_by"].items():
+            if byc:
+                rec["foe_moves"].extend(max(byc.values(), key=len))
+        for gob, byc in rec["foe_gaps_by"].items():
+            if byc:
+                rec["foe_gaps"].extend(max(byc.values(), key=len))
         rec["wiki"] = wiki_for(wiki, rec["res"])
         rec["hp"] = summarise_hp(rec["dealt"], rec["killed"], rec["last_hit"],
                                  wiki_for(wiki, rec["res"]))
@@ -3677,7 +3718,7 @@ def report(per, moves):
             # against one opponent therefore measure the RATIO of their mu, which is
             # otherwise only readable from moves whose cooldown divides by it.
             bymove = defaultdict(list)
-            for mv, _c, _st, _g, wa, wd, lo, hi, _clean in rec["wd"]:
+            for mv, _c, _st, _g, wa, wd, lo, hi, _clean, _char in rec["wd"]:
                 bymove[mv].append((wa, wd, lo, hi))
             if len(bymove) > 1:
                 print("                   per move. Read the Wd/Wa column, not the Wd one:")
