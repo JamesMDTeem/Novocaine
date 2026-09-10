@@ -40,6 +40,38 @@ public final class FoeModel {
      * their weapon, neither of which a log records. NaN when the corpus never saw this
      * creature land a hit, and the optimizer then refuses to report damage taken rather
      * than reporting zero.
+     *
+     * THROUGH OUR ARMOUR, AND THAT IS TWO LIMITATIONS WORTH NAMING.
+     *
+     * Armour is not bypassed - the game applies it and the logs show it plainly. Of 3098
+     * blows creatures landed on us, 2623 carry a soak figure, and for most moves the soak
+     * is nearly the whole swing: Fell Scratch, Low Horn Swipe, Mule Kick and Wingbeat all
+     * sit at a median soak share of 1.00, Chomp and Blood and Gore at 0.85. So the number
+     * fitted here is what got through, and applying armour again in the simulator would
+     * subtract it twice. That is why nothing here touches armHard or armSoft.
+     *
+     * The first limitation is that it is fitted to the armour we happened to be wearing.
+     * Change the gear and this coefficient describes a fight that no longer happens. It
+     * is a measurement of a matchup, not of the creature.
+     *
+     * The second is that penetration is a property of the MOVE and this is a property of
+     * the creature. Matched on swing size so that a fixed soak cannot explain it - every
+     * blow between 4 and 7 points - the moves cluster tightly and one does not:
+     *
+     *   Ant Spit         35 hits   soak share 0.50   half of it gets through
+     *   Mule Kick        23        0.80
+     *   Thunder Over     27        0.80
+     *   Tail Splash      10        0.82
+     *   Bear Down        27        0.83
+     *   Chomp            10        0.83
+     *   Fell Scratch    315        0.83
+     *   Low Horn Swipe   37        0.83
+     *
+     * So Ant Spit penetrates about three times better than anything else measured, and
+     * the rest are indistinguishable at these counts. Averaging a spitting ant and a
+     * scratching one into a single coefficient hides that, and the hiding is invisible
+     * until the armour changes. Modelling it properly needs penetration per move, which
+     * the pack has no field for.
      */
     public final double damageCoef;
 

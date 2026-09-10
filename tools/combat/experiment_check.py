@@ -218,6 +218,20 @@ def coverage():
     # The decks are the reason to believe it: across 792 dumps holding any cards at all,
     # 782 hold exactly one of the seven and none holds two. One is active at a time and
     # one essentially always is.
+    # AND A STANCE COSTS EXACTLY ONE POINT. It is held rather than thrown and does not
+    # level: across the dumps a stance slot reads 0 or 1 and never higher. The deck search
+    # did not know, and was spending up to five points on Parry - four of them buying
+    # nothing while the cards that would have used them went without.
+    import estimate as _est
+    _lv = {}
+    for _w, _deck, _ch in _est.DECKS:
+        for _nm, _l in (_deck or {}).items():
+            if _nm in stances:
+                _lv[_l] = _lv.get(_l, 0) + 1
+    check("a held stance is always exactly one point",
+          sorted(k for k in _lv if k > 1), [])
+    print("    stance slots by level: %s" % dict(sorted(_lv.items())))
+
     check("the stances are identified", sorted(stances),
           ["Bloodlust", "Chin Up", "Combat Meditation", "Oak Stance", "Parry",
            "Shield Up", "To Arms"])

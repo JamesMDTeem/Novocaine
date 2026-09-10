@@ -241,6 +241,28 @@ public final class Sim {
             }
         }
 
+        /* WHAT THE DEFENDER'S STANCE DOES TO WHOEVER JUST SWUNG. Parry opens the attacker
+         * when it is attacked, which is not something the attacker's card can express and
+         * not something the stance can do by being thrown, since a stance is never thrown.
+         * So it is read off the target here, at the moment the blow resolves.
+         *
+         * Optimizer keeps its own copy of this, applied when the opponent acts. That is
+         * not a duplicate: against a creature the opponent acts through a FoeModel and
+         * never enters this method, so the two paths cover different fights and neither
+         * fires twice. It also means only this one can tell an attack from a maneuver -
+         * a FoeModel action carries no card, so the Optimizer's copy applies to every
+         * action the creature takes and this one applies only to a swing, which is what
+         * "when attacked" says.
+         *
+         * A weapon is required, which is measured rather than assumed - the corpus shows
+         * the opening only where the defender was armed. */
+        if(m.isAttack() && target.armed()) {
+            for(int c = 0; c < 4; c++) {
+                if(target.whenAttacked[c] > 0)
+                    actor.open(c, target.whenAttacked[c]);
+            }
+        }
+
         actor.ip -= m.ipCost;
         if(gains)
             actor.ip += m.ipGain;

@@ -59,6 +59,15 @@ public class CombatAudit {
         }
     }
 
+    /** For the one kind of claim that is proved by nothing changing. */
+    static void same(String what, double a, double b) {
+        boolean ok = (a == b) && !Double.isNaN(a);
+        System.out.printf("  %-46s %-11s %-11s %s%n", what, fmt(a), fmt(b),
+                          ok ? "unchanged, as it must be" : "CHANGED - the weapon leaked in");
+        if(!ok)
+            failures++;
+    }
+
     static String fmt(double v) {
         return(Double.isNaN(v) ? "NaN" : String.format("%.4f", v));
     }
@@ -79,10 +88,29 @@ public class CombatAudit {
                .damageShare(1.0).cooldown(40));
     }
 
-    /** Throw one move at a fresh target and report what it did. */
+    /**
+     * Throw one move and report what it did. Both sides are mutated, deliberately - a
+     * probe that wants to see where the openings ended up reads them off afterwards.
+     */
     static Sim.Result throwAt(Move m, Combatant me, Combatant foe) {
         Sim s = new Sim(me, foe);
         return(s.use(me, m));
+    }
+
+    /**
+     * The same, on a COPY of the attacker, for probes that swing one fighter twice.
+     *
+     * Throwing a move sets the thrower's cooldown, so the second swing off one fixture is
+     * refused and comes back as zero damage - which reads as the mechanic being dead
+     * rather than as the fixture being stale. That is what made a better sword look like
+     * it did nothing: the comparison had already spent the fighter.
+     */
+    static Sim.Result once(Move m, Combatant me, Combatant foe) {
+        Combatant a = me.copy();
+        a.readyAt = 0;
+        Sim s = new Sim(a, foe);
+        s.tick = 0;
+        return(s.use(a, m));
     }
 
     public static void main(String[] argv) {
@@ -100,9 +128,16 @@ public class CombatAudit {
         System.out.println();
         if(failures == 0) {
             System.out.println("EVERY MECHANIC IS CONNECTED TO SOMETHING THAT DECIDES A FIGHT");
-        } else {
+        } else if(inert > 0) {
             System.out.printf("%d MECHANIC(S) ARE INERT - parsed and stored, read by nothing%n",
                               inert);
+        } else {
+            /* Not every failure here is an inert mechanic, and saying "0 inert" while
+             * exiting non-zero reads as the harness being broken. The other kinds are a
+             * field with no probe at all, and a claim that something must NOT change
+             * where it did. */
+            System.out.printf("%d CHECK(S) FAILED - see above; none of them an inert"
+                              + " mechanic%n", failures);
         }
         System.exit(failures == 0 ? 0 : 1);
     }
@@ -140,7 +175,7 @@ public class CombatAudit {
             "name", "str", "agi", "unarmed", "melee",
             "weaponDamage", "weaponQl", "weaponPen", "armHard", "armSoft", "penetrable",
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
-            "readyAt",
+            "readyAt", "whenAttacked",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
@@ -373,6 +408,42 @@ public class CombatAudit {
              throwAt(hit, fighter(), withArm(open(50), 79, 67)).dealt,
              throwAt(hit, sharp, withArm(open(50), 79, 67)).dealt, "Sim.use");
 
+        /* AN UNARMED MOVE READS NO WEAPON AT ALL. It lists a flat damage figure and the
+         * game substitutes strength for the weapon's quality, so a better sword must
+         * change an armed swing and leave an unarmed one exactly where it was. And the
+         * penetration it carries is the flat 30% every unarmed attack has, not the
+         * weapon's - so a sharper weapon must not help it through armour either. */
+        Move fist = base().damageShare(0).flatDamage(30).build();
+        /* A WEAPON THAT DOES NOT EXIST, ON PURPOSE. These are not our Bronze Sword and
+         * are not meant to be - ours is 90 base at quality 38.1 with 12.5% penetration,
+         * which is what fighter() carries and what every other probe here swings.
+         *
+         * This one is 230 base at quality 100 with 90% penetration, past anything in the
+         * game: the heaviest weapon in the pack is the Battleaxe of the Twelfth Bay at
+         * 150 base and 10% penetration. The point is the contrast. If an unarmed card
+         * leaked so much as a trace of the weapon, a weapon this absurd would make it
+         * obvious, where swapping one real sword for another might move the number by
+         * less than the rounding. */
+        Combatant impossibleSword = fighter();
+        impossibleSword.weaponDamage = 230;
+        impossibleSword.weaponQl = 100;
+        impossibleSword.weaponPen = 0.9;
+
+        /* IDENTICAL IS THE ANSWER HERE, not the failure. Everywhere else in this file a
+         * mechanic proves itself by changing something; this one proves itself by
+         * changing nothing, so it needs the opposite assertion. */
+        same("a better weapon does nothing for an unarmed move",
+             once(fist, fighter(), open(50)).raw, once(fist, impossibleSword, open(50)).raw);
+        same("  nor for its penetration - unarmed carries a flat 30%",
+             once(fist, fighter(), withArm(open(50), 79, 67)).dealt,
+             once(fist, impossibleSword, withArm(open(50), 79, 67)).dealt);
+        live("  while an armed swing gains from all three",
+             once(base().build(), fighter(), withArm(open(50), 79, 67)).dealt,
+             once(base().build(), impossibleSword, withArm(open(50), 79, 67)).dealt, "Sim.use");
+        live("  and strength stands in for the weapon's quality",
+             once(fist, fighter(), open(50)).raw,
+             once(fist, strongArm(), open(50)).raw, "Combatant.damageQuality");
+
         Combatant heavy = fighter();
         heavy.weaponDamage = 230;
         live("weapon damage scales the blow",
@@ -404,6 +475,12 @@ public class CombatAudit {
                  .opened[Formulas.RED],
              throwAt(base().opens(Formulas.RED, 20).build(), fighter(), fighter())
                  .opened[Formulas.RED], "Formulas.openingGainEq");
+    }
+
+    static Combatant strongArm() {
+        Combatant c = fighter();
+        c.str = 400;
+        return(c);
     }
 
     static Combatant withArm(Combatant c, double hard, double soft) {
@@ -457,6 +534,30 @@ public class CombatAudit {
         live("a triggered opening is carried, not filed as an ordinary one",
              p.openings[Formulas.BLUE], p.whenAttackedOpens[Formulas.BLUE],
              "Move.whenAttackedOpens");
+
+        /* AND IT HAS TO FIRE, which the check above does not show. Comparing two fields
+         * on the card proves the parser kept them apart and nothing more; the trigger sat
+         * unapplied in every duel ever run while passing exactly that test, because the
+         * only code that applied it was the creature planner and a duel never goes near
+         * it. So swing at a defender holding it and look at the attacker. */
+        Combatant guarded = fighter();
+        for(int c = 0; c < 4; c++)
+            guarded.whenAttacked[c] = p.whenAttackedOpens[c];
+        Combatant swinger = fighter(), control = fighter();
+        throwAt(base().build(), swinger, guarded);
+        throwAt(base().build(), control, fighter());
+        live("  and it fires on whoever swings, in Sim and so in a duel",
+             control.opening(Formulas.BLUE), swinger.opening(Formulas.BLUE), "Sim.use");
+
+        /* Measured: the opening appears only where the defender was holding a weapon. */
+        Combatant bare = fighter();
+        bare.weaponDamage = 0;
+        for(int c = 0; c < 4; c++)
+            bare.whenAttacked[c] = p.whenAttackedOpens[c];
+        Combatant atBare = fighter();
+        throwAt(base().build(), atBare, bare);
+        live("  and not when the defender has nothing in hand",
+             swinger.opening(Formulas.BLUE), atBare.opening(Formulas.BLUE), "Sim.use");
     }
 
     /* ---------------- the opponent, measured or dealt ---------------- */

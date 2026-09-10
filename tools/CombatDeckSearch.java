@@ -332,8 +332,18 @@ public class CombatDeckSearch {
         if(d.points() >= MAX_POINTS)
             return(null);
         Move m = sheet.get(res);
-        if((m != null) && m.stance && (at == 0) && hasStance(d, sheet))
-            return(null);
+        if((m != null) && m.stance) {
+            /* ONE STANCE, AND IT COSTS EXACTLY ONE POINT. A stance is held rather than
+             * thrown, and it does not level: across 990 dumps a stance slot is 0 or 1 and
+             * never higher, over 980 held slots. So a second point on one is not a worse
+             * deck, it is not a deck - and the search was spending up to five, four of
+             * which bought nothing at all while the cards that would have used them went
+             * without. */
+            if(at >= 1)
+                return(null);
+            if(hasStance(d, sheet))
+                return(null);
+        }
         Deck t = d.copy();
         t.levels.put(res, at + 1);
         return(t);
@@ -393,6 +403,11 @@ public class CombatDeckSearch {
         if(st.blockSkill != null)
             c.blockSkill = c.skill(st.blockSkill);
         c.attackMult = st.attackMult;
+        /* Parry's answer to a blow. It hangs off the fighter rather than the card because
+         * the thing that has to read it is the blow landing, and the blow is resolved
+         * without any idea which stance the defender chose. */
+        for(int i = 0; i < 4; i++)
+            c.whenAttacked[i] = st.whenAttackedOpens[i];
         return(c);
     }
 

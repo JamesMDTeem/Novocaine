@@ -107,6 +107,22 @@ public final class Combatant {
      */
     public final double[] openings = new double[4];
 
+    /**
+     * What this combatant's held stance opens on whoever attacks it.
+     *
+     * Parry and nothing else in the sheet: it answers a blow rather than being thrown, so
+     * it cannot live in a card's own openings, and the stance is not an action either. It
+     * has to hang off the fighter, because the thing that needs to read it is the blow
+     * landing - and the blow is resolved by {@link Sim}, which has the two fighters and
+     * the attacker's card, and no idea what stance the defender chose.
+     *
+     * This is why it went unapplied in duels for as long as it did. Optimizer carries its
+     * own copy, applied when the opponent acts, because there the opponent acts through a
+     * FoeModel and never touches Sim at all. In a duel both sides go through Sim, so the
+     * Optimizer's copy never ran and Parry was worth nothing but its block weight.
+     */
+    public final double[] whenAttacked = new double[4];
+
     public int ip;
 
     /**
@@ -227,6 +243,7 @@ public final class Combatant {
         c.ip = ip;
         c.readyAt = readyAt;
         System.arraycopy(openings, 0, c.openings, 0, 4);
+        System.arraycopy(whenAttacked, 0, c.whenAttacked, 0, 4);
         return(c);
     }
 
