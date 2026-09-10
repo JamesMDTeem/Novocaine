@@ -841,6 +841,20 @@ def attributed_gains(eng, opens, me_gob=None):
     this corpus has not got yet, not a filter doing present work, and the number above is
     what a later reader needs in order to tell whether it has started to matter.
 
+    THIS IS NOT TURN-BASED, and the bracket does not pretend otherwise. Both sides run
+    their own clocks and cooldowns differ fourfold between Quick Barrage and Cleave, so
+    cards land simultaneously often enough to matter: of 34537 consecutive move pairs the
+    median gap is 1013 ms, but 8.6% of ours-then-theirs pairs and 6.3% of theirs-then-ours
+    land within 20 ms of each other, against 1.5% for two cards from the same side.
+
+    Most of those are already caught. Of 1477 cards of ours thrown within 20 ms of one of
+    theirs, 910 are vetoed - by the overlay test, since their announcement falls inside our
+    bracket, or by there being no state row between the two at all. The 567 that survive
+    read 5.1% above 1.2 times the model against 2.5% for cards thrown clear of theirs, so a
+    residual doubling remains. It is reported rather than gated: gating it would cost 567
+    observations to remove perhaps fourteen bad ones, which is the trade this file has
+    already refused twice.
+
     What survives is still not proof. A third party opening the SAME colour inside the
     same bracket, with no damage number and no overlay, is invisible to all three tests.
     The bias that leaves has a known direction, which is worth more than a false sense of
