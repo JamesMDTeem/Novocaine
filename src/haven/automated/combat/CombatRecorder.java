@@ -688,11 +688,28 @@ public final class CombatRecorder {
         if((m == null) || (open == null) || (gobId != lastFoeGob))
             return;
         Prediction.Expect e = Prediction.of(m, foeRes, moveRes, open, lastMyIp);
-        if(e == null)
-            return;
-        log(CombatEvent.predict(now(), gobId, moveRes, e.pack, e.opened, e.dealt,
-                                e.grievous, e.cooldown));
+        if(e != null) {
+            log(CombatEvent.predict(now(), gobId, moveRes, e.pack, e.opened, e.dealt,
+                                    e.grievous, e.cooldown));
+        }
+        /* And what the model would have thrown instead, which it does NOT throw. Costs a
+         * beam search - 4 ms at beam 60 against a wolf with a ten-card deck - and runs once
+         * per card rather than once per frame. Kept after the prediction so a failure here
+         * cannot cost us that. */
+        Prediction.Advised adv = Prediction.advise(m, foeRes, open, lastMyIp,
+                                                   ADVICE_BEAM, ADVICE_HORIZON);
+        if(adv != null) {
+            log(CombatEvent.advice(now(), gobId, adv.moveRes, adv.pack, adv.ticks,
+                                   adv.hpLost, adv.killed, adv.frontier));
+        }
     }
+
+    /* Beam and horizon for the advice above. The beam is where the search stops being
+     * cheap: 20 costs 1.5 ms, 60 costs 4, and 120 costs the same 4 because the frontier
+     * has stopped growing by then. The horizon is long enough to kill most things and
+     * short enough that a plan which cannot is reported as not killing. */
+    private static final int ADVICE_BEAM = 60;
+    private static final long ADVICE_HORIZON = 2500;
 
     /**
      * Records an opponent appearing, leaving, or becoming the one being sampled.

@@ -93,6 +93,7 @@ class Engagement(object):
         # Whether this file has already had an engagement with this same opponent. It makes
         # openings we find standing OURS rather than a stranger's - see attributed_gains.
         self.rejoined = False
+        self.advice = []
         self.res = None
         self.states = []
         self.moves = []
@@ -364,6 +365,12 @@ def _segment(log):
         elif ev == "predict":
             if cur is not None:
                 cur.predictions.append(r)
+        elif ev == "advice":
+            # What the model would have thrown, logged and not acted on - see
+            # CombatEvent.advice. Kept apart from predictions: a prediction is about the
+            # card a person chose and this is about the card they did not.
+            if cur is not None:
+                cur.advice.append(r)
         elif ev == "overlay":
             if cur is not None:
                 cur.overlays.append(r)

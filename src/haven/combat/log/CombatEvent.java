@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 14;
+    public static final int SCHEMA = 15;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -311,6 +311,35 @@ public final class CombatEvent {
                .put("move", moveRes)
                .put("name", moveName)
                .put("cd", cooldownTicks)
+               .end());
+    }
+
+    /**
+     * What the model would have thrown into this state, beside the card a person chose.
+     *
+     * THE SAME ARGUMENT THAT MADE PREDICTION LOGGING WORTH BUILDING. A bot that cannot be
+     * audited against what it expected is a bot whose failures are invisible, and the
+     * decision layer now exists while the executor does not - so the advisor's answer goes
+     * in the log and nothing acts on it. Every disagreement between `move` and the card
+     * actually thrown is then a fact about the day, rather than something recomputed later
+     * against a pack that has since moved.
+     *
+     * `ticks`, `hp` and `killed` describe the plan the advice came from, and `frontier` is
+     * how many plans it was chosen among - one is not a choice, and a frontier that
+     * collapses is worth seeing before anything executes it.
+     */
+    public static String advice(long t, long gobId, String moveRes, String pack, long ticks,
+                                double hpLost, boolean killed, int frontier) {
+        return(new JsonObj()
+               .put("ev", "advice")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("move", moveRes)
+               .put("pack", pack)
+               .put("ticks", ticks)
+               .put("hp", hpLost)
+               .put("killed", killed)
+               .put("frontier", (long)frontier)
                .end());
     }
 

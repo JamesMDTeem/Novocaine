@@ -157,7 +157,16 @@ public class CombatLogCheck {
          * log, and that is a different and worse thing - every change to the data pack
          * silently rewrites the history, so a fix can never be shown to have helped
          * because the "before" number moves with it. */
-        check("schema constant", CombatEvent.SCHEMA, 14);
+        check("schema constant", CombatEvent.SCHEMA, 15);
+
+        /* Advice, schema 15: what the model would have thrown, logged and not acted on.
+         * The frontier count is part of it because one plan is not a choice. */
+        check("advice",
+              CombatEvent.advice(310, 7, "paginae/atk/barrage", "36m/35f/26w", 240,
+                                 18.5, true, 6),
+              "{\"ev\":\"advice\",\"t\":310,\"gob\":7,"
+              + "\"move\":\"paginae/atk/barrage\",\"pack\":\"36m/35f/26w\","
+              + "\"ticks\":240,\"hp\":18.5000,\"killed\":true,\"frontier\":6}");
 
         /* The card's own sheet, schema 13. The offline analysis had only the wiki's table
          * for an opponent's cards, and that table is incomplete and in places wrong; the

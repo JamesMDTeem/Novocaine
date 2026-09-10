@@ -1,12 +1,16 @@
 package haven.automated.combat;
 
+import haven.combat.Advisor;
 import haven.combat.Combatant;
 import haven.combat.Formulas;
 import haven.combat.Move;
+import haven.combat.Optimizer;
 import haven.combat.Sim;
 import haven.combat.data.Pack;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 
@@ -299,6 +303,96 @@ public final class Prediction {
         if(!r.ok)
             return(null);
         return(new Expect(r.opened, r.dealt, r.grievous, r.cooldown, stamp));
+    }
+
+    /** What the model would have thrown, and the plan behind it. */
+    public static final class Advised {
+        public final String moveRes;
+        public final long ticks;
+        public final double hpLost;
+        public final boolean killed;
+        public final int frontier;
+        public final String pack;
+
+        Advised(String moveRes, long ticks, double hpLost, boolean killed, int frontier,
+                String pack) {
+            this.moveRes = moveRes;
+            this.ticks = ticks;
+            this.hpLost = hpLost;
+            this.killed = killed;
+            this.frontier = frontier;
+            this.pack = pack;
+        }
+    }
+
+    /**
+     * What the model would have thrown into this state, WITHOUT throwing it.
+     *
+     * The same argument that made prediction logging worth building. A bot that cannot be
+     * audited against what it expected is a bot whose failures are invisible - so before
+     * anything acts on the advisor, the advisor's answer goes in the log beside the card a
+     * person actually chose. Every disagreement is then a fact about the day rather than
+     * something recomputed later against a pack that has since moved.
+     *
+     * It costs a beam search, measured at 4 ms at beam 60 against a wolf with a ten-card
+     * deck, and it runs once per card thrown rather than once per frame.
+     *
+     * Null whenever anything needed is unknown, on the same terms as {@link #of}.
+     */
+    public static Advised advise(Me me, String foeRes, int[] foeOpen, int myIp,
+                                 int beam, long horizon) {
+        load();
+        if((me == null) || !me.usable() || (byRes == null) || (foes == null))
+            return(null);
+        if((foeOpen == null) || (foeOpen.length < 4))
+            return(null);
+        Pack.Opponent o = find(foeRes);
+        if((o == null) || !o.simulable() || (o.threat == null))
+            return(null);
+
+        /* The deck AS HELD: the cards at a level above zero, each at its own weighting. A
+         * card the sheet does not know costs that card, not the deck. */
+        List<Move> deck = new ArrayList<Move>();
+        if(me.levels != null) {
+            for(Map.Entry<String, Integer> e : me.levels.entrySet()) {
+                if((e.getValue() == null) || (e.getValue() <= 0))
+                    continue;
+                Move m = byRes.get(e.getKey());
+                if(m == null)
+                    continue;
+                if((m.weight == Move.Weight.WEAPON) && !me.armed)
+                    continue;
+                deck.add((e.getValue() > 1) ? m.withMu(muAt(e.getValue())) : m);
+            }
+        }
+        if(deck.isEmpty())
+            return(null);
+
+        Combatant a = new Combatant("me");
+        a.str = me.str;
+        a.agi = me.agi;
+        a.unarmed = me.unarmed;
+        a.melee = me.melee;
+        a.armHard = me.armHard;
+        a.armSoft = me.armSoft;
+        a.weaponDamage = me.weaponDamage;
+        a.weaponQl = me.weaponQl;
+        a.weaponPen = me.weaponPen;
+        a.hp = a.maxHp = 100;
+        a.ip = myIp;
+
+        Combatant b = o.toughest();
+        for(int c = 0; c < 4; c++) {
+            if(foeOpen[c] > 0)
+                b.open(c, foeOpen[c]);
+        }
+        List<Optimizer.Plan> front = Optimizer.search(a, b, deck, o.threat, beam, horizon);
+        Advisor.Advice adv = Advisor.next(a, b, deck, o.threat, Advisor.Aim.FASTEST,
+                                          0, beam, horizon);
+        if((adv == null) || (adv.move == null) || (adv.plan == null))
+            return(null);
+        return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,
+                           front.size(), stamp));
     }
 
     /**

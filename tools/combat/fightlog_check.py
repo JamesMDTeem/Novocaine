@@ -337,6 +337,17 @@ def client_signals():
                 state(10), move(20), state(30, foe=(0, 0, 0, 10)),
                 {"ev": "end", "t": 99, "reason": "ended", "dropped": 0, "failed": False}])
     check("the party is read", log.party[0]["gobs"], [1, 2, 3])
+    # Advice is kept apart from predictions: one is about the card a person chose and the
+    # other about the card they did not, and folding them would lose that.
+    adv = load([begin(), state(10),
+                {"ev": "advice", "t": 12, "gob": FOE, "move": "paginae/atk/barrage",
+                 "pack": "1m/1f/1w", "ticks": 240, "hp": 18.5, "killed": True,
+                 "frontier": 6},
+                move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 8)), end()])
+    check("advice is read", len(adv.engagements[0].advice), 1)
+    check("  and is not filed as a prediction", len(adv.engagements[0].predictions), 0)
+    check("  and carries the plan behind it",
+          adv.engagements[0].advice[0]["frontier"], 6)
     check("the weapon carries the game's own figures",
           log.weapons[0]["v"], {"damage": 12.0, "armpen": 0.125})
     check("  and penetration is the 0-1 fraction, not a percentage",
