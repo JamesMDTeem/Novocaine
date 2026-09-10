@@ -197,12 +197,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 29.8,
-    "lo": 15.0,
-    "n": 2
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -283,7 +278,7 @@
     "from_contaminated": true,
     "hi": 18.1,
     "lo": 16.1,
-    "n": 4
+    "n": 3
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -374,8 +369,8 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 23.1,
-    "lo": 16.6,
-    "n": 2
+    "lo": 13.1,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -821,12 +816,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 20.0,
-    "lo": 10.0,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -879,11 +869,10 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 2
+    "hi": 64.1,
+    "lo": 45.1,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -1119,13 +1108,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "contradictory": true,
-    "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 2
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -1198,11 +1181,10 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 2
+    "hi": 8.4,
+    "lo": 5.9,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -1460,12 +1442,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 24.1,
-    "lo": 10.0,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -1589,8 +1566,8 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 29.1,
-    "lo": 25.0,
-    "n": 3
+    "lo": 21.4,
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -1919,7 +1896,7 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -2077,8 +2054,8 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 50.3,
-    "lo": 38.8,
-    "n": 5
+    "lo": 33.7,
+    "n": 3
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -2311,9 +2288,9 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 21.9,
+    "hi": 29.1,
     "lo": 17.6,
-    "n": 3
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -2592,12 +2569,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 35.0,
-    "lo": 22.4,
-    "n": 3
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -2784,9 +2756,9 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 61.2,
+    "hi": 72.9,
     "lo": 33.0,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -2921,13 +2893,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "contradictory": true,
-    "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 2
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -3007,11 +2973,10 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 4
+    "hi": 26.5,
+    "lo": 13.3,
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -3326,7 +3291,7 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -3636,12 +3601,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 39.9,
-    "lo": 22.7,
-    "n": 2
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -3796,8 +3756,8 @@
    },
    "defence_weight": {
     "hi": 53.8,
-    "lo": 39.0,
-    "n": 4
+    "lo": 32.7,
+    "n": 3
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -3848,17 +3808,7 @@
     "withdrew": 0.405
    },
    "res": null,
-   "skill": {
-    "equalized": false,
-    "hi": 22.0,
-    "lo": 22.0,
-    "moves": [
-     "Knock Its Teeth Out"
-    ],
-    "n": 1,
-    "obs": 3,
-    "value": 22.0
-   },
+   "skill": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -3987,8 +3937,8 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 8.4,
-    "lo": 7.4,
-    "n": 2
+    "lo": 5.9,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -4187,17 +4137,17 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 175.6,
-    "lo": 85.7,
-    "n": 8
-   },
-   "defence_weight_late": {
-    "against": 117.6,
-    "agrees": true,
-    "depth": 7,
     "hi": 283.2,
     "lo": 85.7,
-    "n": 7
+    "n": 6
+   },
+   "defence_weight_late": {
+    "against": null,
+    "agrees": null,
+    "depth": 6,
+    "hi": 283.2,
+    "lo": 85.7,
+    "n": 6
    },
    "engagements": 3,
    "hitpoints": {
@@ -4975,7 +4925,7 @@
     "from_contaminated": true,
     "hi": 10.0,
     "lo": 6.3,
-    "n": 2
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -5385,11 +5335,10 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
-    "n": 4
+    "hi": 28.2,
+    "lo": 20.4,
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -5425,17 +5374,7 @@
     "withdrew": 0.816
    },
    "res": null,
-   "skill": {
-    "equalized": false,
-    "hi": 9.8,
-    "lo": 9.8,
-    "moves": [
-     "Quick Barrage"
-    ],
-    "n": 1,
-    "obs": 3,
-    "value": 9.8
-   },
+   "skill": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -5599,7 +5538,7 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -5628,17 +5567,7 @@
    },
    "relative_speed": null,
    "res": null,
-   "skill": {
-    "equalized": false,
-    "hi": 10.3,
-    "lo": 10.3,
-    "moves": [
-     "Quick Barrage"
-    ],
-    "n": 1,
-    "obs": 3,
-    "value": 10.3
-   },
+   "skill": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -5760,8 +5689,8 @@
    },
    "defence_weight": {
     "hi": 66.6,
-    "lo": 42.1,
-    "n": 4
+    "lo": 35.2,
+    "n": 3
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -5983,7 +5912,7 @@
     "from_contaminated": true,
     "hi": 23.1,
     "lo": 20.4,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -6012,17 +5941,7 @@
    },
    "relative_speed": null,
    "res": null,
-   "skill": {
-    "equalized": false,
-    "hi": 10.3,
-    "lo": 10.3,
-    "moves": [
-     "Quick Barrage"
-    ],
-    "n": 1,
-    "obs": 3,
-    "value": 10.3
-   },
+   "skill": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -6204,12 +6123,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 37.8,
-    "lo": 14.4,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -6684,12 +6598,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 61.5,
-    "lo": 21.2,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -7115,7 +7024,7 @@
     "from_contaminated": true,
     "hi": 55.0,
     "lo": 35.4,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -7203,8 +7112,8 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 30.6,
-    "lo": 17.0,
-    "n": 2
+    "lo": 13.7,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -7289,12 +7198,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 39.9,
-    "lo": 22.7,
-    "n": 2
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -7466,7 +7370,7 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 4
+    "n": 3
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -7626,8 +7530,8 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 21.4,
-    "lo": 20.8,
-    "n": 2
+    "lo": 8.8,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -7709,7 +7613,7 @@
     "from_contaminated": true,
     "hi": 14.7,
     "lo": 11.7,
-    "n": 3
+    "n": 2
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -7738,17 +7642,7 @@
    },
    "relative_speed": null,
    "res": null,
-   "skill": {
-    "equalized": false,
-    "hi": 5.5,
-    "lo": 5.5,
-    "moves": [
-     "Quick Barrage"
-    ],
-    "n": 1,
-    "obs": 3,
-    "value": 5.5
-   },
+   "skill": null,
    "threat": null
   },
   {
@@ -7772,12 +7666,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 42.6,
-    "lo": 23.1,
-    "n": 1
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -7852,9 +7741,9 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 21.7,
-    "lo": 20.6,
-    "n": 3
+    "hi": 34.7,
+    "lo": 20.4,
+    "n": 1
    },
    "defence_weight_late": null,
    "engagements": 1,
@@ -7895,17 +7784,7 @@
     "withdrew": 0.889
    },
    "res": null,
-   "skill": {
-    "equalized": false,
-    "hi": 13.4,
-    "lo": 13.4,
-    "moves": [
-     "Quick Barrage"
-    ],
-    "n": 1,
-    "obs": 3,
-    "value": 13.4
-   },
+   "skill": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -7996,15 +7875,15 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 36
+    "n": 24
    },
    "defence_weight_late": {
     "against": 124.8,
     "agrees": true,
-    "depth": 29,
+    "depth": 19,
     "hi": 168.8,
     "lo": 95.3,
-    "n": 30
+    "n": 20
    },
    "engagements": 4,
    "hitpoints": {
@@ -8054,16 +7933,7 @@
     "withdrew": 0.694
    },
    "res": null,
-   "skill": {
-    "equalized": true,
-    "hi": 249.6,
-    "lo": 62.4,
-    "moves": [
-     "Quick Barrage"
-    ],
-    "n": 0,
-    "value": null
-   },
+   "skill": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -8351,12 +8221,7 @@
     "total_lo": 0,
     "wiki": null
    },
-   "defence_weight": {
-    "from_contaminated": true,
-    "hi": 27.9,
-    "lo": 17.1,
-    "n": 2
-   },
+   "defence_weight": null,
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": {
@@ -8445,17 +8310,17 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 84.3,
+    "hi": 85.3,
     "lo": 80.1,
-    "n": 33
+    "n": 28
    },
    "defence_weight_late": {
-    "against": 69.2,
+    "against": 68.5,
     "agrees": false,
-    "depth": 28,
+    "depth": 21,
     "hi": 144.7,
     "lo": 83.5,
-    "n": 28
+    "n": 21
    },
    "engagements": 72,
    "fought_in": {
@@ -8524,17 +8389,15 @@
    "res": "gfx/kritter/adder/adder",
    "skill": {
     "equalized": false,
-    "hi": 52.0,
-    "lo": 29.2,
+    "hi": 52.9,
+    "lo": 28.0,
     "moves": [
      "Flex",
-     "Full Circle",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 4,
-    "obs": 58,
-    "value": 51.3
+    "n": 2,
+    "obs": 39,
+    "value": 52.0
    },
    "threat": {
     "damage": {
@@ -8590,15 +8453,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 710
+    "n": 689
    },
    "defence_weight_late": {
     "against": 7.2,
     "agrees": false,
-    "depth": 125,
+    "depth": 100,
     "hi": 13.8,
     "lo": 12.1,
-    "n": 125
+    "n": 100
    },
    "engagements": 829,
    "fought_in": {
@@ -8664,7 +8527,7 @@
    "skill": {
     "equalized": false,
     "hi": 5.3,
-    "lo": 3.3,
+    "lo": 3.4,
     "moves": [
      "Flex",
      "Full Circle",
@@ -8672,7 +8535,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 1274,
+    "obs": 1152,
     "value": 5.0
    },
    "threat": {
@@ -8728,15 +8591,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 166
+    "n": 160
    },
    "defence_weight_late": {
     "against": 73.5,
     "agrees": true,
-    "depth": 131,
+    "depth": 123,
     "hi": 85.6,
     "lo": 71.9,
-    "n": 131
+    "n": 123
    },
    "engagements": 56,
    "fought_in": {
@@ -8801,7 +8664,7 @@
    "skill": {
     "equalized": false,
     "hi": 50.8,
-    "lo": 27.2,
+    "lo": 28.3,
     "moves": [
      "Flex",
      "Full Circle",
@@ -8811,8 +8674,8 @@
      "Sting"
     ],
     "n": 5,
-    "obs": 106,
-    "value": 40.8
+    "obs": 94,
+    "value": 36.0
    },
    "threat": {
     "damage": {
@@ -8864,17 +8727,17 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 35.8,
+    "hi": 39.7,
     "lo": 35.2,
-    "n": 514
+    "n": 459
    },
    "defence_weight_late": {
     "against": 29.2,
     "agrees": false,
-    "depth": 113,
+    "depth": 94,
     "hi": 38.7,
     "lo": 35.7,
-    "n": 113
+    "n": 94
    },
    "engagements": 193,
    "fought_in": {
@@ -8940,12 +8803,11 @@
      "Flex",
      "Full Circle",
      "Knock Its Teeth Out",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 5,
-    "obs": 520,
-    "value": 14.8
+    "n": 4,
+    "obs": 461,
+    "value": 17.5
    },
    "threat": {
     "damage": {
@@ -9001,15 +8863,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 29
+    "n": 27
    },
    "defence_weight_late": {
     "against": 124.6,
     "agrees": false,
-    "depth": 226,
+    "depth": 94,
     "hi": 154.2,
     "lo": 145.7,
-    "n": 237
+    "n": 98
    },
    "engagements": 63,
    "fought_in": {
@@ -9092,22 +8954,20 @@
    },
    "res": "gfx/kritter/bear/bear",
    "skill": {
-    "bound_hi": 249.6,
+    "bound_hi": 308.0,
     "bound_lo": 77.0,
     "disputed": true,
     "equalized": false,
     "hi": 82.3,
-    "lo": 8.2,
+    "lo": 40.1,
     "moves": [
-     "Cleave",
      "Flex",
      "Full Circle",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 3,
-    "obs": 38,
-    "value": 58.8
+    "n": 2,
+    "obs": 22,
+    "value": 66.9
    },
    "threat": {
     "damage": {
@@ -9162,15 +9022,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 76
+    "n": 66
    },
    "defence_weight_late": {
-    "against": 64.9,
+    "against": 74.2,
     "agrees": false,
-    "depth": 43,
+    "depth": 39,
     "hi": 102.2,
     "lo": 80.9,
-    "n": 43
+    "n": 39
    },
    "engagements": 27,
    "fought_in": {
@@ -9229,17 +9089,16 @@
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
     "equalized": false,
-    "hi": 44.1,
-    "lo": 26.1,
+    "hi": 45.0,
+    "lo": 26.2,
     "moves": [
      "Flex",
-     "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 4,
-    "obs": 57,
-    "value": 32.4
+    "n": 3,
+    "obs": 40,
+    "value": 40.1
    },
    "threat": {
     "damage": {
@@ -9300,10 +9159,10 @@
    "defence_weight_late": {
     "against": 14.0,
     "agrees": false,
-    "depth": 10,
-    "hi": 29.1,
+    "depth": 6,
+    "hi": 35.6,
     "lo": 16.3,
-    "n": 10
+    "n": 6
    },
    "engagements": 160,
    "fought_in": {
@@ -9368,13 +9227,13 @@
    "skill": {
     "equalized": false,
     "hi": 9.8,
-    "lo": 6.5,
+    "lo": 6.6,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 140,
+    "obs": 117,
     "value": 9.8
    },
    "threat": {
@@ -9425,15 +9284,15 @@
    "defence_weight": {
     "hi": 32.8,
     "lo": 31.1,
-    "n": 228
+    "n": 196
    },
    "defence_weight_late": {
-    "against": 21.2,
+    "against": 21.3,
     "agrees": false,
-    "depth": 97,
+    "depth": 61,
     "hi": 31.5,
     "lo": 31.1,
-    "n": 99
+    "n": 62
    },
    "engagements": 260,
    "fought_in": {
@@ -9490,16 +9349,15 @@
    "res": "gfx/kritter/wildbees/beeswarm",
    "skill": {
     "equalized": false,
-    "hi": 15.3,
+    "hi": 15.2,
     "lo": 9.5,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
-     "Punch",
      "Quick Barrage"
     ],
-    "n": 4,
-    "obs": 400,
+    "n": 3,
+    "obs": 329,
     "value": 14.8
    },
    "threat": {
@@ -9540,15 +9398,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 95
+    "n": 83
    },
    "defence_weight_late": {
     "against": 128.7,
     "agrees": false,
-    "depth": 475,
+    "depth": 327,
     "hi": 130.1,
     "lo": 129.9,
-    "n": 491
+    "n": 337
    },
    "engagements": 181,
    "fought_in": {
@@ -9622,11 +9480,11 @@
    "res": "gfx/kritter/boar/boar",
    "skill": {
     "bound_hi": 310.0,
-    "bound_lo": 79.0,
+    "bound_lo": 77.5,
     "disputed": true,
     "equalized": false,
     "hi": 82.8,
-    "lo": 30.8,
+    "lo": 36.7,
     "moves": [
      "Cleave",
      "Flex",
@@ -9635,8 +9493,8 @@
      "Quick Barrage",
      "Sting"
     ],
-    "n": 4,
-    "obs": 114,
+    "n": 5,
+    "obs": 93,
     "value": 57.7
    },
    "threat": {
@@ -10384,12 +10242,12 @@
     "n": 1
    },
    "defence_weight_late": {
-    "against": 94.0,
+    "against": 113.9,
     "agrees": true,
-    "depth": 70,
+    "depth": 46,
     "hi": 115.0,
     "lo": 80.4,
-    "n": 70
+    "n": 46
    },
    "engagements": 21,
    "fought_in": {
@@ -10453,19 +10311,15 @@
    },
    "res": "gfx/kritter/boreworm/boreworm",
    "skill": {
-    "bound_hi": 428.9,
-    "bound_lo": 107.2,
-    "disputed": true,
     "equalized": false,
-    "hi": 41.1,
-    "lo": 41.1,
+    "hi": 39.1,
+    "lo": 39.1,
     "moves": [
-     "Full Circle",
      "Quick Barrage"
     ],
     "n": 1,
-    "obs": 4,
-    "value": 41.1
+    "obs": 3,
+    "value": 39.1
    },
    "threat": {
     "damage": {
@@ -10520,15 +10374,15 @@
    "defence_weight": {
     "hi": 165.3,
     "lo": 128.8,
-    "n": 29
+    "n": 26
    },
    "defence_weight_late": {
     "against": 113.7,
     "agrees": false,
-    "depth": 156,
-    "hi": 145.8,
+    "depth": 104,
+    "hi": 166.6,
     "lo": 127.5,
-    "n": 163
+    "n": 108
    },
    "engagements": 167,
    "fought_in": {
@@ -10618,14 +10472,14 @@
    "skill": {
     "equalized": false,
     "hi": 79.5,
-    "lo": 31.9,
+    "lo": 39.1,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 50,
-    "value": 66.0
+    "obs": 43,
+    "value": 79.5
    },
    "threat": {
     "damage": {
@@ -10682,16 +10536,16 @@
    ],
    "defence_weight": {
     "hi": 214.2,
-    "lo": 203.7,
-    "n": 133
+    "lo": 196.8,
+    "n": 119
    },
    "defence_weight_late": {
-    "against": 179.4,
+    "against": 183.1,
     "agrees": false,
-    "depth": 376,
-    "hi": 205.8,
-    "lo": 197.8,
-    "n": 381
+    "depth": 324,
+    "hi": 218.9,
+    "lo": 212.9,
+    "n": 326
    },
    "engagements": 63,
    "fought_in": {
@@ -10806,9 +10660,9 @@
      "Quick Barrage",
      "Sting"
     ],
-    "n": 6,
-    "obs": 76,
-    "value": 350.1
+    "n": 5,
+    "obs": 64,
+    "value": 341.6
    },
    "threat": {
     "damage": {
@@ -10863,15 +10717,15 @@
    "defence_weight": {
     "hi": 105.5,
     "lo": 45.0,
-    "n": 26
+    "n": 16
    },
    "defence_weight_late": {
     "against": 56.3,
     "agrees": true,
-    "depth": 12,
+    "depth": 7,
     "hi": 122.7,
     "lo": 36.5,
-    "n": 12
+    "n": 7
    },
    "engagements": 11,
    "fought_in": {
@@ -10913,14 +10767,14 @@
    "res": "gfx/kritter/rat/caverat",
    "skill": {
     "equalized": false,
-    "hi": 35.4,
-    "lo": 24.7,
+    "hi": 30.1,
+    "lo": 30.1,
     "moves": [
      "Quick Barrage"
     ],
     "n": 1,
-    "obs": 12,
-    "value": 28.2
+    "obs": 8,
+    "value": 30.1
    },
    "threat": {
     "damage": {
@@ -11003,11 +10857,11 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 70
+    "n": 63
    },
    "defence_weight_late": {
-    "against": 60.3,
-    "agrees": false,
+    "against": 74.2,
+    "agrees": true,
     "depth": 6,
     "hi": 127.6,
     "lo": 63.5,
@@ -11067,7 +10921,7 @@
      "Sting"
     ],
     "n": 2,
-    "obs": 65,
+    "obs": 58,
     "value": 40.4
    },
    "threat": {
@@ -11122,15 +10976,15 @@
    "defence_weight": {
     "hi": 140.3,
     "lo": 63.3,
-    "n": 8
+    "n": 7
    },
    "defence_weight_late": {
     "against": 97.5,
     "agrees": true,
-    "depth": 8,
-    "hi": 146.0,
+    "depth": 7,
+    "hi": 157.5,
     "lo": 63.3,
-    "n": 8
+    "n": 7
    },
    "engagements": 3,
    "fought_in": {
@@ -11217,15 +11071,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 120
+    "n": 111
    },
    "defence_weight_late": {
-    "against": 46.3,
+    "against": 46.1,
     "agrees": false,
-    "depth": 74,
+    "depth": 65,
     "hi": 79.7,
     "lo": 63.6,
-    "n": 74
+    "n": 65
    },
    "engagements": 89,
    "fought_in": {
@@ -11284,7 +11138,7 @@
    "res": "gfx/kritter/fox/fox",
    "skill": {
     "equalized": false,
-    "hi": 33.3,
+    "hi": 34.1,
     "lo": 18.5,
     "moves": [
      "Flex",
@@ -11294,8 +11148,8 @@
      "Sting"
     ],
     "n": 5,
-    "obs": 151,
-    "value": 25.2
+    "obs": 134,
+    "value": 29.9
    },
    "threat": {
     "damage": {
@@ -11354,10 +11208,10 @@
    "defence_weight_late": {
     "against": 182.6,
     "agrees": false,
-    "depth": 44,
+    "depth": 42,
     "hi": 174.2,
     "lo": 151.6,
-    "n": 44
+    "n": 42
    },
    "engagements": 15,
    "fought_in": {
@@ -11416,7 +11270,7 @@
      "Quick Barrage"
     ],
     "n": 1,
-    "obs": 13,
+    "obs": 12,
     "value": 91.3
    },
    "threat": {
@@ -11476,15 +11330,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 130
+    "n": 85
    },
    "defence_weight_late": {
     "against": 60.2,
     "agrees": false,
-    "depth": 180,
-    "hi": 115.0,
-    "lo": 112.6,
-    "n": 189
+    "depth": 115,
+    "hi": 123.1,
+    "lo": 115.2,
+    "n": 121
    },
    "engagements": 83,
    "fought_in": {
@@ -11554,17 +11408,16 @@
    "res": "gfx/kritter/ooze/greenooze",
    "skill": {
     "equalized": false,
-    "hi": 57.5,
-    "lo": 17.5,
+    "hi": 51.0,
+    "lo": 18.5,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 4,
-    "obs": 128,
-    "value": 52.8
+    "n": 3,
+    "obs": 102,
+    "value": 38.6
    },
    "threat": {
     "damage": {
@@ -11619,15 +11472,15 @@
    "defence_weight": {
     "hi": 132.6,
     "lo": 86.0,
-    "n": 31
+    "n": 30
    },
    "defence_weight_late": {
-    "against": 99.5,
+    "against": 88.3,
     "agrees": true,
-    "depth": 31,
+    "depth": 24,
     "hi": 138.0,
     "lo": 87.8,
-    "n": 31
+    "n": 24
    },
    "engagements": 11,
    "fought_in": {
@@ -11672,15 +11525,14 @@
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": {
     "equalized": false,
-    "hi": 85.3,
-    "lo": 28.5,
+    "hi": 53.7,
+    "lo": 53.7,
     "moves": [
-     "Full Circle",
      "Quick Barrage"
     ],
-    "n": 2,
-    "obs": 10,
-    "value": 49.8
+    "n": 1,
+    "obs": 6,
+    "value": 53.7
    },
    "threat": {
     "damage": {
@@ -11739,10 +11591,10 @@
    "defence_weight_late": {
     "against": 35.0,
     "agrees": false,
-    "depth": 44,
-    "hi": 70.6,
+    "depth": 18,
+    "hi": 79.9,
     "lo": 50.3,
-    "n": 45
+    "n": 19
    },
    "engagements": 124,
    "fought_in": {
@@ -11816,14 +11668,14 @@
    "res": "gfx/kritter/bees/honeybee",
    "skill": {
     "equalized": false,
-    "hi": 26.2,
-    "lo": 14.5,
+    "hi": 24.4,
+    "lo": 13.6,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 175,
+    "obs": 142,
     "value": 24.4
    },
    "threat": {
@@ -11876,12 +11728,12 @@
     "n": 15
    },
    "defence_weight_late": {
-    "against": 143.7,
+    "against": 147.5,
     "agrees": true,
-    "depth": 37,
-    "hi": 169.9,
-    "lo": 125.4,
-    "n": 37
+    "depth": 18,
+    "hi": 172.1,
+    "lo": 125.3,
+    "n": 18
    },
    "engagements": 21,
    "fought_in": {
@@ -11953,15 +11805,11 @@
    },
    "res": "gfx/kritter/horse/horse",
    "skill": {
-    "bound_hi": 310.0,
-    "bound_lo": 121.1,
-    "disputed": true,
     "equalized": false,
     "hi": 81.9,
     "lo": 57.5,
     "moves": [
      "Flex",
-     "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
@@ -12020,17 +11868,17 @@
     "wiki": 35
    },
    "defence_weight": {
-    "hi": 150.9,
+    "hi": 214.4,
     "lo": 97.6,
-    "n": 11
+    "n": 9
    },
    "defence_weight_late": {
     "against": 131.8,
-    "agrees": false,
-    "depth": 62,
-    "hi": 129.6,
+    "agrees": true,
+    "depth": 53,
+    "hi": 143.9,
     "lo": 127.5,
-    "n": 62
+    "n": 53
    },
    "engagements": 33,
    "fought_in": {
@@ -12108,19 +11956,18 @@
    "res": "gfx/kritter/lynx/lynx",
    "skill": {
     "bound_hi": 310.0,
-    "bound_lo": 135.0,
+    "bound_lo": 77.5,
     "disputed": true,
     "equalized": false,
-    "hi": 70.2,
+    "hi": 70.6,
     "lo": 41.3,
     "moves": [
      "Flex",
-     "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
     "n": 2,
-    "obs": 22,
+    "obs": 19,
     "value": 65.9
    },
    "threat": {
@@ -12323,15 +12170,15 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 315
+    "n": 168
    },
    "defence_weight_late": {
-    "against": 136.4,
+    "against": 153.7,
     "agrees": false,
-    "depth": 260,
-    "hi": 139.8,
-    "lo": 139.7,
-    "n": 275
+    "depth": 140,
+    "hi": 151.7,
+    "lo": 151.6,
+    "n": 145
    },
    "engagements": 83,
    "fought_in": {
@@ -12442,16 +12289,16 @@
     "bound_lo": 121.1,
     "disputed": true,
     "equalized": false,
-    "hi": 93.5,
-    "lo": 13.2,
+    "hi": 91.3,
+    "lo": 37.9,
     "moves": [
      "Cleave",
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 28,
-    "value": 66.9
+    "obs": 16,
+    "value": 76.8
    },
    "threat": {
     "damage": {
@@ -12611,15 +12458,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 42
+    "n": 39
    },
    "defence_weight_late": {
     "against": 68.1,
     "agrees": true,
-    "depth": 7,
-    "hi": 98.5,
+    "depth": 6,
+    "hi": 100.2,
     "lo": 49.5,
-    "n": 7
+    "n": 6
    },
    "engagements": 30,
    "fought_in": {
@@ -12668,7 +12515,7 @@
      "Sting"
     ],
     "n": 3,
-    "obs": 33,
+    "obs": 32,
     "value": 33.5
    },
    "threat": {
@@ -12762,16 +12609,16 @@
    "defence_weight": {
     "from_contaminated": true,
     "hi": 164.7,
-    "lo": 146.5,
-    "n": 14
+    "lo": 107.7,
+    "n": 7
    },
    "defence_weight_late": {
-    "against": 224.0,
-    "agrees": false,
-    "depth": 13,
+    "against": null,
+    "agrees": null,
+    "depth": 7,
     "hi": 164.7,
     "lo": 107.7,
-    "n": 13
+    "n": 7
    },
    "engagements": 3,
    "hitpoints": {
@@ -12876,15 +12723,15 @@
     "from_contaminated": true,
     "hi": 179.1,
     "lo": 151.5,
-    "n": 11
+    "n": 6
    },
    "defence_weight_late": {
     "against": 163.8,
     "agrees": true,
-    "depth": 9,
+    "depth": 4,
     "hi": 217.7,
     "lo": 151.5,
-    "n": 9
+    "n": 4
    },
    "engagements": 6,
    "fought_in": {
@@ -13046,18 +12893,17 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
-    "hi": null,
-    "lo": null,
-    "n": 75
+    "hi": 18.1,
+    "lo": 17.7,
+    "n": 64
    },
    "defence_weight_late": {
-    "against": 14.5,
+    "against": 14.4,
     "agrees": false,
-    "depth": 42,
+    "depth": 21,
     "hi": 26.5,
     "lo": 15.9,
-    "n": 42
+    "n": 21
    },
    "engagements": 166,
    "hitpoints": {
@@ -13112,15 +12958,15 @@
    "res": "gfx/kritter/ants/redants",
    "skill": {
     "equalized": false,
-    "hi": 10.9,
-    "lo": 6.5,
+    "hi": 10.8,
+    "lo": 6.6,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 286,
-    "value": 9.6
+    "obs": 218,
+    "value": 9.9
    },
    "threat": {
     "damage": {
@@ -13175,15 +13021,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 27
+    "n": 26
    },
    "defence_weight_late": {
-    "against": 142.6,
+    "against": 163.8,
     "agrees": false,
-    "depth": 101,
+    "depth": 74,
     "hi": 146.0,
-    "lo": 143.2,
-    "n": 102
+    "lo": 129.9,
+    "n": 74
    },
    "engagements": 97,
    "fought_in": {
@@ -13256,19 +13102,14 @@
    },
    "res": "gfx/kritter/reddeer/reddeer",
    "skill": {
-    "bound_hi": 484.4,
-    "bound_lo": 121.1,
-    "disputed": true,
     "equalized": false,
     "hi": 91.3,
-    "lo": 30.1,
+    "lo": 38.8,
     "moves": [
-     "Full Circle",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 2,
-    "obs": 30,
+    "n": 1,
+    "obs": 24,
     "value": 66.9
    },
    "threat": {
@@ -13324,15 +13165,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 139
+    "n": 136
    },
    "defence_weight_late": {
-    "against": 140.6,
-    "agrees": true,
-    "depth": 119,
+    "against": 158.0,
+    "agrees": false,
+    "depth": 106,
     "hi": 157.5,
     "lo": 137.5,
-    "n": 119
+    "n": 106
    },
    "engagements": 89,
    "fought_in": {
@@ -13408,7 +13249,7 @@
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 77,
+    "obs": 71,
     "value": 100.1
    },
    "threat": {
@@ -13499,15 +13340,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 58
+    "n": 52
    },
    "defence_weight_late": {
-    "against": 44.4,
-    "agrees": false,
-    "depth": 184,
-    "hi": 59.7,
-    "lo": 57.9,
-    "n": 185
+    "against": 46.1,
+    "agrees": true,
+    "depth": 95,
+    "hi": 68.5,
+    "lo": 45.6,
+    "n": 95
    },
    "engagements": 118,
    "hitpoints": {
@@ -13582,15 +13423,14 @@
    "res": "gfx/kritter/ants/royalguardant",
    "skill": {
     "equalized": false,
-    "hi": 32.3,
-    "lo": 17.8,
+    "hi": 32.6,
+    "lo": 18.5,
     "moves": [
      "Full Circle",
-     "Knock Its Teeth Out",
      "Quick Barrage"
     ],
-    "n": 3,
-    "obs": 245,
+    "n": 2,
+    "obs": 162,
     "value": 23.0
    },
    "threat": {
@@ -13649,12 +13489,12 @@
     "n": 10
    },
    "defence_weight_late": {
-    "against": 73.3,
+    "against": 77.0,
     "agrees": false,
-    "depth": 170,
-    "hi": 130.1,
-    "lo": 111.6,
-    "n": 177
+    "depth": 68,
+    "hi": 74.1,
+    "lo": 68.0,
+    "n": 70
    },
    "engagements": 112,
    "fought_in": {
@@ -13739,14 +13579,13 @@
    "skill": {
     "equalized": false,
     "hi": 51.3,
-    "lo": 7.9,
+    "lo": 16.6,
     "moves": [
      "Full Circle",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 3,
-    "obs": 156,
+    "n": 2,
+    "obs": 104,
     "value": 51.3
    },
    "threat": {
@@ -13801,15 +13640,15 @@
    "defence_weight": {
     "hi": 73.6,
     "lo": 50.3,
-    "n": 44
+    "n": 42
    },
    "defence_weight_late": {
     "against": 43.7,
     "agrees": true,
-    "depth": 31,
+    "depth": 25,
     "hi": 88.6,
-    "lo": 39.6,
-    "n": 31
+    "lo": 39.2,
+    "n": 25
    },
    "engagements": 9,
    "fought_in": {
@@ -13886,7 +13725,7 @@
      "Quick Barrage"
     ],
     "n": 3,
-    "obs": 34,
+    "obs": 32,
     "value": 21.9
    },
    "threat": {
@@ -13940,17 +13779,17 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 96.3,
+    "hi": 112.9,
     "lo": 85.2,
-    "n": 52
+    "n": 41
    },
    "defence_weight_late": {
-    "against": 88.9,
+    "against": 97.2,
     "agrees": true,
-    "depth": 14,
+    "depth": 12,
     "hi": 127.5,
     "lo": 73.0,
-    "n": 14
+    "n": 12
    },
    "engagements": 31,
    "fought_in": {
@@ -13996,8 +13835,8 @@
    "res": "gfx/kritter/swan/swan",
    "skill": {
     "equalized": false,
-    "hi": 59.4,
-    "lo": 33.5,
+    "hi": 61.3,
+    "lo": 35.5,
     "moves": [
      "Flex",
      "Full Circle",
@@ -14005,7 +13844,7 @@
      "Sting"
     ],
     "n": 4,
-    "obs": 44,
+    "obs": 35,
     "value": 51.3
    },
    "threat": {
@@ -14163,15 +14002,15 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 145
+    "n": 92
    },
    "defence_weight_late": {
-    "against": 72.0,
+    "against": 73.3,
     "agrees": false,
-    "depth": 58,
+    "depth": 29,
     "hi": 143.1,
     "lo": 135.5,
-    "n": 58
+    "n": 29
    },
    "engagements": 65,
    "fought_in": {
@@ -14240,14 +14079,14 @@
    "res": "gfx/kritter/bees/vulturebee",
    "skill": {
     "equalized": false,
-    "hi": 39.8,
+    "hi": 40.0,
     "lo": 29.0,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 81,
+    "obs": 57,
     "value": 38.6
    },
    "threat": {
@@ -14299,15 +14138,15 @@
     "from_contaminated": true,
     "hi": null,
     "lo": null,
-    "n": 66
+    "n": 36
    },
    "defence_weight_late": {
-    "against": 146.4,
+    "against": 78.1,
     "agrees": false,
-    "depth": 53,
-    "hi": 223.5,
+    "depth": 26,
+    "hi": 293.0,
     "lo": 168.8,
-    "n": 54
+    "n": 27
    },
    "engagements": 25,
    "fought_in": {
@@ -14400,19 +14239,16 @@
    },
    "res": "gfx/kritter/walrus/walrus",
    "skill": {
-    "bound_hi": 351.1,
-    "bound_lo": 87.8,
-    "disputed": true,
     "equalized": false,
-    "hi": 39.1,
+    "hi": 73.2,
     "lo": 39.1,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 1,
-    "obs": 7,
-    "value": 39.1
+    "n": 2,
+    "obs": 8,
+    "value": 73.2
    },
    "threat": {
     "damage": null,
@@ -14460,16 +14296,16 @@
    },
    "defence_weight": {
     "hi": 49.1,
-    "lo": 34.3,
-    "n": 53
+    "lo": 30.6,
+    "n": 45
    },
    "defence_weight_late": {
     "against": 28.8,
     "agrees": false,
-    "depth": 102,
+    "depth": 43,
     "hi": 55.1,
-    "lo": 39.5,
-    "n": 103
+    "lo": 29.0,
+    "n": 44
    },
    "engagements": 150,
    "hitpoints": {
@@ -14550,15 +14386,15 @@
    "skill": {
     "equalized": false,
     "hi": 20.9,
-    "lo": 11.8,
+    "lo": 12.4,
     "moves": [
      "Full Circle",
      "Knock Its Teeth Out",
      "Quick Barrage"
     ],
     "n": 3,
-    "obs": 294,
-    "value": 15.2
+    "obs": 211,
+    "value": 14.8
    },
    "threat": {
     "damage": null,
@@ -14613,10 +14449,10 @@
    "defence_weight_late": {
     "against": 47.5,
     "agrees": false,
-    "depth": 78,
-    "hi": 52.0,
+    "depth": 38,
+    "hi": 105.6,
     "lo": 51.2,
-    "n": 79
+    "n": 38
    },
    "engagements": 133,
    "fought_in": {
@@ -14715,15 +14551,15 @@
    "res": "gfx/kritter/bees/warriordrone",
    "skill": {
     "equalized": false,
-    "hi": 37.4,
+    "hi": 33.0,
     "lo": 22.3,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 2,
-    "obs": 183,
-    "value": 37.4
+    "obs": 150,
+    "value": 33.0
    },
    "threat": {
     "damage": null,
@@ -14774,15 +14610,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 17
+    "n": 15
    },
    "defence_weight_late": {
     "against": 133.7,
     "agrees": true,
-    "depth": 29,
+    "depth": 28,
     "hi": 146.0,
     "lo": 129.9,
-    "n": 29
+    "n": 28
    },
    "engagements": 45,
    "fought_in": {
@@ -14855,19 +14691,16 @@
    },
    "res": "gfx/kritter/goat/wildgoat",
    "skill": {
-    "bound_hi": 540.0,
-    "bound_lo": 135.0,
-    "disputed": true,
     "equalized": false,
-    "hi": 82.8,
-    "lo": 37.5,
+    "hi": 114.6,
+    "lo": 40.8,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 1,
-    "obs": 15,
-    "value": 64.4
+    "n": 2,
+    "obs": 14,
+    "value": 114.6
    },
    "threat": {
     "damage": {
@@ -14923,15 +14756,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 488
+    "n": 486
    },
    "defence_weight_late": {
-    "against": 164.5,
+    "against": 164.6,
     "agrees": false,
-    "depth": 842,
+    "depth": 791,
     "hi": 154.2,
     "lo": 151.6,
-    "n": 853
+    "n": 802
    },
    "engagements": 458,
    "fought_in": {
@@ -15045,14 +14878,14 @@
     "disputed": true,
     "equalized": false,
     "hi": 91.3,
-    "lo": 40.1,
+    "lo": 41.4,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 1,
-    "obs": 129,
-    "value": 76.8
+    "obs": 121,
+    "value": 77.1
    },
    "threat": {
     "damage": {
@@ -15107,15 +14940,15 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 61
+    "n": 54
    },
    "defence_weight_late": {
     "against": 88.6,
     "agrees": false,
-    "depth": 59,
+    "depth": 54,
     "hi": 111.8,
     "lo": 106.5,
-    "n": 60
+    "n": 55
    },
    "engagements": 26,
    "fought_in": {
@@ -15184,17 +15017,15 @@
    "res": "gfx/kritter/wolverine/wolverine",
    "skill": {
     "equalized": false,
-    "hi": 59.8,
-    "lo": 34.9,
+    "hi": 61.8,
+    "lo": 35.8,
     "moves": [
      "Flex",
-     "Full Circle",
-     "Quick Barrage",
-     "Sting"
+     "Quick Barrage"
     ],
-    "n": 4,
-    "obs": 37,
-    "value": 59.8
+    "n": 2,
+    "obs": 26,
+    "value": 61.8
    },
    "threat": {
     "damage": {
@@ -15248,7 +15079,7 @@
    "defence_weight": {
     "hi": 61.7,
     "lo": 34.0,
-    "n": 6
+    "n": 5
    },
    "defence_weight_late": null,
    "engagements": 10,
@@ -15296,7 +15127,7 @@
      "Quick Barrage"
     ],
     "n": 1,
-    "obs": 8,
+    "obs": 7,
     "value": 20.3
    },
    "threat": {

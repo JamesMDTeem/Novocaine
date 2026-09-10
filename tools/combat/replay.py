@@ -599,7 +599,21 @@ def main(argv):
     # of them and costs 480 observations, because only 11% of blows leak that way and the
     # test cannot tell which.
     #
-    # A FOURTH of the eight was a window bug rather than a mechanic, and it is fixed. The
+    # TWO OF THE EIGHT WERE THE SAME WINDOW BUG IN TWO TESTS, and both are fixed. The
+    # damage test asks whether more than one hit landed on the target inside the bracket,
+    # but a hit in the GAP between the previous bracket's close and this one's open
+    # belongs to nobody: our previous card was scored before it and ours has not landed.
+    # One ant fight has such a hit at 3067 with our own Quick Barrage written at 3160 and
+    # the bracket opening at 3140, and the gain read 35 against a model saying 17 to 23.
+    # Only the gap is tested, not the whole span back to the previous card - widening the
+    # window itself puts our own previous hit inside it and rejects one bracket in five.
+    #
+    # Two SHP rows sharing a bucket are still counted as ONE hit. They are not an AOE -
+    # 311 of 325 carry different values and 96% show no other gob hit in the same instant,
+    # so they are most likely two attackers - but they occur about as often when nobody
+    # else is visible as when somebody is, and a log cannot say which attacker.
+    #
+    # The other was a window bug rather than a mechanic, and it is fixed. The
     # third-party overlay test ran from the state row that opens the bracket, but an
     # announcement is a card being PLAYED and its opening arrives afterwards - so another
     # player who announced between the last card and ours sat a few milliseconds outside

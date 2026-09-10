@@ -868,6 +868,34 @@ def attributed_gains(eng, opens, me_gob=None):
         # Damage on the OPPONENT inside this window. Only meaningful for our own moves:
         # a foe's move damages us, and our own hitpoints are not drawn per hit.
         if mine and (me_gob is not None):
+            # AND THE GAP BEFORE IT. A hit on the target between the last bracket's close
+            # and this one's open belongs to nobody we can name: our previous card had
+            # already been scored by then, and ours has not landed yet. One ant fight has
+            # such a hit at 3067 with our own Quick Barrage written at 3160 and the
+            # bracket opening at 3140 - the gain read 35 against a model saying 17 to 23.
+            #
+            # Only the GAP, not the whole span back to the previous card. Widening the
+            # window itself puts our own previous hit inside it and rejects one bracket in
+            # five, 10423 attributed gains down to 8203.
+            #
+            # Two SHP rows sharing a bucket are still ONE hit for the count below. They
+            # are not an AOE - 311 of 325 carry different values and 96% show no other gob
+            # hit in the same instant - but which of two attackers they are cannot be told
+            # from a log, and they occur about as often when nobody else is visible.
+            idx = eng.order.get(id(m))
+            gapfrom = None
+            if idx is not None:
+                for j in range(idx - 1, -1, -1):
+                    if eng.seq[j].get("ev") == "move":
+                        _pb, pa = eng.brackets(eng.seq[j])
+                        gapfrom = pa["t"] if pa is not None else None
+                        break
+            if gapfrom is not None and gapfrom < before["t"]:
+                if [d for d in eng.damage
+                    if d.get("gob") == eng.gob
+                    and gapfrom < d["t"] < before["t"]
+                    and d.get("ch") in ("SHP", "HHP", "ARM")]:
+                    continue
             lo, hi = before["t"], after["t"]
             groups = set()
             for d in eng.damage:
