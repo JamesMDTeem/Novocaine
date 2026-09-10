@@ -4196,6 +4196,23 @@ def threat(rec):
             total += w
             for c, v in cols.items():
                 pressure[c] += w * v
+        # A CARD THAT OPENS NOTHING STILL COSTS THE OPPONENT ITS CLOCK. The period beside
+        # this figure counts every action; the pressure averaged only over the ones that
+        # landed an opening on us, so a simulator applying one to the other overstated the
+        # threat by the share of the opponent's deck that does nothing - the badger throws
+        # Careful Approach and Roar of the Wild 7% of the time, the wolf its own kind 15%.
+        #
+        # Only cards the wiki's table says open NOTHING are counted here. A card that
+        # opens something we have never managed to measure is unmeasured, not harmless,
+        # and putting it in this denominator would be the "absent means zero" mistake in
+        # its most expensive form: it would make an opponent look safer the less we know.
+        tbl = animal_opens()
+        for mv, n in freq.items():
+            if mv in bymove:
+                continue
+            cols = tbl.get(mv)
+            if (cols is not None) and (len(cols) == 0):
+                total += float(n)
         for c in COLOURS:
             pressure[c] = round(pressure[c] / total, 2) if total > 0 else 0.0
 

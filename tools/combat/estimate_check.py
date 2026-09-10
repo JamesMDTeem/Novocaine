@@ -441,6 +441,63 @@ def own_defence():
         near("    %d%% standing, gain %.1f" % (standing, gain), p_, 10.0, 0.01)
 
 
+
+def pressure_denominator():
+    """Pressure is averaged over the clock's actions, not only the dangerous ones.
+
+    The period the pack ships beside this figure counts every action the opponent takes.
+    Averaging pressure over only the cards that opened us and then applying it at the
+    all-action rate overstates the threat by whatever share of the opponent's deck does
+    nothing - which for the boreworm is most of it, and its pressure fell to a quarter of
+    what it had been when this was fixed.
+
+    A card the wiki's table says opens NOTHING is genuinely harmless and belongs in the
+    denominator. A card that opens something we have never managed to measure does NOT:
+    that is unmeasured, not harmless, and counting it would make an opponent look safer
+    the less we know about it.
+
+    The property, not the numbers. A species whose mix contains a known-harmless card must
+    read lower than the plain mean over the cards that do open. Snapshot figures go stale;
+    this cannot.
+    """
+    print("\npressure is averaged over every action, not only the opening ones")
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    tbl = estimate.animal_opens()
+    tested = 0
+    for name, rec in sorted(per.items()):
+        pr = (rec.get("pressure") or {})
+        # Named species only. An unidentified gob makes a poor exemplar in a report a
+        # person reads, and there are plenty of real ones.
+        if not pr or str(name).startswith(("?#", "body#")):
+            continue
+        freq = {}
+        for mv, _ip, _alone in (rec.get("foe_moves") or ()):
+            if mv:
+                freq[mv] = freq.get(mv, 0) + 1
+        opening = set(mv for (mv, _c) in pr)
+        idle = [mv for mv, n in freq.items()
+                if (mv not in opening) and (tbl.get(mv) is not None)
+                and (len(tbl[mv]) == 0) and (n > 0)]
+        if not idle or not opening:
+            continue
+        bymove = {}
+        for (mv, colour), vals in pr.items():
+            if vals:
+                bymove.setdefault(mv, {})[colour] = sum(vals) / float(len(vals))
+        attack_only = sum(sum(c.values()) * float(freq.get(mv) or 1)
+                          for mv, c in bymove.items())
+        wsum = sum(float(freq.get(mv) or 1) for mv in bymove)
+        if wsum <= 0:
+            continue
+        shipped = sum(estimate.threat(rec)["pressure"].values())
+        check("  %s is averaged over its idle cards too" % name[:18],
+              shipped < (attack_only / wsum) - 1e-9, True)
+        tested += 1
+        if tested >= 3:
+            break
+    check("  some species has an idle card to test this on", tested > 0, True)
+
+
 def mu_from_reductions():
     """The second mu measurement, and the reason it is trusted only as a floor.
 
@@ -1560,6 +1617,7 @@ def main():
     deck_history()
     mu_measurement()
     own_defence()
+    pressure_denominator()
     mu_from_reductions()
     agility_control()
     agi_brackets()
