@@ -1648,6 +1648,7 @@
     "solo_n": 511
    },
    "policy_rule": {
+    "cut": 12.0,
     "feature": "distance",
     "n": 864,
     "otherwise": [
@@ -1660,6 +1661,19 @@
       5
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 4.07,
+     "green": 4.25,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 4.04,
+     "green": 4.28,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "sim_feature": null,
     "test_bits": 0.006,
     "train_bits": 0.014,
     "when": [
@@ -1676,6 +1690,12 @@
       1
      ]
     ],
+    "when_pressure": {
+     "blue": 3.98,
+     "green": 4.33,
+     "red": 0.0,
+     "yellow": 0.0
+    },
     "wording": "it is more than 12 units away"
    },
    "relative_speed": {
@@ -1959,6 +1979,7 @@
     "solo_n": 292
    },
    "policy_rule": {
+    "cut": 0.5,
     "feature": "their initiative",
     "n": 331,
     "otherwise": [
@@ -1975,6 +1996,19 @@
       7
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.0,
+     "green": 6.73,
+     "red": 0.0,
+     "yellow": 1.18
+    },
+    "pooled_pressure": {
+     "blue": 0.0,
+     "green": 5.43,
+     "red": 0.0,
+     "yellow": 2.9
+    },
+    "sim_feature": "foe_ip",
     "test_bits": 0.188,
     "train_bits": 0.042,
     "when": [
@@ -1991,6 +2025,12 @@
       3
      ]
     ],
+    "when_pressure": {
+     "blue": 0.0,
+     "green": 4.49,
+     "red": 0.0,
+     "yellow": 4.13
+    },
     "wording": "it holds a point of initiative"
    },
    "relative_speed": {
@@ -2701,6 +2741,7 @@
     "solo_n": 293
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "our greatest opening",
     "n": 508,
     "otherwise": [
@@ -2717,6 +2758,19 @@
       40
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 2.66,
+     "green": 0.0,
+     "red": 0.0,
+     "yellow": 5.71
+    },
+    "pooled_pressure": {
+     "blue": 2.68,
+     "green": 0.0,
+     "red": 0.0,
+     "yellow": 5.41
+    },
+    "sim_feature": "my_open",
     "test_bits": 0.004,
     "train_bits": 0.111,
     "when": [
@@ -2733,6 +2787,12 @@
       6
      ]
     ],
+    "when_pressure": {
+     "blue": 2.75,
+     "green": 0.0,
+     "red": 0.0,
+     "yellow": 3.92
+    },
     "wording": "our worst opening is over 25"
    },
    "relative_speed": {
@@ -3766,6 +3826,7 @@
     "solo_n": 51
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "its greatest opening",
     "n": 297,
     "otherwise": [
@@ -3782,6 +3843,19 @@
       11
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.0,
+     "green": 2.74,
+     "red": 0.0,
+     "yellow": 3.13
+    },
+    "pooled_pressure": {
+     "blue": 0.0,
+     "green": 4.34,
+     "red": 0.12,
+     "yellow": 3.27
+    },
+    "sim_feature": "foe_open",
     "test_bits": 0.291,
     "train_bits": 0.094,
     "when": [
@@ -3798,6 +3872,12 @@
       10
      ]
     ],
+    "when_pressure": {
+     "blue": 0.0,
+     "green": 5.26,
+     "red": 0.19,
+     "yellow": 3.35
+    },
     "wording": "its worst opening is over 25"
    },
    "relative_speed": {
@@ -3984,6 +4064,7 @@
     "solo_n": 501
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "its greatest opening",
     "n": 790,
     "otherwise": [
@@ -4000,6 +4081,19 @@
       8
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.83,
+     "green": 1.14,
+     "red": 0.6,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 1.22,
+     "green": 3.25,
+     "red": 0.93,
+     "yellow": 0.0
+    },
+    "sim_feature": "foe_open",
     "test_bits": 0.254,
     "train_bits": 0.09,
     "when": [
@@ -4016,6 +4110,12 @@
       29
      ]
     ],
+    "when_pressure": {
+     "blue": 1.44,
+     "green": 4.45,
+     "red": 1.11,
+     "yellow": 0.0
+    },
     "wording": "its worst opening is over 25"
    },
    "relative_speed": {
@@ -4804,6 +4904,7 @@
     "solo_n": 122
    },
    "policy_rule": {
+    "cut": 12.0,
     "feature": "distance",
     "n": 340,
     "otherwise": [
@@ -4820,6 +4921,19 @@
       3
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.48,
+     "green": 9.37,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 0.27,
+     "green": 5.16,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "sim_feature": null,
     "test_bits": 0.375,
     "train_bits": 0.416,
     "when": [
@@ -4836,6 +4950,12 @@
       25
      ]
     ],
+    "when_pressure": {
+     "blue": 0.14,
+     "green": 2.65,
+     "red": 0.0,
+     "yellow": 0.0
+    },
     "wording": "it is more than 12 units away"
    },
    "relative_speed": {
@@ -6445,6 +6565,7 @@
     "solo_n": 21
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "its greatest opening",
     "n": 242,
     "otherwise": [
@@ -6457,6 +6578,19 @@
       3
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 5.12,
+     "green": 5.6,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 4.96,
+     "green": 5.77,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "sim_feature": "foe_open",
     "test_bits": 0.003,
     "train_bits": 0.038,
     "when": [
@@ -6469,6 +6603,12 @@
       6
      ]
     ],
+    "when_pressure": {
+     "blue": 4.82,
+     "green": 5.92,
+     "red": 0.0,
+     "yellow": 0.0
+    },
     "wording": "its worst opening is over 25"
    },
    "relative_speed": {
@@ -6620,6 +6760,7 @@
     "solo_n": 87
    },
    "policy_rule": {
+    "cut": 0.5,
     "feature": "their initiative",
     "n": 184,
     "otherwise": [
@@ -6636,6 +6777,19 @@
       3
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.0,
+     "green": 3.27,
+     "red": 0.0,
+     "yellow": 7.09
+    },
+    "pooled_pressure": {
+     "blue": 0.0,
+     "green": 5.13,
+     "red": 0.0,
+     "yellow": 4.4
+    },
+    "sim_feature": "foe_ip",
     "test_bits": 0.212,
     "train_bits": 0.292,
     "when": [
@@ -6652,6 +6806,12 @@
       5
      ]
     ],
+    "when_pressure": {
+     "blue": 0.0,
+     "green": 6.92,
+     "red": 0.0,
+     "yellow": 1.8
+    },
     "wording": "it holds a point of initiative"
    },
    "relative_speed": {
@@ -6802,6 +6962,7 @@
     "solo_n": 133
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "its greatest opening",
     "n": 178,
     "otherwise": [
@@ -6818,6 +6979,19 @@
       1
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.0,
+     "green": 4.17,
+     "red": 0.0,
+     "yellow": 5.91
+    },
+    "pooled_pressure": {
+     "blue": 0.0,
+     "green": 5.3,
+     "red": 0.0,
+     "yellow": 4.58
+    },
+    "sim_feature": "foe_open",
     "test_bits": 0.082,
     "train_bits": 0.043,
     "when": [
@@ -6834,6 +7008,12 @@
       3
      ]
     ],
+    "when_pressure": {
+     "blue": 0.0,
+     "green": 6.15,
+     "red": 0.0,
+     "yellow": 3.57
+    },
     "wording": "its worst opening is over 25"
    },
    "relative_speed": {
@@ -7026,6 +7206,7 @@
     "solo_n": 22
    },
    "policy_rule": {
+    "cut": 12.0,
     "feature": "distance",
     "n": 284,
     "otherwise": [
@@ -7042,6 +7223,19 @@
       1
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 3.25,
+     "green": 7.8,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 3.19,
+     "green": 6.88,
+     "red": 0.1,
+     "yellow": 0.0
+    },
+    "sim_feature": null,
     "test_bits": 0.065,
     "train_bits": 0.042,
     "when": [
@@ -7058,6 +7252,12 @@
       19
      ]
     ],
+    "when_pressure": {
+     "blue": 3.18,
+     "green": 6.63,
+     "red": 0.13,
+     "yellow": 0.0
+    },
     "wording": "it is more than 12 units away"
    },
    "relative_speed": {
@@ -7220,6 +7420,7 @@
     "solo_n": 0
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "its greatest opening",
     "n": 183,
     "otherwise": [
@@ -7236,6 +7437,19 @@
       1
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 7.87,
+     "green": 0.83,
+     "red": 0.17,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 5.5,
+     "green": 2.99,
+     "red": 0.2,
+     "yellow": 0.0
+    },
+    "sim_feature": "foe_open",
     "test_bits": 0.382,
     "train_bits": 0.302,
     "when": [
@@ -7252,6 +7466,12 @@
       1
      ]
     ],
+    "when_pressure": {
+     "blue": 2.42,
+     "green": 5.81,
+     "red": 0.23,
+     "yellow": 0.0
+    },
     "wording": "its worst opening is over 25"
    },
    "relative_speed": {
@@ -8091,6 +8311,7 @@
     "solo_n": 2
    },
    "policy_rule": {
+    "cut": 12.0,
     "feature": "distance",
     "n": 317,
     "otherwise": [
@@ -8103,6 +8324,19 @@
       28
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 3.51,
+     "green": 6.64,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 2.65,
+     "green": 5.51,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "sim_feature": null,
     "test_bits": 0.216,
     "train_bits": 0.059,
     "when": [
@@ -8119,6 +8353,12 @@
       22
      ]
     ],
+    "when_pressure": {
+     "blue": 2.01,
+     "green": 4.68,
+     "red": 0.0,
+     "yellow": 0.0
+    },
     "wording": "it is more than 12 units away"
    },
    "relative_speed": {
@@ -8291,6 +8531,7 @@
     "solo_n": 2
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "its greatest opening",
     "n": 270,
     "otherwise": [
@@ -8307,6 +8548,19 @@
       3
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.14,
+     "green": 4.93,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "pooled_pressure": {
+     "blue": 0.43,
+     "green": 5.13,
+     "red": 0.0,
+     "yellow": 0.0
+    },
+    "sim_feature": "foe_open",
     "test_bits": 0.08,
     "train_bits": 0.048,
     "when": [
@@ -8323,6 +8577,12 @@
       7
      ]
     ],
+    "when_pressure": {
+     "blue": 0.81,
+     "green": 5.39,
+     "red": 0.0,
+     "yellow": 0.0
+    },
     "wording": "its worst opening is over 25"
    },
    "relative_speed": {
@@ -8658,6 +8918,7 @@
     "solo_n": 211
    },
    "policy_rule": {
+    "cut": 25.0,
     "feature": "our greatest opening",
     "n": 2487,
     "otherwise": [
@@ -8674,6 +8935,19 @@
       52
      ]
     ],
+    "otherwise_pressure": {
+     "blue": 0.44,
+     "green": 8.45,
+     "red": 0.21,
+     "yellow": 0.04
+    },
+    "pooled_pressure": {
+     "blue": 0.76,
+     "green": 8.42,
+     "red": 0.42,
+     "yellow": 0.05
+    },
+    "sim_feature": "my_open",
     "test_bits": 0.075,
     "train_bits": 0.041,
     "when": [
@@ -8690,6 +8964,12 @@
       11
      ]
     ],
+    "when_pressure": {
+     "blue": 1.77,
+     "green": 8.34,
+     "red": 1.07,
+     "yellow": 0.08
+    },
     "wording": "our worst opening is over 25"
    },
    "relative_speed": {

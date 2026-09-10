@@ -451,7 +451,7 @@ public final class Pack {
             for(int i = 0; (a != null) && (i < a.length()); i++)
                 mv.add(a.getString(i));
             this.moves = mv;
-            this.threat = threat(j.optJSONObject("threat"));
+            this.threat = threat(j.optJSONObject("threat"), j);
             JSONObject sp = j.optJSONObject("relative_speed");
             if(sp == null) {
                 this.speedLo = this.speedHi = Double.NaN;
@@ -487,7 +487,7 @@ public final class Pack {
          * answer to how often any of the rest gets applied, and any default would be
          * choosing the matchup's answer rather than computing it.
          */
-        private static FoeModel threat(JSONObject t) {
+        private static FoeModel threat(JSONObject t, JSONObject j) {
             if(t == null)
                 return(null);
             JSONObject per = t.optJSONObject("period");
@@ -525,8 +525,43 @@ public final class Pack {
              * actions were watched to mean anything - see estimate.restores. */
             double back = t.isNull("restores") ? Double.NaN
                 : t.optDouble("restores", Double.NaN);
+            Object[] rule = policyRule(j);
             return(new FoeModel(period, pressure, against, coef,
-                                per.optInt("n", 0), nHits, flees, modes, back));
+                                per.optInt("n", 0), nHits, flees, modes, back,
+                                rule[0] == null ? null : (String)rule[0],
+                                (rule[1] == null) ? 0 : ((Double)rule[1]).doubleValue(),
+                                (double[])rule[2], (double[])rule[3]));
+        }
+
+        /**
+         * The one state split the corpus can hold up for this species, as the model wants it.
+         *
+         * Returns {feature, cut, whenPressure, elsePressure}, all null when there is no rule
+         * or when the rule splits on something a Combatant does not carry. Distance is the
+         * one that costs - it decides four of the fourteen and a Combatant has no position.
+         */
+        private static Object[] policyRule(JSONObject j) {
+            Object[] none = new Object[] {null, null, null, null};
+            JSONObject r = j.optJSONObject("policy_rule");
+            if((r == null) || r.isNull("sim_feature"))
+                return(none);
+            double[] a = colours(r.optJSONObject("when_pressure"));
+            double[] b = colours(r.optJSONObject("otherwise_pressure"));
+            if((a == null) || (b == null))
+                return(none);
+            return(new Object[] {r.getString("sim_feature"),
+                                 Double.valueOf(r.optDouble("cut", 0)), a, b});
+        }
+
+        private static double[] colours(JSONObject o) {
+            if(o == null)
+                return(null);
+            double[] out = new double[4];
+            for(Map.Entry<String, Integer> e : COLOUR.entrySet()) {
+                if(e.getValue() < 4)
+                    out[e.getValue()] = o.optDouble(e.getKey(), 0.0);
+            }
+            return(out);
         }
 
         private static double[] range(JSONObject j, String key) {

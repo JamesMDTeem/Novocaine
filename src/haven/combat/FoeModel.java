@@ -98,6 +98,24 @@ public final class FoeModel {
      */
     public final double restores;
 
+    /**
+     * What it does depends on the state, and this is the one split the corpus can hold up.
+     *
+     * A creature is not a fixed mix. Fitting one split per species - chosen on the first
+     * half of its cards by information gain and measured on the second - gives fourteen
+     * that survive data they were not chosen on, and the branches are not close: a cave
+     * angler puts 4.45 points of green on us per action while it is opened and 1.14 while
+     * it is not, and a bat 4.13 of yellow with initiative in hand against 1.18 without.
+     * Pooling those into one number describes a creature that never exists.
+     *
+     * `condFeature` is null when there is no rule, or when the rule splits on something a
+     * Combatant does not carry. Distance is the one that costs: it decides four of the
+     * fourteen and the simulator has no notion of standing apart.
+     */
+    public final String condFeature;
+    public final double condCut;
+    public final double[] whenPressure, elsePressure;
+
     public FoeModel(long period, double[] pressure, double pressureAgainst,
                     double damageCoef, int nGaps, int nHits) {
         this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, Double.NaN);
@@ -119,6 +137,18 @@ public final class FoeModel {
     public FoeModel(long period, double[] pressure, double pressureAgainst,
                     double damageCoef, int nGaps, int nHits, double fleesBelow,
                     int[] modes, double restores) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, fleesBelow,
+             modes, restores, null, 0, null, null);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow,
+                    int[] modes, double restores, String condFeature, double condCut,
+                    double[] whenPressure, double[] elsePressure) {
+        this.condFeature = condFeature;
+        this.condCut = condCut;
+        this.whenPressure = whenPressure;
+        this.elsePressure = elsePressure;
         this.modes = (modes == null) ? new int[0] : modes;
         this.fleesBelow = fleesBelow;
         this.restores = restores;
@@ -155,7 +185,41 @@ public final class FoeModel {
         if((self != null) && fleeing(self))
             return(0);
         restore(self);
-        return(act(me, myBlockWeight));
+        return(act(me, myBlockWeight, pressureNow(me, self)));
+    }
+
+    /**
+     * The pressure this creature applies in the state it is actually in.
+     *
+     * Falls back to the pooled figure whenever the rule cannot be read - no rule, a rule on
+     * something a Combatant does not carry, or no opponent handed in. Falling back is not a
+     * failure: the pooled number is what the corpus says about the creature on average, and
+     * it is what this used before there were any rules at all.
+     */
+    public double[] pressureNow(Combatant me, Combatant self) {
+        if((condFeature == null) || (whenPressure == null) || (elsePressure == null))
+            return(pressure);
+        double v;
+        if("foe_ip".equals(condFeature))
+            v = (self == null) ? -1 : self.ip;
+        else if("my_ip".equals(condFeature))
+            v = (me == null) ? -1 : me.ip;
+        else if("my_open".equals(condFeature))
+            v = (me == null) ? -1 : (biggest(me) * 100.0);
+        else if("foe_open".equals(condFeature))
+            v = (self == null) ? -1 : (biggest(self) * 100.0);
+        else
+            return(pressure);
+        if(v < 0)
+            return(pressure);
+        return((v > condCut) ? whenPressure : elsePressure);
+    }
+
+    private static double biggest(Combatant c) {
+        double out = 0;
+        for(int i = 0; i < 4; i++)
+            out = Math.max(out, c.opening(i));
+        return(out);
     }
 
     /** Its own openings, after the card it just threw took some of them back. */
@@ -171,11 +235,15 @@ public final class FoeModel {
     }
 
     public double act(Combatant me, double myBlockWeight) {
+        return(act(me, myBlockWeight, pressure));
+    }
+
+    private double act(Combatant me, double myBlockWeight, double[] press) {
         double scale = (pressureAgainst > 0 && myBlockWeight > 0)
             ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0;
         for(int c = 0; c < 4; c++) {
-            if(pressure[c] > 0)
-                me.open(c, pressure[c] * scale * (1.0 - me.opening(c)));
+            if(press[c] > 0)
+                me.open(c, press[c] * scale * (1.0 - me.opening(c)));
         }
         if(!knowsDamage())
             return(0);

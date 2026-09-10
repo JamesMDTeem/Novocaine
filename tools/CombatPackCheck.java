@@ -398,6 +398,19 @@ public class CombatPackCheck {
                && (o.threat.restores > 0))
                 restoring++;
         }
+        /* WHAT IT DOES DEPENDS ON THE STATE. A cave angler puts 4.45 points of green on
+         * us per action while it is opened and 1.14 while it is not; a bat 4.13 of yellow
+         * with initiative in hand against 1.18 without. Pooling those describes a creature
+         * that never exists. Four of the fourteen rules split on distance, which a
+         * Combatant does not carry, and those fall back to the pooled figure. */
+        int conditional = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat != null) && (o.threat.condFeature != null))
+                conditional++;
+        }
+        check("some opponent's pressure depends on the state", conditional > 0, true);
+        check("  and the model actually switches on it", conditionalSwitches(foes), true);
+
         check("some opponent takes its own openings back", restoring > 0, true);
         check("  and restoring one actually closes them", restoresClosesOpenings(), true);
 
@@ -447,6 +460,31 @@ public class CombatPackCheck {
                 return(false);
         }
         return(true);
+    }
+
+    /** A conditional model must return different pressure either side of its own cut. */
+    static boolean conditionalSwitches(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat == null) || (o.threat.condFeature == null))
+                continue;
+            haven.combat.Combatant me = new haven.combat.Combatant("me");
+            haven.combat.Combatant it = new haven.combat.Combatant("it");
+            double[] lo = o.threat.pressureNow(me, it);
+            /* Push whichever quantity the rule reads over its cut. */
+            String f = o.threat.condFeature;
+            if("foe_ip".equals(f))
+                it.ip = (int)Math.ceil(o.threat.condCut + 1);
+            else if("my_ip".equals(f))
+                me.ip = (int)Math.ceil(o.threat.condCut + 1);
+            else if("my_open".equals(f))
+                me.open(0, o.threat.condCut + 5);
+            else if("foe_open".equals(f))
+                it.open(0, o.threat.condCut + 5);
+            double[] hi = o.threat.pressureNow(me, it);
+            if(lo != hi)
+                return(true);
+        }
+        return(false);
     }
 
     /** A model that restores has to actually reduce the opening it is given. */

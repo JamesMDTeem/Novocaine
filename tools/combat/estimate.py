@@ -3589,6 +3589,44 @@ POLICY_SPLITS = (
 POLICY_MIN_SIDE = 40
 
 
+# Which splits a Combatant can evaluate. Distance is absent on purpose - the simulator
+# has no notion of standing apart, and it decides four of the fourteen rules.
+SIM_FEATURES = {
+    "their initiative": "foe_ip",
+    "our initiative": "my_ip",
+    "our greatest opening": "my_open",
+    "its greatest opening": "foe_open",
+}
+
+
+def branch_pressure(rec, cards):
+    """Opening pressure on us for one branch of a rule, in the four colours.
+
+    The per-card figures are already measured; this weights them by how often each card
+    turns up on this side of the split. A card with no measured pressure contributes its
+    own nothing, and a card known to open nothing at all is counted in the denominator -
+    the same rule the pooled figure uses, for the same reason.
+    """
+    if not cards:
+        return None
+    bymove = defaultdict(dict)
+    for (mv, colour), vals in (rec.get("pressure") or {}).items():
+        if vals and (colour in COLOURS):
+            bymove[mv][colour] = sum(vals) / float(len(vals))
+    out = dict((c, 0.0) for c in COLOURS)
+    total = 0.0
+    for mv, n in cards.items():
+        if mv in bymove:
+            total += n
+            for c, v in bymove[mv].items():
+                out[c] += n * v
+        elif foe_card_harmless(mv):
+            total += n
+    if total <= 0:
+        return None
+    return dict((c, round(out[c] / total, 2)) for c in COLOURS)
+
+
 def _bits(counter):
     """Entropy of a card distribution, in bits."""
     n = sum(counter.values())
@@ -3647,11 +3685,27 @@ def foe_policy_rule(rec):
         return None
     tbase = _bits(Counter(r[0] for r in test))
     tgain = tbase - ((tna * _bits(ta) + tnb * _bits(tb)) / float(tna + tnb))
+    # THE BRANCH AS SOMETHING THE SIMULATOR CAN ACT ON. Knowing a creature throws Bristle
+    # when it is closed and Fell Scratch when it is open is only useful if the pressure and
+    # the restoration follow, so each branch carries its own - the card mix on that side,
+    # weighted through the per-card figures already measured.
+    #
+    # `sim_feature` is null where the split is on something a Combatant does not carry.
+    # Distance is the one that matters: it decides four of the fourteen rules and the
+    # simulator has no notion of standing apart.
+    sim = SIM_FEATURES.get(name)
+    whole = Counter(r[0] for r in rows)
     return {"feature": name, "wording": wording,
             "train_bits": round(best[0], 3), "test_bits": round(tgain, 3),
             "n": len(rows),
+            "sim_feature": sim, "cut": cut,
             "when": [[k, v] for k, v in ta.most_common(3)],
-            "otherwise": [[k, v] for k, v in tb.most_common(3)]}
+            "otherwise": [[k, v] for k, v in tb.most_common(3)],
+            "when_pressure": branch_pressure(rec, Counter(
+                r[0] for r in rows if (r[idx] is not None) and (r[idx] > cut))),
+            "otherwise_pressure": branch_pressure(rec, Counter(
+                r[0] for r in rows if (r[idx] is not None) and (r[idx] <= cut))),
+            "pooled_pressure": branch_pressure(rec, whole)}
 
 
 def foe_policy(rec):
