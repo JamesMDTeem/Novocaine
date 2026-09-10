@@ -177,7 +177,7 @@ Invoke-JavaCheck 'CombatFormulaCheck' (@('src\haven\combat\Formulas.java',
     'tools\CombatFormulaCheck.java')) 'CombatFormulaCheck'
 
 Write-Host "`n== the state machine" -ForegroundColor Cyan
-Invoke-JavaCheck 'CombatSimCheck' ($model + @('src\haven\combat\FoeModel.java', 'tools\CombatSimCheck.java')) 'CombatSimCheck'
+Invoke-JavaCheck 'CombatSimCheck' ($model + @('src\haven\combat\FoeModel.java', 'src\haven\combat\Duel.java', 'tools\CombatSimCheck.java')) 'CombatSimCheck'
 
 Write-Host "`n== the plan search" -ForegroundColor Cyan
 Invoke-JavaCheck 'CombatOptimizerCheck' ($model + @('src\haven\combat\FoeModel.java',

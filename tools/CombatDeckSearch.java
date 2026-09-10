@@ -177,8 +177,33 @@ public class CombatDeckSearch {
      * bad it gets and CombatOptimizerCheck holds the invariant where the search is deep
      * enough to satisfy it honestly.
      */
+    /**
+     * How good a deck is, by whatever standard the caller is applying. Lower is better.
+     *
+     * The greedy below does not care what the number means, only that it can be compared,
+     * so pulling it behind an interface lets the same search answer a different question.
+     * It was written for "how fast does this kill that animal"; a duel between two people
+     * asks "how does this fare against what they are actually likely to bring", which is
+     * an expectation over an opponent's mixed strategy and not a kill time at all.
+     */
+    interface Scorer {
+        double score(Deck d);
+    }
+
     static Deck build(Map<String, Move> sheet, Combatant me, Combatant foe, FoeModel model,
                       Advisor.Aim aim) {
+        final Map<String, Move> sh = sheet;
+        final Combatant m = me, f = foe;
+        final FoeModel md = model;
+        final Advisor.Aim am = aim;
+        return(build(sheet, new Scorer() {
+            public double score(Deck d) {
+                return(CombatDeckSearch.score(d, sh, m, f, md, am));
+            }
+        }));
+    }
+
+    static Deck build(Map<String, Move> sheet, Scorer sc) {
         Deck cur = new Deck();
         double floor = Double.POSITIVE_INFINITY;
         for(int spent = 0; spent < MAX_POINTS; spent++) {
@@ -189,7 +214,7 @@ public class CombatDeckSearch {
                 if(t == null)
                     continue;
                 cand.add(t);
-                scores.add(score(t, sheet, me, foe, model, aim));
+                scores.add(sc.score(t));
             }
             if(cand.isEmpty())
                 break;
@@ -214,7 +239,7 @@ public class CombatDeckSearch {
                     Deck t2 = plus(cand.get(ix), res, sheet);
                     if(t2 == null)
                         continue;
-                    if(score(t2, sheet, me, foe, model, aim) < takeScore) {
+                    if(sc.score(t2) < takeScore) {
                         /* the PAIR is what paid, so take the first half and let the next
                          * round buy the second - the floor keeps it from going backwards */
                         takeScore = Math.min(takeScore, one);
@@ -227,8 +252,8 @@ public class CombatDeckSearch {
             cur = take;
             floor = Math.min(floor, takeScore);
         }
-        cur = topUp(cur, sheet, me, foe, model, aim, floor);
-        cur.score = score(cur, sheet, me, foe, model, aim);
+        cur = topUp(cur, sheet, sc, floor);
+        cur.score = sc.score(cur);
         cur.score = Math.min(cur.score, floor);
         return(cur);
     }
@@ -255,9 +280,8 @@ public class CombatDeckSearch {
      * monotonicity covers it without a special case: a point that reads worse is refused
      * whatever the reason.
      */
-    static Deck topUp(Deck cur, Map<String, Move> sheet, Combatant me, Combatant foe,
-                      FoeModel model, Advisor.Aim aim, double floor) {
-        double best = Math.min(floor, score(cur, sheet, me, foe, model, aim));
+    static Deck topUp(Deck cur, Map<String, Move> sheet, Scorer sc, double floor) {
+        double best = Math.min(floor, sc.score(cur));
         while(cur.points() < MAX_POINTS) {
             Deck take = null;
             double takeScore = Double.POSITIVE_INFINITY;
@@ -265,9 +289,9 @@ public class CombatDeckSearch {
                 Deck t = plus(cur, res, sheet);
                 if(t == null)
                     continue;
-                double sc = score(t, sheet, me, foe, model, aim);
-                if(sc < takeScore) {
-                    takeScore = sc;
+                double v = sc.score(t);
+                if(v < takeScore) {
+                    takeScore = v;
                     take = t;
                 }
             }

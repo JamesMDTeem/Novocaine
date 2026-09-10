@@ -110,6 +110,7 @@ public class CombatSimCheck {
         grievousCap();
         predictionIsFree();
         deckAsOpponent();
+        twoSidedDuel();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -181,6 +182,80 @@ public class CombatSimCheck {
         FoeModel h = FoeModel.fromDeck(half, who, who.defenceWeight());
         check("a card that never hits lowers the damage per action",
               h.damageCoef < m.damageCoef, true);
+    }
+
+    /**
+     * Two players, and neither of them handed an advantage by the harness.
+     *
+     * A duel is only a measurement of the DECKS if everything else is equal, and the
+     * first version of this was not. Both sides start ready on tick zero, ties go to one
+     * of them, and in a mirror - same deck, same character, same gear - that side took
+     * five of six, once with half its health untouched. Nothing about the cards produced
+     * that. It is a half-tempo handed over on every exchange, and a table built on it
+     * would have ranked decks by which column they were in.
+     *
+     * So a comparison plays both ways round and averages, and the mirror is the test that
+     * says whether it worked. Exactly zero, at every depth, or the number means nothing.
+     */
+    static void twoSidedDuel() {
+        System.out.println();
+        System.out.println("two players, both trying to win");
+        Combatant who = me();
+        who.blockSkill = who.melee;
+
+        java.util.List<Move> hard = haven.combat.Duel.deck(kito(), barrage());
+        java.util.List<Move> soft = haven.combat.Duel.deck(barrage());
+
+        for(int depth : new int[] {1, 2, 3, 4}) {
+            double m = haven.combat.Duel.payoff(who, hard, who, hard, depth, 2000);
+            check("a mirror is exactly even at depth " + depth, m == 0.0, true);
+        }
+
+        /* MOVING FIRST IS WORTH REAL FIGHTS, which is why the average is needed rather
+         * than being a tidy-up. If this ever reads even, the bias has gone away on its
+         * own and the correction is no longer carrying anything. */
+        double first = haven.combat.Duel.payoffFirst(who, hard, who, hard, 3, 2000);
+        check("  and moving first is worth something, so the average is load-bearing",
+              first != 0.0, true);
+
+        /* Antisymmetry. A zero-sum game has to give one side exactly what it takes from
+         * the other, or an equilibrium solved over the table is solving a different
+         * game than the one played. */
+        double ab = haven.combat.Duel.payoff(who, hard, who, soft, 3, 2000);
+        double ba = haven.combat.Duel.payoff(who, soft, who, hard, 3, 2000);
+        check("what one side wins the other loses", Math.abs(ab + ba) < 1e-9, true);
+        check("  and the payoff stays inside its range", (ab >= -1.0) && (ab <= 1.0), true);
+
+        /* Two cards beat one of the same, which is the weakest claim the engine has to
+         * get right: strictly more to throw cannot be worse. */
+        check("  the deck with more to throw is not the loser", ab > 0, true);
+
+        /* GRADED IN TWO BANDS, and the bands are what make the number usable. A binary
+         * win-or-lose gave every full-size pairing the same score: both sides kill fast
+         * enough that whoever opens wins, so the two halves are both wins, the average is
+         * zero, and no two decks are distinguishable. Winning with three quarters of your
+         * health is not winning with a sliver, and that difference is the only thing left
+         * to separate decks once the first swing has stopped being the question.
+         *
+         * A kill must still beat any survival, or a deck that merely stayed ahead on the
+         * clock would outrank one that actually finished the fight. */
+        double kill = haven.combat.Duel.payoffFirst(who, hard, who, soft, 3, 2000);
+        check("a win scores in the upper band", kill >= 0.5, true);
+        check("  and by how much health it was bought with, not just that it happened",
+              kill > 0.5, true);
+        java.util.List<Move> nobody = haven.combat.Duel.deck(
+            Move.of("Take Aim").res("paginae/atk/takeaim").cooldown(30).build());
+        double stalled = haven.combat.Duel.payoffFirst(who, nobody, who, nobody, 3, 400);
+        check("  while a fight nobody finished stays inside the lower band",
+              Math.abs(stalled) < 0.5, true);
+
+        /* A stance is held, not thrown. A duel that threw one would be playing a card
+         * that does not exist as an action. */
+        Move stance = Move.of("Parry").res("paginae/atk/parry")
+            .stance(true, 0.8, Move.Weight.MELEE).cooldown(30).build();
+        java.util.List<Move> withStance = haven.combat.Duel.deck(kito(), barrage(), stance);
+        double same = haven.combat.Duel.payoff(who, withStance, who, soft, 3, 2000);
+        check("adding a stance to the deck changes no action taken", same, ab);
     }
 
     /* ---- the character and its moves, exactly as the logs and the character sheet have them ---- */
