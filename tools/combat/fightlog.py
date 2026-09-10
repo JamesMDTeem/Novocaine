@@ -840,6 +840,20 @@ def attributed_gains(eng, opens, me_gob=None):
     within 25%; the seventh is horse, at two observations each side.
     """
     out = []
+    # HISTORY WE DID NOT SEE. An engagement whose FIRST state row already shows an opening
+    # on the opponent was under way before we started watching, and whoever put those
+    # points there may still be swinging. None of the four tests below can see them: they
+    # all ask what happened inside a bracket, and this is about what happened before any
+    # bracket existed.
+    #
+    # It is the strongest single contamination signal in the corpus. Gains from such
+    # engagements read more than 1.2 times what the model expects in 6.9% of 274 cases,
+    # against 1.6% of 3042 from engagements that started at zero, and they are wider in
+    # both directions - a tenth to ninetieth percentile of 0.77 to 1.14 against 0.89 to
+    # 1.06.
+    sts = getattr(eng, "states", None) or ()
+    if sts and any(sts[0].get("foe") or ()):
+        return out
     # Move announcements only, and only somebody else's - see the OVERLAY test below.
     ols = [o for o in getattr(eng, "overlays", [])
            if overlay_outcome(o.get("res")) is None]

@@ -449,22 +449,39 @@ def sfx_and_outcome():
     check("own-move announcement does not veto own bracket sfx", agg2["hits"], 1)
     # Two announcements on own gob still veto; different-card vetoes (attributed_gains per-observation veto, not opening_gains)
     opens = {"Quick Barrage": {0, 1, 2, 3}, "Take Aim": {0, 1, 2, 3}}
+    # These start the opponent at zero on purpose. An engagement whose first state row
+    # already carries an opening is dropped whole - it began before we were watching -
+    # and a fixture that opens at 20 tests that gate instead of the one it means to.
     rows3 = [
-        begin(), state(10, foe=(0,0,0,20)),
+        begin(), state(10, foe=(0,0,0,0)),
         {"ev": "overlay", "t": 22, "gob": 100, "res": "gfx/fx/fight/barrage", "from": 1},
         {"ev": "overlay", "t": 23, "gob": 100, "res": "gfx/fx/fight/flex", "from": 1},
-        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,28)), end()]
+        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,8)), end()]
     lg3 = load(rows3)
     gains3 = fightlog.attributed_gains(lg3.engagements[0], opens, me_gob=ME)
     check("two announcements on own gob still veto", len(gains3), 0)
     # Own-move announcement alone must not veto own bracket (450-vs-69 fix)
     rows1b = [
-        begin(), state(10, foe=(0,0,0,20)),
+        begin(), state(10, foe=(0,0,0,0)),
         {"ev": "overlay", "t": 22, "gob": 100, "res": "gfx/fx/fight/barrage", "from": 1},
-        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,28)), end()]
+        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,8)), end()]
     lg1b = load(rows1b)
     gains1b = fightlog.attributed_gains(lg1b.engagements[0], opens, me_gob=ME)
     check("own-move announcement alone does not veto", len(gains1b), 1)
+    # And the gate itself: the same fight, opened before we arrived, yields nothing.
+    rows1c = [
+        begin(), state(10, foe=(0,0,0,20)),
+        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,28)), end()]
+    lg1c = load(rows1c)
+    check("an engagement already under way attributes nothing",
+          len(fightlog.attributed_gains(lg1c.engagements[0], opens, me_gob=ME)), 0)
+    # while the same shape starting from zero still does
+    rows1d = [
+        begin(), state(10, foe=(0,0,0,0)),
+        move(20, name="Quick Barrage"), state(30, foe=(0,0,0,8)), end()]
+    lg1d = load(rows1d)
+    check("  and the same shape from zero still does",
+          len(fightlog.attributed_gains(lg1d.engagements[0], opens, me_gob=ME)), 1)
     # Outcome inference: died #ffff on non-victim (dmg ch) + damage trail; gst HP trail for fled.
     # Surfaced as explicit field, not silent gate change; players excluded.
     log_killed = load([begin(foeres="gfx/kritter/badger/badger"),
