@@ -15,6 +15,7 @@
  * Exits 0 when every check passes, 1 otherwise.
  */
 
+import haven.combat.Advisor;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -133,6 +134,7 @@ public class CombatOptimizerCheck {
     }
 
     public static void main(String[] args) {
+        advisor();
         inertFoe();
         fleeing();
         startingInitiative();
@@ -143,6 +145,60 @@ public class CombatOptimizerCheck {
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /* THE ADVISOR: what to throw NOW, as opposed to a whole plan from a start state.
+     *
+     * The optimizer returns a script and a fight is not a script - openings decay by a rule
+     * this corpus cannot see, the opponent runs its own clock, and a cooldown depends on an
+     * agility known only as an interval. So the advisor re-plans from the state in front of
+     * it and commits only to the first move, which is the only one it is entitled to be
+     * confident about.
+     *
+     * Every case here has a known answer by construction, on the same terms as the rest of
+     * this file. */
+    static void advisor() {
+        System.out.println("\nwhat to throw now, from the fight as it stands");
+        List<Move> deck = Optimizer.deck(barrage(), quickDodge());
+        FoeModel model = new FoeModel(45, new double[] {14, 0, 0, 0}, 312.5, 90.0, 20, 20);
+
+        Combatant a = me(), f = foe(400, 20);
+        Advisor.Advice adv = Advisor.next(a, f, deck, model, Advisor.Aim.FASTEST,
+                                          0, 60, 2500);
+        check("it names a card to throw", adv.move != null, true);
+        check("  and the card is one from the deck",
+              (adv.move != null) && deck.contains(adv.move), true);
+        check("  and it comes with the plan that justified it", adv.plan != null, true);
+
+        /* A dead opponent is not a planning problem, and "wait" must be tellable from
+         * "no idea" - a bot that cannot distinguish them will either stall or flail. */
+        Combatant dead = foe(400, 20);
+        dead.hp = 0;
+        Advisor.Advice none = Advisor.next(a, dead, deck, model, Advisor.Aim.FASTEST,
+                                           0, 60, 2500);
+        check("a dead opponent gets no advice", none.move, null);
+        check("  and says why", none.why.contains("dead"), true);
+        Advisor.Advice empty = Advisor.next(a, f, new ArrayList<Move>(), model,
+                                            Advisor.Aim.FASTEST, 0, 60, 2500);
+        check("an empty deck gets no advice", empty.move, null);
+
+        /* The aim is a policy, so it has to change the answer. Safest must never pick a
+         * plan that costs more than fastest does. */
+        List<Optimizer.Plan> front = Optimizer.search(a, f, deck, model, 60, 2500);
+        Optimizer.Plan quick = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
+        Optimizer.Plan safe = Advisor.choose(front, Advisor.Aim.SAFEST, 0);
+        check("the frontier has something to choose from", front.size() > 1, true);
+        check("safest never costs more than fastest", safe.hpLost <= quick.hpLost, true);
+        check("  and fastest is never slower than safest", quick.ticks <= safe.ticks, true);
+
+        /* A budget refuses rather than overspends. Zero is the sharp case: nothing can
+         * cost nothing against an opponent that hits back, so it must come back null
+         * rather than quietly returning the cheapest thing it found. */
+        Optimizer.Plan broke = Advisor.choose(front, Advisor.Aim.BUDGET, -1.0);
+        check("a budget nothing can meet returns no plan", broke, null);
+        Optimizer.Plan afford = Advisor.choose(front, Advisor.Aim.BUDGET, 1e9);
+        check("  and a budget everything meets returns the fastest",
+              (afford != null) && (afford.ticks == quick.ticks), true);
     }
 
     static Combatant me() {

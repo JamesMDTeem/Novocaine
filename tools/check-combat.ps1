@@ -181,7 +181,8 @@ Invoke-JavaCheck 'CombatSimCheck' ($model + @('tools\CombatSimCheck.java')) 'Com
 
 Write-Host "`n== the plan search" -ForegroundColor Cyan
 Invoke-JavaCheck 'CombatOptimizerCheck' ($model + @('src\haven\combat\FoeModel.java',
-    'src\haven\combat\Optimizer.java', 'tools\CombatOptimizerCheck.java')) 'CombatOptimizerCheck'
+    'src\haven\combat\Optimizer.java', 'src\haven\combat\Advisor.java',
+    'tools\CombatOptimizerCheck.java')) 'CombatOptimizerCheck'
 
 Write-Host "`n== the data pack, loaded the way the bot will load it" -ForegroundColor Cyan
 Invoke-JavaCheck 'CombatPackCheck' ($model + @('src\haven\combat\data\Pack.java',
