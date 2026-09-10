@@ -201,6 +201,35 @@ public class CombatPackCheck {
         Move parry = moves.get("Parry");
         if(parry != null)
             check("  and a stance that needs nothing says so", parry.blockRequires, null);
+
+        /* THE CLIENT STATES THE DECK RULES AND THE TOOLS HELD COPIES. Thirty points and
+         * five saved decks were literals in the search; the dump has said both all along.
+         * A copy of a fact does not move when the fact does. */
+        Pack.DeckRules rules = Pack.deckRules(MOVES);
+        check("the deck budget comes from the client's own dump", rules.maxPoints, 30);
+        check("  and so does how many decks it saves", rules.saved, 5);
+
+        /* AND THE COLOUR ORDER, which is the one assumption that relabels a whole report
+         * without changing a number. Formulas numbers them green, blue, yellow, red -
+         * not the order anyone assumes, and assuming wrong is how a probe read Cleave as
+         * striking green when it strikes blue. The dump names them, so check the names. */
+        Map<String, String> schools = Pack.schools(MOVES);
+        check("green is the Striking school", schools.get("green"), "Striking");
+        check("blue is Backhanded", schools.get("blue"), "Backhanded");
+        check("yellow is Sweeping", schools.get("yellow"), "Sweeping");
+        check("red is Oppressive", schools.get("red"), "Oppressive");
+        /* And what the game calls each opening on screen. A card's reduction line names
+         * the opening rather than the colour - "50% Sweeping" is yellow - so this is the
+         * translation every parse depends on. */
+        Map<String, String> named = Pack.openings(MOVES);
+        check("green is Off Balance on screen", named.get("green"), "Off Balance");
+        check("blue is Dizzy", named.get("blue"), "Dizzy");
+        check("yellow is Reeling", named.get("yellow"), "Reeling");
+        check("red is Cornered", named.get("red"), "Cornered");
+
+        check("and the code numbers them in that order",
+              (Formulas.GREEN == 0) && (Formulas.BLUE == 1)
+              && (Formulas.YELLOW == 2) && (Formulas.RED == 3), true);
     }
 
     /**

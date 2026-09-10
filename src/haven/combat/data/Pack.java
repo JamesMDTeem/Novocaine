@@ -811,6 +811,70 @@ public final class Pack {
         }
     }
 
+    /**
+     * The deck rules, as the client itself states them.
+     *
+     * These were literals in the search tool - thirty points, five saved decks - and the
+     * client has been dumping both in the sheet the whole time. A literal is a copy of a
+     * fact, and a copy does not move when the fact does: if the budget ever changes, the
+     * data says so and a hard-coded thirty does not.
+     *
+     * The card limit is not in the dump, so it stays where it is measured: 558 of 791
+     * dumps hold ten cards and none holds more.
+     */
+    public static final class DeckRules {
+        /** Points a deck may spend, and how many decks the game saves. */
+        public final int maxPoints, saved;
+
+        private DeckRules(int maxPoints, int saved) {
+            this.maxPoints = maxPoints;
+            this.saved = saved;
+        }
+    }
+
+    public static DeckRules deckRules(Path path) throws IOException {
+        JSONObject doc = read(path);
+        return(new DeckRules(doc.optInt("maxpoints", 30), doc.optInt("nsave", 5)));
+    }
+
+    /**
+     * What the client calls each colour, so the code's own ordering can be checked.
+     *
+     * Formulas numbers them green, blue, yellow, red, which is not the order anyone
+     * assumes - and assuming wrong relabels every colour in a report without changing a
+     * single number, which is exactly how a probe once read Cleave as striking green
+     * when it strikes blue. The dump names them, so the assumption is checkable.
+     */
+    public static Map<String, String> schools(Path path) throws IOException {
+        return(colourField(path, "school"));
+    }
+
+    /**
+     * What the game calls each opening on screen - Cornered, Dizzy, Off Balance, Reeling.
+     *
+     * A report that says "red" and a game that says "Cornered" are describing the same
+     * thing in two languages, and every translation between them is a chance to get it
+     * wrong. The card text names the opening, so a reduction line reading "50% Sweeping"
+     * has to be routed to yellow by this mapping rather than by memory.
+     */
+    public static Map<String, String> openings(Path path) throws IOException {
+        return(colourField(path, "opening"));
+    }
+
+    private static Map<String, String> colourField(Path path, String field)
+        throws IOException {
+        Map<String, String> out = new LinkedHashMap<String, String>();
+        JSONObject cols = read(path).optJSONObject("colours");
+        if(cols != null) {
+            for(String k : cols.keySet()) {
+                JSONObject c = cols.optJSONObject(k);
+                if(c != null)
+                    out.put(k, c.optString(field, null));
+            }
+        }
+        return(out);
+    }
+
     public static Map<String, Fighter> characters(Path path) throws IOException {
         Map<String, Fighter> out = new LinkedHashMap<String, Fighter>();
         JSONArray arr = read(path).getJSONArray("characters");

@@ -42,7 +42,17 @@ import java.util.List;
 import java.util.Map;
 
 public class CombatDeckSearch {
-    static final int MAX_CARDS = 10, MAX_POINTS = 30, MAX_PER_CARD = 5;
+    /**
+     * The card limit is measured; the other two are read from the client's own dump.
+     *
+     * Ten cards and five on any one card come from the dumps themselves - 558 of 791 hold
+     * ten and none holds more. The points and the number of saved decks the client states
+     * outright in the sheet, and these were literals copying it. A copy of a fact does
+     * not move when the fact does, and an audit that asks "does anything read this" is
+     * exactly how a stale copy gets found.
+     */
+    static final int MAX_CARDS = 10, MAX_PER_CARD = 5;
+    static int MAX_POINTS = 30, SAVED_DECKS = 5;
     /* Beam for the inner search. 20 costs 1.5 ms against 4 at 60, and this runs it tens of
      * thousands of times; the frontier it loses is not one a deck comparison can see. */
     static final int BEAM = 20;
@@ -439,6 +449,9 @@ public class CombatDeckSearch {
             System.out.printf("no character named %s. known: %s%n", charName, chars.keySet());
             return;
         }
+        Pack.DeckRules rules = Pack.deckRules(root.resolve("moves_sheet.json"));
+        MAX_POINTS = rules.maxPoints;
+        SAVED_DECKS = rules.saved;
         HELD_SHIELD = who.shield;
         Combatant me = who.combatant();
 
@@ -453,8 +466,9 @@ public class CombatDeckSearch {
             sheet = mine;
         }
 
-        System.out.printf("deck limits: %d cards, %d points, %d per card%n",
-                          MAX_CARDS, MAX_POINTS, MAX_PER_CARD);
+        System.out.printf("deck limits: %d cards, %d points, %d per card;"
+                          + " %d decks saved (points and slots as the client states them)%n",
+                          MAX_CARDS, MAX_POINTS, MAX_PER_CARD, SAVED_DECKS);
         System.out.printf("as: %s  (str %.0f, agi %.0f, unarmed %.0f, melee %.0f, hp %.0f, %s)%n",
                           who.name, who.str, who.agi, who.unarmed, who.melee, who.hp,
                           (who.weapon == null) ? "bare-handed"
@@ -608,7 +622,8 @@ public class CombatDeckSearch {
             grid.put(owner, row);
         }
         System.out.println();
-        System.out.println("FIVE DECKS, CHOSEN FOR WHAT THEY COVER BETWEEN THEM");
+        System.out.printf("%d DECKS, CHOSEN FOR WHAT THEY COVER BETWEEN THEM%n",
+                          SAVED_DECKS);
         System.out.println("  the game saves five, so the question is not one deck per creature");
         System.out.println("  but a handful that are good enough everywhere. Greedy: the best");
         System.out.println("  total first, then whatever most improves what it was worst at.");
@@ -617,7 +632,7 @@ public class CombatDeckSearch {
         Map<String, Double> bestSoFar = new LinkedHashMap<String, Double>();
         for(String a : owners)
             bestSoFar.put(a, Double.POSITIVE_INFINITY);
-        for(int pick = 0; pick < 5; pick++) {
+        for(int pick = 0; pick < SAVED_DECKS; pick++) {
             String take = null;
             double takeTotal = Double.POSITIVE_INFINITY;
             for(String owner : owners) {

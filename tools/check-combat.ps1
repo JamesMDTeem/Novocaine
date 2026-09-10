@@ -188,6 +188,13 @@ Write-Host "`n== the data pack, loaded the way the bot will load it" -Foreground
 Invoke-JavaCheck 'CombatPackCheck' ($model + @('src\haven\combat\data\Pack.java',
     'tools\CombatPackCheck.java')) 'CombatPackCheck' 'src'
 
+# The audit: not whether a number is right, but whether anything reads it at all.
+# Both of the last two bugs were a mechanic parsed, stored, shipped and consumed by
+# nothing - invisible in the source, because the source looked finished.
+Invoke-JavaCheck 'CombatAudit' ($model + @('src\haven\combat\FoeModel.java',
+    'src\haven\combat\Duel.java', 'src\haven\combat\Optimizer.java',
+    'src\haven\combat\Advisor.java', 'tools\CombatAudit.java')) 'CombatAudit' 'src'
+
 Write-Host "`n== the Python follower, against the golden vectors" -ForegroundColor Cyan
 Invoke-PyCheck 'model_check.py' 'tools\combat\model_check.py'
 

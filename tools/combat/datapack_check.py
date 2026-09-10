@@ -365,8 +365,97 @@ def write_nothing_on_failure():
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+def every_key_is_read():
+    """Is there anything in the shipped data that nothing reads?
+
+    THIS IS THE SHAPE OF THE LAST TWO BUGS. Shield Up's "block_requires" was parsed out
+    of the card text, written into the sheet, shipped in the pack, and read by nothing -
+    250% of the block weight holding a shield against 50% without, a factor of five on
+    the one number that stance exists to set, and every model quietly used the headline
+    figure. The character's armour was the same story from the other end: the client had
+    been writing hard and soft soak on every gear row for the whole corpus and the duel
+    fought naked.
+
+    Neither was visible in the code, because the code looked finished. What was missing
+    was a consumer, and a missing consumer leaves no trace anywhere except in the answers.
+
+    So this goes key by key through what is actually shipped and asks whether any reader
+    names it. A key nobody names is either dead weight in the file or a mechanic that is
+    not being applied, and the two are worth telling apart by hand - which is why this
+    prints them rather than guessing.
+    """
+    import json as _json3
+    import estimate as _est3
+    root = _est3.ROOT
+    print("")
+    print("is there anything in the data that nothing reads")
+    readers = []
+    for rel in ("src/haven/combat/data/Pack.java",
+                "tools/combat/estimate.py",
+                "tools/combat/replay.py",
+                "tools/combat/experiment.py",
+                "tools/CombatDeckSearch.java",
+                "tools/CombatMeta.java",
+                "tools/CombatPackCheck.java"):
+        try:
+            with open(os.path.join(root, rel), "r", encoding="utf-8",
+                      errors="replace") as f:
+                readers.append(f.read())
+        except OSError:
+            pass
+    blob = chr(10).join(readers)
+
+    # Keys that are documentation rather than instruction: they say where a number came
+    # from or how sure of it we are, and nothing downstream is meant to branch on them.
+    PROSE = {"source", "note", "from", "wiki", "raw", "name", "verdict", "problems",
+             "notes", "members", "self_contradictory_gobs", "outliers", "modes_note",
+             # The card text a figure was parsed OUT of, kept so the parse can be argued
+             # with. "80 / mu" is provenance for cooldown and cooldown_mu, which are the
+             # two things a fight reads.
+             "cooldown_raw"}
+
+    # Keys whose CONTENTS are data rather than schema. "owned" maps a card's display name
+    # to its level, so its keys are forty card names, not forty fields nobody reads.
+    INDEXES = {"owned", "policy", "mix"}
+
+    for rel in ("data/combat/moves_sheet.json", "data/combat/opponents.json",
+                "data/combat/characters.json"):
+        path = os.path.join(root, rel)
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                doc = _json3.load(f)
+        except (OSError, ValueError):
+            continue
+        keys = set()
+
+        # A key that is empty in every record has nothing to consume, so a missing reader
+        # says nothing about it. Counted rather than assumed: "when_attacked" is in the
+        # sheet forty-one times and populated zero.
+        filled = set()
+
+        def walk(node, depth=0):
+            if isinstance(node, dict):
+                for k, v in node.items():
+                    keys.add(k)
+                    if v not in (None, 0, 0.0, False, "", [], {}):
+                        filled.add(k)
+                    if (depth < 2) and (k not in INDEXES):
+                        walk(v, depth + 1)
+            elif isinstance(node, list):
+                for v in node[:40]:
+                    walk(v, depth)
+
+        walk(doc)
+        unread = sorted(k for k in keys
+                        if (k in filled) and (k not in PROSE)
+                        and ('"%s"' % k not in blob))
+        check("every key in %s is named by a reader" % os.path.basename(rel),
+              unread, [])
+
+
 def main():
     primitives()
+    every_key_is_read()
     gear()
     creatures()
     animal_moves()
