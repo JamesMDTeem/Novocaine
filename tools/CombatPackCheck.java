@@ -362,11 +362,35 @@ public class CombatPackCheck {
             else
                 outrunUs++;
         }
+        /* THE FLEE THRESHOLD. Null everywhere until the corpus could watch a creature
+         * give up and keep taking damage, which needs the aggression state schema 7
+         * added. A fleeing animal stops swinging, so a plan that keeps defending into a
+         * flight is buying protection from an opponent that has stopped attacking. */
+        int flees = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat != null) && !Double.isNaN(o.threat.fleesBelow))
+                flees++;
+        }
+        check("some opponent has a measured flee threshold", flees > 0, true);
+        check("  and every one of them is a share of health, not a count",
+              fleeThresholdsAreShares(foes), true);
+
         check("relative speed reaches the simulator", outrun > 0, true);
         check("  and some opponent can outrun us", outrunUs > 0, true);
         check("  and an unmeasured one says so rather than yes", unknown > 0, true);
         check("  with disengagement refused where it was never measured",
               noUnmeasuredClaimsEscape(foes), true);
+    }
+
+    /** A threshold is a fraction of hitpoints, so anything outside (0, 1) is a unit bug. */
+    static boolean fleeThresholdsAreShares(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat == null) || Double.isNaN(o.threat.fleesBelow))
+                continue;
+            if((o.threat.fleesBelow <= 0.0) || (o.threat.fleesBelow >= 1.0))
+                return(false);
+        }
+        return(true);
     }
 
     /** No opponent may report that we can disengage on a speed nobody measured. */

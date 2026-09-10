@@ -2181,7 +2181,7 @@ def collect(paths):
         # alongside problems, not as a silent gate change. Surface the field so a
         # later reader can gate on it deliberately rather than having it laundered
         # into a verdict.
-        "outcomes": defaultdict(int),
+        "outcomes": defaultdict(int), "flee": [],
         "outcome_examples": [],
         # Sfx hit/miss/ip per bracket - counts + which swings connected, the only
         # place a log records that (damage has no channel for a miss).
@@ -2245,6 +2245,31 @@ def collect(paths):
             # tripped.
             oc = getattr(eng, "outcome", "unknown")
             rec["outcomes"][oc] += 1
+            # THE FLEE THRESHOLD, PER INDIVIDUAL. A creature that gives up AND then keeps
+            # taking damage tells us both numbers without any population estimate: what it
+            # had taken when the olive branch went up, and what it had taken by the end.
+            #
+            # Doing it against the pack's hitpoint band instead does not work, and the
+            # reason is worth keeping. That band is the spread across INDIVIDUALS - the
+            # boar's is 212 to 677 around a wiki 450 - so dividing one creature's damage
+            # by it gives anything from 0.77 to 2.47, and several species come out having
+            # taken more than their whole estimated hitpool before running.
+            flee_at = None
+            for st in (getattr(eng, "states", None) or ()):
+                if (st.get("gst") or 0) & 2:
+                    flee_at = st.get("t")
+                    break
+            if flee_at is not None:
+                hits = [d for d in eng.damage
+                        if d.get("gob") == eng.gob and d.get("ch") in ("SHP", "ARM")]
+                total = sum((d.get("v") or 0) for d in hits)
+                before = sum((d.get("v") or 0) for d in hits if d["t"] <= flee_at)
+                # It has to have kept taking damage afterwards, or the fight merely ended
+                # there and the flight point is a floor rather than a reading. And it has
+                # to have taken SOME first: a creature already running when we met it
+                # reads as a threshold of zero, which is not a threshold.
+                if (total > before > 0):
+                    rec["flee"].append(before / float(total))
             if len(rec["outcome_examples"]) < 4:
                 rec["outcome_examples"].append((eng.gob, oc, getattr(eng, "outcome_detail", "")))
             # Sfx hit/miss/ip per bracket - counts + which swings connected. The only place
@@ -4140,6 +4165,26 @@ def period_of(gaps_ms):
 COLOURS = ("red", "green", "blue", "yellow")
 
 
+# How many individuals must have been watched giving up before their median is reported as
+# a species threshold. Below this the reading is one animal's temperament.
+FLEE_MIN_N = 5
+
+
+def flees_below(rec):
+    """The share of its hitpoints below which this species stops fighting, or None.
+
+    `rec["flee"]` holds, per individual, the fraction of its eventual total damage that it
+    had taken when the olive branch went up. What FoeModel wants is the fraction REMAINING,
+    so the answer is one minus that. The boar is the best-covered: 40 individuals, a median
+    of 0.73 taken and an interquartile 0.65 to 0.80, so it runs somewhere below a fifth to
+    a third of its health.
+    """
+    v = sorted(rec.get("flee") or ())
+    if len(v) < FLEE_MIN_N:
+        return None
+    return round(1.0 - v[len(v) // 2], 3)
+
+
 def threat(rec):
     """What this opponent does to US, in the form the optimizer plans against.
 
@@ -4244,10 +4289,9 @@ def threat(rec):
         return None
     return {"period": period, "pressure": pressure, "pressure_against": against,
             "pressure_n": pn, "damage": damage,
-            # Measurable the moment a fight is logged on a schema 7 client: the second
-            # bit of the aggression state is its olive branch. Null, not zero - zero
-            # would mean "fights to the death", which is a claim.
-            "flees_below": None}
+            # MEASURED where the corpus has watched one give up and keep taking damage.
+            # Null, not zero - zero would mean "fights to the death", which is a claim.
+            "flees_below": flees_below(rec)}
 
 
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")

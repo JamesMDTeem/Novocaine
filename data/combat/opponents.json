@@ -9318,7 +9318,7 @@
      "lo": 2.6,
      "n": 58
     },
-    "flees_below": null,
+    "flees_below": 0.243,
     "period": {
      "dropped": 16,
      "hi": 112.7,
@@ -11238,7 +11238,7 @@
      "lo": 3.2,
      "n": 13
     },
-    "flees_below": null,
+    "flees_below": 0.366,
     "period": {
      "dropped": 12,
      "hi": 105.1,
@@ -12926,7 +12926,7 @@
      "lo": 2.5,
      "n": 30
     },
-    "flees_below": null,
+    "flees_below": 0.304,
     "period": {
      "dropped": 2,
      "hi": 70.0,
