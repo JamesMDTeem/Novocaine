@@ -443,6 +443,46 @@ def own_defence():
 
 
 
+_SWEEP = {}
+
+
+def _corpus_sweep():
+    """One pass over every log, for the checks that would otherwise each make their own.
+
+    estimate_check ran to three minutes and most of it was re-reading the same 4557 files.
+    collect_cached fixed the calls that wanted collect(); this is for the two that want
+    the logs themselves - the coverage floor and the stance tripwire.
+    """
+    if _SWEEP:
+        return _SWEEP
+    moves = estimate.load_moves()
+    opens = estimate.opens_map(moves)
+    scaling = set(n for n, m in moves.items() if m.get("stance") and m.get("attack_mult"))
+    gains = thrown = openers = stance_fights = 0
+    for pth in estimate.fightlog.default_logs(estimate.ROOT)[0]:
+        try:
+            log = estimate.fightlog.read(pth, opens)
+        except Exception:
+            continue
+        if not log.rows:
+            continue
+        lv = estimate.levels_for_log(log)
+        if lv and any(lv.get(n) for n in scaling):
+            stance_fights += 1
+        for eng in log.engagements:
+            gains += sum(1 for g in estimate.fightlog.attributed_gains(
+                eng, opens, log.me) if g[0] == "me")
+            for m in eng.moves:
+                if m.get("actor") != "me":
+                    continue
+                thrown += 1
+                if opens.get(m.get("name") or m.get("move")):
+                    openers += 1
+    _SWEEP.update({"gains": gains, "thrown": thrown, "openers": openers,
+                   "stance_fights": stance_fights})
+    return _SWEEP
+
+
 def a_stance_scales_every_attack():
     """Two of the three stances scale every attack we make, and one has never been held.
 
@@ -471,20 +511,8 @@ def a_stance_scales_every_attack():
           estimate.attack_weight_bounds(qb, at, 1, {"Oak Stance": 0}), (200.0, 200.0))
 
     # The tripwire. Recovery does not thread the deck through yet, which is safe only for
-    # as long as this holds.
-    scaling = set(n for n, m in moves.items() if m.get("stance") and m.get("attack_mult"))
-    opens = estimate.opens_map(moves)
-    worn = 0
-    for pth in estimate.fightlog.default_logs(estimate.ROOT)[0]:
-        try:
-            log = estimate.fightlog.read(pth, opens)
-        except Exception:
-            continue
-        if not log.rows:
-            continue
-        lv = estimate.levels_for_log(log)
-        if lv and any(lv.get(n) for n in scaling):
-            worn += 1
+    # as long as this holds. Counted in the shared corpus pass - see _corpus_sweep.
+    worn = _corpus_sweep()["stance_fights"]
     print("    %d fight(s) fought under a stance that scales attacks" % worn)
     check("  and no fight in the corpus was fought under one", worn, 0)
 
@@ -501,27 +529,8 @@ def coverage_has_a_floor():
     and been wrong both times. `tools/combat/coverage.py` prints the full breakdown.
     """
     print("\nhow much of the corpus still reaches the estimator")
-    moves = estimate.load_moves()
-    opens = estimate.opens_map(moves)
-    paths = estimate.fightlog.default_logs(estimate.ROOT)[0]
-    gains = thrown = openers = 0
-    for pth in paths:
-        try:
-            log = estimate.fightlog.read(pth, opens)
-        except Exception:
-            continue
-        if not log.rows:
-            continue
-        for eng in log.engagements:
-            gains += sum(1 for g in estimate.fightlog.attributed_gains(
-                eng, opens, log.me) if g[0] == "me")
-            for m in eng.moves:
-                if m.get("actor") != "me":
-                    continue
-                thrown += 1
-                can = opens.get(m.get("name") or m.get("move"))
-                if can:
-                    openers += 1
+    sweep = _corpus_sweep()
+    gains, openers, thrown = sweep["gains"], sweep["openers"], sweep["thrown"]
     print("    %d gains from %d cards that open something, of %d thrown"
           % (gains, openers, thrown))
     check("  the corpus still reaches the estimator", gains > 5000, True)
@@ -568,7 +577,7 @@ def cards_do_not_cross_sides():
     a body.
     """
     print("\na card belongs to one side of the fight")
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     ours = set(estimate.load_moves())
     theirs, bad, back = set(), [], []
     for name, rec in per.items():
@@ -601,7 +610,7 @@ def opponents_are_identified():
     print("\nopponents named by one log and not another")
     m = estimate.gob_species()
     check("  the corpus knows what most gobs were", len(m) > 1000, True)
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     # ENGAGEMENTS, not buckets. Each unidentified opponent is its own bucket of one, so
     # counting buckets makes 20 individuals look like 20 species and compares them against
     # 49 real ones. What matters is how much of the corpus landed somewhere useful.
@@ -628,7 +637,7 @@ def animal_cards_are_cards():
     every creature factor by c fits identically.
     """
     print("\nan animal's move separates into a card and a creature")
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     pct, f, res = estimate.animal_card_fit(per)
     check("  the fit has something to fit", (len(res) > 40) and (len(pct) > 8), True)
     n = len(res)
@@ -705,7 +714,7 @@ def pressure_denominator():
     estimate._CARD_SHEET.clear()
 
     print("\npressure is averaged over every action, not only the opening ones")
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     tested = 0
     for name, rec in sorted(per.items()):
         pr = (rec.get("pressure") or {})
@@ -1190,7 +1199,7 @@ def dropped_gains():
     weight in the pack therefore comes from the opening minutes.
     """
     print("\nthe gains MIN_GAIN drops, and what they are")
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     small, big = [], []
     for k in per:
         for r in per[k].get("wd") or ():
@@ -1262,7 +1271,7 @@ def attribution_provenance():
     come back as "contradictory" rather than as an error.
     """
     print("\nattribution provenance")
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     import json
     with open(estimate.PACK, encoding="utf8") as f:
         packed = json.load(f)
@@ -1591,7 +1600,7 @@ def defence_weight_late():
     goes red naming the reading that moved, not a law that does not exist.
     """
     print("\ndefence_weight_late, and whether the (1 - Oc) falloff is the cause")
-    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    per, _moves = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])
     rows = _wd_rows(per)
     agree = [n for n, c in rows if c["agrees"]]
     dis = [n for n, c in rows if not c["agrees"]]

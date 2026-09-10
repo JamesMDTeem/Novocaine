@@ -2352,6 +2352,27 @@ def foe_card_harmless(name):
     return not foe_card_opens(name)
 
 
+# One collect() per corpus per process. See collect_cached.
+_COLLECTED = {}
+
+
+def collect_cached(paths):
+    """collect(), memoised on the exact set of logs.
+
+    collect() reads every log in the corpus and the check suite calls it from a dozen
+    places, which took estimate_check.py past three minutes - most of it re-reading the
+    same 4557 files to build the same dictionary. It is a pure function of the corpus, so
+    the second call can be free.
+
+    Not folded into collect() itself: a caller that says collect() has asked for a read,
+    and a tool that regenerates the pack after a corpus changes must get one.
+    """
+    key = tuple(paths)
+    if key not in _COLLECTED:
+        _COLLECTED[key] = collect(paths)
+    return _COLLECTED[key]
+
+
 def collect(paths):
     _FOE_CARD.clear()
     _CARD_SHEET.clear()
