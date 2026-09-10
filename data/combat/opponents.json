@@ -24,7 +24,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 21.0,
+    "hi": 31.6,
     "lo": 14.0,
     "n": 2
    },
@@ -276,7 +276,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 18.1,
+    "hi": 27.2,
     "lo": 16.1,
     "n": 3
    },
@@ -368,7 +368,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 23.1,
+    "hi": 34.6,
     "lo": 13.1,
     "n": 1
    },
@@ -563,10 +563,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 7.3,
+    "lo": 5.8,
     "n": 2
    },
    "defence_weight_late": null,
@@ -642,7 +641,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 7.9,
+    "hi": 11.8,
     "lo": 4.9,
     "n": 1
    },
@@ -734,7 +733,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 19.1,
+    "hi": 28.7,
     "lo": 11.2,
     "n": 1
    },
@@ -870,7 +869,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 64.1,
+    "hi": 96.1,
     "lo": 45.1,
     "n": 1
    },
@@ -1182,7 +1181,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 8.4,
+    "hi": 12.6,
     "lo": 5.9,
     "n": 1
    },
@@ -1565,7 +1564,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 29.1,
+    "hi": 43.7,
     "lo": 21.4,
     "n": 2
    },
@@ -1642,7 +1641,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 9.2,
+    "hi": 13.9,
     "lo": 6.5,
     "n": 2
    },
@@ -1699,7 +1698,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 3.1,
+    "hi": 4.6,
     "lo": 2.5,
     "n": 2
    },
@@ -1824,7 +1823,7 @@
    "armour": null,
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 9.0,
+    "hi": 13.5,
     "lo": 5.3,
     "n": 1
    },
@@ -1892,10 +1891,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 24.1,
+    "lo": 20.4,
     "n": 2
    },
    "defence_weight_late": null,
@@ -1976,7 +1974,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 30.3,
+    "hi": 45.5,
     "lo": 11.2,
     "n": 2
    },
@@ -2053,7 +2051,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 50.3,
+    "hi": 75.4,
     "lo": 33.7,
     "n": 3
    },
@@ -2139,10 +2137,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 12.9,
+    "lo": 11.7,
     "n": 2
    },
    "defence_weight_late": null,
@@ -2231,7 +2228,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 7.9,
+    "hi": 11.8,
     "lo": 5.9,
     "n": 2
    },
@@ -2288,7 +2285,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 29.1,
+    "hi": 43.7,
     "lo": 17.6,
     "n": 1
    },
@@ -2345,7 +2342,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 32.3,
+    "hi": 48.4,
     "lo": 15.4,
     "n": 1
    },
@@ -2427,7 +2424,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 18.0,
+    "hi": 27.0,
     "lo": 8.5,
     "n": 1
    },
@@ -2509,7 +2506,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 8.4,
+    "hi": 12.6,
     "lo": 5.9,
     "n": 1
    },
@@ -2672,10 +2669,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 23.5,
+    "lo": 16.8,
     "n": 2
    },
    "defence_weight_late": null,
@@ -2756,7 +2752,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 72.9,
+    "hi": 109.3,
     "lo": 33.0,
     "n": 2
    },
@@ -2974,7 +2970,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 26.5,
+    "hi": 39.7,
     "lo": 13.3,
     "n": 2
    },
@@ -3193,7 +3189,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 32.2,
+    "hi": 48.3,
     "lo": 22.1,
     "n": 2
    },
@@ -3287,10 +3283,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 28.7,
+    "lo": 20.4,
     "n": 2
    },
    "defence_weight_late": null,
@@ -3381,7 +3376,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 60.2,
+    "hi": 90.3,
     "lo": 38.0,
     "n": 6
    },
@@ -3389,7 +3384,7 @@
     "against": 54.1,
     "agrees": true,
     "depth": 4,
-    "hi": 89.1,
+    "hi": 133.6,
     "lo": 31.8,
     "n": 4
    },
@@ -3467,7 +3462,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 4.9,
+    "hi": 7.4,
     "lo": 2.7,
     "n": 1
    },
@@ -3680,7 +3675,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 8.6,
+    "hi": 12.9,
     "lo": 5.5,
     "n": 1
    },
@@ -3755,7 +3750,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 53.8,
+    "hi": 80.7,
     "lo": 32.7,
     "n": 3
    },
@@ -3857,7 +3852,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 3.3,
+    "hi": 4.9,
     "lo": 3.0,
     "n": 2
    },
@@ -3936,7 +3931,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 8.4,
+    "hi": 12.6,
     "lo": 5.9,
     "n": 1
    },
@@ -3993,7 +3988,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 55.0,
+    "hi": 82.5,
     "lo": 35.4,
     "n": 4
    },
@@ -4075,7 +4070,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 9.4,
+    "hi": 14.1,
     "lo": 6.5,
     "n": 1
    },
@@ -4137,7 +4132,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 283.2,
+    "hi": 424.8,
     "lo": 85.7,
     "n": 6
    },
@@ -4145,7 +4140,7 @@
     "against": null,
     "agrees": null,
     "depth": 6,
-    "hi": 283.2,
+    "hi": 424.8,
     "lo": 85.7,
     "n": 6
    },
@@ -4231,7 +4226,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 6.8,
+    "hi": 10.2,
     "lo": 3.9,
     "n": 1
    },
@@ -4308,7 +4303,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 39.8,
+    "hi": 59.7,
     "lo": 28.2,
     "n": 3
    },
@@ -4477,7 +4472,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 64.5,
+    "hi": 96.8,
     "lo": 40.8,
     "n": 6
    },
@@ -4573,7 +4568,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 5.0,
+    "hi": 7.5,
     "lo": 3.2,
     "n": 1
    },
@@ -4637,7 +4632,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 1648310.4,
+    "hi": 2472465.6,
     "lo": 98.5,
     "n": 1
    },
@@ -4645,7 +4640,7 @@
     "against": null,
     "agrees": null,
     "depth": 5,
-    "hi": 206.0,
+    "hi": 309.1,
     "lo": 98.5,
     "n": 5
    },
@@ -4733,7 +4728,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 26.1,
+    "hi": 39.1,
     "lo": 17.0,
     "n": 2
    },
@@ -4786,7 +4781,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 36.0,
+    "hi": 54.0,
     "lo": 13.4,
     "n": 2
    },
@@ -4923,7 +4918,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 10.0,
+    "hi": 15.0,
     "lo": 6.3,
     "n": 1
    },
@@ -5042,7 +5037,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 53.0,
+    "hi": 79.5,
     "lo": 32.0,
     "n": 5
    },
@@ -5136,10 +5131,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 5.9,
+    "lo": 5.9,
     "n": 2
    },
    "defence_weight_late": null,
@@ -5244,7 +5238,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 23.1,
+    "hi": 34.6,
     "lo": 13.1,
     "n": 1
    },
@@ -5336,7 +5330,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 28.2,
+    "hi": 42.3,
     "lo": 20.4,
     "n": 2
    },
@@ -5478,7 +5472,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 7.9,
+    "hi": 11.8,
     "lo": 5.9,
     "n": 2
    },
@@ -5534,10 +5528,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 28.7,
+    "lo": 20.4,
     "n": 2
    },
    "defence_weight_late": null,
@@ -5613,7 +5606,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 4.0,
+    "hi": 6.0,
     "lo": 2.9,
     "n": 1
    },
@@ -5799,7 +5792,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 9.3,
+    "hi": 14.0,
     "lo": 6.1,
     "n": 1
    },
@@ -5910,7 +5903,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 23.1,
+    "hi": 34.6,
     "lo": 20.4,
     "n": 2
    },
@@ -6013,7 +6006,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 0.8,
+    "hi": 1.2,
     "lo": 0.5,
     "n": 1
    },
@@ -6068,7 +6061,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 3.5,
+    "hi": 5.3,
     "lo": 2.2,
     "n": 1
    },
@@ -6233,7 +6226,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 63.0,
+    "hi": 94.5,
     "lo": 32.0,
     "n": 2
    },
@@ -6518,7 +6511,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 29.1,
+    "hi": 43.7,
     "lo": 17.8,
     "n": 2
    },
@@ -6677,7 +6670,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 3.8,
+    "hi": 5.7,
     "lo": 2.9,
     "n": 1
    },
@@ -7022,7 +7015,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 55.0,
+    "hi": 82.5,
     "lo": 35.4,
     "n": 2
    },
@@ -7111,7 +7104,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 30.6,
+    "hi": 45.9,
     "lo": 13.7,
     "n": 1
    },
@@ -7272,7 +7265,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 117.2,
+    "hi": 175.8,
     "lo": 29.9,
     "n": 1
    },
@@ -7366,10 +7359,9 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
     "from_contaminated": true,
-    "hi": null,
-    "lo": null,
+    "hi": 36.3,
+    "lo": 26.6,
     "n": 3
    },
    "defence_weight_late": null,
@@ -7452,7 +7444,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 6.6,
+    "hi": 9.9,
     "lo": 3.9,
     "n": 1
    },
@@ -7529,7 +7521,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 21.4,
+    "hi": 32.1,
     "lo": 8.8,
     "n": 1
    },
@@ -7611,7 +7603,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 14.7,
+    "hi": 22.1,
     "lo": 11.7,
     "n": 2
    },
@@ -7741,7 +7733,7 @@
    },
    "defence_weight": {
     "from_contaminated": true,
-    "hi": 34.7,
+    "hi": 52.1,
     "lo": 20.4,
     "n": 1
    },
@@ -8310,7 +8302,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 85.3,
+    "hi": 122.5,
     "lo": 80.1,
     "n": 28
    },
@@ -8318,7 +8310,7 @@
     "against": 68.5,
     "agrees": false,
     "depth": 21,
-    "hi": 144.7,
+    "hi": 168.0,
     "lo": 83.5,
     "n": 21
    },
@@ -8727,7 +8719,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 39.7,
+    "hi": 44.7,
     "lo": 35.2,
     "n": 459
    },
@@ -8735,7 +8727,7 @@
     "against": 29.2,
     "agrees": false,
     "depth": 94,
-    "hi": 38.7,
+    "hi": 56.5,
     "lo": 35.7,
     "n": 94
    },
@@ -9403,8 +9395,8 @@
    "defence_weight_late": {
     "against": 128.7,
     "agrees": false,
-    "depth": 327,
-    "hi": 130.1,
+    "depth": 328,
+    "hi": 138.0,
     "lo": 129.9,
     "n": 337
    },
@@ -9573,7 +9565,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 393.3,
+    "hi": 589.9,
     "lo": 205.2,
     "n": 23
    },
@@ -9581,7 +9573,7 @@
     "against": 246.0,
     "agrees": true,
     "depth": 22,
-    "hi": 393.3,
+    "hi": 589.9,
     "lo": 205.2,
     "n": 22
    },
@@ -9947,7 +9939,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 4.8,
+    "hi": 7.2,
     "lo": 3.4,
     "n": 16
    },
@@ -9955,7 +9947,7 @@
     "against": 4.1,
     "agrees": true,
     "depth": 9,
-    "hi": 10.4,
+    "hi": 15.6,
     "lo": 2.5,
     "n": 9
    },
@@ -10053,7 +10045,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 59.3,
+    "hi": 88.9,
     "lo": 43.3,
     "n": 14
    },
@@ -10061,7 +10053,7 @@
     "against": 47.2,
     "agrees": true,
     "depth": 9,
-    "hi": 73.8,
+    "hi": 110.6,
     "lo": 43.3,
     "n": 9
    },
@@ -10372,7 +10364,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 165.3,
+    "hi": 214.6,
     "lo": 128.8,
     "n": 26
    },
@@ -10380,7 +10372,7 @@
     "against": 113.7,
     "agrees": false,
     "depth": 104,
-    "hi": 166.6,
+    "hi": 167.4,
     "lo": 127.5,
     "n": 108
    },
@@ -10535,16 +10527,16 @@
     "depth"
    ],
    "defence_weight": {
-    "hi": 214.2,
+    "hi": 257.0,
     "lo": 196.8,
     "n": 119
    },
    "defence_weight_late": {
     "against": 183.1,
     "agrees": false,
-    "depth": 324,
-    "hi": 218.9,
-    "lo": 212.9,
+    "depth": 325,
+    "hi": 220.5,
+    "lo": 220.5,
     "n": 326
    },
    "engagements": 63,
@@ -10854,16 +10846,15 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
-    "hi": null,
-    "lo": null,
+    "hi": 98.8,
+    "lo": 68.5,
     "n": 63
    },
    "defence_weight_late": {
     "against": 74.2,
     "agrees": true,
     "depth": 6,
-    "hi": 127.6,
+    "hi": 178.7,
     "lo": 63.5,
     "n": 6
    },
@@ -11068,16 +11059,15 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
-    "hi": null,
-    "lo": null,
+    "hi": 70.4,
+    "lo": 57.0,
     "n": 111
    },
    "defence_weight_late": {
     "against": 46.1,
     "agrees": false,
     "depth": 65,
-    "hi": 79.7,
+    "hi": 80.9,
     "lo": 63.6,
     "n": 65
    },
@@ -11335,7 +11325,7 @@
    "defence_weight_late": {
     "against": 60.2,
     "agrees": false,
-    "depth": 115,
+    "depth": 116,
     "hi": 123.1,
     "lo": 115.2,
     "n": 121
@@ -11723,7 +11713,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 157.9,
+    "hi": 212.6,
     "lo": 148.2,
     "n": 15
    },
@@ -11731,7 +11721,7 @@
     "against": 147.5,
     "agrees": true,
     "depth": 18,
-    "hi": 172.1,
+    "hi": 208.9,
     "lo": 125.3,
     "n": 18
    },
@@ -12350,7 +12340,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 110.5,
+    "hi": 135.9,
     "lo": 80.0,
     "n": 10
    },
@@ -12358,7 +12348,7 @@
     "against": 97.2,
     "agrees": true,
     "depth": 4,
-    "hi": 114.5,
+    "hi": 171.7,
     "lo": 78.3,
     "n": 4
    },
@@ -12455,16 +12445,15 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
-    "hi": null,
-    "lo": null,
+    "hi": 83.2,
+    "lo": 80.2,
     "n": 39
    },
    "defence_weight_late": {
     "against": 68.1,
     "agrees": true,
     "depth": 6,
-    "hi": 100.2,
+    "hi": 113.1,
     "lo": 49.5,
     "n": 6
    },
@@ -12893,7 +12882,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 18.1,
+    "hi": 24.4,
     "lo": 17.7,
     "n": 64
    },
@@ -13169,9 +13158,9 @@
    },
    "defence_weight_late": {
     "against": 158.0,
-    "agrees": false,
+    "agrees": true,
     "depth": 106,
-    "hi": 157.5,
+    "hi": 185.6,
     "lo": 137.5,
     "n": 106
    },
@@ -13337,16 +13326,15 @@
     "wiki": null
    },
    "defence_weight": {
-    "contradictory": true,
-    "hi": null,
-    "lo": null,
+    "hi": 57.1,
+    "lo": 46.2,
     "n": 52
    },
    "defence_weight_late": {
     "against": 46.1,
     "agrees": true,
     "depth": 95,
-    "hi": 68.5,
+    "hi": 80.5,
     "lo": 45.6,
     "n": 95
    },
@@ -13646,7 +13634,7 @@
     "against": 43.7,
     "agrees": true,
     "depth": 25,
-    "hi": 88.6,
+    "hi": 91.5,
     "lo": 39.2,
     "n": 25
    },
@@ -13779,7 +13767,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 112.9,
+    "hi": 122.5,
     "lo": 85.2,
     "n": 41
    },
@@ -14303,7 +14291,7 @@
     "against": 28.8,
     "agrees": false,
     "depth": 43,
-    "hi": 55.1,
+    "hi": 57.6,
     "lo": 29.0,
     "n": 44
    },
@@ -15077,7 +15065,7 @@
     "wiki": null
    },
    "defence_weight": {
-    "hi": 61.7,
+    "hi": 81.7,
     "lo": 34.0,
     "n": 5
    },

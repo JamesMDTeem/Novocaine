@@ -340,7 +340,15 @@ def mu_bounds(level):
     quantity actually being measured, and it behaved like one: the estimate moved by a
     fifth depending only on where a noise threshold was set.
     """
-    if not level or level < 1:
+    # AN UNKNOWN LEVEL IS NOT LEVEL 1. This returned the same point at 1.0 for both, and
+    # level 1 is the one level where mu is measured to a point - so "we have no deck for
+    # this fight" came out asserting the card was unlevelled. It is 16% of the corpus and
+    # it is not spread evenly: 1227 of the 1334 gains affected belong to one character,
+    # the one whose readings sit furthest from the model. An unknown level gets the whole
+    # stated range, which is what the paragraph above says the honest input is.
+    if level is None:
+        return (1.0, MU_MAX)
+    if level < 1:
         return (MU, MU)
     # Measured, wherever Take Aim has been logged at that level - see MU_MEASURED. A
     # measurement beats a stated range: at level 2 it narrows 1.0-1.5 to 1.14-1.18, which
@@ -810,8 +818,24 @@ def attack_weight_bounds(move, attrs, level=None):
                 mult *= float(tok[:-1]) / 100.0
             except ValueError:
                 pass
+    # NOT EVERY CARD'S WEIGHT CARRIES mu. Most sheets read "unarmed / 80% / mu" or
+    # "According to weapon / mu", and three do not: Flex, Opportunity Knocks and Watch Its
+    # Moves name a skill and stop there. Scaling those by a deck weighting the card does
+    # not claim overstates a levelled card's weight by up to half.
+    if not _weight_has_mu(move):
+        return (base * mult, base * mult)
     lo, hi = mu_bounds(level)
     return (base * mult * lo, base * mult * hi)
+
+
+def _weight_has_mu(move):
+    """Whether this card's ATTACK WEIGHT line is the one mu multiplies.
+
+    The sheet keeps the line as written, so the marker is simply present or absent. A card
+    with no attack weight at all - Quick Dodge, Take Aim - never reaches here."""
+    raw = move.get("attack_weight")
+    return bool(raw) and (("µ" in raw) or ("μ" in raw)
+                          or ("µ" in raw) or ("μ" in raw))
 
 
 # How close to the clamp counts as on it. See agility_interval.
