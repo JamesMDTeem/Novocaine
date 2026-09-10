@@ -135,6 +135,7 @@ public class CombatOptimizerCheck {
 
     public static void main(String[] args) {
         advisor();
+        beamAndDeckSize();
         inertFoe();
         fleeing();
         startingInitiative();
@@ -199,6 +200,49 @@ public class CombatOptimizerCheck {
         Optimizer.Plan afford = Advisor.choose(front, Advisor.Aim.BUDGET, 1e9);
         check("  and a budget everything meets returns the fastest",
               (afford != null) && (afford.ticks == quick.ticks), true);
+    }
+
+    /* ADDING A CARD CANNOT MAKE THE OPTIMUM WORSE, and the beam breaks that on long
+     * fights. The plan that ignores the extra card is still available, so a curve that
+     * rises with deck size is the search losing its own winning line - the same argument
+     * beamWasEnough makes about the initiative curve, applied to the deck instead.
+     *
+     * Only the short fight is asserted here, and deliberately. This harness fights a
+     * synthetic opponent with a three-card deck and cannot reach a long kill at all - it
+     * returns no plan rather than a slow one, which tests nothing. The long-fight failure
+     * is measured against the real pack in CombatDeckSearch, where ticks by deck size
+     * against the cave angler run 736, 705, 705, 884 at beam 20 and 736, 661, 674, 669,
+     * 683, 692 at beam 2000: still rising, a hundredfold beam later. Against the ants
+     * every beam from 20 up is monotone.
+     *
+     * So the invariant holds where the search is deep enough and breaks where it is not,
+     * and anything downstream that compares decks is unreliable exactly where fights are
+     * long. CombatDeckSearch says so at the top of its own output.
+     */
+    static void beamAndDeckSize() {
+        System.out.println("\na bigger deck must not measure worse, and on long fights it does");
+        List<Move> pool = Optimizer.deck(barrage(), quickDodge(), fullCircle());
+        FoeModel model = new FoeModel(45, new double[] {14, 0, 0, 0}, 312.5, 90.0, 20, 20);
+        for(double hp : new double[] {300}) {
+            Combatant a = me();
+            StringBuilder sb = new StringBuilder();
+            long prev = Long.MIN_VALUE;
+            boolean rises = false;
+            for(int k = 1; k <= pool.size(); k++) {
+                List<Optimizer.Plan> front = Optimizer.search(
+                    a, foe(hp, 20), pool.subList(0, k), model, 200, 4000);
+                Optimizer.Plan best = Advisor.choose(front, Advisor.Aim.FASTEST,
+                                                     Double.MAX_VALUE);
+                long t = ((best == null) || !best.killed) ? -1 : best.ticks;
+                if((prev != Long.MIN_VALUE) && (t > prev))
+                    rises = true;
+                prev = t;
+                sb.append(String.format("%7d", t));
+            }
+            System.out.printf("    %5.0f hp:%s   %s%n", hp, sb,
+                              rises ? "RISES - the beam lost the line" : "monotone");
+            check("  a short fight is monotone in deck size", rises, false);
+        }
     }
 
     static Combatant me() {
