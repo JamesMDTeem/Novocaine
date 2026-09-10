@@ -371,6 +371,20 @@ public class CombatPackCheck {
             if((o.threat != null) && !Double.isNaN(o.threat.fleesBelow))
                 flees++;
         }
+        /* The pinned hitpoint band. The envelope is honest and this is useful; a check
+         * that let them drift apart would let a one-shot's [almost nothing, total] back
+         * into the number a simulator plans against. */
+        int pinned = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.hpPinned())
+                pinned++;
+        }
+        check("some opponent's size is pinned, not merely bounded", pinned > 0, true);
+        check("  and a pinned band never falls outside the envelope",
+              pinnedInsideEnvelope(foes), true);
+        check("  and it is never wider than the envelope it came from",
+              pinnedNarrower(foes), true);
+
         check("some opponent has a measured flee threshold", flees > 0, true);
         check("  and every one of them is a share of health, not a count",
               fleeThresholdsAreShares(foes), true);
@@ -380,6 +394,28 @@ public class CombatPackCheck {
         check("  and an unmeasured one says so rather than yes", unknown > 0, true);
         check("  with disengagement refused where it was never measured",
               noUnmeasuredClaimsEscape(foes), true);
+    }
+
+    /** Every pinned individual is also in the envelope, so the band must sit inside it. */
+    static boolean pinnedInsideEnvelope(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.hpPinned())
+                continue;
+            if((o.hpPinLo < o.hpLo - 1e-9) || (o.hpPinHi > o.hpHi + 1e-9))
+                return(false);
+        }
+        return(true);
+    }
+
+    /** It is drawn from a subset, so it cannot be wider - if it is, the two disagree. */
+    static boolean pinnedNarrower(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.hpPinned())
+                continue;
+            if((o.hpPinHi - o.hpPinLo) > (o.hpHi - o.hpLo) + 1e-9)
+                return(false);
+        }
+        return(true);
     }
 
     /** A threshold is a fraction of hitpoints, so anything outside (0, 1) is a unit bug. */

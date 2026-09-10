@@ -2925,6 +2925,19 @@ def wiki_value(entry, field):
     return v
 
 
+# A KILLING BLOW THAT REMOVES MOST OF THE BAR PINS NOTHING. Each killed individual is
+# bracketed by [total - last hit, total], so a one-shot yields something like [1, 141] -
+# true, useless, and enough to set the species floor, because that floor is the minimum
+# over every individual. The corpus holds 503 one-shot kills across 49 species, and the
+# reindeer's band reads 1 to 287 because of them.
+#
+# An individual counts as pinned when its last hit took no more than this share of its
+# total, so its bracket is at worst a quarter of the creature.
+PIN_SHARE = 0.25
+# Below this many pinned individuals the band describes one animal's size, not a species'.
+PIN_MIN_N = 3
+
+
 def summarise_hp(dealt, killed, last_hit, wiki_entry):
     """Hitpoints, as the range a fresh one of these could have.
 
@@ -2955,6 +2968,9 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     """
     stated = wiki_value(wiki_entry, "hp")
     per, lo, hi, sur = [], None, None, None
+    # Individuals a kill actually PINNED - see PIN_SHARE. Kept beside the envelope rather
+    # than replacing it: the envelope is honest and this is useful, and those are two jobs.
+    pin_lo, pin_hi, pin_n = None, None, 0
 
     for gob, d in sorted(dealt.items()):
         if d <= 0:
@@ -2965,6 +2981,10 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
                        % (d, last_hit.get(gob, 0), floor, ceil))
             lo = floor if lo is None else min(lo, floor)
             hi = ceil if hi is None else max(hi, ceil)
+            if (last_hit.get(gob, 0) / float(d)) <= PIN_SHARE:
+                pin_n += 1
+                pin_lo = floor if pin_lo is None else min(pin_lo, floor)
+                pin_hi = ceil if pin_hi is None else max(pin_hi, ceil)
         else:
             # A survivor proves some individual was AT LEAST this big, which raises the
             # top of the range and says nothing about the bottom. Letting it lower the
@@ -3019,7 +3039,14 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     if use_lo is None and use_hi is None:
         return None
     return {"lo": use_lo, "hi": use_hi, "wiki": stated, "verdict": verdict,
-            "observed_lo": lo, "observed_hi": hi, "from": "; ".join(per) or "wiki only"}
+            "observed_lo": lo, "observed_hi": hi,
+            # The band from individuals a kill pinned, and how many there were. Null where
+            # too few did. Median width across the 14 species with enough of them is 54% of
+            # the envelope's, and the reindeer's is 9% - 140 to 167 against 1 to 287.
+            "pinned_lo": pin_lo if pin_n >= PIN_MIN_N else None,
+            "pinned_hi": pin_hi if pin_n >= PIN_MIN_N else None,
+            "pinned_n": pin_n,
+            "from": "; ".join(per) or "wiki only"}
 
 
 DEPTH = depth_scaled()

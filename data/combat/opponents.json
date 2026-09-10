@@ -36,6 +36,9 @@
     "lo": 28,
     "observed_hi": 109,
     "observed_lo": 28,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -103,6 +106,9 @@
     "lo": 62,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -145,6 +151,9 @@
     "lo": 14,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -206,6 +215,9 @@
     "lo": 33,
     "observed_hi": 137,
     "observed_lo": 33,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -288,6 +300,9 @@
     "lo": 37,
     "observed_hi": 148,
     "observed_lo": 37,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -380,6 +395,9 @@
     "lo": 44,
     "observed_hi": 156,
     "observed_lo": 44,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -494,6 +512,9 @@
     "lo": 27,
     "observed_hi": 117,
     "observed_lo": 27,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -571,6 +592,9 @@
     "lo": 20,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -648,6 +672,9 @@
     "lo": 67,
     "observed_hi": 147,
     "observed_lo": 67,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -740,6 +767,9 @@
     "lo": 48,
     "observed_hi": 150,
     "observed_lo": 48,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -824,6 +854,9 @@
     "lo": 32,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -881,6 +914,9 @@
     "lo": 47,
     "observed_hi": 173,
     "observed_lo": 47,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -964,6 +1000,9 @@
     "lo": 29,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1039,6 +1078,9 @@
     "lo": 286,
     "observed_hi": 426,
     "observed_lo": 286,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1116,6 +1158,9 @@
     "lo": 42,
     "observed_hi": 112,
     "observed_lo": 42,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1193,6 +1238,9 @@
     "lo": 18,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1235,6 +1283,9 @@
     "lo": 3,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1283,6 +1334,9 @@
     "lo": 25,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1378,6 +1432,9 @@
     "lo": 18,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1450,6 +1507,9 @@
     "lo": 24,
     "observed_hi": 119,
     "observed_lo": 24,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1576,6 +1636,9 @@
     "lo": 57,
     "observed_hi": 184,
     "observed_lo": 57,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1653,6 +1716,9 @@
     "lo": 6,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1710,6 +1776,9 @@
     "lo": 0,
     "observed_hi": 30,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1786,6 +1855,9 @@
     "lo": 14,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1899,6 +1971,9 @@
     "lo": 61,
     "observed_hi": 143,
     "observed_lo": 61,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -1981,6 +2056,9 @@
     "lo": 50,
     "observed_hi": 85,
     "observed_lo": 50,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2058,6 +2136,9 @@
     "lo": 91,
     "observed_hi": 140,
     "observed_lo": 91,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2145,6 +2226,9 @@
     "lo": 34,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2235,6 +2319,9 @@
     "lo": 18,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2292,6 +2379,9 @@
     "lo": 44,
     "observed_hi": 163,
     "observed_lo": 44,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2344,6 +2434,9 @@
     "lo": 68,
     "observed_hi": 132,
     "observed_lo": 68,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2421,6 +2514,9 @@
     "lo": 30,
     "observed_hi": 103,
     "observed_lo": 30,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2503,6 +2599,9 @@
     "lo": 5,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2560,6 +2659,9 @@
     "lo": 79,
     "observed_hi": 123,
     "observed_lo": 79,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2662,6 +2764,9 @@
     "lo": 16,
     "observed_hi": 109,
     "observed_lo": 16,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2739,6 +2844,9 @@
     "lo": 16,
     "observed_hi": 67,
     "observed_lo": 16,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2873,6 +2981,9 @@
     "lo": 66,
     "observed_hi": 130,
     "observed_lo": 66,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -2952,6 +3063,9 @@
     "lo": 849,
     "observed_hi": 911,
     "observed_lo": 849,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": null,
     "wiki": null
    },
@@ -3065,6 +3179,9 @@
     "lo": 111,
     "observed_hi": 129,
     "observed_lo": 111,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": null,
     "wiki": null
    },
@@ -3171,6 +3288,9 @@
     "lo": 15,
     "observed_hi": 85,
     "observed_lo": 15,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3266,6 +3386,9 @@
     "lo": 77,
     "observed_hi": 167,
     "observed_lo": 77,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3365,6 +3488,9 @@
     "lo": 109,
     "observed_hi": 187,
     "observed_lo": 109,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3444,6 +3570,9 @@
     "lo": 21,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3575,6 +3704,9 @@
     "lo": 31,
     "observed_hi": 131,
     "observed_lo": 31,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3657,6 +3789,9 @@
     "lo": 14,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3728,6 +3863,9 @@
     "lo": 41,
     "observed_hi": 85,
     "observed_lo": 41,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3825,6 +3963,9 @@
     "lo": 37,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3904,6 +4045,9 @@
     "lo": 17,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -3961,6 +4105,9 @@
     "lo": 94,
     "observed_hi": 195,
     "observed_lo": 94,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4043,6 +4190,9 @@
     "lo": 14,
     "observed_hi": 94,
     "observed_lo": 14,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4100,6 +4250,9 @@
     "lo": 296,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4187,6 +4340,9 @@
     "lo": 35,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4259,6 +4415,9 @@
     "lo": 74,
     "observed_hi": 140,
     "observed_lo": 74,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4311,6 +4470,9 @@
     "lo": 8,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4353,6 +4515,9 @@
     "lo": 6,
     "observed_hi": 18,
     "observed_lo": 6,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4424,6 +4589,9 @@
     "lo": 136,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4505,6 +4673,9 @@
     "lo": 34,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4576,6 +4747,9 @@
     "lo": 201,
     "observed_hi": 209,
     "observed_lo": 201,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": null,
     "wiki": null
    },
@@ -4660,6 +4834,9 @@
     "lo": 45,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4708,6 +4885,9 @@
     "lo": 85,
     "observed_hi": 137,
     "observed_lo": 85,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4845,6 +5025,9 @@
     "lo": 32,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4907,6 +5090,9 @@
     "lo": 6,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -4964,6 +5150,9 @@
     "lo": 43,
     "observed_hi": 86,
     "observed_lo": 43,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5059,6 +5248,9 @@
     "lo": 5,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5165,6 +5357,9 @@
     "lo": 21,
     "observed_hi": 96,
     "observed_lo": 21,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5257,6 +5452,9 @@
     "lo": 73,
     "observed_hi": 108,
     "observed_lo": 73,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5342,6 +5540,9 @@
     "lo": 34,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5399,6 +5600,9 @@
     "lo": 23,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5456,6 +5660,9 @@
     "lo": 24,
     "observed_hi": 117,
     "observed_lo": 24,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5528,6 +5735,9 @@
     "lo": 14,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5599,6 +5809,9 @@
     "lo": 26,
     "observed_hi": 55,
     "observed_lo": 26,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5705,6 +5918,9 @@
     "lo": 82,
     "observed_hi": 124,
     "observed_lo": 82,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5816,6 +6032,9 @@
     "lo": 44,
     "observed_hi": 127,
     "observed_lo": 44,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5914,6 +6133,9 @@
     "lo": 33,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -5969,6 +6191,9 @@
     "lo": 4,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6026,6 +6251,9 @@
     "lo": 25,
     "observed_hi": 125,
     "observed_lo": 25,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6139,6 +6367,9 @@
     "lo": 30,
     "observed_hi": 99,
     "observed_lo": 30,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6229,6 +6460,9 @@
     "lo": 36,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6340,6 +6574,9 @@
     "lo": 4,
     "observed_hi": 16,
     "observed_lo": 4,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6424,6 +6661,9 @@
     "lo": 112,
     "observed_hi": 225,
     "observed_lo": 112,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6501,6 +6741,9 @@
     "lo": 65,
     "observed_hi": 130,
     "observed_lo": 65,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6583,6 +6826,9 @@
     "lo": 8,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6645,6 +6891,9 @@
     "lo": 92,
     "observed_hi": 115,
     "observed_lo": 92,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": null,
     "wiki": null
    },
@@ -6727,6 +6976,9 @@
     "lo": 36,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6847,6 +7099,9 @@
     "lo": 56,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -6924,6 +7179,9 @@
     "lo": 85,
     "observed_hi": 175,
     "observed_lo": 85,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7008,6 +7266,9 @@
     "lo": 24,
     "observed_hi": 92,
     "observed_lo": 24,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7092,6 +7353,9 @@
     "lo": 32,
     "observed_hi": 132,
     "observed_lo": 32,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7164,6 +7428,9 @@
     "lo": 38,
     "observed_hi": 136,
     "observed_lo": 38,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7254,6 +7521,9 @@
     "lo": 85,
     "observed_hi": 241,
     "observed_lo": 85,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7333,6 +7603,9 @@
     "lo": 26,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7410,6 +7683,9 @@
     "lo": 35,
     "observed_hi": 146,
     "observed_lo": 35,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7492,6 +7768,9 @@
     "lo": 47,
     "observed_hi": 177,
     "observed_lo": 47,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7544,6 +7823,9 @@
     "lo": 45,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7622,6 +7904,9 @@
     "lo": 20,
     "observed_hi": 104,
     "observed_lo": 20,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7696,6 +7981,9 @@
     "lo": 17,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7761,6 +8049,9 @@
     "lo": 698,
     "observed_hi": 809,
     "observed_lo": 698,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": null,
     "wiki": null
    },
@@ -7858,6 +8149,9 @@
     "lo": 104,
     "observed_hi": 185,
     "observed_lo": 104,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -7934,6 +8228,9 @@
     "lo": 62,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -8013,6 +8310,9 @@
     "lo": 62,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -8085,6 +8385,9 @@
     "lo": 75,
     "observed_hi": 119,
     "observed_lo": 75,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -8187,6 +8490,9 @@
     "lo": 0,
     "observed_hi": 69,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": "22 of these died before taking the wiki's 70, so they were below its base quality (or already hurt when we met them)",
     "wiki": 70
    },
@@ -8328,6 +8634,9 @@
     "lo": 0,
     "observed_hi": 41,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
@@ -8466,6 +8775,9 @@
     "lo": 0,
     "observed_hi": 406,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 2,
     "verdict": "individuals seen on both sides of the wiki's 250",
     "wiki": 250
    },
@@ -8605,6 +8917,9 @@
     "lo": 3,
     "observed_hi": 84,
     "observed_lo": 3,
+    "pinned_hi": 80,
+    "pinned_lo": 65,
+    "pinned_n": 5,
     "verdict": "113 of these died before taking the wiki's 90, so they were below its base quality (or already hurt when we met them)",
     "wiki": 90
    },
@@ -8738,6 +9053,9 @@
     "lo": 478,
     "observed_hi": 1143,
     "observed_lo": 478,
+    "pinned_hi": 1004,
+    "pinned_lo": 682,
+    "pinned_n": 13,
     "verdict": "individuals seen on both sides of the wiki's 850",
     "wiki": 850
    },
@@ -8897,6 +9215,9 @@
     "lo": 0,
     "observed_hi": 216,
     "observed_lo": 0,
+    "pinned_hi": 107,
+    "pinned_lo": 85,
+    "pinned_n": 3,
     "verdict": "individuals seen on both sides of the wiki's 100",
     "wiki": 100
    },
@@ -9029,6 +9350,9 @@
     "lo": 0,
     "observed_hi": 182,
     "observed_lo": 0,
+    "pinned_hi": 149,
+    "pinned_lo": 59,
+    "pinned_n": 4,
     "verdict": null,
     "wiki": null
    },
@@ -9160,6 +9484,9 @@
     "lo": 0,
     "observed_hi": 48,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
@@ -9273,6 +9600,9 @@
     "lo": 212,
     "observed_hi": 677,
     "observed_lo": 212,
+    "pinned_hi": 612,
+    "pinned_lo": 288,
+    "pinned_n": 39,
     "verdict": "individuals seen on both sides of the wiki's 450",
     "wiki": 450
    },
@@ -9447,6 +9777,9 @@
     "lo": 14,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -9821,6 +10154,9 @@
     "lo": 445,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -9927,6 +10263,9 @@
     "lo": 226,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -10011,6 +10350,9 @@
     "lo": 18,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": null
    },
@@ -10117,6 +10459,9 @@
     "lo": 499,
     "observed_hi": 1006,
     "observed_lo": 499,
+    "pinned_hi": 1006,
+    "pinned_lo": 570,
+    "pinned_n": 5,
     "verdict": "6 of these died before taking the wiki's 1200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 1200
    },
@@ -10251,6 +10596,9 @@
     "lo": 0,
     "observed_hi": 591,
     "observed_lo": 0,
+    "pinned_hi": 401,
+    "pinned_lo": 257,
+    "pinned_n": 8,
     "verdict": null,
     "wiki": null
    },
@@ -10415,6 +10763,9 @@
     "lo": 1200,
     "observed_hi": 1677,
     "observed_lo": 1343,
+    "pinned_hi": 1677,
+    "pinned_lo": 1343,
+    "pinned_n": 15,
     "verdict": "16 of these held out past the wiki's 1200, so they were above its base quality",
     "wiki": 1200
    },
@@ -10594,6 +10945,9 @@
     "lo": 0,
     "observed_hi": 135,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "individuals seen on both sides of the wiki's 120",
     "wiki": 120
    },
@@ -10732,6 +11086,9 @@
     "lo": 0,
     "observed_hi": 87,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "25 of these died before taking the wiki's 150, so they were below its base quality (or already hurt when we met them)",
     "wiki": 150
    },
@@ -10851,6 +11208,9 @@
     "lo": 84,
     "observed_hi": 193,
     "observed_lo": 84,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "1 of these died before taking the wiki's 180, so they were below its base quality (or already hurt when we met them)",
     "wiki": 180
    },
@@ -10945,6 +11305,9 @@
     "lo": 0,
     "observed_hi": 250,
     "observed_lo": 0,
+    "pinned_hi": 250,
+    "pinned_lo": 86,
+    "pinned_n": 3,
     "verdict": "individuals seen on both sides of the wiki's 110",
     "wiki": 110
    },
@@ -11077,6 +11440,9 @@
     "lo": 98,
     "observed_hi": 240,
     "observed_lo": 98,
+    "pinned_hi": 224,
+    "pinned_lo": 98,
+    "pinned_n": 6,
     "verdict": "9 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
     "wiki": 250
    },
@@ -11205,6 +11571,9 @@
     "lo": 8,
     "observed_hi": 301,
     "observed_lo": 8,
+    "pinned_hi": 205,
+    "pinned_lo": 48,
+    "pinned_n": 7,
     "verdict": "individuals seen on both sides of the wiki's 60",
     "wiki": 60
    },
@@ -11346,6 +11715,9 @@
     "lo": 176,
     "observed_hi": 401,
     "observed_lo": 176,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": "1 of these died before taking the wiki's 320, so they were below its base quality (or already hurt when we met them)",
     "wiki": 320
    },
@@ -11460,6 +11832,9 @@
     "lo": 0,
     "observed_hi": 252,
     "observed_lo": 0,
+    "pinned_hi": 197,
+    "pinned_lo": 57,
+    "pinned_n": 10,
     "verdict": null,
     "wiki": null
    },
@@ -11599,6 +11974,9 @@
     "lo": 222,
     "observed_hi": 497,
     "observed_lo": 222,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": null,
     "wiki": null
    },
@@ -11744,6 +12122,9 @@
     "lo": 112,
     "observed_hi": 647,
     "observed_lo": 112,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": "4 of these died before taking the wiki's 400, so they were below its base quality (or already hurt when we met them)",
     "wiki": 400
    },
@@ -11894,6 +12275,9 @@
     "lo": 4000,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": 4000
    },
@@ -12044,6 +12428,9 @@
     "lo": 447,
     "observed_hi": 998,
     "observed_lo": 447,
+    "pinned_hi": 998,
+    "pinned_lo": 695,
+    "pinned_n": 15,
     "verdict": "individuals seen on both sides of the wiki's 800",
     "wiki": 800
    },
@@ -12225,6 +12612,9 @@
     "lo": 0,
     "observed_hi": 142,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "every individual seen is consistent with the wiki's 100",
     "wiki": 100
    },
@@ -12330,6 +12720,9 @@
     "lo": 0,
     "observed_hi": 102,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "individuals seen on both sides of the wiki's 130",
     "wiki": 130
    },
@@ -12479,6 +12872,9 @@
     "lo": 50,
     "observed_hi": 940,
     "observed_lo": 797,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 2,
     "verdict": "2 of these held out past the wiki's 50, so they were above its base quality",
     "wiki": 50
    },
@@ -12595,6 +12991,9 @@
     "lo": 709,
     "observed_hi": 1089,
     "observed_lo": 709,
+    "pinned_hi": 1089,
+    "pinned_lo": 709,
+    "pinned_n": 3,
     "verdict": null,
     "wiki": null
    },
@@ -12764,6 +13163,9 @@
     "lo": 2,
     "observed_hi": 56,
     "observed_lo": 2,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
@@ -12893,6 +13295,9 @@
     "lo": 0,
     "observed_hi": 365,
     "observed_lo": 0,
+    "pinned_hi": 219,
+    "pinned_lo": 133,
+    "pinned_n": 3,
     "verdict": "individuals seen on both sides of the wiki's 200",
     "wiki": 200
    },
@@ -13041,6 +13446,9 @@
     "lo": 1,
     "observed_hi": 287,
     "observed_lo": 1,
+    "pinned_hi": 167,
+    "pinned_lo": 140,
+    "pinned_n": 5,
     "verdict": "individuals seen on both sides of the wiki's 200",
     "wiki": 200
    },
@@ -13153,6 +13561,9 @@
     "lo": 10,
     "observed_hi": null,
     "observed_lo": null,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": null,
     "wiki": 10
    },
@@ -13212,6 +13623,9 @@
     "lo": 28,
     "observed_hi": 290,
     "observed_lo": 28,
+    "pinned_hi": 132,
+    "pinned_lo": 100,
+    "pinned_n": 7,
     "verdict": "individuals seen on both sides of the wiki's 120",
     "wiki": 120
    },
@@ -13361,6 +13775,9 @@
     "lo": 50,
     "observed_hi": 315,
     "observed_lo": 50,
+    "pinned_hi": 236,
+    "pinned_lo": 105,
+    "pinned_n": 16,
     "verdict": null,
     "wiki": null
    },
@@ -13515,6 +13932,9 @@
     "lo": 36,
     "observed_hi": 231,
     "observed_lo": 36,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "1 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 200
    },
@@ -13656,6 +14076,9 @@
     "lo": 0,
     "observed_hi": 132,
     "observed_lo": 0,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "16 of these died before taking the wiki's 150, so they were below its base quality (or already hurt when we met them)",
     "wiki": 150
    },
@@ -13768,6 +14191,9 @@
     "lo": 1000,
     "observed_hi": 1291,
     "observed_lo": 1207,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 1,
     "verdict": "1 of these held out past the wiki's 1000, so they were above its base quality",
     "wiki": 1000
    },
@@ -13877,6 +14303,9 @@
     "lo": 4,
     "observed_hi": 203,
     "observed_lo": 4,
+    "pinned_hi": 96,
+    "pinned_lo": 42,
+    "pinned_n": 6,
     "verdict": null,
     "wiki": null
    },
@@ -14013,6 +14442,9 @@
     "lo": 660,
     "observed_hi": 1076,
     "observed_lo": 660,
+    "pinned_hi": 1016,
+    "pinned_lo": 660,
+    "pinned_n": 5,
     "verdict": "individuals seen on both sides of the wiki's 900",
     "wiki": 900
    },
@@ -14168,6 +14600,9 @@
     "lo": 0,
     "observed_hi": 335,
     "observed_lo": 0,
+    "pinned_hi": 105,
+    "pinned_lo": 74,
+    "pinned_n": 7,
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
@@ -14318,6 +14753,9 @@
     "lo": 15,
     "observed_hi": 299,
     "observed_lo": 15,
+    "pinned_hi": 150,
+    "pinned_lo": 66,
+    "pinned_n": 9,
     "verdict": null,
     "wiki": null
    },
@@ -14484,6 +14922,9 @@
     "lo": 107,
     "observed_hi": 367,
     "observed_lo": 107,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "8 of these died before taking the wiki's 300, so they were below its base quality (or already hurt when we met them)",
     "wiki": 300
    },
@@ -14631,6 +15072,9 @@
     "lo": 0,
     "observed_hi": 766,
     "observed_lo": 0,
+    "pinned_hi": 618,
+    "pinned_lo": 217,
+    "pinned_n": 93,
     "verdict": "individuals seen on both sides of the wiki's 500",
     "wiki": 500
    },
@@ -14814,6 +15258,9 @@
     "lo": 67,
     "observed_hi": 370,
     "observed_lo": 67,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "individuals seen on both sides of the wiki's 300",
     "wiki": 300
    },
@@ -14947,6 +15394,9 @@
     "lo": 9,
     "observed_hi": 25,
     "observed_lo": 9,
+    "pinned_hi": null,
+    "pinned_lo": null,
+    "pinned_n": 0,
     "verdict": "4 of these died before taking the wiki's 30, so they were below its base quality (or already hurt when we met them)",
     "wiki": 30
    },

@@ -380,6 +380,23 @@ public final class Pack {
         public final double speedLo, speedHi, speedMedian, ourTop;
         public final boolean weOutrunIt, speedMeasured;
 
+        /**
+         * The hitpoint band from individuals a kill actually PINNED, and how many did.
+         *
+         * hpLo/hpHi above is the envelope of every individual ever seen, and it is honest
+         * rather than useful: a killing blow that removes most of the bar brackets its
+         * creature at [almost nothing, total], which is true and says nothing, and the
+         * envelope's floor is the minimum over all of them - so one such kill sets it.
+         * The corpus holds 503 one-shot kills across 49 species and the reindeer reads
+         * 1 to 287 because of them.
+         *
+         * This is the same band over the individuals whose last hit took a quarter of them
+         * or less. It runs about half the width across the species that have enough, and
+         * the reindeer's is a tenth: 140 to 167. NaN where too few did.
+         */
+        public final double hpPinLo, hpPinHi;
+        public final int hpPinN;
+
         Opponent(JSONObject j) {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
@@ -407,6 +424,17 @@ public final class Pack {
             double[] hp = range(j, "hitpoints");
             this.hpLo = hp[0];
             this.hpHi = hp[1];
+            JSONObject hpo = j.optJSONObject("hitpoints");
+            if(hpo == null) {
+                this.hpPinLo = this.hpPinHi = Double.NaN;
+                this.hpPinN = 0;
+            } else {
+                this.hpPinLo = hpo.isNull("pinned_lo") ? Double.NaN
+                    : hpo.optDouble("pinned_lo", Double.NaN);
+                this.hpPinHi = hpo.isNull("pinned_hi") ? Double.NaN
+                    : hpo.optDouble("pinned_hi", Double.NaN);
+                this.hpPinN = hpo.optInt("pinned_n", 0);
+            }
             JSONObject arm = j.optJSONObject("armour");
             if(arm == null) {
                 this.armLo = this.armHi = this.armHard = this.armSoft = Double.NaN;
@@ -437,6 +465,11 @@ public final class Pack {
                 this.ourTop = sp.optDouble("our_top", Double.NaN);
                 this.weOutrunIt = sp.optBoolean("we_outrun_it", false);
             }
+        }
+
+        /** Whether a kill has ever pinned this creature's size rather than merely bounding it. */
+        public boolean hpPinned() {
+            return(!Double.isNaN(this.hpPinLo) && !Double.isNaN(this.hpPinHi));
         }
 
         /** Whether withdrawal is an option this opponent cannot answer. */
