@@ -275,8 +275,11 @@ public final class CombatRecorder {
             List<String> gear = new ArrayList<String>();
             int[] arm = readGear(eq, gear);
             SortedMap<String, Integer> comp = readAttrs(glob, true);
+            /* readDeck is read again below for the predictor. Reading it twice is cheaper
+             * than reordering the header, and it cannot disagree with itself in between. */
             log(CombatEvent.begin(0, t0, CombatEvent.SCHEMA, charName, meGob, foeGob, foeRes,
-                                  readAttrs(glob, false), comp, arm[0], arm[1]));
+                                  readAttrs(glob, false), comp, arm[0], arm[1],
+                                  readDeck(gui)));
             for(String g : gear)
                 log(g);
             /* The COMPUTED attributes, not the base ones: a prediction has to use the numbers

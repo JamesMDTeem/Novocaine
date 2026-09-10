@@ -16,6 +16,7 @@ import haven.automated.nbots.world.BotNav;
 import haven.automated.nbots.world.Place;
 import haven.automated.nbots.world.PlaceRoles;
 import haven.automated.nbots.world.Places;
+import haven.automated.nbots.world.Walk;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,10 +33,11 @@ import static haven.OCache.posres;
  * pattern, which is the part worth having.
  *
  * <p>The pattern is a boustrophedon sweep - down one column of tiles, one step across, up the
- * next - because that is how you plough without lifting the plough. Each leg is a plain
- * {@code click} one tile at a time and deliberately NOT pathfound: a route that dodges round an
- * obstacle is exactly wrong here, since the furrow is drawn by where the plough is dragged, and a
- * detour leaves an unploughed streak behind it.
+ * next - because that is how you plough without lifting the plough. Each leg is ONE plain
+ * {@code click} at the far end of the column, and deliberately NOT pathfound: a route that dodges
+ * round an obstacle is exactly wrong here, since the furrow is drawn by where the plough is
+ * dragged, and a detour leaves an unploughed streak behind it. A raw click is walked in a straight
+ * line whatever its length, so one order draws the whole leg.
  *
  * <p>Improvements on the source, all of them things a run without them ends badly:
  * <ul>
@@ -65,8 +67,17 @@ public class NPlowBot extends NBot {
     private static final String LIFTED_POSE = "banzai";
     /** How long to wait for a lift or a set-down to take, in ticks (~25ms each). */
     private static final int LIFT_TICKS = 120;
-    /** How long to give one tile of driving before deciding the plough is stuck. */
+    /**
+     * How long to give ONE TILE of driving, in ticks, before deciding the plough is stuck.
+     *
+     * The whole allowance for a move is this times its length in tiles, plus one tile's worth of
+     * slack, because a leg is a whole column now and a fixed budget sized for one tile would time
+     * out in the middle of every one of them. It is only ever a ceiling: {@link #drive} stops
+     * waiting the moment the server says the character is no longer moving.
+     */
     private static final int STEP_TICKS = 200;
+    /** Polls to wait for the server to acknowledge a move order by starting one. */
+    private static final int START_TICKS = 12;
     /** Close enough to a target tile to call the step done, in world units. */
     private static final double STEP_TOL = 2.0;
     /**
@@ -179,41 +190,60 @@ public class NPlowBot extends NBot {
         if (!o.isOk())
             return o;
 
-        /* One leg is one column of the sweep, which is what "between legs" below means. */
+        /*
+         * One leg is one column of the sweep, and the whole column is ONE click.
+         *
+         * It used to be one click per tile, which is the same path chopped up: the server stops
+         * the character dead on the tile it was sent to, the bot only notices on its next poll,
+         * and the next order only goes out after that. The result is a plough that walks a tile,
+         * stands still, walks a tile - visibly, and for the length of the field. A raw click is
+         * walked in a straight line whatever its length (that is exactly why this does not use the
+         * pathfinder), so a click at the far end of the column draws the same furrow in one
+         * continuous move. The tile list is still what says WHERE the corners are; it just is not
+         * a list of things to click any more.
+         */
         int legLen = Math.max(field.h, 1);
-        int last = Math.min(furrow.size(), MAX_STEPS + 1);
+        int cols = Math.min(Math.max(field.w, 1), Math.max(1, MAX_STEPS / legLen));
+        int total = cols * legLen;
         int done = 0;
         int lost = 0;
-        for (int i = 1; (i < last) && running(); i++) {
+        for (int col = 0; (col < cols) && running(); col++) {
+            int entry = col * legLen;
+            int exit = Math.min(entry + legLen - 1, furrow.size() - 1);
+            if (entry > exit)
+                break;
+
             /* Between legs, never mid-furrow: walking off to drink halfway down a column leaves
-             * the furrow half drawn, and coming back does not resume it. This used to run on every
-             * tile, which is the thing the sentence above says not to do. */
-            if ((((i - 1) % legLen) == 0) && !upkeep())
+             * the furrow half drawn, and coming back does not resume it. A leg is now the unit the
+             * loop turns on, so this is simply where the loop starts. */
+            if (!upkeep())
                 return Outcome.failed(fatalStop);
             /* An upkeep trip lets go of the handles, and a set-down the server refused leaves the
-             * plough overhead. Both have to be undone before the next tile or the rest of the
-             * sweep draws nothing at all - and being overhead is emphatically not a reason to skip
+             * plough overhead. Both have to be undone before the next leg or the rest of the sweep
+             * draws nothing at all - and being overhead is emphatically not a reason to skip
              * re-taking the handles, which is what the old guard here did. */
-            if (ctx.poseContains(LIFTED_POSE))
-                setDown(furrow.get(i - 1));
-            if (!holdingPlow()) {
-                if (takeHandles(plow()).isOk()) {
-                    lost = 0;
-                } else if (++lost >= LOST_LIMIT) {
+            if (!regrip()) {
+                if (++lost >= LOST_LIMIT)
                     return Outcome.blocked("lost hold of the plough and couldn't get it back");
-                }
+            } else {
+                lost = 0;
             }
-            if (drive(furrow.get(i)))
-                done++;
-            if ((i % 10) == 0)
-                setStatus("Ploughing (" + done + "/" + (last - 1) + " tiles)");
+
+            /* One tile sideways into the column, then the length of it. Column 0 needs no step
+             * across - the plough was set down on its first tile. */
+            if (col > 0)
+                drive(furrow.get(entry));
+            if (exit > entry)
+                drive(furrow.get(exit));
+            done += reached(furrow.get(exit), legLen);
+            setStatus("Ploughing (" + done + "/" + total + " tiles)");
         }
 
-        report("ploughed " + done + " of " + (last - 1) + " tiles in " + field.name);
+        report("ploughed " + done + " of " + total + " tiles in " + field.name);
         setStatus("Done: " + done + " tiles.");
         /* Driving the whole field without reaching a single tile is not a successful shift, and
          * reporting it as one is how a bot that ploughed nothing gets left running all night. */
-        if ((done == 0) && (last > 1))
+        if ((done == 0) && (total > 0))
             return Outcome.blocked("drove " + field.name + " without ploughing a tile");
         return Outcome.ok();
     }
@@ -226,7 +256,11 @@ public class NPlowBot extends NBot {
      * Down the first column, one step east, up the next, and so on - so consecutive points are
      * always one tile apart and the plough never has to be lifted mid-field. The list starts at
      * the corner the plough is set down on, which is why the caller can use element 0 as the
-     * placement spot and drive to everything after it.
+     * placement spot.
+     *
+     * It is a list of PLACES, not of orders. The sweep clicks only the two ends of each column -
+     * see the loop in {@link #sweep} - and reads the tiles between them out of here for the
+     * arithmetic. Column {@code c} occupies {@code [c*h, c*h + h - 1]}, entry first, exit last.
      */
     private List<Coord2d> furrow(Place field) {
         List<Coord2d> out = new ArrayList<>();
@@ -247,24 +281,65 @@ public class NPlowBot extends NBot {
     }
 
     /**
-     * Drags the plough one tile.
+     * Drags the plough in a straight line to a point, however far away it is.
      *
      * A raw click, not {@link BotNav#travelTo} and not {@code approach}: both of those are free to
      * route round whatever is in the way, and a furrow is drawn by where the plough went, so a
-     * detour is a gap in the field rather than a clever recovery.
+     * detour is a gap in the field rather than a clever recovery. The server walks a click in a
+     * straight line whatever its length, which is what lets a whole column be one order.
      *
-     * Gives up on the tile rather than the shift when the plough does not arrive. Something in the
-     * way of one tile - a boulder, a tree the field was drawn around - should cost that tile and
-     * nothing else, and the next leg starts from where we actually are.
+     * The wait watches the server's own {@code Moving} attribute rather than only the clock, in
+     * the two-stage shape {@link Walk#straightTo} uses: wait for the move to START, so the gap
+     * before the server's reply is not read as "stopped, therefore arrived", then wait for it to
+     * either arrive or stop. Stopping short is what a boulder or a tree the field was drawn around
+     * looks like, and noticing it immediately is what stops one blocked leg costing the timeout.
+     *
+     * Gives up on the leg rather than the shift. The next one starts from where we actually are.
      */
     private boolean drive(Coord2d to) throws InterruptedException {
+        Gob me = nav.player();
+        if (me == null)
+            return false;
+        int span = (int) Math.ceil(me.rc.dist(to) / MCache.tilesz.x);
         gui.map.wdgmsg("click", Coord.z, to.floor(posres), 1, 0);
-        nav.waitUntil(() -> {
-            Gob me = nav.player();
-            return (me != null) && (me.rc.dist(to) <= STEP_TOL);
-        }, STEP_TICKS);
+        nav.waitUntil(() -> Walk.moving(gui), START_TICKS);
+        nav.waitUntil(() -> arrived(to) || !Walk.moving(gui), STEP_TICKS * (span + 1));
+        return arrived(to);
+    }
+
+    private boolean arrived(Coord2d to) {
         Gob me = nav.player();
         return (me != null) && (me.rc.dist(to) <= STEP_TOL);
+    }
+
+    /**
+     * How many of a leg's tiles the character actually got down, from where it ended up.
+     *
+     * Measured rather than counted, because a leg is one move now and "did it arrive" is too
+     * coarse to report on: a column stopped three tiles from the end has ploughed the rest of it,
+     * and calling that zero would misreport the shift as having done nothing.
+     */
+    private int reached(Coord2d exit, int legLen) {
+        Gob me = nav.player();
+        if (me == null)
+            return 0;
+        int missed = (int) Math.floor(me.rc.dist(exit) / MCache.tilesz.y);
+        return Math.max(0, Math.min(legLen, legLen - missed));
+    }
+
+    /**
+     * Gets the plough back into our hands before a leg, whatever state the last one left it in.
+     *
+     * An upkeep trip lets go of the handles and a refused set-down leaves the plough overhead;
+     * both read as "not ploughing", and driving a leg in either state draws nothing.
+     */
+    private boolean regrip() throws InterruptedException {
+        if (ctx.poseContains(LIFTED_POSE)) {
+            Gob me = nav.player();
+            if ((me == null) || !dropUntilDown(me.rc))
+                return false;
+        }
+        return holdingPlow() || takeHandles(plow()).isOk();
     }
 
     // ------------------------------------------------------------------ handling the plough

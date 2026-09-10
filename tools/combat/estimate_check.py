@@ -443,6 +443,32 @@ def own_defence():
 
 
 
+def deck_comes_from_the_fight():
+    """From schema 14 a log says which deck it was fought with, and that outranks dating.
+
+    The recorder has read the deck since predictions were added and only ever handed it to
+    the predictor, so the offline side had to date each fight against a timeline of
+    separate dumps. It guesses wrong often enough to matter - 16% of attributed gains are
+    scored at a level nobody knows, and 1227 of those 1334 belong to one character whose
+    only dump postdates every fight in the corpus.
+
+    Fixtures, since no log carries one yet. A missing deck and an empty one stay different:
+    null means the character window was not open, empty would claim we fought with nothing.
+    """
+    print("\nthe deck a fight was fought with, from the fight")
+    check("  a log older than the field yields nothing",
+          estimate.deck_from_header({"wall": 1}), {})
+    check("  a header that carries one is read by display name",
+          estimate.deck_from_header({"deck": {"paginae/atk/barrage": 5}}),
+          {"Quick Barrage": 5})
+    check("  a card the sheet does not know costs that card, not the deck",
+          estimate.deck_from_header({"deck": {"paginae/atk/barrage": 5,
+                                              "paginae/atk/nonesuch": 3}}),
+          {"Quick Barrage": 5})
+    check("  and a card at level 0 is not in the deck",
+          estimate.deck_from_header({"deck": {"paginae/atk/barrage": 0}}), {})
+
+
 def cards_do_not_cross_sides():
     """No animal is recorded using one of our cards, and we are not recorded using theirs.
 
@@ -1752,6 +1778,7 @@ def main():
     animal_cards_are_cards()
     opponents_are_identified()
     cards_do_not_cross_sides()
+    deck_comes_from_the_fight()
     mu_from_reductions()
     agility_control()
     agi_brackets()

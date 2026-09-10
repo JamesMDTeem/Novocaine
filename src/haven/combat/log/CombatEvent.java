@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 13;
+    public static final int SCHEMA = 14;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -26,7 +26,8 @@ public final class CombatEvent {
                                long foeGob, String foeRes,
                                java.util.SortedMap<String, Integer> attrBase,
                                java.util.SortedMap<String, Integer> attrComp,
-                               int armHard, int armSoft) {
+                               int armHard, int armSoft,
+                               java.util.Map<String, Integer> deck) {
         return(new JsonObj()
                .put("ev", "begin")
                .put("t", t)
@@ -40,7 +41,30 @@ public final class CombatEvent {
                .raw("attr", attrs(attrComp))
                .put("hard", armHard)
                .put("soft", armSoft)
+               /* THE DECK THE FIGHT WAS ACTUALLY FOUGHT WITH, card resource to level.
+                *
+                * The recorder has read this since predictions were added and only ever fed
+                * it to the predictor, so a log could not say which deck it was fought with
+                * and the offline side had to guess from a timeline of separate dumps. It
+                * guesses wrong often enough to matter: 16% of attributed gains are scored
+                * at a level nobody knows, and 1227 of those 1334 belong to one character
+                * whose only dump postdates every fight in the corpus.
+                *
+                * A deck can be swapped between fights and rearranged at any time, so the
+                * only witness to what was held is the fight itself. */
+               .raw("deck", deckobj(deck))
                .end());
+    }
+
+    private static String deckobj(java.util.Map<String, Integer> m) {
+        if(m == null)
+            return("null");
+        JsonObj o = new JsonObj();
+        for(java.util.Map.Entry<String, Integer> e : m.entrySet()) {
+            if((e.getKey() != null) && (e.getValue() != null))
+                o.put(e.getKey(), (long)e.getValue().intValue());
+        }
+        return(o.end());
     }
 
     private static String attrs(java.util.SortedMap<String, Integer> m) {

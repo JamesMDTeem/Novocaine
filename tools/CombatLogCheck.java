@@ -113,21 +113,27 @@ public class CombatLogCheck {
         java.util.SortedMap<String, Integer> comp = new java.util.TreeMap<String, Integer>();
         comp.put("str", 55);
         comp.put("agi", 33);
+        java.util.Map<String, Integer> deck = new java.util.LinkedHashMap<String, Integer>();
+        deck.put("paginae/atk/barrage", 5);
         check("begin",
               CombatEvent.begin(0L, 1788215351180L, 2, "ZzxcuV3", 191070665L, 67527879L,
-                                "gfx/kritter/fox/fox", base, comp, 12, 7),
+                                "gfx/kritter/fox/fox", base, comp, 12, 7, deck),
               "{\"ev\":\"begin\",\"t\":0,\"wall\":1788215351180,\"schema\":2,\"char\":\"ZzxcuV3\","
               + "\"megob\":191070665,\"foegob\":67527879,\"foeres\":\"gfx/kritter/fox/fox\","
               + "\"attrb\":{\"agi\":33,\"str\":40},\"attr\":{\"agi\":33,\"str\":55},"
-              + "\"hard\":12,\"soft\":7}");
+              + "\"hard\":12,\"soft\":7,\"deck\":{\"paginae/atk/barrage\":5}}");
         // Attributes must be sorted, or two logs from the same character will not diff.
         check("begin attrs are sorted",
-              CombatEvent.begin(0L, 1L, 2, "c", 1L, 2L, null, comp, comp, 0, 0)
+              CombatEvent.begin(0L, 1L, 2, "c", 1L, 2L, null, comp, comp, 0, 0, null)
                          .contains("{\"agi\":33,\"str\":55}"), true);
-        check("begin tolerates a null foe res",
-              CombatEvent.begin(0L, 1L, 2, "c", 1L, 2L, null, null, null, 0, 0),
+        /* THE DECK IS NULL WHEN IT COULD NOT BE READ, never an empty object. An empty deck
+         * is a claim - that we fought holding no cards - and a reader must be able to tell
+         * it from "the character window was not open". */
+        check("begin tolerates a null foe res and a deck it could not read",
+              CombatEvent.begin(0L, 1L, 2, "c", 1L, 2L, null, null, null, 0, 0, null),
               "{\"ev\":\"begin\",\"t\":0,\"wall\":1,\"schema\":2,\"char\":\"c\",\"megob\":1,"
-              + "\"foegob\":2,\"foeres\":null,\"attrb\":{},\"attr\":{},\"hard\":0,\"soft\":0}");
+              + "\"foegob\":2,\"foeres\":null,\"attrb\":{},\"attr\":{},\"hard\":0,\"soft\":0,"
+              + "\"deck\":null}");
         /* 4 adds the "foes" event: every opponent's openings, not only the sampled one's.
          * A reader must treat its absence as "this log predates the event", never as "no
          * other opponents were open" - schema 1 logs have no header at all and schema 3
@@ -151,7 +157,7 @@ public class CombatLogCheck {
          * log, and that is a different and worse thing - every change to the data pack
          * silently rewrites the history, so a fix can never be shown to have helped
          * because the "before" number moves with it. */
-        check("schema constant", CombatEvent.SCHEMA, 13);
+        check("schema constant", CombatEvent.SCHEMA, 14);
 
         /* The card's own sheet, schema 13. The offline analysis had only the wiki's table
          * for an opponent's cards, and that table is incomplete and in places wrong; the

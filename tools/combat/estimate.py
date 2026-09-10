@@ -501,6 +501,34 @@ def levels_at(when, char):
     return best
 
 
+def deck_from_header(header):
+    """The deck a schema-14 header names, keyed by display name. {} for older logs.
+
+    The header writes card RESOURCES, which is what the client holds; everything else in
+    this file keys on the display name, because that is what the wiki-derived pack is
+    keyed on and the two have no derivable relation. A card in the deck that the sheet
+    does not know is dropped rather than guessed at - it costs that card's level, not the
+    deck.
+
+    A missing deck and an empty one are different and stay different. Null means the
+    character window was not open when the fight began; empty would be a claim that we
+    fought holding nothing.
+    """
+    deck = (header or {}).get("deck")
+    if not isinstance(deck, dict) or not deck:
+        return {}
+    byres = {}
+    for name, m in load_moves().items():
+        if m.get("res"):
+            byres[m["res"]] = name
+    out = {}
+    for res, level in deck.items():
+        nm = byres.get(res)
+        if nm and level:
+            out[nm] = level
+    return out
+
+
 def levels_for_log(log):
     """The deck in force for a whole fight, or {} when the fight itself contradicts it.
 
@@ -527,6 +555,12 @@ def levels_for_log(log):
     of 3303 dated fights. The four are the contradictions themselves.
     """
     h = log.header or {}
+    # THE LOG'S OWN DECK OUTRANKS THE TIMELINE. From schema 14 the header carries the deck
+    # the fight was actually fought with, so there is nothing to date and nothing to
+    # contradict. Everything below is for the logs written before that existed.
+    own = deck_from_header(h)
+    if own:
+        return own
     lv = levels_at(h.get("wall"), h.get("char"))
     if not lv:
         return {}
