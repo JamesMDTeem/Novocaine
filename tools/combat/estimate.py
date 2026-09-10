@@ -23,7 +23,7 @@ import math
 import os
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fightlog  # noqa: E402
@@ -2394,6 +2394,8 @@ def collect(paths):
         # separate engagements it gave us. Buffered per (individual, witness) and folded
         # to the fullest witness below, exactly as the damage is.
         "foe_moves_by": defaultdict(lambda: defaultdict(list)),
+        "foe_state_by": defaultdict(lambda: defaultdict(list)),
+        "foe_state": [],
         "foe_gaps_by": defaultdict(lambda: defaultdict(list)),
         "engagements_by": defaultdict(lambda: defaultdict(int)),
         "soak_by": defaultdict(lambda: defaultdict(list)),
@@ -2695,6 +2697,17 @@ def collect(paths):
                     (fm.get("name") or fm.get("move"),
                      fb.get("foeip") if fb else None,
                      eng.defence_ok and not eng.others_present))
+                # THE STATE THE CARD WAS CHOSEN IN. foe_moves carries the card and the
+                # initiative and nothing else, which is all a mix needs; a rule needs the
+                # rest. Kept per witness alongside it so the same fullest-witness fold
+                # applies - the client draws every combatant's moves, so two party members
+                # log the same card twice.
+                if fb is not None:
+                    rec["foe_state_by"][eng.gob][(log.header or {}).get("char")].append(
+                        (fm.get("name") or fm.get("move"),
+                         fb.get("foeip"), fb.get("myip"), fb.get("dist"),
+                         max(fb.get("mine") or [0]), max(fb.get("foe") or [0]),
+                         fb.get("hpf")))
 
             # PER OBSERVATION, not per engagement. attributed_gains applies three tests
             # to each gain in turn - colour, damage and overlay - so an engagement being
@@ -2837,6 +2850,9 @@ def collect(paths):
         # so the duplication buys confidence nothing earned.
         for gob, byc in rec["engagements_by"].items():
             rec["engagements"] += max(byc.values()) if byc else 0
+        for gob, byc in rec["foe_state_by"].items():
+            if byc:
+                rec["foe_state"].extend(max(byc.values(), key=len))
         for gob, byc in rec["foe_moves_by"].items():
             if byc:
                 rec["foe_moves"].extend(max(byc.values(), key=len))
@@ -3534,14 +3550,100 @@ def relative_speed(rec):
             "informative": moved >= 0.10}
 
 
+# Candidate splits for foe_policy_rule. Deliberately few and deliberately coarse: the
+# question is whether a readable rule exists, and a rule with a fitted threshold is a
+# fitted threshold. Each is (name, index into the foe_state tuple, cut, wording).
+# The wording describes the branch where the value is ABOVE the cut, which is the "when"
+# side of the result. Two of these were wrong on the first pass and both were legible in
+# the output: distance above 12 is FAR and not "within", and `hpf` is OUR health, not the
+# opponent's - the state row carries ours alongside stamina and energy.
+POLICY_SPLITS = (
+    ("distance", 3, 12.0, "it is more than 12 units away"),
+    ("their initiative", 1, 0.5, "it holds a point of initiative"),
+    ("our initiative", 2, 0.5, "we hold a point of initiative"),
+    ("our greatest opening", 4, 25.0, "our worst opening is over 25"),
+    ("its greatest opening", 5, 25.0, "its worst opening is over 25"),
+    ("our health", 6, 5000.0, "we are over half health"),
+)
+# A rule needs this many cards on each side of its split before it is worth reporting.
+POLICY_MIN_SIDE = 40
+
+
+def _bits(counter):
+    """Entropy of a card distribution, in bits."""
+    n = sum(counter.values())
+    if n <= 0:
+        return 0.0
+    out = 0.0
+    for v in counter.values():
+        if v > 0:
+            p = v / float(n)
+            out -= p * math.log(p, 2)
+    return out
+
+
+def foe_policy_rule(rec):
+    """The one readable rule that best predicts which card this species throws, or None.
+
+    THE CORPUS OUTGREW THE REASON THERE WASN'T ONE. foe_policy below says a general policy
+    needs more than "1065 logged opponent moves across thirty species"; it is now 15923
+    across 45, with 19 species past 200. So the question can be asked.
+
+    A single split, tested on data it was not chosen on. Every species' cards are cut in
+    half by the order they were logged, the best split by information gain is chosen on the
+    first half, and the gain is then measured on the second. A rule that only works where
+    it was fitted is not a rule.
+
+    Depth one and coarse thresholds on purpose. The spec's argument for trees was that
+    their splits read as rules and that animal AI is near-certainly hand-written logic, so
+    a recovered rule that reads like plausible game design is itself evidence. A fitted
+    threshold would give that away for a fraction of a bit.
+
+    Returns {feature, wording, train_bits, test_bits, n, when, otherwise} or None.
+    """
+    rows = [r for r in (rec.get("foe_state") or ()) if r and r[0]]
+    if len(rows) < (POLICY_MIN_SIDE * 3):
+        return None
+    half = len(rows) // 2
+    train, test = rows[:half], rows[half:]
+    base = _bits(Counter(r[0] for r in train))
+    best = None
+    for name, idx, cut, wording in POLICY_SPLITS:
+        a = Counter(r[0] for r in train if (r[idx] is not None) and (r[idx] > cut))
+        b = Counter(r[0] for r in train if (r[idx] is not None) and (r[idx] <= cut))
+        na, nb = sum(a.values()), sum(b.values())
+        if (na < POLICY_MIN_SIDE) or (nb < POLICY_MIN_SIDE):
+            continue
+        gain = base - ((na * _bits(a) + nb * _bits(b)) / float(na + nb))
+        if (best is None) or (gain > best[0]):
+            best = (gain, name, idx, cut, wording)
+    if (best is None) or (best[0] <= 0):
+        return None
+    _g, name, idx, cut, wording = best
+    ta = Counter(r[0] for r in test if (r[idx] is not None) and (r[idx] > cut))
+    tb = Counter(r[0] for r in test if (r[idx] is not None) and (r[idx] <= cut))
+    tna, tnb = sum(ta.values()), sum(tb.values())
+    if (tna < 10) or (tnb < 10):
+        return None
+    tbase = _bits(Counter(r[0] for r in test))
+    tgain = tbase - ((tna * _bits(ta) + tnb * _bits(tb)) / float(tna + tnb))
+    return {"feature": name, "wording": wording,
+            "train_bits": round(best[0], 3), "test_bits": round(tgain, 3),
+            "n": len(rows),
+            "when": [[k, v] for k, v in ta.most_common(3)],
+            "otherwise": [[k, v] for k, v in tb.most_common(3)]}
+
+
 def foe_policy(rec):
     """What this species actually does, as something a simulator can act on.
 
-    NOT a general learned policy, and the corpus is why. 1065 logged opponent moves across
-    thirty species is one species over a hundred and most under fifty - enough to measure a
-    move mix and to test a named hypothesis, nowhere near enough to fit a behaviour model
-    over openings, initiative, distance and hitpoints at once. What follows is therefore a
-    mix plus the ONE conditioning the data supports, with the evidence attached.
+    A MIX, AND THE CORPUS HAS SINCE OUTGROWN THE REASON THAT WAS ALL. This said "1065
+    logged opponent moves across thirty species ... nowhere near enough to fit a behaviour
+    model over openings, initiative, distance and hitpoints at once". It is now 15923
+    across 45, with 19 species past 200, and `foe_policy_rule` above does fit one - a
+    single split, held out on cards it was not chosen on, and fourteen species have one
+    that survives that. This stays the mix plus the ONE conditioning tested here, with the
+    evidence attached; the rule is reported beside it rather than folded in.
 
     Three hypotheses were tested and only one survived.
 
@@ -4796,6 +4898,7 @@ def write_pack(per, moves):
         # Reported beside the skill, never inside it - see wd_consensus.
         entry["defence_weight_late"] = wd_consensus(rec)
         entry["policy"] = foe_policy(rec)
+        entry["policy_rule"] = foe_policy_rule(rec)
         entry["relative_speed"] = relative_speed(rec)
         # What it does to us. Everything else in this entry is our attacks on it.
         entry["threat"] = threat(rec)

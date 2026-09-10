@@ -611,6 +611,43 @@ def _reader_known():
     return txt[i:txt.index(")", i)]
 
 
+def a_creature_chooses_by_state():
+    """What a creature throws depends on the state, and the dependence holds out.
+
+    The spec calls opponent policy the one genuine learning problem - what an opponent IS
+    stays closed-form, what it WILL DO is learned - and predicted that animal AI is
+    hand-written server logic, so a recovered rule reading like plausible game design would
+    itself be evidence rather than overfitting.
+
+    A single split per species, chosen on the first half of its cards by information gain
+    and measured on the second. Asserted as a property: a rule is only reported when it
+    survives data it was not chosen on, so every rule in the pack must have a positive
+    held-out gain. The values are printed, not asserted - they will move as the corpus does.
+    """
+    print("\nwhat a creature throws, and what it depends on")
+    per = estimate.collect_cached(estimate.fightlog.default_logs(estimate.ROOT)[0])[0]
+    rules = []
+    for name, rec in sorted(per.items()):
+        if str(name).startswith(("body#", "?#")):
+            continue
+        r = estimate.foe_policy_rule(rec)
+        if r:
+            rules.append((name, r))
+    check("  some species has a rule at all", len(rules) > 5, True)
+    bad = [n for n, r in rules if r["test_bits"] <= 0]
+    check("  and every rule reported survived data it was not chosen on", bad, [])
+    feats = sorted(set(r["feature"] for _n, r in rules))
+    print("    %d species with a rule; splits used: %s" % (len(rules), ", ".join(feats)))
+    check("  and more than one thing decides it", len(feats) > 1, True)
+    for name, r in sorted(rules, key=lambda x: -x[1]["test_bits"])[:3]:
+        print("    %-13s when %-32s test %.3f bits"
+              % (name[:13], r["wording"][:32], r["test_bits"]))
+        print("         then %s"
+              % ", ".join("%s %d" % (a, c) for a, c in r["when"]))
+        print("         else %s"
+              % ", ".join("%s %d" % (a, c) for a, c in r["otherwise"]))
+
+
 def cards_do_not_cross_sides():
     """No animal is recorded using one of our cards, and we are not recorded using theirs.
 
@@ -1920,6 +1957,7 @@ def main():
     animal_cards_are_cards()
     opponents_are_identified()
     cards_do_not_cross_sides()
+    a_creature_chooses_by_state()
     the_reader_knows_every_event()
     deck_comes_from_the_fight()
     coverage_has_a_floor()
