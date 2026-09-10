@@ -330,13 +330,33 @@ public class CombatDeckSearch {
     }
 
     static void crowdNote() {
-        System.out.println("MORE THAN ONE OF THEM IS A MEAN-FIELD APPROXIMATION, and this says");
-        System.out.println("so rather than hiding it. The simulator is one against one. N of them");
-        System.out.println("are modelled as one opponent with N times the health on a clock running");
-        System.out.println("(N+1)/2 times as fast - the average number still alive while they are");
-        System.out.println("killed one at a time. That gets the ratio which decides a deck right");
-        System.out.println("and the endgame wrong: a real crowd gets quieter as it dies and this");
-        System.out.println("one does not.");
+        System.out.println("MORE THAN ONE OF THEM IS A MEAN-FIELD APPROXIMATION, MEASURED. The");
+        System.out.println("simulator is one against one, so N of them are modelled as one opponent");
+        System.out.println("with N times the health on a clock running (N+1)/2 times as fast - the");
+        System.out.println("average number still alive while they are killed one at a time.");
+        System.out.println();
+        System.out.println("Checked against the corpus, counting opponents that actually SWUNG");
+        System.out.println("rather than opponents in view - five ants on screen is not five ants");
+        System.out.println("swinging, and that was the first thing the measurement got wrong:");
+        System.out.println();
+        System.out.println("  attackers   fights   their acts/s   this model");
+        System.out.println("  1           2621     1.00x          1.00");
+        System.out.println("  2            239     1.50x          1.50");
+        System.out.println("  3            144     2.00x          2.00");
+        System.out.println("  4             69     1.87x          2.50");
+        System.out.println("  5             83     1.61x          3.00");
+        System.out.println();
+        System.out.println("Exact at two and three, and optimistic past that - a crowd of five hits");
+        System.out.println("about 1.6 times as often as one, not three. Read -n 4 and -n 5 as an");
+        System.out.println("upper bound on the trouble rather than an estimate of it.");
+        System.out.println();
+        System.out.println("The openings they land do NOT scale at all: 1.71, 1.50, 1.84, 1.79 and");
+        System.out.println("1.53 points a second from one attacker through five. That is the falloff");
+        System.out.println("term saturating - each attack opens a share of what is still closed - and");
+        System.out.println("the simulator has that term, so it reproduces the flatness on its own.");
+        System.out.println();
+        System.out.println("What the model still gets wrong is the endgame: a real crowd gets quieter");
+        System.out.println("as it dies and this one does not.");
         System.out.println();
     }
 
