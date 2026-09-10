@@ -443,6 +443,52 @@ def own_defence():
 
 
 
+def a_stance_scales_every_attack():
+    """Two of the three stances scale every attack we make, and one has never been held.
+
+    A stance sits on the bar and is on continuously, so a deck holding one is a fight
+    fought under it. Combat Meditation takes every attack to a quarter weight and Oak
+    Stance to a half. Our own weight is the numerator of every opponent recovery, so a
+    fight under Oak Stance that ignored it would report an opponent twice as strong as it
+    is - silently, with nothing in the output to say so.
+
+    THE CORPUS HAS NEVER DONE IT, and that is asserted rather than assumed. Shield Up is
+    the only stance ever held, in 3296 of the 3299 fights whose deck is known, and it is a
+    block-weight stance that does nothing to attacks. The day that changes this fires.
+    """
+    print("\na stance scales every attack made under it")
+    moves = estimate.load_moves()
+    qb = moves["Quick Barrage"]
+    at = {"melee": 200, "unarmed": 150}
+    check("  no deck, no change", estimate.attack_weight_bounds(qb, at, 1), (200.0, 200.0))
+    check("  Shield Up is a block stance and leaves attacks alone",
+          estimate.attack_weight_bounds(qb, at, 1, {"Shield Up": 5}), (200.0, 200.0))
+    check("  Oak Stance halves them",
+          estimate.attack_weight_bounds(qb, at, 1, {"Oak Stance": 5}), (100.0, 100.0))
+    check("  Combat Meditation quarters them",
+          estimate.attack_weight_bounds(qb, at, 1, {"Combat Meditation": 5}), (50.0, 50.0))
+    check("  and a stance at level 0 is not held",
+          estimate.attack_weight_bounds(qb, at, 1, {"Oak Stance": 0}), (200.0, 200.0))
+
+    # The tripwire. Recovery does not thread the deck through yet, which is safe only for
+    # as long as this holds.
+    scaling = set(n for n, m in moves.items() if m.get("stance") and m.get("attack_mult"))
+    opens = estimate.opens_map(moves)
+    worn = 0
+    for pth in estimate.fightlog.default_logs(estimate.ROOT)[0]:
+        try:
+            log = estimate.fightlog.read(pth, opens)
+        except Exception:
+            continue
+        if not log.rows:
+            continue
+        lv = estimate.levels_for_log(log)
+        if lv and any(lv.get(n) for n in scaling):
+            worn += 1
+    print("    %d fight(s) fought under a stance that scales attacks" % worn)
+    check("  and no fight in the corpus was fought under one", worn, 0)
+
+
 def coverage_has_a_floor():
     """A gate must not be able to eat the corpus quietly.
 
@@ -1820,6 +1866,7 @@ def main():
     cards_do_not_cross_sides()
     deck_comes_from_the_fight()
     coverage_has_a_floor()
+    a_stance_scales_every_attack()
     mu_from_reductions()
     agility_control()
     agi_brackets()

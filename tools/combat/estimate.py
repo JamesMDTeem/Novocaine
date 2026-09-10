@@ -832,7 +832,33 @@ def attack_weight(move, attrs, level=None):
     return base * mult * (mu if mu else MU)
 
 
-def attack_weight_bounds(move, attrs, level=None):
+def stance_attack_mult(deck):
+    """What a stance in the deck does to EVERY attack weight, or 1.0.
+
+    A stance is not a card you throw - it sits on the bar and is on continuously - so a
+    deck holding one is a fight fought under it. Two of the three scale our attacks:
+    Combat Meditation to a quarter, Oak Stance to a half. Shield Up is a block-weight
+    stance and does nothing here, which is why the corpus has been safe: it is the only one
+    ever held, in 3296 of the 3299 fights whose deck is known.
+
+    Left un-applied, a fight under Oak Stance recovers an opponent twice as strong as it
+    is, because our own weight is the numerator of everything. It is silent, which is why
+    the check beside this asserts the corpus has still never done it rather than trusting
+    that nobody will.
+    """
+    mult = 1.0
+    if not deck:
+        return mult
+    for name, level in deck.items():
+        if not level:
+            continue
+        m = load_moves().get(name) or {}
+        if m.get("stance") and m.get("attack_mult"):
+            mult *= float(m["attack_mult"])
+    return mult
+
+
+def attack_weight_bounds(move, attrs, level=None, deck=None):
     """Wa as the interval the card's level allows. See mu_bounds - mu is an input.
 
     At level 1 this is a point, because mu is measured at exactly 1.0 there. Above it the
@@ -856,6 +882,8 @@ def attack_weight_bounds(move, attrs, level=None):
     # "According to weapon / mu", and three do not: Flex, Opportunity Knocks and Watch Its
     # Moves name a skill and stop there. Scaling those by a deck weighting the card does
     # not claim overstates a levelled card's weight by up to half.
+    # A stance is held for the whole fight, so it multiplies every attack in it.
+    mult *= stance_attack_mult(deck)
     if not _weight_has_mu(move):
         return (base * mult, base * mult)
     lo, hi = mu_bounds(level)
