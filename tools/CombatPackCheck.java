@@ -576,6 +576,22 @@ public class CombatPackCheck {
             System.out.println("  (not on this classpath - run via tools\\check-combat.ps1)");
             return;
         }
+        /* STANCES. Held on the bar rather than thrown, one at a time and one always: across
+         * 792 deck dumps holding any cards at all, 782 hold exactly one of the seven and
+         * none holds two. The signature is a Block weight line, which no card in the sheet
+         * carries alongside an Attack weight - an earlier rule looked for cards that change
+         * a weight and found three of the seven, leaving Parry classed as an attack. */
+        int stances = 0, withMult = 0;
+        for(Move m : moves.values()) {
+            if(!m.stance)
+                continue;
+            stances++;
+            if(m.blockMult > 0)
+                withMult++;
+        }
+        check("the sheet knows its stances", stances, 7);
+        check("  and every one carries a block multiplier", withMult, stances);
+
         check("moves load from the classpath", nm > 0, true);
         check("  as do the opponents", nf > 0, true);
         check("  and the weapons", nw > 0, true);

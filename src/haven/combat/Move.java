@@ -77,6 +77,21 @@ public final class Move {
     public final double[] whenAttackedOpens;
 
     /**
+     * Whether this card is a STANCE - held on the bar rather than thrown, and exactly one.
+     *
+     * Seven cards carry a Block weight line and no card carries one alongside an Attack
+     * weight: Bloodlust, Chin Up, Combat Meditation, Oak Stance, Parry, Shield Up, To Arms.
+     * The decks are the reason to believe that is the signature - across 792 dumps holding
+     * any cards at all, 782 hold exactly one of the seven and none holds two.
+     *
+     * `blockMult` is what holding it does to the block weight it grants: 2.5 for Shield Up,
+     * 0.8 for Parry, 0.75 for Bloodlust. `blockSkill` is which skill that weight reads.
+     */
+    public final boolean stance;
+    public final double blockMult;
+    public final Weight blockSkill;
+
+    /**
      * The SHARE of a standing opening this move removes from its user, per colour, 0..1.
      *
      * A fraction, not percentage points, and the corpus is unambiguous about it. Zig-Zag
@@ -204,6 +219,9 @@ public final class Move {
         this.openings = b.openings;
         this.openingsSelf = b.openingsSelf;
         this.whenAttackedOpens = b.whenAttackedOpens;
+        this.stance = b.stance;
+        this.blockMult = b.blockMult;
+        this.blockSkill = b.blockSkill;
         this.reduces = b.reduces;
         this.damageShare = b.damageShare;
         this.flatDamage = b.flatDamage;
@@ -230,6 +248,8 @@ public final class Move {
         this.school = o.school; this.schools = o.schools;
         this.openings = o.openings; this.openingsSelf = o.openingsSelf;
         this.whenAttackedOpens = o.whenAttackedOpens;
+        this.stance = o.stance; this.blockMult = o.blockMult;
+        this.blockSkill = o.blockSkill;
         this.reduces = o.reduces;
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
         this.grievous = o.grievous;
@@ -281,6 +301,9 @@ public final class Move {
         private final double[] openings = new double[4];
         private final double[] openingsSelf = new double[4];
         private final double[] whenAttackedOpens = new double[4];
+        private boolean stance = false;
+        private double blockMult = 1.0;
+        private Weight blockSkill = null;
         private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
         private double boostGreatest = 0;
@@ -351,6 +374,14 @@ public final class Move {
         /** Percentage points opened on the user in one colour. */
         public Builder opensSelf(int colour, double pct) {
             this.openingsSelf[colour] = pct;
+            return(this);
+        }
+
+        /** See Move.stance - held on the bar, one at a time, one always. */
+        public Builder stance(boolean v, double mult, Weight skill) {
+            this.stance = v;
+            this.blockMult = mult;
+            this.blockSkill = skill;
             return(this);
         }
 

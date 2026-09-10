@@ -102,7 +102,12 @@ public class CombatDeckSearch {
         List<Move> deck = d.moves(sheet);
         if(deck.isEmpty())
             return(Double.POSITIVE_INFINITY);
-        List<Optimizer.Plan> front = Optimizer.search(me, foe, deck, model, BEAM, HORIZON);
+        /* A deck with no stance is not a legal deck - one is always up - so it is scored
+         * as unable rather than as a fast deck that happens to skip the block weight. */
+        if(!hasStance(d, sheet))
+            return(NO_KILL * 2);
+        List<Optimizer.Plan> front = Optimizer.search(withStance(me, d, sheet), foe, deck,
+                                                      model, BEAM, HORIZON);
         Optimizer.Plan best = Advisor.choose(front, aim, Double.MAX_VALUE);
         if(best == null)
             return(Double.POSITIVE_INFINITY);
@@ -180,7 +185,7 @@ public class CombatDeckSearch {
             List<Deck> cand = new ArrayList<Deck>();
             List<Double> scores = new ArrayList<Double>();
             for(String res : sheet.keySet()) {
-                Deck t = plus(cur, res);
+                Deck t = plus(cur, res, sheet);
                 if(t == null)
                     continue;
                 cand.add(t);
@@ -206,7 +211,7 @@ public class CombatDeckSearch {
                 if(cand.get(ix).points() >= MAX_POINTS)
                     continue;
                 for(String res : sheet.keySet()) {
-                    Deck t2 = plus(cand.get(ix), res);
+                    Deck t2 = plus(cand.get(ix), res, sheet);
                     if(t2 == null)
                         continue;
                     if(score(t2, sheet, me, foe, model, aim) < takeScore) {
@@ -226,8 +231,14 @@ public class CombatDeckSearch {
         return(cur);
     }
 
-    /** One more point on `res`, or null when the limits forbid it. */
-    static Deck plus(Deck d, String res) {
+    /**
+     * One more point on `res`, or null when the limits forbid it.
+     *
+     * ONE STANCE, AND NEVER TWO. A stance is held on the bar rather than thrown and the
+     * decks are unanimous: across 792 dumps holding any cards at all, 782 hold exactly one
+     * of the seven and none holds two. So a second is not a worse deck, it is not a deck.
+     */
+    static Deck plus(Deck d, String res, Map<String, Move> sheet) {
         Integer have = d.levels.get(res);
         int at = (have == null) ? 0 : have.intValue();
         if(at >= MAX_PER_CARD)
@@ -236,9 +247,46 @@ public class CombatDeckSearch {
             return(null);
         if(d.points() >= MAX_POINTS)
             return(null);
+        Move m = sheet.get(res);
+        if((m != null) && m.stance && (at == 0) && hasStance(d, sheet))
+            return(null);
         Deck t = d.copy();
         t.levels.put(res, at + 1);
         return(t);
+    }
+
+    static boolean hasStance(Deck d, Map<String, Move> sheet) {
+        return(stanceOf(d, sheet) != null);
+    }
+
+    /** The stance this deck holds, or null while it has not chosen one yet. */
+    static Move stanceOf(Deck d, Map<String, Move> sheet) {
+        for(String res : d.levels.keySet()) {
+            Move m = sheet.get(res);
+            if((m != null) && m.stance)
+                return(m);
+        }
+        return(null);
+    }
+
+    /**
+     * Our side as the deck's stance makes it.
+     *
+     * A stance decides the block weight - 2.5 for Shield Up, 0.8 for Parry - and two of
+     * them decide the attack weight as well, Combat Meditation at a quarter and Oak Stance
+     * at a half. Scoring a deck without applying its stance prices a fight against a
+     * character that cannot exist, since one stance is always up.
+     */
+    static Combatant withStance(Combatant base, Deck d, Map<String, Move> sheet) {
+        Move st = stanceOf(d, sheet);
+        if(st == null)
+            return(base);
+        Combatant c = base.copy();
+        c.blockMult = st.blockMult;
+        if(st.blockSkill != null)
+            c.blockSkill = c.skill(st.blockSkill);
+        c.attackMult = st.attackMult;
+        return(c);
     }
 
     public static void main(String[] argv) throws Exception {

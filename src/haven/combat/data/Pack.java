@@ -185,6 +185,17 @@ public final class Pack {
         return(moves(read(path)));
     }
 
+    /** "unarmed" or "melee" as the model spells it, or null when the sheet is silent. */
+    private static Move.Weight weight(String s) {
+        if(s == null)
+            return(null);
+        if("unarmed".equalsIgnoreCase(s))
+            return(Move.Weight.UNARMED);
+        if("melee".equalsIgnoreCase(s))
+            return(Move.Weight.MELEE);
+        return(null);
+    }
+
     private static Map<String, Move> moves(JSONObject doc) {
         Map<String, Move> out = new LinkedHashMap<String, Move>();
         JSONArray arr = doc.getJSONArray("moves");
@@ -299,7 +310,12 @@ public final class Pack {
             /* What holding this maneuver does to its user's own attacks - Combat
              * Meditation's 25%, Oak Stance's 50%. Applied through Combatant.attackMult by
              * whoever decides which stance is up, not by the move that is being thrown. */
-            .attackMult(dbl(j, "attack_mult", 1.0));
+            .attackMult(dbl(j, "attack_mult", 1.0))
+            /* A stance is held rather than thrown, and exactly one is - see Move.stance.
+             * blockSkill is null where the sheet does not name one, which leaves the
+             * caller to keep whatever it already had rather than guess. */
+            .stance(j.optBoolean("stance", false), dbl(j, "block_mult", 1.0),
+                    weight(j.optString("block_skill", null)));
 
         String skill = j.optString("attack_skill", null);
         b.weight("unarmed".equals(skill) ? Move.Weight.UNARMED

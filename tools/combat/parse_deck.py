@@ -414,12 +414,19 @@ def parse_move(m, problems):
     # coverage report that lists one as unthrown is miscounting rather than finding
     # something.
     #
-    # Identified by what the card DOES rather than by any level: a stance is the only kind
-    # of card that changes your attack or block weight for as long as it is held. That
-    # picks out exactly Combat Meditation and Shield Up. maxlevel looked like a cleaner
-    # signal and is not one - see the note above.
-    rec["stance"] = ((rec.get("attack_mult") is not None)
-                     or (rec.get("block_mult_without") is not None))
+    # Identified by what the card DOES rather than by any level. It used to look for a
+    # card that changes your attack or block WEIGHT, which picked out three - Combat
+    # Meditation, Oak Stance, Shield Up - and missed four.
+    #
+    # A BLOCK WEIGHT LINE IS THE SIGNATURE. Seven cards carry one, all on a cooldown of
+    # ten, and no card in the sheet has both a Block weight and an Attack weight: Bloodlust,
+    # Chin Up, Combat Meditation, Oak Stance, Parry, Shield Up, To Arms. Parry is one of
+    # them, which the old rule denied.
+    #
+    # The decks agree, and they are the reason to believe it. Across 792 dumps holding any
+    # cards at all, 782 hold EXACTLY ONE of the seven and none holds two - so one is active
+    # at a time and one essentially always is. The ten with none are decks caught mid-build.
+    rec["stance"] = bool(rec.get("block_weight"))
 
     rec["pagina"] = raw
     if extras:

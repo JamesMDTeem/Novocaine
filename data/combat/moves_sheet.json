@@ -114,7 +114,7 @@
    "boost_greatest": null,
    "block_requires": null,
    "block_mult_without": null,
-   "stance": false
+   "stance": true
   },
   {
    "res": "paginae/atk/chinup",
@@ -148,7 +148,7 @@
    "boost_greatest": null,
    "block_requires": null,
    "block_mult_without": null,
-   "stance": false
+   "stance": true
   },
   {
    "res": "paginae/atk/chop",
@@ -922,7 +922,7 @@
    "boost_greatest": null,
    "block_requires": null,
    "block_mult_without": null,
-   "stance": false
+   "stance": true
   },
   {
    "res": "paginae/atk/pow",
@@ -1737,7 +1737,7 @@
    "boost_greatest": null,
    "block_requires": null,
    "block_mult_without": null,
-   "stance": false
+   "stance": true
   },
   {
    "res": "paginae/atk/uppercut",
