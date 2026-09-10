@@ -147,6 +147,17 @@ public final class Combatant {
         openings[colour] *= (1.0 - ((share > 1.0) ? 1.0 : share));
     }
 
+    /**
+     * Whether a weapon is in hand, which some cards require to do anything at all.
+     *
+     * Parry is the case: "You need a sword equipped for Parry to inflict its effect upon
+     * your opponents." The sheet keeps that in the card's notes rather than in a field, so
+     * this is the nearest thing the model has to reading it.
+     */
+    public boolean armed() {
+        return(weaponDamage > 0);
+    }
+
     /** The skill feeding a move's attack weight. */
     public double skill(Move.Weight w) {
         switch(w) {

@@ -103,6 +103,21 @@ public final class Optimizer {
      */
     public static List<Plan> search(Combatant me, Combatant foe, List<Move> deck,
                                     FoeModel model, int beam, long maxTicks) {
+        /* Everything the deck opens when the OPPONENT swings, summed once. A deck holds
+         * at most one such card in the corpus - Parry - but summing costs nothing and
+         * assumes nothing about that staying true. */
+        double[] trigger = new double[4];
+        boolean anyTrigger = false;
+        for(Move m : deck) {
+            for(int c = 0; c < 4; c++) {
+                if(m.whenAttackedOpens[c] > 0) {
+                    trigger[c] += m.whenAttackedOpens[c];
+                    anyTrigger = true;
+                }
+            }
+        }
+        if(!anyTrigger)
+            trigger = null;
         List<Node> live = new ArrayList<Node>();
         live.add(new Node(me.copy(), foe.copy(), new ArrayList<Move>(), 0,
                           (model.period == Long.MAX_VALUE) ? Long.MAX_VALUE : model.period,
@@ -113,7 +128,7 @@ public final class Optimizer {
             List<Node> next = new ArrayList<Node>();
             for(Node n : live) {
                 for(Move m : deck) {
-                    Node s = step(n, m, model, maxTicks);
+                    Node s = step(n, m, model, maxTicks, trigger);
                     if(s == null)
                         continue;
                     if(!s.foe.alive()) {
@@ -210,7 +225,8 @@ public final class Optimizer {
     }
 
     /** Applies one of our moves, letting the opponent act for every clock tick it owns. */
-    private static Node step(Node n, Move m, FoeModel model, long maxTicks) {
+    private static Node step(Node n, Move m, FoeModel model, long maxTicks,
+                             double[] trigger) {
         Combatant me = n.me.copy(), foe = n.foe.copy();
         long tick = n.tick, foeNext = n.foeNext;
         double hpLost = n.hpLost;
@@ -226,6 +242,17 @@ public final class Optimizer {
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
             hpLost += model.act(me, me.defenceWeight(), foe);
+            /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
+             * opponent attacks, not when it is played, so it lands here rather than in
+             * use() - and it lands on the one that swung, which is measured: across 762
+             * steps where blue rose on any of several opponents at once, it rose on
+             * exactly one in 753. A sword is required, which is why this reads armed. */
+            if((trigger != null) && me.armed()) {
+                for(int c = 0; c < 4; c++) {
+                    if(trigger[c] > 0)
+                        foe.open(c, trigger[c] * (1.0 - foe.opening(c)));
+                }
+            }
             foeNext += model.period;
             if(!me.alive())
                 break;

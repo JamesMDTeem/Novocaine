@@ -135,6 +135,7 @@ public class CombatOptimizerCheck {
 
     public static void main(String[] args) {
         advisor();
+        whenAttacked();
         beamAndDeckSize();
         inertFoe();
         fleeing();
@@ -243,6 +244,44 @@ public class CombatOptimizerCheck {
                               rises ? "RISES - the beam lost the line" : "monotone");
             check("  a short fight is monotone in deck size", rises, false);
         }
+    }
+
+    /* PARRY ANSWERS A SWING, IT IS NOT A SWING. Its sheet puts the opening under a "When
+     * attacked:" header, the parser used to file that as an ordinary opening, and the
+     * optimizer duly put Parry into decks as an attack that opens blue for nothing. It now
+     * lands when the OPPONENT acts, on the one that swung - measured, not assumed: across
+     * 762 steps where blue rose on any of several opponents at once, it rose on exactly one
+     * in 753 of them. A sword is required, which the card says in its notes. */
+    static void whenAttacked() {
+        System.out.println("\na card that answers a swing is not a card that swings");
+        Move parry = Move.of("Parry").res("paginae/atk/parry")
+            .whenAttackedOpens(Formulas.BLUE, 10.0).cooldown(10).build();
+        check("it opens nothing when played", parry.openings[Formulas.BLUE], 0.0);
+        check("  and something when attacked", parry.whenAttackedOpens[Formulas.BLUE], 10.0);
+
+        /* The attack has to READ the colour Parry opens, or the two never meet - the first
+         * version of this paired a red attacker with a blue opener and measured nothing. */
+        Move backhand = Move.of("Backhand").kind(Move.Kind.ATTACK).weight(Move.Weight.WEAPON)
+            .school(Formulas.BLUE).opens(Formulas.BLUE, 10)
+            .damageShare(0.25).cooldown(20).build();
+        FoeModel model = new FoeModel(45, new double[] {14, 0, 0, 0}, 312.5, 90.0, 20, 20);
+        List<Move> without = Optimizer.deck(backhand);
+        List<Move> with = Optimizer.deck(backhand, parry);
+        Combatant armed = me();
+        long a = best(Optimizer.search(armed, foe(400, 20), without, model, 60, 2500));
+        long b = best(Optimizer.search(armed, foe(400, 20), with, model, 60, 2500));
+        check("holding it shortens the fight", b < a, true);
+        System.out.printf("      without %d ticks, with %d%n", a, b);
+
+        /* Without a sword it does nothing, which is the card's own condition. */
+        Combatant bare = me();
+        bare.weaponDamage = 0;
+        check("  and it is inert with nothing in hand", bare.armed(), false);
+    }
+
+    static long best(List<Optimizer.Plan> front) {
+        Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        return((p == null) ? Long.MAX_VALUE : p.ticks);
     }
 
     static Combatant me() {

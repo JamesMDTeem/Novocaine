@@ -259,6 +259,17 @@ public final class Pack {
                 b.opensSelf(c, o.optDouble("pct", 0));
         }
 
+        /* What it opens when the OPPONENT swings, which is not the same list and must not
+         * be merged into it - see Move.whenAttackedOpens. Percentage points, like the
+         * openings above and unlike the reductions below. */
+        JSONArray trig = j.optJSONArray("when_attacked_openings");
+        for(int i = 0; (trig != null) && (i < trig.length()); i++) {
+            JSONObject o = trig.getJSONObject(i);
+            Integer c = colour(o.optString("colour", null));
+            if(c != null)
+                b.whenAttackedOpens(c, o.optDouble("pct", 0));
+        }
+
         /* "Reduces: 50% - mu Sweeping" is a SHARE of what is standing, not fifty points -
          * Zig-Zag Ruse took a Cornered of 55 to 27 and one of 26 to 13. Divided by 100 here
          * for that reason, where the openings above are left in percentage points. */

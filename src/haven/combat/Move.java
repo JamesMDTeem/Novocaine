@@ -63,6 +63,20 @@ public final class Move {
     public final double[] openingsSelf;
 
     /**
+     * Percentage points it opens on the opponent WHEN THE OPPONENT SWINGS, not when played.
+     *
+     * Parry is the whole of this in the corpus - "When attacked: Openings: +10% Dizzy",
+     * and only with a sword in hand. It is a block-weight card that sits on the bar and
+     * answers a blow, so it belongs nowhere near {@link #openings}: read as one of those,
+     * the optimizer put Parry into decks as an attack that opens blue for nothing.
+     *
+     * It lands on ONE opponent rather than the crowd, which is measured rather than
+     * assumed: across 762 steps where blue rose on any of several opponents at once, it
+     * rose on exactly one in 753 of them.
+     */
+    public final double[] whenAttackedOpens;
+
+    /**
      * The SHARE of a standing opening this move removes from its user, per colour, 0..1.
      *
      * A fraction, not percentage points, and the corpus is unambiguous about it. Zig-Zag
@@ -189,6 +203,7 @@ public final class Move {
         this.schools = b.schools();
         this.openings = b.openings;
         this.openingsSelf = b.openingsSelf;
+        this.whenAttackedOpens = b.whenAttackedOpens;
         this.reduces = b.reduces;
         this.damageShare = b.damageShare;
         this.flatDamage = b.flatDamage;
@@ -214,6 +229,7 @@ public final class Move {
         this.res = o.res; this.name = o.name; this.kind = o.kind;
         this.school = o.school; this.schools = o.schools;
         this.openings = o.openings; this.openingsSelf = o.openingsSelf;
+        this.whenAttackedOpens = o.whenAttackedOpens;
         this.reduces = o.reduces;
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
         this.grievous = o.grievous;
@@ -264,6 +280,7 @@ public final class Move {
         private int[] extra = null;
         private final double[] openings = new double[4];
         private final double[] openingsSelf = new double[4];
+        private final double[] whenAttackedOpens = new double[4];
         private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
         private double boostGreatest = 0;
@@ -334,6 +351,12 @@ public final class Move {
         /** Percentage points opened on the user in one colour. */
         public Builder opensSelf(int colour, double pct) {
             this.openingsSelf[colour] = pct;
+            return(this);
+        }
+
+        /** See Move.whenAttackedOpens - what it opens when the OPPONENT swings. */
+        public Builder whenAttackedOpens(int colour, double pct) {
+            this.whenAttackedOpens[colour] = pct;
             return(this);
         }
 

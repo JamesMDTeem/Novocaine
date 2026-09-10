@@ -256,7 +256,17 @@ def parse_move(m, problems):
     if not raw:
         problems.append("%s: no pagina text" % m.get("name"))
         return None
-    fields, notes, extras = OrderedDict(), [], []
+    # "When attacked:" IS A HEADER, NOT A FIELD, and everything under it is conditional.
+    #
+    # Parry's sheet reads "When attacked:" on its own line and "Openings: +10% Dizzy"
+    # on the next. Read as flat labels that makes Parry a card you play in order to open
+    # blue, which is not what it is - it is a block-weight card that sits on the bar and
+    # answers a swing. The optimizer duly put it into decks as an attack.
+    #
+    # So a label after that header goes into `trig` instead and the caller keeps the two
+    # apart. Anything before it is unconditional, as before.
+    fields, trig, notes, extras = OrderedDict(), OrderedDict(), [], []
+    conditional = False
     for line in raw.split("\n"):
         line = line.strip()
         if not line:
@@ -268,9 +278,13 @@ def parse_move(m, problems):
         label = fm.group(1).strip()
         # Re-take the value from the unstripped line so colour markup survives.
         value_raw = line.split(":", 1)[1].strip()
+        if label.lower() == "when attacked":
+            conditional = True
+            fields[label] = value_raw
+            continue
         if label not in KNOWN:
             extras.append(label)
-        fields[label] = value_raw
+        (trig if conditional else fields)[label] = value_raw
 
     where = m.get("name")
     rec["weapon"] = strip_markup(fields.get("Weapon", "")).strip() or None
@@ -347,6 +361,14 @@ def parse_move(m, problems):
     for _lbl in ("Openings", "Openings on opponent"):
         if _lbl in fields:
             rec["openings"] += parse_terms(fields[_lbl], problems, where + " " + _lbl)
+    # And the same thing, but only when the opponent swings first. Parry is the whole
+    # of this in the corpus: +10% Dizzy, and only with a sword in hand. It has to stay
+    # out of `openings`, or a card that answers a swing reads as one you throw.
+    rec["when_attacked_openings"] = []
+    for _lbl in ("Openings", "Openings on opponent"):
+        if _lbl in trig:
+            rec["when_attacked_openings"] += parse_terms(
+                trig[_lbl], problems, where + " when attacked " + _lbl)
     # Openings the move puts on the user, not the opponent. Folding these into
     # `openings` would record a cost as a benefit.
     rec["openings_on_self"] = parse_terms(fields["Openings on you"], problems,
