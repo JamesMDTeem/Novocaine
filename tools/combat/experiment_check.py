@@ -224,6 +224,25 @@ def coverage():
     check("  and none of them is counted as an unthrown card",
           [m for m in never if m in stances], [])
 
+    # WHAT IS ACTUALLY UNTESTED, WHICH IS MUCH SMALLER THAN THE CARD COUNT. Seventeen
+    # never-thrown cards reads as seventeen holes in the model, and it is not one: the
+    # model does not learn a card from throwing it. Our side of a prediction is built
+    # from the sheet, our attributes and the card's level, with nothing fitted from that
+    # card's own history - and replay bears that out, agreeing on 98% of readings for
+    # the cards thrown between three and sixty times against 97% for the two thrown over
+    # five hundred. Throwing a card more does not make it predict better.
+    #
+    # What a never-thrown card CAN hide is a mechanic. If a field of the sheet is carried
+    # only by cards that never leave the bar, the code reading that field has never been
+    # put against an observation. One field is in that position - openings_on_self, which
+    # only Yield Ground has - and Sim does implement it, opening its own user through the
+    # same equalized formula. So it is untested rather than unhandled, and it is the one
+    # thing here that a fight could settle.
+    dark = experiment.dark_mechanics(used, owned, stances)
+    check("only one sheet mechanic has no card in use behind it",
+          sorted(dark), ["openings_on_self"])
+    check("  and it is Yield Ground's", dark.get("openings_on_self"), ["Yield Ground"])
+
 
 def both_report_branches():
     """The branch that is unreachable today still has to run.

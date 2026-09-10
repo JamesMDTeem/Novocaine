@@ -22,6 +22,7 @@
  */
 
 import haven.combat.Combatant;
+import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Sim;
@@ -108,9 +109,78 @@ public class CombatSimCheck {
         invertedOpener();
         grievousCap();
         predictionIsFree();
+        deckAsOpponent();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /**
+     * A person's deck, summarised into the shape a measured creature arrives in.
+     *
+     * Everything downstream takes an opponent as a clock, a per-colour pressure and a
+     * damage coefficient, because that is all a corpus of fights can yield about an
+     * animal. A player has a deck instead, and deriving the same three numbers from it
+     * puts them on one footing - so a duel runs through the code that is already checked
+     * rather than a second path that is not.
+     *
+     * What is asserted here is that the summary means what it says, because it is easy to
+     * write one that quietly does not: a stance counted as an action would slow the clock
+     * with something never thrown, and averaging damage over the attacks alone would price
+     * a half-setup deck as though every tick landed a blow.
+     */
+    static void deckAsOpponent() {
+        System.out.println();
+        System.out.println("a player's deck, read as an opponent");
+        Combatant who = me();
+        /* me() carries no stance, so its block weight is zero - and a zero reference is
+         * exactly the case fromDeck refuses, since pressure quoted against nothing means
+         * nothing. Give it the stance a player always has. */
+        who.blockSkill = who.melee;
+        check("the fixture has a block weight to quote against", who.defenceWeight() > 0,
+              true);
+        java.util.List<Move> hitters = new java.util.ArrayList<Move>();
+        hitters.add(kito());
+        hitters.add(barrage());
+
+        FoeModel m = FoeModel.fromDeck(hitters, who, who.defenceWeight());
+        check("two attacks give a model that knows damage", m.knowsDamage(), true);
+        check("  and a clock between their two cooldowns",
+              (m.period > 20) && (m.period < 35), true);
+        check("  quoted against the block weight it was asked for",
+              Math.abs(m.pressureAgainst - who.defenceWeight()) < 1e-9, true);
+        check("  opening the colour the cards actually open", m.pressure[Formulas.RED] > 0,
+              true);
+        check("  and no colour they do not",
+              (m.pressure[Formulas.BLUE] == 0) && (m.pressure[Formulas.GREEN] == 0), true);
+
+        /* NOTHING TO THROW IS NOT A WEAK OPPONENT, IT IS NO OPPONENT. An empty deck that
+         * returned a model with a period would have the sim taking hits from nobody. */
+        check("an empty deck is inert",
+              FoeModel.fromDeck(new java.util.ArrayList<Move>(), who, 10).period,
+              FoeModel.inert().period);
+
+        /* A STANCE IS HELD, NOT THROWN. Counting it as an action would put a card in the
+         * rotation that is never played - slowing the clock and diluting the pressure with
+         * a zero. */
+        Move stance = Move.of("Parry").res("paginae/atk/parry")
+            .stance(true, 0.8, Move.Weight.MELEE).cooldown(30).build();
+        java.util.List<Move> withStance = new java.util.ArrayList<Move>(hitters);
+        withStance.add(stance);
+        FoeModel st = FoeModel.fromDeck(withStance, who, who.defenceWeight());
+        check("a stance in the deck is not an action in the rotation",
+              st.period, m.period);
+        check("  and does not dilute the pressure",
+              Math.abs(st.pressure[Formulas.RED] - m.pressure[Formulas.RED]) < 1e-9, true);
+
+        /* Damage averaged over EVERY action, not over the attacks. Adding a card that
+         * never hits has to lower the damage per tick, because the deck now spends ticks
+         * not hitting. */
+        java.util.List<Move> half = new java.util.ArrayList<Move>(hitters);
+        half.add(Move.of("Take Aim").res("paginae/atk/takeaim").cooldown(30).build());
+        FoeModel h = FoeModel.fromDeck(half, who, who.defenceWeight());
+        check("a card that never hits lowers the damage per action",
+              h.damageCoef < m.damageCoef, true);
     }
 
     /* ---- the character and its moves, exactly as the logs and the character sheet have them ---- */

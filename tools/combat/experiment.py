@@ -313,6 +313,44 @@ def coverage(paths=None):
     return used, owned, stances
 
 
+# Bookkeeping rather than behaviour. A card's name and resource path say nothing about
+# what it does in a fight, so their coverage is not a question about the model.
+NOT_BEHAVIOUR = ("res", "name", "notes")
+
+
+def dark_mechanics(used=None, owned=None, stances=None):
+    """Which sheet fields no card we actually use carries.
+
+    The coverage report above counts CARDS, and counting cards overstates what is
+    untested. Seventeen never-thrown cards sounds like seventeen holes in the model; it
+    is not, because the model does not learn a card from throwing it. Our side of a
+    prediction is built from the sheet, our attributes and the card's level, and nothing
+    in it is fitted from that card's own history - so a card thrown eighteen times reads
+    as well as one thrown four thousand, which is what replay measures.
+
+    What a never-thrown card can hide is a MECHANIC. If some field of the sheet is
+    carried only by cards that never leave the bar, then the code that reads that field
+    has never been put against an observation, whatever the card count says. That is the
+    hole worth naming, and it is usually much smaller than the card count implies.
+
+    Returns {field: [cards carrying it]} for the fields with nothing in use behind them.
+    """
+    if used is None:
+        used, owned, stances = coverage()
+    live = set(m for m, v in used.items() if sum(v.values()) > 0) | set(stances or ())
+    dark = {}
+    for m in estimate.load_moves().values():
+        for k, v in m.items():
+            if (k in NOT_BEHAVIOUR) or (not v):
+                continue
+            if m.get("name") in live:
+                dark.pop(k, None)
+                dark[k] = None          # marker: seen live, never report
+            elif dark.get(k, ()) is not None:
+                dark.setdefault(k, []).append(m.get("name"))
+    return dict((k, sorted(v)) for k, v in dark.items() if v)
+
+
 PACK = os.path.join(estimate.ROOT, "data", "combat", "opponents.json")
 
 

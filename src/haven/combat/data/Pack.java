@@ -345,6 +345,16 @@ public final class Pack {
     /** What the corpus knows about one opponent. Every quantity is an interval or absent. */
     public static final class Opponent {
         public final String name, res;
+        /**
+         * "player", "creature", or "unknown" - and they are not interchangeable.
+         *
+         * A player holds a deck of the cards we hold, at levels, with mu and a stance
+         * chosen by somebody; an animal throws from a fixed list and has none of that.
+         * Pooling them offers one deck as the answer to "fox, walrus and a person",
+         * which is not an answer to anything. "unknown" is its own value rather than a
+         * guess: twenty entries have no resource, and most but not all are creatures.
+         */
+        public final String kind;
         public final int engagements;
         /** Bounds, or NaN where the corpus could not constrain the value at all. */
         public final double dwLo, dwHi, agiLo, agiHi, hpLo, hpHi;
@@ -427,6 +437,7 @@ public final class Pack {
         Opponent(JSONObject j) {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
+            this.kind = j.optString("kind", "creature");
             this.engagements = j.optInt("engagements", 0);
             JSONObject sk = j.optJSONObject("skill");
             if(sk == null) {
@@ -599,6 +610,11 @@ public final class Pack {
                                  o.isNull("hi") ? Double.NaN : o.optDouble("hi")});
         }
 
+        /** A person, whose cards and levels are chosen, not a species constant. */
+        public boolean isPlayer() {
+            return("player".equals(kind));
+        }
+
         /** Whether enough is known to simulate a fight against this opponent at all. */
         public boolean simulable() {
             /* A skill, not a defence weight. An equalized entry carries only a bound, and
@@ -693,6 +709,84 @@ public final class Pack {
     /** Every opponent the corpus has met, by name. */
     public static Map<String, Opponent> opponents(Path path) throws IOException {
         return(opponents(read(path)));
+    }
+
+    /**
+     * One character's numbers, as the corpus last saw them.
+     *
+     * Named Fighter rather than Character so it does not shadow java.lang.Character,
+     * which this file already uses.
+     *
+     * A deck is built for ONE character. Attributes decide the attack weight and the
+     * block weight, and those decide which cards are worth points, so a deck built for
+     * 243 melee is not the deck for 158. These were literals in the search tool once,
+     * and they were nobody's - part Shade, part invention.
+     */
+    public static final class Fighter {
+        public final String name;
+        public final int logs;
+        public final double str, agi, unarmed, melee, hp;
+        /** The last weapon the character was seen holding, or null bare-handed. */
+        public final String weapon;
+        public final double weaponDamage, weaponQl, weaponPen;
+        /**
+         * The cards this character knows, by display name, and the level each sits at.
+         *
+         * A level of 0 means known but not currently on the bar - the dump lists every
+         * card the character has, slotted or not - so this is ownership, not a loadout.
+         * Points are re-assignable freely inside the thirty, which is why a search that
+         * ranges over levels is realistic and not a fantasy: the only thing a character
+         * cannot do is play a card they have never learned.
+         */
+        public final Map<String, Integer> owned;
+
+        private Fighter(JSONObject j) {
+            this.name = j.optString("name", "?");
+            this.logs = j.optInt("logs", 0);
+            this.str = j.optDouble("str", 0);
+            this.agi = j.optDouble("agi", 0);
+            this.unarmed = j.optDouble("unarmed", 0);
+            this.melee = j.optDouble("melee", 0);
+            this.hp = j.optDouble("hp", 0);
+            JSONObject w = j.optJSONObject("weapon");
+            this.weapon = (w == null) ? null : w.optString("name", null);
+            this.weaponDamage = (w == null) ? 0 : w.optDouble("base_damage", 0);
+            this.weaponQl = (w == null) ? 0 : w.optDouble("ql", 10);
+            this.weaponPen = (w == null) ? 0 : w.optDouble("armour_pen", 0);
+            Map<String, Integer> own = new LinkedHashMap<String, Integer>();
+            JSONObject od = j.optJSONObject("owned");
+            if(od != null) {
+                for(String k : od.keySet())
+                    own.put(k, od.optInt(k, 0));
+            }
+            this.owned = own;
+        }
+
+        /** Whether this character has learned the card at all. */
+        public boolean knows(String cardName) {
+            return(owned.isEmpty() || owned.containsKey(cardName));
+        }
+
+        /** This character as the simulator takes them. */
+        public Combatant combatant() {
+            Combatant c = new Combatant(name);
+            c.str = str; c.agi = agi; c.unarmed = unarmed; c.melee = melee;
+            c.hp = c.maxHp = hp;
+            c.weaponDamage = weaponDamage;
+            c.weaponQl = (weaponQl > 0) ? weaponQl : 10;
+            c.weaponPen = weaponPen;
+            return(c);
+        }
+    }
+
+    public static Map<String, Fighter> characters(Path path) throws IOException {
+        Map<String, Fighter> out = new LinkedHashMap<String, Fighter>();
+        JSONArray arr = read(path).getJSONArray("characters");
+        for(int i = 0; i < arr.length(); i++) {
+            Fighter c = new Fighter(arr.getJSONObject(i));
+            out.put(c.name, c);
+        }
+        return(out);
     }
 
     private static Map<String, Opponent> opponents(JSONObject doc) {

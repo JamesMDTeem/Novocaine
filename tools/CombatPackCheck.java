@@ -77,10 +77,96 @@ public class CombatPackCheck {
         opportunityKnocks();
         weightsAndSchools();
         threatBlocks();
+        whoIsWho();
         packedInTheJar();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
+    }
+
+    /**
+     * People and animals, told apart, and a character who actually exists.
+     *
+     * The pack pooled them. Every entry was an "opponent" and the deck search built one
+     * deck to cover "fox, walrus and a person", which is not an answer to anything: a
+     * player holds a deck of the cards WE hold, at levels, with mu and a stance somebody
+     * chose, and can change all of it between fights. An animal throws from a fixed list.
+     *
+     * The marker is the resource, not the name. gfx/borka/body is a player body, and
+     * every entry carrying it throws cards off our own sheet - Quick Barrage, Zig-Zag
+     * Ruse, Flex, Parry, Chin Up, Left Hook. That is the check below: if an entry called
+     * a creature is throwing our cards, the classification has broken.
+     */
+    static void whoIsWho() throws Exception {
+        System.out.println();
+        System.out.println("people and animals are different problems");
+        Map<String, Pack.Opponent> foes = Pack.opponents(FOES);
+        int players = 0, creatures = 0, unknown = 0, ourCards = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.isPlayer())
+                players++;
+            else if("unknown".equals(o.kind))
+                unknown++;
+            else
+                creatures++;
+            if(!o.isPlayer()) {
+                for(String mv : o.moves) {
+                    if(moves.containsKey(mv))
+                        ourCards++;
+                }
+            }
+        }
+        check("every entry is classed", players + creatures + unknown, foes.size());
+        check("  players are found by gfx/borka/body", players, 10);
+        check("  and nothing called a creature throws a card off our own sheet",
+              ourCards, 0);
+
+        /* The deck search ran on six literals that were nobody's - melee and unarmed
+         * were Shade's, the strength, agility and health belonged to no character in the
+         * corpus. A deck built for a character who does not exist is not wrong in a way
+         * anyone can see from the output. */
+        Map<String, Pack.Fighter> chars =
+            Pack.characters(Paths.get("data", "combat", "characters.json"));
+        Pack.Fighter zz = chars.get("ZzxcuV3");
+        check("the character the search defaults to is in the pack", zz != null, true);
+        if(zz != null) {
+            check("  and carries the attributes a fight needs",
+                  (zz.str > 0) && (zz.agi > 0) && (zz.melee > 0) && (zz.hp > 0), true);
+            check("  with the weapon last seen in hand", zz.weapon, "Bronze Sword");
+        }
+        /* Nobody's numbers, kept as a regression: if these ever match a real character
+         * it is a coincidence, and if the literals come back this says so. */
+        boolean mongrel = false;
+        for(Pack.Fighter f : chars.values()) {
+            if((f.str == 195) && (f.agi == 192) && (f.melee == 243) && (f.hp == 303))
+                mongrel = true;
+        }
+        check("  and the old hard-coded figures still belong to no one", mongrel, false);
+
+        /* OWNERSHIP IS NOT THE SAME AS A LOADOUT. The dump lists every card a character
+         * has learned, at the level it currently sits on the bar, and 0 means learned but
+         * unslotted - so this is what they COULD play, and the thirty points are
+         * re-assignable at will. That is why a search ranging over levels is realistic:
+         * the only thing a character cannot do is play a card they never learned.
+         *
+         * It matters because the characters differ. ZzxcuV3 knows all 41, so for them
+         * "what is optimal" and "what is optimal from what I own" are one question.
+         * Shade has never learned Parry, Oak Stance or Combat Meditation, and decks the
+         * search likes are built on those. */
+        if(zz != null) {
+            check("  ZzxcuV3 knows every card in the sheet", zz.owned.size(), moves.size());
+            for(String nm : moves.keySet()) {
+                if(!zz.knows(nm)) {
+                    check("    knows " + nm, false, true);
+                    break;
+                }
+            }
+        }
+        Pack.Fighter shade = chars.get("Shade");
+        if(shade != null) {
+            check("  and another character does not", shade.knows("Parry"), false);
+            check("    while still knowing most of it", shade.owned.size() > 30, true);
+        }
     }
 
     /**

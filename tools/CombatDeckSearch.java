@@ -227,7 +227,57 @@ public class CombatDeckSearch {
             cur = take;
             floor = Math.min(floor, takeScore);
         }
-        cur.score = floor;
+        cur = topUp(cur, sheet, me, foe, model, aim, floor);
+        cur.score = score(cur, sheet, me, foe, model, aim);
+        cur.score = Math.min(cur.score, floor);
+        return(cur);
+    }
+
+    /**
+     * Spend what the greedy left behind.
+     *
+     * The greedy takes a point only when it STRICTLY improves, and it has to - the floor
+     * is what keeps an incomplete beam from walking the deck backwards. But strict
+     * improvement is the wrong test for the last points, because the score is mostly
+     * integers: ticks, and hitpoints lost. A point that lifts a card from mu 1.0 to 1.125
+     * very often lands on the same tick, reads as a tie, and is refused. The five decks
+     * this produced spent four to six points of thirty and put every card at level one,
+     * which is not a deck anyone would build.
+     *
+     * A tie is not a reason to leave a point unspent. Levels only ever help: mu multiplies
+     * the attack weight upward, and on the three cards whose text divides by it - Dash,
+     * Take Aim, Think - it shortens the cooldown as well. So the rule here is
+     * NON-WORSENING rather than improving, and the remaining budget goes to whichever
+     * point scores best even when that equals what we already had.
+     *
+     * The one card this is not true of is Yield Ground, which opens its own user and so
+     * opens them harder at a higher level. Testing the score rather than assuming
+     * monotonicity covers it without a special case: a point that reads worse is refused
+     * whatever the reason.
+     */
+    static Deck topUp(Deck cur, Map<String, Move> sheet, Combatant me, Combatant foe,
+                      FoeModel model, Advisor.Aim aim, double floor) {
+        double best = Math.min(floor, score(cur, sheet, me, foe, model, aim));
+        while(cur.points() < MAX_POINTS) {
+            Deck take = null;
+            double takeScore = Double.POSITIVE_INFINITY;
+            for(String res : sheet.keySet()) {
+                Deck t = plus(cur, res, sheet);
+                if(t == null)
+                    continue;
+                double sc = score(t, sheet, me, foe, model, aim);
+                if(sc < takeScore) {
+                    takeScore = sc;
+                    take = t;
+                }
+            }
+            /* EPS, because these are doubles carrying integer ticks. An exact tie is the
+             * common case and has to be accepted, or nothing is spent at all. */
+            if((take == null) || (takeScore > (best + 1e-9)))
+                break;
+            cur = take;
+            best = Math.min(best, takeScore);
+        }
         return(cur);
     }
 
@@ -293,9 +343,29 @@ public class CombatDeckSearch {
         int copies = 1;
         Advisor.Aim aim = Advisor.Aim.FASTEST;
         String only = null;
+        /* The character we actually play. Others are in the file and can be named for a
+         * comparison, but a run is always ONE of them. */
+        String charName = "ZzxcuV3";
+        /* creature | player | unknown. Three populations, and a run answers one. */
+        String kind = "creature";
+        /* Restrict the search to cards the character has actually learned. Off by
+         * default, which asks "what would be best if I had everything" - a fair question
+         * and the one the tool has always answered, but not the same as "what can I put
+         * on the bar tonight". For ZzxcuV3 the two runs are identical: they own all 41.
+         * For Shade they are not - Shade has never learned Parry, Oak Stance or Combat
+         * Meditation, and the walrus deck below is built on Oak Stance. */
+        boolean ownedOnly = false;
         for(int i = 0; i < argv.length; i++) {
             if("-n".equals(argv[i]) && ((i + 1) < argv.length))
                 copies = Integer.parseInt(argv[++i]);
+            else if("-char".equals(argv[i]) && ((i + 1) < argv.length))
+                charName = argv[++i];
+            else if("-pvp".equals(argv[i]))
+                kind = "player";
+            else if("-kind".equals(argv[i]) && ((i + 1) < argv.length))
+                kind = argv[++i];
+            else if("-owned".equals(argv[i]))
+                ownedOnly = true;
             else if("-aim".equals(argv[i]) && ((i + 1) < argv.length))
                 aim = Advisor.Aim.valueOf(argv[++i].toUpperCase());
             else
@@ -303,27 +373,74 @@ public class CombatDeckSearch {
         }
         Path root = Paths.get("data", "combat");
         Map<String, Move> sheet = byRes(Pack.moves(root.resolve("moves_sheet.json")));
+        // reassigned below when -owned narrows it to what the character has learned
         Map<String, Pack.Opponent> foes = Pack.opponents(root.resolve("opponents.json"));
 
-        Combatant me = new Combatant("me");
-        me.str = 195; me.agi = 192; me.unarmed = 149; me.melee = 243;
-        me.weaponDamage = 90; me.weaponQl = 30.4; me.weaponPen = 0.125;
-        me.hp = me.maxHp = 303;
+        /* ONE CHARACTER, AND A REAL ONE. This was six literals - str 195, agi 192,
+         * unarmed 149, melee 243, hp 303 - and they were nobody's: melee and unarmed are
+         * Shade's exactly, the rest belong to no character in the corpus. So every deck
+         * this ever recommended was optimal for someone who does not exist, and the
+         * output gave no way to tell, because the numbers had no name on them.
+         *
+         * Attributes decide the attack and block weights, and those decide which cards
+         * are worth points, so this is not a detail - a deck built for 243 melee is not
+         * the deck for 158. Mixing two characters does not average them, it invents a
+         * third. */
+        Map<String, Pack.Fighter> chars = Pack.characters(root.resolve("characters.json"));
+        Pack.Fighter who = chars.get(charName);
+        if(who == null) {
+            System.out.printf("no character named %s. known: %s%n", charName, chars.keySet());
+            return;
+        }
+        Combatant me = who.combatant();
+
+        if(ownedOnly) {
+            Map<String, Move> mine = new LinkedHashMap<String, Move>();
+            for(Map.Entry<String, Move> e : sheet.entrySet()) {
+                if(who.knows(e.getValue().name))
+                    mine.put(e.getKey(), e.getValue());
+            }
+            System.out.printf("restricted to the %d card(s) %s has learned, of %d%n",
+                              mine.size(), who.name, sheet.size());
+            sheet = mine;
+        }
 
         System.out.printf("deck limits: %d cards, %d points, %d per card%n",
                           MAX_CARDS, MAX_POINTS, MAX_PER_CARD);
+        System.out.printf("as: %s  (str %.0f, agi %.0f, unarmed %.0f, melee %.0f, hp %.0f, %s)%n",
+                          who.name, who.str, who.agi, who.unarmed, who.melee, who.hp,
+                          (who.weapon == null) ? "bare-handed"
+                              : String.format("%s q%.1f", who.weapon, who.weaponQl));
+        System.out.printf("against: %ss%n", kind);
         System.out.printf("aim: %s   opponents at once: %d%n%n", aim, copies);
         beamNote();
         if(copies > 1)
             crowdNote();
 
         List<String> names = new ArrayList<String>();
+        int setAside = 0;
         for(Map.Entry<String, Pack.Opponent> e : foes.entrySet()) {
             Pack.Opponent o = e.getValue();
             if((only != null) && !only.equals(e.getKey()))
                 continue;
             if(!o.simulable() || (o.threat == null))
                 continue;
+            /* PEOPLE AND ANIMALS ARE DIFFERENT PROBLEMS, so a run answers one of them.
+             * A player holds a deck at levels with a stance somebody chose, and can
+             * change all of it between fights; an animal throws from a fixed list. One
+             * deck offered as the answer to "fox, walrus and a person" is not an answer,
+             * and the five-deck cover below was quietly building exactly that.
+             *
+             * The unidentified are a third population and not a rounding error in the
+             * second. Most throw animal cards and are creatures whose resource never
+             * reached the log, but the pack cannot say which, and a deck recommended
+             * for "?#257907829" is unusable anyway - there is nothing to look up in
+             * game. Set aside and counted rather than folded into the species. */
+            if(!kind.equals(o.kind)) {
+                if("unknown".equals(o.kind))
+                    setAside++;
+                continue;
+            }
             names.add(e.getKey());
         }
         Collections.sort(names);
@@ -352,6 +469,9 @@ public class CombatDeckSearch {
         System.out.println();
         System.out.printf("  %d opponent(s) had a deck the search can stand behind;"
                           + " %d did not.%n", best.size(), unsure);
+        if(setAside > 0)
+            System.out.printf("  %d unidentified opponent(s) set aside - not a species,"
+                              + " and nothing to look up in game.%n", setAside);
         if(best.size() < 2) {
             System.out.println();
             System.out.println("not enough opponents to choose a set of decks from.");
@@ -370,10 +490,11 @@ public class CombatDeckSearch {
         System.out.println("38-tick kill is two cards deep and a 700-tick one is thirty, and a beam");
         System.out.println("prunes at every one of those depths.");
         System.out.println();
-        System.out.println("So the greedy below stops early, because a third card often measures");
-        System.out.println("worse than two when it is not. Which cards are chosen, and which decks");
-        System.out.println("cover which opponents, is worth reading. How many points they spend is");
-        System.out.println("not: it is the beam's answer, not the deck's.");
+        System.out.println("So the greedy below stops improving early, because a third card often");
+        System.out.println("measures worse than two when it is not. The budget is then spent out on");
+        System.out.println("whatever does not measure WORSE, since levels only ever help and a tie is");
+        System.out.println("no reason to leave a point behind. Which cards are chosen is the finding;");
+        System.out.println("the last few levels are the cheapest reading of a tie, not a result.");
         System.out.println();
     }
 

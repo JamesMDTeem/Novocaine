@@ -88,16 +88,8 @@ def load_pack():
 
 WEAPONS = os.path.join(estimate.ROOT, "data", "combat", "weapons.json")
 
-# Resource basename -> the wiki's weapon name. The log records what the client equips;
-# the data pack is keyed on the page title, and nothing derives one from the other.
-WEAPON_RES = {
-    "bronzesword": "Bronze Sword",
-    "cutblade": "Cutblade",
-    "hirdswordsman": "Hirdsman's Sword",
-    "fyrdswordsman": "Fyrdsman's Sword",
-    "battleaxe": "Battleaxe of the Twelfth Bay",
-    "boarspear": "Boar Spear",
-}
+# Moved to estimate, which the character export also reads it from.
+WEAPON_RES = estimate.WEAPON_RES
 
 
 def load_weapons():

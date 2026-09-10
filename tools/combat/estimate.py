@@ -4905,6 +4905,21 @@ def threat(rec):
 
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")
 SEEN = os.path.join(ROOT, "data", "combat", "weapons_seen.json")
+CHARS = os.path.join(ROOT, "data", "combat", "characters.json")
+WEAPONS_PACK = os.path.join(ROOT, "data", "combat", "weapons.json")
+
+# Resource basename -> the wiki's weapon name. The log records what the client equips;
+# the data pack is keyed on the page title, and nothing derives one from the other.
+# Lives here rather than in replay because it is a fact about the corpus, and the
+# character export needs it too - replay reads it back off this module.
+WEAPON_RES = {
+    "bronzesword": "Bronze Sword",
+    "cutblade": "Cutblade",
+    "hirdswordsman": "Hirdsman's Sword",
+    "fyrdswordsman": "Fyrdsman's Sword",
+    "battleaxe": "Battleaxe of the Twelfth Bay",
+    "boarspear": "Boar Spear",
+}
 
 
 def report_sfx_and_outcomes(per):
@@ -4942,6 +4957,135 @@ def report_sfx_and_outcomes(per):
     print()
 
 
+def write_characters(paths=None):
+    """Every character the corpus has fought as, with the numbers a fight needs.
+
+    THE DECK SEARCH HAD THESE HARD-CODED, AND THEY WERE NOBODY'S. It ran on str 195,
+    agi 192, unarmed 149, melee 243, hp 303. Melee and unarmed are Shade's exactly;
+    the strength, the agility and the health are not Shade's or anyone's. So every deck
+    it has ever recommended was optimal for a character who does not exist, and there was
+    no way to tell from the output, because the numbers were literals with no name on
+    them.
+
+    One character at a time is the whole point. Attributes decide the attack weight and
+    the block weight, and those decide which cards are worth points - a deck built for
+    243 melee is not the deck for 158. Mixing two characters' numbers does not produce a
+    compromise deck, it produces a deck for a third character nobody is playing.
+
+    The weapon is the last one the character was seen holding, not the first. Gear rows
+    are in time order and a weapon can be swapped mid-fight, so the newest is the one
+    that describes the character now.
+    """
+    if paths is None:
+        paths, _dirs = fightlog.default_logs(ROOT)
+    try:
+        with open(WEAPONS_PACK, "r", encoding="utf-8", errors="replace") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        doc = []
+    rows = doc if isinstance(doc, list) else sum(
+        (v for v in doc.values() if isinstance(v, list)), [])
+    wep = {}
+    for r in rows:
+        if not isinstance(r, dict) or not r.get("name"):
+            continue
+        def _v(k):
+            v = r.get(k)
+            return v.get("value") if isinstance(v, dict) else v
+        if _v("basedmg"):
+            wep[r["name"]] = (_v("basedmg"), _v("armorpen"))
+
+    # The newest dump per character. DECKS is (wall time, {move: level}, character),
+    # oldest first, so the last one wins.
+    owned = {}
+    for _w, lv, ch in DECKS:
+        if ch and lv:
+            owned[ch] = lv
+
+    seen = {}
+    for p in sorted(paths):
+        try:
+            log = fightlog.read(p, None)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        head = log.header or {}
+        who, attr = head.get("char"), head.get("attr") or {}
+        if not who or not attr:
+            continue
+        d = seen.setdefault(who, {"name": who, "logs": 0})
+        d["logs"] += 1
+        # LAST WINS. Attributes are trained between fights, so the newest reading is the
+        # character as it stands; an older one describes somebody who has since improved.
+        d["attr"] = attr
+        for g in log.gear:
+            res = (g.get("res") or "").split("/")[-1]
+            nm = WEAPON_RES.get(res)
+            if nm and (nm in wep):
+                dmg, pen = wep[nm]
+                d["weapon"] = {"name": nm, "base_damage": dmg, "ql": g.get("ql"),
+                               "armour_pen": (pen or 0) / 100.0}
+
+    out = []
+    for who in sorted(seen):
+        d = seen[who]
+        a = d.pop("attr", {}) or {}
+        # hp is the pool a fight actually spends. "hp" is the soft pool and "hhp" the
+        # hard one; a fight ends when the soft one runs out, so that is the one modelled.
+        d["str"] = a.get("str")
+        d["agi"] = a.get("agi")
+        d["unarmed"] = a.get("unarmed")
+        d["melee"] = a.get("melee")
+        d["hp"] = a.get("hp")
+        d["hhp"] = a.get("hhp")
+        d["con"] = a.get("con")
+        # WHAT THIS CHARACTER ACTUALLY HOLDS, so a recommendation can be told apart from
+        # a wish. The search ranges over the whole sheet at any level, which answers "what
+        # would be best if I had everything" - a fair question, and not the same question
+        # as "what should I put on the bar tonight". Both are worth asking and they are
+        # different answers, so the deck has to be recorded for the second one to exist.
+        d["owned"] = dict(sorted(owned.get(who, {}).items()))
+        out.append(d)
+
+    doc = {"source": "tools/combat/estimate.py over the logged corpus",
+           "note": "The newest reading per character. A deck is built for ONE of these.",
+           "characters": out}
+    with open(CHARS, "w", encoding="utf8") as f:
+        json.dump(doc, f, indent=1, sort_keys=True)
+        f.write(chr(10))
+    print("wrote %s  (%d character(s))" % (os.path.relpath(CHARS, ROOT), len(out)))
+    return out
+
+
+def kind_of(name, res):
+    """Player, creature, or not enough to say - and they are not interchangeable.
+
+    A player and an animal are different problems wearing the same shape. A player holds
+    a deck of the same cards we hold, at levels, with mu and a stance and a policy chosen
+    by somebody; an animal throws from a fixed list and has none of that. Pooling them
+    produces recommendations that read as nonsense - one deck offered as the answer to
+    "fox, walrus and a person" - and worse, it lets a player's defence weight, which is a
+    trained skill, sit in the same distribution as a creature's, which is a species
+    constant.
+
+    The marker is the resource and not the name. A player's body is gfx/borka/body, and
+    every entry carrying it throws cards off OUR sheet - Quick Barrage, Zig-Zag Ruse,
+    Flex, Parry, Chin Up. The name prefix is the fallback for the handful whose resource
+    never arrived, and it agrees wherever both are present.
+
+    "unknown" is its own answer rather than a guess at one. Twenty entries have no
+    resource at all; most throw animal cards and are creatures whose resource was never
+    logged, but a few threw nothing measurable and there is no evidence either way.
+    Calling those creatures would be inventing the thing this field exists to record.
+    """
+    if (res == "gfx/borka/body") or str(name).startswith("body#"):
+        return "player"
+    if str(name).startswith("?#"):
+        return "unknown"
+    return "creature"
+
+
 def write_pack(per, moves):
     """Write what the corpus knows, in the form the simulator can load.
 
@@ -4954,7 +5098,8 @@ def write_pack(per, moves):
     for name in sorted(per):
         rec = per[name]
         entry = {"name": name, "engagements": rec["engagements"],
-                 "res": rec.get("res"), "moves": sorted(rec["their_moves"])}
+                 "res": rec.get("res"), "moves": sorted(rec["their_moves"]),
+                 "kind": kind_of(name, rec.get("res"))}
         if rec.get("fought_in"):
             entry["fought_in"] = dict(sorted(rec["fought_in"].items()))
         blended = pooling_caveats(name, rec)
@@ -5122,6 +5267,7 @@ def main(argv):
     report_sfx_and_outcomes(per)
     if write:
         write_pack(per, moves)
+        write_characters()
     return 0
 
 

@@ -261,6 +261,70 @@ public final class FoeModel {
         return(modes.length > 1);
     }
 
+    /**
+     * A person playing a deck, summarised the way a creature is measured.
+     *
+     * WHY A SUMMARY AND NOT A CARD-BY-CARD OPPONENT. Everything downstream - Optimizer,
+     * Advisor, the deck search - takes an opponent as a clock, a per-colour pressure and
+     * a damage coefficient, because that is what a corpus of fights can actually yield
+     * about an animal. Deriving the same three numbers from a deck puts a player on
+     * exactly the same footing, so a matchup against a person runs through the code that
+     * is already checked rather than a second path that is not.
+     *
+     * It costs the sequencing. A real opponent picks a card for the state they are in and
+     * this one throws the deck's average, so it will not set up a combination or hold a
+     * finisher. That makes it a lower bound on a competent player, and the right kind of
+     * wrong: a deck that survives the average is not thereby proven against the good line,
+     * and nothing here should be read as saying it is.
+     *
+     * The three numbers, in the units the measured models use:
+     *   period    mean cooldown of the deck, at no initiative - their action clock
+     *   pressure  points of each colour one average action opens, at a reference block
+     *             weight, with the (1 - Oc) falloff left for act() to apply
+     *   damage    the coefficient of combined-opening squared, which is what rawDamage
+     *             reduces to once the opening is divided out
+     *
+     * @param refBlock the block weight the pressure is quoted against, normally the
+     *                 defender's, which makes the scale factor in act() exactly one.
+     */
+    public static FoeModel fromDeck(java.util.List<Move> deck, Combatant owner,
+                                    double refBlock) {
+        if((deck == null) || deck.isEmpty() || (owner == null) || !(refBlock > 0))
+            return(inert());
+        double[] press = new double[4];
+        double cd = 0, dmg = 0;
+        int acts = 0, hitters = 0;
+        for(Move m : deck) {
+            if(m.stance)
+                continue;               /* held, not thrown - it is not in the rotation */
+            acts++;
+            cd += Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale, 0,
+                                         m.isAttack(), owner.agi, owner.agi);
+            for(int c = 0; c < 4; c++) {
+                if(m.openings[c] > 0) {
+                    press[c] += Formulas.openingGainEq(
+                        owner.skill(m.weight), m.weightMu * m.mu * owner.attackMult,
+                        refBlock, 1.0, m.openings[c], 0.0);
+                }
+            }
+            if(m.damageShare > 0) {
+                hitters++;
+                dmg += Formulas.rawDamage(owner.damageBase(m), owner.damageShare(m),
+                                          owner.damageQuality(m), owner.str, 1.0);
+            }
+        }
+        if(acts == 0)
+            return(inert());
+        for(int c = 0; c < 4; c++)
+            press[c] /= acts;
+        /* Damage is averaged over EVERY action, not over the attacks alone. A deck that is
+         * half setup swings half as often, and averaging over the hitters would price it as
+         * though every tick landed a blow. */
+        double coef = (hitters > 0) ? (dmg / acts) : Double.NaN;
+        return(new FoeModel(Math.max(1, Math.round(cd / acts)), press, refBlock, coef,
+                            acts, hitters));
+    }
+
     /** An opponent that never acts - for asking "how fast could I kill it if it stood still". */
     public static FoeModel inert() {
         return(new FoeModel(Long.MAX_VALUE, new double[4], 0, Double.NaN, 0, 0));

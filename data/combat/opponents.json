@@ -8,6 +8,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "unknown",
    "moves": [],
    "name": "?#127169692",
    "policy": null,
@@ -24,6 +25,7 @@
    "defence_weight_late": null,
    "engagements": 2,
    "hitpoints": null,
+   "kind": "unknown",
    "moves": [
     "Ant Spit"
    ],
@@ -68,6 +70,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "unknown",
    "moves": [
     "Ant Spit"
    ],
@@ -145,6 +148,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Bristle",
     "Careful Approach",
@@ -257,6 +261,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Fell Scratch"
    ],
@@ -307,6 +312,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "unknown",
    "moves": [],
    "name": "?#1862189281",
    "policy": null,
@@ -351,6 +357,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Bristle",
     "Careful Approach",
@@ -452,6 +459,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Fell Scratch"
    ],
@@ -538,6 +546,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [],
    "name": "?#2144470742",
    "policy": null,
@@ -595,6 +604,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Chomp",
     "Fell Scratch"
@@ -695,6 +705,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Ant Spit"
    ],
@@ -750,6 +761,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Bristle",
     "Careful Approach",
@@ -851,6 +863,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Careful Approach",
     "Fell Scratch"
@@ -946,6 +959,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [],
    "name": "?#598556427",
    "policy": null,
@@ -998,6 +1012,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "paginae/atk/fscratch"
    ],
@@ -1085,6 +1100,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [],
    "name": "?#675939166",
    "policy": null,
@@ -1146,6 +1162,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Fell Scratch"
    ],
@@ -1197,6 +1214,7 @@
     "outside": 1
    },
    "hitpoints": null,
+   "kind": "unknown",
    "moves": [],
    "name": "?#76239641",
    "policy": null,
@@ -1255,6 +1273,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Bristle",
     "Chomp",
@@ -1356,6 +1375,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "unknown",
    "moves": [
     "Fell Scratch",
     "Vampirism",
@@ -1463,6 +1483,7 @@
     "verdict": "22 of these died before taking the wiki's 70, so they were below its base quality (or already hurt when we met them)",
     "wiki": 70
    },
+   "kind": "creature",
    "moves": [
     "Careful Approach",
     "Chomp",
@@ -1609,6 +1630,7 @@
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
+   "kind": "creature",
    "moves": [
     "Ant Spit",
     "Bear Down",
@@ -1802,6 +1824,7 @@
     "verdict": "individuals seen on both sides of the wiki's 250",
     "wiki": 250
    },
+   "kind": "creature",
    "moves": [
     "Badgering",
     "Careful Approach",
@@ -1946,6 +1969,7 @@
     "verdict": "113 of these died before taking the wiki's 90, so they were below its base quality (or already hurt when we met them)",
     "wiki": 90
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch",
     "Vampirism",
@@ -2138,6 +2162,7 @@
     "verdict": "individuals seen on both sides of the wiki's 850",
     "wiki": 850
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Bristle",
@@ -2302,6 +2327,7 @@
     "verdict": "individuals seen on both sides of the wiki's 100",
     "wiki": 100
    },
+   "kind": "creature",
    "moves": [
     "Careful Approach",
     "Fell Scratch",
@@ -2439,6 +2465,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Fell Scratch",
@@ -2575,6 +2602,7 @@
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Careful Approach",
@@ -2693,6 +2721,7 @@
     "verdict": "individuals seen on both sides of the wiki's 450",
     "wiki": 450
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Blood & Gore",
@@ -2864,6 +2893,7 @@
     "outside": 1
    },
    "hitpoints": null,
+   "kind": "player",
    "moves": [],
    "name": "body#1073376291",
    "policy": null,
@@ -2927,6 +2957,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "player",
    "moves": [
     "Cleave",
     "Full Circle",
@@ -3008,6 +3039,7 @@
     "outside": 1
    },
    "hitpoints": null,
+   "kind": "player",
    "moves": [
     "Quick Barrage"
    ],
@@ -3056,6 +3088,7 @@
     "outside": 1
    },
    "hitpoints": null,
+   "kind": "player",
    "moves": [
     "Quick Barrage",
     "Zig-Zag Ruse"
@@ -3126,6 +3159,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "player",
    "moves": [
     "Flex",
     "Parry",
@@ -3204,6 +3238,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "player",
    "moves": [],
    "name": "body#1965990376",
    "policy": null,
@@ -3235,6 +3270,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "player",
    "moves": [
     "Quick Barrage",
     "Sidestep"
@@ -3313,6 +3349,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "player",
    "moves": [
     "Chin Up",
     "Left Hook"
@@ -3424,6 +3461,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "player",
    "moves": [
     "Knock Its Teeth Out",
     "Quick Barrage"
@@ -3513,6 +3551,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "player",
    "moves": [
     "Quick Barrage",
     "Take Aim"
@@ -3624,6 +3663,7 @@
     "verdict": "6 of these died before taking the wiki's 1200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 1200
    },
+   "kind": "creature",
    "moves": [
     "Bristle",
     "Chomp",
@@ -3763,6 +3803,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Blood & Gore",
     "Careful Approach",
@@ -3986,6 +4027,7 @@
     "verdict": "16 of these held out past the wiki's 1200, so they were above its base quality",
     "wiki": 1200
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Bristle",
@@ -4224,6 +4266,7 @@
     "verdict": "individuals seen on both sides of the wiki's 120",
     "wiki": 120
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
@@ -4310,6 +4353,7 @@
    "defence_weight_late": null,
    "engagements": 1,
    "hitpoints": null,
+   "kind": "creature",
    "moves": [],
    "name": "crab",
    "policy": null,
@@ -4368,6 +4412,7 @@
     "verdict": "25 of these died before taking the wiki's 150, so they were below its base quality (or already hurt when we met them)",
     "wiki": 150
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
@@ -4492,6 +4537,7 @@
     "verdict": "1 of these died before taking the wiki's 180, so they were below its base quality (or already hurt when we met them)",
     "wiki": 180
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
@@ -4591,6 +4637,7 @@
     "verdict": "individuals seen on both sides of the wiki's 110",
     "wiki": 110
    },
+   "kind": "creature",
    "moves": [
     "Chomp",
     "Fell Scratch",
@@ -4728,6 +4775,7 @@
     "verdict": "9 of these died before taking the wiki's 250, so they were below its base quality (or already hurt when we met them)",
     "wiki": 250
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch",
     "Roar of the Wild"
@@ -4861,6 +4909,7 @@
     "verdict": "individuals seen on both sides of the wiki's 60",
     "wiki": 60
    },
+   "kind": "creature",
    "moves": [
     "Bristle",
     "Careful Approach",
@@ -5061,6 +5110,7 @@
     "verdict": "1 of these died before taking the wiki's 320, so they were below its base quality (or already hurt when we met them)",
     "wiki": 320
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch",
     "Roar of the Wild"
@@ -5180,6 +5230,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Chomp",
@@ -5324,6 +5375,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Careful Approach",
@@ -5474,6 +5526,7 @@
     "verdict": "4 of these died before taking the wiki's 400, so they were below its base quality (or already hurt when we met them)",
     "wiki": 400
    },
+   "kind": "creature",
    "moves": [
     "Ant Spit",
     "Bristle",
@@ -5629,6 +5682,7 @@
     "verdict": null,
     "wiki": 4000
    },
+   "kind": "creature",
    "moves": [
     "Crush Underfoot",
     "Trunk Gunk"
@@ -5706,6 +5760,7 @@
     "outside": 1
    },
    "hitpoints": null,
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
@@ -5785,6 +5840,7 @@
     "verdict": "individuals seen on both sides of the wiki's 800",
     "wiki": 800
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Blood & Gore",
@@ -5971,6 +6027,7 @@
     "verdict": "every individual seen is consistent with the wiki's 100",
     "wiki": 100
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
@@ -6081,6 +6138,7 @@
     "verdict": "individuals seen on both sides of the wiki's 130",
     "wiki": 130
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
@@ -6173,6 +6231,7 @@
     "outside": 5
    },
    "hitpoints": null,
+   "kind": "creature",
    "moves": [],
    "name": "ptarmigan",
    "policy": null,
@@ -6236,6 +6295,7 @@
     "verdict": "2 of these held out past the wiki's 50, so they were above its base quality",
     "wiki": 50
    },
+   "kind": "creature",
    "moves": [
     "Ant Spit",
     "Fell Scratch",
@@ -6357,6 +6417,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Bristle",
@@ -6469,6 +6530,7 @@
     "outside": 1
    },
    "hitpoints": null,
+   "kind": "creature",
    "moves": [],
    "name": "rat",
    "policy": null,
@@ -6532,6 +6594,7 @@
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
+   "kind": "creature",
    "moves": [
     "Ant Spit",
     "Fell Scratch",
@@ -6712,6 +6775,7 @@
     "verdict": "individuals seen on both sides of the wiki's 200",
     "wiki": 200
    },
+   "kind": "creature",
    "moves": [
     "Bristle",
     "Careful Approach",
@@ -6919,6 +6983,7 @@
     "verdict": "individuals seen on both sides of the wiki's 200",
     "wiki": 200
    },
+   "kind": "creature",
    "moves": [
     "Careful Approach",
     "Heavy Antlers",
@@ -7090,6 +7155,7 @@
     "verdict": null,
     "wiki": 10
    },
+   "kind": "creature",
    "moves": [],
    "name": "rockdove",
    "policy": null,
@@ -7153,6 +7219,7 @@
     "verdict": "individuals seen on both sides of the wiki's 120",
     "wiki": 120
    },
+   "kind": "creature",
    "moves": [
     "Ant Spit",
     "Bristle",
@@ -7362,6 +7429,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Bristle",
@@ -7575,6 +7643,7 @@
     "verdict": "1 of these died before taking the wiki's 200, so they were below its base quality (or already hurt when we met them)",
     "wiki": 200
    },
+   "kind": "creature",
    "moves": [
     "Careful Approach",
     "Low Horn Swipe",
@@ -7721,6 +7790,7 @@
     "verdict": "16 of these died before taking the wiki's 150, so they were below its base quality (or already hurt when we met them)",
     "wiki": 150
    },
+   "kind": "creature",
    "moves": [
     "Bristle",
     "Fell Scratch"
@@ -7838,6 +7908,7 @@
     "verdict": "1 of these held out past the wiki's 1000, so they were above its base quality",
     "wiki": 1000
    },
+   "kind": "creature",
    "moves": [
     "Cavernous Laughter",
     "Peer the Depths",
@@ -7952,6 +8023,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Bristle",
@@ -8093,6 +8165,7 @@
     "verdict": "individuals seen on both sides of the wiki's 900",
     "wiki": 900
    },
+   "kind": "creature",
    "moves": [
     "'Rus Tusk",
     "Bear Down",
@@ -8253,6 +8326,7 @@
     "verdict": "individuals seen on both sides of the wiki's 50",
     "wiki": 50
    },
+   "kind": "creature",
    "moves": [
     "Ant Spit",
     "Bristle",
@@ -8458,6 +8532,7 @@
     "verdict": null,
     "wiki": null
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Bristle",
@@ -8683,6 +8758,7 @@
     "verdict": "8 of these died before taking the wiki's 300, so they were below its base quality (or already hurt when we met them)",
     "wiki": 300
    },
+   "kind": "creature",
    "moves": [
     "Bear Down",
     "Careful Approach",
@@ -8835,6 +8911,7 @@
     "verdict": "individuals seen on both sides of the wiki's 500",
     "wiki": 500
    },
+   "kind": "creature",
    "moves": [
     "Blood & Gore",
     "Bristle",
@@ -9077,6 +9154,7 @@
     "verdict": "individuals seen on both sides of the wiki's 300",
     "wiki": 300
    },
+   "kind": "creature",
    "moves": [
     "Bristle",
     "Careful Approach",
@@ -9215,6 +9293,7 @@
     "verdict": "4 of these died before taking the wiki's 30, so they were below its base quality (or already hurt when we met them)",
     "wiki": 30
    },
+   "kind": "creature",
    "moves": [
     "Fell Scratch"
    ],
