@@ -380,6 +380,8 @@ public class CombatPackCheck {
                 pinned++;
         }
         check("some opponent's size is pinned, not merely bounded", pinned > 0, true);
+        check("  and a simulation opens against the pinned band, not the envelope",
+              planUsesPinned(foes), true);
         check("  and a pinned band never falls outside the envelope",
               pinnedInsideEnvelope(foes), true);
         check("  and it is never wider than the envelope it came from",
@@ -394,6 +396,21 @@ public class CombatPackCheck {
         check("  and an unmeasured one says so rather than yes", unknown > 0, true);
         check("  with disengagement refused where it was never measured",
               noUnmeasuredClaimsEscape(foes), true);
+    }
+
+    /** Where a band is pinned, the fight the simulator opens with has to use it. */
+    static boolean planUsesPinned(Map<String, Pack.Opponent> foes) {
+        boolean saw = false;
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.hpPinned())
+                continue;
+            if((o.planHpLo() != o.hpPinLo) || (o.planHpHi() != o.hpPinHi))
+                return(false);
+            if(o.hpPinLo > o.hpLo)
+                saw = true;
+        }
+        /* And it has to make a difference somewhere, or the wiring is inert. */
+        return(saw);
     }
 
     /** Every pinned individual is also in the envelope, so the band must sit inside it. */

@@ -562,14 +562,35 @@ public final class Pack {
          * end of an agility interval is its top.
          */
         public Combatant toughest() {
-            return(build(pick(skillHi, skill), pick(agiHi, agiLo), pick(hpHi, hpLo),
+            return(build(pick(skillHi, skill), pick(agiHi, agiLo), pick(planHpHi(), hpLo),
                          pick(armHi, armLo)));
         }
 
         /** The easiest fight the corpus allows. */
         public Combatant weakest() {
-            return(build(pick(skillLo, skill), pick(agiLo, agiHi), pick(hpLo, hpHi),
+            return(build(pick(skillLo, skill), pick(agiLo, agiHi), pick(planHpLo(), hpHi),
                          pick(armLo, armHi)));
+        }
+
+        /**
+         * The hitpoints to PLAN against, which is the pinned band wherever there is one.
+         *
+         * hpLo/hpHi is the envelope of every individual ever seen and it is honest, but a
+         * killing blow that removes most of the bar brackets its creature at [almost
+         * nothing, total] - so the envelope's floor is often a fact about our damage
+         * rather than about the creature. Planning the easiest fight against a reindeer of
+         * 1 hitpoint is not a matchup, it is an artefact: the same species pins to 140-167
+         * once the kills that pinned nothing are set aside.
+         *
+         * The envelope stays on the class and stays reported. This is only what a
+         * simulation should open with.
+         */
+        public double planHpLo() {
+            return(hpPinned() ? hpPinLo : hpLo);
+        }
+
+        public double planHpHi() {
+            return(hpPinned() ? hpPinHi : hpHi);
         }
 
         private static double pick(double first, double fallback) {
