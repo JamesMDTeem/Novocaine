@@ -521,12 +521,22 @@ def main(argv):
     # one end lands on the wrong side of that too - the fox misses by 0.1, the beaver by
     # 0.4. Failing on those would be failing on arithmetic that is right.
     #
-    # A miss of tens of points is a real disagreement, and the ants own nearly all of them.
-    # The shape is specific enough to write down. Flex is listed at 15% Dizzy, and against
-    # ants at a standing zero it reads 36, 37 or 38 in one set of fights and 51, 52 or 53
-    # in another - the same character, the same attribute block, fights minutes apart in
-    # one session. The low set agrees with the ant skill every other card recovers; the
-    # high set needs an ant about a third as strong. Nothing yet separates the two sets.
+    # A miss of tens of points is a real disagreement, and Flex owns five of the six.
+    #
+    # THE FLEX MODEL IS RIGHT, and it is worth saying that first, because the residual is
+    # small and strange rather than large and systematic. Flex's sheet gives it a flat 15%
+    # Dizzy and an attack weight of bare Unarmed - no multiplier, no mu - and taking every
+    # Flex reading in the corpus as a multiple of what that predicts puts 172 of 179 inside
+    # 0.85 to 1.10, piled on 1.00. Unarmed is also the right skill by a wide margin: the
+    # skill each reading implies, divided by the attribute, has a median of 0.94 and an
+    # interquartile spread of 1.1x against 1.2x or worse for str, agi, con, prc and int.
+    #
+    # THEN THERE ARE FIVE. Nothing sits between 1.10 and 1.33; the five land at 1.33 to
+    # 1.39, which is an attack weight two and a half times what the card claims. They are
+    # not one species - badger, boar and three ants - and no field a log carries separates
+    # them from the other 174. Not initiative, ours or theirs; not the standing opening,
+    # which is zero in all five; not how many cards either side had thrown; not distance,
+    # stamina, or whether it was the first Flex of the fight. Every one of those overlaps.
     #
     # FIVE EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
     # nobody spends the afternoon on them again:
