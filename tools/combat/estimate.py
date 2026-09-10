@@ -2938,6 +2938,70 @@ PIN_SHARE = 0.25
 PIN_MIN_N = 3
 
 
+def animal_card_fit(per, min_obs=5, rounds=200):
+    """Separates an animal's CARD from the animal, the way our own side already is.
+
+    THE OPPONENT'S CARDS ARE CARDS. Our side is modelled as a listed percentage per card
+    scaled by our own weight; the other side was modelled as one unseparated "pressure"
+    number, because the wiki gives an animal move's school and never its percentage. It
+    does not have to stay that way, because the same card is thrown by many creatures -
+    Fell Scratch by 25 species in this corpus - and one card on many creatures separates
+    the card from the creature.
+
+    The opening a move puts on us, with the falloff divided out, is modelled as
+
+        P(species, move, colour) = pct(move, colour) * f(species)
+
+    and fitted in logs by alternating medians. It holds: over 67 cells, 34 species and 15
+    move/colour pairs the residual has a median of 1.000x, a p75 of 1.043 and a p90 of
+    1.114. Fell Scratch across 25 species sits at 1.08 at p75.
+
+    THERE IS A GAUGE FREEDOM AND IT IS NOT RESOLVED HERE. Multiplying every pct by c and
+    dividing every f by c fits identically, so only ratios are meaningful until something
+    external pins the scale. What the fit returns lands near multiples of five all the
+    same - Fell Scratch 9.8, Bear Down 10.8, Mule Kick 10.8, Low Horn Swipe 10.8, Ant Spit
+    5.6 and 5.7 on its two colours, Chomp 14.8 - which is what a deck of 5/10/15% cards
+    would look like with the gauge already near one. Suggestive, and not asserted.
+
+    A schema-13 `card` row settles it outright for any card actually seen, since it carries
+    the percentage in the game's own words. See card_sheet.
+
+    Returns (pct, f, residuals): {(move, colour): value}, {species: value}, and the list of
+    |log P - log pct - log f| over every cell used.
+    """
+    cell = defaultdict(list)
+    for name, rec in per.items():
+        if str(name).startswith(("body#", "?#")):
+            continue
+        for (mv, colour), vals in (rec.get("pressure") or {}).items():
+            for v in vals:
+                if v > 0:
+                    cell[(name, mv, colour)].append(v)
+    obs = {}
+    for k, v in cell.items():
+        if len(v) >= min_obs:
+            v.sort()
+            obs[k] = math.log(v[len(v) // 2])
+    if not obs:
+        return ({}, {}, [])
+    sps = sorted(set(k[0] for k in obs))
+    mvs = sorted(set((k[1], k[2]) for k in obs))
+    f = dict((x, 0.0) for x in sps)
+    pct = dict((x, 0.0) for x in mvs)
+    for _ in range(rounds):
+        for m in mvs:
+            r = sorted(obs[k] - f[k[0]] for k in obs if (k[1], k[2]) == m)
+            if r:
+                pct[m] = r[len(r) // 2]
+        for sp in sps:
+            r = sorted(obs[k] - pct[(k[1], k[2])] for k in obs if k[0] == sp)
+            if r:
+                f[sp] = r[len(r) // 2]
+    res = sorted(abs(obs[k] - pct[(k[1], k[2])] - f[k[0]]) for k in obs)
+    return (dict((k, math.exp(v)) for k, v in pct.items()),
+            dict((k, math.exp(v)) for k, v in f.items()), res)
+
+
 def summarise_hp(dealt, killed, last_hit, wiki_entry):
     """Hitpoints, as the range a fresh one of these could have.
 

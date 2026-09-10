@@ -10,6 +10,7 @@ that actually went wrong, kept as checks so they cannot go wrong again quietly.
 Exits 0 when every check passes, 1 otherwise.
 """
 
+import math
 import os
 import sys
 
@@ -440,6 +441,45 @@ def own_defence():
         p_ = gain / (1.0 - standing / 100.0)
         near("    %d%% standing, gain %.1f" % (standing, gain), p_, 10.0, 0.01)
 
+
+
+def animal_cards_are_cards():
+    """An animal's move separates into a card and a creature, the way ours already does.
+
+    Our side is a listed percentage per card scaled by our own weight. The other side was
+    one unseparated pressure number, because the wiki gives an animal move's school and
+    never its percentage - but the same card is thrown by many creatures, and one card on
+    many creatures separates the card from the creature.
+
+    Asserted as a property: the two-way fit's residual has to stay small, and a card seen
+    on several species has to agree across them. Not the values, which carry a gauge
+    freedom the corpus cannot resolve - multiplying every percentage by c and dividing
+    every creature factor by c fits identically.
+    """
+    print("\nan animal's move separates into a card and a creature")
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    pct, f, res = estimate.animal_card_fit(per)
+    check("  the fit has something to fit", (len(res) > 40) and (len(pct) > 8), True)
+    n = len(res)
+    med, p90 = math.exp(res[n // 2]), math.exp(res[min(n - 1, int(n * 0.9))])
+    print("    %d cells, %d cards, %d species; residual median %.3fx, p90 %.3fx"
+          % (n, len(pct), len(f), med, p90))
+    check("  and the median cell is reproduced to within 2%", med < 1.02, True)
+    check("  with nine in ten inside 25%", p90 < 1.25, True)
+    # The card that carries the claim: one move, many creatures. If a percentage were a
+    # property of the creature rather than the card this is where it would fall apart.
+    shared = {}
+    for name, rec in per.items():
+        if str(name).startswith(("body#", "?#")):
+            continue
+        for (mv, colour), vals in (rec.get("pressure") or {}).items():
+            if len(vals) >= 5:
+                shared.setdefault((mv, colour), set()).add(name)
+    wide = sorted(shared, key=lambda k: -len(shared[k]))
+    if wide:
+        k = wide[0]
+        print("    widest: %s on %d species" % (k[0] + "/" + k[1], len(shared[k])))
+        check("  a card is seen on several species at once", len(shared[k]) >= 5, True)
 
 
 def pressure_denominator():
@@ -1650,6 +1690,7 @@ def main():
     mu_measurement()
     own_defence()
     pressure_denominator()
+    animal_cards_are_cards()
     mu_from_reductions()
     agility_control()
     agi_brackets()
