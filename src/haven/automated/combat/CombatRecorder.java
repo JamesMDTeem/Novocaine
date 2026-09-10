@@ -99,6 +99,13 @@ public final class CombatRecorder {
         new java.util.concurrent.ConcurrentHashMap<Long, String>();
     private static volatile String lastAtkRes = null;
     private static volatile Equipory curEq = null;
+    /* The GameUI, so pollEquipment can ask for the CURRENT equipment window rather than
+     * holding the one that existed when the fight began. A held reference goes stale when
+     * the widget is rebuilt, and a stale one reports the gear the fight opened with for
+     * the rest of the fight - which is why 15 logs in this corpus have a two-handed bow in
+     * both hands at t=0 and go on to throw Cleave and Quick Barrage with no gear row in
+     * between. A swap that is not recorded is a fight priced against the wrong weapon. */
+    private static volatile haven.GameUI curGui = null;
     private static volatile java.util.Map<Integer, GearSnap> lastGear = null;
     private static volatile java.util.Map<Integer, WpnSnap> lastWpn = null;
 
@@ -240,6 +247,7 @@ public final class CombatRecorder {
             lastAgi.clear();
             lastAtkRes = null;
             curEq = null;
+            curGui = null;
             lastGear = null;
             lastWpn = null;
             if(meGob >= 0)
@@ -304,6 +312,7 @@ public final class CombatRecorder {
                     log(CombatEvent.weapon(0, 6 + i, res, wstats.get(i)));
             }
             curEq = eq;
+            curGui = gui;
             lastGear = snapshotGear(eq);
             lastWpn = snapshotWeapon(eq);
             me = Prediction.me(comp, arm[0], arm[1],
@@ -461,6 +470,27 @@ public final class CombatRecorder {
         return(out);
     }
 
+    /**
+     * The equipment window as it stands now, falling back to the one the fight opened with.
+     *
+     * See curGui. Asking the GameUI each time costs a field read and a null check, and it
+     * is the difference between noticing a weapon swap and pricing the rest of the fight
+     * against whatever was in hand when it started.
+     */
+    private static Equipory liveEquipory() {
+        haven.GameUI gui = curGui;
+        if(gui != null) {
+            try {
+                Equipory live = gui.getequipory();
+                if(live != null)
+                    return(live);
+            } catch(Exception e) {
+                /* fall through to the one we were handed */
+            }
+        }
+        return(curEq);
+    }
+
     private static java.util.Map<Integer, GearSnap> snapshotGear(Equipory eq) {
         java.util.Map<Integer, GearSnap> out = new java.util.TreeMap<Integer, GearSnap>();
         if (eq == null)
@@ -516,7 +546,7 @@ public final class CombatRecorder {
     }
 
     private static void pollEquipment() {
-        Equipory eq = curEq;
+        Equipory eq = liveEquipory();
         java.util.Map<Integer, GearSnap> lg = lastGear;
         java.util.Map<Integer, WpnSnap> lw = lastWpn;
         if (eq == null || lg == null || lw == null)
@@ -531,6 +561,15 @@ public final class CombatRecorder {
                         GearSnap g = e.getValue();
                         log(CombatEvent.gear(t, e.getKey(), g.res, g.ql, g.hard, g.soft, g.broken));
                     }
+                }
+                /* AND THE SLOTS THAT EMPTIED. Only occupied slots are in the snapshot, so a
+                 * loop over the new one never visits a slot whose item has gone - taking a
+                 * shield off mid-fight emitted nothing at all, and the offline analysis went
+                 * on crediting us with its armour for the rest of the fight. A removal is a
+                 * null res, which is how the reader tells it from an item. */
+                for (Integer slot : lg.keySet()) {
+                    if (!curGear.containsKey(slot))
+                        log(CombatEvent.gear(t, slot.intValue(), null, 0.0, 0, 0, false));
                 }
                 lastGear = curGear;
             }

@@ -126,12 +126,31 @@ def weapon_of(log, weapons):
     quality - and the base damage from the wiki pack. Three independent sources, which is
     what makes the damage replay below a real test rather than a restatement.
     """
+    return weapon_at(log, weapons, None)
+
+
+def weapon_at(log, weapons, t):
+    """The weapon in hand at time `t`, or the first one the file names when t is None.
+
+    A WEAPON CAN BE SWAPPED MID-FIGHT, and the recorder polls equipment and writes a gear
+    row when it changes, so the log has always said so. This did not read it: it returned
+    the first weapon in the file and used it for every hit in the fight, which prices a
+    Cleave from a bronze sword at whatever the fight opened with.
+
+    Gear rows are in file order, which is time order, so the answer is the last one at or
+    before `t`. A slot emptying writes a null res and simply does not match.
+    """
+    found = None
     for g in log.gear:
+        if (t is not None) and ((g.get("t") or 0) > t):
+            break
         res = (g.get("res") or "").split("/")[-1]
         name = WEAPON_RES.get(res)
         if name and weapons.get(name):
-            return (weapons[name], g.get("ql"))
-    return None
+            found = (weapons[name], g.get("ql"))
+            if t is None:
+                return found
+    return found
 
 
 def replay_damage(log, eng, moves, weapons):
@@ -158,8 +177,8 @@ def replay_damage(log, eng, moves, weapons):
     strength = attrs.get("str")
     if not strength:
         return out
-    wep = weapon_of(log, weapons)
     for h in fightlog.hits(eng, log.me):
+        wep = weapon_at(log, weapons, h.get("t"))
         if h.get("actor") != "me":
             continue
         observed = (h.get("shp") or 0) + (h.get("soaked") or 0)
