@@ -2137,14 +2137,31 @@ _CARD_SHEET = {}
 
 
 def card_sheet(name):
-    """What a card's own text says it opens, or None where no log has carried it yet.
+    """Everything a card's own text says, or None where no log has carried one yet.
 
-    THIS OUTRANKS EVERYTHING ELSE, because it is the game's own words rather than a table
-    somebody typed up or an inference from what moved afterwards. It is parsed by the same
-    code that reads our deck dumps, so an animal's card and one of ours go through one
-    parser and any disagreement between the two paths is a bug in one place.
+    {opens, self, reduces, ip} - colour indices for the first three, an integer for the
+    last. THIS OUTRANKS EVERYTHING ELSE, because it is the game's own words rather than a
+    table somebody typed up or an inference from what moved afterwards. It is parsed by the
+    same code that reads our deck dumps, so an animal's card and one of ours go through one
+    parser and a disagreement between the two paths is a bug in one place.
+
+    The three colour lists are kept apart because they are three different things and only
+    the first is pressure on the other side:
+
+      opens    what it puts on its target - the only one a pressure figure may use
+      self     what it costs its user, from "Openings on you"
+      reduces  what it takes OFF its user, which undoes the target's work
+
+    `ip` is the initiative it grants its user, which is not nothing either: an opponent
+    banking initiative is paying for the expensive cards in its own deck.
     """
     return _CARD_SHEET.get(name)
+
+
+def card_opens(name):
+    """Just the colours a card puts on its target, or None where no sheet has arrived."""
+    sheet = _CARD_SHEET.get(name)
+    return None if sheet is None else sheet["opens"]
 
 
 def _read_card_row(r):
@@ -2157,20 +2174,30 @@ def _read_card_row(r):
     except ImportError:
         return
     idx = dict((c, i) for i, c in enumerate(fightlog.COLOURS))
-    cols, problems = set(), []
+    got = {"opens": set(), "self": set(), "reduces": set(), "ip": 0}
+    where = {"openings": "opens", "openings on opponent": "opens",
+             "openings on you": "self", "reduces": "reduces"}
+    problems = []
     for line in str(pag).split(chr(10)):
         if ":" not in line:
             continue
         label, rest = line.split(":", 1)
-        # Only what it puts on the OPPONENT. "Openings on you" is a cost to its user and
-        # "Reduces" is the opposite of an opening; neither is pressure on the other side.
-        if label.strip().lower() not in ("openings", "openings on opponent"):
+        key = label.strip().lower()
+        if key == "initiative points":
+            try:
+                got["ip"] = int(float(parse_deck.strip_markup(rest).strip()))
+            except (TypeError, ValueError):
+                pass
+            continue
+        slot = where.get(key)
+        if slot is None:
             continue
         for t in parse_deck.parse_terms(rest, problems, "card " + nm):
             c = t.get("colour")
             if c in idx:
-                cols.add(idx[c])
-    _CARD_SHEET[nm] = sorted(cols)
+                got[slot].add(idx[c])
+    _CARD_SHEET[nm] = {"opens": sorted(got["opens"]), "self": sorted(got["self"]),
+                       "reduces": sorted(got["reduces"]), "ip": got["ip"]}
 
 
 def foe_card_opens(name):
@@ -2183,7 +2210,7 @@ def foe_card_opens(name):
     and the corpus carries cards and colours the wiki never listed. Taking either alone
     loses real openings, and an opening lost reads as an opponent safer than it is.
     """
-    sheet = card_sheet(name)
+    sheet = card_opens(name)
     if sheet is not None:
         return set(sheet)
     out = set(animal_opens().get(name) or ())
@@ -2209,7 +2236,7 @@ def foe_card_harmless(name):
     thing the pressure figure beside it is measuring.
     """
     # A card whose own sheet we have needs no watching at all - it has said what it does.
-    if card_sheet(name) is not None:
+    if card_opens(name) is not None:
         return not foe_card_opens(name)
     if animal_opens().get(name) is None:
         return False
