@@ -443,6 +443,30 @@ def own_defence():
 
 
 
+def opponents_are_identified():
+    """An opponent unnamed in one log is usually named in another.
+
+    A relation can arrive before its gob does and its resource then reads null; when that
+    never resolves the engagement has no species and accumulates under "?#<gob>", a bucket
+    of one. Cross-referencing the corpus fixes most of it, and it is safe to do because ids
+    do not collide: not one gob in this corpus carries two different resources.
+    """
+    print("\nopponents named by one log and not another")
+    m = estimate.gob_species()
+    check("  the corpus knows what most gobs were", len(m) > 1000, True)
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    # ENGAGEMENTS, not buckets. Each unidentified opponent is its own bucket of one, so
+    # counting buckets makes 20 individuals look like 20 species and compares them against
+    # 49 real ones. What matters is how much of the corpus landed somewhere useful.
+    unk = sum(rec.get("engagements", 0) for k, rec in per.items()
+              if str(k).startswith("?#"))
+    named = sum(rec.get("engagements", 0) for k, rec in per.items()
+                if not str(k).startswith(("?#", "body#")))
+    print("    %d engagements under a named species, %d still unidentified,"
+          " %d ids known corpus-wide" % (named, unk, len(m)))
+    check("  and almost none are left unidentified", unk < named / 50.0, True)
+
+
 def animal_cards_are_cards():
     """An animal's move separates into a card and a creature, the way ours already does.
 
@@ -1691,6 +1715,7 @@ def main():
     own_defence()
     pressure_denominator()
     animal_cards_are_cards()
+    opponents_are_identified()
     mu_from_reductions()
     agility_control()
     agi_brackets()

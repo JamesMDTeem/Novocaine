@@ -1858,12 +1858,56 @@ def bucket(eng):
     wrong. Animals are grouped by species; players are kept apart by gob, which is
     stable within a session and is the only identity a log carries for them.
     """
-    res = eng.res or ""
+    res = eng.res or gob_species().get(eng.gob) or ""
     if "kritter" in res:
         return res.split("/")[-1]
     if not res:
         return "?#%s" % eng.gob
     return "%s#%s" % (res.split("/")[-1], eng.gob)
+
+
+# gob id -> resource, over the WHOLE corpus. Built once, lazily.
+_GOB_RES = None
+
+
+def gob_species(paths=None):
+    """What every opponent id in the corpus turned out to be, whichever log named it.
+
+    A relation can arrive before the gob it refers to, and its resource then reads null.
+    When that never resolves before the fight ends the engagement has no species at all
+    and its measurements accumulate under "?#<gob>", which is a bucket of one - 175
+    engagements sat there.
+
+    Another log usually knows. Ids are stable and unambiguous here: of 3025 that any log
+    names, NOT ONE carries two different resources, and cross-referencing recovers 141 of
+    the 175. The remaining 34 were never named anywhere.
+
+    Reading only the two row types that carry a name keeps this cheap, and it is cached
+    for the life of the process.
+    """
+    global _GOB_RES
+    if (_GOB_RES is not None) and (paths is None):
+        return _GOB_RES
+    out = {}
+    for path in (paths if paths is not None else fightlog.default_logs(ROOT)[0]):
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if ('"foe"' not in line) and ('"begin"' not in line):
+                        continue
+                    try:
+                        r = json.loads(line)
+                    except ValueError:
+                        continue
+                    if r.get("ev") == "foe" and r.get("gob") and r.get("res"):
+                        out.setdefault(r["gob"], r["res"])
+                    elif r.get("ev") == "begin" and r.get("foegob") and r.get("foeres"):
+                        out.setdefault(r["foegob"], r["foeres"])
+        except OSError:
+            continue
+    if paths is None:
+        _GOB_RES = out
+    return out
 
 
 # How wrong an observed gain can be, in opening points. Half a point is the display

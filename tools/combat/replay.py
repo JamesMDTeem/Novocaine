@@ -682,6 +682,23 @@ def main(argv):
     # What IS established is that a gain often arrives after the state row that closes its
     # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first
     # state row after the move, 28% are still climbing and 19% are already decaying.
+    # A MISS HAS TO CLEAR BOTH BARS. One display point is the absolute floor and it stops
+    # meaning much once a prediction is large: an ant's Quick Barrage predicted 12.0-19.4
+    # and observed at 21 is 1.6 points out, which is 8% - and every input to that
+    # prediction is an interval with about that much slop in it. The Flex readings, by
+    # contrast, sit 16 to 19% outside their own band, and there is nothing in between.
+    #
+    # So a gross miss is one that is both a point out AND a tenth out. Neither bar alone
+    # works: the absolute one alone flags arithmetic that is right, and the relative one
+    # alone flags a prediction of 3.0 missed by 0.4.
+    GROSS = 1.0
+    GROSS_SHARE = 0.10
+
+    def _gross(m):
+        off, gain, lo, hi = m[0], m[5], m[6], m[7]
+        edge_ = hi if gain > hi else lo
+        return (off >= GROSS) and (edge_ > 0) and ((off / edge_) >= GROSS_SHARE)
+
     # CLEAN FIGHTS AND GROUP FIGHTS ARE SCORED APART, and the gate holds only the first.
     #
     # The openings half used to be skipped entirely on a fight with anything else going on
@@ -698,13 +715,12 @@ def main(argv):
     group = [m for m in misses if not m[9]]
     misses = [m for m in misses if m[9]]
     if group:
-        gg = [m for m in group if m[0] >= 1.0]
+        gg = [m for m in group if _gross(m)]
         hi_side = sum(1 for m in gg if m[5] > m[7])
         print("  %d miss(es) in fights with somebody else in them, scored apart - %d gross,"
               % (len(group), len(gg)))
         print("  %d of those reading HIGH, which is what a third party's gain does" % hi_side)
-    GROSS = 1.0
-    gross = [m for m in misses if m[0] >= GROSS]
+    gross = [m for m in misses if _gross(m)]
     edge = len(misses) - len(gross)
     if edge:
         print("  %d miss(es) under a point - the prediction interval's edge, not a finding"
