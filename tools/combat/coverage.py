@@ -40,6 +40,12 @@ def survey(paths):
         logs["read"] += 1
         if fightlog.is_ranged(log):
             logs["ranged"] += 1
+        party = set()
+        for r in log.party:
+            party |= set(r.get("gobs") or [])
+        party.discard(log.me)
+        if party:
+            logs["fought alongside a party"] += 1
         for e in log.engagements:
             eng["total"] += 1
             sts = getattr(e, "states", None) or ()
@@ -60,6 +66,13 @@ def survey(paths):
                 eng["we acted, nothing survived attribution"] += 1
             if not e.offence_ok:
                 eng["  (also: not clean enough for the damage half)"] += 1
+                # ALLY OR STRANGER. The damage half cannot use either - there is no
+                # per-observation test that can say whose damage number is whose, and it
+                # was re-measured on 2026-09-10 at rms 39.12 in a party and 25.85 outside
+                # one, against 3.16 clean. But which of the two it is decides what to do
+                # about it: a stranger is bad luck, and a party is a choice.
+                eng["    with a party of ours" if party
+                    else "    with somebody who is not ours"] += 1
             for m in mine:
                 card["cards thrown"] += 1
                 can = opens.get(m.get("name") or m.get("move"))
