@@ -8372,8 +8372,8 @@
      "ticks": 45.8
     },
     "pressure": {
-     "blue": 4.0,
-     "green": 4.27,
+     "blue": 4.01,
+     "green": 4.28,
      "red": 0.0,
      "yellow": 0.0
     },
@@ -10499,9 +10499,9 @@
      "ticks": 39.0
     },
     "pressure": {
-     "blue": 1.19,
-     "green": 3.06,
-     "red": 0.88,
+     "blue": 1.27,
+     "green": 3.25,
+     "red": 0.94,
      "yellow": 0.0
     },
     "pressure_against": 377.57142857142856,
@@ -11911,10 +11911,10 @@
      "ticks": 145.7
     },
     "pressure": {
-     "blue": 5.83,
-     "green": 5.79,
-     "red": 5.83,
-     "yellow": 5.83
+     "blue": 7.18,
+     "green": 7.13,
+     "red": 7.18,
+     "yellow": 7.18
     },
     "pressure_against": 622.5,
     "pressure_n": 13
@@ -12497,8 +12497,8 @@
      "ticks": 41.4
     },
     "pressure": {
-     "blue": 4.36,
-     "green": 7.52,
+     "blue": 4.52,
+     "green": 7.79,
      "red": 0.0,
      "yellow": 0.0
     },
@@ -13414,8 +13414,8 @@
      "ticks": 57.2
     },
     "pressure": {
-     "blue": 5.4,
-     "green": 2.89,
+     "blue": 5.43,
+     "green": 2.91,
      "red": 0.45,
      "yellow": 0.0
     },
@@ -13910,9 +13910,9 @@
      "ticks": 57.5
     },
     "pressure": {
-     "blue": 5.59,
-     "green": 2.71,
-     "red": 0.4,
+     "blue": 5.73,
+     "green": 2.77,
+     "red": 0.41,
      "yellow": 0.0
     },
     "pressure_against": 420.25,
@@ -14070,9 +14070,9 @@
      "ticks": 52.5
     },
     "pressure": {
-     "blue": 1.48,
+     "blue": 1.87,
      "green": 0.0,
-     "red": 2.17,
+     "red": 2.74,
      "yellow": 0.0
     },
     "pressure_against": 471.25,
@@ -14217,8 +14217,8 @@
      "ticks": 43.4
     },
     "pressure": {
-     "blue": 2.6,
-     "green": 5.58,
+     "blue": 2.61,
+     "green": 5.59,
      "red": 0.0,
      "yellow": 0.0
     },
@@ -14383,7 +14383,7 @@
     },
     "pressure": {
      "blue": 0.12,
-     "green": 5.23,
+     "green": 5.29,
      "red": 0.0,
      "yellow": 0.0
     },
@@ -14712,9 +14712,9 @@
      "ticks": 43.2
     },
     "pressure": {
-     "blue": 0.78,
-     "green": 8.32,
-     "red": 0.51,
+     "blue": 0.8,
+     "green": 8.52,
+     "red": 0.52,
      "yellow": 0.02
     },
     "pressure_against": 438.3333333333333,

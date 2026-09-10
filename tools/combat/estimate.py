@@ -2112,7 +2112,64 @@ def opens_map(moves):
     return out
 
 
+# What each OPPONENT card was actually seen to do, keyed by card name, filled during
+# collect(). {card: {"uses": n, "rise": [4 counts]}}.
+#
+# THE WIKI'S TABLE IS NOT COMPLETE AND IS SOMETIMES WRONG. Rampant Rage and Tail Splash
+# are listed as opening nothing and raise yellow in 31% of 144 brackets and blue in 55%
+# of 118; Maddening Roar has no row at all and raises yellow in 59% of 47; Vampirism is
+# listed as yellow and raises BLUE in 78% of 56. Where the log and the table disagree the
+# log wins, because it is the game.
+_FOE_CARD = {}
+
+# A colour has to rise in this share of a card's own brackets to count as the card's
+# doing. Real openers sit at 27-85% and cards that open nothing sit at zero, so anything
+# in this gap separates them; the floor exists for the contamination that reaches a
+# bracket anyway.
+FOE_RISE_SHARE = 0.08
+# Below this many uses a card has not been watched enough to overrule the wiki either way.
+FOE_RISE_MIN_USES = 30
+
+
+def foe_card_opens(name):
+    """The colours an opponent's card opens: the wiki's row, plus what the log has seen.
+
+    A union, never a replacement. The wiki carries cards the corpus has barely watched, and
+    the corpus carries cards and colours the wiki never listed. Taking either alone loses
+    real openings, and an opening lost reads as an opponent that is safer than it is.
+    """
+    out = set(animal_opens().get(name) or ())
+    seen = _FOE_CARD.get(name)
+    if seen and (seen["uses"] >= FOE_RISE_MIN_USES):
+        for i in range(4):
+            if (seen["rise"][i] / float(seen["uses"])) >= FOE_RISE_SHARE:
+                out.add(i)
+    return out
+
+
+def foe_card_harmless(name):
+    """Whether this card is known to put no opening on us at all.
+
+    Known, not merely unlisted. It needs both the wiki saying nothing and enough uses
+    watched to have seen something if there were anything - Roar of the Wild, Careful
+    Approach, Bristle, Swift Evasion and Unstoppable all clear that, on 158 to 1260 uses
+    with no colour reaching even the floor.
+
+    It does NOT mean the card does nothing. A card that reduces the opponent's own
+    openings undoes our work, and one that grants it initiative pays for its expensive
+    cards. Harmless here means only "applies no opening pressure to us", which is the one
+    thing the pressure figure beside it is measuring.
+    """
+    if animal_opens().get(name) is None:
+        return False
+    seen = _FOE_CARD.get(name)
+    if not seen or (seen["uses"] < FOE_RISE_MIN_USES):
+        return False
+    return not foe_card_opens(name)
+
+
 def collect(paths):
+    _FOE_CARD.clear()
     moves = load_moves()
     wiki = wiki_creatures()
     opens = opens_map(moves)
@@ -2254,6 +2311,25 @@ def collect(paths):
             # boar's is 212 to 677 around a wiki 450 - so dividing one creature's damage
             # by it gives anything from 0.77 to 2.47, and several species come out having
             # taken more than their whole estimated hitpool before running.
+            # What each of the opponent's cards was seen to do to US, for foe_card_opens.
+            for fm in eng.moves:
+                if fm.get("actor") != "foe":
+                    continue
+                nm = fm.get("name") or fm.get("move")
+                if not nm:
+                    continue
+                slot = _FOE_CARD.setdefault(nm, {"uses": 0, "rise": [0, 0, 0, 0]})
+                slot["uses"] += 1
+                fb, fa = eng.brackets(fm)
+                if (fb is None) or (fa is None):
+                    continue
+                fbv, fav = fb.get("mine"), fa.get("mine")
+                if not fbv or not fav:
+                    continue
+                for i in range(4):
+                    if fav[i] > fbv[i]:
+                        slot["rise"][i] += 1
+
             flee_at = None
             for st in (getattr(eng, "states", None) or ()):
                 if (st.get("gst") or 0) & 2:
@@ -4247,16 +4323,23 @@ def threat(rec):
         # threat by the share of the opponent's deck that does nothing - the badger throws
         # Careful Approach and Roar of the Wild 7% of the time, the wolf its own kind 15%.
         #
-        # Only cards the wiki's table says open NOTHING are counted here. A card that
-        # opens something we have never managed to measure is unmeasured, not harmless,
-        # and putting it in this denominator would be the "absent means zero" mistake in
-        # its most expensive form: it would make an opponent look safer the less we know.
-        tbl = animal_opens()
+        # Only cards KNOWN to put no opening on us are counted here, and known means the
+        # log agrees with the wiki rather than the wiki alone - see foe_card_harmless. A
+        # card that opens something we have never measured is unmeasured, not harmless, and
+        # putting it in this denominator would be the "absent means zero" mistake in its
+        # most expensive form: an opponent would look safer the less we knew about it.
+        #
+        # Trusting the wiki alone made exactly that mistake. Rampant Rage and Tail Splash
+        # are listed as opening nothing and do open us, which diluted the wolf, walrus and
+        # caveangler.
+        #
+        # "Harmless" is only ever about OPENING PRESSURE ON US, which is what this figure
+        # measures. Such a card is not idle: it may reduce the opponent's own openings,
+        # undoing our work, or grant it the initiative its expensive cards cost. Neither
+        # belongs in a pressure number, and both belong in a simulator that models the
+        # opponent's cards rather than one aggregate action.
         for mv, n in freq.items():
-            if mv in bymove:
-                continue
-            cols = tbl.get(mv)
-            if (cols is not None) and (len(cols) == 0):
+            if (mv not in bymove) and foe_card_harmless(mv):
                 total += float(n)
         for c in COLOURS:
             pressure[c] = round(pressure[c] / total, 2) if total > 0 else 0.0

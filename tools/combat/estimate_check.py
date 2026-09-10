@@ -462,7 +462,6 @@ def pressure_denominator():
     """
     print("\npressure is averaged over every action, not only the opening ones")
     per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
-    tbl = estimate.animal_opens()
     tested = 0
     for name, rec in sorted(per.items()):
         pr = (rec.get("pressure") or {})
@@ -475,9 +474,9 @@ def pressure_denominator():
             if mv:
                 freq[mv] = freq.get(mv, 0) + 1
         opening = set(mv for (mv, _c) in pr)
+        # foe_card_harmless, not the wiki's table - the two disagree, and the log wins.
         idle = [mv for mv, n in freq.items()
-                if (mv not in opening) and (tbl.get(mv) is not None)
-                and (len(tbl[mv]) == 0) and (n > 0)]
+                if (mv not in opening) and (n > 0) and estimate.foe_card_harmless(mv)]
         if not idle or not opening:
             continue
         bymove = {}
