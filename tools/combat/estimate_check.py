@@ -443,6 +443,46 @@ def own_defence():
 
 
 
+def coverage_has_a_floor():
+    """A gate must not be able to eat the corpus quietly.
+
+    Every gate in this project is a trade: it removes contamination and it removes data,
+    and the second half is invisible unless something counts it. Three gates have been
+    added or narrowed in two days, and two more were measured and rejected precisely
+    because the trade was bad - 480 observations for one miss, 382 for another.
+
+    Asserted as a SHARE and not a count, because this file has twice encoded a snapshot
+    and been wrong both times. `tools/combat/coverage.py` prints the full breakdown.
+    """
+    print("\nhow much of the corpus still reaches the estimator")
+    moves = estimate.load_moves()
+    opens = estimate.opens_map(moves)
+    paths = estimate.fightlog.default_logs(estimate.ROOT)[0]
+    gains = thrown = openers = 0
+    for pth in paths:
+        try:
+            log = estimate.fightlog.read(pth, opens)
+        except Exception:
+            continue
+        if not log.rows:
+            continue
+        for eng in log.engagements:
+            gains += sum(1 for g in estimate.fightlog.attributed_gains(
+                eng, opens, log.me) if g[0] == "me")
+            for m in eng.moves:
+                if m.get("actor") != "me":
+                    continue
+                thrown += 1
+                can = opens.get(m.get("name") or m.get("move"))
+                if can:
+                    openers += 1
+    print("    %d gains from %d cards that open something, of %d thrown"
+          % (gains, openers, thrown))
+    check("  the corpus still reaches the estimator", gains > 5000, True)
+    check("  and a card that opens something usually produces one",
+          (gains / float(openers or 1)) > 0.30, True)
+
+
 def deck_comes_from_the_fight():
     """From schema 14 a log says which deck it was fought with, and that outranks dating.
 
@@ -1779,6 +1819,7 @@ def main():
     opponents_are_identified()
     cards_do_not_cross_sides()
     deck_comes_from_the_fight()
+    coverage_has_a_floor()
     mu_from_reductions()
     agility_control()
     agi_brackets()
