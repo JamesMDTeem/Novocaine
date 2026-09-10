@@ -4308,6 +4308,19 @@ def flees_below(rec):
     so the answer is one minus that. The boar is the best-covered: 40 individuals, a median
     of 0.73 taken and an interquartile 0.65 to 0.80, so it runs somewhere below a fifth to
     a third of its health.
+
+    THE DENOMINATOR IS EXACT, WHICH IS NOT OBVIOUS. A killing blow is recorded at the health
+    it actually removed rather than the damage it carried - that is why the last hit of an
+    engagement is scored apart in replay.py - so the recorded damage over a whole fight sums
+    to the creature's hitpoints and not to something larger. The overshoot that makes a
+    killing blow a bad damage observation is what makes it an exact hitpoint total.
+
+    WHAT IS BIASED IS WHICH INDIVIDUALS APPEAR AT ALL. A big enough hit takes a creature from
+    above its threshold to dead, and it never shows the olive branch, so it contributes
+    nothing here. That does not skew the threshold of the ones that did flee, but it does
+    mean a species we reliably kill in one blow past that point will show no threshold and
+    be fought to zero by the simulator - which is the safe direction to be wrong in, since
+    it plans for more fight than there turns out to be.
     """
     v = sorted(rec.get("flee") or ())
     if len(v) < FLEE_MIN_N:
