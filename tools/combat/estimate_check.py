@@ -443,6 +443,41 @@ def own_defence():
 
 
 
+def cards_do_not_cross_sides():
+    """No animal is recorded using one of our cards, and we are not recorded using theirs.
+
+    An animal has its own deck. If our Quick Barrage ever turned up as something a wolf
+    threw, attribution would be crediting one side's card to the other and every figure
+    built on it would be describing the wrong combatant - so it is worth asserting rather
+    than assuming, in both directions.
+
+    The one legitimate crossover is a PLAYER opponent, who holds the same cards we do:
+    Quick Barrage appears as an opponent's card 46 times and every one of them is against
+    a body.
+    """
+    print("\na card belongs to one side of the fight")
+    per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
+    ours = set(estimate.load_moves())
+    theirs, bad, back = set(), [], []
+    for name, rec in per.items():
+        animal = not str(name).startswith("body#")
+        for mv, _ip, _alone in (rec.get("foe_moves") or ()):
+            if not mv:
+                continue
+            if mv in ours:
+                if animal:
+                    bad.append((name, mv))
+            else:
+                theirs.add(mv)
+    check("  the opponents have cards of their own", len(theirs) > 10, True)
+    check("  and no animal is recorded throwing one of ours", sorted(set(bad))[:3], [])
+    # A player opponent holding our cards is the legitimate case, and it has to still work.
+    players = [n for n in per if str(n).startswith("body#")]
+    shared = [n for n in players
+              if any(mv in ours for mv, _i, _a in (per[n].get("foe_moves") or ()))]
+    check("  while a player opponent still holds them", len(shared) > 0, True)
+
+
 def opponents_are_identified():
     """An opponent unnamed in one log is usually named in another.
 
@@ -1716,6 +1751,7 @@ def main():
     pressure_denominator()
     animal_cards_are_cards()
     opponents_are_identified()
+    cards_do_not_cross_sides()
     mu_from_reductions()
     agility_control()
     agi_brackets()

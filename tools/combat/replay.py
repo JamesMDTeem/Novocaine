@@ -492,9 +492,12 @@ def main(argv):
               " at the gate below:" % len(misses))
         for row in sorted(misses, reverse=True)[:12]:
             off, name, mv, colour, standing, gain, lo, hi, f = row[:9]
-            print("  %-12s %-20s %-7s standing %-4d observed %-5.0f predicted %.1f-%.1f"
-                  "   off by %.1f   %s%s"
-                  % (name, mv[:20], colour, standing, gain, lo, hi, off, f,
+            # "our Quick Barrage against ants" rather than "ants Quick Barrage" - the
+            # card is always OURS and the species is who we threw it at, and the old
+            # wording read as though the ant had thrown it.
+            print("  our %-20s %-7s vs %-12s standing %-4d observed %-5.0f"
+                  " predicted %.1f-%.1f   off by %.1f   %s%s"
+                  % (mv[:20], colour, name[:12], standing, gain, lo, hi, off, f,
                      "" if row[9] else "   [group]"))
         print("  %d of the %d are from fights we had to ourselves"
               % (len(solo), len(misses)))
