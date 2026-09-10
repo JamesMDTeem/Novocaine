@@ -220,9 +220,20 @@ def replay(paths):
         lv = estimate.levels_for_log(log)
         for eng in log.engagements:
             name = estimate.bucket(eng)
-            if not eng.offence_ok:
-                skipped["contaminated"] += 1
-                continue
+            # THE OLD ALL-OR-NOTHING GATE, AND ONLY WHERE IT STILL EARNS ITS KEEP. This ran
+            # over both halves and excluded 60.8% of engagements - 57.1% for others_present
+            # alone, which fires when anything at all was happening anywhere in the fight.
+            # attributed_gains was written to replace exactly that, testing each observation
+            # instead of condemning the engagement, and running both meant the openings half
+            # was gated twice: once by a rule the project had already decided was too coarse.
+            #
+            # The damage half still needs it, for the reason below - hits() pairs a damage
+            # number to a move by time, and there is no per-observation test that can tell
+            # whose number it was. So the gate moved down to the half that cannot do without
+            # it, and the openings half now sees every fight its own four tests allow.
+            clean = eng.offence_ok
+            if not clean:
+                skipped["contaminated (damage half only)"] += 1
             # Damage needs no opponent stats, so it covers fights the opening replay has
             # to skip for want of a pinned defence weight - but it still needs a clean
             # fight. hits() pairs damage numbers to a move by time, and in a group fight
@@ -243,7 +254,7 @@ def replay(paths):
             # hides the state of the model: on hits before the last, Santa Samus reads
             # 1.07, ZzxcuV3 1.27 and Shade 1.77.
             hs = [h for h in fightlog.hits(eng, log.me) if h.get("actor") == "me"
-                  and ((h.get("shp") or 0) + (h.get("soaked") or 0)) > 0]
+                  and ((h.get("shp") or 0) + (h.get("soaked") or 0)) > 0] if clean else []
             lastt = max([h.get("t", 0) for h in hs] or [None])
             scored = [h for h in hs if moves.get(h.get("move"))]
             char = (log.header or {}).get("char")
@@ -305,7 +316,7 @@ def replay(paths):
                     off = (lo - gain) if gain < lo else (gain - hi)
                     s["worst"] = max(s["worst"], off)
                     misses.append((off, name, mv, colour, standing, gain, lo, hi,
-                                   os.path.basename(p)))
+                                   os.path.basename(p), clean))
     print("%d ranged fight(s) routed out of melee validation (%s)"
           % (ranged_skipped, ", ".join(sorted(ranged_files))))
     return stats, dmg, misses, skipped, final_dmg, by_char
@@ -455,13 +466,19 @@ def main(argv):
           % (tot_agree, tot_n, (100.0 * tot_agree / tot_n) if tot_n else 0.0))
 
     if misses:
-        print("\nthe %d that do not, worst first - each is a real disagreement between "
-              "the\nmodel and a logged fight, not a rounding complaint:" % len(misses))
-        for off, name, mv, colour, standing, gain, lo, hi, f in sorted(
-                misses, reverse=True)[:12]:
+        solo = [m for m in misses if m[9]]
+        print("\nthe %d that do not, worst first - each is a real disagreement "
+              "between the model and a logged fight, not a rounding complaint."
+              " A fight with somebody else in it is marked, and is scored apart"
+              " at the gate below:" % len(misses))
+        for row in sorted(misses, reverse=True)[:12]:
+            off, name, mv, colour, standing, gain, lo, hi, f = row[:9]
             print("  %-12s %-20s %-7s standing %-4d observed %-5.0f predicted %.1f-%.1f"
-                  "   off by %.1f   %s"
-                  % (name, mv[:20], colour, standing, gain, lo, hi, off, f))
+                  "   off by %.1f   %s%s"
+                  % (name, mv[:20], colour, standing, gain, lo, hi, off, f,
+                     "" if row[9] else "   [group]"))
+        print("  %d of the %d are from fights we had to ourselves"
+              % (len(solo), len(misses)))
     if skipped:
         print("\nnot replayed: %s"
               % ", ".join("%d %s" % (v, k) for k, v in sorted(skipped.items())))
@@ -646,6 +663,27 @@ def main(argv):
     # What IS established is that a gain often arrives after the state row that closes its
     # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first
     # state row after the move, 28% are still climbing and 19% are already decaying.
+    # CLEAN FIGHTS AND GROUP FIGHTS ARE SCORED APART, and the gate holds only the first.
+    #
+    # The openings half used to be skipped entirely on a fight with anything else going on
+    # in it, which is 60.8% of engagements. That gate is right for the damage half and too
+    # coarse here, so it now separates rather than excludes - and the separation says what
+    # the exclusion never could.
+    #
+    # A group fight adds TAIL, not bias. Comparing the opponent skill recovered from clean
+    # engagements against group ones, over the 18 species with 20 or more of each, the
+    # median ratio is 1.01 with eight species below one and ten above. Contamination can
+    # only ever ADD to a gain and so can only read a skill LOW; a balanced ratio is not
+    # that. What group fights do add is outliers, and the estimator is median-based, which
+    # is why the pack is unharmed and this file is not.
+    group = [m for m in misses if not m[9]]
+    misses = [m for m in misses if m[9]]
+    if group:
+        gg = [m for m in group if m[0] >= 1.0]
+        hi_side = sum(1 for m in gg if m[5] > m[7])
+        print("  %d miss(es) in fights with somebody else in them, scored apart - %d gross,"
+              % (len(group), len(gg)))
+        print("  %d of those reading HIGH, which is what a third party's gain does" % hi_side)
     GROSS = 1.0
     gross = [m for m in misses if m[0] >= GROSS]
     edge = len(misses) - len(gross)
