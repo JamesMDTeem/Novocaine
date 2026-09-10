@@ -75,7 +75,7 @@ public final class FoeModel {
     public final double fleesBelow;
 
     /**
-     * Points it takes back off its OWN openings, per action it takes. NaN when unmeasured.
+     * The SHARE of its own standing openings it takes back, per action. NaN if unmeasured.
      *
      * ITS CARDS RESTORE AND NOTHING HERE KNEW. Six of them do it and the rest do not:
      * Unstoppable closes 25.2 points a use, Bristle 16.4, Swift Evasion 11.9, Rampant Rage
@@ -85,6 +85,12 @@ public final class FoeModel {
      * Left out, the model keeps a creature more open than it really is for the whole fight,
      * and every opening feeds a damage term that squares it. That is optimism in the one
      * direction a matchup must not be optimistic in.
+     *
+     * A SHARE, not a number of points, which is the shape our own reductions already take.
+     * Splitting each restoring card by how much was standing when it landed settles it:
+     * Bristle takes 1.0, 9.0 and 21.0 points as the standing total rises through the bands
+     * 1-25, 25-60 and 60+, and 0.17, 0.20 and 0.20 of it. The points climb; the share does
+     * not.
      *
      * Averaged over every action, matching the period and the pressure beside it: a
      * creature that spends a third of its turns on Bristle undoes rather more than one
@@ -156,26 +162,12 @@ public final class FoeModel {
     public void restore(Combatant self) {
         if((self == null) || Double.isNaN(restores) || (restores <= 0))
             return;
-        /* Spread across whatever is standing, largest first, which is what a restoration
-         * card does - none of them names a colour in the corpus and the greatest opening
-         * is the one worth closing. */
-        double left = restores;
-        for(int guard = 0; (guard < 4) && (left > 0.0001); guard++) {
-            int best = -1;
-            for(int c = 0; c < 4; c++) {
-                if((self.opening(c) > 0) && ((best < 0) || (self.opening(c) > self.opening(best))))
-                    best = c;
-            }
-            if(best < 0)
-                return;
-            /* close() takes a SHARE of what is standing, not a number of points - see
-             * Combatant.close, and Move.reduces which is already a fraction by the time
-             * Pack has divided it. Handing it points closes the opening outright. */
-            double have = self.opening(best) * 100.0;
-            double take = Math.min(have, left);
-            self.close(best, take / have);
-            left -= take;
-        }
+        /* The same share off every colour, which is what a share of the standing total
+         * means and what close() already does for one colour on our own side. None of the
+         * restoring cards names a colour in the corpus, so there is nothing to aim it at. */
+        double share = (restores > 1.0) ? 1.0 : restores;
+        for(int c = 0; c < 4; c++)
+            self.close(c, share);
     }
 
     public double act(Combatant me, double myBlockWeight) {

@@ -2716,8 +2716,9 @@ def collect(paths):
                 if (fb is not None) and (_fa2 is not None):
                     _bv, _av = fb.get("foe"), _fa2.get("foe")
                     if _bv and _av and any(_bv):
+                        _stand = float(sum(_bv))
                         rec["foe_close_by"][eng.gob][(log.header or {}).get("char")].append(
-                            sum(max(0, _bv[i] - _av[i]) for i in range(4)))
+                            sum(max(0, _bv[i] - _av[i]) for i in range(4)) / _stand)
                 if fb is not None:
                     rec["foe_state_by"][eng.gob][(log.header or {}).get("char")].append(
                         (fm.get("name") or fm.get("move"),
@@ -4699,15 +4700,26 @@ RESTORE_MIN_N = 30
 
 
 def restores(rec):
-    """Points the opponent takes back off its own openings, per action it takes.
+    """The SHARE of its standing openings the opponent takes back, per action it takes.
 
     Measured, not assumed: nothing we do closes their openings, so a fall inside one of
     their brackets is theirs or it is decay - and across 412399 brackets where nothing
     acted at all the mean fall is 0.04 points, so decay is nothing.
 
-    Averaged over EVERY action rather than over the restoring ones, because the period
-    beside it counts every action too. That is the same denominator the pressure figure
-    uses and for the same reason.
+    A SHARE AND NOT A NUMBER OF POINTS, which is the shape our own reductions already
+    take. Splitting each restoring card by how much was standing when it landed settles
+    it: the points climb steeply with the opening and the share holds flat.
+
+        card                points by band 1-25 / 25-60 / 60+   share, same bands
+        Bristle                  1.0    9.0   21.0                0.17  0.20  0.20
+        Swift Evasion            1.0   13.0   29.0                0.27  0.31  0.30
+        Careful Approach         1.0    5.0   10.0                0.14  0.15  0.12
+        Roar of the Wild         1.0    5.0    8.0                0.13  0.14  0.10
+
+    Averaged over EVERY action with something standing rather than over the restoring
+    ones, because the period beside it counts every action too - a creature that spends a
+    third of its turns on Bristle takes back a third as much as one that only throws it,
+    and an attacking card contributes its own zero to that mean.
     """
     v = rec.get("foe_close") or ()
     if len(v) < RESTORE_MIN_N:
@@ -4829,10 +4841,9 @@ def threat(rec):
             # MEASURED where the corpus has watched one give up and keep taking damage.
             # Null, not zero - zero would mean "fights to the death", which is a claim.
             "flees_below": flees_below(rec),
-            # POINTS IT TAKES BACK OFF ITSELF PER ACTION, averaged over every action its
-            # clock counts - the same denominator the pressure beside it uses. Six of its
-            # cards restore and the rest do not, so a creature that spends a third of its
-            # turns on Bristle undoes rather more than one that never throws it.
+            # THE SHARE OF ITS STANDING OPENINGS IT TAKES BACK PER ACTION, averaged over
+            # every action its clock counts - the same denominator the pressure beside it
+            # uses. A share rather than points: see restores.
             #
             # Null below RESTORE_MIN_N, where the mean is one creature's habits.
             "restores": restores(rec)}

@@ -453,14 +453,16 @@ public class CombatPackCheck {
     static boolean restoresClosesOpenings() {
         haven.combat.FoeModel m = new haven.combat.FoeModel(
             45, new double[] {0, 0, 0, 0}, 0, Double.NaN, 0, 0, Double.NaN,
-            new int[0], 6.0);
+            new int[0], 0.20);
         haven.combat.Combatant c = new haven.combat.Combatant("it");
         c.open(0, 20);
         c.open(3, 5);
         m.restore(c);
-        /* Six points off the largest first, so green falls to 14 and red is untouched. */
-        return((Math.abs((c.opening(0) * 100) - 14.0) < 1e-6)
-               && (Math.abs((c.opening(3) * 100) - 5.0) < 1e-6));
+        /* A SHARE of each, not points off the largest: a fifth of 20 leaves 16 and a fifth
+         * of 5 leaves 4. The corpus says share - Bristle takes 1.0, 9.0 and 21.0 points as
+         * the standing total rises through its bands, and 0.17, 0.20, 0.20 of it. */
+        return((Math.abs((c.opening(0) * 100) - 16.0) < 1e-6)
+               && (Math.abs((c.opening(3) * 100) - 4.0) < 1e-6));
     }
 
     /** A threshold is a fraction of hitpoints, so anything outside (0, 1) is a unit bug. */
