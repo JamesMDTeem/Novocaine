@@ -167,6 +167,40 @@ public class CombatPackCheck {
             check("  and another character does not", shade.knows("Parry"), false);
             check("    while still knowing most of it", shade.owned.size() > 30, true);
         }
+
+        /* A DUEL FOUGHT NAKED IS NOT THIS CHARACTER'S DUEL, and it was. Nothing set the
+         * armour, so two players in bronze plate hit each other as though wearing
+         * nothing: the same pair of decks kills in 121 seconds bare and does not resolve
+         * at all in 362 with the armour on. That difference was the whole basis of the
+         * earlier finding that whoever swings first wins, which was an artefact of it.
+         *
+         * The numbers come off the client's own gear rows, which carry hard and soft per
+         * item, so this is measured rather than matched against the wiki. */
+        if(zz != null) {
+            check("  the character is wearing something", zz.armHard > 50, true);
+            check("    soft soak as well as hard", zz.armSoft > 50, true);
+            check("    and the combatant it builds carries it",
+                  zz.combatant().armHard, zz.armHard);
+            /* Combatant defaults penetrable false because every armoured opponent in the
+             * corpus is an animal and the one that could be tested was immune. A person
+             * is not, and a weapon's penetration against a player is what it says. */
+            check("    and is penetrable, unlike the animals", zz.combatant().penetrable,
+                  true);
+        }
+
+        /* Shield Up is 250% of the block weight holding a shield and 50% without - five
+         * times, on the one number a stance exists to set. The sheet has said so since it
+         * was first parsed and nothing read it, so every unshielded character has been
+         * priced as though carrying a tower. */
+        Move shield = moves.get("Shield Up");
+        if(shield != null) {
+            check("  Shield Up says what it needs", shield.blockRequires, "shield");
+            check("    and what it falls to without it", shield.blockMultWithout, 0.5);
+            check("    against 2.5 with one", shield.blockMult, 2.5);
+        }
+        Move parry = moves.get("Parry");
+        if(parry != null)
+            check("  and a stance that needs nothing says so", parry.blockRequires, null);
     }
 
     /**

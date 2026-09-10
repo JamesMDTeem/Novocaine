@@ -315,7 +315,13 @@ public final class Pack {
              * blockSkill is null where the sheet does not name one, which leaves the
              * caller to keep whatever it already had rather than guess. */
             .stance(j.optBoolean("stance", false), dbl(j, "block_mult", 1.0),
-                    weight(j.optString("block_skill", null)));
+                    weight(j.optString("block_skill", null)))
+            /* Shield Up, and nothing else in the sheet: 250% holding a shield and 50%
+             * without. Parsed since the sheet was first read and never consumed, so
+             * every model so far has priced an unshielded character at five times the
+             * block weight they would actually have. */
+            .blockNeeds(j.optString("block_requires", null),
+                        dbl(j, "block_mult_without", Double.NaN));
 
         String skill = j.optString("attack_skill", null);
         b.weight("unarmed".equals(skill) ? Move.Weight.UNARMED
@@ -739,6 +745,21 @@ public final class Pack {
          * cannot do is play a card they have never learned.
          */
         public final Map<String, Integer> owned;
+        /**
+         * What the character is wearing, and whether a shield is in hand.
+         *
+         * A duel fought naked is not this character's duel. ZzxcuV3 carries 79 hard and
+         * 67 soft against a Bronze Sword listed at 90, so leaving it out roughly doubles
+         * how fast everything dies - which is what handed every full-deck pairing to
+         * whoever swung first. The client writes hard and soft on each gear row, so
+         * these are measured rather than matched against the wiki.
+         *
+         * The shield is here because Shield Up is 250% of the block weight holding one
+         * and 50% without, a factor of five on the single number that stance exists to
+         * set.
+         */
+        public final double armHard, armSoft;
+        public final boolean shield;
 
         private Fighter(JSONObject j) {
             this.name = j.optString("name", "?");
@@ -760,6 +781,10 @@ public final class Pack {
                     own.put(k, od.optInt(k, 0));
             }
             this.owned = own;
+            JSONObject arm = j.optJSONObject("armour");
+            this.armHard = (arm == null) ? 0 : arm.optDouble("hard", 0);
+            this.armSoft = (arm == null) ? 0 : arm.optDouble("soft", 0);
+            this.shield = j.optBoolean("shield", false);
         }
 
         /** Whether this character has learned the card at all. */
@@ -775,6 +800,13 @@ public final class Pack {
             c.weaponDamage = weaponDamage;
             c.weaponQl = (weaponQl > 0) ? weaponQl : 10;
             c.weaponPen = weaponPen;
+            c.armHard = armHard;
+            c.armSoft = armSoft;
+            /* A PLAYER'S ARMOUR IS PENETRABLE, and Combatant defaults it false because
+             * every armoured opponent in the corpus is an animal and the one that could
+             * be tested turned out immune. Against a person the weapon's penetration is
+             * exactly what it says it is. */
+            c.penetrable = true;
             return(c);
         }
     }

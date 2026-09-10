@@ -5019,13 +5019,39 @@ def write_characters(paths=None):
         # LAST WINS. Attributes are trained between fights, so the newest reading is the
         # character as it stands; an older one describes somebody who has since improved.
         d["attr"] = attr
+        # WHAT IS WORN, AND WHAT IT SOAKS. A duel fought naked is not this character's
+        # duel: ZzxcuV3 carries 79 hard and 67 soft, against a Bronze Sword listed at 90,
+        # so leaving armour out roughly doubles how fast everything dies and hands the
+        # fight to whoever swings first. The client writes hard and soft on every gear
+        # row itself, so this needs no matching against the wiki.
+        #
+        # Slot state, not a running total: a row with a null resource is a slot being
+        # emptied, and summing rows in file order would keep counting armour that has
+        # been taken off.
+        slots = {}
         for g in log.gear:
+            sl = g.get("slot")
+            if sl is not None:
+                if g.get("res") is None:
+                    slots.pop(sl, None)
+                else:
+                    slots[sl] = g
             res = (g.get("res") or "").split("/")[-1]
             nm = WEAPON_RES.get(res)
             if nm and (nm in wep):
                 dmg, pen = wep[nm]
                 d["weapon"] = {"name": nm, "base_damage": dmg, "ql": g.get("ql"),
                                "armour_pen": (pen or 0) / 100.0}
+        if slots:
+            d["armour"] = {
+                "hard": sum((g.get("hard") or 0) for g in slots.values()),
+                "soft": sum((g.get("soft") or 0) for g in slots.values()),
+                "pieces": len(slots),
+            }
+            # Shield Up is 250% of the block weight with a shield and 50% without - a
+            # factor of five on the one number a stance exists to set. Whether we are
+            # holding one is therefore not a detail, and it is in the gear rows.
+            d["shield"] = any(("shield" in (g.get("res") or "")) for g in slots.values())
 
     out = []
     for who in sorted(seen):
@@ -5046,6 +5072,8 @@ def write_characters(paths=None):
         # as "what should I put on the bar tonight". Both are worth asking and they are
         # different answers, so the deck has to be recorded for the second one to exist.
         d["owned"] = dict(sorted(owned.get(who, {}).items()))
+        d.setdefault("armour", None)
+        d.setdefault("shield", False)
         out.append(d)
 
     doc = {"source": "tools/combat/estimate.py over the logged corpus",

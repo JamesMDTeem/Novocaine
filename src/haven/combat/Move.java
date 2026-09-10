@@ -89,6 +89,17 @@ public final class Move {
      */
     public final boolean stance;
     public final double blockMult;
+    /**
+     * What the stance needs in hand for {@link #blockMult} to be the real figure, and
+     * what it falls to without it. Null and NaN when the stance asks for nothing.
+     *
+     * Shield Up and nothing else: 250% of the block weight holding a shield, 50% without.
+     * That is a factor of five on the one number the stance exists to set, so a model
+     * that reads only the headline figure prices an unshielded character as though they
+     * were carrying a tower.
+     */
+    public final String blockRequires;
+    public final double blockMultWithout;
     public final Weight blockSkill;
 
     /**
@@ -221,6 +232,8 @@ public final class Move {
         this.whenAttackedOpens = b.whenAttackedOpens;
         this.stance = b.stance;
         this.blockMult = b.blockMult;
+        this.blockRequires = b.blockRequires;
+        this.blockMultWithout = b.blockMultWithout;
         this.blockSkill = b.blockSkill;
         this.reduces = b.reduces;
         this.damageShare = b.damageShare;
@@ -249,6 +262,7 @@ public final class Move {
         this.openings = o.openings; this.openingsSelf = o.openingsSelf;
         this.whenAttackedOpens = o.whenAttackedOpens;
         this.stance = o.stance; this.blockMult = o.blockMult;
+        this.blockRequires = o.blockRequires; this.blockMultWithout = o.blockMultWithout;
         this.blockSkill = o.blockSkill;
         this.reduces = o.reduces;
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
@@ -303,6 +317,8 @@ public final class Move {
         private final double[] whenAttackedOpens = new double[4];
         private boolean stance = false;
         private double blockMult = 1.0;
+        private String blockRequires = null;
+        private double blockMultWithout = Double.NaN;
         private Weight blockSkill = null;
         private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
@@ -374,6 +390,13 @@ public final class Move {
         /** Percentage points opened on the user in one colour. */
         public Builder opensSelf(int colour, double pct) {
             this.openingsSelf[colour] = pct;
+            return(this);
+        }
+
+        /** What the stance needs in hand, and the multiplier it falls to without it. */
+        public Builder blockNeeds(String what, double without) {
+            this.blockRequires = what;
+            this.blockMultWithout = without;
             return(this);
         }
 

@@ -94,14 +94,25 @@ public class CombatMeta {
         return(out);
     }
 
-    /** What a deck is worth against the pool, weighted by the mixture. Higher is better. */
-    static double against(Combatant me, List<Move> deck, List<List<Move>> pool,
-                          double[] mix, int depth) {
+    /**
+     * What a deck is worth against the pool, weighted by the mixture. Higher is better.
+     *
+     * EACH SIDE WEARS ITS OWN STANCE. This handed the opponent whatever stance the
+     * candidate was holding, which is not a small slip now that a stance is worth a
+     * factor of five on the block weight - it priced Shield Up's opponent as though they
+     * too were behind a shield. The pool carries decks rather than card lists so that
+     * each one can be dressed in the stance it actually chose.
+     */
+    static double against(Pack.Fighter who, Map<String, Move> sheet, CombatDeckSearch.Deck d,
+                          List<CombatDeckSearch.Deck> pool, double[] mix, int depth) {
+        Combatant me = CombatDeckSearch.withStance(who.combatant(), d, sheet);
+        List<Move> deck = d.moves(sheet);
         double v = 0;
         for(int i = 0; i < pool.size(); i++) {
             if(mix[i] <= 1e-6)
                 continue;               /* the mixture never plays it; do not pay for it */
-            v += mix[i] * Duel.payoff(me, deck, me, pool.get(i), depth, HORIZON);
+            Combatant foe = CombatDeckSearch.withStance(who.combatant(), pool.get(i), sheet);
+            v += mix[i] * Duel.payoff(me, deck, foe, pool.get(i).moves(sheet), depth, HORIZON);
         }
         return(v);
     }
@@ -184,7 +195,8 @@ public class CombatMeta {
         double[] mix = {1.0};
         final int fdepth = depth;
         for(int r = 1; r <= rounds; r++) {
-            final List<List<Move>> fpool = new ArrayList<List<Move>>(pool);
+            final List<CombatDeckSearch.Deck> fpool =
+                new ArrayList<CombatDeckSearch.Deck>(decks);
             final double[] fmix = mix;
             CombatDeckSearch.Deck resp = CombatDeckSearch.build(sh,
                 new CombatDeckSearch.Scorer() {
@@ -193,18 +205,16 @@ public class CombatMeta {
                          * refusal the kill-time scorer makes, for the same reason. */
                         if(!CombatDeckSearch.hasStance(d, sh))
                             return(9e9);
-                        Combatant mine = CombatDeckSearch.withStance(who.combatant(), d, sh);
-                        List<Move> ms = d.moves(sh);
-                        if(ms.isEmpty())
+                        if(d.moves(sh).isEmpty())
                             return(9e9);
                         /* Negated: the greedy takes the lowest, and we want the highest
                          * payoff against what the opponent actually plays. */
-                        return(-against(mine, ms, fpool, fmix, fdepth));
+                        return(-against(who, sh, d, fpool, fmix, fdepth));
                     }
                 });
             List<Move> rm = resp.moves(sheet);
             Combatant rc = CombatDeckSearch.withStance(who.combatant(), resp, sheet);
-            double gain = against(rc, rm, pool, mix, JUDGE_DEPTH);
+            double gain = against(who, sheet, resp, decks, mix, JUDGE_DEPTH);
 
             System.out.printf("  %-12s %s%n", "answer " + r,
                               CombatDeckSearch.shorten(resp, sheet));
@@ -224,8 +234,10 @@ public class CombatMeta {
                 if(mix[i] <= 1e-6)
                     continue;
                 pairs++;
-                double f1 = Duel.payoffFirst(rc, rm, rc, pool.get(i), JUDGE_DEPTH, HORIZON);
-                double f2 = Duel.payoffFirst(rc, pool.get(i), rc, rm, JUDGE_DEPTH, HORIZON);
+                Combatant fc = CombatDeckSearch.withStance(who.combatant(), decks.get(i), sheet);
+                List<Move> fm = decks.get(i).moves(sheet);
+                double f1 = Duel.payoffFirst(rc, rm, fc, fm, JUDGE_DEPTH, HORIZON);
+                double f2 = Duel.payoffFirst(fc, fm, rc, rm, JUDGE_DEPTH, HORIZON);
                 if((f1 > 0.5) && (f2 > 0.5))
                     both++;
             }
@@ -239,6 +251,24 @@ public class CombatMeta {
              * can reach beats the mixture, and the mixture is an equilibrium. Stopping
              * for any other reason - a round count, a repeat - is stopping early, and the
              * report has to say which of the two happened. */
+            /* FAILING TO FIND A GOOD DECK IS NOT THE SAME AS THERE NOT BEING ONE, and
+             * the difference is visible in the number. A best response that comes back
+             * near zero has searched and found nothing better, which is what convergence
+             * looks like. One that comes back at minus nine tenths has not converged on
+             * anything - it has returned a deck that loses badly, which no maximiser
+             * would choose, so the greedy underneath has lost its way.
+             *
+             * It loses its way here for a reason worth recording: with armour on, almost
+             * every pair of decks stalemates and the margins are hundredths. A greedy
+             * that climbs on differences that small is walking on a flat surface. */
+            if(gain <= -0.25) {
+                System.out.println("             which is far WORSE than even. A maximiser does not");
+                System.out.println("             return a deck that loses badly, so the greedy has");
+                System.out.println("             failed rather than converged - the margins here are");
+                System.out.println("             hundredths and it has nothing to climb. Read the pool");
+                System.out.println("             below as what was tried, NOT as an equilibrium.");
+                break;
+            }
             if(gain <= 1e-3) {
                 if(both > 0) {
                     System.out.println("             So this is NOT an equilibrium worth the name.");
@@ -292,7 +322,19 @@ public class CombatMeta {
             }
         }
         System.out.println();
-        if(used <= 1) {
+        double spread = 0;
+        for(int i = 0; i < pool.size(); i++) {
+            for(int j = 0; j < pool.size(); j++)
+                spread = Math.max(spread, Math.abs(pay[i][j]));
+        }
+        if(spread < 0.1) {
+            System.out.printf("  NOTHING HERE SEPARATES BY MORE THAN %.2f. Every pairing in this"
+                              + " pool%n", spread);
+            System.out.println("  is close to a stalemate, which is what heavy armour on both");
+            System.out.println("  sides does: a Bronze Sword swing loses most of itself to 79");
+            System.out.println("  points of hard soak, and neither side can finish. The weights");
+            System.out.println("  below are dividing up a difference too small to act on.");
+        } else if(used <= 1) {
             System.out.println("  ONE DECK CARRIES THE WHOLE WEIGHT. Against a thinking opponent");
             System.out.println("  there is a single best deck here, and the other slots are free");
             System.out.println("  for the creature decks.");

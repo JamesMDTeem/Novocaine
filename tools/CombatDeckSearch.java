@@ -351,12 +351,35 @@ public class CombatDeckSearch {
      * at a half. Scoring a deck without applying its stance prices a fight against a
      * character that cannot exist, since one stance is always up.
      */
+    /**
+     * Whether the character being searched for is holding a shield.
+     *
+     * A static because it is a property of the run, not of any one deck, and threading it
+     * through every scorer would touch a dozen signatures to say one thing. Set once from
+     * the character; true is the right default because every character in the corpus with
+     * armour worth the name is carrying a round shield.
+     */
+    static boolean HELD_SHIELD = true;
+
     static Combatant withStance(Combatant base, Deck d, Map<String, Move> sheet) {
+        return(withStance(base, d, sheet, HELD_SHIELD));
+    }
+
+    /**
+     * @param shield whether a shield is in hand, which Shield Up alone cares about - and
+     *               cares about by a factor of five, 250% of the block weight with one
+     *               against 50% without. Priced at the headline figure regardless, an
+     *               unshielded character reads as carrying a tower.
+     */
+    static Combatant withStance(Combatant base, Deck d, Map<String, Move> sheet,
+                                boolean shield) {
         Move st = stanceOf(d, sheet);
         if(st == null)
             return(base);
         Combatant c = base.copy();
         c.blockMult = st.blockMult;
+        if((st.blockRequires != null) && !shield && !Double.isNaN(st.blockMultWithout))
+            c.blockMult = st.blockMultWithout;
         if(st.blockSkill != null)
             c.blockSkill = c.skill(st.blockSkill);
         c.attackMult = st.attackMult;
@@ -416,6 +439,7 @@ public class CombatDeckSearch {
             System.out.printf("no character named %s. known: %s%n", charName, chars.keySet());
             return;
         }
+        HELD_SHIELD = who.shield;
         Combatant me = who.combatant();
 
         if(ownedOnly) {

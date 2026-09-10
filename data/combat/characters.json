@@ -2,6 +2,11 @@
  "characters": [
   {
    "agi": 102,
+   "armour": {
+    "hard": 75,
+    "pieces": 23,
+    "soft": 57
+   },
    "con": 89,
    "hhp": 301,
    "hp": 306,
@@ -49,6 +54,7 @@
     "Yield Ground": 0,
     "Zig-Zag Ruse": 4
    },
+   "shield": true,
    "str": 129,
    "unarmed": 165,
    "weapon": {
@@ -60,6 +66,7 @@
   },
   {
    "agi": 10,
+   "armour": null,
    "con": 10,
    "hhp": 100,
    "hp": 100,
@@ -67,11 +74,17 @@
    "melee": 1,
    "name": "Cart Retriever",
    "owned": {},
+   "shield": false,
    "str": 10,
    "unarmed": 1
   },
   {
    "agi": 21,
+   "armour": {
+    "hard": 3,
+    "pieces": 23,
+    "soft": 3
+   },
    "con": 13,
    "hhp": 114,
    "hp": 114,
@@ -120,6 +133,7 @@
     "Yield Ground": 0,
     "Zig-Zag Ruse": 2
    },
+   "shield": false,
    "str": 19,
    "unarmed": 10,
    "weapon": {
@@ -131,6 +145,11 @@
   },
   {
    "agi": 26,
+   "armour": {
+    "hard": 5,
+    "pieces": 20,
+    "soft": 8
+   },
    "con": 23,
    "hhp": 149,
    "hp": 152,
@@ -138,11 +157,17 @@
    "melee": 1,
    "name": "Pikapolonica",
    "owned": {},
+   "shield": false,
    "str": 23,
    "unarmed": 2
   },
   {
    "agi": 82,
+   "armour": {
+    "hard": 52,
+    "pieces": 21,
+    "soft": 58
+   },
    "con": 109,
    "hhp": 311,
    "hp": 343,
@@ -190,6 +215,7 @@
     "Yield Ground": 0,
     "Zig-Zag Ruse": 3
    },
+   "shield": true,
    "str": 422,
    "unarmed": 56,
    "weapon": {
@@ -201,6 +227,11 @@
   },
   {
    "agi": 166,
+   "armour": {
+    "hard": 78,
+    "pieces": 23,
+    "soft": 66
+   },
    "con": 72,
    "hhp": 282,
    "hp": 288,
@@ -247,6 +278,7 @@
     "Yield Ground": 0,
     "Zig-Zag Ruse": 5
    },
+   "shield": true,
    "str": 189,
    "unarmed": 149,
    "weapon": {
@@ -258,6 +290,11 @@
   },
   {
    "agi": 13,
+   "armour": {
+    "hard": 0,
+    "pieces": 4,
+    "soft": 0
+   },
    "con": 10,
    "hhp": 100,
    "hp": 100,
@@ -265,11 +302,17 @@
    "melee": 1,
    "name": "Slave10",
    "owned": {},
+   "shield": false,
    "str": 10,
    "unarmed": 1
   },
   {
    "agi": 35,
+   "armour": {
+    "hard": 5,
+    "pieces": 22,
+    "soft": 8
+   },
    "con": 20,
    "hhp": 141,
    "hp": 141,
@@ -277,11 +320,17 @@
    "melee": 2,
    "name": "Stealth",
    "owned": {},
+   "shield": false,
    "str": 13,
    "unarmed": 2
   },
   {
    "agi": 131,
+   "armour": {
+    "hard": 79,
+    "pieces": 23,
+    "soft": 67
+   },
    "con": 95,
    "hhp": 297,
    "hp": 308,
@@ -331,6 +380,7 @@
     "Yield Ground": 0,
     "Zig-Zag Ruse": 2
    },
+   "shield": true,
    "str": 112,
    "unarmed": 94,
    "weapon": {

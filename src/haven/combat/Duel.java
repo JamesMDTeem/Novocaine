@@ -104,9 +104,26 @@ public final class Duel {
      */
     static double search(Sim s, List<Move> da, List<Move> db, int depth, long horizon,
                          double alpha, double beta) {
+        return(search(s, da, db, depth, horizon, Long.MAX_VALUE, alpha, beta));
+    }
+
+    /**
+     * @param deadline absolute tick to stop looking at. THE CUT-OFF HAS TO BE A TIME AND
+     *                 NOT A COUNT OF MOVES, because the moves are not the same length. A
+     *                 ply-limited search compares the position eighty ticks after a Cleave
+     *                 against the position twenty ticks after a Quick Barrage and calls
+     *                 the cheaper one better - it has counted the opponent's replies to
+     *                 the Cleave and not the replies to the four Barrages that fit in the
+     *                 same window. That is not a small mis-pricing: through 79 points of
+     *                 hard soak, Quick Barrage lands about five damage and Cleave about a
+     *                 hundred, so Cleave is five times the better card per tick and the
+     *                 search would not throw it once in a six-minute fight.
+     */
+    static double search(Sim s, List<Move> da, List<Move> db, int depth, long horizon,
+                         long deadline, double alpha, double beta) {
         if(!s.a.alive() || !s.b.alive())
             return(eval(s.a, s.b));
-        if((depth <= 0) || (s.tick > horizon))
+        if((depth <= 0) || (s.tick > horizon) || (s.tick > deadline))
             return(eval(s.a, s.b));
         Combatant actor = next(s);
         boolean maxing = (actor == s.a);
@@ -128,7 +145,7 @@ public final class Duel {
                 continue;
             any = true;
             t.use(ta, m);
-            double v = search(t, da, db, depth - 1, horizon, alpha, beta);
+            double v = search(t, da, db, depth - 1, horizon, deadline, alpha, beta);
             if(maxing) {
                 best = Math.max(best, v);
                 alpha = Math.max(alpha, v);
@@ -149,10 +166,20 @@ public final class Duel {
                 t.a.readyAt = t.tick;
             else
                 t.b.readyAt = t.tick;
-            return(search(t, da, db, depth - 1, horizon, alpha, beta));
+            return(search(t, da, db, depth - 1, horizon, deadline, alpha, beta));
         }
         return(best);
     }
+
+    /**
+     * How far ahead a side looks, in TICKS rather than in moves.
+     *
+     * Long enough to contain a Cleave and the replies it buys the opponent - eighty ticks
+     * for the card plus room for the answer - so that a slow heavy card and a fast light
+     * one are judged over the same stretch of fight rather than over the same number of
+     * turns.
+     */
+    public static final long WINDOW = 170;
 
     /** The move that side would actually throw here, or null when it can throw none. */
     public static Move choose(Sim s, Combatant actor, List<Move> da, List<Move> db,
@@ -171,7 +198,10 @@ public final class Duel {
             if(t.refuse(ta, m) != null)
                 continue;
             t.use(ta, m);
-            double v = search(t, da, db, depth - 1, horizon,
+            /* The deadline is set from where this decision starts, so every branch is
+             * scored at the same point in the fight however many moves it took to get
+             * there. `depth` stays as a safety cap on cost, not as the cut-off. */
+            double v = search(t, da, db, depth, horizon, at + WINDOW,
                               Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY);
             if((best == null) || (maxing ? (v > bestV) : (v < bestV))) {
                 best = m;
