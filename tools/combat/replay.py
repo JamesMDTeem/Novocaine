@@ -257,8 +257,22 @@ def replay(paths):
             # to skip for want of a pinned defence weight - but it still needs a clean
             # fight. hits() pairs damage numbers to a move by time, and in a group fight
             # the client draws somebody else's numbers over the same target, so an
-            # ungated damage replay reads their hits as ours. It showed as an rms of 9.3
-            # points against a model that fits clean fights to under one.
+            # ungated damage replay reads their hits as ours.
+            #
+            # RE-MEASURED 2026-09-10, because the gate is expensive and everything around
+            # it has changed. It is still right, and by a wider margin than the rms of 9.3
+            # first recorded here. Hits before the last of an engagement:
+            #
+            #   clean                          1906 hits   rms  3.16   p90 |err|  1.96
+            #   others present, us in a party  2439 hits   rms 39.12   p90 |err| 31.87
+            #   others present, no party       3442 hits   rms 25.85   p90 |err| 16.07
+            #
+            # The median is fine in all three - -0.29, -0.52, -0.42 - so this is not bias,
+            # it is somebody else's number landing on our move. Being in a party is the
+            # worse case, which is what you would expect: more people hitting one target.
+            # Unlike the openings half there is no per-observation test that can tell whose
+            # number it was, so separating them would report a population and not a
+            # measurement.
             # THE LAST HIT OF AN ENGAGEMENT IS NOT A SOUND OBSERVATION, and is scored
             # separately rather than dropped. A blow that kills is recorded at the health
             # it actually removed, not the damage it would have done, so a killing blow
