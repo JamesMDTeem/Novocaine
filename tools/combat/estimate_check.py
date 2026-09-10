@@ -12,6 +12,7 @@ Exits 0 when every check passes, 1 otherwise.
 
 import math
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -562,6 +563,52 @@ def deck_comes_from_the_fight():
           {"Quick Barrage": 5})
     check("  and a card at level 0 is not in the deck",
           estimate.deck_from_header({"deck": {"paginae/atk/barrage": 0}}), {})
+
+
+def the_reader_knows_every_event():
+    """Every event the client can write has a branch in the reader.
+
+    Three events were added in two days - card, deck-in-header, advice - and a fourth
+    added without a branch in fightlog would be dropped silently. A log from a newer
+    client would then look merely quiet, which is the worst way for this to fail: the
+    corpus would shrink and nothing would say so.
+
+    Asserted against the CLIENT'S OWN SOURCE rather than a list typed here, so a new
+    event fails this the moment it is emitted rather than whenever somebody remembers.
+    """
+    print("\nevery event the client writes has a branch in the reader")
+    src = os.path.join(estimate.ROOT, "src", "haven", "combat", "log", "CombatEvent.java")
+    try:
+        with open(src, "r", encoding="utf-8", errors="replace") as f:
+            java = f.read()
+    except OSError:
+        print("  (no client source here)")
+        return
+    emitted = set(re.findall(r'put\("ev", "([a-z]+)"\)', java))
+    check("  the client emits a good few", len(emitted) > 12, True)
+    read = set(re.findall(r'"([a-z]+)"', _reader_known()))
+    missing = sorted(emitted - read)
+    print("    %d event(s) emitted, %d known to the reader" % (len(emitted), len(read)))
+    check("  and the reader knows every one of them", missing, [])
+    # And the corpus itself carries nothing the reader cannot name.
+    seen = {}
+    for pth in estimate.fightlog.default_logs(estimate.ROOT)[0][:400]:
+        try:
+            log = estimate.fightlog.read(pth)
+        except Exception:
+            continue
+        for k, n in (log.unknown_events or {}).items():
+            seen[k] = seen.get(k, 0) + n
+    check("  and no log carries one it cannot name", seen, {})
+
+
+def _reader_known():
+    """The reader's own list of event names, read from its source."""
+    src = os.path.join(estimate.ROOT, "tools", "combat", "fightlog.py")
+    with open(src, "r", encoding="utf-8", errors="replace") as f:
+        txt = f.read()
+    i = txt.index("    known = (")
+    return txt[i:txt.index(")", i)]
 
 
 def cards_do_not_cross_sides():
@@ -1873,6 +1920,7 @@ def main():
     animal_cards_are_cards()
     opponents_are_identified()
     cards_do_not_cross_sides()
+    the_reader_knows_every_event()
     deck_comes_from_the_fight()
     coverage_has_a_floor()
     a_stance_scales_every_attack()

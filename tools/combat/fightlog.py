@@ -218,6 +218,10 @@ class Log(object):
         self.path = path
         self.rows = []
         self.unparseable = 0
+        # Event names the reader has no branch for. Not an error - a log from a newer
+        # client is still evidence for everything else it carries - but it is the one
+        # symptom of a schema the reader has not caught up with, and it was invisible.
+        self.unknown_events = {}
         self.header = None
         self.gear = []
         self.end = None
@@ -296,8 +300,13 @@ def read(path, opens=None):
                 continue
             log.rows.append(obj)
 
+    known = ("begin", "gear", "end", "foe", "hp", "overlay", "party", "agi", "wpn",
+             "atkres", "buffs", "foes", "state", "predict", "advice", "move", "dmg",
+             "card")
     for r in log.rows:
         ev = r.get("ev")
+        if ev not in known:
+            log.unknown_events[ev] = log.unknown_events.get(ev, 0) + 1
         if ev == "begin":
             log.header = r
             if r.get("foegob") is not None and r.get("foeres"):

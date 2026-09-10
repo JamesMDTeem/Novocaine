@@ -345,6 +345,18 @@ def client_signals():
                  "frontier": 6},
                 move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 8)), end()])
     check("advice is read", len(adv.engagements[0].advice), 1)
+    check("  and nothing in that log is an event the reader does not know",
+          adv.unknown_events, {})
+    # THE ONE SYMPTOM OF A SCHEMA THE READER HAS NOT CAUGHT UP WITH. Three events were
+    # added in two days; a fourth added without a branch here would have been silently
+    # dropped, and a log from a newer client would have looked merely quiet.
+    newer = load([begin(), state(10),
+                  {"ev": "somethingnew", "t": 11, "v": 1},
+                  move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 8)), end()])
+    check("an event from a newer client is counted, not silently dropped",
+          newer.unknown_events, {"somethingnew": 1})
+    check("  and the rest of that log is still read",
+          len(newer.engagements[0].moves), 1)
     check("  and is not filed as a prediction", len(adv.engagements[0].predictions), 0)
     check("  and carries the plan behind it",
           adv.engagements[0].advice[0]["frontier"], 6)
