@@ -488,6 +488,22 @@ def sfx_and_outcome():
     lg1c = load(rows1c)
     check("an engagement already under way attributes nothing",
           len(fightlog.attributed_gains(lg1c.engagements[0], opens, me_gob=ME)), 0)
+    # ...but not when the opponent is one this file has already fought. Then the openings
+    # standing at the start are OURS, and the corpus agrees: those read 2.9% above 1.2x
+    # the model against 3.0% for fights that started at zero, while a first sight of an
+    # already-opened opponent reads 6.5%.
+    rows1g = [
+        begin(), state(10, foe=(0, 0, 0, 0)),
+        move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 8)),
+        # target switches away and back, and the opponent still carries what we put on it
+        {"ev": "state", "t": 40, "gob": 999, "mine": [0, 0, 0, 0], "foe": [0, 0, 0, 0]},
+        state(50, foe=(0, 0, 0, 8)),
+        move(60, name="Quick Barrage"), state(70, foe=(0, 0, 0, 14)), end()]
+    lg1g = load(rows1g)
+    rejoin = [e for e in lg1g.engagements if e.gob == FOE][-1]
+    check("a fight we rejoin keeps its gains", rejoin.rejoined, True)
+    check("  and they are attributed",
+          len(fightlog.attributed_gains(rejoin, opens, me_gob=ME)), 1)
     # while the same shape starting from zero still does
     rows1d = [
         begin(), state(10, foe=(0,0,0,0)),

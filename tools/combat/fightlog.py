@@ -90,6 +90,9 @@ class Engagement(object):
 
     def __init__(self, gob):
         self.gob = gob
+        # Whether this file has already had an engagement with this same opponent. It makes
+        # openings we find standing OURS rather than a stranger's - see attributed_gains.
+        self.rejoined = False
         self.res = None
         self.states = []
         self.moves = []
@@ -342,12 +345,19 @@ def _segment(log):
     that predate the foe event - those just cannot say what the other opponents were.
     """
     cur = None
+    # Gobs we have already had an engagement with in this file. A fight that opens with the
+    # opponent already carrying openings is suspect - somebody put them there and may still
+    # be swinging - UNLESS that somebody was us, which is exactly what a target we have
+    # fought before in the same log means. See the PRIOR test in attributed_gains.
+    seen = set()
     for r in log.rows:
         ev = r.get("ev")
         if ev == "state":
             g = r.get("gob")
             if cur is None or cur.gob != g:
                 cur = Engagement(g)
+                cur.rejoined = g in seen
+                seen.add(g)
                 log.engagements.append(cur)
             cur.states.append(r)
             cur.seq.append(r)
@@ -362,6 +372,8 @@ def _segment(log):
                 # Events before the first state sample. Rare, but they belong to the
                 # opponent the header names.
                 cur = Engagement((log.header or {}).get("foegob"))
+                cur.rejoined = cur.gob in seen
+                seen.add(cur.gob)
                 log.engagements.append(cur)
             (cur.moves if ev == "move" else cur.damage).append(r)
             if ev == "move":
@@ -847,9 +859,16 @@ def attributed_gains(eng, opens, me_gob=None):
     within 25%; the seventh is horse, at two observations each side.
     """
     out = []
-    # HISTORY WE DID NOT SEE. An engagement whose FIRST state row already shows an opening
-    # on the opponent was under way before we started watching, and whoever put those
-    # points there may still be swinging. None of the four tests below can see them: they
+    # HISTORY WE DID NOT SEE - UNLESS THE HISTORY WAS OURS. An engagement whose FIRST state
+    # row already shows an opening on the opponent was under way before we started watching,
+    # and whoever put those points there may still be swinging.
+    #
+    # Not when we had already fought this same gob earlier in the file. Then the standing
+    # openings are ours, and the readings say so: gains from those engagements sit at 2.9%
+    # above 1.2 times the model against 3.0% for fights that started at zero, while a first
+    # sight of an already-opened opponent sits at 6.5%. Dropping the rejoins as well cost
+    # 242 gains and bought nothing, and a wolf pack is nothing but rejoins - target
+    # switching back and forth is how those fights are fought. None of the four tests below can see them: they
     # all ask what happened inside a bracket, and this is about what happened before any
     # bracket existed.
     #
@@ -859,7 +878,7 @@ def attributed_gains(eng, opens, me_gob=None):
     # both directions - a tenth to ninetieth percentile of 0.77 to 1.14 against 0.89 to
     # 1.06.
     sts = getattr(eng, "states", None) or ()
-    if sts and any(sts[0].get("foe") or ()):
+    if sts and any(sts[0].get("foe") or ()) and not getattr(eng, "rejoined", False):
         return out
     # Move announcements only, and only somebody else's - see the OVERLAY test below.
     ols = [o for o in getattr(eng, "overlays", [])

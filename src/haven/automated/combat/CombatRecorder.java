@@ -63,6 +63,20 @@ public final class CombatRecorder {
     private static volatile int[] lastFoeOpen = null;
     private static volatile int lastMyIp = 0;
     private static volatile long lastFoeGob = -1;
+    /* THE WHOLE OF THE LAST STATE, and whether a state has been logged since the last move.
+     *
+     * The sampler is value-gated on purpose, so a fight that has not changed emits nothing.
+     * That is right for the log's size and wrong for its usability: two of our cards thrown
+     * back to back with no change between them leave NO state row between them, and the
+     * offline bracket refuses both - it will not credit a move with a state that describes
+     * the world before some earlier move as well. It cost 2969 of 19254 cards in this
+     * corpus, 15%, which is the largest single capture loss there is.
+     *
+     * Re-emitting the last known values immediately before a move is exact rather than a
+     * guess: the reason no sample fired is that nothing changed, so those ARE the values
+     * the move was thrown against. */
+    private static volatile Object[] lastStateArgs = null;
+    private static volatile boolean stateSinceMove = false;
     private static volatile String foeRes = null;
     /* Opponents whose resource has already been logged, so the tick loop names each one once.
      * Concurrent because it is written from the UI thread and cleared from start(), which the
@@ -219,6 +233,8 @@ public final class CombatRecorder {
             /* Per FIGHT, not per session, so every log describes the cards it contains. A
              * fight sees a handful of distinct cards, so this is a few lines per file. */
             carded.clear();
+            lastStateArgs = null;
+            stateSinceMove = false;
             combatants.clear();
             lastHp.clear();
             lastAgi.clear();
@@ -541,6 +557,31 @@ public final class CombatRecorder {
             w.offer(line);
     }
 
+    /**
+     * Puts a state row in front of a move when the value gate has left none there.
+     *
+     * See lastStateArgs. Only when no state has been logged since the previous move, so a
+     * fight that is changing normally emits nothing extra - it fired on 15% of cards in the
+     * corpus this was measured against, and on none of the rest.
+     */
+    private static void restate() {
+        Object[] a = lastStateArgs;
+        if(stateSinceMove || (a == null))
+            return;
+        try {
+            log(CombatEvent.state(now(), (Openings)a[0], (Openings)a[1],
+                                  ((Integer)a[2]).intValue(), ((Integer)a[3]).intValue(),
+                                  ((Integer)a[4]).intValue(), ((Double)a[5]).doubleValue(),
+                                  ((Double)a[6]).doubleValue(), ((Double)a[7]).doubleValue(),
+                                  ((Long)a[8]).longValue(), ((Double)a[9]).doubleValue(),
+                                  ((Double)a[10]).doubleValue(), ((Integer)a[11]).intValue(),
+                                  (String)a[12]));
+            stateSinceMove = true;
+        } catch(Exception e) {
+            /* never propagate into the message loop */
+        }
+    }
+
     /* Cards whose sheet has already been written down for this fight. One line per
      * distinct card, not per use: a wolf throws Fell Scratch three thousand times here. */
     private static final java.util.Set<String> carded =
@@ -658,7 +699,9 @@ public final class CombatRecorder {
         if(!active())
             return;
         try {
+            restate();
             log(CombatEvent.move(now(), actor, moveRes, moveName, cooldownTicks, gobId));
+            stateSinceMove = false;
             predict(actor, moveRes, gobId);
         } catch(Exception e) {
             /* never propagate into the message loop */
@@ -829,6 +872,9 @@ public final class CombatRecorder {
             lastFoeOpen = new int[] {foe.green, foe.blue, foe.yellow, foe.red};
             lastMyIp = myIp;
             lastFoeGob = gobId;
+            lastStateArgs = new Object[] {mine, foe, myIp, foeIp, hp, stam, energy, dist,
+                                          gobId, mySpeed, foeSpeed, gst, tile};
+            stateSinceMove = true;
             log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId,
                                   mySpeed, foeSpeed, gst, tile));
         } catch(Exception e) {
