@@ -592,10 +592,21 @@ def main(argv):
     # blow resolve inside it. That took the gross misses from 15 to 9 and agreement from
     # 99.3% to 99.5%, at a cost of 34 observations.
     #
-    # It does not catch all of them. Three of the surviving nine are the ant Flex readings
+    # It does not catch all of them. Three of the surviving eight are the ant Flex readings
     # at 51, and in those the opponent's blow had already resolved before the bracket
     # opened - which Parry's own rise apparently had not. Nothing yet accounts for those
-    # three.
+    # three, and extending the test one state row back is not the answer: it catches one
+    # of them and costs 480 observations, because only 11% of blows leak that way and the
+    # test cannot tell which.
+    #
+    # A FOURTH of the eight was a window bug rather than a mechanic, and it is fixed. The
+    # third-party overlay test ran from the state row that opens the bracket, but an
+    # announcement is a card being PLAYED and its opening arrives afterwards - so another
+    # player who announced between the last card and ours sat a few milliseconds outside
+    # the window while their gain landed inside it. In one group ant fight two bodies both
+    # announce barrage at 1135, our own Quick Barrage is written at 1144, and the bracket
+    # opens after 1135: the gain read 49 against a model saying 27 to 40, and it was two
+    # players' Quick Barrage read as one.
     #
     # What IS established is that a gain often arrives after the state row that closes its
     # bracket: of 14733 moves that raised a colour they open, 53% have settled by the first

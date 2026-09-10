@@ -892,11 +892,33 @@ def attributed_gains(eng, opens, me_gob=None):
         # miss and ip say what happened to a swing, not that somebody swung, so they are
         # not evidence of a third party at all.
         if ols:
-            lo, hi = before["t"], after["t"]
+            # THE WINDOW OPENS AT THE PREVIOUS MOVE, NOT AT THE STATE ROW. An announcement
+            # is a card being PLAYED; the opening it raises arrives afterwards. So a third
+            # party who announced between the last card and ours has an effect still in
+            # flight when our bracket opens, and testing only from `before` misses them by
+            # the few milliseconds between the two.
+            #
+            # A group ant fight is the case. Two bodies both announce barrage at 1135, our
+            # own Quick Barrage is written at 1144, and the bracket runs from a state row
+            # after 1135 to one at 1153 - so the other player's announcement sits just
+            # outside it while their red lands just inside. The gain read 49 where the
+            # model says 27 to 40, and it is two players' Quick Barrage.
+            idx = eng.order.get(id(m))
+            lo = before["t"]
+            if idx is not None:
+                for j in range(idx - 1, -1, -1):
+                    if eng.seq[j].get("ev") == "move":
+                        lo = min(lo, eng.seq[j].get("t", lo))
+                        break
+            # Only the third-party test gets the wider window. The count test below is
+            # about OUR OWN announcements, and ours from the previous card are supposed
+            # to be back there - widening its window makes every second card of ours
+            # look like two, which cost 382 observations to buy one miss.
+            hi = after["t"]
             actor = me_gob if mine else eng.gob
-            inwin = [o for o in ols if lo <= o["t"] <= hi]
-            if [o for o in inwin if o.get("gob") != actor]:
+            if [o for o in ols if lo <= o["t"] <= hi and o.get("gob") != actor]:
                 continue
+            inwin = [o for o in ols if before["t"] <= o["t"] <= hi]
             # OUR OWN announcement is this move's own, but only one of them can be.
             # Two means a second move of ours landed inside the bracket and the gain
             # belongs to both - which is what the blanket veto used to catch by

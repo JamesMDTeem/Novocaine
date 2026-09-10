@@ -203,8 +203,11 @@ def coverage():
     # A stance is not a card you throw - one sits on the bar and is on continuously - so
     # it must not appear in either list. Counting it as never used is miscounting, and it
     # is the kind of miscount that reads as a finding.
+    # Oak Stance joined these once the deck sheet could regenerate again. It is a stance
+    # on the same terms as the other two and it carries attack_mult 0.5, so every attack
+    # thrown while it is up is at half weight - which nothing in a log records.
     check("the stances are identified", sorted(stances),
-          ["Combat Meditation", "Shield Up"])
+          ["Combat Meditation", "Oak Stance", "Shield Up"])
     check("  and none of them is counted as an unthrown card",
           [m for m in never if m in stances], [])
 
