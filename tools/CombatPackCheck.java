@@ -347,6 +347,35 @@ public class CombatPackCheck {
         check("some opponent has never been measured hitting us", silent > 0, true);
         check("  and it reports its damage as unknown, not as zero",
               anySilentRefusesDamage(foes), true);
+
+        /* WHETHER WE CAN LEAVE. The estimator has measured relative speed all along and
+         * nothing read it back out, so the matchup answered "can I take this" without
+         * "can I get out if I am wrong" - and the second is the only mitigation a losing
+         * plan has. Three states, and the third is the one worth guarding: an opponent we
+         * never withdrew from reads as a speed of zero, which must not come back as yes. */
+        int outrun = 0, outrunUs = 0, unknown = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.speedMeasured)
+                unknown++;
+            else if(o.canDisengage())
+                outrun++;
+            else
+                outrunUs++;
+        }
+        check("relative speed reaches the simulator", outrun > 0, true);
+        check("  and some opponent can outrun us", outrunUs > 0, true);
+        check("  and an unmeasured one says so rather than yes", unknown > 0, true);
+        check("  with disengagement refused where it was never measured",
+              noUnmeasuredClaimsEscape(foes), true);
+    }
+
+    /** No opponent may report that we can disengage on a speed nobody measured. */
+    static boolean noUnmeasuredClaimsEscape(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.speedMeasured && o.canDisengage())
+                return(false);
+        }
+        return(true);
     }
 
     static boolean anySilentRefusesDamage(Map<String, Pack.Opponent> foes) {

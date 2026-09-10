@@ -292,6 +292,25 @@ public class CombatMatchup {
                                + " column; the ordering is likely right and the numbers"
                                + " are not");
         }
+        // Whether we can leave. A losing matchup with an exit is a different answer from a
+        // losing matchup without one, and the corpus has measured this all along without
+        // anything reading it back out.
+        if(!o.speedMeasured) {
+            System.out.println("      no speed reading - we never withdrew from it, so"
+                               + " whether we could is UNKNOWN, not yes");
+        } else if(o.canDisengage()) {
+            System.out.printf("      we outrun it, %.1f against its fastest %.1f (median"
+                              + " %.1f) - withdrawal is an option if a plan goes wrong%n",
+                              o.ourTop, o.speedHi, o.speedMedian);
+        } else {
+            // The verdict is our top against ITS TOP, not against its median. Speed is
+            // randomised per individual within a species band, so the one that decides
+            // whether we get away is the fastest the band allows, and printing the median
+            // here read as a contradiction: 56.9 against our 58.7, called a loss.
+            System.out.printf("      IT CAN OUTRUN US, its fastest %.1f against our %.1f"
+                              + " (median %.1f) - a losing plan may be a death%n",
+                              o.speedHi, o.ourTop, o.speedMedian);
+        }
         for(Optimizer.Plan pl : front) {
             System.out.printf("      %5.1f s  %6.1f hp   %s%n",
                               Formulas.ticksToSeconds(pl.ticks), pl.hpLost,

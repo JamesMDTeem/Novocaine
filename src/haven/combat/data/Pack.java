@@ -365,6 +365,21 @@ public final class Pack {
          */
         public final FoeModel threat;
 
+        /**
+         * Whether we can leave, and how much faster than it we move.
+         *
+         * Measured and then thrown away until now, which made the matchup report answer
+         * half a question. "Can I take this thing" and "can I get out if I am wrong" are
+         * different questions with different answers, and the second one is the only
+         * mitigation a losing matchup has. The badger is outrun on 8440 samples; the wolf
+         * is not, on 166.
+         *
+         * `speedMeasured` is false where the corpus only ever watched us stand and fight,
+         * which reads as a speed of zero and means nothing. NaN elsewhere.
+         */
+        public final double speedLo, speedHi, speedMedian, ourTop;
+        public final boolean weOutrunIt, speedMeasured;
+
         Opponent(JSONObject j) {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
@@ -409,6 +424,24 @@ public final class Pack {
                 mv.add(a.getString(i));
             this.moves = mv;
             this.threat = threat(j.optJSONObject("threat"));
+            JSONObject sp = j.optJSONObject("relative_speed");
+            if(sp == null) {
+                this.speedLo = this.speedHi = Double.NaN;
+                this.speedMedian = this.ourTop = Double.NaN;
+                this.weOutrunIt = this.speedMeasured = false;
+            } else {
+                this.speedMeasured = sp.optBoolean("measured", false);
+                this.speedLo = sp.optDouble("lo", Double.NaN);
+                this.speedHi = sp.optDouble("hi", Double.NaN);
+                this.speedMedian = sp.optDouble("median", Double.NaN);
+                this.ourTop = sp.optDouble("our_top", Double.NaN);
+                this.weOutrunIt = sp.optBoolean("we_outrun_it", false);
+            }
+        }
+
+        /** Whether withdrawal is an option this opponent cannot answer. */
+        public boolean canDisengage() {
+            return(this.speedMeasured && this.weOutrunIt);
         }
 
         /**
