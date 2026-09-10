@@ -780,6 +780,13 @@ def foe_aggression(row):
     return dict(zip(gobs, gst))
 
 
+# How long after the state row that closes a bracket a further rise in the same
+# colour is still the same rise finishing rather than a second cause. Only 13 of the
+# corpus's 1667 late rises arrive this promptly; the rest are hundreds of milliseconds
+# out and are somebody else's.
+SETTLE_MS = 20
+
+
 def attributed_gains(eng, opens, me_gob=None):
     """Gains that survive attribution PER OBSERVATION rather than per engagement.
 
@@ -873,6 +880,39 @@ def attributed_gains(eng, opens, me_gob=None):
         bv, av = before.get(key), after.get(key)
         if not bv or not av:
             continue
+        # A RISE STILL IN FLIGHT, and only that. One Flex against ants reads 23 three
+        # milliseconds after the card and 51 eight milliseconds later with no event of any
+        # kind between them, so the state row that closes a bracket can catch a value on
+        # its way up. Where the very next state row lands within SETTLE_MS and reads
+        # higher, it is the same rise finishing rather than a second cause.
+        #
+        # The window is what makes this safe. Taking the highest value reached before the
+        # next MOVE instead - which sounds more principled, since decay only pulls an
+        # opening down - takes the gross misses from 5 to 35: those later rises are mostly
+        # separate events, arriving a median of 350 ms after the card.
+        si = None
+        for k2, st2 in enumerate(sts):
+            if st2 is after:
+                si = k2
+                break
+        if si is not None and (si + 1) < len(sts):
+            nxt = sts[si + 1]
+            gap = (nxt.get("t") or 0) - (after.get("t") or 0)
+            nv = nxt.get(key)
+            if nv and 0 <= gap <= SETTLE_MS and av and any(
+                    nv[i2] > av[i2] for i2 in range(4)):
+                inter = False
+                idx0 = eng.order.get(id(m))
+                if idx0 is not None:
+                    for j2 in range(idx0 + 1, len(eng.seq)):
+                        t2 = eng.seq[j2].get("t") or 0
+                        if t2 > (nxt.get("t") or 0):
+                            break
+                        if eng.seq[j2].get("ev") == "move":
+                            inter = True
+                            break
+                if not inter:
+                    av = [max(av[i2], nv[i2]) for i2 in range(4)]
         rose = [i for i in range(4) if av[i] > bv[i]]
         if not rose:
             continue

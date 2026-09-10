@@ -468,6 +468,19 @@ def sfx_and_outcome():
     lg1b = load(rows1b)
     gains1b = fightlog.attributed_gains(lg1b.engagements[0], opens, me_gob=ME)
     check("own-move announcement alone does not veto", len(gains1b), 1)
+    # A rise still in flight is joined; one arriving later is not.
+    rows1e = [
+        begin(), state(10, foe=(0, 0, 0, 0)),
+        move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 5)),
+        state(45, foe=(0, 0, 0, 12)), end()]
+    g1e = fightlog.attributed_gains(load(rows1e).engagements[0], opens, me_gob=ME)
+    check("a rise still settling is read at its top", [x[4] for x in g1e], [12])
+    rows1f = [
+        begin(), state(10, foe=(0, 0, 0, 0)),
+        move(20, name="Quick Barrage"), state(30, foe=(0, 0, 0, 5)),
+        state(400, foe=(0, 0, 0, 12)), end()]
+    g1f = fightlog.attributed_gains(load(rows1f).engagements[0], opens, me_gob=ME)
+    check("  but one arriving much later is not", [x[4] for x in g1f], [5])
     # And the gate itself: the same fight, opened before we arrived, yields nothing.
     rows1c = [
         begin(), state(10, foe=(0,0,0,20)),

@@ -538,6 +538,12 @@ def main(argv):
     # which is zero in all five; not how many cards either side had thrown; not distance,
     # stamina, or whether it was the first Flex of the fight. Every one of those overlaps.
     #
+    # EVERY GROSS MISS LEFT IS ONE OF THEM. That is worth more than the count: the
+    # residual is a single phenomenon in five observations rather than a scatter. The
+    # last one to join them read 23 until fightlog started closing a bracket at the top
+    # of a rise still in flight - it was the same 51 as the other three, sampled three
+    # milliseconds after the card instead of eleven.
+    #
     # FIVE EXPLANATIONS HAVE BEEN TESTED AND FAILED, and they are written down so that
     # nobody spends the afternoon on them again:
     #
