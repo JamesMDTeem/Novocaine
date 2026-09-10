@@ -416,6 +416,95 @@ def logged_predictions(paths, opens=None):
     return (rows, missing)
 
 
+def logged_advice(paths, opens=None):
+    """What the model would have thrown, against what the person did throw.
+
+    THIS IS THE BOT'S ONLY AUDIT UNTIL THERE IS A BOT. The decision layer exists and the
+    executor does not, so `Advisor` runs on every card and its answer goes in the log
+    without being acted on - see CombatEvent.advice. Agreement is not the goal and
+    disagreement is not a fault: a person plays for reasons the model has no term for. What
+    the comparison gives is a place to look, and a record that does not move when the pack
+    does.
+
+    An advice is matched to the card actually thrown by being the nearest move row after it
+    on the same opponent, which is how the recorder writes them - the advice is computed
+    from the state before the card and logged beside it.
+
+    Returns (rows, missing) where a row is (species, advised, thrown, agreed, ticks,
+    killed, frontier, file).
+    """
+    if opens is None:
+        opens = estimate.opens_map(estimate.load_moves())
+    rows, missing = [], 0
+    for pth in sorted(paths):
+        try:
+            log = fightlog.read(pth, opens)
+        except Exception:
+            continue
+        if not log.rows:
+            continue
+        any_here = False
+        for eng in log.engagements:
+            adv = getattr(eng, "advice", None) or []
+            if not adv:
+                continue
+            any_here = True
+            mine = sorted([m for m in eng.moves if m.get("actor") == "me"],
+                          key=lambda m: m.get("t") or 0)
+            for a in adv:
+                t = a.get("t") or 0
+                nxt = None
+                for m in mine:
+                    if (m.get("t") or 0) >= t - 200:
+                        nxt = m
+                        break
+                thrown = (nxt or {}).get("move")
+                rows.append((estimate.bucket(eng), a.get("move"), thrown,
+                             (thrown is not None) and (thrown == a.get("move")),
+                             a.get("ticks"), a.get("killed"), a.get("frontier"),
+                             os.path.basename(pth)))
+        if not any_here:
+            missing += 1
+    return rows, missing
+
+
+def report_logged_advice(paths, opens=None):
+    rows, missing = logged_advice(paths, opens)
+    print()
+    print("=" * 78)
+    print("ADVICE THE CLIENT WROTE DOWN, AND DID NOT ACT ON")
+    print("=" * 78)
+    if not rows:
+        print("  none yet - %d log(s) carry no advice." % missing)
+        print()
+        print("  Expected until a fight is logged on a schema 15-or-later client. The decision")
+        print("  layer exists and the executor does not, which is the right moment to audit it:")
+        print("  the advisor runs on every card, its answer is written down, and nothing acts on")
+        print("  it. A bot that cannot be audited against what it expected is a bot whose")
+        print("  failures are invisible.")
+        print()
+        return True
+    agreed = sum(1 for r in rows if r[3])
+    print("  %d advice(s) across %d log(s) without one." % (len(rows), missing))
+    print("  the model would have thrown the same card %d times (%.0f%%)"
+          % (agreed, 100.0 * agreed / len(rows)))
+    thin = sum(1 for r in rows if (r[6] or 0) <= 1)
+    if thin:
+        print("  %d of them chose from a frontier of one, which is not a choice" % thin)
+    print()
+    seen = {}
+    for sp, advised, thrown, ok, _t, _k, _f, _fl in rows:
+        if not ok:
+            seen[(advised, thrown)] = seen.get((advised, thrown), 0) + 1
+    if seen:
+        print("  %-28s %-28s %s" % ("the model wanted", "the person threw", "times"))
+        for (adv_, thr), n in sorted(seen.items(), key=lambda kv: -kv[1])[:8]:
+            print("  %-28s %-28s %d"
+                  % (str(adv_)[:28], str(thr)[:28], n))
+        print()
+    return True
+
+
 def report_logged_predictions(paths, opens=None):
     rows, missing = logged_predictions(paths, opens)
     print()
@@ -783,6 +872,8 @@ def main(argv):
             print("  FAIL - player damage rms above 10.0 points")
             ok = False
     if not report_logged_predictions(paths):
+        ok = False
+    if not report_logged_advice(paths):
         ok = False
     print("\n" + ("ALL CHECKS PASSED" if ok else "CHECKS FAILED"))
     return 0 if ok else 1
