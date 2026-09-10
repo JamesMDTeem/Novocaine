@@ -460,6 +460,35 @@ def pressure_denominator():
     read lower than the plain mean over the cards that do open. Snapshot figures go stale;
     this cannot.
     """
+    # The card's own sheet, schema 13, outranks both the wiki and the inference. No log in
+    # this corpus carries one yet - the event was added after every fight in it - so these
+    # are fixtures rather than readings, and they exist so the path is exercised before the
+    # first real card row arrives rather than after it goes wrong.
+    print("\nan opponent card's own sheet, where a log has carried one")
+    estimate._CARD_SHEET.clear()
+    pag = ("Attack weight: x" + chr(10)
+           + "Openings: +20% $col[128,192,255]{Dizzy}" + chr(10)
+           + "Reduces: 10% $col[255,128,128]{Oppressive}" + chr(10))
+    estimate._read_card_row({"ev": "card", "name": "Tail Splash", "pagina": pag})
+    check("  a card's sheet says what it opens", estimate.card_sheet("Tail Splash"), [1])
+    check("  and it overrules the wiki, which lists Tail Splash as opening nothing",
+          sorted(estimate.foe_card_opens("Tail Splash")), [1])
+    check("  so it is not harmless", estimate.foe_card_harmless("Tail Splash"), False)
+    # A card that only reduces is harmless in the one sense this figure means - it applies
+    # no opening pressure to us - and is emphatically not idle: it undoes our work.
+    estimate._read_card_row({"ev": "card", "name": "Bristle",
+                             "pagina": "Block weight: x" + chr(10)
+                             + "Reduces: 10% $col[255,128,128]{Oppressive}" + chr(10)})
+    check("  a card that only reduces applies no pressure to us",
+          estimate.foe_card_harmless("Bristle"), True)
+    # An opening the card puts on ITS OWN user is a cost it pays, not pressure on us.
+    estimate._read_card_row({"ev": "card", "name": "Fixture Self",
+                             "pagina": "Openings on you: +30% $col[128,192,255]{Dizzy}"
+                             + chr(10)})
+    check("  and an opening it puts on itself is not pressure on us",
+          estimate.card_sheet("Fixture Self"), [])
+    estimate._CARD_SHEET.clear()
+
     print("\npressure is averaged over every action, not only the opening ones")
     per, _moves = estimate.collect(estimate.fightlog.default_logs(estimate.ROOT)[0])
     tested = 0

@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 12;
+    public static final int SCHEMA = 13;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -287,6 +287,34 @@ public final class CombatEvent {
                .put("move", moveRes)
                .put("name", moveName)
                .put("cd", cooldownTicks)
+               .end());
+    }
+
+    /**
+     * The card's own sheet, taken from the resource the moment the card is first used.
+     *
+     * THE OPPONENT'S CARDS ARE NOT DOCUMENTED ANYWHERE WE CAN TRUST. Our own deck is dumped
+     * with its pagina text, so every percentage on it is exact; an animal's card has only
+     * the wiki's table, and that table is incomplete and sometimes wrong. Rampant Rage and
+     * Tail Splash are listed as opening nothing and open us in 31% and 55% of their own
+     * brackets; Maddening Roar has no row at all; Vampirism is listed yellow and reads blue.
+     *
+     * The client already holds the answer. A card used in the fight view resolves to a
+     * Resource, and that resource carries the same pagina layer our deck dump reads - the
+     * one that says "Openings: +15% $col[128,192,255]{Dizzy}" in the game's own words,
+     * including what it reduces and what initiative it grants. Emitted once per card per
+     * session, so the cost is one line per distinct card and never per use.
+     *
+     * `pagina` is null where the resource carries no such layer, which is a fact about the
+     * card and not a failure - it must not be read as "this card does nothing".
+     */
+    public static String card(long t, String res, String name, String pagina) {
+        return(new JsonObj()
+               .put("ev", "card")
+               .put("t", t)
+               .put("res", res)
+               .put("name", name)
+               .put("pagina", pagina)
                .end());
     }
 

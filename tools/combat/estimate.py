@@ -2131,13 +2131,61 @@ FOE_RISE_SHARE = 0.08
 FOE_RISE_MIN_USES = 30
 
 
-def foe_card_opens(name):
-    """The colours an opponent's card opens: the wiki's row, plus what the log has seen.
+# The card's own sheet, as the client read it off the resource. {display name: [terms]},
+# filled from schema-13 `card` rows during collect(). See CombatEvent.card.
+_CARD_SHEET = {}
 
-    A union, never a replacement. The wiki carries cards the corpus has barely watched, and
-    the corpus carries cards and colours the wiki never listed. Taking either alone loses
-    real openings, and an opening lost reads as an opponent that is safer than it is.
+
+def card_sheet(name):
+    """What a card's own text says it opens, or None where no log has carried it yet.
+
+    THIS OUTRANKS EVERYTHING ELSE, because it is the game's own words rather than a table
+    somebody typed up or an inference from what moved afterwards. It is parsed by the same
+    code that reads our deck dumps, so an animal's card and one of ours go through one
+    parser and any disagreement between the two paths is a bug in one place.
     """
+    return _CARD_SHEET.get(name)
+
+
+def _read_card_row(r):
+    """Fold one schema-13 `card` row into the sheet table."""
+    nm, pag = r.get("name"), r.get("pagina")
+    if not nm or not pag or (nm in _CARD_SHEET):
+        return
+    try:
+        import parse_deck
+    except ImportError:
+        return
+    idx = dict((c, i) for i, c in enumerate(fightlog.COLOURS))
+    cols, problems = set(), []
+    for line in str(pag).split(chr(10)):
+        if ":" not in line:
+            continue
+        label, rest = line.split(":", 1)
+        # Only what it puts on the OPPONENT. "Openings on you" is a cost to its user and
+        # "Reduces" is the opposite of an opening; neither is pressure on the other side.
+        if label.strip().lower() not in ("openings", "openings on opponent"):
+            continue
+        for t in parse_deck.parse_terms(rest, problems, "card " + nm):
+            c = t.get("colour")
+            if c in idx:
+                cols.add(idx[c])
+    _CARD_SHEET[nm] = sorted(cols)
+
+
+def foe_card_opens(name):
+    """The colours an opponent's card opens, from the best source that has it.
+
+    In order: the card's own sheet where a log has carried one, then the wiki's row and
+    what the log has been seen to do, unioned.
+
+    The union is never a replacement. The wiki carries cards the corpus has barely watched,
+    and the corpus carries cards and colours the wiki never listed. Taking either alone
+    loses real openings, and an opening lost reads as an opponent safer than it is.
+    """
+    sheet = card_sheet(name)
+    if sheet is not None:
+        return set(sheet)
     out = set(animal_opens().get(name) or ())
     seen = _FOE_CARD.get(name)
     if seen and (seen["uses"] >= FOE_RISE_MIN_USES):
@@ -2160,6 +2208,9 @@ def foe_card_harmless(name):
     cards. Harmless here means only "applies no opening pressure to us", which is the one
     thing the pressure figure beside it is measuring.
     """
+    # A card whose own sheet we have needs no watching at all - it has said what it does.
+    if card_sheet(name) is not None:
+        return not foe_card_opens(name)
     if animal_opens().get(name) is None:
         return False
     seen = _FOE_CARD.get(name)
@@ -2170,6 +2221,7 @@ def foe_card_harmless(name):
 
 def collect(paths):
     _FOE_CARD.clear()
+    _CARD_SHEET.clear()
     moves = load_moves()
     wiki = wiki_creatures()
     opens = opens_map(moves)
@@ -2267,7 +2319,9 @@ def collect(paths):
         # attributed when a second opponent is opening us at the same time.
         bygob = defaultdict(list)
         for r in log.rows:
-            if (r.get("ev") == "move") and (r.get("actor") == "foe") and r.get("gob"):
+            if r.get("ev") == "card":
+                _read_card_row(r)
+            elif (r.get("ev") == "move") and (r.get("actor") == "foe") and r.get("gob"):
                 bygob[r["gob"]].append(r["t"])
         gaps_for = {}
         for g, ts in bygob.items():

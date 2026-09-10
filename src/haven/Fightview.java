@@ -98,9 +98,11 @@ public class Fightview extends Widget {
 
 	public void use(Indir<Resource> act) {
 	    try {
-		if(act != null && act.get() != null)
+		if(act != null && act.get() != null) {
+		    haven.automated.combat.CombatRecorder.onCard(act.get());
 		    haven.automated.combat.CombatRecorder.onMove("foe", act.get().name,
 						       haven.automated.combat.CombatRecorder.moveName(act.get()), -1, gobid);
+		}
 	    } catch(Loading l) {}
 	    lastact = act;
 	    lastuse = Utils.rtime();
@@ -263,10 +265,12 @@ public class Fightview extends Widget {
 
     public void use(Indir<Resource> act) {
 	try {
-	    if(act != null && act.get() != null)
+	    if(act != null && act.get() != null) {
+		haven.automated.combat.CombatRecorder.onCard(act.get());
 		haven.automated.combat.CombatRecorder.onMove("me", act.get().name,
 							     haven.automated.combat.CombatRecorder.moveName(act.get()),
 							     lastMoveCooldown, (current == null) ? -1 : current.gobid);
+	    }
 	} catch(Loading l) {}
 	lastact = act;
 	lastuse = Utils.rtime();

@@ -216,6 +216,9 @@ public final class CombatRecorder {
             lastFoes = null;
             lastBuffs.clear();
             named.clear();
+            /* Per FIGHT, not per session, so every log describes the cards it contains. A
+             * fight sees a handful of distinct cards, so this is a few lines per file. */
+            carded.clear();
             combatants.clear();
             lastHp.clear();
             lastAgi.clear();
@@ -536,6 +539,37 @@ public final class CombatRecorder {
         CombatLogWriter w = writer;
         if(w != null)
             w.offer(line);
+    }
+
+    /* Cards whose sheet has already been written down for this fight. One line per
+     * distinct card, not per use: a wolf throws Fell Scratch three thousand times here. */
+    private static final java.util.Set<String> carded =
+        java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
+
+    /**
+     * Writes down an opponent's card in the game's own words, once.
+     *
+     * The wiki's table of what animal cards do is incomplete and in places wrong, and it is
+     * the only thing the offline analysis has for them. The client is holding the answer:
+     * the resource a used card resolves to carries the same pagina layer the deck dump reads
+     * for our own cards, giving exact percentages for what it opens, what it reduces and
+     * what initiative it grants.
+     *
+     * Ours are emitted too. The deck dump already covers them, and having both means the
+     * parser can be checked against a card whose sheet is known from two independent paths.
+     */
+    public static void onCard(haven.Resource res) {
+        if(!active() || (res == null))
+            return;
+        try {
+            if(!carded.add(res.name))
+                return;
+            haven.Resource.Pagina pg = res.layer(haven.Resource.pagina);
+            log(CombatEvent.card(now(), res.name, moveName(res),
+                                 (pg == null) ? null : pg.text));
+        } catch(Exception e) {
+            /* never propagate into the message loop */
+        }
     }
 
     /** The tooltip the combat bar renders, or null if the resource has no tooltip layer. */

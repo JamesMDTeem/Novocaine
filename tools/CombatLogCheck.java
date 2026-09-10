@@ -151,7 +151,22 @@ public class CombatLogCheck {
          * log, and that is a different and worse thing - every change to the data pack
          * silently rewrites the history, so a fix can never be shown to have helped
          * because the "before" number moves with it. */
-        check("schema constant", CombatEvent.SCHEMA, 12);
+        check("schema constant", CombatEvent.SCHEMA, 13);
+
+        /* The card's own sheet, schema 13. The offline analysis had only the wiki's table
+         * for an opponent's cards, and that table is incomplete and in places wrong; the
+         * resource a used card resolves to carries the game's own text. A null pagina is a
+         * fact about the card, not a failure, and must survive as null. */
+        check("card event",
+              CombatEvent.card(7, "paginae/atk/antspit", "Ant Spit",
+                               "Openings: +15% $col[128,192,255]{Dizzy}\n"),
+              "{\"ev\":\"card\",\"t\":7,\"res\":\"paginae/atk/antspit\","
+              + "\"name\":\"Ant Spit\","
+              + "\"pagina\":\"Openings: +15% $col[128,192,255]{Dizzy}\\n\"}");
+        check("  a card with no sheet writes null, not an empty string",
+              CombatEvent.card(1, "paginae/atk/x", null, null),
+              "{\"ev\":\"card\",\"t\":1,\"res\":\"paginae/atk/x\","
+              + "\"name\":null,\"pagina\":null}");
 
         check("a prediction",
               CombatEvent.predict(120, 7, "paginae/atk/knockteeth", "36m/35f/26w",
