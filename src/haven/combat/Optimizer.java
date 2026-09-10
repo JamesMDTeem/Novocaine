@@ -145,9 +145,22 @@ public final class Optimizer {
      * the same 63.5 hitpoints over a long fight, when the whole reason the frontier exists
      * is that they should differ.
      *
-     * So half the beam is the best by rate and half is the best by hitpoints kept, ties
-     * broken on damage done. A frontier search has to carry both ends of the frontier while
-     * it searches, or it can only ever find one of them.
+     * AND A THIRD END, WHICH IS SETUP. Both of the above rank on value already realised -
+     * damage done, hitpoints kept - and an opening is value NOT yet realised. Damage goes
+     * as the square of the opening, so a line that has spent three cards prying a target
+     * open has done little damage, kept no more hitpoints than anyone else, and is holding
+     * the largest payment in the search. Ranked on either of the first two it is pruned one
+     * step before it collects.
+     *
+     * That is what broke deck comparison. Adding a card to a deck cannot make the true
+     * optimum worse, because the plan that ignores it is still there - and ticks by deck
+     * size against the cave angler ran 736, 705, 705, 884 at beam 20, still rising at beam
+     * 2000. A wider beam does not fix a ranking that discards the winning shape; it only
+     * discards it more slowly.
+     *
+     * So the beam is three ways: best by rate, best by hitpoints kept, best by the openings
+     * standing. A frontier search has to carry every end of the frontier while it searches,
+     * or it can only ever find the ends it carried.
      */
     private static List<Node> prune(List<Node> next, double foeHp0, int beam) {
         List<Node> byRate = new ArrayList<Node>(next);
@@ -161,6 +174,16 @@ public final class Optimizer {
             int c = Double.compare(a.hpLost, b.hpLost);
             return((c != 0) ? c : Double.compare(a.foe.hp, b.foe.hp));
         });
+        List<Node> bySetup = new ArrayList<Node>(next);
+        Collections.sort(bySetup, (a, b) -> {
+            int c = Double.compare(open(b), open(a));
+            return((c != 0) ? c : Double.compare(a.foe.hp, b.foe.hp));
+        });
+        /* ADDED TO THE OTHER TWO, NOT CARVED OUT OF THEM. Taking a third of the beam for
+         * setup was the obvious way and it broke the check next door: the initiative curve
+         * stopped being monotone, because the hitpoint end had been cut in half to pay for
+         * it and the least-damage line went with it. The two ends that were already there
+         * were already load-bearing. */
         int half = Math.max(1, beam / 2);
         List<Node> out = new ArrayList<Node>();
         for(int i = 0; (i < half) && (i < byRate.size()); i++)
@@ -170,7 +193,20 @@ public final class Optimizer {
             if(!out.contains(n))
                 out.add(n);
         }
+        for(int i = 0; (i < half) && (i < bySetup.size()); i++) {
+            Node n = bySetup.get(i);
+            if(!out.contains(n))
+                out.add(n);
+        }
         return(out);
+    }
+
+    /** How much is standing open on the target, which is damage not yet collected. */
+    private static double open(Node n) {
+        double[] all = new double[4];
+        for(int c = 0; c < 4; c++)
+            all[c] = n.foe.opening(c);
+        return(Formulas.combined(all));
     }
 
     /** Applies one of our moves, letting the opponent act for every clock tick it owns. */

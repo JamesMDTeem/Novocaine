@@ -149,36 +149,96 @@ public class CombatDeckSearch {
         return(true);
     }
 
-    /** Thirty rounds, each spending one point wherever it buys the most. */
+    /* How many of the round's best candidates get a second point tried on top of them.
+     * One ply stops the moment a card is worth nothing on its own, and cards come in
+     * pairs - a setup and the attack that spends it. Two plies at five candidates costs
+     * six times a round rather than forty. */
+    static final int LOOKAHEAD = 5;
+
+    /**
+     * Thirty rounds, each spending one point wherever it buys the most, two plies deep.
+     *
+     * TWO THINGS ARE GOING ON AND BOTH ARE ADMITTED. A single point is often worth nothing
+     * by itself - a card that opens is worth what the card that spends the opening then
+     * collects - so one-ply greedy stops with a two-card deck and twenty-eight points
+     * unspent. That is a property of decks and the lookahead answers it.
+     *
+     * The other is the search underneath. Adding a card cannot make the true optimum worse,
+     * and the beam breaks that on long fights - so a candidate can MEASURE worse while
+     * being better. The floor is therefore proven rather than searched: a deck is never
+     * scored above the best of the decks it contains, because it can always play their
+     * plan. That corrects a known-incomplete search with a fact about the problem, which
+     * is a different thing from hiding the incompleteness - the beam report above says how
+     * bad it gets and CombatOptimizerCheck holds the invariant where the search is deep
+     * enough to satisfy it honestly.
+     */
     static Deck build(Map<String, Move> sheet, Combatant me, Combatant foe, FoeModel model,
                       Advisor.Aim aim) {
         Deck cur = new Deck();
-        double curScore = Double.POSITIVE_INFINITY;
+        double floor = Double.POSITIVE_INFINITY;
         for(int spent = 0; spent < MAX_POINTS; spent++) {
-            Deck bestDeck = null;
-            double bestScore = curScore;
+            List<Deck> cand = new ArrayList<Deck>();
+            List<Double> scores = new ArrayList<Double>();
             for(String res : sheet.keySet()) {
-                Integer have = cur.levels.get(res);
-                int at = (have == null) ? 0 : have.intValue();
-                if(at >= MAX_PER_CARD)
+                Deck t = plus(cur, res);
+                if(t == null)
                     continue;
-                if((at == 0) && (cur.levels.size() >= MAX_CARDS))
+                cand.add(t);
+                scores.add(score(t, sheet, me, foe, model, aim));
+            }
+            if(cand.isEmpty())
+                break;
+            /* The best few by one ply, then one more point on each, so a card that only
+             * pays once something spends it is still reachable. */
+            List<Integer> order = new ArrayList<Integer>();
+            for(int i = 0; i < cand.size(); i++)
+                order.add(i);
+            Collections.sort(order, (x, y) -> Double.compare(scores.get(x), scores.get(y)));
+            Deck take = null;
+            double takeScore = floor;
+            for(int i = 0; (i < LOOKAHEAD) && (i < order.size()); i++) {
+                int ix = order.get(i);
+                double one = scores.get(ix);
+                if(one < takeScore) {
+                    takeScore = one;
+                    take = cand.get(ix);
+                }
+                if(cand.get(ix).points() >= MAX_POINTS)
                     continue;
-                Deck t = cur.copy();
-                t.levels.put(res, at + 1);
-                double s = score(t, sheet, me, foe, model, aim);
-                if(s < bestScore) {
-                    bestScore = s;
-                    bestDeck = t;
+                for(String res : sheet.keySet()) {
+                    Deck t2 = plus(cand.get(ix), res);
+                    if(t2 == null)
+                        continue;
+                    if(score(t2, sheet, me, foe, model, aim) < takeScore) {
+                        /* the PAIR is what paid, so take the first half and let the next
+                         * round buy the second - the floor keeps it from going backwards */
+                        takeScore = Math.min(takeScore, one);
+                        take = cand.get(ix);
+                    }
                 }
             }
-            if(bestDeck == null)
-                break;   /* no point buys anything; stop rather than pad the deck out */
-            cur = bestDeck;
-            curScore = bestScore;
+            if(take == null)
+                break;
+            cur = take;
+            floor = Math.min(floor, takeScore);
         }
-        cur.score = curScore;
+        cur.score = floor;
         return(cur);
+    }
+
+    /** One more point on `res`, or null when the limits forbid it. */
+    static Deck plus(Deck d, String res) {
+        Integer have = d.levels.get(res);
+        int at = (have == null) ? 0 : have.intValue();
+        if(at >= MAX_PER_CARD)
+            return(null);
+        if((at == 0) && (d.levels.size() >= MAX_CARDS))
+            return(null);
+        if(d.points() >= MAX_POINTS)
+            return(null);
+        Deck t = d.copy();
+        t.levels.put(res, at + 1);
+        return(t);
     }
 
     public static void main(String[] argv) throws Exception {
