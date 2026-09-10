@@ -521,8 +521,12 @@ public final class Pack {
             int[] modes = new int[(md == null) ? 0 : md.length()];
             for(int i = 0; i < modes.length; i++)
                 modes[i] = md.getInt(i);
+            /* What its own cards take back off its openings. Null where too few of its
+             * actions were watched to mean anything - see estimate.restores. */
+            double back = t.isNull("restores") ? Double.NaN
+                : t.optDouble("restores", Double.NaN);
             return(new FoeModel(period, pressure, against, coef,
-                                per.optInt("n", 0), nHits, flees, modes));
+                                per.optInt("n", 0), nHits, flees, modes, back));
         }
 
         private static double[] range(JSONObject j, String key) {

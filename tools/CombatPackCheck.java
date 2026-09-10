@@ -387,6 +387,20 @@ public class CombatPackCheck {
         check("  and it is never wider than the envelope it came from",
               pinnedNarrower(foes), true);
 
+        /* WHAT ITS OWN CARDS TAKE BACK. Six opponent cards close the opponent's own
+         * openings - Unstoppable 25.2 points a use, Bristle 16.4, Roar of the Wild 3.4 -
+         * against 0.04 in brackets where nothing acted. Left out, a creature stays more
+         * open than it is for the whole fight and every opening feeds a squared damage
+         * term, which is optimism in the direction a matchup must not be optimistic. */
+        int restoring = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat != null) && !Double.isNaN(o.threat.restores)
+               && (o.threat.restores > 0))
+                restoring++;
+        }
+        check("some opponent takes its own openings back", restoring > 0, true);
+        check("  and restoring one actually closes them", restoresClosesOpenings(), true);
+
         check("some opponent has a measured flee threshold", flees > 0, true);
         check("  and every one of them is a share of health, not a count",
               fleeThresholdsAreShares(foes), true);
@@ -433,6 +447,20 @@ public class CombatPackCheck {
                 return(false);
         }
         return(true);
+    }
+
+    /** A model that restores has to actually reduce the opening it is given. */
+    static boolean restoresClosesOpenings() {
+        haven.combat.FoeModel m = new haven.combat.FoeModel(
+            45, new double[] {0, 0, 0, 0}, 0, Double.NaN, 0, 0, Double.NaN,
+            new int[0], 6.0);
+        haven.combat.Combatant c = new haven.combat.Combatant("it");
+        c.open(0, 20);
+        c.open(3, 5);
+        m.restore(c);
+        /* Six points off the largest first, so green falls to 14 and red is untouched. */
+        return((Math.abs((c.opening(0) * 100) - 14.0) < 1e-6)
+               && (Math.abs((c.opening(3) * 100) - 5.0) < 1e-6));
     }
 
     /** A threshold is a fraction of hitpoints, so anything outside (0, 1) is a unit bug. */

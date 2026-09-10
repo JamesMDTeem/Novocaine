@@ -2395,6 +2395,8 @@ def collect(paths):
         # to the fullest witness below, exactly as the damage is.
         "foe_moves_by": defaultdict(lambda: defaultdict(list)),
         "foe_state_by": defaultdict(lambda: defaultdict(list)),
+        "foe_close_by": defaultdict(lambda: defaultdict(list)),
+        "foe_close": [],
         "foe_state": [],
         "foe_gaps_by": defaultdict(lambda: defaultdict(list)),
         "engagements_by": defaultdict(lambda: defaultdict(int)),
@@ -2702,6 +2704,20 @@ def collect(paths):
                 # rest. Kept per witness alongside it so the same fullest-witness fold
                 # applies - the client draws every combatant's moves, so two party members
                 # log the same card twice.
+                # WHAT ITS OWN CARD TOOK OFF ITSELF. Six opponent cards close the
+                # opponent's openings and the model knew about none of them: Unstoppable
+                # 25.2 points a use, Bristle 16.4, Swift Evasion 11.9, Careful Approach
+                # 4.9, Roar of the Wild 3.4, against a baseline of 0.04 in brackets where
+                # nothing acted at all. Attacking cards sit at 0.1, which is the decay.
+                #
+                # Nothing WE do closes their openings, so a fall in their bracket is
+                # theirs or it is decay, and the baseline says decay is nothing.
+                _fa2 = eng.brackets(fm)[1]
+                if (fb is not None) and (_fa2 is not None):
+                    _bv, _av = fb.get("foe"), _fa2.get("foe")
+                    if _bv and _av and any(_bv):
+                        rec["foe_close_by"][eng.gob][(log.header or {}).get("char")].append(
+                            sum(max(0, _bv[i] - _av[i]) for i in range(4)))
                 if fb is not None:
                     rec["foe_state_by"][eng.gob][(log.header or {}).get("char")].append(
                         (fm.get("name") or fm.get("move"),
@@ -2850,6 +2866,9 @@ def collect(paths):
         # so the duplication buys confidence nothing earned.
         for gob, byc in rec["engagements_by"].items():
             rec["engagements"] += max(byc.values()) if byc else 0
+        for gob, byc in rec["foe_close_by"].items():
+            if byc:
+                rec["foe_close"].extend(max(byc.values(), key=len))
         for gob, byc in rec["foe_state_by"].items():
             if byc:
                 rec["foe_state"].extend(max(byc.values(), key=len))
@@ -4675,6 +4694,27 @@ def flees_below(rec):
     return round(1.0 - v[len(v) // 2], 3)
 
 
+# How many of its actions must have been watched before the mean is a species figure.
+RESTORE_MIN_N = 30
+
+
+def restores(rec):
+    """Points the opponent takes back off its own openings, per action it takes.
+
+    Measured, not assumed: nothing we do closes their openings, so a fall inside one of
+    their brackets is theirs or it is decay - and across 412399 brackets where nothing
+    acted at all the mean fall is 0.04 points, so decay is nothing.
+
+    Averaged over EVERY action rather than over the restoring ones, because the period
+    beside it counts every action too. That is the same denominator the pressure figure
+    uses and for the same reason.
+    """
+    v = rec.get("foe_close") or ()
+    if len(v) < RESTORE_MIN_N:
+        return None
+    return round(sum(v) / float(len(v)), 2)
+
+
 def threat(rec):
     """What this opponent does to US, in the form the optimizer plans against.
 
@@ -4788,7 +4828,14 @@ def threat(rec):
             "pressure_n": pn, "damage": damage,
             # MEASURED where the corpus has watched one give up and keep taking damage.
             # Null, not zero - zero would mean "fights to the death", which is a claim.
-            "flees_below": flees_below(rec)}
+            "flees_below": flees_below(rec),
+            # POINTS IT TAKES BACK OFF ITSELF PER ACTION, averaged over every action its
+            # clock counts - the same denominator the pressure beside it uses. Six of its
+            # cards restore and the rest do not, so a creature that spends a third of its
+            # turns on Bristle undoes rather more than one that never throws it.
+            #
+            # Null below RESTORE_MIN_N, where the mean is one creature's habits.
+            "restores": restores(rec)}
 
 
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")

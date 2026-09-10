@@ -74,6 +74,24 @@ public final class FoeModel {
      */
     public final double fleesBelow;
 
+    /**
+     * Points it takes back off its OWN openings, per action it takes. NaN when unmeasured.
+     *
+     * ITS CARDS RESTORE AND NOTHING HERE KNEW. Six of them do it and the rest do not:
+     * Unstoppable closes 25.2 points a use, Bristle 16.4, Swift Evasion 11.9, Rampant Rage
+     * 7.5, Careful Approach 4.9, Roar of the Wild 3.4 - against 0.04 across 412399 brackets
+     * where nothing acted at all, which is what decay is worth. Attacking cards sit at 0.1.
+     *
+     * Left out, the model keeps a creature more open than it really is for the whole fight,
+     * and every opening feeds a damage term that squares it. That is optimism in the one
+     * direction a matchup must not be optimistic in.
+     *
+     * Averaged over every action, matching the period and the pressure beside it: a
+     * creature that spends a third of its turns on Bristle undoes rather more than one
+     * that never throws it, and the mix is already in that average.
+     */
+    public final double restores;
+
     public FoeModel(long period, double[] pressure, double pressureAgainst,
                     double damageCoef, int nGaps, int nHits) {
         this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, Double.NaN);
@@ -88,8 +106,16 @@ public final class FoeModel {
     public FoeModel(long period, double[] pressure, double pressureAgainst,
                     double damageCoef, int nGaps, int nHits, double fleesBelow,
                     int[] modes) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, fleesBelow,
+             modes, Double.NaN);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow,
+                    int[] modes, double restores) {
         this.modes = (modes == null) ? new int[0] : modes;
         this.fleesBelow = fleesBelow;
+        this.restores = restores;
         this.period = period;
         this.pressure = pressure;
         this.pressureAgainst = pressureAgainst;
@@ -122,7 +148,34 @@ public final class FoeModel {
     public double act(Combatant me, double myBlockWeight, Combatant self) {
         if((self != null) && fleeing(self))
             return(0);
+        restore(self);
         return(act(me, myBlockWeight));
+    }
+
+    /** Its own openings, after the card it just threw took some of them back. */
+    public void restore(Combatant self) {
+        if((self == null) || Double.isNaN(restores) || (restores <= 0))
+            return;
+        /* Spread across whatever is standing, largest first, which is what a restoration
+         * card does - none of them names a colour in the corpus and the greatest opening
+         * is the one worth closing. */
+        double left = restores;
+        for(int guard = 0; (guard < 4) && (left > 0.0001); guard++) {
+            int best = -1;
+            for(int c = 0; c < 4; c++) {
+                if((self.opening(c) > 0) && ((best < 0) || (self.opening(c) > self.opening(best))))
+                    best = c;
+            }
+            if(best < 0)
+                return;
+            /* close() takes a SHARE of what is standing, not a number of points - see
+             * Combatant.close, and Move.reduces which is already a fraction by the time
+             * Pack has divided it. Handing it points closes the opening outright. */
+            double have = self.opening(best) * 100.0;
+            double take = Math.min(have, left);
+            self.close(best, take / have);
+            left -= take;
+        }
     }
 
     public double act(Combatant me, double myBlockWeight) {

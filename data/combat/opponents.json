@@ -105,7 +105,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -206,7 +207,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -294,7 +296,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -410,7 +413,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -494,7 +498,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -645,7 +650,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -800,7 +806,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -896,7 +903,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -1034,7 +1042,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -1174,7 +1183,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -1307,7 +1317,8 @@
      "yellow": 0.0
     },
     "pressure_against": 260.0,
-    "pressure_n": 18
+    "pressure_n": 18,
+    "restores": 2.88
    }
   },
   {
@@ -1399,7 +1410,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -1543,7 +1555,8 @@
      "yellow": 8.07
     },
     "pressure_against": 438.07142857142856,
-    "pressure_n": 35
+    "pressure_n": 35,
+    "restores": 2.0
    }
   },
   {
@@ -1715,7 +1728,8 @@
      "yellow": 0.0
     },
     "pressure_against": 376.875,
-    "pressure_n": 853
+    "pressure_n": 853,
+    "restores": 0.02
    }
   },
   {
@@ -1858,7 +1872,8 @@
      "yellow": 0.0
     },
     "pressure_against": 431.5,
-    "pressure_n": 52
+    "pressure_n": 52,
+    "restores": 0.48
    }
   },
   {
@@ -2029,7 +2044,8 @@
      "yellow": 2.76
     },
     "pressure_against": 366.25,
-    "pressure_n": 145
+    "pressure_n": 145,
+    "restores": 0.01
    }
   },
   {
@@ -2192,7 +2208,8 @@
      "yellow": 0.0
     },
     "pressure_against": 451.75,
-    "pressure_n": 67
+    "pressure_n": 67,
+    "restores": 4.81
    }
   },
   {
@@ -2329,7 +2346,8 @@
      "yellow": 0.0
     },
     "pressure_against": 339.3,
-    "pressure_n": 15
+    "pressure_n": 15,
+    "restores": 1.27
    }
   },
   {
@@ -2463,7 +2481,8 @@
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 59
+    "pressure_n": 59,
+    "restores": 0.47
    }
   },
   {
@@ -2580,7 +2599,8 @@
      "yellow": 1.35
     },
     "pressure_against": 480.0,
-    "pressure_n": 7
+    "pressure_n": 7,
+    "restores": null
    }
   },
   {
@@ -2770,7 +2790,8 @@
      "yellow": 5.55
     },
     "pressure_against": 333.34615384615387,
-    "pressure_n": 183
+    "pressure_n": 183,
+    "restores": 2.31
    }
   },
   {
@@ -2913,7 +2934,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -3024,7 +3046,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -3097,7 +3120,8 @@
      "yellow": 0.0
     },
     "pressure_against": 277.5,
-    "pressure_n": 3
+    "pressure_n": 3,
+    "restores": null
    }
   },
   {
@@ -3290,7 +3314,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -3395,7 +3420,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": null
    }
   },
   {
@@ -3479,7 +3505,8 @@
      "yellow": 0.0
     },
     "pressure_against": 270.0,
-    "pressure_n": 9
+    "pressure_n": 9,
+    "restores": null
    }
   },
   {
@@ -3623,7 +3650,8 @@
      "yellow": 0.0
     },
     "pressure_against": 260.0,
-    "pressure_n": 25
+    "pressure_n": 25,
+    "restores": 3.67
    }
   },
   {
@@ -3821,7 +3849,8 @@
      "yellow": 3.24
     },
     "pressure_against": 384.0625,
-    "pressure_n": 95
+    "pressure_n": 95,
+    "restores": 0.4
    }
   },
   {
@@ -4041,7 +4070,8 @@
      "yellow": 0.0
     },
     "pressure_against": 377.57142857142856,
-    "pressure_n": 73
+    "pressure_n": 73,
+    "restores": 3.99
    }
   },
   {
@@ -4156,7 +4186,8 @@
      "yellow": 0.0
     },
     "pressure_against": 267.5,
-    "pressure_n": 10
+    "pressure_n": 10,
+    "restores": null
    }
   },
   {
@@ -4308,7 +4339,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": 0.0
    }
   },
   {
@@ -4406,7 +4438,8 @@
      "yellow": 0.0
     },
     "pressure_against": 275.0,
-    "pressure_n": 4
+    "pressure_n": 4,
+    "restores": null
    }
   },
   {
@@ -4542,7 +4575,8 @@
      "yellow": 0.0
     },
     "pressure_against": 354.8,
-    "pressure_n": 65
+    "pressure_n": 65,
+    "restores": 0.14
    }
   },
   {
@@ -4668,7 +4702,8 @@
      "yellow": 0.0
     },
     "pressure_against": 519.1666666666666,
-    "pressure_n": 23
+    "pressure_n": 23,
+    "restores": 0.32
    }
   },
   {
@@ -4853,7 +4888,8 @@
      "yellow": 0.0
     },
     "pressure_against": 328.5,
-    "pressure_n": 66
+    "pressure_n": 66,
+    "restores": 1.96
    }
   },
   {
@@ -4971,7 +5007,8 @@
      "yellow": 0.0
     },
     "pressure_against": 402.5,
-    "pressure_n": 11
+    "pressure_n": 11,
+    "restores": null
    }
   },
   {
@@ -5114,7 +5151,8 @@
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 56
+    "pressure_n": 56,
+    "restores": 0.06
    }
   },
   {
@@ -5263,7 +5301,8 @@
      "yellow": 4.76
     },
     "pressure_against": 576.25,
-    "pressure_n": 4
+    "pressure_n": 4,
+    "restores": null
    }
   },
   {
@@ -5420,7 +5459,8 @@
      "yellow": 0.0
     },
     "pressure_against": 355.0,
-    "pressure_n": 16
+    "pressure_n": 16,
+    "restores": 1.93
    }
   },
   {
@@ -5532,7 +5572,8 @@
      "yellow": 7.18
     },
     "pressure_against": 622.5,
-    "pressure_n": 13
+    "pressure_n": 13,
+    "restores": null
    }
   },
   {
@@ -5757,7 +5798,8 @@
      "yellow": 0.86
     },
     "pressure_against": 390.8125,
-    "pressure_n": 74
+    "pressure_n": 74,
+    "restores": 3.99
    }
   },
   {
@@ -5866,7 +5908,8 @@
      "yellow": 0.0
     },
     "pressure_against": 607.5,
-    "pressure_n": 1
+    "pressure_n": 1,
+    "restores": null
    }
   },
   {
@@ -5983,7 +6026,8 @@
      "yellow": 0.0
     },
     "pressure_against": 607.5,
-    "pressure_n": 3
+    "pressure_n": 3,
+    "restores": null
    }
   },
   {
@@ -6136,7 +6180,8 @@
      "yellow": 0.0
     },
     "pressure_against": 402.5,
-    "pressure_n": 14
+    "pressure_n": 14,
+    "restores": null
    }
   },
   {
@@ -6277,7 +6322,8 @@
      "yellow": 0.0
     },
     "pressure_against": 493.3333333333333,
-    "pressure_n": 4
+    "pressure_n": 4,
+    "restores": null
    }
   },
   {
@@ -6472,7 +6518,8 @@
      "yellow": 0.0
     },
     "pressure_against": 372.5,
-    "pressure_n": 235
+    "pressure_n": 235,
+    "restores": 0.05
    }
   },
   {
@@ -6658,7 +6705,8 @@
      "yellow": 4.33
     },
     "pressure_against": 341.40909090909093,
-    "pressure_n": 67
+    "pressure_n": 67,
+    "restores": 1.26
    }
   },
   {
@@ -6837,7 +6885,8 @@
      "yellow": 4.56
     },
     "pressure_against": 435.0,
-    "pressure_n": 66
+    "pressure_n": 66,
+    "restores": 0.43
    }
   },
   {
@@ -7060,7 +7109,8 @@
      "yellow": 0.0
     },
     "pressure_against": 372.5,
-    "pressure_n": 155
+    "pressure_n": 155,
+    "restores": 1.08
    }
   },
   {
@@ -7252,7 +7302,8 @@
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 73
+    "pressure_n": 73,
+    "restores": 0.4
    }
   },
   {
@@ -7397,7 +7448,8 @@
      "yellow": 2.38
     },
     "pressure_against": 462.0,
-    "pressure_n": 34
+    "pressure_n": 34,
+    "restores": 2.0
    }
   },
   {
@@ -7519,7 +7571,8 @@
      "yellow": 0.0
     },
     "pressure_against": 218.66666666666666,
-    "pressure_n": 8
+    "pressure_n": 8,
+    "restores": null
    }
   },
   {
@@ -7623,7 +7676,8 @@
      "yellow": 0.0
     },
     "pressure_against": null,
-    "pressure_n": 0
+    "pressure_n": 0,
+    "restores": 1.27
    }
   },
   {
@@ -7764,7 +7818,8 @@
      "yellow": 0.0
     },
     "pressure_against": 420.25,
-    "pressure_n": 34
+    "pressure_n": 34,
+    "restores": 0.45
    }
   },
   {
@@ -7928,7 +7983,8 @@
      "yellow": 0.0
     },
     "pressure_against": 471.25,
-    "pressure_n": 27
+    "pressure_n": 27,
+    "restores": 3.12
    }
   },
   {
@@ -8109,7 +8165,8 @@
      "yellow": 0.0
     },
     "pressure_against": 372.5,
-    "pressure_n": 160
+    "pressure_n": 160,
+    "restores": 1.07
    }
   },
   {
@@ -8312,7 +8369,8 @@
      "yellow": 0.0
     },
     "pressure_against": 480.0,
-    "pressure_n": 85
+    "pressure_n": 85,
+    "restores": 0.61
    }
   },
   {
@@ -8462,7 +8520,8 @@
      "yellow": 5.67
     },
     "pressure_against": 414.8,
-    "pressure_n": 21
+    "pressure_n": 21,
+    "restores": 0.95
    }
   },
   {
@@ -8684,7 +8743,8 @@
      "yellow": 0.05
     },
     "pressure_against": 438.3333333333333,
-    "pressure_n": 538
+    "pressure_n": 538,
+    "restores": 1.55
    }
   },
   {
@@ -8829,7 +8889,8 @@
      "yellow": 0.0
     },
     "pressure_against": 381.9166666666667,
-    "pressure_n": 31
+    "pressure_n": 31,
+    "restores": 1.0
    }
   },
   {
@@ -8931,7 +8992,8 @@
      "yellow": 0.0
     },
     "pressure_against": 615.0,
-    "pressure_n": 2
+    "pressure_n": 2,
+    "restores": null
    }
   }
  ],
