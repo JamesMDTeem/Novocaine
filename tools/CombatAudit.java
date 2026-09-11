@@ -24,12 +24,14 @@
  */
 
 import haven.combat.Advisor;
+import haven.combat.BeastMove;
 import haven.combat.Combatant;
 import haven.combat.Duel;
 import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Optimizer;
+import haven.combat.Repertoire;
 import haven.combat.Sim;
 
 import java.util.ArrayList;
@@ -180,7 +182,7 @@ public class CombatAudit {
 
         uncovered("FoeModel", FoeModel.class, new String[] {
             "period", "pressure", "pressureAgainst", "damageCoef", "nGaps", "nHits",
-            "modes", "fleesBelow", "restores", "restoresByColour",
+            "modes", "fleesBelow", "restores", "restoresByColour", "cards",
             "condFeature", "condCut", "whenPressure", "elsePressure",
         });
     }
@@ -618,6 +620,36 @@ public class CombatAudit {
         double[] cold = split.pressureNow(fighter(), fighter());
         live("a learned rule switches its pressure on the state",
              cold[Formulas.RED], hot[Formulas.RED], "FoeModel.pressureNow");
+
+        /* AND THE CREATURE'S OWN CARDS, which is the whole restructure. A repertoire
+         * replaces the averaged action: each turn is one real card with its own openings,
+         * its own damage, its own aimed restoration. Two different cards must therefore
+         * do two different things, and the deal must move on rather than replaying the
+         * first card forever - which is what happens if the action counter is not
+         * threaded through the search. */
+        BeastMove soft = new BeastMove("soft", new double[] {4, 0, 0, 0}, 10, 30,
+                                       new double[4], 0, 0.8);
+        BeastMove hard = new BeastMove("hard", new double[] {0, 0, 0, 12}, 90, 60,
+                                       new double[4], 0.3, 0.8);
+        Repertoire rep = new Repertoire(new BeastMove[] {soft, hard},
+                                        new double[] {0.5, 0.5}, null, 0, null, null);
+        FoeModel beast = new FoeModel(40, press, 100, 2.0, 10, 10, Double.NaN, new int[0],
+                                      0, null, 0, null, null, null, rep);
+        Combatant v0 = fighter(), v1 = fighter();
+        beast.act(v0, v0.defenceWeight(), fighter(), 0, null);
+        beast.act(v1, v1.defenceWeight(), fighter(), 1, null);
+        live("its cards differ from one another, so the turn matters",
+             v0.opening(Formulas.GREEN), v1.opening(Formulas.GREEN), "Repertoire.pick");
+        live("  and the deal moves on rather than repeating the first card",
+             v0.opening(Formulas.RED), v1.opening(Formulas.RED), "Repertoire.pick");
+
+        /* A repertoire beats the average: with cards present the pooled pressure must not
+         * be what lands, or the restructure is decorative. */
+        Combatant avgd = fighter();
+        new FoeModel(40, press, 100, 2.0, 10, 10).act(avgd, avgd.defenceWeight(),
+                                                      fighter(), 0, null);
+        live("  and the averaged action is not what lands when cards are present",
+             avgd.opening(Formulas.RED), v0.opening(Formulas.RED), "FoeModel.act");
 
         /* A player's deck read as an opponent, which is what a duel needs. */
         List<Move> deck = new ArrayList<Move>();

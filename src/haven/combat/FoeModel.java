@@ -149,6 +149,24 @@ public final class FoeModel {
     public final double[] restoresByColour;
 
     /**
+     * Its actual cards, and which one it throws when.
+     *
+     * When this is present the model stops being an average and starts being a creature:
+     * each action is one real card, applying that card's openings, its own damage, its own
+     * aimed restoration and its own grievous share. Everything above - the pooled
+     * pressure, the single coefficient, the flat restoration - is the fallback for
+     * creatures the corpus cannot break down, and stays because some cannot.
+     *
+     * The CLOCK is still the creature's measured rotation rather than the chosen card's
+     * own cooldown. Per-card cooldowns are measured and shipped, but scheduling by them
+     * needs a timer per card in the search state, which the optimizer's node does not
+     * carry. The rotation is itself a measurement - the median gap between this
+     * creature's actions - so this is not a guess standing in for one, it is a coarser
+     * measurement than the one available.
+     */
+    public final Repertoire cards;
+
+    /**
      * What it does depends on the state, and this is the one split the corpus can hold up.
      *
      * A creature is not a fixed mix. Fitting one split per species - chosen on the first
@@ -203,6 +221,16 @@ public final class FoeModel {
                     double damageCoef, int nGaps, int nHits, double fleesBelow,
                     int[] modes, double restores, String condFeature, double condCut,
                     double[] whenPressure, double[] elsePressure, double[] byColour) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, fleesBelow,
+             modes, restores, condFeature, condCut, whenPressure, elsePressure, byColour,
+             null);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow,
+                    int[] modes, double restores, String condFeature, double condCut,
+                    double[] whenPressure, double[] elsePressure, double[] byColour,
+                    Repertoire rep) {
         this.condFeature = condFeature;
         this.condCut = condCut;
         this.whenPressure = whenPressure;
@@ -211,6 +239,7 @@ public final class FoeModel {
         this.fleesBelow = fleesBelow;
         this.restores = restores;
         this.restoresByColour = byColour;
+        this.cards = rep;
         this.period = period;
         this.pressure = pressure;
         this.pressureAgainst = pressureAgainst;
@@ -241,10 +270,64 @@ public final class FoeModel {
      * wrong towards caution.
      */
     public double act(Combatant me, double myBlockWeight, Combatant self) {
+        return(act(me, myBlockWeight, self, 0, null));
+    }
+
+    /**
+     * One action, throwing a real card where the corpus knows its cards.
+     *
+     * @param step   how many actions this creature has already taken, so the card dealt
+     *               out follows the measured mix over the fight rather than being drawn
+     *               at random. The search must be repeatable.
+     * @param thrown running count per card, or null to deal purely on the step number.
+     */
+    public double act(Combatant me, double myBlockWeight, Combatant self, int step,
+                      int[] thrown) {
         if((self != null) && fleeing(self))
             return(0);
+        if((cards != null) && cards.usable()) {
+            int i = cards.pick(me, self, step, thrown);
+            if(thrown != null)
+                thrown[i]++;
+            return(play(cards.cards[i], me, myBlockWeight, self));
+        }
         restore(self);
         return(act(me, myBlockWeight, pressureNow(me, self)));
+    }
+
+    /**
+     * What one named card does, which is the whole point of having them.
+     *
+     * Its own openings, its own restoration aimed at its own colours, its own damage
+     * through our armour, its own grievous share. A creature that throws Bristle and then
+     * Chomp does two quite different things, and the average of them is a third thing that
+     * never happens.
+     */
+    private double play(BeastMove m, Combatant me, double myBlockWeight, Combatant self) {
+        /* AIMED, AND ONLY WHERE THE CARD AIMS. Roar of the Wild takes back yellow and red
+         * and leaves green and blue exactly where they were. */
+        if(self != null) {
+            for(int c = 0; c < 4; c++) {
+                if(m.restores[c] > 0)
+                    self.close(c, (m.restores[c] > 1.0) ? 1.0 : m.restores[c]);
+            }
+        }
+        double scale = ((pressureAgainst > 0) && (myBlockWeight > 0))
+            ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0;
+        for(int c = 0; c < 4; c++) {
+            if(m.openings[c] > 0)
+                me.open(c, m.openings[c] * scale * (1.0 - me.opening(c)));
+        }
+        if(Double.isNaN(m.damageCoef) || (m.damageCoef <= 0))
+            return(0);
+        double[] o = new double[4];
+        for(int c = 0; c < 4; c++)
+            o[c] = me.opening(c);
+        double combined = Formulas.combined(o);
+        double raw = m.damageCoef * combined * combined;
+        double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, 0.0);
+        me.hp -= dealt;
+        return(dealt);
     }
 
     /**

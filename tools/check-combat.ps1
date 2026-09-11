@@ -164,6 +164,9 @@ $model = @(
     'src\haven\combat\Formulas.java',
     'src\haven\combat\Move.java',
     'src\haven\combat\Combatant.java',
+    # The opponent's own cards, which FoeModel now plays instead of an average.
+    'src\haven\combat\BeastMove.java',
+    'src\haven\combat\Repertoire.java',
     'src\haven\combat\Sim.java'
 )
 

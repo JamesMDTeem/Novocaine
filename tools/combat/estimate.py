@@ -1934,8 +1934,10 @@ def theirs(eng, m):
     The collection loops credited every foe move in an engagement to the engagement's
     species, and in a mixed fight that is simply wrong. Ants came out of it holding Bear
     Down, Chomp, Fell Scratch and Rampant Rage; counted properly, an ant threw Ant Spit
-    1058 times and every one of the others zero. The Fell Scratches were a cave angler's,
-    thirty-nine of them.
+    1058 times and every one of the others zero. The Fell Scratches were the nest's other
+    residents - royal guard ants eighteen, warrior ants seventeen, queen ants three - which
+    is the case that makes this worth fixing rather than an oddity: the ant species share
+    every fight, and the ones that throw Fell Scratch are not the ones that do not.
 
     It is not a rounding error in a mix. It puts cards in a creature's list that the
     creature does not have, and the policy, the conditional rule and the pressure are all

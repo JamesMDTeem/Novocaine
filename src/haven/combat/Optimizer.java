@@ -72,15 +72,30 @@ public final class Optimizer {
         final List<Move> path;
         final long tick, foeNext;
         final double hpLost;
+        /**
+         * How many actions the opponent has taken along this line.
+         *
+         * Needed because the opponent now throws real cards rather than one averaged
+         * action, and which card comes next depends on how many it has already thrown -
+         * they are dealt out in proportion to the measured mix. Without this every node
+         * would replay the creature's FIRST action, so a boreworm would open with Roar of
+         * the Wild forever and never get to Fell Scratch.
+         *
+         * It lives on the node rather than in the model because the search explores many
+         * lines at once and each has its own history; a counter on the shared model would
+         * be advanced by whichever branch happened to be expanded last.
+         */
+        final int foeActs;
 
         Node(Combatant me, Combatant foe, List<Move> path, long tick, long foeNext,
-             double hpLost) {
+             double hpLost, int foeActs) {
             this.me = me;
             this.foe = foe;
             this.path = path;
             this.tick = tick;
             this.foeNext = foeNext;
             this.hpLost = hpLost;
+            this.foeActs = foeActs;
         }
     }
 
@@ -121,7 +136,7 @@ public final class Optimizer {
         List<Node> live = new ArrayList<Node>();
         live.add(new Node(me.copy(), foe.copy(), new ArrayList<Move>(), 0,
                           (model.period == Long.MAX_VALUE) ? Long.MAX_VALUE : model.period,
-                          0));
+                          0, 0));
         List<Plan> done = new ArrayList<Plan>();
 
         while(!live.isEmpty()) {
@@ -230,6 +245,7 @@ public final class Optimizer {
         Combatant me = n.me.copy(), foe = n.foe.copy();
         long tick = n.tick, foeNext = n.foeNext;
         double hpLost = n.hpLost;
+        int acts = n.foeActs;
 
         /* Wait until we may act, and let the opponent act on its own clock meanwhile. This
          * is where the not-turn-based part lives: a long cooldown is not merely slow, it is
@@ -241,7 +257,8 @@ public final class Optimizer {
              * either. The frontier sorts that out on its own once the damage stops: a plan
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
-            hpLost += model.act(me, me.defenceWeight(), foe);
+            hpLost += model.act(me, me.defenceWeight(), foe, acts, null);
+            acts++;
             /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
              * opponent attacks, not when it is played, so it lands here rather than in
              * use() - and it lands on the one that swung, which is measured: across 762
@@ -268,7 +285,7 @@ public final class Optimizer {
             return(null);
         List<Move> path = new ArrayList<Move>(n.path);
         path.add(m);
-        return(new Node(me, foe, path, tick, foeNext, hpLost));
+        return(new Node(me, foe, path, tick, foeNext, hpLost, acts));
     }
 
     /**

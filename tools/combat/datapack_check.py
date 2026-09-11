@@ -705,8 +705,9 @@ def moves_belong_to_their_owner():
     THE COLLECTOR CREDITED EVERY FOE MOVE IN A FIGHT TO THE FIGHT'S SPECIES. In a mixed
     fight that is simply wrong, and it was not rare: ants came out of it holding Bear
     Down, Chomp, Fell Scratch and Rampant Rage, having thrown Ant Spit 1058 times and
-    each of the others exactly zero. The thirty-nine Fell Scratches belonged to a cave
-    angler standing next to them.
+    each of the others exactly zero. The thirty-nine Fell Scratches belonged to the rest of
+    the nest - royal guard ants, warrior ants and queen ants, which share every fight an
+    ant is in and are separate species that throw separate cards.
 
     It is not a small error in a mix. It puts cards in a creature's repertoire that the
     creature does not have, and the policy, the conditional rule, the pressure and the

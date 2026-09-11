@@ -1,9 +1,11 @@
 package haven.combat.data;
 
+import haven.combat.BeastMove;
 import haven.combat.Combatant;
 import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
+import haven.combat.Repertoire;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -77,11 +79,16 @@ public final class Pack {
                : moves(new JSONObject(doc)));
     }
 
-    /** Every opponent the corpus knows, from the jar. */
+    /** Every opponent the corpus knows, from the jar, with their cards where shipped. */
     public static Map<String, Opponent> opponentsFromJar() {
         String doc = slurp("opponents.json");
-        return((doc == null) ? new LinkedHashMap<String, Opponent>()
-               : opponents(new JSONObject(doc)));
+        if(doc == null)
+            return(new LinkedHashMap<String, Opponent>());
+        /* The card file rides in the jar beside the opponents. A client built from a pack
+         * that predates it simply gets the averaged action back, which is what it had. */
+        String cd = slurp("animal_moves_measured.json");
+        Cards lib = (cd == null) ? null : new Cards(new JSONObject(cd));
+        return(opponents(new JSONObject(doc), lib));
     }
 
     /**
@@ -440,7 +447,7 @@ public final class Pack {
         public final double hpPinLo, hpPinHi;
         public final int hpPinN;
 
-        Opponent(JSONObject j) {
+        Opponent(JSONObject j, Cards lib) {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
             this.kind = j.optString("kind", "creature");
@@ -495,7 +502,8 @@ public final class Pack {
             for(int i = 0; (a != null) && (i < a.length()); i++)
                 mv.add(a.getString(i));
             this.moves = mv;
-            this.threat = threat(j.optJSONObject("threat"), j);
+            this.threat = threat(j.optJSONObject("threat"), j, lib,
+                                 j.optString("name", "?"));
             JSONObject sp = j.optJSONObject("relative_speed");
             if(sp == null) {
                 this.speedLo = this.speedHi = Double.NaN;
@@ -531,7 +539,8 @@ public final class Pack {
          * answer to how often any of the rest gets applied, and any default would be
          * choosing the matchup's answer rather than computing it.
          */
-        private static FoeModel threat(JSONObject t, JSONObject j) {
+        private static FoeModel threat(JSONObject t, JSONObject j, Cards lib,
+                                       String species) {
             if(t == null)
                 return(null);
             JSONObject per = t.optJSONObject("period");
@@ -588,7 +597,11 @@ public final class Pack {
                                 per.optInt("n", 0), nHits, flees, modes, back,
                                 rule[0] == null ? null : (String)rule[0],
                                 (rule[1] == null) ? 0 : ((Double)rule[1]).doubleValue(),
-                                (double[])rule[2], (double[])rule[3], byCol));
+                                (double[])rule[2], (double[])rule[3], byCol,
+                                /* Its actual cards, where the corpus can name them.
+                                 * Null leaves the averaged action in place, which is
+                                 * what eight of the forty-nine creatures still need. */
+                                repertoire(j, lib, species)));
         }
 
         /**
@@ -728,7 +741,19 @@ public final class Pack {
 
     /** Every opponent the corpus has met, by name. */
     public static Map<String, Opponent> opponents(Path path) throws IOException {
-        return(opponents(read(path)));
+        /* The measured card file sits beside the opponents. A creature without it is
+         * still a creature - it falls back to its averaged action - so this is absent
+         * rather than fatal, because the pack has shipped without it and older ones will.
+         */
+        Cards lib = null;
+        try {
+            Path side = path.resolveSibling("animal_moves_measured.json");
+            if(Files.exists(side))
+                lib = cards(side);
+        } catch(IOException e) {
+            lib = null;
+        }
+        return(opponents(read(path), lib));
     }
 
     /**
@@ -899,11 +924,159 @@ public final class Pack {
         return(out);
     }
 
-    private static Map<String, Opponent> opponents(JSONObject doc) {
+    /**
+     * The measured per-card file, which is what turns a creature into its cards.
+     *
+     * Kept beside the opponents rather than inside them because a card is shared: Fell
+     * Scratch is thrown by twenty-five species and is measured once, across all of them.
+     * That sharing is the whole reason the card can be separated from the creature at all.
+     */
+    public static final class Cards {
+        private final Map<String, JSONObject> byName = new LinkedHashMap<String, JSONObject>();
+        private final Map<String, Double> factor = new LinkedHashMap<String, Double>();
+
+        private Cards(JSONObject doc) {
+            JSONArray arr = doc.optJSONArray("moves");
+            for(int i = 0; (arr != null) && (i < arr.length()); i++) {
+                JSONObject m = arr.getJSONObject(i);
+                byName.put(m.optString("name", "?"), m);
+            }
+            JSONObject sf = doc.optJSONObject("species_factor");
+            for(String k : (sf == null) ? new java.util.HashSet<String>() : sf.keySet())
+                factor.put(k, sf.optDouble(k, 1.0));
+        }
+
+        /**
+         * One card as a species throws it.
+         *
+         * The openings are ratios - the fit separating card from creature has a gauge
+         * freedom - so they are multiplied by the species factor here, which is the other
+         * half of the same fit and puts them back on the scale the pressure was measured
+         * in. Everything else is already in its own units and is taken as it stands.
+         */
+        public BeastMove move(String name, String species) {
+            JSONObject m = byName.get(name);
+            if(m == null)
+                return(null);
+            double f = factor.containsKey(species) ? factor.get(species).doubleValue() : 1.0;
+            double[] op = new double[4];
+            JSONObject o = m.optJSONObject("openings");
+            for(String k : (o == null) ? new java.util.HashSet<String>() : o.keySet()) {
+                Integer ix = COLOUR.get(k);
+                if(ix != null)
+                    op[ix.intValue()] = o.optDouble(k, 0) * f;
+            }
+            JSONObject d = m.optJSONObject("damage");
+            double coef = (d == null) ? Double.NaN : d.optDouble("coef", Double.NaN);
+            JSONObject c = m.optJSONObject("cooldown");
+            long cd = (c == null) ? 0 : Math.round(c.optDouble("ticks", 0));
+            double[] rest = new double[4];
+            JSONObject r = m.optJSONObject("restores");
+            JSONObject rb = (r == null) ? null : r.optJSONObject("by_colour");
+            for(String k : (rb == null) ? new java.util.HashSet<String>() : rb.keySet()) {
+                Integer ix = COLOUR.get(k);
+                if(ix != null)
+                    rest[ix.intValue()] = rb.optDouble(k, 0);
+            }
+            JSONObject g = m.optJSONObject("grievous");
+            double grev = (g == null) ? 0 : g.optDouble("per_soft", 0);
+            JSONObject a = m.optJSONObject("armour");
+            double soak = (a == null) ? Double.NaN : a.optDouble("soaked_share", Double.NaN);
+            return(new BeastMove(name, op, coef, cd, rest, grev, soak));
+        }
+    }
+
+    public static Cards cards(Path path) throws IOException {
+        return(new Cards(read(path)));
+    }
+
+    /**
+     * A creature's repertoire: its cards, and how often it throws each.
+     *
+     * Built from three things the pack already carried and one it did not use. The card
+     * list and the mix are read straight off the opponent; the conditional rule carries
+     * the card counts on each side of its split and the loader had been reading only the
+     * per-colour pressure summary beside them, which is the same averaging one level
+     * down. An ant at distance reads {Ant Spit 255, Fell Scratch 5} and that is a policy,
+     * where "blue 4.07, green 4.25" is a shadow of one.
+     *
+     * Returns null when there is nothing to build from, and the caller then keeps the
+     * aggregate. A creature we have never seen throw its own card is not a creature we
+     * can simulate card by card, and pretending otherwise would be worse than the
+     * average.
+     */
+    public static Repertoire repertoire(JSONObject j, Cards lib, String species) {
+        if(lib == null)
+            return(null);
+        JSONObject pol = j.optJSONObject("policy");
+        JSONArray mixa = (pol == null) ? null : pol.optJSONArray("mix");
+        if((mixa == null) || (mixa.length() == 0))
+            return(null);
+        List<BeastMove> cards = new ArrayList<BeastMove>();
+        List<Double> share = new ArrayList<Double>();
+        double tot = 0;
+        for(int i = 0; i < mixa.length(); i++) {
+            JSONArray row = mixa.getJSONArray(i);
+            BeastMove m = lib.move(row.getString(0), species);
+            if((m == null) || !m.acts())
+                continue;               /* a card we know the name of and nothing else */
+            cards.add(m);
+            double w = row.getDouble(1);
+            share.add(w);
+            tot += w;
+        }
+        if(cards.isEmpty() || (tot <= 0))
+            return(null);
+        double[] mix = new double[cards.size()];
+        for(int i = 0; i < mix.length; i++)
+            mix[i] = share.get(i) / tot;
+
+        /* The learned split, as CARD COUNTS rather than as the pressure they average to. */
+        String feat = null;
+        double cut = 0;
+        double[] when = null, other = null;
+        JSONObject rule = j.optJSONObject("policy_rule");
+        if(rule != null) {
+            feat = rule.optString("sim_feature", null);
+            cut = rule.optDouble("cut", 0);
+            when = counts(rule.optJSONArray("when"), cards);
+            other = counts(rule.optJSONArray("otherwise"), cards);
+            if((feat == null) || (when == null) || (other == null)) {
+                feat = null;
+                when = other = null;
+            }
+        }
+        return(new Repertoire(cards.toArray(new BeastMove[0]), mix, feat, cut, when, other));
+    }
+
+    /** A [[card, count], ...] side of a rule, as shares over the cards we kept. */
+    private static double[] counts(JSONArray arr, List<BeastMove> cards) {
+        if(arr == null)
+            return(null);
+        double[] out = new double[cards.size()];
+        double tot = 0;
+        for(int i = 0; i < arr.length(); i++) {
+            JSONArray row = arr.getJSONArray(i);
+            String nm = row.getString(0);
+            for(int k = 0; k < cards.size(); k++) {
+                if(cards.get(k).name.equals(nm)) {
+                    out[k] += row.getDouble(1);
+                    tot += row.getDouble(1);
+                }
+            }
+        }
+        if(tot <= 0)
+            return(null);
+        for(int i = 0; i < out.length; i++)
+            out[i] /= tot;
+        return(out);
+    }
+
+    private static Map<String, Opponent> opponents(JSONObject doc, Cards lib) {
         Map<String, Opponent> out = new LinkedHashMap<String, Opponent>();
         JSONArray arr = doc.getJSONArray("opponents");
         for(int i = 0; i < arr.length(); i++) {
-            Opponent o = new Opponent(arr.getJSONObject(i));
+            Opponent o = new Opponent(arr.getJSONObject(i), lib);
             out.put(o.name, o);
         }
         return(out);
