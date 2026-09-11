@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Loads the versioned combat data into the model's own types.
@@ -352,7 +354,85 @@ public final class Pack {
             if(text.contains("25%") && text.contains("Oppressive"))
                 b.gainWhenAbove(Formulas.RED, 0.25);
         }
+        targets(b, text);
         return(b.build());
+    }
+
+    /* "up to five opponents", and the shares those targets take. */
+    private static final Pattern UPTO =
+        Pattern.compile("attack up to (\\w+) opponents");
+    private static final Pattern SHARES =
+        Pattern.compile("targets will receive ([^.]*?) of the");
+    private static final Pattern PCT = Pattern.compile("([0-9]+(?:\\.[0-9]+)?)%");
+    private static final String[] WORDS =
+        {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"};
+
+    /**
+     * How many opponents an attack lands on, read from the sheet's own prose.
+     *
+     * Prose because that is where the sheet puts it - there is no structured field for it,
+     * the way there is none for the initiative gains read just above. Three cards say it
+     * and each says it differently, so each sentence is matched rather than paraphrased:
+     * Full Circle's "all other opponents in range", Punch 'em Both's "one other opponent in
+     * range", and Storm of Swords' "attack up to five opponents in range" together with the
+     * escalating shares that follow it.
+     *
+     * Silence means one, which is right for the other thirty-eight cards and is the same
+     * default the game gives an attack. A sheet that reworded one of these would quietly
+     * lose its extra targets rather than crash, so {@code tools/CombatPackCheck.java} holds
+     * the three to their numbers.
+     */
+    private static void targets(Move.Builder b, String text) {
+        if(text.contains("all other opponents in range")) {
+            b.targets(Move.TARGETS_IN_RANGE);
+            return;
+        }
+        Matcher m = UPTO.matcher(text);
+        if(m.find()) {
+            int n = -1;
+            for(int i = 0; i < WORDS.length; i++) {
+                if(WORDS[i].equals(m.group(1).toLowerCase()))
+                    n = i;
+            }
+            if(n < 0) {
+                try {
+                    n = Integer.parseInt(m.group(1));
+                } catch(NumberFormatException e) {
+                    n = -1;
+                }
+            }
+            if(n > 1) {
+                b.targets(n, shares(text));
+                return;
+            }
+        }
+        /* "attacks BOTH your primary target and also one other opponent in range" - the
+         * only one of the three that names no count, because two is the whole of it. */
+        if(text.contains("one other opponent in range"))
+            b.targets(2);
+    }
+
+    /**
+     * "The targets will receive 100%, 125%, 150%, 175% and 200% ... of the weapon's damage."
+     *
+     * Storm of Swords and nothing else. The escalation is the point of the card: its fifth
+     * target takes twice what its first does, so a crowd is worth more to it than one
+     * opponent is - which is the opposite of how every aggregate model has priced it.
+     */
+    private static double[] shares(String text) {
+        Matcher m = SHARES.matcher(text);
+        if(!m.find())
+            return(null);
+        List<Double> out = new ArrayList<Double>();
+        Matcher p = PCT.matcher(m.group(1));
+        while(p.find())
+            out.add(Double.valueOf(Double.parseDouble(p.group(1)) / 100.0));
+        if(out.isEmpty())
+            return(null);
+        double[] a = new double[out.size()];
+        for(int i = 0; i < a.length; i++)
+            a[i] = out.get(i).doubleValue();
+        return(a);
     }
 
     /** What the corpus knows about one opponent. Every quantity is an interval or absent. */

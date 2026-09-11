@@ -68,14 +68,37 @@ public final class Optimizer {
 
     /* A node in the beam. Mutable state plus the path that reached it. */
     private static final class Node {
-        final Combatant me, foe;
-        final List<Move> path;
-        final long tick, foeNext;
-        final double hpLost;
+        final Combatant me;
         /**
-         * How many actions the opponent has taken along this line.
+         * EVERY opponent, not one, and the dead stay in the array.
          *
-         * Needed because the opponent now throws real cards rather than one averaged
+         * A crowd used to be modelled as a single opponent with N times the health on a
+         * faster clock, and openings do not work that way. Opening one bee does not open
+         * the others, damage goes as the SQUARE of the opening, and so five bees each a
+         * fifth open is nothing like one bee fully open - the pooled version let our
+         * openings accumulate against the whole crowd as though it were one animal, and
+         * overstated every plan that pries a target open before hitting it.
+         *
+         * It was wrong in the other direction too, and that half is easier to miss. Three
+         * cards in the sheet hit more than one opponent - see Move.targets - and against a
+         * pooled crowd they landed once, so the model priced Full Circle against five
+         * animals exactly as it priced it against one. The two errors do not cancel; they
+         * are simply both there, one flattering single-target openers and one penalising
+         * the cards that exist for crowds.
+         *
+         * The dead are kept in place so that indices line up with the models and the clocks
+         * beside them, and because a plan's shape - which one we were hitting when - is
+         * lost if the array is compacted underneath it.
+         */
+        final Combatant[] foes;
+        final List<Move> path;
+        final long tick;
+        /** Each opponent's own next action, on its own clock. */
+        final long[] foeNext;
+        /**
+         * How many actions each opponent has taken along this line.
+         *
+         * Needed because an opponent now throws real cards rather than one averaged
          * action, and which card comes next depends on how many it has already thrown -
          * they are dealt out in proportion to the measured mix. Without this every node
          * would replay the creature's FIRST action, so a boreworm would open with Roar of
@@ -85,17 +108,38 @@ public final class Optimizer {
          * lines at once and each has its own history; a counter on the shared model would
          * be advanced by whichever branch happened to be expanded last.
          */
-        final int foeActs;
+        final int[] foeActs;
+        final double hpLost;
 
-        Node(Combatant me, Combatant foe, List<Move> path, long tick, long foeNext,
-             double hpLost, int foeActs) {
+        Node(Combatant me, Combatant[] foes, List<Move> path, long tick, long[] foeNext,
+             double hpLost, int[] foeActs) {
             this.me = me;
-            this.foe = foe;
+            this.foes = foes;
             this.path = path;
             this.tick = tick;
             this.foeNext = foeNext;
             this.hpLost = hpLost;
             this.foeActs = foeActs;
+        }
+
+        /** The one we are hitting: the first still standing. See Optimizer.step. */
+        int main() {
+            for(int i = 0; i < foes.length; i++) {
+                if(foes[i].alive())
+                    return(i);
+            }
+            return(-1);
+        }
+
+        boolean anyAlive() {
+            return(main() >= 0);
+        }
+
+        double foeHp() {
+            double hp = 0;
+            for(Combatant f : foes)
+                hp += Math.max(0, f.hp);
+            return(hp);
         }
     }
 
@@ -118,6 +162,34 @@ public final class Optimizer {
      */
     public static List<Plan> search(Combatant me, Combatant foe, List<Move> deck,
                                     FoeModel model, int beam, long maxTicks) {
+        return(search(me, new Combatant[] {foe}, deck, new FoeModel[] {model}, beam, maxTicks));
+    }
+
+    /**
+     * The same search against a CROWD, each opponent with its own health and its own clock.
+     *
+     * One against one is the special case of this with an array of one, which is how the
+     * overload above is served. What the crowd changes is not only arithmetic:
+     *
+     * - Openings are per opponent. Prying one animal open buys nothing against the next,
+     *   which is what the old pooled model got wrong and why it flattered every opener.
+     * - Each opponent swings on its own clock, so the rate the crowd hits us at falls as
+     *   they die rather than holding at its opening value to the last animal.
+     * - A card that hits several of them - Full Circle, Punch 'em Both, Storm of Swords -
+     *   actually hits several of them here, which against a pooled opponent it could not.
+     *
+     * WE FOCUS ONE AT A TIME, killing down the array in order, which is what a player does
+     * and is not free of consequence: it is why the crowd's rate falls, and it is why a
+     * splash card's openings are worth keeping - they are still standing on the next one
+     * when we get to it.
+     *
+     * What is still missing is range. Nothing here knows where anybody stands, so a
+     * multi-target card reaches every opponent still alive, and the corpus says that is an
+     * upper bound - Full Circle opened only one opponent in 53 of the 99 throws that opened
+     * anything at all.
+     */
+    public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
+                                    FoeModel[] models, int beam, long maxTicks) {
         /* Everything the deck opens when the OPPONENT swings, summed once. A deck holds
          * at most one such card in the corpus - Parry - but summing costs nothing and
          * assumes nothing about that staying true. */
@@ -133,23 +205,30 @@ public final class Optimizer {
         }
         if(!anyTrigger)
             trigger = null;
+        Combatant[] f0 = new Combatant[foes.length];
+        long[] next0 = new long[foes.length];
+        double hp0 = 0;
+        for(int i = 0; i < foes.length; i++) {
+            f0[i] = foes[i].copy();
+            next0[i] = (models[i].period == Long.MAX_VALUE) ? Long.MAX_VALUE : models[i].period;
+            hp0 += f0[i].hp;
+        }
         List<Node> live = new ArrayList<Node>();
-        live.add(new Node(me.copy(), foe.copy(), new ArrayList<Move>(), 0,
-                          (model.period == Long.MAX_VALUE) ? Long.MAX_VALUE : model.period,
-                          0, 0));
+        live.add(new Node(me.copy(), f0, new ArrayList<Move>(), 0, next0, 0,
+                          new int[foes.length]));
         List<Plan> done = new ArrayList<Plan>();
 
         while(!live.isEmpty()) {
             List<Node> next = new ArrayList<Node>();
             for(Node n : live) {
                 for(Move m : deck) {
-                    Node s = step(n, m, model, maxTicks, trigger);
+                    Node s = step(n, m, models, maxTicks, trigger);
                     if(s == null)
                         continue;
-                    if(!s.foe.alive()) {
-                        done.add(new Plan(s.path, s.tick, s.hpLost, true, s.foe.hp));
+                    if(!s.anyAlive()) {
+                        done.add(new Plan(s.path, s.tick, s.hpLost, true, s.foeHp()));
                     } else if(!s.me.alive() || (s.tick >= maxTicks)) {
-                        done.add(new Plan(s.path, s.tick, s.hpLost, false, s.foe.hp));
+                        done.add(new Plan(s.path, s.tick, s.hpLost, false, s.foeHp()));
                     } else {
                         next.add(s);
                     }
@@ -157,7 +236,7 @@ public final class Optimizer {
             }
             if(next.isEmpty())
                 break;
-            live = prune(next, foe.hp, beam);
+            live = prune(next, hp0, beam);
         }
         return(frontier(done));
     }
@@ -195,19 +274,19 @@ public final class Optimizer {
     private static List<Node> prune(List<Node> next, double foeHp0, int beam) {
         List<Node> byRate = new ArrayList<Node>(next);
         Collections.sort(byRate, (a, b) -> {
-            double ra = (foeHp0 - a.foe.hp) / Math.max(1, a.tick);
-            double rb = (foeHp0 - b.foe.hp) / Math.max(1, b.tick);
+            double ra = (foeHp0 - a.foeHp()) / Math.max(1, a.tick);
+            double rb = (foeHp0 - b.foeHp()) / Math.max(1, b.tick);
             return(Double.compare(rb, ra));
         });
         List<Node> byHp = new ArrayList<Node>(next);
         Collections.sort(byHp, (a, b) -> {
             int c = Double.compare(a.hpLost, b.hpLost);
-            return((c != 0) ? c : Double.compare(a.foe.hp, b.foe.hp));
+            return((c != 0) ? c : Double.compare(a.foeHp(), b.foeHp()));
         });
         List<Node> bySetup = new ArrayList<Node>(next);
         Collections.sort(bySetup, (a, b) -> {
             int c = Double.compare(open(b), open(a));
-            return((c != 0) ? c : Double.compare(a.foe.hp, b.foe.hp));
+            return((c != 0) ? c : Double.compare(a.foeHp(), b.foeHp()));
         });
         /* ADDED TO THE OTHER TWO, NOT CARVED OUT OF THEM. Taking a third of the beam for
          * setup was the obvious way and it broke the check next door: the initiative curve
@@ -231,61 +310,130 @@ public final class Optimizer {
         return(out);
     }
 
-    /** How much is standing open on the target, which is damage not yet collected. */
+    /**
+     * How much is standing open on the one we are hitting, which is damage not yet collected.
+     *
+     * The one we are hitting rather than the crowd's total, because that is the payment the
+     * next swing collects. Summing the crowd would rank a line that has lightly opened five
+     * animals above one that has pried a single animal wide, and the square in the damage
+     * formula says the opposite.
+     */
     private static double open(Node n) {
+        int i = n.main();
+        if(i < 0)
+            return(0);
         double[] all = new double[4];
         for(int c = 0; c < 4; c++)
-            all[c] = n.foe.opening(c);
+            all[c] = n.foes[i].opening(c);
         return(Formulas.combined(all));
     }
 
-    /** Applies one of our moves, letting the opponent act for every clock tick it owns. */
-    private static Node step(Node n, Move m, FoeModel model, long maxTicks,
+    /**
+     * Applies one of our moves, letting every opponent act for the clock ticks it owns.
+     *
+     * The waiting half is where "combat is not turn-based" lives, and with a crowd it is
+     * also where the crowd's pressure comes from: each opponent has its own period and its
+     * own place in its own rotation, so the window our cooldown opens is filled by whichever
+     * of them happens to come up in it, not by an average.
+     */
+    private static Node step(Node n, Move m, FoeModel[] models, long maxTicks,
                              double[] trigger) {
-        Combatant me = n.me.copy(), foe = n.foe.copy();
-        long tick = n.tick, foeNext = n.foeNext;
+        Combatant me = n.me.copy();
+        Combatant[] foes = new Combatant[n.foes.length];
+        for(int i = 0; i < foes.length; i++)
+            foes[i] = n.foes[i].copy();
+        long[] foeNext = n.foeNext.clone();
+        int[] acts = n.foeActs.clone();
+        long tick = n.tick;
         double hpLost = n.hpLost;
-        int acts = n.foeActs;
 
-        /* Wait until we may act, and let the opponent act on its own clock meanwhile. This
-         * is where the not-turn-based part lives: a long cooldown is not merely slow, it is
-         * a window the opponent gets to swing in, and a short one is not. */
+        /* Wait until we may act, and let the opponents act on their own clocks meanwhile.
+         * A long cooldown is not merely slow, it is a window they get to swing in, and a
+         * short one is not. */
         long ready = Math.max(tick, me.readyAt);
-        while((foeNext <= ready) && (foeNext < maxTicks)) {
+        while(me.alive()) {
+            /* Whichever of them is due first. A dead one is due never, which is the whole
+             * of why a crowd gets quieter as it dies - the old pooled model kept swinging
+             * at five-sixths of full rate down to the last animal. */
+            int who = -1;
+            for(int i = 0; i < foes.length; i++) {
+                if(!foes[i].alive())
+                    continue;
+                if((who < 0) || (foeNext[i] < foeNext[who]))
+                    who = i;
+            }
+            if((who < 0) || (foeNext[who] > ready) || (foeNext[who] >= maxTicks))
+                break;
             /* A fleeing opponent has stopped fighting back, so this window costs nothing -
              * and every reduction or point of initiative bought during it buys nothing
              * either. The frontier sorts that out on its own once the damage stops: a plan
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
-            hpLost += model.act(me, me.defenceWeight(), foe, acts, null);
-            acts++;
+            hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who], null);
+            acts[who]++;
             /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
              * opponent attacks, not when it is played, so it lands here rather than in
-             * use() - and it lands on the one that swung, which is measured: across 762
+             * use() - and it lands on THE ONE THAT SWUNG, which is measured: across 762
              * steps where blue rose on any of several opponents at once, it rose on
              * exactly one in 753. A sword is required, which is why this reads armed. */
             if((trigger != null) && me.armed()) {
                 for(int c = 0; c < 4; c++) {
                     if(trigger[c] > 0)
-                        foe.open(c, trigger[c] * (1.0 - foe.opening(c)));
+                        foes[who].open(c, trigger[c] * (1.0 - foes[who].opening(c)));
                 }
             }
-            foeNext += model.period;
-            if(!me.alive())
-                break;
+            foeNext[who] += models[who].period;
         }
         tick = ready;
         if(tick > maxTicks)
             return(null);
 
-        Sim sim = new Sim(me, foe);
+        /* WE DIED WAITING, AND THAT IS A RESULT RATHER THAN A DEAD END.
+         *
+         * The swing below would be refused for being dead, and a refusal returns null,
+         * which drops the line out of the search entirely. One against one that merely
+         * lost a few hopeless plans off the frontier. Against a crowd it lost ALL of them:
+         * two animals that kill us before we kill them made every line end this way, so
+         * the search returned nothing at all and the caller read "no plan" where the
+         * answer was "this fight kills you".
+         *
+         * So the node comes back with the path it arrived with - the move was never thrown
+         * - and the caller records it as a plan that did not kill. */
+        if(!me.alive())
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts));
+
+        int main = -1;
+        for(int i = 0; i < foes.length; i++) {
+            if(foes[i].alive()) {
+                main = i;
+                break;
+            }
+        }
+        if(main < 0)
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts));
+
+        Sim sim = new Sim(me, foes[main]);
         sim.advanceTo(tick);
         Sim.Result r = sim.use(me, m);
         if(!r.ok)
             return(null);
+        /* AND EVERYONE ELSE IT REACHES. Three cards hit more than the one in front of us -
+         * see Move.targets - and what they do to the rest is the reason to hold one: the
+         * damage, and openings that are still standing on the next animal when this one
+         * falls. Nothing here knows about range, so they reach everything still alive,
+         * which is an upper bound rather than an estimate. */
+        if(m.splashes()) {
+            int idx = 1;
+            for(int i = 0; (i < foes.length) && (idx < m.targets); i++) {
+                if((i == main) || !foes[i].alive())
+                    continue;
+                sim.splash(me, m, foes[i], idx);
+                idx++;
+            }
+        }
         List<Move> path = new ArrayList<Move>(n.path);
         path.add(m);
-        return(new Node(me, foe, path, tick, foeNext, hpLost, acts));
+        return(new Node(me, foes, path, tick, foeNext, hpLost, acts));
     }
 
     /**

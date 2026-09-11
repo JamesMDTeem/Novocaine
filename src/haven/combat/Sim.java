@@ -108,36 +108,18 @@ public final class Sim {
     }
 
     /**
-     * Applies one move by {@code actor} against the other combatant, at the current tick.
+     * The damage half of a swing, against ONE target.
      *
-     * The order of operations is the part that is a claim about the game rather than about
-     * arithmetic, so it is spelled out and justified:
+     * Extracted so that an attack landing on several opponents deals its damage the same
+     * way to each of them rather than through a second copy of these rules. The copy is
+     * the thing to avoid: the armour ramp, the penetration split and the overkill cap are
+     * all claims about the game that took measurement to settle, and a splash path with
+     * its own version of them would drift from this one silently.
      *
-     * 1. Legality, against the state as it stands.
-     * 2. The cooldown, computed from the initiative the actor holds BEFORE this move changes it.
-     *    Take Aim settles this: it gains a point per use and reports 30, 36, 42, 48, 54 and 60
-     *    ticks across a run - each cooldown scaled by the initiative held going in, never by the
-     *    point the same use granted.
-     * 3. Damage, read against the target's opening in the move's own school as it stands before
-     *    this move opens anything further.
-     * 4. Openings, which the move's own damage therefore does not benefit from.
-     * 5. Reductions, on the actor's own openings - a defensive card closes what is standing
-     *    on its user, by a SHARE of it rather than a number of points.
-     * 6. Initiative, last, so that a conditional gain is judged on the same opening the damage
-     *    was.
+     * @param scale what share of the swing this target takes - see Move.targetDamage.
+     * @return raw, dealt and grievous, in that order.
      */
-    public Result use(Combatant actor, Move m) {
-        String no = refuse(actor, m);
-        if(no != null)
-            return(new Result(no));
-        Combatant target = other(actor);
-
-        /* The deck weighting is the move's own, not the actor's: Take Aim's cooldown divides by
-         * Take Aim's mu, which says nothing about how the rest of the deck is weighted. */
-        long cd = Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale,
-                                         actor.ip, m.isAttack(), actor.agi, target.agi);
-        actor.readyAt = tick + cd;
-
+    private double[] strike(Combatant actor, Move m, Combatant target, double scale) {
         double raw = 0, dealt = 0, grievous = 0;
         if(m.deals() && (m.school >= 0)) {
             /* The opening the attack reads is the combined one over its OWN attack types -
@@ -151,6 +133,13 @@ public final class Sim {
             raw = Formulas.rawDamage(actor.damageBase(m), actor.damageShare(m),
                                      actor.damageQuality(m), actor.str,
                                      Formulas.combined(own));
+            /* WHAT THIS TARGET TAKES, which is not always a full swing: Storm of
+             * Swords gives its five targets 100%, 125%, 150%, 175% and 200% of the
+             * weapon's damage. Applied to the raw swing before armour, because that is
+             * what the sheet says it scales - the target's own armour and its own
+             * opening are read normally underneath it. */
+            raw *= scale;
+
             /* Armour penetration. A weapon move carries the weapon's; an unarmed move carries
              * the flat 30% that ALL unarmed attacks have.
              *
@@ -181,19 +170,21 @@ public final class Sim {
             target.hp -= dealt;
         }
 
-        /* The conditional-gain test is taken here, before the move's own openings land. */
-        boolean gains = (m.gainColour < 0) || (target.opening(m.gainColour) > m.gainAbove);
+        return(new double[] {raw, dealt, grievous});
+    }
 
-        /* Reductions land before the openings this move inflicts, and on the ACTOR - a
-         * defensive card closes its user's own openings. Order matters only for a card
-         * that both reduces and opens the same colour on itself, which nothing in the
-         * sheet does today; put here because a card cannot benefit from an opening it
-         * gives itself in the same use. */
-        for(int c = 0; c < 4; c++) {
-            if(m.reduces[c] > 0)
-                actor.close(c, m.reduces[c] * m.mu);
-        }
-
+    /**
+     * The opening half of a swing, against ONE target. See {@link #strike}.
+     *
+     * Openings are NOT scaled by the target's damage share. Storm of Swords escalates what
+     * its later targets take in damage and says nothing about what it opens on them, and
+     * the corpus shows a multi-target card raising openings on up to five opponents at
+     * once without any sign of a gradient. So each target is opened as though it were the
+     * only one.
+     *
+     * @return percentage points actually opened, per colour, after the falloff.
+     */
+    private double[] land(Combatant actor, Move m, Combatant target) {
         /* Opportunity Knocks, and nothing else in the sheet. It multiplies the single
          * greatest standing opening, taking neither the weight ratio nor the (1 - Oc)
          * falloff that every openings line takes - so it cannot go through the loop below,
@@ -218,7 +209,6 @@ public final class Sim {
                 target.open(best, points * m.boostGreatest * m.mu);
             }
         }
-
         double[] opened = new double[4];
         for(int c = 0; c < 4; c++) {
             if(m.openings[c] > 0) {
@@ -233,14 +223,12 @@ public final class Sim {
                     m.openings[c], target.opening(c));
                 target.open(c, opened[c]);
             }
-            if(m.openingsSelf[c] > 0) {
-                actor.open(c, Formulas.openingGainEq(
-                    actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult,
-                    actor.blockSkill, actor.blockMult,
-                    m.openingsSelf[c], actor.opening(c)));
-            }
         }
+        return(opened);
+    }
 
+    /** What the target's own stance does to whoever just swung. See {@link #use}. */
+    private void parried(Combatant actor, Move m, Combatant target) {
         /* WHAT THE DEFENDER'S STANCE DOES TO WHOEVER JUST SWUNG. Parry opens the attacker
          * when it is attacked, which is not something the attacker's card can express and
          * not something the stance can do by being thrown, since a stance is never thrown.
@@ -262,6 +250,67 @@ public final class Sim {
                     actor.open(c, target.whenAttacked[c]);
             }
         }
+    }
+
+    /**
+     * Applies one move by {@code actor} against the other combatant, at the current tick.
+     *
+     * The order of operations is the part that is a claim about the game rather than about
+     * arithmetic, so it is spelled out and justified:
+     *
+     * 1. Legality, against the state as it stands.
+     * 2. The cooldown, computed from the initiative the actor holds BEFORE this move changes it.
+     *    Take Aim settles this: it gains a point per use and reports 30, 36, 42, 48, 54 and 60
+     *    ticks across a run - each cooldown scaled by the initiative held going in, never by the
+     *    point the same use granted.
+     * 3. Damage, read against the target's opening in the move's own school as it stands before
+     *    this move opens anything further.
+     * 4. Openings, which the move's own damage therefore does not benefit from.
+     * 5. Reductions, on the actor's own openings - a defensive card closes what is standing
+     *    on its user, by a SHARE of it rather than a number of points.
+     * 6. Initiative, last, so that a conditional gain is judged on the same opening the damage
+     *    was.
+     */
+    public Result use(Combatant actor, Move m) {
+        String no = refuse(actor, m);
+        if(no != null)
+            return(new Result(no));
+        Combatant target = other(actor);
+
+        /* The deck weighting is the move's own, not the actor's: Take Aim's cooldown divides by
+         * Take Aim's mu, which says nothing about how the rest of the deck is weighted. */
+        long cd = Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale,
+                                         actor.ip, m.isAttack(), actor.agi, target.agi);
+        actor.readyAt = tick + cd;
+
+        double[] hit = strike(actor, m, target, 1.0);
+        double raw = hit[0], dealt = hit[1], grievous = hit[2];
+
+        /* The conditional-gain test is taken here, before the move's own openings land. */
+        boolean gains = (m.gainColour < 0) || (target.opening(m.gainColour) > m.gainAbove);
+
+        /* Reductions land before the openings this move inflicts, and on the ACTOR - a
+         * defensive card closes its user's own openings. Order matters only for a card
+         * that both reduces and opens the same colour on itself, which nothing in the
+         * sheet does today; put here because a card cannot benefit from an opening it
+         * gives itself in the same use. */
+        for(int c = 0; c < 4; c++) {
+            if(m.reduces[c] > 0)
+                actor.close(c, m.reduces[c] * m.mu);
+        }
+        double[] opened = land(actor, m, target);
+        /* Openings this move puts on its USER, which happen once however many opponents it
+         * lands on - they are the user's own exposure, not something each target does. */
+        for(int c = 0; c < 4; c++) {
+            if(m.openingsSelf[c] > 0) {
+                actor.open(c, Formulas.openingGainEq(
+                    actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult,
+                    actor.blockSkill, actor.blockMult,
+                    m.openingsSelf[c], actor.opening(c)));
+            }
+        }
+
+        parried(actor, m, target);
 
         actor.ip -= m.ipCost;
         if(gains)
@@ -269,6 +318,33 @@ public final class Sim {
         target.ip += m.foeIpGain;
 
         return(new Result(raw, dealt, grievous, opened, cd, actor.ip, target.ip));
+    }
+
+    /**
+     * The same attack, against one of the OTHER opponents it lands on.
+     *
+     * Called once per extra target after {@link #use} has resolved the main one, because
+     * three cards in the sheet hit more than one: Full Circle hits everything in range,
+     * Punch 'em Both hits one more, and Storm of Swords hits up to five for a rising share
+     * of the weapon. See Move.targets for the measurement that confirmed it happens.
+     *
+     * What an extra target gets is the damage and the openings, and nothing else. The
+     * cooldown is the swing's and is paid once. The reductions are on the user and happen
+     * once. The initiative is the part worth being explicit about: this model carries one
+     * initiative number per combatant, while the game keeps it per relation - so a card
+     * that gains a point "against your opponent" would, applied per target, hand out one
+     * point per body standing nearby. It is applied to the main target only, which is the
+     * conservative reading and the one the prose supports.
+     *
+     * @param index which target this is, counting the main one as zero.
+     */
+    public Result splash(Combatant actor, Move m, Combatant target, int index) {
+        if(!m.splashes() || (target == null) || !target.alive())
+            return(new Result("not a target of this move"));
+        double[] hit = strike(actor, m, target, m.targetScale(index));
+        double[] opened = land(actor, m, target);
+        parried(actor, m, target);
+        return(new Result(hit[0], hit[1], hit[2], opened, 0, actor.ip, target.ip));
     }
 
     /** The earliest tick at which either side can act. */

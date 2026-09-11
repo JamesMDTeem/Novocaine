@@ -107,8 +107,8 @@ public class CombatDeckSearch {
      * term dominates and the other breaks ties; among non-kills, the opponent left with
      * less health is closer. Every point spent then has somewhere to show up.
      */
-    static double score(Deck d, Map<String, Move> sheet, Combatant me, Combatant foe,
-                        FoeModel model, Advisor.Aim aim) {
+    static double score(Deck d, Map<String, Move> sheet, Combatant me, Combatant[] foes,
+                        FoeModel[] models, Advisor.Aim aim) {
         List<Move> deck = d.moves(sheet);
         if(deck.isEmpty())
             return(Double.POSITIVE_INFINITY);
@@ -116,8 +116,8 @@ public class CombatDeckSearch {
          * as unable rather than as a fast deck that happens to skip the block weight. */
         if(!hasStance(d, sheet))
             return(NO_KILL * 2);
-        List<Optimizer.Plan> front = Optimizer.search(withStance(me, d, sheet), foe, deck,
-                                                      model, BEAM, HORIZON);
+        List<Optimizer.Plan> front = Optimizer.search(withStance(me, d, sheet), foes, deck,
+                                                      models, BEAM, HORIZON);
         Optimizer.Plan best = Advisor.choose(front, aim, Double.MAX_VALUE);
         if(best == null)
             return(Double.POSITIVE_INFINITY);
@@ -151,14 +151,14 @@ public class CombatDeckSearch {
      * So this is reported per opponent rather than assumed away. The same argument the
      * optimizer's own beamWasEnough makes about the initiative curve.
      */
-    static boolean beamHeld(Deck d, Map<String, Move> sheet, Combatant me, Combatant foe,
-                            FoeModel model, Advisor.Aim aim, double score) {
+    static boolean beamHeld(Deck d, Map<String, Move> sheet, Combatant me, Combatant[] foes,
+                            FoeModel[] models, Advisor.Aim aim, double score) {
         for(String res : new ArrayList<String>(d.levels.keySet())) {
             Deck t = d.copy();
             t.levels.remove(res);
             if(t.levels.isEmpty())
                 continue;
-            if(score(t, sheet, me, foe, model, aim) < score)
+            if(score(t, sheet, me, foes, models, aim) < score)
                 return(false);
         }
         return(true);
@@ -221,11 +221,12 @@ public class CombatDeckSearch {
         }
     }
 
-    static Deck build(Map<String, Move> sheet, Combatant me, Combatant foe, FoeModel model,
-                      Advisor.Aim aim) {
+    static Deck build(Map<String, Move> sheet, Combatant me, Combatant[] foes,
+                      FoeModel[] models, Advisor.Aim aim) {
         final Map<String, Move> sh = sheet;
-        final Combatant m = me, f = foe;
-        final FoeModel md = model;
+        final Combatant m = me;
+        final Combatant[] f = foes;
+        final FoeModel[] md = models;
         final Advisor.Aim am = aim;
         return(build(sheet, new Scorer() {
             public double score(Deck d) {
@@ -698,11 +699,12 @@ public class CombatDeckSearch {
                           "points", "deck");
         for(String n : names) {
             Pack.Opponent o = foes.get(n);
-            Deck d = build(sheet, me, scaled(o, copies), faster(o.threat, copies), aim);
+            Combatant[] mob = crowd(o, copies);
+            FoeModel[] mods = models(o, copies);
+            Deck d = build(sheet, me, mob, mods, aim);
             if(d.score >= NO_KILL)
                 continue;
-            boolean held = beamHeld(d, sheet, me, scaled(o, copies),
-                                    faster(o.threat, copies), aim, d.score);
+            boolean held = beamHeld(d, sheet, me, crowd(o, copies), mods, aim, d.score);
             if(held)
                 best.put(n, d);
             else
@@ -761,68 +763,77 @@ public class CombatDeckSearch {
     }
 
     static void crowdNote() {
-        System.out.println("MORE THAN ONE OF THEM IS A MEAN-FIELD APPROXIMATION, MEASURED. The");
-        System.out.println("simulator is one against one, so N of them are modelled as one opponent");
-        System.out.println("with N times the health on a clock running (N+1)/2 times as fast - the");
-        System.out.println("average number still alive while they are killed one at a time.");
+        System.out.println("MORE THAN ONE OF THEM IS N OPPONENTS, EACH WITH ITS OWN HEALTH, ITS OWN");
+        System.out.println("OPENINGS AND ITS OWN CLOCK. They are killed one at a time, down the");
+        System.out.println("line, which is what a player does.");
         System.out.println();
-        System.out.println("Checked against the corpus, counting opponents that actually SWUNG");
-        System.out.println("rather than opponents in view - five ants on screen is not five ants");
-        System.out.println("swinging, and that was the first thing the measurement got wrong:");
+        System.out.println("It used to be one opponent with N times the health on a clock running");
+        System.out.println("(N+1)/2 times as fast, and that was wrong in both directions at once.");
+        System.out.println("Openings do not pool: prying one bee open does not open the others, and");
+        System.out.println("damage goes as the SQUARE of the opening, so five bees each a fifth open");
+        System.out.println("are nothing like one bee fully open. And the three cards that hit more");
+        System.out.println("than one opponent - Full Circle, Punch 'em Both, Storm of Swords - had");
+        System.out.println("nothing extra to hit, so a crowd deck was priced as if they did not");
+        System.out.println("exist. The two errors do not cancel.");
         System.out.println();
-        System.out.println("  attackers   fights   their acts/s   this model");
-        System.out.println("  1           2621     1.00x          1.00");
-        System.out.println("  2            239     1.50x          1.50");
-        System.out.println("  3            144     2.00x          2.00");
-        System.out.println("  4             69     1.87x          2.50");
-        System.out.println("  5             83     1.61x          3.00");
+        System.out.println("Against the corpus, counting opponents that actually SWUNG rather than");
+        System.out.println("opponents in view - five ants on screen is not five ants swinging:");
         System.out.println();
-        System.out.println("Exact at two and three, and optimistic past that - a crowd of five hits");
-        System.out.println("about 1.6 times as often as one, not three. Read -n 4 and -n 5 as an");
-        System.out.println("upper bound on the trouble rather than an estimate of it.");
+        System.out.println("  attackers   fights   their acts/s");
+        System.out.println("  1           2621     1.00x");
+        System.out.println("  2            239     1.50x");
+        System.out.println("  3            144     2.00x");
+        System.out.println("  4             69     1.87x");
+        System.out.println("  5             83     1.61x");
+        System.out.println();
+        System.out.println("A crowd of five hits about 1.6 times as often as one, not five. This");
+        System.out.println("model gives every one of them a full clock while it lives, so -n 4 and");
+        System.out.println("-n 5 still read as an upper bound on the trouble - now because they all");
+        System.out.println("swing at once rather than because the arithmetic said so.");
         System.out.println();
         System.out.println("The openings they land do NOT scale at all: 1.71, 1.50, 1.84, 1.79 and");
         System.out.println("1.53 points a second from one attacker through five. That is the falloff");
-        System.out.println("term saturating - each attack opens a share of what is still closed - and");
-        System.out.println("the simulator has that term, so it reproduces the flatness on its own.");
+        System.out.println("term saturating - each attack opens a share of what is still closed.");
         System.out.println();
-        System.out.println("What the model still gets wrong is the endgame: a real crowd gets quieter");
-        System.out.println("as it dies and this one does not.");
+        System.out.println("WHAT IS STILL MISSING IS RANGE. Nothing here knows where anybody stands,");
+        System.out.println("so a multi-target card reaches every opponent still alive. Full Circle");
+        System.out.println("opened only one opponent in 53 of the 99 logged throws that opened");
+        System.out.println("anything, so about half the time the rest of the crowd was too far away.");
         System.out.println();
-    }
-
-    /** The opponent, N of them, as one - see crowdNote. */
-    static Combatant scaled(Pack.Opponent o, int copies) {
-        Combatant c = o.toughest();
-        if(copies > 1)
-            c.hp = c.maxHp = c.maxHp * copies;
-        return(c);
     }
 
     /**
-     * The crowd's clock. CARRY EVERYTHING ELSE ACROSS, which this did not.
+     * The opponent, N of them, each its own animal.
      *
-     * It rebuilt the opponent through the eight-argument constructor, which defaults the
-     * restorations to NaN and the learned rule to null - so every swarm run was fought
-     * against a creature that never took its openings back and never changed its
-     * behaviour, while the same creature fought alone did both. The two runs were not
-     * comparing the same animal.
-     *
-     * The approximation this is part of remains a poor one, and it is called out where it
-     * is printed: five opponents are modelled as one with five times the health, and
-     * openings do not work that way. Opening one bee does not open the others, and damage
-     * goes as the SQUARE of the opening, so five bees each a fifth open is far less
-     * damage than one bee fully open. Pooling their health lets our openings accumulate
-     * against the crowd as though it were a single animal.
+     * Separate copies rather than one with the health added, because everything that
+     * decides a fight is per opponent: its openings, its health, and whether it is still
+     * alive to swing. See crowdNote for what pooling them got wrong.
      */
-    static FoeModel faster(FoeModel m, int copies) {
-        if(copies <= 1)
-            return(m);
-        long period = Math.max(1, Math.round(m.period / ((copies + 1) / 2.0)));
-        return(new FoeModel(period, m.pressure, m.pressureAgainst, m.damageCoef,
-                            m.nGaps, m.nHits, m.fleesBelow, m.modes, m.restores,
-                            m.condFeature, m.condCut, m.whenPressure, m.elsePressure,
-                            m.restoresByColour));
+    static Combatant[] crowd(Pack.Opponent o, int copies) {
+        Combatant[] out = new Combatant[Math.max(1, copies)];
+        for(int i = 0; i < out.length; i++)
+            out[i] = o.toughest();
+        return(out);
+    }
+
+    /**
+     * One behaviour model per opponent, which is the same model N times.
+     *
+     * The same object would do - a FoeModel holds no per-fight state, the counters live on
+     * the search node - but the array is what the search takes, and passing N references
+     * says plainly that each animal acts on its own rather than sharing a rotation.
+     *
+     * THE OLD VERSION OF THIS REBUILT THE MODEL to run its clock faster, through an
+     * eight-argument constructor that defaults the restorations to NaN and the learned
+     * rule to null. So every swarm run was fought against a creature that never took its
+     * openings back and never changed its behaviour, while the same creature fought alone
+     * did both. The two runs were not comparing the same animal. Nothing is rebuilt now.
+     */
+    static FoeModel[] models(Pack.Opponent o, int copies) {
+        FoeModel[] out = new FoeModel[Math.max(1, copies)];
+        for(int i = 0; i < out.length; i++)
+            out[i] = o.threat;
+        return(out);
     }
 
     /** Five decks, chosen greedily for what they cover between them. */
@@ -834,8 +845,8 @@ public class CombatDeckSearch {
             Map<String, Double> row = new LinkedHashMap<String, Double>();
             for(String against : owners) {
                 Pack.Opponent o = foes.get(against);
-                row.put(against, score(best.get(owner), sheet, me, scaled(o, copies),
-                                       faster(o.threat, copies), aim));
+                row.put(against, score(best.get(owner), sheet, me, crowd(o, copies),
+                                       models(o, copies), aim));
             }
             grid.put(owner, row);
         }

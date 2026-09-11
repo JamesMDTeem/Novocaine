@@ -126,6 +126,44 @@ public final class Move {
     public final double grievous;
 
     /**
+     * How many opponents the attack lands on, and what each of them takes.
+     *
+     * Three cards in the sheet say outright that they hit more than one. Full Circle
+     * "attacks your main target and all other opponents in range", Punch 'em Both "attacks
+     * both your primary target and also one other opponent in range", and Storm of Swords
+     * "will attack up to five opponents in range, starting with your main target. The
+     * targets will receive 100%, 125%, 150%, 175% and 200%, respectively, of the weapon's
+     * damage."
+     *
+     * Measured, not taken on the sheet's word. Across the corpus, counting only throws made
+     * with two or more opponents standing, a single-target attack raises an opening on more
+     * than one of them 10 times in 566 - the background rate of somebody else swinging.
+     * Full Circle does it 46 times in 143, and reaches three, four and five at once, which
+     * nothing single-target can do:
+     *
+     *   card            throws   opened 1   opened 2+   most at once
+     *   Quick Barrage      566        541          10              2
+     *   Full Circle        143         53          46              5
+     *
+     * {@link #TARGETS_IN_RANGE} is "all of them", which is Full Circle. A bounded card
+     * names its own number. {@link #targetScale} is the damage each target takes, indexed
+     * from the main one, and is 1.0 everywhere except Storm of Swords - whose LATER targets
+     * take more, so a crowd is worth more to it than one opponent is, twice over.
+     *
+     * The half this does not carry is range: Full Circle opened only one opponent in 53 of
+     * the 99 throws that opened anything, which is the rest of the crowd standing too far
+     * away. Nothing in this model knows where anybody is, so a multi-target card here hits
+     * everything still alive - an upper bound, and it is called out as one wherever a crowd
+     * is fought.
+     */
+    public final int targets;
+    /** See {@link #targets}. Per target, from the main one; the last entry repeats. */
+    public final double[] targetDamage;
+
+    /** {@link #targets} for a card that hits every opponent in range rather than a count. */
+    public static final int TARGETS_IN_RANGE = Integer.MAX_VALUE;
+
+    /**
      * Share by which this card multiplies the opponent's single GREATEST opening, or 0.
      *
      * Opportunity Knocks and nothing else. It is kept apart from {@link #openings} because
@@ -240,6 +278,8 @@ public final class Move {
         this.flatDamage = b.flatDamage;
         this.grievous = b.grievous;
         this.boostGreatest = b.boostGreatest;
+        this.targets = b.targets;
+        this.targetDamage = b.targetDamage;
         this.ipCost = b.ipCost;
         this.ipGain = b.ipGain;
         this.foeIpGain = b.foeIpGain;
@@ -268,6 +308,7 @@ public final class Move {
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
         this.grievous = o.grievous;
         this.boostGreatest = o.boostGreatest;
+        this.targets = o.targets; this.targetDamage = o.targetDamage;
         this.ipCost = o.ipCost; this.ipGain = o.ipGain; this.foeIpGain = o.foeIpGain;
         this.gainColour = o.gainColour; this.gainAbove = o.gainAbove;
         this.cooldownBase = o.cooldownBase; this.cooldownMu = o.cooldownMu;
@@ -292,6 +333,23 @@ public final class Move {
      */
     public boolean isAttack() {
         return(kind == Kind.ATTACK);
+    }
+
+    /** Whether this attack lands on anybody but the main target. */
+    public boolean splashes() {
+        return(targets > 1);
+    }
+
+    /**
+     * The damage multiplier for the i'th target, counting the main one as zero.
+     *
+     * The last entry repeats, so a card that hits everything for a full swing needs one
+     * entry rather than one per possible opponent.
+     */
+    public double targetScale(int i) {
+        if((targetDamage == null) || (targetDamage.length == 0))
+            return(1.0);
+        return(targetDamage[Math.min(i, targetDamage.length - 1)]);
     }
 
     /** Whether the move deals damage at all - a maneuver that only opens has neither term set. */
@@ -323,6 +381,8 @@ public final class Move {
         private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
         private double boostGreatest = 0;
+        private int targets = 1;
+        private double[] targetDamage = {1.0};
         private int ipCost = 0, ipGain = 0, foeIpGain = 0, gainColour = -1;
         private double gainAbove = 0;
         private double cooldownBase = 0, ipScale = 0, weightMu = 1.0, mu = 1.0;
@@ -363,6 +423,14 @@ public final class Move {
         public Builder flatDamage(double v) {this.flatDamage = v; return(this);}
         public Builder grievous(double v) {this.grievous = v; return(this);}
         public Builder boostGreatest(double v) {this.boostGreatest = v; return(this);}
+
+        /** See Move.targets - how many it lands on, and what each takes. */
+        public Builder targets(int n, double... scale) {
+            this.targets = n;
+            this.targetDamage = ((scale == null) || (scale.length == 0))
+                ? new double[] {1.0} : scale;
+            return(this);
+        }
         public Builder ipCost(int v) {this.ipCost = v; return(this);}
         public Builder ipGain(int v) {this.ipGain = v; return(this);}
         public Builder foeIpGain(int v) {this.foeIpGain = v; return(this);}

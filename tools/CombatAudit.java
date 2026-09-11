@@ -115,6 +115,26 @@ public class CombatAudit {
         return(s.use(a, m));
     }
 
+    /**
+     * One swing at a main target, with everyone else it reaches taking their share.
+     *
+     * The same order the optimizer uses: the main target through use(), the rest through
+     * splash(). A single-target card leaves the others untouched, which is what makes the
+     * comparison below a difference rather than an assertion.
+     */
+    static void swingAt(Move m, Combatant me, Combatant main, Combatant... others) {
+        Combatant a = me.copy();
+        a.readyAt = 0;
+        Sim s = new Sim(a, main);
+        s.tick = 0;
+        s.use(a, m);
+        int idx = 1;
+        for(int i = 0; (i < others.length) && (idx < m.targets); i++) {
+            s.splash(a, m, others[i], idx);
+            idx++;
+        }
+    }
+
     public static void main(String[] argv) {
         System.out.println("EVERY MECHANIC, VARIED ON ITS OWN, TO SEE IF ANYTHING READS IT");
         System.out.println("Two columns: the observable with the mechanic off, and with it on.");
@@ -167,6 +187,7 @@ public class CombatAudit {
             "schools", "openings", "openingsSelf", "whenAttackedOpens",
             "stance", "blockMult", "blockRequires", "blockMultWithout", "blockSkill",
             "reduces", "damageShare", "flatDamage", "grievous", "boostGreatest",
+            "targets", "targetDamage",
             "ipCost", "ipGain", "foeIpGain", "ipExtra", "gainColour", "gainAbove",
             "cooldownBase", "cooldownMu", "ipScale", "weight", "weightMu", "mu",
             "attackMult",
@@ -272,6 +293,28 @@ public class CombatAudit {
         throwAt(base().build(), fighter(), b0);
         live("boosting the greatest opening multiplies it",
              b0.opening(Formulas.RED), b1.opening(Formulas.RED), "Sim.use");
+
+        /* THREE CARDS HIT MORE THAN THE ONE IN FRONT OF US - Full Circle, Punch 'em
+         * Both and Storm of Swords - and against a crowd that is most of what they are
+         * for. Measured rather than taken from the card text: a single-target attack
+         * raises an opening on a second opponent 10 times in 566 throws made with two
+         * standing, and Full Circle does it 46 times in 143, reaching five at once. */
+        Combatant one0 = openOnly(Formulas.RED, 50), two0 = openOnly(Formulas.RED, 50);
+        Combatant one1 = openOnly(Formulas.RED, 50), two1 = openOnly(Formulas.RED, 50);
+        swingAt(base().build(), fighter(), one0, two0);
+        swingAt(base().targets(2).build(), fighter(), one1, two1);
+        live("a multi-target card reaches a second opponent", two0.hp, two1.hp,
+             "Sim.splash");
+        same("  and takes the same off the one in front either way", one0.hp, one1.hp);
+
+        /* Storm of Swords: "the targets will receive 100%, 125%, 150%, 175% and 200%,
+         * respectively, of the weapon's damage" - so its LAST target takes twice what its
+         * first does, which is the one card in the sheet that wants a crowd. */
+        Combatant sc0 = openOnly(Formulas.RED, 50), sc1 = openOnly(Formulas.RED, 50);
+        swingAt(base().targets(2, 1.0, 1.0).build(), fighter(), openOnly(Formulas.RED, 50), sc0);
+        swingAt(base().targets(2, 1.0, 2.0).build(), fighter(), openOnly(Formulas.RED, 50), sc1);
+        live("  and an escalating card hits the later ones harder", sc0.hp, sc1.hp,
+             "Sim.splash");
 
         /* Initiative: what it costs, what it gains, what it hands over. */
         Combatant i1 = fighter();
@@ -707,6 +750,80 @@ public class CombatAudit {
                               fast.ticks, fast.hpLost, safe.ticks, safe.hpLost);
         }
         live("the aim picks a different plan off the frontier", differ, "Advisor.choose");
+
+        /* A CROWD IS SEVERAL OPPONENTS AND NOT ONE BIG ONE. Two animals with half the
+         * health each is the same total health as one with all of it, and it is not the
+         * same fight: an opening pried on the first buys nothing against the second, and a
+         * card that hits both collects twice. Both were invisible to the model that pooled
+         * them, which is what this one used to do.
+         *
+         * A WINNABLE ONE, or the probe measures nothing. Against the opponent above, two
+         * of it kill this fighter before either falls, and every line then ends the same
+         * way - at which point a card that hits both of them cannot show what it is worth
+         * because the fight is lost either way. So the crowd here hits softly enough to
+         * lose to. */
+        FoeModel mob = new FoeModel(60, new double[] {0, 0, 0, 40.0}, 100, 12.0, 10, 10);
+        Combatant big = fighter();
+        big.hp = big.maxHp = 400;
+        Optimizer.Plan bfast = Advisor.choose(
+            Optimizer.search(fighter(), big, deck, mob, 200, 4000),
+            Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        Combatant half1 = fighter(), half2 = fighter();
+        half1.hp = half1.maxHp = half2.hp = half2.maxHp = 200;
+        Optimizer.Plan cfast = Advisor.choose(
+            Optimizer.search(fighter(), new Combatant[] {half1, half2}, deck,
+                             new FoeModel[] {mob, mob}, 200, 4000),
+            Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        live("two opponents are not one with their health added",
+             (double)((bfast == null) ? 0 : bfast.ticks),
+             (double)((cfast == null) ? 0 : cfast.ticks), "Optimizer.search");
+
+        /* And the card that hits both of them is worth holding, which against a pooled
+         * opponent it could not be - there was only ever one thing to hit. The two decks
+         * differ in that and nothing else: same damage, same opening, same cooldown, one
+         * target or two.
+         *
+         * IT HAS TO OPEN SOMETHING, and that is a finding rather than a fixture detail.
+         * A multi-target card that only deals damage buys nothing at all against a crowd,
+         * because damage goes as the SQUARE of the opening it reads and the opponents we
+         * have not reached yet are closed - the swing lands on them for nothing. What a
+         * splash card is really buying is that they are already open when we get to them.
+         * Tried the other way round first: the same probe with a damage-only splash card
+         * returned two decks that played identically, card for card. */
+        List<Move> sdeck = new ArrayList<Move>(deck);
+        sdeck.add(base().opens(Formulas.RED, 20).cooldown(20).targets(2).build());
+        List<Move> ndeck = new ArrayList<Move>(deck);
+        ndeck.add(base().opens(Formulas.RED, 20).cooldown(20).build());
+        Combatant s1 = fighter(), s2 = fighter(), n1 = fighter(), n2 = fighter();
+        s1.hp = s1.maxHp = s2.hp = s2.maxHp = n1.hp = n1.maxHp = n2.hp = n2.maxHp = 200;
+        Optimizer.Plan sp = Advisor.choose(
+            Optimizer.search(fighter(), new Combatant[] {s1, s2}, sdeck,
+                             new FoeModel[] {mob, mob}, 200, 4000),
+            Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        Optimizer.Plan np = Advisor.choose(
+            Optimizer.search(fighter(), new Combatant[] {n1, n2}, ndeck,
+                             new FoeModel[] {mob, mob}, 200, 4000),
+            Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        live("  and a card that hits both of them shortens the fight",
+             (double)((np == null) ? 0 : np.ticks),
+             (double)((sp == null) ? 0 : sp.ticks), "Optimizer.search");
+
+        /* AND A FIGHT WE LOSE IS AN ANSWER, not an empty frontier. A line where the
+         * opponent kills us used to be dropped: the swing that followed was refused for
+         * being dead, and a refusal ends the line. One against one that quietly lost a few
+         * hopeless plans; against a crowd every line ended that way, and the search
+         * returned nothing where the answer was "this fight kills you". */
+        Combatant k1 = fighter(), k2 = fighter();
+        k1.hp = k1.maxHp = k2.hp = k2.maxHp = 450;
+        List<Optimizer.Plan> lost =
+            Optimizer.search(fighter(), new Combatant[] {k1, k2}, deck,
+                             new FoeModel[] {foe, foe}, 200, 4000);
+        boolean said = !lost.isEmpty();
+        System.out.printf("  %-46s %-23s %s%n", "a fight we lose is reported, not dropped",
+                          said ? (lost.size() + " plan(s), none killing") : "nothing",
+                          said ? "live in Optimizer.search" : "SILENTLY EMPTY");
+        if(!said)
+            failures++;
 
         /* A duel where both sides choose, and where armour changes who dies. */
         Combatant bare = fighter(), clad = fighter();

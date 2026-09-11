@@ -202,6 +202,30 @@ public class CombatPackCheck {
         if(parry != null)
             check("  and a stance that needs nothing says so", parry.blockRequires, null);
 
+        /* THE THREE CARDS THAT HIT MORE THAN ONE, and they are read out of prose because
+         * the sheet has no field for them - so a reworded sentence would quietly return
+         * them all to single-target and nothing else would notice. Held to their numbers
+         * here for that reason.
+         *
+         * A crowd is where they earn their place: against two opponents a splash opener
+         * halved the fight in the audit's own fixture, 200 ticks to 100. */
+        Move circle = moves.get("Full Circle");
+        if(circle != null)
+            check("  Full Circle hits everything in range", circle.targets,
+                  Move.TARGETS_IN_RANGE);
+        Move both = moves.get("Punch 'em Both");
+        if(both != null)
+            check("  Punch 'em Both hits exactly two", both.targets, 2);
+        Move storm = moves.get("Storm of Swords");
+        if(storm != null) {
+            check("  Storm of Swords hits up to five", storm.targets, 5);
+            check("    its first target takes a full swing", storm.targetScale(0), 1.0);
+            check("    and its fifth takes double", storm.targetScale(4), 2.0);
+        }
+        Move barrage = moves.get("Quick Barrage");
+        if(barrage != null)
+            check("  and a single-target card says one", barrage.targets, 1);
+
         /* THE CLIENT STATES THE DECK RULES AND THE TOOLS HELD COPIES. Thirty points and
          * five saved decks were literals in the search; the dump has said both all along.
          * A copy of a fact does not move when the fact does. */
