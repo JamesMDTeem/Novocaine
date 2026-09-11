@@ -124,6 +124,12 @@ public class CombatDuel {
             sheet = mine;
         }
 
+        /* The search's stance rules are about the CHARACTER - which stance dominates
+         * depends on the shield in hand and on melee against unarmed - and these tools
+         * call build() directly rather than through its main, so they have to set the
+         * context themselves or every stance looks equally good. */
+        CombatDeckSearch.HELD_SHIELD = who.shield;
+        CombatDeckSearch.STANCE_OWNER = who.combatant();
         System.out.printf("both sides are %s (str %.0f, agi %.0f, melee %.0f, hp %.0f)%n",
                           who.name, who.str, who.agi, who.melee, who.hp);
         System.out.printf("%d card(s) available; %d round(s) of best response%n%n",

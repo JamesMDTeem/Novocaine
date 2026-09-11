@@ -111,6 +111,7 @@ public class CombatSimCheck {
         predictionIsFree();
         deckAsOpponent();
         twoSidedDuel();
+        jorbsWorkedExample();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -256,6 +257,79 @@ public class CombatSimCheck {
         java.util.List<Move> withStance = haven.combat.Duel.deck(kito(), barrage(), stance);
         double same = haven.combat.Duel.payoff(who, withStance, who, soft, 3, 2000);
         check("adding a stance to the deck changes no action taken", same, ab);
+    }
+
+    /**
+     * The multi-opening rule, against the worked number Jorb published.
+     *
+     * "If there are multiple openings matching the attack - many attacks target more than
+     * one attack dimension - the inverse of these are multiplied to determine the product
+     * to be squared to determine the final damage. Example: A yellow and blue attack,
+     * with a total damage of 50, hits a target with 30% Reeling and 50% Dizzy, that is
+     * the yellow and blue openings respectively. The total amount of matching Openings
+     * are thus 1 - ((1 - 0.3) * (1 - 0.5)) = 0.65, and the target takes
+     * 50 * (0.65 * 0.65) = 21.125 points of damage."
+     *
+     * That is a complete specification with a number on the end, which makes it worth
+     * more than any amount of fitting: it either reproduces exactly or the model is
+     * wrong. It also pins the half that is easy to get wrong without noticing - only the
+     * colours the attack NAMES count, so a target wide open in a colour the card does not
+     * read must contribute nothing at all.
+     *
+     * Two colours need alsoSchool, not school twice. school() sets the primary and a
+     * second call replaces it, which silently turns a two-coloured attack into a
+     * one-coloured one - and the wrong figure it produces is plausible rather than
+     * obviously broken.
+     */
+    static void jorbsWorkedExample() {
+        System.out.println();
+        System.out.println("the multi-opening rule, against Jorb's published example");
+
+        double combined = Formulas.combined(new double[] {0.0, 0.5, 0.3, 0.0});
+        check("30% yellow and 50% blue combine to", round(combined, 4), 0.65);
+        check("  and 50 damage times its square is", round(50.0 * combined * combined, 3),
+              21.125);
+
+        /* The same through Sim, where the schools decide what is read at all. Quality 10
+         * against strength 100 makes the damage term sqrt(sqrt(10*100)/10), which is not
+         * 1, so the check is against the model's own arithmetic rather than against 50. */
+        Combatant a = me();
+        a.weaponDamage = 50;
+        a.weaponQl = 10;
+        a.str = 100;
+        a.armHard = 0;
+        a.armSoft = 0;
+        Combatant t = me();
+        t.hp = t.maxHp = 1000;
+        t.armHard = 0;
+        t.armSoft = 0;
+        t.open(Formulas.YELLOW, 30);
+        t.open(Formulas.BLUE, 50);
+        /* Wide open in a colour the attack does not name. It must not count. */
+        t.open(Formulas.RED, 90);
+        Move yb = Move.of("yellow+blue").res("probe").kind(Move.Kind.ATTACK)
+            .weight(Move.Weight.MELEE)
+            .school(Formulas.YELLOW).alsoSchool(Formulas.BLUE)
+            .damageShare(1.0).cooldown(40).build();
+        check("  the move reads two colours", yb.schools.length, 2);
+        double scale = Math.sqrt(Math.sqrt(10.0 * 100.0) / 10.0);
+        Sim.Result r = new Sim(a, t).use(a, yb);
+        check("  and Sim deals the same, scaled by quality and strength",
+              round(r.raw, 3), round(50.0 * scale * combined * combined, 3));
+
+        /* And the trap: two calls to school() is a one-coloured attack, so the red the
+         * card does not name stays ignored and only blue is read. */
+        Move blueOnly = Move.of("blue only").res("probe").kind(Move.Kind.ATTACK)
+            .weight(Move.Weight.MELEE)
+            .school(Formulas.YELLOW).school(Formulas.BLUE)
+            .damageShare(1.0).cooldown(40).build();
+        check("  while school() twice leaves one colour, not two",
+              blueOnly.schools.length, 1);
+    }
+
+    static double round(double v, int places) {
+        double f = Math.pow(10, places);
+        return(Math.round(v * f) / f);
     }
 
     /* ---- the character and its moves, exactly as the logs and the character sheet have them ---- */

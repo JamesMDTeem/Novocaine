@@ -198,6 +198,27 @@ public class CombatDeckSearch {
      */
     interface Scorer {
         double score(Deck d);
+
+        /**
+         * Which cards a plan built from this deck actually throws.
+         *
+         * A DECK IS NOT WHAT YOU BOUGHT, IT IS WHAT YOU PLAY. The top-up spends the
+         * budget on anything that does not measure worse, and a card the plan never
+         * throws measures exactly the same as no card at all - so it fills the deck with
+         * inert cards and reports thirty points spent. The general creature deck came out
+         * of that holding Steal Thunder, Artful Evasion, Chop, Cleave and Dash, nineteen
+         * points of it, and the plan threw Sideswipe and Uppercut and nothing else.
+         *
+         * Two of those could never have been thrown at all: Chop costs one initiative and
+         * Cleave four, and nothing in the deck generates any. Artful Evasion and Dash
+         * hand initiative to the OPPONENT, which is the opposite.
+         *
+         * Empty means the scorer cannot say, and the trim below is then skipped rather
+         * than trimming to nothing.
+         */
+        default java.util.Set<String> played(Deck d) {
+            return(java.util.Collections.<String>emptySet());
+        }
     }
 
     static Deck build(Map<String, Move> sheet, Combatant me, Combatant foe, FoeModel model,
@@ -209,6 +230,21 @@ public class CombatDeckSearch {
         return(build(sheet, new Scorer() {
             public double score(Deck d) {
                 return(CombatDeckSearch.score(d, sh, m, f, md, am));
+            }
+
+            public java.util.Set<String> played(Deck d) {
+                java.util.Set<String> out = new java.util.LinkedHashSet<String>();
+                List<Move> deck = d.moves(sh);
+                if(deck.isEmpty() || !hasStance(d, sh))
+                    return(out);
+                List<Optimizer.Plan> front = Optimizer.search(withStance(m, d, sh), f,
+                                                              deck, md, BEAM, HORIZON);
+                Optimizer.Plan best = Advisor.choose(front, am, Double.MAX_VALUE);
+                if(best == null)
+                    return(out);
+                for(Move mv : best.moves)
+                    out.add(mv.name);
+                return(out);
             }
         }));
     }
@@ -263,9 +299,51 @@ public class CombatDeckSearch {
             floor = Math.min(floor, takeScore);
         }
         cur = topUp(cur, sheet, sc, floor);
+        cur = trim(cur, sheet, sc);
         cur.score = sc.score(cur);
         cur.score = Math.min(cur.score, floor);
         return(cur);
+    }
+
+    /**
+     * Drop what the plan never throws, then spend the freed points on what it does.
+     *
+     * The budget has to go somewhere, and left to itself the top-up puts it on cards that
+     * change nothing - they are never worse, because they are never played. That is how
+     * the general creature deck ended up with nineteen of its thirty points on five cards
+     * the plan did not touch once, two of which it could not have thrown at all for want
+     * of the initiative they cost.
+     *
+     * Dropping a card can change the plan, because the points it frees make the survivors
+     * stronger and a stronger survivor may open a line that uses something previously
+     * idle. So this runs until the deck stops changing rather than once, with a low cap
+     * because it converges in two or three passes and a search that will not settle is
+     * telling you the score is too flat to trust.
+     *
+     * A stance is never dropped: it is held rather than thrown, so it appears in no plan
+     * and would be trimmed every time, and a deck without one is not a deck.
+     */
+    static Deck trim(Deck d, Map<String, Move> sheet, Scorer sc) {
+        for(int pass = 0; pass < 4; pass++) {
+            java.util.Set<String> used = sc.played(d);
+            if(used.isEmpty())
+                return(d);              /* the scorer cannot say; leave it alone */
+            Deck t = new Deck();
+            for(Map.Entry<String, Integer> e : d.levels.entrySet()) {
+                Move m = sheet.get(e.getKey());
+                if((m != null) && (m.stance || used.contains(m.name)))
+                    t.levels.put(e.getKey(), e.getValue());
+            }
+            if(t.levels.isEmpty() || t.levels.equals(d.levels))
+                return(d);
+            /* Re-spend on the survivors only. Levels help and the cards are ones the plan
+             * demonstrably uses, so every point now buys something that gets thrown. */
+            t = topUp(t, sheet, sc, Double.POSITIVE_INFINITY, true);
+            if(t.levels.equals(d.levels))
+                return(d);
+            d = t;
+        }
+        return(d);
     }
 
     /**
@@ -291,11 +369,27 @@ public class CombatDeckSearch {
      * whatever the reason.
      */
     static Deck topUp(Deck cur, Map<String, Move> sheet, Scorer sc, double floor) {
+        return(topUp(cur, sheet, sc, floor, false));
+    }
+
+    /**
+     * @param onlyExisting spend only on cards already held, never on new ones.
+     *
+     * The trim needs this and the first top-up must not have it. Trimming drops the cards
+     * the plan never threw and then re-spends the freed points; if the re-spend is allowed
+     * to reach the whole sheet it simply buys those same cards back, because a card that
+     * is never played scores exactly as well as no card and the top-up accepts anything
+     * that is not worse. The first run of the trim did exactly that and moved one point.
+     */
+    static Deck topUp(Deck cur, Map<String, Move> sheet, Scorer sc, double floor,
+                      boolean onlyExisting) {
         double best = Math.min(floor, sc.score(cur));
         while(cur.points() < MAX_POINTS) {
             Deck take = null;
             double takeScore = Double.POSITIVE_INFINITY;
-            for(String res : sheet.keySet()) {
+            for(String res : (onlyExisting
+                              ? new ArrayList<String>(cur.levels.keySet())
+                              : new ArrayList<String>(sheet.keySet()))) {
                 Deck t = plus(cur, res, sheet);
                 if(t == null)
                     continue;
@@ -343,10 +437,79 @@ public class CombatDeckSearch {
                 return(null);
             if(hasStance(d, sheet))
                 return(null);
+            if(dominated(m, sheet))
+                return(null);
         }
         Deck t = d.copy();
         t.levels.put(res, at + 1);
         return(t);
+    }
+
+    /**
+     * The character whose stances are being compared. Set beside HELD_SHIELD, because
+     * which stance is better is a fact about the fighter and not about the sheet.
+     */
+    static Combatant STANCE_OWNER = null;
+
+    /**
+     * Whether some other stance beats this one at everything, for THIS character.
+     *
+     * To Arms and Shield Up are the same card in every field the model has - same block
+     * skill, same cooldown, same one point, no attack multiplier and no trigger - except
+     * that Shield Up's block multiplier is 2.5 holding a shield against To Arms' 1.0. For
+     * a character carrying a shield that is 395 points of block weight against 158, with
+     * nothing given up. There is no state of any fight in which To Arms is the better
+     * choice, and a search that picks it has not found something subtle, it has wandered.
+     *
+     * It did wander, into the PVP answer, which is the kind of failure that is obvious to
+     * anyone who plays and invisible in a table of numbers. So it is pruned rather than
+     * left to the score: a dominated stance is not a worse deck, it is a deck nobody would
+     * ever build.
+     *
+     * Dominance is decided per character because it depends on gear and skills. Shield Up
+     * without a shield falls to 0.5 and is dominated instead of dominating; Parry's block
+     * weight is lower than To Arms' but it opens blue on every incoming swing, so nothing
+     * dominates it; and the two stances that cut attack weight buy their block with
+     * offence, which is a trade rather than a loss.
+     */
+    static boolean dominated(Move cand, Map<String, Move> sheet) {
+        Combatant me = STANCE_OWNER;
+        if((me == null) || !cand.stance)
+            return(false);
+        for(Move other : sheet.values()) {
+            if((other == cand) || !other.stance)
+                continue;
+            if(beats(other, cand, me))
+                return(true);
+        }
+        return(false);
+    }
+
+    /** Whether `a` is at least as good as `b` on every axis, and better on one. */
+    private static boolean beats(Move a, Move b, Combatant me) {
+        double ba = blockWeight(a, me), bb = blockWeight(b, me);
+        double aa = a.attackMult, ab = b.attackMult;
+        if((ba < bb) || (aa < ab))
+            return(false);
+        /* A triggered opening is a merit nothing else substitutes for, so a stance that
+         * has one cannot be dominated by a stance that does not. */
+        for(int c = 0; c < 4; c++) {
+            if(b.whenAttackedOpens[c] > a.whenAttackedOpens[c])
+                return(false);
+        }
+        boolean strictly = (ba > bb) || (aa > ab);
+        for(int c = 0; c < 4; c++) {
+            if(a.whenAttackedOpens[c] > b.whenAttackedOpens[c])
+                strictly = true;
+        }
+        return(strictly);
+    }
+
+    private static double blockWeight(Move st, Combatant me) {
+        double mult = st.blockMult;
+        if((st.blockRequires != null) && !HELD_SHIELD && !Double.isNaN(st.blockMultWithout))
+            mult = st.blockMultWithout;
+        return(((st.blockSkill == null) ? me.blockSkill : me.skill(st.blockSkill)) * mult);
     }
 
     static boolean hasStance(Deck d, Map<String, Move> sheet) {
@@ -474,6 +637,7 @@ public class CombatDeckSearch {
         MAX_POINTS = rules.maxPoints;
         SAVED_DECKS = (slotOverride > 0) ? slotOverride : rules.saved;
         HELD_SHIELD = who.shield;
+        STANCE_OWNER = who.combatant();
         Combatant me = who.combatant();
 
         if(ownedOnly) {
