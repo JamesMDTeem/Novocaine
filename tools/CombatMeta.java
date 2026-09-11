@@ -190,7 +190,8 @@ public class CombatMeta {
          * standing target fastest - what someone brings who has not thought about being
          * hit back. Everything after this is a reply to what is already there. */
         CombatDeckSearch.Deck seed = CombatDeckSearch.build(
-            sheet, me, who.combatant(), haven.combat.FoeModel.inert(),
+            sheet, me, new Combatant[] {who.combatant()},
+            new haven.combat.FoeModel[] {haven.combat.FoeModel.inert()},
             haven.combat.Advisor.Aim.FASTEST);
         decks.add(seed);
         pool.add(seed.moves(sheet));

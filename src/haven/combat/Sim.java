@@ -244,11 +244,33 @@ public final class Sim {
          *
          * A weapon is required, which is measured rather than assumed - the corpus shows
          * the opening only where the defender was armed. */
-        if(m.isAttack() && target.armed()) {
-            for(int c = 0; c < 4; c++) {
-                if(target.whenAttacked[c] > 0)
-                    actor.open(c, target.whenAttacked[c]);
-            }
+        if(m.isAttack() && target.armed())
+            trigger(actor, target.whenAttacked);
+    }
+
+    /**
+     * A stance's answer to a blow, landing on whoever swung.
+     *
+     * ONE PLACE, because there were two and they disagreed. This path - a player swinging
+     * at a player - handed over the full ten points however open the target already was,
+     * while the optimizer's copy, which is the one that fires when a CREATURE swings at
+     * us, took the falloff. Parry was therefore worth more in a duel than in a hunt for no
+     * reason but which method the blow went through, and the player-versus-player answer
+     * is exactly where a stance is being chosen between Parry and Shield Up.
+     *
+     * The falloff is the version kept. Every openings line in the game takes it - an
+     * attack opens a share of what is still CLOSED - and the sheet writes this one as an
+     * openings line like any other, under a condition. What is left out is the weight
+     * ratio the same formula carries, because there is nobody to read it from: a stance
+     * declares no attack weight, and inventing one would be a guess where the falloff is
+     * a rule.
+     */
+    public static void trigger(Combatant on, double[] pct) {
+        if(pct == null)
+            return;
+        for(int c = 0; c < 4; c++) {
+            if(pct[c] > 0)
+                on.open(c, pct[c] * (1.0 - on.opening(c)));
         }
     }
 

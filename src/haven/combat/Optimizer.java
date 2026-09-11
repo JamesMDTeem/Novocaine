@@ -376,12 +376,8 @@ public final class Optimizer {
              * use() - and it lands on THE ONE THAT SWUNG, which is measured: across 762
              * steps where blue rose on any of several opponents at once, it rose on
              * exactly one in 753. A sword is required, which is why this reads armed. */
-            if((trigger != null) && me.armed()) {
-                for(int c = 0; c < 4; c++) {
-                    if(trigger[c] > 0)
-                        foes[who].open(c, trigger[c] * (1.0 - foes[who].opening(c)));
-                }
-            }
+            if((trigger != null) && me.armed())
+                Sim.trigger(foes[who], trigger);
             foeNext[who] += models[who].period;
         }
         tick = ready;
