@@ -448,6 +448,10 @@ public final class Pack {
         public final int hpPinN;
 
         Opponent(JSONObject j, Cards lib) {
+            this(j, lib, null);
+        }
+
+        Opponent(JSONObject j, Cards lib, Map<String, Move> ours) {
             this.name = j.optString("name", "?");
             this.res = j.optString("res", null);
             this.kind = j.optString("kind", "creature");
@@ -502,7 +506,7 @@ public final class Pack {
             for(int i = 0; (a != null) && (i < a.length()); i++)
                 mv.add(a.getString(i));
             this.moves = mv;
-            this.threat = threat(j.optJSONObject("threat"), j, lib,
+            this.threat = threat(j.optJSONObject("threat"), j, lib, ours,
                                  j.optString("name", "?"));
             JSONObject sp = j.optJSONObject("relative_speed");
             if(sp == null) {
@@ -540,7 +544,7 @@ public final class Pack {
          * choosing the matchup's answer rather than computing it.
          */
         private static FoeModel threat(JSONObject t, JSONObject j, Cards lib,
-                                       String species) {
+                                       Map<String, Move> ours, String species) {
             if(t == null)
                 return(null);
             JSONObject per = t.optJSONObject("period");
@@ -601,7 +605,7 @@ public final class Pack {
                                 /* Its actual cards, where the corpus can name them.
                                  * Null leaves the averaged action in place, which is
                                  * what eight of the forty-nine creatures still need. */
-                                repertoire(j, lib, species)));
+                                repertoire(j, lib, ours, species)));
         }
 
         /**
@@ -753,7 +757,18 @@ public final class Pack {
         } catch(IOException e) {
             lib = null;
         }
-        return(opponents(read(path), lib));
+        /* And our own sheet, because a player opponent throws OUR cards and we have their
+         * exact numbers. Feeding a player through the averaged action while the better
+         * data sits loaded next to it was the same mistake one population over. */
+        Map<String, Move> ours = null;
+        try {
+            Path sheet = path.resolveSibling("moves_sheet.json");
+            if(Files.exists(sheet))
+                ours = moves(sheet);
+        } catch(IOException e) {
+            ours = null;
+        }
+        return(opponents(read(path), lib, ours));
     }
 
     /**
@@ -991,6 +1006,44 @@ public final class Pack {
     }
 
     /**
+     * A card OUR sheet knows, as an opponent's card.
+     *
+     * A player opponent throws the same cards we do, and we have their exact numbers -
+     * the openings in percentage points rather than the fitted ratios an animal's card
+     * comes as, the cooldown, the grievous share, and the reductions. There is no reason
+     * to feed a player through the averaged action when the better data is already
+     * loaded.
+     *
+     * Damage is the one thing the sheet cannot give, because it depends on their weapon
+     * and their strength and a log records neither. What a log does record is how hard
+     * they actually hit, so the player's measured coefficient is handed to the cards that
+     * deal damage, in proportion to the share of the weapon each one swings. A card that
+     * deals none gets none.
+     *
+     * @param coef the player's measured whole-swing coefficient, or NaN when unmeasured.
+     * @param norm the mix-weighted mean damage share, so the split preserves the total.
+     */
+    public static BeastMove fromOurCard(Move m, double coef, double norm) {
+        if(m == null)
+            return(null);
+        double[] op = new double[4];
+        for(int c = 0; c < 4; c++)
+            op[c] = m.openings[c];
+        double[] rest = new double[4];
+        for(int c = 0; c < 4; c++)
+            rest[c] = m.reduces[c];
+        double mine = Double.NaN;
+        if(!Double.isNaN(coef) && (norm > 0)) {
+            double share = (m.damageShare > 0) ? m.damageShare
+                : ((m.flatDamage > 0) ? 1.0 : 0.0);
+            if(share > 0)
+                mine = coef * (share / norm);
+        }
+        return(new BeastMove(m.name, op, mine, Math.round(m.cooldownBase), rest,
+                             m.grievous, Double.NaN));
+    }
+
+    /**
      * A creature's repertoire: its cards, and how often it throws each.
      *
      * Built from three things the pack already carried and one it did not use. The card
@@ -1006,7 +1059,12 @@ public final class Pack {
      * average.
      */
     public static Repertoire repertoire(JSONObject j, Cards lib, String species) {
-        if(lib == null)
+        return(repertoire(j, lib, null, species));
+    }
+
+    public static Repertoire repertoire(JSONObject j, Cards lib, Map<String, Move> ours,
+                                        String species) {
+        if((lib == null) && (ours == null))
             return(null);
         JSONObject pol = j.optJSONObject("policy");
         JSONArray mixa = (pol == null) ? null : pol.optJSONArray("mix");
@@ -1015,9 +1073,36 @@ public final class Pack {
         List<BeastMove> cards = new ArrayList<BeastMove>();
         List<Double> share = new ArrayList<Double>();
         double tot = 0;
+        /* A player's measured hitting power, to be split across the cards that hit. */
+        JSONObject th = j.optJSONObject("threat");
+        JSONObject dm = (th == null) ? null : th.optJSONObject("damage");
+        double coef = (dm == null) ? Double.NaN : dm.optDouble("coef", Double.NaN);
+        double norm = 0;
+        if((ours != null) && !Double.isNaN(coef)) {
+            for(int i = 0; i < mixa.length(); i++) {
+                JSONArray row = mixa.getJSONArray(i);
+                Move om = ours.get(row.getString(0));
+                if(om == null)
+                    continue;
+                double sh = (om.damageShare > 0) ? om.damageShare
+                    : ((om.flatDamage > 0) ? 1.0 : 0.0);
+                norm += sh * row.getDouble(1);
+            }
+        }
         for(int i = 0; i < mixa.length(); i++) {
             JSONArray row = mixa.getJSONArray(i);
-            BeastMove m = lib.move(row.getString(0), species);
+            String nm = row.getString(0);
+            /* OUR SHEET FIRST, WHERE IT KNOWS THE CARD. The two libraries overlap on the
+             * cards a player throws at us: those land in the measured animal file too,
+             * because a foe move is a foe move whoever threw it - and the fit there never
+             * estimated their openings, so Quick Barrage came through opening nothing
+             * while our own sheet had its exact ten points of red sitting loaded.
+             *
+             * The overlap is only ever our cards. An animal's Fell Scratch is not in our
+             * sheet, so it falls through to the measured file as before. */
+            BeastMove m = (ours == null) ? null : fromOurCard(ours.get(nm), coef, norm);
+            if((m == null) && (lib != null))
+                m = lib.move(nm, species);
             if((m == null) || !m.acts())
                 continue;               /* a card we know the name of and nothing else */
             cards.add(m);
@@ -1073,10 +1158,15 @@ public final class Pack {
     }
 
     private static Map<String, Opponent> opponents(JSONObject doc, Cards lib) {
+        return(opponents(doc, lib, null));
+    }
+
+    private static Map<String, Opponent> opponents(JSONObject doc, Cards lib,
+                                                   Map<String, Move> ours) {
         Map<String, Opponent> out = new LinkedHashMap<String, Opponent>();
         JSONArray arr = doc.getJSONArray("opponents");
         for(int i = 0; i < arr.length(); i++) {
-            Opponent o = new Opponent(arr.getJSONObject(i), lib);
+            Opponent o = new Opponent(arr.getJSONObject(i), lib, ours);
             out.put(o.name, o);
         }
         return(out);
