@@ -91,6 +91,21 @@ public final class CombatRecorder {
         java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<Long, Boolean>());
     /* Last health seen per gob, so a delta that restates the same quarter costs nothing.
      * Health arrives far more often than it changes. */
+    /**
+     * What each opponent IS, by gob, so that advice can be asked about all of them.
+     *
+     * `named` next to this is a set - it exists to write one naming line per opponent and
+     * never again - and a set cannot answer "what is that one over there". Without that
+     * answer the advisor can only be asked about the opponent we happen to be aimed at,
+     * which is the one-opponent question in every fight including the ones with five
+     * animals in them.
+     */
+    private static final java.util.Map<Long, String> foeResById =
+        new java.util.concurrent.ConcurrentHashMap<Long, String>();
+
+    /** The last sampled crowd: gob and four openings per relation, five entries each. */
+    private static volatile long[] lastCrowd = null;
+
     private static final java.util.Map<Long, Integer> lastHp =
         new java.util.concurrent.ConcurrentHashMap<Long, Integer>();
     /* Per opponent, so one creature's narrowing bracket never suppresses another's - the
@@ -237,6 +252,8 @@ public final class CombatRecorder {
             lastFoes = null;
             lastBuffs.clear();
             named.clear();
+            foeResById.clear();
+            lastCrowd = null;
             /* Per FIGHT, not per session, so every log describes the cards it contains. A
              * fight sees a handful of distinct cards, so this is a few lines per file. */
             carded.clear();
@@ -696,12 +713,51 @@ public final class CombatRecorder {
          * beam search - 4 ms at beam 60 against a wolf with a ten-card deck - and runs once
          * per card rather than once per frame. Kept after the prediction so a failure here
          * cannot cost us that. */
-        Prediction.Advised adv = Prediction.advise(m, foeRes, open, lastMyIp,
-                                                   ADVICE_BEAM, ADVICE_HORIZON);
+        Prediction.Advised adv = advise(m, gobId, open);
         if(adv != null) {
             log(CombatEvent.advice(now(), gobId, adv.moveRes, adv.pack, adv.ticks,
                                    adv.hpLost, adv.killed, adv.frontier));
         }
+    }
+
+    /**
+     * The advice, asked about EVERY opponent rather than the one we are aimed at.
+     *
+     * Which card is best depends on how many of them there are. A card that hits all of
+     * them is the best thing in the deck against five and an ordinary attack against one,
+     * so advice built from the sampled opponent alone answers the one-opponent question in
+     * every fight - including the fights where that is the wrong question.
+     *
+     * The one the move was aimed at goes first, and carries the openings the caller
+     * already validated for it. The rest come from the last crowd sample. Anything the map
+     * cannot name is left out: an opponent we cannot identify cannot be modelled, and
+     * inventing one would be worse than planning against fewer.
+     */
+    private static Prediction.Advised advise(Prediction.Me m, long gobId, int[] open) {
+        long[] crowd = lastCrowd;
+        String mine = foeResById.get(Long.valueOf(gobId));
+        if((crowd == null) || (crowd.length <= 5) || (mine == null)) {
+            return(Prediction.advise(m, foeRes, open, lastMyIp,
+                                     ADVICE_BEAM, ADVICE_HORIZON));
+        }
+        java.util.List<String> res = new java.util.ArrayList<String>();
+        java.util.List<int[]> ops = new java.util.ArrayList<int[]>();
+        res.add(mine);
+        ops.add(open);
+        for(int i = 0; (i + 4 < crowd.length) && (res.size() < ADVICE_CROWD); i += 5) {
+            long g = crowd[i];
+            if(g == gobId)
+                continue;
+            String r = foeResById.get(Long.valueOf(g));
+            if(r == null)
+                continue;
+            res.add(r);
+            ops.add(new int[] {(int)crowd[i + 1], (int)crowd[i + 2],
+                               (int)crowd[i + 3], (int)crowd[i + 4]});
+        }
+        return(Prediction.advise(m, res.toArray(new String[0]),
+                                 ops.toArray(new int[0][]), lastMyIp,
+                                 ADVICE_BEAM, ADVICE_HORIZON));
     }
 
     /* Beam and horizon for the advice above. The beam is where the search stops being
@@ -709,6 +765,21 @@ public final class CombatRecorder {
      * has stopped growing by then. The horizon is long enough to kill most things and
      * short enough that a plan which cannot is reported as not killing. */
     private static final int ADVICE_BEAM = 60;
+    /**
+     * How many opponents the advice is planned against at most.
+     *
+     * A COST CAP AND NOT A CLAIM ABOUT THE FIGHT. This runs on the message loop, once per
+     * card thrown, and the search it costs grows with the crowd twice over: every step
+     * walks every opponent, and the fight itself is longer because there is more health to
+     * get through. Four was measured at 4 ms against one wolf and nobody has measured it
+     * against six ants; the recorder's whole contract is that it never disturbs the
+     * client, so the number is capped until somebody does.
+     *
+     * The effect of the cap is that advice in a large fight is planned against a smaller
+     * one, which understates what a card that hits everything is worth - the direction to
+     * remember when the advice disagrees with the offline search, which has no such cap.
+     */
+    private static final int ADVICE_CROWD = 4;
     private static final long ADVICE_HORIZON = 2500;
 
     /**
@@ -748,6 +819,11 @@ public final class CombatRecorder {
     public static void nameFoe(long gobId, String res) {
         if(!active() || (res == null))
             return;
+        /* The map is fed before the once-only gate, not after it. The gate exists to stop
+         * the LOG repeating itself and it fires on the first frame; a map filled inside it
+         * would be filled once and then never corrected, and would be empty for every
+         * opponent that was already named when the fight began. */
+        foeResById.put(Long.valueOf(gobId), res);
         if(!named.add(gobId))
             return;
         onFoe(gobId, res, "name");
@@ -983,6 +1059,9 @@ public final class CombatRecorder {
             if(key.equals(lastFoes))
                 return;
             lastFoes = key;
+            /* Kept as well as logged, because the advisor below needs it live. This is the
+             * only place the client hands over every opponent's openings at once. */
+            lastCrowd = packed.clone();
             log(CombatEvent.foes(now(), packed, gst, dist));
         } catch(Exception e) {
             /* never propagate into tick() */

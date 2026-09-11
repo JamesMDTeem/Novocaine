@@ -61,11 +61,32 @@ public final class Advisor {
      */
     public static Advice next(Combatant me, Combatant foe, List<Move> deck, FoeModel model,
                               Aim aim, double budget, int beam, long horizon) {
-        if((me == null) || (foe == null) || (deck == null) || deck.isEmpty())
+        return(next(me, new Combatant[] {foe}, deck, new FoeModel[] {model}, aim, budget,
+                    beam, horizon));
+    }
+
+    /**
+     * The same, against everything that is actually on us.
+     *
+     * Which card to throw depends on how many of them there are, and not gently: a card
+     * that hits every opponent in range is the best thing in the deck against five and an
+     * ordinary attack against one. Advising from the one opponent we happen to be aimed at
+     * gives the second answer in both fights.
+     *
+     * The one we are aimed at goes first - the search kills down the array in order.
+     */
+    public static Advice next(Combatant me, Combatant[] foes, List<Move> deck,
+                              FoeModel[] models, Aim aim, double budget, int beam,
+                              long horizon) {
+        if((me == null) || (foes == null) || (foes.length == 0) || (deck == null)
+           || deck.isEmpty())
             return(new Advice(null, null, "nothing to plan with"));
-        if(foe.hp <= 0)
+        boolean any = false;
+        for(Combatant f : foes)
+            any |= (f != null) && (f.hp > 0);
+        if(!any)
             return(new Advice(null, null, "it is already dead"));
-        List<Optimizer.Plan> front = Optimizer.search(me, foe, deck, model, beam, horizon);
+        List<Optimizer.Plan> front = Optimizer.search(me, foes, deck, models, beam, horizon);
         if(front.isEmpty())
             return(new Advice(null, null, "no plan reached the horizon"));
         Optimizer.Plan pick = choose(front, aim, budget);

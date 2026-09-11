@@ -795,10 +795,28 @@ public class CombatDeckSearch {
         System.out.println("1.53 points a second from one attacker through five. That is the falloff");
         System.out.println("term saturating - each attack opens a share of what is still closed.");
         System.out.println();
-        System.out.println("WHAT IS STILL MISSING IS RANGE. Nothing here knows where anybody stands,");
-        System.out.println("so a multi-target card reaches every opponent still alive. Full Circle");
-        System.out.println("opened only one opponent in 53 of the 99 logged throws that opened");
-        System.out.println("anything, so about half the time the rest of the crowd was too far away.");
+        System.out.println("WHAT IS STILL MISSING IS RANGE, AND HERE IS WHAT IT COSTS. Nothing");
+        System.out.println("here knows where anybody stands, so a multi-target card reaches every");
+        System.out.println("opponent still alive - and a card that hits all of them for a full swing");
+        System.out.println("kills five in the same time it kills three. Measured on this tool, ticks");
+        System.out.println("to clear the crowd:");
+        System.out.println();
+        System.out.println("  opponent      n=1    n=3    n=5");
+        System.out.println("  ants           40    160    160");
+        System.out.println("  badger        260    520    520");
+        System.out.println("  cattle        350    663    663");
+        System.out.println("  greyseal      251    494    494");
+        System.out.println();
+        System.out.println("Eleven of thirteen species read IDENTICALLY at three and at five, because");
+        System.out.println("the deck is Full Circle and every extra animal dies alongside the first");
+        System.out.println("for nothing. That cannot be right, and it is not a fault in the crowd:");
+        System.out.println("it is the range term this model does not have. Full Circle opened only");
+        System.out.println("one opponent in 53 of the 99 logged throws that opened anything at all,");
+        System.out.println("so about half the time the rest of the crowd was out of reach.");
+        System.out.println();
+        System.out.println("Read -n above 1 as: this is what a crowd costs if they all stand close");
+        System.out.println("enough to sweep. Schema 16 records the range to each of them, so a later");
+        System.out.println("corpus can answer how often that is true.");
         System.out.println();
     }
 

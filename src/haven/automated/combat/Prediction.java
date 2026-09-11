@@ -2,6 +2,7 @@ package haven.automated.combat;
 
 import haven.combat.Advisor;
 import haven.combat.Combatant;
+import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Optimizer;
@@ -341,12 +342,35 @@ public final class Prediction {
      */
     public static Advised advise(Me me, String foeRes, int[] foeOpen, int myIp,
                                  int beam, long horizon) {
+        return(advise(me, new String[] {foeRes}, new int[][] {foeOpen}, myIp, beam, horizon));
+    }
+
+    /**
+     * The same, against the whole crowd rather than the one we are aimed at.
+     *
+     * Which card is best depends on how many of them there are. Full Circle hits every
+     * opponent in range and is an ordinary attack against one; advising from the sampled
+     * opponent alone answers the one-opponent question in every fight, including the ones
+     * where it is the wrong question.
+     *
+     * The sampled opponent comes FIRST, because the search kills down the array in order
+     * and that is the one we are actually swinging at. A companion the pack cannot
+     * simulate is left out of the fight rather than guessed at - the plan is then made
+     * against fewer opponents than are really there, which is the same silence the
+     * one-opponent version had, and better than a made-up animal. If the one we are aimed
+     * at is the unknown one there is nothing to advise on at all.
+     */
+    public static Advised advise(Me me, String[] foeRes, int[][] foeOpen, int myIp,
+                                 int beam, long horizon) {
         load();
         if((me == null) || !me.usable() || (byRes == null) || (foes == null))
             return(null);
-        if((foeOpen == null) || (foeOpen.length < 4))
+        if((foeRes == null) || (foeRes.length == 0) || (foeOpen == null)
+           || (foeOpen.length != foeRes.length))
             return(null);
-        Pack.Opponent o = find(foeRes);
+        if((foeOpen[0] == null) || (foeOpen[0].length < 4))
+            return(null);
+        Pack.Opponent o = find(foeRes[0]);
         if((o == null) || !o.simulable() || (o.threat == null))
             return(null);
 
@@ -381,13 +405,25 @@ public final class Prediction {
         a.hp = a.maxHp = 100;
         a.ip = myIp;
 
-        Combatant b = o.toughest();
-        for(int c = 0; c < 4; c++) {
-            if(foeOpen[c] > 0)
-                b.open(c, foeOpen[c]);
+        List<Combatant> bs = new ArrayList<Combatant>();
+        List<FoeModel> ms = new ArrayList<FoeModel>();
+        for(int i = 0; i < foeRes.length; i++) {
+            Pack.Opponent oi = (i == 0) ? o : find(foeRes[i]);
+            if((oi == null) || !oi.simulable() || (oi.threat == null)
+               || (foeOpen[i] == null) || (foeOpen[i].length < 4))
+                continue;
+            Combatant bi = oi.toughest();
+            for(int c = 0; c < 4; c++) {
+                if(foeOpen[i][c] > 0)
+                    bi.open(c, foeOpen[i][c]);
+            }
+            bs.add(bi);
+            ms.add(oi.threat);
         }
-        List<Optimizer.Plan> front = Optimizer.search(a, b, deck, o.threat, beam, horizon);
-        Advisor.Advice adv = Advisor.next(a, b, deck, o.threat, Advisor.Aim.FASTEST,
+        Combatant[] bb = bs.toArray(new Combatant[0]);
+        FoeModel[] mm = ms.toArray(new FoeModel[0]);
+        List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon);
+        Advisor.Advice adv = Advisor.next(a, bb, deck, mm, Advisor.Aim.FASTEST,
                                           0, beam, horizon);
         if((adv == null) || (adv.move == null) || (adv.plan == null))
             return(null);
