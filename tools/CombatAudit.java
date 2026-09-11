@@ -211,9 +211,6 @@ public class CombatAudit {
     static void moveMechanics() {
         System.out.println("the card's own lines");
 
-        Combatant me = fighter(), foe = fighter();
-        Sim.Result plain = throwAt(base().build(), fighter(), fighter());
-
         /* Openings on the target. */
         Combatant t1 = fighter();
         throwAt(base().opens(Formulas.RED, 20).build(), fighter(), t1);

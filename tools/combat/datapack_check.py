@@ -453,9 +453,100 @@ def every_key_is_read():
               unread, [])
 
 
+# What a card's own text says it does, against whether the data has anywhere to put it.
+#
+# THE AUDIT CANNOT SEE THESE. CombatAudit asks whether every field is read by something,
+# which catches a mechanic that was parsed and then ignored - Shield Up's shield, the
+# character's armour. It cannot catch a mechanic that was never given a field, because
+# there is nothing for it to enumerate. That is a different hole and it is larger.
+#
+# The text is the game's own: moves_sheet.json is a client deck dump, not a wiki scrape.
+# So a note here is what the card says about itself, and "no field" means the simulator
+# is playing a different card from the one in the game.
+#
+# Each entry is (card, field that would hold it or None, what the text says). A None means
+# the mechanic is not modelled, and the count of those is the finding.
+TEXT_MECHANICS = [
+    ("Steal Thunder", None,
+     "takes 3 initiative from the target and gains you 2, to the extent it is unblocked"),
+    ("Feigned Dodge", None,
+     "the opening it takes off you is put ON the opponent at twice the amount, so it "
+     "is a reduction and an attack in one and the model has only the reduction"),
+    ("Bloodlust", None,
+     "charges 25% per mu; your attack weight rises by four times the charge"),
+    ("Combat Meditation", None,
+     "charges 25% per mu; your cooldown falls by the charge"),
+    ("Dash", None, "completely removes your slightest opening"),
+    ("Oak Stance", None, "your greatest opening is reduced by 5% per mu"),
+    ("Full Circle", None, "attacks your target and every other opponent in range"),
+    ("Punch 'em Both", None, "attacks your target and one other"),
+    ("Storm of Swords", None,
+     "attacks up to five, at 100/125/150/175/200% of the weapon's damage"),
+    # RANGE IS A MECHANIC AND NOT A DETAIL, AND THE LOGS ALREADY MEASURE IT. Every state
+    # row carries the distance to the opponent, so the reach of each card is the largest
+    # distance it was ever seen resolving at. Across the corpus:
+    #
+    #   reductions       Sidestep 599, Quick Dodge 597, Jump 506, Dash 481,
+    #                    Zig-Zag Ruse 468, Artful Evasion 462
+    #   ranged utility   Take Aim 148 (p99 140), Think 111
+    #   weapon attacks   Sting 57, Full Circle 56, Cleave 56, Flex 55, Opp Knocks 53
+    #   unarmed attacks  Knock Its Teeth Out 31, Punch 20
+    #
+    # The reductions are not "reaching" six hundred units - they act on yourself and have
+    # no range requirement at all, so the figure is just wherever the opponent happened to
+    # be. That is the point: a reduction can be thrown from anywhere, an attack cannot.
+    # Reading it the other way round - melee by default unless the text says otherwise -
+    # was wrong, and the text is the weaker source here than the measurement.
+    #
+    # So the cost of a reduction is not that you must stand in reach. It is the tick it
+    # spends. What the reach buys is the in-and-out game: back off, drop a reduction from
+    # outside their attack range, come back. Two players move at the same speed, so
+    # whoever turns first has the reaction gap - unavailable in a tight den, against
+    # something faster, or body blocked, but usually available in PVP.
+    #
+    # The simulator has no notion of standing apart at all, which is the same hole that
+    # leaves four of fourteen learned policy rules unreadable.
+    ("Take Aim", None, "reaches about 148 where an attack reaches about 55"),
+    ("Steal Thunder", None,
+     "text says a small distance; never thrown in the corpus, so unmeasured"),
+    ("(attacks generally)", None,
+     "bounded at roughly 55 units with a weapon and 20 to 31 unarmed, while a reduction "
+     "has no range requirement - none of which the simulator can express"),
+    ("Opportunity Knocks", "boost_greatest", "raises the opponent's greatest opening"),
+    ("Quick Barrage", "gain_when_above", "gains initiative when the opponent is open"),
+    ("Shield Up", "block_mult_without", "half the block weight without a shield"),
+    ("Take Aim", "ip_scale", "cooldown rises 20% per point of initiative"),
+    ("Combat Meditation", "attack_mult", "a quarter of the normal attack weight"),
+    ("Oak Stance", "attack_mult", "half the normal attack weight"),
+]
+
+
+def text_mechanics():
+    """How much of what the cards say about themselves the model actually has."""
+    print("")
+    print("what the card text says, against whether anything can hold it")
+    gaps = [(c, w) for c, f, w in TEXT_MECHANICS if f is None]
+    print("  %d of %d documented mechanics have no field at all:"
+          % (len(gaps), len(TEXT_MECHANICS)))
+    for c, w in gaps:
+        print("    %-20s %s" % (c, w))
+    # Not an assertion that the number is zero - it is not, and pretending otherwise
+    # would be worse than recording it. The assertion is that the list is maintained:
+    # if it ever shrinks to nothing the check should be deleted, and if a mechanic is
+    # implemented its entry must gain a field name.
+    check("the unmodelled list is still being kept", len(gaps) > 0, True)
+    # Feigned Dodge is the one to watch: it is in nearly every deck the optimizer
+    # recommends and the half that is missing is the ATTACKING half, so the card is
+    # undervalued rather than overvalued. The decks are not wrong to hold it; they are
+    # holding it for less than it is worth.
+    check("  and Feigned Dodge is on it, being in nearly every recommended deck",
+          any(c == "Feigned Dodge" for c, _w in gaps), True)
+
+
 def main():
     primitives()
     every_key_is_read()
+    text_mechanics()
     gear()
     creatures()
     animal_moves()

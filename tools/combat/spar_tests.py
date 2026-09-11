@@ -1,0 +1,406 @@
+"""The spar suite: what to go and measure, and what the model says will happen.
+
+Valhalla gives two characters with stats, gear and qualities we choose, and no animals in
+the way. That turns every open question in this model from "wait until a fight happens to
+produce the observation" into "set it up and run it", which is a different kind of project.
+
+WHAT MAKES A TEST WORTH RUNNING. Each one names a quantity the model currently guesses at
+or cannot express, states what the model predicts, and states what would falsify it. A
+test whose outcome cannot contradict anything is a demonstration, not a measurement, and
+does not belong here.
+
+The suite is aimed squarely at the gap datapack_check reports: nine mechanics the cards
+describe in their own text and the data has no field for. Those are not small - Feigned
+Dodge is in nearly every deck the optimizer recommends, and the model has only half of
+it. The card takes an opening off you and puts twice that amount ON the opponent, so it
+is a reduction and an attack at once; the half that is missing is the attacking half,
+which means the optimizer is already choosing the card while seeing only its worse side.
+
+HOW A TEST IS RUN. Both characters enter Valhalla with the stats, gear and deck the test
+names, the spar is initiated by hand, and the bot is switched on for both. The bot throws
+one card on a loop, because that is what the client does anyway: using a card walks you
+to the opponent and keeps using it until another is chosen. Most tests need nothing more
+than that - one side spamming one card and the other holding still is the cleanest
+measurement there is, and the fight log records both sides' openings, initiative and
+damage every step.
+
+Whatever the test varies, everything else is held identical between the two characters.
+That is the whole advantage of Valhalla over the corpus, where every observation arrives
+with a different character attached.
+"""
+import json
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import estimate  # noqa: E402
+
+OUT = os.path.join(estimate.ROOT, "data", "combat", "spar-tests.json")
+
+# A plain fighter, repeated on both sides unless a test says otherwise. Round numbers on
+# purpose: a prediction that has to be read off a measurement is harder to argue with when
+# the inputs are exact, and Valhalla lets them be exact.
+BASE = {
+    "str": 100, "agi": 100, "con": 100, "unarmed": 100, "melee": 100,
+    "hp": 100,
+    "weapon": {"name": "Bronze Sword", "quality": 10.0},
+    "armour": "none",
+    "note": "quality 10 makes the damage term sqrt(sqrt(10*100)/10) = 1.0 exactly, so a "
+            "full-share swing at a fully open target is the weapon's listed damage and "
+            "nothing else",
+}
+
+
+def naked(**over):
+    d = dict(BASE)
+    d.update(over)
+    return d
+
+
+TESTS = [
+    {
+        "id": "ST-01",
+        "name": "Does Steal Thunder need an opening to steal anything?",
+        "measures": "whether the initiative theft scales with the blue and yellow "
+                    "openings its attack types read, and by what curve",
+        "why": "The card says it takes 3 initiative and gives you 2 'to the extent that "
+               "it is unblocked'. That phrasing is what the damage lines use, and damage "
+               "goes as the square of the combined opening - so the reading to test is "
+               "that a Steal Thunder into a closed opponent steals nothing at all. "
+               "Nothing in the pack can hold this today, so the simulator plays the card "
+               "as a bare blue opener and the optimizer has been putting it in decks on "
+               "that basis.",
+        "a": {"stats": naked(), "deck": ["Steal Thunder 1", "Parry 1", "Take Aim 1"]},
+        "b": {"stats": naked(), "deck": ["Parry 1", "Take Aim 1"]},
+        "procedure": [
+            "B holds still and throws nothing, so its openings stay at zero.",
+            "A throws Steal Thunder on a loop. Record both sides' initiative every use.",
+            "Then repeat with A first throwing Sideswipe to put yellow on B, and "
+            "Steal Thunder itself to put blue on B, so the second run climbs through a "
+            "range of openings rather than sitting at one.",
+        ],
+        "predicts": "If it scales as damage does, the first use into a closed opponent "
+                    "moves no initiative at all, and the amount moved grows with the "
+                    "square of the combined blue-and-yellow opening, reaching the full "
+                    "3 and 2 only near a complete opening.",
+        "falsified_by": "A flat 3 and 2 on the very first use into a closed opponent. "
+                        "That would mean 'unblocked' refers to something else entirely - "
+                        "a block roll, not an opening - and the whole reading is wrong.",
+    },
+    {
+        "id": "FD-01",
+        "name": "Does Feigned Dodge really give the opponent twice what it takes?",
+        "measures": "the ratio between the green opening Feigned Dodge closes on its "
+                    "user and the green it opens on the opponent",
+        "why": "The model has only half of this card. It applies the reduction on its "
+               "user and nothing else, and the text says the points come off you and go "
+               "ON to the opponent at twice the amount - so it is a defensive card and "
+               "an attack in one, and the half that is missing is the attacking half. "
+               "That means Feigned Dodge is UNDERVALUED, not overvalued: the optimizer "
+               "already puts it in nearly every deck while seeing only its worse side.",
+        "a": {"stats": naked(), "deck": ["Feigned Dodge 1", "Parry 1", "Take Aim 1"]},
+        "b": {"stats": naked(), "deck": ["Chop 1", "Parry 1", "Take Aim 1"]},
+        "procedure": [
+            "B throws Chop on a loop until A is carrying a large green opening - Chop "
+            "opens green and nothing else, so the colour under test is the only one "
+            "moving.",
+            "A then throws Feigned Dodge once. Record A's green before and after, and "
+            "B's green before and after, in the same step.",
+            "Repeat from several different starting greens on A, because a share and a "
+            "flat amount look identical at one value.",
+        ],
+        "predicts": "A's green falls by 15% of what was standing, and B's green rises "
+                    "by twice the number of points A shed - so the card opens the "
+                    "opponent without being an attack, and does it in proportion to how "
+                    "badly A was already hurt.",
+        "falsified_by": "B's green not moving, which would mean the card is the pure "
+                        "reduction the model currently plays; or B's green rising by the "
+                        "same amount A shed rather than double.",
+    },
+    {
+        "id": "BL-01",
+        "name": "How much does Bloodlust actually charge, and what does it buy?",
+        "measures": "the charge per use and the multiplier it applies to attack weight",
+        "why": "The card says it charges 25% per mu and raises your attack weight by four "
+               "times the charge. A previous attempt to find this in the corpus failed - "
+               "it was looked for in the wrong place, in opening rises rather than damage "
+               "rows, and the corrected count came back at zero. In Valhalla it can be "
+               "isolated instead of inferred.",
+        "a": {"stats": naked(), "deck": ["Bloodlust 1", "Chop 1", "Take Aim 1"]},
+        "b": {"stats": naked(), "deck": ["Parry 1", "Take Aim 1"]},
+        "procedure": [
+            "A holds Bloodlust as its stance and throws Chop on a loop into a still B.",
+            "Record the green opening each Chop inflicts, in order.",
+            "The first Chop is the uncharged baseline; each later one should open more "
+            "than the last until the charge caps.",
+        ],
+        "predicts": "Successive Chops open more, and the growth is consistent with an "
+                    "attack weight rising by four times a charge that itself rises 25% "
+                    "per use. Openings go as the cube root of the weight ratio, so the "
+                    "rise in the opening is much gentler than the rise in the weight.",
+        "falsified_by": "Every Chop opening the same amount, which would say the charge "
+                        "does not touch attack weight at all.",
+    },
+    {
+        "id": "DA-01",
+        "name": "Does Dash remove the slightest opening outright?",
+        "measures": "whether Dash zeroes the smallest standing opening rather than "
+                    "reducing it by a share",
+        "why": "The text says 'completely removes your slightest opening', which is not a "
+               "share and has no field. The model plays Dash as a card that does nothing "
+               "defensive whatever.",
+        "a": {"stats": naked(), "deck": ["Dash 1", "Parry 1", "Take Aim 1"]},
+        "b": {"stats": naked(),
+              "deck": ["Chop 1", "Sideswipe 1", "Quick Barrage 1", "Parry 1"]},
+        "procedure": [
+            "B throws Chop, Sideswipe and Quick Barrage in turn so that A carries three "
+            "different colours at three clearly different sizes.",
+            "A throws Dash once. Record all four of A's openings before and after.",
+        ],
+        "predicts": "Exactly one opening changes - the smallest non-zero one - and it "
+                    "goes to zero. The others are untouched.",
+        "falsified_by": "Several openings falling, or the smallest falling only partly. "
+                        "Either means it is a share and can be modelled as one.",
+    },
+    {
+        "id": "OS-01",
+        "name": "Does Oak Stance quietly shave the greatest opening every tick?",
+        "measures": "whether the passive 5% reduction happens, and on what clock",
+        "why": "Oak Stance's text carries a reduction the model does not have, and a "
+               "passive that fires on a timer is a different kind of thing from anything "
+               "else in the sheet. Whether it is per use, per tick or per second decides "
+               "whether it is worth half the attack weight the stance costs.",
+        "a": {"stats": naked(), "deck": ["Oak Stance 1", "Take Aim 1"]},
+        "b": {"stats": naked(), "deck": ["Chop 1", "Parry 1"]},
+        "procedure": [
+            "B opens A up with Chop and then stops entirely.",
+            "A throws nothing at all. Record A's openings every step for a minute.",
+            "Run the same with A holding Parry instead, as the control - openings decay "
+            "on their own and the test is the difference between the two curves.",
+        ],
+        "predicts": "Under Oak Stance the greatest opening falls faster than under "
+                    "Parry, by about 5% of what is standing on whatever clock the "
+                    "passive uses.",
+        "falsified_by": "The two curves matching, which would mean the line describes "
+                        "something that only happens on use.",
+    },
+    {
+        "id": "MT-01",
+        "name": "What do the multi-target cards do to a second and third opponent?",
+        "measures": "how Full Circle, Punch 'em Both and Storm of Swords divide their "
+                    "effect among several opponents",
+        "why": "Three cards say they hit more than one opponent and the simulator is one "
+               "against one, so all three are priced as single-target cards. Storm of "
+               "Swords even escalates - 100, 125, 150, 175 and 200% of the weapon's "
+               "damage across five targets - which would make it the best card in the "
+               "game against a crowd and it has never been thrown.",
+        "a": {"stats": naked(),
+              "deck": ["Full Circle 1", "Punch 'em Both 1", "Storm of Swords 1",
+                       "Parry 1"]},
+        "b": {"stats": naked(), "deck": ["Parry 1"],
+              "note": "three or more characters on this side, all identical, all still"},
+        "procedure": [
+            "Three or more B characters stand together in range, throwing nothing.",
+            "A throws Full Circle once, then Punch 'em Both once, then Storm of Swords "
+            "once, recording every opponent's openings and health after each.",
+            "Repeat with the B characters at different distances to find what 'in range' "
+            "means in practice.",
+        ],
+        "predicts": "Full Circle lands on all of them, Punch 'em Both on two, and Storm "
+                    "of Swords on up to five at rising damage. Nothing in the model says "
+                    "this yet, so any of it landing at all is new.",
+        "falsified_by": "Only the primary target being affected, which would mean the "
+                        "range condition is much tighter than the text suggests.",
+    },
+    {
+        "id": "MU-01",
+        "name": "What is mu at level 5?",
+        "measures": "the deck weighting at the one level the corpus has never held",
+        "why": "mu is measured at levels 1 through 4 and reads 1.0, 1.125, 1.25 and "
+               "1.375, a clean linear step of an eighth. Level 5 has never been held, so "
+               "1.5 is an extrapolation - and the deck search now spends points up to "
+               "level 5 on the strength of it. Take Aim's cooldown divides by mu, which "
+               "makes it readable directly off a single card use.",
+        "a": {"stats": naked(), "deck": ["Take Aim 5", "Parry 1"]},
+        "b": {"stats": naked(), "deck": ["Parry 1"]},
+        "procedure": [
+            "A throws Take Aim once at no initiative and the cooldown is recorded.",
+            "Repeat at levels 1 through 5 so the whole curve is measured on one "
+            "character rather than stitched across several.",
+        ],
+        "predicts": "Take Aim's base is 30, so level 5 at mu 1.5 reads floor(30/1.5) = "
+                    "20 ticks. Levels 1 to 4 read 30, 26, 24 and 21.",
+        "falsified_by": "Anything but 20 at level 5. A square-root curve would give 22, "
+                        "and the two are separable here where they were not at level 4.",
+    },
+    {
+        "id": "PA-01",
+        "name": "How much does Parry put on whoever swings, and does it need a sword?",
+        "measures": "the size of the triggered blue opening and the weapon requirement",
+        "why": "Parry's answering opening was applied in only one of the two code paths "
+               "for a long time and never fired in a duel at all. It is now in both, but "
+               "the size has only ever been inferred from card text, and the weapon "
+               "requirement is a note rather than a measurement.",
+        "a": {"stats": naked(), "deck": ["Parry 1", "Take Aim 1"]},
+        "b": {"stats": naked(), "deck": ["Chop 1", "Parry 1"]},
+        "procedure": [
+            "A holds Parry with a sword equipped and throws nothing.",
+            "B throws Chop on a loop. Record B's blue opening after each swing.",
+            "Repeat with A holding no weapon at all, and again with A holding a weapon "
+            "that is not a sword, since the note says a sword specifically.",
+        ],
+        "predicts": "B's blue rises on every swing while A is holding a sword, by the "
+                    "card's listed amount scaled the way any opening is - cube root of "
+                    "the weight ratio, times one minus what is already standing. Nothing "
+                    "rises when A is unarmed.",
+        "falsified_by": "The opening appearing without a sword, or the size not "
+                        "following the usual opening curve.",
+    },
+    {
+        "id": "AP-01",
+        "name": "Does an unarmed attack really carry a flat 30% penetration?",
+        "measures": "armour penetration for unarmed cards against known soak",
+        "why": "The model gives every unarmed attack a flat 30%, on two written sources "
+               "and no measurement, because the one armoured opponent in the corpus that "
+               "could have tested it turned out immune to penetration entirely. Getting "
+               "this wrong makes every unarmed-versus-armoured matchup wrong in the same "
+               "direction, and that is the question the project exists to answer.",
+        "a": {"stats": naked(), "deck": ["Knock Its Teeth Out 1", "Chop 1", "Parry 1"]},
+        "b": {"stats": naked(armour="a known set - record hard and soft from the gear "
+                                    "rows, and repeat with none at all"),
+              "deck": ["Parry 1"]},
+        "procedure": [
+            "B stands still wearing a known set of armour and is opened up by A.",
+            "A throws Knock Its Teeth Out repeatedly - it is unarmed and lists a flat 30 "
+            "damage - and then Chop, which is the same swing through the weapon.",
+            "Record the damage dealt and the soak alongside it for both.",
+            "Repeat with B wearing nothing, which gives the unsoaked baseline the "
+            "penetration is a fraction of.",
+        ],
+        "predicts": "The unarmed card gets 30% of its raw damage through before soak "
+                    "applies, whatever the weapon in hand is. The armed card gets the "
+                    "weapon's own figure - 12.5% for a Bronze Sword.",
+        "falsified_by": "The unarmed share tracking the weapon's penetration, or not "
+                        "being 30%.",
+    },
+    {
+        "id": "EQ-01",
+        "name": "Where exactly does equalization start and stop?",
+        "measures": "the boundary of the band inside which two skills are treated as "
+                    "equal, and the behaviour just outside it",
+        "why": "The model says skills within a factor of two compare as equal, and "
+               "outside it the ratio is taken with the factor divided back out. That is "
+               "fitted from fights against animals whose skill had to be recovered from "
+               "the same observations - it has never been checked against a known number "
+               "on both sides, which Valhalla can simply set.",
+        "a": {"stats": naked(melee=100), "deck": ["Chop 1", "Parry 1"]},
+        "b": {"stats": naked(melee=100),
+              "note": "rerun at melee 50, 51, 100, 199, 200 and 201 against A's 100, "
+                      "which walks both edges of the factor of two",
+              "deck": ["Parry 1"]},
+        "procedure": [
+            "A throws Chop once into a still B and the green opening is recorded.",
+            "B's melee is changed and the same single swing repeated.",
+            "Nothing else changes at any point, so the opening is a function of the "
+            "skill ratio alone.",
+        ],
+        "predicts": "Between half and twice A's skill the opening is identical at every "
+                    "value. Outside it, it moves as the cube root of the ratio with the "
+                    "factor of two divided out, so there is a visible kink exactly at "
+                    "the boundary and no jump.",
+        "falsified_by": "The opening varying inside the band, or jumping at the edge "
+                        "rather than bending.",
+    },
+    {
+        "id": "RG-01",
+        "name": "What does range actually buy, and can you disengage on reaction?",
+        "measures": "what the in-and-out game is worth, and the two reaches the corpus "
+                    "cannot supply - Steal Thunder, which has never been thrown, and the "
+                    "range at which an opponent stops being able to answer",
+        "why": "The corpus already measures reach - every state row carries the "
+               "distance - and it says reductions have no range requirement at all while "
+               "attacks are tightly bounded. Maxima seen: Sidestep 599, Quick Dodge 597, "
+               "Dash 481, Artful Evasion 462 against Sting 57, Full Circle 56, Cleave 56, "
+               "and unarmed shorter still at Knock Its Teeth Out 31 and Punch 20. Take "
+               "Aim sits alone in between at 148. So a reduction can be thrown from "
+               "anywhere and its cost is the tick, not the exposure. "
+               "What that buys is the in-and-out game, and THAT is what needs measuring: "
+               "back off, drop a reduction from outside their attack range, come back. "
+               "Two players move at the same speed, so whoever turns first has the "
+               "reaction gap to work with - not available in a tight den, against "
+               "something faster, or body blocked, but usually available in PVP. The "
+               "simulator has no notion of standing apart at all, which is the same hole "
+               "that leaves four of fourteen learned policy rules unreadable.",
+        "a": {"stats": naked(),
+              "deck": ["Take Aim 1", "Think 1", "Steal Thunder 1", "Feigned Dodge 1",
+                       "Chop 1", "Parry 1"]},
+        "b": {"stats": naked(), "deck": ["Chop 1", "Parry 1"]},
+        "procedure": [
+            "First fill the gaps in the reach table: Steal Thunder has never been thrown "
+            "and its text claims a small distance. Throw it from increasing distances "
+            "and find where it stops reaching.",
+            "B throws Chop on a loop and follows. A walks away and, from increasing "
+            "distances, tries each card in turn. Record the distance at which each stops "
+            "working - the client walks you in rather than refusing, so the measure is "
+            "whether A closes the gap before the card goes off.",
+            "Then the reaction test: with both in melee, A turns and runs, throws Feigned "
+            "Dodge at the furthest point it still fires, and returns. Record how much "
+            "health A lost across the whole excursion against simply standing and "
+            "throwing it.",
+            "Repeat with A body blocked against a wall, which is the case where none of "
+            "this is available.",
+        ],
+        "predicts": "Nothing, and that is the point - the model has no range term, so it "
+                    "has no prediction to make here. Every other test in this file can be "
+                    "falsified; this one exists to produce the numbers a range term would "
+                    "be built from.",
+        "falsified_by": "Not applicable. Read this one as a survey rather than a test, "
+                        "and do not let it be reported as a confirmation of anything.",
+    },
+    {
+        "id": "YG-01",
+        "name": "Does Yield Ground open its own user?",
+        "measures": "the only mechanic in the sheet that no card in use carries",
+        "why": "Yield Ground is the single card whose behaviour the audit cannot reach: "
+               "it lists openings on yourself, no other card does, and it has never been "
+               "thrown. The simulator implements it, through the same equalized formula "
+               "as any other opening, and nothing has ever checked that.",
+        "a": {"stats": naked(), "deck": ["Yield Ground 1", "Chop 1", "Parry 1"]},
+        "b": {"stats": naked(), "deck": ["Parry 1"]},
+        "procedure": [
+            "A throws Yield Ground once into a still B and records its OWN four openings "
+            "before and after, along with B's.",
+            "Repeat at levels 1 and 5, since a self-opening is the one case where a "
+            "higher level should be worse.",
+        ],
+        "predicts": "A's own blue and yellow rise by 10 points each, scaled the way any "
+                    "opening is. B gains nothing. At level 5 the self-opening is larger, "
+                    "which is why the deck search refuses to buy levels in it.",
+        "falsified_by": "Nothing happening to A, or B being opened instead.",
+    },
+]
+
+
+def build():
+    return {
+        "source": "tools/combat/spar_tests.py",
+        "note": "Controlled tests for Valhalla. Each names a quantity the model guesses "
+                "at, what it predicts, and what would falsify it.",
+        "base_fighter": BASE,
+        "tests": TESTS,
+    }
+
+
+def main():
+    doc = build()
+    with open(OUT, "w", encoding="utf8") as f:
+        json.dump(doc, f, indent=1, sort_keys=False)
+        f.write(chr(10))
+    print("wrote %s  (%d test(s))" % (os.path.relpath(OUT, estimate.ROOT), len(TESTS)))
+    for t in TESTS:
+        print("  %-7s %s" % (t["id"], t["name"]))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
