@@ -1551,10 +1551,11 @@
    },
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 22.7,
-     "hi": 22.7,
-     "lo": 22.7,
-     "n": 1
+     "hi": 69.4,
+     "lo": 12.8,
+     "n": 4
     },
     "flees_below": null,
     "period": {
@@ -1746,10 +1747,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 19.6,
+     "before_armour": true,
+     "coef": 23.1,
      "hi": 286.3,
-     "lo": 7.1,
-     "n": 24
+     "lo": 8.8,
+     "n": 34
     },
     "flees_below": null,
     "period": {
@@ -1891,10 +1893,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 10.7,
-     "hi": 27.6,
-     "lo": 5.2,
-     "n": 6
+     "before_armour": true,
+     "coef": 27.6,
+     "hi": 43.9,
+     "lo": 8.9,
+     "n": 30
     },
     "flees_below": null,
     "period": {
@@ -2083,10 +2086,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.3,
-     "hi": 82.6,
-     "lo": 2.0,
-     "n": 24
+     "before_armour": true,
+     "coef": 9.5,
+     "hi": 400.0,
+     "lo": 2.6,
+     "n": 57
     },
     "flees_below": null,
     "period": {
@@ -2249,10 +2253,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.2,
-     "hi": 30.5,
-     "lo": 7.3,
-     "n": 7
+     "before_armour": true,
+     "coef": 73.3,
+     "hi": 128.5,
+     "lo": 41.5,
+     "n": 15
     },
     "flees_below": null,
     "period": {
@@ -2386,10 +2391,11 @@
    },
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 34.6,
-     "hi": 34.6,
-     "lo": 12.8,
-     "n": 2
+     "hi": 156.3,
+     "lo": 9.2,
+     "n": 10
     },
     "flees_below": null,
     "period": {
@@ -2855,10 +2861,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 8.7,
-     "hi": 156.3,
-     "lo": 2.6,
-     "n": 58
+     "before_armour": true,
+     "coef": 34.6,
+     "hi": 211.3,
+     "lo": 10.5,
+     "n": 114
     },
     "flees_below": 0.243,
     "period": {
@@ -3000,6 +3007,7 @@
    "skill": null,
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 32.7,
      "hi": 373.4,
      "lo": 8.2,
@@ -3494,6 +3502,7 @@
    "skill": null,
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 15.4,
      "hi": 28.4,
      "lo": 3.7,
@@ -3725,10 +3734,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 13.7,
-     "hi": 13.7,
-     "lo": 13.7,
-     "n": 1
+     "before_armour": true,
+     "coef": 30.9,
+     "hi": 32.0,
+     "lo": 27.4,
+     "n": 4
     },
     "flees_below": null,
     "period": {
@@ -3945,10 +3955,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 11.1,
-     "hi": 27.7,
+     "before_armour": true,
+     "coef": 28.0,
+     "hi": 89.2,
      "lo": 4.4,
-     "n": 16
+     "n": 34
     },
     "flees_below": null,
     "period": {
@@ -4187,10 +4198,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.6,
-     "hi": 268.6,
-     "lo": 1.8,
-     "n": 121
+     "before_armour": true,
+     "coef": 51.0,
+     "hi": 392.6,
+     "lo": 5.2,
+     "n": 154
     },
     "flees_below": null,
     "period": {
@@ -4305,10 +4317,11 @@
    },
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 27.7,
-     "hi": 27.7,
-     "lo": 2.9,
-     "n": 2
+     "hi": 39.1,
+     "lo": 11.4,
+     "n": 6
     },
     "flees_below": null,
     "period": {
@@ -4460,10 +4473,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 6.2,
-     "hi": 9.2,
-     "lo": 4.9,
-     "n": 4
+     "before_armour": true,
+     "coef": 16.0,
+     "hi": 69.4,
+     "lo": 8.7,
+     "n": 20
     },
     "flees_below": null,
     "period": {
@@ -4564,7 +4578,13 @@
    "res": "gfx/kritter/eagleowl/eagleowl",
    "skill": null,
    "threat": {
-    "damage": null,
+    "damage": {
+     "before_armour": true,
+     "coef": 29.6,
+     "hi": 30.9,
+     "lo": 26.0,
+     "n": 3
+    },
     "flees_below": null,
     "period": {
      "dropped": 0,
@@ -4698,10 +4718,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 14.8,
-     "hi": 14.8,
-     "lo": 14.8,
-     "n": 1
+     "before_armour": true,
+     "coef": 25.0,
+     "hi": 59.2,
+     "lo": 12.8,
+     "n": 8
     },
     "flees_below": null,
     "period": {
@@ -4826,10 +4847,11 @@
    },
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 30.9,
-     "hi": 51.0,
+     "hi": 100.0,
      "lo": 20.7,
-     "n": 4
+     "n": 22
     },
     "flees_below": null,
     "period": {
@@ -5032,10 +5054,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 11.1,
-     "hi": 44.4,
-     "lo": 3.2,
-     "n": 13
+     "before_armour": true,
+     "coef": 28.4,
+     "hi": 96.0,
+     "lo": 13.6,
+     "n": 29
     },
     "flees_below": 0.366,
     "period": {
@@ -5153,10 +5176,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 14.8,
-     "hi": 14.8,
-     "lo": 9.8,
-     "n": 2
+     "before_armour": true,
+     "coef": 27.7,
+     "hi": 123.5,
+     "lo": 17.3,
+     "n": 8
     },
     "flees_below": null,
     "period": {
@@ -5448,10 +5472,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 20.7,
-     "hi": 20.7,
-     "lo": 14.8,
-     "n": 2
+     "before_armour": true,
+     "coef": 88.9,
+     "hi": 277.8,
+     "lo": 69.4,
+     "n": 6
     },
     "flees_below": null,
     "period": {
@@ -5607,10 +5632,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 6.9,
-     "hi": 22.6,
-     "lo": 3.3,
-     "n": 19
+     "before_armour": true,
+     "coef": 32.7,
+     "hi": 117.2,
+     "lo": 12.8,
+     "n": 29
     },
     "flees_below": null,
     "period": {
@@ -5724,9 +5750,10 @@
    },
    "threat": {
     "damage": {
-     "coef": 63.0,
-     "hi": 1493.4,
-     "lo": 47.3,
+     "before_armour": true,
+     "coef": 378.1,
+     "hi": 10287.5,
+     "lo": 330.8,
      "n": 4
     },
     "flees_below": null,
@@ -5950,10 +5977,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 69.4,
-     "hi": 69.4,
-     "lo": 69.4,
-     "n": 1
+     "before_armour": true,
+     "coef": 156.3,
+     "hi": 204.1,
+     "lo": 138.9,
+     "n": 3
     },
     "flees_below": null,
     "period": {
@@ -6065,7 +6093,13 @@
     "value": 51.5
    },
    "threat": {
-    "damage": null,
+    "damage": {
+     "before_armour": true,
+     "coef": 16.0,
+     "hi": 59.2,
+     "lo": 9.2,
+     "n": 3
+    },
     "flees_below": null,
     "period": {
      "dropped": 0,
@@ -6179,10 +6213,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.8,
-     "hi": 9.8,
-     "lo": 6.6,
-     "n": 2
+     "before_armour": true,
+     "coef": 17.4,
+     "hi": 59.2,
+     "lo": 9.8,
+     "n": 6
     },
     "flees_below": null,
     "period": {
@@ -6697,10 +6732,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 63.2,
-     "hi": 63.2,
+     "before_armour": true,
+     "coef": 105.2,
+     "hi": 211.3,
      "lo": 12.3,
-     "n": 2
+     "n": 4
     },
     "flees_below": null,
     "period": {
@@ -6905,10 +6941,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 4.9,
-     "hi": 30.9,
-     "lo": 2.5,
-     "n": 30
+     "before_armour": true,
+     "coef": 26.9,
+     "hi": 130.5,
+     "lo": 5.8,
+     "n": 48
     },
     "flees_below": 0.304,
     "period": {
@@ -7105,10 +7142,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.8,
-     "hi": 100.0,
-     "lo": 4.2,
-     "n": 14
+     "before_armour": true,
+     "coef": 25.3,
+     "hi": 112.5,
+     "lo": 6.2,
+     "n": 60
     },
     "flees_below": null,
     "period": {
@@ -7351,10 +7389,11 @@
    },
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 22.8,
-     "hi": 23.1,
-     "lo": 15.4,
-     "n": 3
+     "hi": 69.4,
+     "lo": 15.8,
+     "n": 7
     },
     "flees_below": null,
     "period": {
@@ -7566,9 +7605,10 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.7,
-     "hi": 9.7,
-     "lo": 9.7,
+     "before_armour": true,
+     "coef": 19.4,
+     "hi": 19.4,
+     "lo": 19.4,
      "n": 1
     },
     "flees_below": null,
@@ -7712,10 +7752,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 5.6,
-     "hi": 13.5,
-     "lo": 5.0,
-     "n": 7
+     "before_armour": true,
+     "coef": 20.1,
+     "hi": 73.3,
+     "lo": 7.7,
+     "n": 28
     },
     "flees_below": null,
     "period": {
@@ -7837,10 +7878,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 8.7,
-     "hi": 20.7,
-     "lo": 5.9,
-     "n": 3
+     "before_armour": true,
+     "coef": 18.9,
+     "hi": 204.1,
+     "lo": 7.7,
+     "n": 11
     },
     "flees_below": null,
     "period": {
@@ -8831,10 +8873,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 9.8,
-     "hi": 14.6,
-     "lo": 7.0,
-     "n": 5
+     "before_armour": true,
+     "coef": 25.3,
+     "hi": 83.1,
+     "lo": 8.5,
+     "n": 9
     },
     "flees_below": null,
     "period": {
@@ -9076,10 +9119,11 @@
    },
    "threat": {
     "damage": {
+     "before_armour": true,
      "coef": 69.4,
-     "hi": 100.0,
-     "lo": 12.8,
-     "n": 8
+     "hi": 164.4,
+     "lo": 25.0,
+     "n": 46
     },
     "flees_below": null,
     "period": {
@@ -9223,10 +9267,11 @@
    },
    "threat": {
     "damage": {
-     "coef": 13.7,
-     "hi": 44.4,
-     "lo": 8.7,
-     "n": 3
+     "before_armour": true,
+     "coef": 30.9,
+     "hi": 123.5,
+     "lo": 14.8,
+     "n": 15
     },
     "flees_below": null,
     "period": {

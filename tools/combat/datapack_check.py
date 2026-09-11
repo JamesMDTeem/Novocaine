@@ -543,8 +543,80 @@ def text_mechanics():
           any(c == "Feigned Dodge" for c, _w in gaps), True)
 
 
+def how_thin_is_the_damage():
+    """How much of the roster's damage figure is actually measured.
+
+    OUR OWN ARMOUR IS WHAT BLINDS THE CORPUS HERE. A creature's damage coefficient is
+    fitted to blows that took soft hitpoints, and through 79 points of hard soak most
+    creature blows take about one - so the better the gear, the fewer observations there
+    are to fit. It is a measurement problem created by success.
+
+    The boreworm is the case worth carrying: one observation, coefficient 13.7, and the
+    safest-aim report predicts 33 hitpoints lost where four logged fights cost a median
+    of 4 and a worst of 9. The prediction is not merely thin, it is four to eight times
+    pessimistic, and nothing in the output said so until it was asked.
+    """
+    print("")
+    print("how much of the damage model is actually measured")
+    path = os.path.join(_est3root(), "data", "combat", "opponents.json")
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            doc = _json4.load(f)
+    except (OSError, ValueError):
+        return
+    none_at_all, thin, solid = [], [], []
+    for v in doc.get("opponents") or []:
+        if v.get("kind") != "creature":
+            continue
+        th = v.get("threat")
+        if not th:
+            continue
+        n = ((th.get("damage") or {}).get("n"))
+        if not n:
+            none_at_all.append(v["name"])
+        elif n <= 3:
+            thin.append(v["name"])
+        else:
+            solid.append(v["name"])
+    tot = len(none_at_all) + len(thin) + len(solid)
+    print("  %d creature(s) with a threat model: %d never seen landing a blow, "
+          "%d resting on 3 or fewer, %d better than that"
+          % (tot, len(none_at_all), len(thin), len(solid)))
+    # WAS "thin for most of the roster", AND THE FIX MADE THAT FALSE. The fit used to
+    # count only the soft hitpoints a blow took and throw the soaked part away, which
+    # through heavy armour is most of the blow - so it measured the residue our own gear
+    # let past, and the better the gear the less there was to fit. Counting the whole
+    # swing took the corpus from 408 usable observations to 850, and the roster from 13
+    # never-seen and 14 thin against 17 measured, to 11 and 4 against 29.
+    #
+    # The assertion now points the other way, so that losing the ground again fails here
+    # rather than quietly returning to guesswork.
+    check("most of the roster's damage is measured rather than guessed",
+          len(solid) > (len(none_at_all) + len(thin)), True)
+    check("  and the deck report says so per opponent",
+          "health column is a guess" in _read_tool("tools/CombatDeckSearch.java"), True)
+
+
+def _est3root():
+    import estimate as _e
+    return _e.ROOT
+
+
+def _read_tool(rel):
+    try:
+        with open(os.path.join(_est3root(), rel), "r", encoding="utf-8",
+                  errors="replace") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
+import json as _json4  # noqa: E402
+
+
 def main():
     primitives()
+    how_thin_is_the_damage()
     every_key_is_read()
     text_mechanics()
     gear()

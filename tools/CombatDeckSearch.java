@@ -707,11 +707,26 @@ public class CombatDeckSearch {
                 best.put(n, d);
             else
                 unsure++;
-            System.out.printf("  %-16s %-8.0f %-8d %-52s %s%n",
+            /* HOW MUCH THE HEALTH COLUMN IS WORTH, which is not the same for every row.
+             * A creature's damage coefficient is fitted only to blows that actually took
+             * soft hitpoints, and through 79 points of hard soak most of theirs take
+             * about one - so the better the armour, the blinder the corpus is to how hard
+             * they hit. 27 of 44 creatures rest their damage on three observations or
+             * fewer and 13 on none at all, which makes the safest-aim number a guess for
+             * most of the roster while looking exactly like the ones that are measured.
+             *
+             * The boreworm is the case that prompted this: one observation, coefficient
+             * 13.7, and the report predicts 33 hitpoints where four logged fights cost a
+             * median of 4 and a worst of 9. */
+            int dn = (o.threat == null) ? 0 : o.threat.nHits;
+            String thin = (aim != Advisor.Aim.SAFEST) ? ""
+                : ((dn == 0) ? "<- never seen landing a blow; health column is a guess"
+                   : ((dn <= 3) ? ("<- health from " + dn + " observation(s)") : ""));
+            System.out.printf("  %-16s %-8.0f %-8d %-52s %s%s%n",
                               n.substring(0, Math.min(16, n.length())),
                               headline(d.score, aim), d.points(),
                               shorten(d, sheet),
-                              held ? "" : "<- beam lost the line; not counted");
+                              held ? "" : "<- beam lost the line; not counted", thin);
         }
         System.out.println();
         System.out.printf("  %d opponent(s) had a deck the search can stand behind;"

@@ -4874,7 +4874,27 @@ def threat(rec):
     coefs = []
     for h in (rec.get("took") or ()):
         o = [min(x, 100) / 100.0 for x in (h.get("openings") or [])]
-        if (len(o) != 4) or (h.get("shp", 0) <= 0):
+        if len(o) != 4:
+            continue
+        # THE WHOLE SWING, NOT THE PART THAT GOT THROUGH. This used the soft hitpoints
+        # alone and threw the soaked portion away, which through 79 points of hard soak
+        # is most of the blow - so it was fitting a creature's damage to the residue our
+        # own armour happened to let past, and the better the gear the less there was to
+        # fit. The boreworm ended up with ONE observation and a coefficient the report
+        # then quoted to the point.
+        #
+        # Counting the soak as well takes the corpus from 408 usable observations to 850,
+        # and the thin ones gain most: the wolf goes from 8 to 46, the golden eagle from
+        # 4 to 22, the badger 6 to 30.
+        #
+        # It also changes what the number MEANS, which is the greater part of the fix. A
+        # coefficient fitted to what got through describes one matchup - this creature
+        # against the armour we wore that day - and silently stops being true when the
+        # gear changes. A coefficient fitted to the whole swing describes the creature,
+        # and the simulator applies our armour to it, so a change of gear is answered
+        # rather than ignored. FoeModel.act does that soaking; nothing here should.
+        swing = (h.get("shp") or 0) + (h.get("soaked") or 0)
+        if swing <= 0:
             continue
         c = model.combined(o)
         # An attack that landed against nothing standing is not evidence about the
@@ -4882,10 +4902,12 @@ def threat(rec):
         # dividing by a combined opening near zero would turn that into a huge number.
         if c < 0.05:
             continue
-        coefs.append(h["shp"] / (c * c))
+        coefs.append(swing / (c * c))
     coefs.sort()
     damage = ({"coef": round(coefs[len(coefs) // 2], 1), "n": len(coefs),
-               "lo": round(coefs[0], 1), "hi": round(coefs[-1], 1)}
+               "lo": round(coefs[0], 1), "hi": round(coefs[-1], 1),
+               # So no reader mistakes this for the old figure, which meant the opposite.
+               "before_armour": True}
               if coefs else None)
 
     if (period is None) and (pn == 0) and (damage is None):

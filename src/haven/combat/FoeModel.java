@@ -283,7 +283,19 @@ public final class FoeModel {
         for(int c = 0; c < 4; c++)
             o[c] = me.opening(c);
         double combined = Formulas.combined(o);
-        double dealt = damageCoef * combined * combined;
+        /* THE COEFFICIENT IS THE WHOLE SWING NOW, so our armour has to come off it here.
+         * It used to be fitted to the soft hitpoints that got through, which made it a
+         * measurement of one matchup - this creature against the gear worn that day - and
+         * meant a change of armour was silently ignored. Fitted to the swing instead, it
+         * describes the creature, and the soaking belongs where the defender is known.
+         *
+         * Penetration is taken as zero because a creature's is unmeasured per move and
+         * varies: matched on swing size, most of their moves are soaked at 0.80 to 0.83
+         * while Ant Spit alone sits at 0.50. Zero is the conservative end for everything
+         * except the spitters, and inventing a per-creature figure from the one exception
+         * would be worse than admitting the gap. */
+        double raw = damageCoef * combined * combined;
+        double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, 0.0);
         me.hp -= dealt;
         return(dealt);
     }
