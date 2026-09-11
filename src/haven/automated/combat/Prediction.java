@@ -113,6 +113,15 @@ public final class Prediction {
     public static final class Me {
         final double str, agi, unarmed, melee, armHard, armSoft;
         final double weaponDamage, weaponQl, weaponPen;
+        /**
+         * The range figure of whatever is in hand - 1.2 for a sword, 1.0 for a stone axe.
+         *
+         * A multiple of the unarmed reach, which the corpus confirms to a fifth of a unit:
+         * see Formulas.UNARMED_REACH. It comes from the item's own tooltip rather than the
+         * wiki table, because the tooltip is what the game is actually swinging with and
+         * the table has no range column at all.
+         */
+        final double weaponRange;
         final boolean armed;
         /* Card resource -> the level it sits at in the deck we are fighting with. */
         final Map<String, Integer> levels;
@@ -121,6 +130,15 @@ public final class Prediction {
            double armHard, double armSoft,
            double weaponDamage, double weaponQl, double weaponPen, boolean armed,
            Map<String, Integer> levels) {
+            this(str, agi, unarmed, melee, armHard, armSoft, weaponDamage, weaponQl,
+                 weaponPen, Double.NaN, armed, levels);
+        }
+
+        Me(double str, double agi, double unarmed, double melee,
+           double armHard, double armSoft,
+           double weaponDamage, double weaponQl, double weaponPen, double weaponRange,
+           boolean armed, Map<String, Integer> levels) {
+            this.weaponRange = weaponRange;
             this.levels = levels;
             this.str = str;
             this.agi = agi;
@@ -167,7 +185,7 @@ public final class Prediction {
             return(null);
         double str = num(attrs, "str"), agi = num(attrs, "agi");
         double ua = num(attrs, "unarmed"), mc = num(attrs, "melee");
-        double dmg = 0, pen = 0, weaponQl = 0;
+        double dmg = 0, pen = 0, weaponQl = 0, range = Double.NaN;
         boolean armed = false;
         /* Both hands, and whichever one resolves to a weapon wins. A shield or a tool in
          * the off hand finds nothing and is simply passed over - which is the point, since
@@ -211,6 +229,11 @@ public final class Prediction {
             double p = (lPen != null) ? lPen.doubleValue() : w[1];
             if(Double.isNaN(p))
                 continue;
+            /* And its reach, which only the item knows - the wiki table has no range
+             * column. Absent leaves it NaN, which reads as the unarmed reach rather than
+             * as a weapon that cannot touch anything. */
+            Double lRange = (got == null) ? null : got.get("range");
+            range = (lRange == null) ? Double.NaN : lRange.doubleValue();
             dmg = w[0];
             pen = p;
             weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
@@ -220,7 +243,7 @@ public final class Prediction {
         /* Armour of -1 means the equipment widget could not be read, which is not the same
          * fact as wearing none. */
         return(new Me(str, agi, ua, mc, Math.max(0, armHard), Math.max(0, armSoft),
-                      dmg, weaponQl, pen, armed,
+                      dmg, weaponQl, pen, range, armed,
                       (levels == null) ? new LinkedHashMap<String, Integer>() : levels));
     }
 
@@ -287,6 +310,7 @@ public final class Prediction {
         a.weaponDamage = me.weaponDamage;
         a.weaponQl = me.weaponQl;
         a.weaponPen = me.weaponPen;
+        a.weaponRange = me.weaponRange;
         a.hp = a.maxHp = 100;
         a.ip = myIp;
 
@@ -342,7 +366,13 @@ public final class Prediction {
      */
     public static Advised advise(Me me, String foeRes, int[] foeOpen, int myIp,
                                  int beam, long horizon) {
-        return(advise(me, new String[] {foeRes}, new int[][] {foeOpen}, myIp, beam, horizon));
+        return(advise(me, new String[] {foeRes}, new int[][] {foeOpen}, null, myIp,
+                      beam, horizon));
+    }
+
+    public static Advised advise(Me me, String[] foeRes, int[][] foeOpen, int myIp,
+                                 int beam, long horizon) {
+        return(advise(me, foeRes, foeOpen, null, myIp, beam, horizon));
     }
 
     /**
@@ -360,8 +390,8 @@ public final class Prediction {
      * one-opponent version had, and better than a made-up animal. If the one we are aimed
      * at is the unknown one there is nothing to advise on at all.
      */
-    public static Advised advise(Me me, String[] foeRes, int[][] foeOpen, int myIp,
-                                 int beam, long horizon) {
+    public static Advised advise(Me me, String[] foeRes, int[][] foeOpen,
+                                 double[] foeDist, int myIp, int beam, long horizon) {
         load();
         if((me == null) || !me.usable() || (byRes == null) || (foes == null))
             return(null);
@@ -402,6 +432,7 @@ public final class Prediction {
         a.weaponDamage = me.weaponDamage;
         a.weaponQl = me.weaponQl;
         a.weaponPen = me.weaponPen;
+        a.weaponRange = me.weaponRange;
         a.hp = a.maxHp = 100;
         a.ip = myIp;
 
@@ -413,6 +444,12 @@ public final class Prediction {
                || (foeOpen[i] == null) || (foeOpen[i].length < 4))
                 continue;
             Combatant bi = oi.toughest();
+            /* WHERE IT IS STANDING, which decides whether a sweeping card reaches it. NaN
+             * when the caller does not know, and that has to stay expressible: a model
+             * that defaulted an unknown position to zero would put every animal inside
+             * every swing, which is the error that made a crowd free. */
+            bi.distance = ((foeDist != null) && (i < foeDist.length))
+                ? foeDist[i] : Double.NaN;
             for(int c = 0; c < 4; c++) {
                 if(foeOpen[i][c] > 0)
                     bi.open(c, foeOpen[i][c]);

@@ -5459,6 +5459,13 @@ def write_characters(paths=None):
         # Slot state, not a running total: a row with a null resource is a slot being
         # emptied, and summing rows in file order would keep counting armour that has
         # been taken off.
+        # The game's own figures for what is in hand, keyed by resource basename. The
+        # gear rows say WHAT is held and the weapon rows say what it does.
+        wrange = {}
+        for w in log.weapons:
+            v = w.get("v") or {}
+            if v.get("range") is not None:
+                wrange[(w.get("res") or "").split("/")[-1]] = v["range"]
         slots = {}
         for g in log.gear:
             sl = g.get("slot")
@@ -5472,7 +5479,14 @@ def write_characters(paths=None):
             if nm and (nm in wep):
                 dmg, pen = wep[nm]
                 d["weapon"] = {"name": nm, "base_damage": dmg, "ql": g.get("ql"),
-                               "armour_pen": (pen or 0) / 100.0}
+                               "armour_pen": (pen or 0) / 100.0,
+                               # HOW FAR IT REACHES, which only the item knows - the wiki
+                               # table has no range column. It is a multiple of the unarmed
+                               # reach: a sword is 1.2, a stone axe is 1.0, and the corpus
+                               # puts an unarmed swing and a 1.0 weapon at the same 18.7
+                               # units. Without it a sweeping card has no radius and every
+                               # opponent stands inside every swing.
+                               "range": wrange.get(res)}
         if slots:
             d["armour"] = {
                 "hard": sum((g.get("hard") or 0) for g in slots.values()),

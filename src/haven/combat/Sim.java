@@ -185,6 +185,14 @@ public final class Sim {
      * @return percentage points actually opened, per colour, after the falloff.
      */
     private double[] land(Combatant actor, Move m, Combatant target) {
+        return(land(actor, m, target, 1.0));
+    }
+
+    /**
+     * @param reach how much of this target the attack got, 0..1 - see Formulas.SWEEP_REACH.
+     *              1.0 for the main target and for anything the model is sure of.
+     */
+    private double[] land(Combatant actor, Move m, Combatant target, double reach) {
         /* Opportunity Knocks, and nothing else in the sheet. It multiplies the single
          * greatest standing opening, taking neither the weight ratio nor the (1 - Oc)
          * falloff that every openings line takes - so it cannot go through the loop below,
@@ -220,7 +228,7 @@ public final class Sim {
                 opened[c] = Formulas.openingGainEq(
                     actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult,
                     target.blockSkill, target.blockMult,
-                    m.openings[c], target.opening(c));
+                    m.openings[c] * reach, target.opening(c));
                 target.open(c, opened[c]);
             }
         }
@@ -361,10 +369,21 @@ public final class Sim {
      * @param index which target this is, counting the main one as zero.
      */
     public Result splash(Combatant actor, Move m, Combatant target, int index) {
-        if(!m.splashes() || (target == null) || !target.alive())
+        return(splash(actor, m, target, index, 1.0));
+    }
+
+    /**
+     * @param reach how much of this target the attack got, 0..1. The model does not know
+     *              where anybody is standing, so the LAST target a sweep reaches takes a
+     *              share rather than a full swing - see Formulas.SWEEP_REACH and
+     *              Optimizer.step. It scales the damage and the openings alike, because
+     *              both are what a blow that half landed would deliver half of.
+     */
+    public Result splash(Combatant actor, Move m, Combatant target, int index, double reach) {
+        if(!m.splashes() || (target == null) || !target.alive() || !(reach > 0))
             return(new Result("not a target of this move"));
-        double[] hit = strike(actor, m, target, m.targetScale(index));
-        double[] opened = land(actor, m, target);
+        double[] hit = strike(actor, m, target, m.targetScale(index) * reach);
+        double[] opened = land(actor, m, target, reach);
         parried(actor, m, target);
         return(new Result(hit[0], hit[1], hit[2], opened, 0, actor.ip, target.ip));
     }

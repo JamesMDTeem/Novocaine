@@ -61,7 +61,8 @@
     "armour_pen": 0.125,
     "base_damage": 90,
     "name": "Bronze Sword",
-    "ql": 61.8481
+    "ql": 61.8481,
+    "range": 1.2
    }
   },
   {
@@ -140,7 +141,8 @@
     "armour_pen": 0.125,
     "base_damage": 90,
     "name": "Bronze Sword",
-    "ql": 61.8481
+    "ql": 61.8481,
+    "range": 1.2
    }
   },
   {
@@ -222,7 +224,8 @@
     "armour_pen": 0.125,
     "base_damage": 90,
     "name": "Bronze Sword",
-    "ql": 61.8481
+    "ql": 61.8481,
+    "range": 1.2
    }
   },
   {
@@ -285,7 +288,8 @@
     "armour_pen": 0.125,
     "base_damage": 90,
     "name": "Bronze Sword",
-    "ql": 68.536
+    "ql": 68.536,
+    "range": 1.2
    }
   },
   {
@@ -387,7 +391,8 @@
     "armour_pen": 0.125,
     "base_damage": 90,
     "name": "Bronze Sword",
-    "ql": 38.0613
+    "ql": 38.0613,
+    "range": 1.2
    }
   }
  ],

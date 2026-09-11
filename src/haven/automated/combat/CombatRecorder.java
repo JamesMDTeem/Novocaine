@@ -105,6 +105,8 @@ public final class CombatRecorder {
 
     /** The last sampled crowd: gob and four openings per relation, five entries each. */
     private static volatile long[] lastCrowd = null;
+    /** And how far away each of them was, in the same order. */
+    private static volatile int[] lastCrowdDist = null;
 
     private static final java.util.Map<Long, Integer> lastHp =
         new java.util.concurrent.ConcurrentHashMap<Long, Integer>();
@@ -254,6 +256,7 @@ public final class CombatRecorder {
             named.clear();
             foeResById.clear();
             lastCrowd = null;
+            lastCrowdDist = null;
             /* Per FIGHT, not per session, so every log describes the cards it contains. A
              * fight sees a handful of distinct cards, so this is a few lines per file. */
             carded.clear();
@@ -740,10 +743,17 @@ public final class CombatRecorder {
             return(Prediction.advise(m, foeRes, open, lastMyIp,
                                      ADVICE_BEAM, ADVICE_HORIZON));
         }
+        int[] dists = lastCrowdDist;
         java.util.List<String> res = new java.util.ArrayList<String>();
         java.util.List<int[]> ops = new java.util.ArrayList<int[]>();
+        java.util.List<Double> ds = new java.util.ArrayList<Double>();
         res.add(mine);
         ops.add(open);
+        /* The one we are swinging at is by definition the one we are on, and the sweep
+         * question is about the others - so its own distance is not needed and is left
+         * unknown rather than filled with the sampled figure, which belongs to whichever
+         * relation the client happened to be showing. */
+        ds.add(Double.valueOf(Double.NaN));
         for(int i = 0; (i + 4 < crowd.length) && (res.size() < ADVICE_CROWD); i += 5) {
             long g = crowd[i];
             if(g == gobId)
@@ -754,9 +764,17 @@ public final class CombatRecorder {
             res.add(r);
             ops.add(new int[] {(int)crowd[i + 1], (int)crowd[i + 2],
                                (int)crowd[i + 3], (int)crowd[i + 4]});
+            /* Where it is standing, which is what decides whether a sweeping card reaches
+             * it. -1 is the client saying it could not tell, and that is NaN here rather
+             * than a zero that would put the animal on top of us. */
+            int dv = ((dists != null) && ((i / 5) < dists.length)) ? dists[i / 5] : -1;
+            ds.add(Double.valueOf((dv < 0) ? Double.NaN : (double)dv));
         }
+        double[] da = new double[ds.size()];
+        for(int i = 0; i < da.length; i++)
+            da[i] = ds.get(i).doubleValue();
         return(Prediction.advise(m, res.toArray(new String[0]),
-                                 ops.toArray(new int[0][]), lastMyIp,
+                                 ops.toArray(new int[0][]), da, lastMyIp,
                                  ADVICE_BEAM, ADVICE_HORIZON));
     }
 
@@ -1062,6 +1080,7 @@ public final class CombatRecorder {
             /* Kept as well as logged, because the advisor below needs it live. This is the
              * only place the client hands over every opponent's openings at once. */
             lastCrowd = packed.clone();
+            lastCrowdDist = (dist == null) ? null : dist.clone();
             log(CombatEvent.foes(now(), packed, gst, dist));
         } catch(Exception e) {
             /* never propagate into tick() */

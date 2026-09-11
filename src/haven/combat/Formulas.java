@@ -50,6 +50,87 @@ public final class Formulas {
      *                the opening whenever another colour happens to be up, and understates
      *                the coefficient badly.
      */
+    /**
+     * The share of the OTHER opponents that a sweeping attack actually lands on.
+     *
+     * Full Circle's text is "your main target and all other opponents in range", and the
+     * model has no idea where anybody is standing - so it used to give the card everyone
+     * still alive. That made a crowd free: eleven of thirteen species took exactly as long
+     * to clear at five opponents as at three, because every extra animal died alongside
+     * the first for nothing.
+     *
+     * Measured instead. Across every Full Circle in the corpus thrown with two or more
+     * opponents standing AND landing on at least one of them, counting how many of the
+     * others it raised an opening on:
+     *
+     *   others standing   throws   others reached
+     *   1                     55             0.33
+     *   2                     28             0.79
+     *   3                     10             1.80
+     *   4 or more              6             2.50
+     *
+     * which is 70 of 174 bystanders, 0.40. The control says the signal is real: Quick
+     * Barrage, single target, reaches 0.01 of the others over 551 throws in the same
+     * conditions.
+     *
+     * NOT SATURATION. An opponent already fully open gains nothing from being in range and
+     * would read as out of it, so that was checked separately: of the bystanders a Full
+     * Circle did not reach, every one stood under 90 green and most under 50. There was
+     * something left to open on all of them.
+     *
+     * This is a mean field over POSITION, which is the one thing the corpus could not
+     * resolve per opponent - the distance was recorded for the sampled opponent only until
+     * schema 16. It is applied to the marginal target rather than to all of them (see
+     * Optimizer.step), so the expectation is preserved without pretending to know which
+     * animal was where. The honest reading of a crowd number is therefore "this is what it
+     * costs if they crowd in the way the corpus says they do", and a later corpus carrying
+     * per-relation range replaces it with something that knows.
+     *
+     * Punch 'em Both and Storm of Swords take the same figure, which is an assumption:
+     * neither has ever been thrown in this corpus.
+     */
+    public static final double SWEEP_REACH = 0.40;
+
+    /**
+     * How far an UNARMED attack reaches, in the world units a log measures distance in.
+     *
+     * A weapon declares a range and the figure is a multiple of this one: a sword is 1.2,
+     * a stone axe is 1.0, and an unarmed attack is the 1.0 case with nothing in hand. The
+     * corpus says so. Taking the distance at the state sample that CLOSED a landed attack
+     * - not the one before it, which is where the swing set off from, since an attack
+     * closes the gap before it strikes:
+     *
+     *   what swung                              n     p90     max
+     *   an unarmed card, sword in hand         27    18.6    21.4
+     *   a weapon card, stone axe (range 1.0)   59    18.8    23.5
+     *   a weapon card, sword (range 1.2)     3044    21.4   123.5
+     *
+     * The first two agree to a fifth of a unit, which is the claim: range 1.0 IS the
+     * unarmed reach. The sword then reaches 1.14 times as far where its figure says 1.20.
+     * A constant offset explains the gap - the distance is measured centre to centre, so
+     * two body radii sit inside every reading - and two weapon ranges cannot separate a
+     * multiplier from an offset. Fitting both as an affine rule gives 5.8 + 13 x range,
+     * which fits by construction and predicts nothing; the multiplicative form is the one
+     * the game states, so it is the one used, and it runs about 5% long for a sword.
+     *
+     * The long tail is approach, not reach: the sampler is gated on change, so a swing
+     * thrown while running in can close its state at whatever distance the run had reached.
+     * That is why the ninetieth percentile is quoted rather than the maximum.
+     */
+    public static final double UNARMED_REACH = 18.7;
+
+    /**
+     * The reach of a swing, in world units, for whatever is in hand.
+     *
+     * @param weaponRange the weapon's own range figure, or 0/NaN for bare hands - which is
+     *                    the same as 1.0, because that is what the unarmed reach is.
+     */
+    public static double reach(double weaponRange) {
+        if(Double.isNaN(weaponRange) || (weaponRange <= 0))
+            return(UNARMED_REACH);
+        return(UNARMED_REACH * weaponRange);
+    }
+
     public static double rawDamage(double basedmg, double share, double ql, double str,
                                    double opening) {
         return(basedmg * share * Math.sqrt(Math.sqrt(ql * str) / 10.0) * opening * opening);

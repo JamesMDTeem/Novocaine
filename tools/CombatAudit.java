@@ -198,7 +198,7 @@ public class CombatAudit {
             "name", "str", "agi", "unarmed", "melee",
             "weaponDamage", "weaponQl", "weaponPen", "armHard", "armSoft", "penetrable",
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
-            "readyAt", "whenAttacked",
+            "readyAt", "whenAttacked", "weaponRange", "distance",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
@@ -807,6 +807,37 @@ public class CombatAudit {
         live("  and a card that hits both of them shortens the fight",
              (double)((np == null) ? 0 : np.ticks),
              (double)((sp == null) ? 0 : sp.ticks), "Optimizer.search");
+
+        /* WHERE THEY ARE STANDING, once anybody knows. A weapon's range figure is a
+         * multiple of the unarmed reach - a sword is 1.2 and the corpus puts an unarmed
+         * swing and a 1.0 weapon at the same 18.7 units - so a sweep covers a real radius
+         * and an opponent is inside it or not. Two crowds identical but for where the
+         * bystander stands: one inside a sword's reach and one well outside it. */
+        List<Move> rdeck = new ArrayList<Move>(deck);
+        rdeck.add(base().opens(Formulas.RED, 20).cooldown(20).targets(2).build());
+        Combatant near1 = fighter(), near2 = fighter(), far1 = fighter(), far2 = fighter();
+        near1.hp = near1.maxHp = near2.hp = near2.maxHp = 200;
+        far1.hp = far1.maxHp = far2.hp = far2.maxHp = 200;
+        near1.distance = far1.distance = 5;
+        near2.distance = 15;
+        far2.distance = 200;
+        Combatant withSword = fighter();
+        withSword.weaponRange = 1.2;
+        Optimizer.Plan close = Advisor.choose(
+            Optimizer.search(withSword, new Combatant[] {near1, near2}, rdeck,
+                             new FoeModel[] {mob, mob}, 200, 4000),
+            Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        Optimizer.Plan apart = Advisor.choose(
+            Optimizer.search(withSword, new Combatant[] {far1, far2}, rdeck,
+                             new FoeModel[] {mob, mob}, 200, 4000),
+            Advisor.Aim.FASTEST, Double.MAX_VALUE);
+        live("a sweep only reaches what is standing inside it",
+             (double)((apart == null) ? 0 : apart.ticks),
+             (double)((close == null) ? 0 : close.ticks), "Optimizer.search");
+        live("  and a longer weapon reaches further",
+             Formulas.reach(1.0), Formulas.reach(1.2), "Formulas.reach");
+        same("  while bare hands are the 1.0 case",
+             Formulas.reach(Double.NaN), Formulas.reach(1.0));
 
         /* AND A FIGHT WE LOSE IS AN ANSWER, not an empty frontier. A line where the
          * opponent kills us used to be dropped: the swing that followed was refused for

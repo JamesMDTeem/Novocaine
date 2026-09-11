@@ -419,11 +419,52 @@ public final class Optimizer {
          * falls. Nothing here knows about range, so they reach everything still alive,
          * which is an upper bound rather than an estimate. */
         if(m.splashes()) {
-            int idx = 1;
-            for(int i = 0; (i < foes.length) && (idx < m.targets); i++) {
+            /* HOW MANY OF THEM IT REACHES, which is measured rather than "all of them".
+             * Full Circle lands on 0.40 of the bystanders in the corpus - see
+             * Formulas.SWEEP_REACH - and giving it every one of them was what made a crowd
+             * free: five animals died in the same time as three.
+             *
+             * The fractional part goes on the MARGINAL target rather than being spread
+             * over all of them. With one bystander standing, the card reaches it 0.4 of
+             * the time; spreading that as "0.4 of a blow to everybody" would be a mean
+             * field over the whole crowd, which is the aggregate this model has spent its
+             * time removing. Put on the last one it preserves the same expectation while
+             * every target the card definitely reaches takes a real, whole swing. */
+            int others = 0, inReach = 0;
+            boolean positions = true;
+            double sweep = me.reach();
+            for(int i = 0; i < foes.length; i++) {
                 if((i == main) || !foes[i].alive())
                     continue;
-                sim.splash(me, m, foes[i], idx);
+                others++;
+                if(Double.isNaN(foes[i].distance))
+                    positions = false;
+                else if(foes[i].distance <= sweep)
+                    inReach++;
+            }
+            /* WHERE THEY ACTUALLY STAND, when anybody knows. A weapon's range figure is a
+             * multiple of the unarmed reach - see Formulas.UNARMED_REACH - so a swing
+             * covers a real number of world units and an opponent is either inside it or
+             * not. That is the whole mechanic, and it needs positions: the live client has
+             * them, and a corpus written from schema 16 onwards has them.
+             *
+             * Without them the measured share stands in, because the alternative readings
+             * are both wrong in a known direction: everybody in reach makes a crowd free,
+             * and nobody in reach deletes a card that demonstrably lands on up to five. */
+            double expect = positions ? inReach : (Formulas.SWEEP_REACH * others);
+            expect = Math.min(expect, (double)(m.targets - 1));
+            int whole = (int)Math.floor(expect);
+            double part = expect - whole;
+            int idx = 1;
+            for(int i = 0; (i < foes.length) && (idx <= whole + ((part > 0) ? 1 : 0)); i++) {
+                if((i == main) || !foes[i].alive())
+                    continue;
+                /* The ones actually inside the swing, where we know where they are. With
+                 * no positions the count is an expectation and any of them will do, since
+                 * the model has nothing that distinguishes them. */
+                if(positions && !(foes[i].distance <= sweep))
+                    continue;
+                sim.splash(me, m, foes[i], idx, (idx <= whole) ? 1.0 : part);
                 idx++;
             }
         }

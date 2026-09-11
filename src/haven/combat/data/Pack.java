@@ -870,6 +870,14 @@ public final class Pack {
         public final String weapon;
         public final double weaponDamage, weaponQl, weaponPen;
         /**
+         * How far the weapon reaches, as a multiple of the unarmed reach.
+         *
+         * A sword is 1.2 and a stone axe 1.0, and the corpus puts an unarmed swing and a
+         * 1.0 weapon at the same 18.7 world units - see Formulas.UNARMED_REACH. NaN for a
+         * character with nothing in hand, which is the same reach as 1.0.
+         */
+        public final double weaponRange;
+        /**
          * The cards this character knows, by display name, and the level each sits at.
          *
          * A level of 0 means known but not currently on the bar - the dump lists every
@@ -908,6 +916,8 @@ public final class Pack {
             this.weaponDamage = (w == null) ? 0 : w.optDouble("base_damage", 0);
             this.weaponQl = (w == null) ? 0 : w.optDouble("ql", 10);
             this.weaponPen = (w == null) ? 0 : w.optDouble("armour_pen", 0);
+            this.weaponRange = (w == null) ? Double.NaN
+                : w.optDouble("range", Double.NaN);
             Map<String, Integer> own = new LinkedHashMap<String, Integer>();
             JSONObject od = j.optJSONObject("owned");
             if(od != null) {
@@ -934,6 +944,7 @@ public final class Pack {
             c.weaponDamage = weaponDamage;
             c.weaponQl = (weaponQl > 0) ? weaponQl : 10;
             c.weaponPen = weaponPen;
+            c.weaponRange = weaponRange;
             c.armHard = armHard;
             c.armSoft = armSoft;
             /* A PLAYER'S ARMOUR IS PENETRABLE, and Combatant defaults it false because

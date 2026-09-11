@@ -133,6 +133,13 @@ public class CombatPackCheck {
             check("  and carries the attributes a fight needs",
                   (zz.str > 0) && (zz.agi > 0) && (zz.melee > 0) && (zz.hp > 0), true);
             check("  with the weapon last seen in hand", zz.weapon, "Bronze Sword");
+            /* AND HOW FAR IT REACHES, which only the item's own tooltip knows - the wiki
+             * weapon table has no range column, so this was collected into the pack and
+             * read by nothing. It is a multiple of the unarmed reach: the corpus puts a
+             * bare swing and a range-1.0 stone axe at the same 18.7 world units, and a
+             * 1.2 sword at 21.4 where the multiplier predicts 22.4. */
+            check("    and how far that weapon reaches", zz.weaponRange, 1.2);
+            check("      which the combatant carries", zz.combatant().weaponRange, 1.2);
         }
         /* Nobody's numbers, kept as a regression: if these ever match a real character
          * it is a coincidence, and if the literals come back this says so. */

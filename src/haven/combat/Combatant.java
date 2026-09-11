@@ -170,6 +170,35 @@ public final class Combatant {
      * your opponents." The sheet keeps that in the card's notes rather than in a field, so
      * this is the nearest thing the model has to reading it.
      */
+    /**
+     * The range figure of whatever is in hand - 1.2 for a sword, 1.0 for a stone axe.
+     *
+     * NaN for bare hands, which is the same reach as 1.0: the game's range figure is a
+     * multiple of the unarmed reach and the corpus agrees to a fifth of a unit. See
+     * Formulas.UNARMED_REACH.
+     *
+     * Collected per weapon since the pack was first built and read by nothing until now,
+     * which is the failure this project keeps finding: the number is there, the parser
+     * stores it, and no consumer exists.
+     */
+    public double weaponRange = Double.NaN;
+
+    /**
+     * How far away this combatant is standing, in world units, or NaN when unknown.
+     *
+     * Unknown is the normal case offline and it has to stay expressible. A corpus written
+     * before schema 16 measured the distance to the SAMPLED opponent only, so a crowd has
+     * no positions at all in it - and a model that silently defaulted them to zero would
+     * put every animal in reach of everything, which is exactly the error that made a
+     * crowd free.
+     */
+    public double distance = Double.NaN;
+
+    /** How far this combatant's swing reaches, in world units. */
+    public double reach() {
+        return(Formulas.reach(armed() ? weaponRange : Double.NaN));
+    }
+
     public boolean armed() {
         return(weaponDamage > 0);
     }
@@ -235,6 +264,7 @@ public final class Combatant {
         Combatant c = new Combatant(name);
         c.str = str; c.agi = agi; c.unarmed = unarmed; c.melee = melee;
         c.weaponDamage = weaponDamage; c.weaponQl = weaponQl; c.weaponPen = weaponPen;
+        c.weaponRange = weaponRange; c.distance = distance;
         c.armHard = armHard; c.armSoft = armSoft;
         c.penetrable = penetrable;
         c.hp = hp; c.maxHp = maxHp;
