@@ -450,6 +450,19 @@ public class Fightview extends Widget {
 		 * olive branch while the rest stay on us reads, in a log that records only
 		 * the sampled one, as the whole fight disengaging. */
 		int[] gsts = new int[lsrel.size()];
+		/* And how far away each of them is. The state event has carried a distance
+		 * from the beginning and carries it for the SAMPLED opponent only, so a fight
+		 * with five animals in it has always recorded the range to one - which is why
+		 * nothing downstream can say which of a crowd a card could reach. Whole units,
+		 * because the event is written behind a change gate and a raw distance changes
+		 * every frame. */
+		int[] dists = new int[lsrel.size()];
+		Gob self = null;
+		try {
+		    self = ui.sess.glob.oc.getgob(ui.gui.map.plgob);
+		} catch(Exception e) {
+		    self = null;
+		}
 		int gi = 0;
 		int n = 0;
 		for(Relation rel : lsrel) {
@@ -460,7 +473,16 @@ public class Fightview extends Widget {
 		    packed[n++] = o.blue;
 		    packed[n++] = o.yellow;
 		    packed[n++] = o.red;
-		    gsts[gi++] = rel.gst;
+		    gsts[gi] = rel.gst;
+		    dists[gi] = -1;
+		    try {
+			Gob og = ui.sess.glob.oc.getgob(rel.gobid);
+			if((self != null) && (og != null))
+			    dists[gi] = (int)Math.round(self.getc().dist(og.getc()));
+		    } catch(Exception e) {
+			/* a gob that has not arrived yet has no distance, which is -1 */
+		    }
+		    gi++;
 		    /* The stance each opponent is holding. Their defence weight is skill x block
 		     * multiplier x mu, and without the stance the multiplier is missing - which is
 		     * the difference between Bloodlust's 75% of Unarmed and Shield Up's 250% of
@@ -469,7 +491,7 @@ public class Fightview extends Widget {
 			rel.gobid, "foe", rel.buffs.children(Buff.class));
 		}
 		haven.automated.combat.CombatRecorder.sampleBuffs(-1, "me", buffs.children(Buff.class));
-		haven.automated.combat.CombatRecorder.sampleFoes(packed, gsts);
+		haven.automated.combat.CombatRecorder.sampleFoes(packed, gsts, dists);
 	    } catch(Exception e) {
 		/* telemetry must never break the tick loop */
 	    }

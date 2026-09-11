@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 15;
+    public static final int SCHEMA = 16;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -216,8 +216,14 @@ public final class CombatEvent {
      *
      * @param packed gob and four openings per relation, five entries each
      * @param gst    each relation's aggression state, one per relation, same order
+     * @param dist   how far away each relation is, in whole units, same order; null on a
+     *               caller that cannot say
      */
     public static String foes(long t, long[] packed, int[] gst) {
+        return(foes(t, packed, gst, null));
+    }
+
+    public static String foes(long t, long[] packed, int[] gst, int[] dist) {
         StringBuilder b = new StringBuilder("[");
         for(int i = 0; i < packed.length; i += 5) {
             if(i > 0)
@@ -239,11 +245,37 @@ public final class CombatEvent {
             g.append(gst[i]);
         }
         g.append(']');
+        /* AND HOW FAR AWAY EACH OF THEM IS, which decides which of them a card can
+         * reach. The state event has carried a distance since the beginning and carries
+         * it for the SAMPLED opponent only, which is the same shape of gap the aggression
+         * state had: a fight with five animals in it records the range to one of them.
+         *
+         * That gap is why nothing in the model knows about range. Three cards hit more
+         * than one opponent - Full Circle "and all other opponents in range" - and the
+         * corpus cannot say how many were in range, only how many were on screen. Full
+         * Circle opened just one opponent in 53 of the 99 logged throws that opened
+         * anything at all, and whether that is range or something else is not answerable
+         * from a log that measures the distance to one relation.
+         *
+         * A parallel array again, for the same reason as the aggression state: every
+         * reader written against the five-wide rows keeps working untouched.
+         *
+         * Whole units, and quantised before it gets here. A distance that changes every
+         * frame would defeat the gate this event is written behind, and turn three lines
+         * a fight into one per tick. See CombatRecorder.sampleFoes. */
+        StringBuilder d = new StringBuilder("[");
+        for(int i = 0; (dist != null) && (i < dist.length); i++) {
+            if(i > 0)
+                d.append(',');
+            d.append(dist[i]);
+        }
+        d.append(']');
         return(new JsonObj()
                .put("ev", "foes")
                .put("t", t)
                .raw("o", b.toString())
                .raw("g", g.toString())
+               .raw("d", d.toString())
                .end());
     }
 

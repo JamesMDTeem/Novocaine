@@ -955,6 +955,10 @@ public final class CombatRecorder {
      * @param packed gob and four openings per relation, five entries each
      */
     public static void sampleFoes(long[] packed, int[] gst) {
+        sampleFoes(packed, gst, null);
+    }
+
+    public static void sampleFoes(long[] packed, int[] gst, int[] dist) {
         if(!active() || (packed == null) || (packed.length == 0))
             return;
         try {
@@ -967,11 +971,19 @@ public final class CombatRecorder {
              * the whole point of recording it. */
             for(int i = 0; (gst != null) && (i < gst.length); i++)
                 k.append(gst[i]).append(';');
+            /* The range to each of them is part of the key, and it is QUANTISED before it
+             * arrives - see the caller. Raw distance changes on almost every frame while
+             * anybody is moving, so keying on it would defeat the gate entirely and turn
+             * three lines a fight into one per tick. Rounded to whole units it changes
+             * when somebody actually closes or backs off, which is the question it is
+             * here to answer. */
+            for(int i = 0; (dist != null) && (i < dist.length); i++)
+                k.append(dist[i]).append(',');
             String key = k.toString();
             if(key.equals(lastFoes))
                 return;
             lastFoes = key;
-            log(CombatEvent.foes(now(), packed, gst));
+            log(CombatEvent.foes(now(), packed, gst, dist));
         } catch(Exception e) {
             /* never propagate into tick() */
         }

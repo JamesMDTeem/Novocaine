@@ -808,6 +808,23 @@ def foe_aggression(row):
     return dict(zip(gobs, gst))
 
 
+def foe_range(row):
+    """How far away each relation was, from a schema-16 `foes` row, as {gob: units}.
+
+    Empty for anything earlier, and that emptiness is the finding rather than a gap to
+    paper over: every log before 16 measured the distance to the SAMPLED opponent only, so
+    a fight with five animals in it recorded the range to one of them. Three cards in the
+    sheet hit "all other opponents in range" and no earlier log can say how many that was.
+
+    -1 where the client could not tell, which is a relation whose gob had not arrived yet.
+    Whole units, quantised at the recorder because the event is written behind a change
+    gate and a raw distance moves every frame.
+    """
+    gobs = [r[0] for r in (row.get("o") or [])]
+    dist = row.get("d") or []
+    return {g: d for g, d in zip(gobs, dist) if d >= 0}
+
+
 # How long after the state row that closes a bracket a further rise in the same
 # colour is still the same rise finishing rather than a second cause. Only 13 of the
 # corpus's 1667 late rises arrive this promptly; the rest are hundreds of milliseconds

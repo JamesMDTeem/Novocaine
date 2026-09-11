@@ -157,7 +157,12 @@ public class CombatLogCheck {
          * log, and that is a different and worse thing - every change to the data pack
          * silently rewrites the history, so a fix can never be shown to have helped
          * because the "before" number moves with it. */
-        check("schema constant", CombatEvent.SCHEMA, 15);
+        /* 16 adds each relation's range to the foes event, as a third parallel array.
+         * The state event has measured a distance since the beginning and measures it for
+         * ONE opponent, so a fight against several has never recorded who was within
+         * reach - which is why nothing downstream models range, while three cards in the
+         * sheet hit "all other opponents in range". */
+        check("schema constant", CombatEvent.SCHEMA, 16);
 
         /* Advice, schema 15: what the model would have thrown, logged and not acted on.
          * The frontier count is part of it because one plan is not a choice. */
@@ -215,10 +220,26 @@ public class CombatLogCheck {
               CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8},
                                new int[] {0, 2}),
               "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]],"
-              + "\"g\":[0,2]}");
+              + "\"g\":[0,2],\"d\":[]}");
         check("foes with one relation is still an array of arrays",
               CombatEvent.foes(1L, new long[] {9L, 0, 0, 0, 0}, new int[] {0}),
-              "{\"ev\":\"foes\",\"t\":1,\"o\":[[9,0,0,0,0]],\"g\":[0]}");
+              "{\"ev\":\"foes\",\"t\":1,\"o\":[[9,0,0,0,0]],\"g\":[0],\"d\":[]}");
+        /* 16 adds each relation's RANGE, as a third parallel array. The state event has
+         * carried a distance from the beginning and carries it for the sampled opponent
+         * only, so a fight with five animals in it recorded the range to one of them -
+         * which is why nothing downstream can say which of a crowd a card could reach,
+         * and three cards in the sheet hit "all other opponents in range". */
+        check("foes carries how far away each relation is",
+              CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8},
+                               new int[] {0, 2}, new int[] {9, 34}),
+              "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]],"
+              + "\"g\":[0,2],\"d\":[9,34]}");
+        /* A relation whose gob has not arrived yet has no distance, and -1 says so rather
+         * than a zero that reads as standing on top of us. */
+        check("  and says so when it cannot tell",
+              CombatEvent.foes(1L, new long[] {9L, 0, 0, 0, 0}, new int[] {0},
+                               new int[] {-1}).contains("\"d\":[-1]"),
+              true);
         /* The reason the field exists, so it gets its own row rather than being left
          * implicit above: one of a pack disengaging while the rest stay on us. */
         check("one of a pack can disengage while the rest do not",

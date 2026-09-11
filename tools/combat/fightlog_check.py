@@ -632,6 +632,26 @@ def ranged_routing():
         check("collect ranged gate probe failed: %r" % (e,), False, True)
 
 
+def crowd_range():
+    """Schema 16: how far away each of a crowd is, not just the sampled one.
+
+    The state event has carried a distance since the beginning and carries it for ONE
+    opponent. Three cards in the sheet hit "all other opponents in range", so a fight
+    against several could never be asked how many were within reach of one - the same
+    shape of gap the aggression state had before schema 11.
+    """
+    print("\nthe range to each of a crowd")
+    row = {"ev": "foes", "t": 6, "o": [[11, 0, 0, 0, 0], [22, 0, 0, 0, 0]],
+           "g": [0, 0], "d": [9, 34]}
+    check("each relation's range is read off the row",
+          fightlog.foe_range(row), {11: 9, 22: 34})
+    check("a relation whose gob has not arrived is left out",
+          fightlog.foe_range({"o": [[11, 0, 0, 0, 0], [22, 0, 0, 0, 0]], "d": [12, -1]}),
+          {11: 12})
+    check("an older log says nothing rather than zero",
+          fightlog.foe_range({"o": [[11, 0, 0, 0, 0]], "g": [0]}), {})
+
+
 def main():
     segmentation()
     contamination()
@@ -643,6 +663,7 @@ def main():
     predictions()
     sfx_and_outcome()
     ranged_routing()
+    crowd_range()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1
