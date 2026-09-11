@@ -1,0 +1,530 @@
+{
+ "source": "tools/combat/estimate.py over the logged corpus",
+ "note": "Per-CARD, not per-creature. Opening percentages are ratios: the fit has a gauge freedom that nothing here resolves.",
+ "species_factor": {
+  "adder": 1.0,
+  "ants": 0.751,
+  "badger": 1.012,
+  "bat": 1.0,
+  "bear": 1.0,
+  "beaver": 0.983,
+  "beelarva": 0.5,
+  "boar": 1.0,
+  "boreworm": 1.139,
+  "cattle": 1.0,
+  "caveangler": 1.182,
+  "caverat": 1.038,
+  "fox": 0.757,
+  "goldeneagle": 1.139,
+  "greenooze": 1.049,
+  "greyseal": 1.078,
+  "honeybee": 0.764,
+  "lynx": 1.141,
+  "moose": 1.024,
+  "queenant": 0.911,
+  "redants": 1.0,
+  "reddeer": 1.089,
+  "reindeer": 1.0,
+  "royalguardant": 1.44,
+  "sentinelbee": 0.844,
+  "sheep": 0.683,
+  "swan": 1.004,
+  "vulturebee": 0.856,
+  "walrus": 1.0,
+  "warriorant": 1.187,
+  "warriordrone": 0.865,
+  "wildgoat": 1.019,
+  "wolf": 1.0,
+  "wolverine": 1.0
+ },
+ "moves": [
+  {
+   "name": "'Rus Tusk",
+   "openings": {
+    "red": 11.0
+   },
+   "damage": null,
+   "cooldown": null,
+   "armour": null,
+   "restores": null,
+   "grievous": null
+  },
+  {
+   "name": "Ant Spit",
+   "openings": {
+    "blue": 5.56,
+    "green": 5.49
+   },
+   "damage": {
+    "coef": 24.5,
+    "lo": 8.8,
+    "hi": 286.3,
+    "n": 42,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 3.4,
+    "floor": 1.9,
+    "rotation": 44.0,
+    "n": 77
+   },
+   "armour": {
+    "soaked_share": 0.5,
+    "n": 35
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 280
+   }
+  },
+  {
+   "name": "Badgering",
+   "openings": {
+    "red": 12.84
+   },
+   "damage": {
+    "coef": 27.6,
+    "lo": 18.2,
+    "hi": 43.9,
+    "n": 25,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 43.0,
+    "floor": 42.9,
+    "rotation": 44.2,
+    "n": 20
+   },
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 13
+   }
+  },
+  {
+   "name": "Bear Down",
+   "openings": {
+    "blue": 11.0
+   },
+   "damage": {
+    "coef": 46.6,
+    "lo": 5.2,
+    "hi": 277.8,
+    "n": 73,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 47.0,
+    "floor": 42.0,
+    "rotation": 50.0,
+    "n": 35
+   },
+   "armour": {
+    "soaked_share": 0.83,
+    "n": 27
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 67
+   }
+  },
+  {
+   "name": "Blood & Gore",
+   "openings": {
+    "red": 18.67
+   },
+   "damage": null,
+   "cooldown": null,
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.25,
+    "n": 24
+   }
+  },
+  {
+   "name": "Breathing Rage",
+   "openings": {
+    "blue": 10.74
+   },
+   "damage": null,
+   "cooldown": null,
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 16
+   }
+  },
+  {
+   "name": "Bristle",
+   "openings": null,
+   "damage": null,
+   "cooldown": {
+    "ticks": 30.0,
+    "floor": 29.1,
+    "rotation": 120.0,
+    "n": 46
+   },
+   "armour": null,
+   "restores": {
+    "share": 0.2,
+    "n": 410
+   },
+   "grievous": null
+  },
+  {
+   "name": "Careful Approach",
+   "openings": null,
+   "damage": null,
+   "cooldown": {
+    "ticks": 29.1,
+    "floor": 2.0,
+    "rotation": 32.5,
+    "n": 52
+   },
+   "armour": null,
+   "restores": {
+    "share": 0.129,
+    "n": 369
+   },
+   "grievous": null
+  },
+  {
+   "name": "Chomp",
+   "openings": {
+    "blue": 15.05
+   },
+   "damage": {
+    "coef": 96.0,
+    "lo": 27.4,
+    "hi": 164.4,
+    "n": 27,
+    "before_armour": true
+   },
+   "cooldown": null,
+   "armour": {
+    "soaked_share": 0.83,
+    "n": 10
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.192,
+    "n": 111
+   }
+  },
+  {
+   "name": "Fell Scratch",
+   "openings": {
+    "green": 9.64
+   },
+   "damage": {
+    "coef": 32.7,
+    "lo": 2.6,
+    "hi": 204.1,
+    "n": 329,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 41.0,
+    "floor": 40.0,
+    "rotation": 49.9,
+    "n": 595
+   },
+   "armour": {
+    "soaked_share": 0.83,
+    "n": 315
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 705
+   }
+  },
+  {
+   "name": "Low Horn Swipe",
+   "openings": {
+    "green": 10.2
+   },
+   "damage": {
+    "coef": 25.8,
+    "lo": 10.0,
+    "hi": 204.1,
+    "n": 103,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 19.5,
+    "floor": 18.1,
+    "rotation": 21.9,
+    "n": 80
+   },
+   "armour": {
+    "soaked_share": 0.83,
+    "n": 37
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 87
+   }
+  },
+  {
+   "name": "Maddening Roar",
+   "openings": null,
+   "damage": {
+    "coef": 79.7,
+    "lo": 23.3,
+    "hi": 126.5,
+    "n": 15,
+    "before_armour": true
+   },
+   "cooldown": null,
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 18
+   }
+  },
+  {
+   "name": "Mule Kick",
+   "openings": {
+    "yellow": 10.67
+   },
+   "damage": {
+    "coef": 27.9,
+    "lo": 4.4,
+    "hi": 156.3,
+    "n": 104,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 35.5,
+    "floor": 31.9,
+    "rotation": 40.1,
+    "n": 150
+   },
+   "armour": {
+    "soaked_share": 0.8,
+    "n": 23
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 66
+   }
+  },
+  {
+   "name": "Quick Barrage",
+   "openings": null,
+   "damage": {
+    "coef": 18.7,
+    "lo": 3.7,
+    "hi": 40.9,
+    "n": 12,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 18.0,
+    "floor": 17.8,
+    "rotation": 20.9,
+    "n": 31
+   },
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 20
+   }
+  },
+  {
+   "name": "Rampant Rage",
+   "openings": null,
+   "damage": null,
+   "cooldown": null,
+   "armour": null,
+   "restores": {
+    "share": 0.082,
+    "n": 116
+   },
+   "grievous": null
+  },
+  {
+   "name": "Roar of the Wild",
+   "openings": null,
+   "damage": null,
+   "cooldown": {
+    "ticks": 29.1,
+    "floor": 11.8,
+    "rotation": 34.9,
+    "n": 303
+   },
+   "armour": null,
+   "restores": {
+    "share": 0.133,
+    "n": 889
+   },
+   "grievous": null
+  },
+  {
+   "name": "Serpent's Strike",
+   "openings": {
+    "yellow": 12.0
+   },
+   "damage": null,
+   "cooldown": {
+    "ticks": 41.0,
+    "floor": 41.0,
+    "rotation": 44.9,
+    "n": 13
+   },
+   "armour": null,
+   "restores": null,
+   "grievous": null
+  },
+  {
+   "name": "Shredding Paw",
+   "openings": {
+    "red": 18.62
+   },
+   "damage": {
+    "coef": 143.3,
+    "lo": 82.5,
+    "hi": 392.6,
+    "n": 21,
+    "before_armour": true
+   },
+   "cooldown": null,
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.333,
+    "n": 52
+   }
+  },
+  {
+   "name": "Swift Evasion",
+   "openings": null,
+   "damage": null,
+   "cooldown": null,
+   "armour": null,
+   "restores": {
+    "share": 0.304,
+    "n": 106
+   },
+   "grievous": null
+  },
+  {
+   "name": "Tail Splash",
+   "openings": null,
+   "damage": {
+    "coef": 121.3,
+    "lo": 5.9,
+    "hi": 158.7,
+    "n": 11,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 40.8,
+    "floor": 40.8,
+    "rotation": 206.0,
+    "n": 19
+   },
+   "armour": {
+    "soaked_share": 0.83,
+    "n": 10
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 24
+   }
+  },
+  {
+   "name": "Thunder Over",
+   "openings": {
+    "green": 3.57
+   },
+   "damage": {
+    "coef": 41.5,
+    "lo": 9.7,
+    "hi": 156.3,
+    "n": 33,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 30.0,
+    "floor": 30.0,
+    "rotation": 55.0,
+    "n": 22
+   },
+   "armour": {
+    "soaked_share": 0.8,
+    "n": 27
+   },
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.0,
+    "n": 54
+   }
+  },
+  {
+   "name": "Unstoppable",
+   "openings": null,
+   "damage": null,
+   "cooldown": null,
+   "armour": null,
+   "restores": {
+    "share": 0.287,
+    "n": 167
+   },
+   "grievous": null
+  },
+  {
+   "name": "Vampirism",
+   "openings": null,
+   "damage": {
+    "coef": 9.0,
+    "lo": 3.9,
+    "hi": 11.2,
+    "n": 13,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 17.8,
+    "floor": 17.8,
+    "rotation": 22.2,
+    "n": 16
+   },
+   "armour": null,
+   "restores": null,
+   "grievous": null
+  },
+  {
+   "name": "Wingbeat",
+   "openings": {
+    "yellow": 10.0
+   },
+   "damage": {
+    "coef": 12.0,
+    "lo": 3.3,
+    "hi": 400.0,
+    "n": 23,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 26.1,
+    "floor": 26.1,
+    "rotation": 44.5,
+    "n": 14
+   },
+   "armour": null,
+   "restores": null,
+   "grievous": null
+  }
+ ]
+}

@@ -614,8 +614,76 @@ def _read_tool(rel):
 import json as _json4  # noqa: E402
 
 
+def animal_cards():
+    """The other side, card by card, instead of one averaged action.
+
+    Our side has always been modelled per card and theirs was a single aggregate - a
+    clock, a per-colour pressure, one damage coefficient - because that was all the data
+    supported. It is not all it supports now, and every one of these spreads is wide
+    enough that an average of it describes a creature that does not exist:
+
+        damage        Shredding Paw 143 against Vampirism 9, sixteen times
+        restoration   Swift Evasion 0.30 against Rampant Rage 0.08, nearly four times
+        grievous      three cards do any at all; every other reads exactly zero
+        armour        most soaked at 0.80 to 0.83, Ant Spit alone at 0.50
+
+    The cooldowns come from creatures acting as soon as they can, so the floor of the gap
+    between two uses of one card IS its cooldown. Quick Barrage is the check on that: it
+    is the one card here whose base is known, because it is ours, and it reads 18 against
+    a listed 20 - the difference being the agility factor.
+
+    What is NOT settled is the scale of the openings. The fit has a gauge freedom, so
+    those are ratios; they land near multiples of five, which is suggestive and is not a
+    measurement.
+    """
+    print("")
+    print("the other side, card by card")
+    path = os.path.join(_est3root(), "data", "combat", "animal_moves_measured.json")
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            doc = _json4.load(f)
+    except (OSError, ValueError):
+        check("animal_moves_measured.json is present", False, True)
+        return
+    moves = dict((m["name"], m) for m in doc.get("moves") or [])
+    check("cards measured", len(moves) >= 20, True)
+    check("  species factors, which the openings are relative to",
+          len(doc.get("species_factor") or {}) >= 30, True)
+
+    def field(nm, key, sub):
+        m = moves.get(nm) or {}
+        return ((m.get(key) or {}).get(sub))
+
+    # The cooldown method, checked against the one card whose real base we know.
+    check("Quick Barrage's cooldown reads near its listed 20",
+          18 <= field("Quick Barrage", "cooldown", "ticks") <= 21, True)
+    check("  and Fell Scratch, the most observed, lands on a round 41",
+          40 <= field("Fell Scratch", "cooldown", "ticks") <= 42, True)
+
+    # The spreads, which are the whole reason for going per card.
+    check("damage spans more than tenfold across cards",
+          field("Shredding Paw", "damage", "coef")
+          > (10 * field("Vampirism", "damage", "coef")), True)
+    check("restoration spans more than threefold",
+          field("Swift Evasion", "restores", "share")
+          > (3 * field("Rampant Rage", "restores", "share")), True)
+
+    # Grievous is the sharpest: three cards, and the rest are not merely small, they are
+    # zero. A per-creature rate would smear those three across everything.
+    hurts = [nm for nm, m in moves.items()
+             if (m.get("grievous") or {}).get("per_soft", 0) > 0]
+    check("only a few cards leave a lasting wound", sorted(hurts),
+          ["Blood & Gore", "Chomp", "Shredding Paw"])
+
+    # And the penetration outlier, matched on swing size so size cannot explain it.
+    check("Ant Spit gets through where the others do not",
+          field("Ant Spit", "armour", "soaked_share")
+          < (0.7 * field("Fell Scratch", "armour", "soaked_share")), True)
+
+
 def main():
     primitives()
+    animal_cards()
     how_thin_is_the_damage()
     every_key_is_read()
     text_mechanics()

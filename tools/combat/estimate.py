@@ -3165,6 +3165,303 @@ def animal_card_fit(per, min_obs=5, rounds=200):
             dict((k, math.exp(v)) for k, v in f.items()), res)
 
 
+ANIMAL_MOVES_OUT = os.path.join(ROOT, "data", "combat", "animal_moves_measured.json")
+
+# A cooldown needs pairs before its floor means anything, and a damage coefficient needs
+# observations before its median does. Both are low because the alternative is shipping
+# nothing for the moves seen least often, and a figure with its own count beside it can be
+# judged, where a missing figure cannot.
+CD_MIN_PAIRS = 12
+DMG_MIN_OBS = 5
+
+
+def animal_move_cooldowns(paths=None):
+    """Each creature move's cooldown, from how soon it comes round again.
+
+    CREATURES ACT AS SOON AS THEY CAN, which turns the gap between two uses of the same
+    move into a measurement. Interleaving other cards can only make that gap LONGER, never
+    shorter, so the floor of the distribution is the cooldown and the median is the
+    creature's whole rotation. That is why this takes a low quantile and not an average.
+
+    The client never reports an opponent's cooldown - it is -1 on all 6896 Fell Scratch
+    rows - so this is the only route to the number, and it was worth having: the moves land
+    on round figures, and Quick Barrage, the one move here whose base is known because it
+    is OUR card, reads 18 against a listed 20. That gap is the agility factor, and it is
+    the check that the method measures what it claims to.
+
+    SOLO ENGAGEMENTS ONLY, which is not fastidiousness. Run over everything, Fell Scratch
+    shows a minimum gap of 0.0 and Ant Spit 0.1, which no cooldown explains: in a swarm
+    several individuals share one engagement and their uses interleave into what looks
+    like one creature acting impossibly fast. Restricted to a single opponent the same two
+    read 40 and 41.
+    """
+    if paths is None:
+        paths, _dirs = fightlog.default_logs(ROOT)
+    gaps = defaultdict(list)
+    for p in sorted(paths):
+        try:
+            log = fightlog.read(p, None)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        for eng in log.engagements:
+            if getattr(eng, "others_present", True):
+                continue
+            if not getattr(eng, "offence_ok", False):
+                continue
+            seq = defaultdict(list)
+            for m in eng.moves:
+                if m.get("actor") != "foe":
+                    continue
+                nm, t = m.get("name") or m.get("move"), m.get("t")
+                if nm and (t is not None):
+                    seq[nm].append(t)
+            for nm, ts in seq.items():
+                ts = sorted(set(ts))
+                for a, b in zip(ts, ts[1:]):
+                    d = (b - a) / 60.0          # milliseconds to ticks
+                    if 0.5 < d < 400:
+                        gaps[nm].append(d)
+    out = {}
+    for nm, v in gaps.items():
+        if len(v) < CD_MIN_PAIRS:
+            continue
+        v.sort()
+        out[nm] = {"ticks": round(v[int(len(v) * 0.05)], 1),
+                   "floor": round(v[0], 1),
+                   "rotation": round(v[len(v) // 2], 1),
+                   "n": len(v)}
+    return out
+
+
+def animal_move_damage(per):
+    """Each creature move's damage coefficient, over the whole swing.
+
+    Per MOVE rather than per creature, which is the shape the thing actually has: against
+    the same opening, Shredding Paw comes in at 143 and Vampirism at 9, a spread of sixteen
+    times that a per-creature average flattens into one number. A creature throwing both is
+    not described by their mean.
+
+    Possible only since the fit began counting armour soak. On soft hitpoints alone there
+    were 408 usable observations in the whole corpus and most moves had too few to separate;
+    over the whole swing there are 850, and fourteen moves carry five or more.
+    """
+    obs = defaultdict(list)
+    for rec in per.values():
+        for h in (rec.get("took") or ()):
+            o = [min(x, 100) / 100.0 for x in (h.get("openings") or [])]
+            if len(o) != 4:
+                continue
+            swing = (h.get("shp") or 0) + (h.get("soaked") or 0)
+            if swing <= 0:
+                continue
+            c = model.combined(o)
+            if c < 0.05:
+                continue
+            nm = h.get("move")
+            if nm:
+                obs[nm].append(swing / (c * c))
+    out = {}
+    for nm, v in obs.items():
+        if len(v) < DMG_MIN_OBS:
+            continue
+        v.sort()
+        out[nm] = {"coef": round(v[len(v) // 2], 1), "lo": round(v[0], 1),
+                   "hi": round(v[-1], 1), "n": len(v), "before_armour": True}
+    return out
+
+
+def animal_move_soak(paths=None):
+    """How much of each move our armour stops, which is its penetration upside down.
+
+    Matched on the size of the whole swing so a fixed soak cannot masquerade as a property
+    of the card: between 4 and 7 points, most creature moves are soaked at 0.80 to 0.83 and
+    Ant Spit alone at 0.50. Roughly three times the penetration of anything else measured,
+    which is the kind of difference that decides whether armour is worth wearing against a
+    particular creature.
+    """
+    if paths is None:
+        paths, _dirs = fightlog.default_logs(ROOT)
+    band = defaultdict(list)
+    for p in sorted(paths):
+        try:
+            log = fightlog.read(p, None)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        for eng in log.engagements:
+            for h in fightlog.hits(eng, log.me):
+                if h.get("actor") == "me":
+                    continue
+                shp, soak = (h.get("shp") or 0), (h.get("soaked") or 0)
+                tot = shp + soak
+                if (tot < 4) or (tot >= 8):
+                    continue                    # matched band, so size cannot explain it
+                nm = h.get("move")
+                if nm:
+                    band[nm].append(soak / float(tot))
+    out = {}
+    for nm, v in band.items():
+        if len(v) < 10:
+            continue
+        v.sort()
+        out[nm] = {"soaked_share": round(v[len(v) // 2], 2), "n": len(v)}
+    return out
+
+
+def animal_move_restores(paths=None):
+    """The share of its OWN standing openings each restoring card takes back.
+
+    Per card, because the cards differ by nearly four times and a per-creature figure
+    averages whichever ones that creature happens to hold: Swift Evasion 0.30 and
+    Unstoppable 0.29 against Rampant Rage 0.08. A creature holding Bristle and Rampant
+    Rage is not described by the mean of the two.
+
+    A SHARE AND NOT A NUMBER OF POINTS, which is the shape our own reductions take and was
+    settled for the aggregate figure already: splitting by how much was standing when the
+    card landed holds steady where a points figure does not.
+
+    Only fights where something was actually standing count - below a handful of points
+    the ratio is dominated by rounding, and a card that restores nothing would read as
+    restoring everything.
+    """
+    if paths is None:
+        paths, _dirs = fightlog.default_logs(ROOT)
+    obs = defaultdict(list)
+    for p in sorted(paths):
+        try:
+            log = fightlog.read(p, None)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        for eng in log.engagements:
+            for m in eng.moves:
+                if m.get("actor") != "foe":
+                    continue
+                before, after = eng.brackets(m)
+                if (before is None) or (after is None):
+                    continue
+                bv, av = before.get("foe"), after.get("foe")
+                if not bv or not av:
+                    continue
+                stand = sum(bv)
+                if stand <= 5:
+                    continue
+                fell = sum(max(0, bv[c] - av[c]) for c in range(4))
+                nm = m.get("name") or m.get("move")
+                if nm:
+                    obs[nm].append(fell / float(stand))
+    out = {}
+    for nm, v in obs.items():
+        if len(v) < 30:
+            continue
+        v.sort()
+        share = v[len(v) // 2]
+        # Everything restores a little, because openings decay; only a card that takes
+        # back materially more than the noise is doing something worth modelling.
+        if share <= 0.02:
+            continue
+        out[nm] = {"share": round(share, 3), "n": len(v)}
+    return out
+
+
+def animal_move_grievous(paths=None):
+    """Hard hitpoints per soft hitpoint, per card.
+
+    THIS IS THE ONE THAT DECIDES WHETHER A FIGHT LEAVES A MARK. Soft hitpoints come back;
+    hard ones are the lasting wound, and the corpus says only three creature cards inflict
+    any at all - Shredding Paw at a third of what it takes in soft, Blood and Gore at a
+    quarter, Chomp at a fifth. Everything else reads exactly zero across hundreds of
+    observations, including Fell Scratch over 705 of them.
+
+    A per-creature figure cannot express that: a creature that throws Chomp among four
+    harmless cards would carry a fifth of Chomp's rate on everything it does, which is
+    wrong in both directions at once.
+    """
+    if paths is None:
+        paths, _dirs = fightlog.default_logs(ROOT)
+    obs = defaultdict(list)
+    for p in sorted(paths):
+        try:
+            log = fightlog.read(p, None)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        for eng in log.engagements:
+            for h in fightlog.hits(eng, log.me):
+                if h.get("actor") == "me":
+                    continue
+                shp, hhp = (h.get("shp") or 0), (h.get("hhp") or 0)
+                nm = h.get("move")
+                if nm and (shp > 0):
+                    obs[nm].append(hhp / float(shp))
+    out = {}
+    for nm, v in obs.items():
+        if len(v) < 10:
+            continue
+        v.sort()
+        out[nm] = {"per_soft": round(v[len(v) // 2], 3), "n": len(v)}
+    return out
+
+
+def write_animal_moves(per, paths=None):
+    """Everything the corpus can say about a creature's cards, in one place.
+
+    WHY THIS FILE EXISTS. Our side is modelled card by card and the other side was one
+    averaged action - a clock, a per-colour pressure, a damage coefficient - because that
+    was all the data supported. It is no longer all the data supports. The openings a card
+    inflicts come out of animal_card_fit, which separates the card from the creature by
+    fitting the same card across the many species that throw it; the damage comes per move
+    now that the soak is counted; the cooldown comes from how soon the card comes round
+    again, because creatures act as soon as they can; and the share our armour stops comes
+    from matching on swing size.
+
+    WHAT IS STILL MISSING, plainly. The opening fit has a gauge freedom - multiplying every
+    percentage by a constant and dividing every species factor by the same constant fits
+    identically - so those figures are ratios until something external pins the scale. They
+    land near multiples of five, which is suggestive and is not a measurement.
+    """
+    pct, f, _res = animal_card_fit(per)
+    cds = animal_move_cooldowns(paths)
+    dmg = animal_move_damage(per)
+    soak = animal_move_soak(paths)
+    rest = animal_move_restores(paths)
+    grev = animal_move_grievous(paths)
+
+    opens = defaultdict(dict)
+    for key, v in pct.items():
+        mv, colour = key[0], key[1]
+        opens[mv][colour] = round(v, 2)
+
+    names = set(opens) | set(cds) | set(dmg) | set(soak) | set(rest) | set(grev)
+    out = []
+    for nm in sorted(names):
+        out.append({"name": nm,
+                    "openings": dict(sorted(opens.get(nm, {}).items())) or None,
+                    "damage": dmg.get(nm),
+                    "cooldown": cds.get(nm),
+                    "armour": soak.get(nm),
+                    "restores": rest.get(nm),
+                    "grievous": grev.get(nm)})
+    doc = {"source": "tools/combat/estimate.py over the logged corpus",
+           "note": "Per-CARD, not per-creature. Opening percentages are ratios: the fit "
+                   "has a gauge freedom that nothing here resolves.",
+           "species_factor": dict((k, round(v, 3)) for k, v in sorted(f.items())),
+           "moves": out}
+    with open(ANIMAL_MOVES_OUT, "w", encoding="utf8") as fh:
+        json.dump(doc, fh, indent=1, sort_keys=False)
+        fh.write(chr(10))
+    print("wrote %s  (%d card(s): %d openings, %d damage, %d cooldown, %d restore, "
+          "%d grievous)"
+          % (os.path.relpath(ANIMAL_MOVES_OUT, ROOT), len(out), len(opens), len(dmg),
+             len(cds), len(rest), len(grev)))
+    return doc
+
+
 def summarise_hp(dealt, killed, last_hit, wiki_entry):
     """Hitpoints, as the range a fresh one of these could have.
 
@@ -5318,6 +5615,7 @@ def main(argv):
     if write:
         write_pack(per, moves)
         write_characters()
+        write_animal_moves(per)
     return 0
 
 
