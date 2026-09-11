@@ -187,7 +187,7 @@ public class CombatAudit {
             "schools", "openings", "openingsSelf", "whenAttackedOpens",
             "stance", "blockMult", "blockRequires", "blockMultWithout", "blockSkill",
             "reduces", "damageShare", "flatDamage", "grievous", "boostGreatest",
-            "targets", "targetDamage",
+            "targets", "targetDamage", "clearsLeast", "reduceToFoe",
             "ipCost", "ipGain", "foeIpGain", "ipExtra", "gainColour", "gainAbove",
             "cooldownBase", "cooldownMu", "ipScale", "weight", "weightMu", "mu",
             "attackMult",
@@ -315,6 +315,48 @@ public class CombatAudit {
         swingAt(base().targets(2, 1.0, 2.0).build(), fighter(), openOnly(Formulas.RED, 50), sc1);
         live("  and an escalating card hits the later ones harder", sc0.hp, sc1.hp,
              "Sim.splash");
+
+        /* Dash sets the lowest opening STANDING on its user to zero. A colour already at
+         * zero is not a candidate, so the second probe below - one colour up and three
+         * empty - clears that one rather than doing nothing. */
+        Combatant d1 = fighter(), d0 = fighter();
+        for(Combatant c : new Combatant[] {d0, d1}) {
+            c.open(Formulas.GREEN, 40);
+            c.open(Formulas.BLUE, 30);
+            c.open(Formulas.YELLOW, 20);
+            c.open(Formulas.RED, 10);
+        }
+        Move dash = Move.of("dash").res("dash").kind(Move.Kind.MANEUVER)
+            .weight(Move.Weight.NONE).cooldown(80).clearsLeast(true).build();
+        throwAt(dash, d1, fighter());
+        throwAt(Move.of("x").res("x").kind(Move.Kind.MANEUVER).weight(Move.Weight.NONE)
+                .cooldown(80).build(), d0, fighter());
+        live("clearing the slightest opening empties it", d0.opening(Formulas.RED),
+             d1.opening(Formulas.RED), "Sim.use");
+        same("  and leaves the rest alone", d0.opening(Formulas.GREEN),
+             d1.opening(Formulas.GREEN));
+        /* And does nothing when a colour is already at nothing, which is most fights. */
+        Combatant d2 = fighter();
+        d2.open(Formulas.GREEN, 40);
+        throwAt(dash, d2, fighter());
+        live("  and takes the only one standing when the rest are empty",
+             0.40, d2.opening(Formulas.GREEN), "Sim.use");
+
+        /* Feigned Dodge is a reduction and an attack in one: the opponent gets twice
+         * whatever it took off us. Carrying only the reduction half made it free defence,
+         * and it was in nearly every deck the search recommended. */
+        Combatant fd = fighter(), fdFoe = fighter(), plainFoe = fighter();
+        Combatant plain = fighter();
+        fd.open(Formulas.GREEN, 60);
+        plain.open(Formulas.GREEN, 60);
+        Move.Builder half = Move.of("dodge").res("dodge").kind(Move.Kind.MANEUVER)
+            .weight(Move.Weight.NONE).cooldown(35).reduces(Formulas.GREEN, 0.15);
+        throwAt(half.build(), plain, plainFoe);
+        throwAt(half.reduceToFoe(2.0).build(), fd, fdFoe);
+        live("a reduction that hands its points to the opponent does",
+             plainFoe.opening(Formulas.GREEN), fdFoe.opening(Formulas.GREEN), "Sim.use");
+        same("  while taking the same off its user either way",
+             plain.opening(Formulas.GREEN), fd.opening(Formulas.GREEN));
 
         /* Initiative: what it costs, what it gains, what it hands over. */
         Combatant i1 = fighter();

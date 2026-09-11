@@ -355,6 +355,15 @@ public final class Pack {
                 b.gainWhenAbove(Formulas.RED, 0.25);
         }
         targets(b, text);
+        /* Dash's whole effect, which lives in prose like the gains above. */
+        if(text.contains("completely removes your slightest opening"))
+            b.clearsLeast(true);
+        /* Feigned Dodge's attacking half. The sheet gives it a reduction line like any
+         * defensive card and then says in prose that the opponent gets twice whatever it
+         * took - so read as the structured fields alone it is free defence, which is how
+         * it came to be in nearly every recommended deck. */
+        if(text.contains("twice that amount is given to the opponent"))
+            b.reduceToFoe(2.0);
         return(b.build());
     }
 

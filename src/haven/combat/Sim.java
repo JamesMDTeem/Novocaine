@@ -325,8 +325,38 @@ public final class Sim {
          * sheet does today; put here because a card cannot benefit from an opening it
          * gives itself in the same use. */
         for(int c = 0; c < 4; c++) {
-            if(m.reduces[c] > 0)
-                actor.close(c, m.reduces[c] * m.mu);
+            if(m.reduces[c] <= 0)
+                continue;
+            double had = actor.opening(c) * 100.0;
+            actor.close(c, m.reduces[c] * m.mu);
+            /* AND WHAT THE REDUCTION HANDS OVER. Feigned Dodge gives the opponent twice
+             * whatever it took off us, in the same colour - it is a reduction and an
+             * attack in one, and carrying only the reduction half priced it as free
+             * defence and put it in nearly every deck the search recommended. */
+            if(m.reduceToFoe > 0) {
+                double took = had - (actor.opening(c) * 100.0);
+                if(took > 0)
+                    target.open(c, took * m.reduceToFoe * (1.0 - target.opening(c)));
+            }
+        }
+
+        /* Dash, and nothing else: the lowest opening STANDING on its user is set to
+         * nothing. A colour already at zero is not a candidate - see Move.clearsLeast -
+         * so the card always has something to do unless we are completely closed.
+         *
+         * Ties go to the first colour in order, which cannot matter: two colours tied at
+         * the lowest figure are tied at whatever it is, and clearing either leaves the
+         * other standing at the same number. */
+        if(m.clearsLeast) {
+            int least = -1;
+            for(int c = 0; c < 4; c++) {
+                if(actor.opening(c) <= 0)
+                    continue;
+                if((least < 0) || (actor.opening(c) < actor.opening(least)))
+                    least = c;
+            }
+            if(least >= 0)
+                actor.close(least, 1.0);
         }
         double[] opened = land(actor, m, target);
         /* Openings this move puts on its USER, which happen once however many opponents it

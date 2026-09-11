@@ -478,9 +478,13 @@ TEXT_MECHANICS = [
      "charges 25% per mu; your cooldown falls by the charge"),
     ("Dash", None, "completely removes your slightest opening"),
     ("Oak Stance", None, "your greatest opening is reduced by 5% per mu"),
-    ("Full Circle", None, "attacks your target and every other opponent in range"),
-    ("Punch 'em Both", None, "attacks your target and one other"),
-    ("Storm of Swords", None,
+    # MEASURED AND WIRED. A single-target attack raises an opening on a second opponent
+    # 10 times in 566 throws made with two standing; Full Circle does it 46 times in 143
+    # and reaches five at once. Move.targets and Move.targetDamage carry it, and the
+    # optimizer plays it against a real crowd rather than one pooled opponent.
+    ("Full Circle", "targets", "attacks your target and every other opponent in range"),
+    ("Punch 'em Both", "targets", "attacks your target and one other"),
+    ("Storm of Swords", "target_damage",
      "attacks up to five, at 100/125/150/175/200% of the weapon's damage"),
     # RANGE IS A MECHANIC AND NOT A DETAIL, AND THE LOGS ALREADY MEASURE IT. Every state
     # row carries the distance to the opponent, so the reach of each card is the largest
@@ -509,9 +513,20 @@ TEXT_MECHANICS = [
     ("Take Aim", None, "reaches about 148 where an attack reaches about 55"),
     ("Steal Thunder", None,
      "text says a small distance; never thrown in the corpus, so unmeasured"),
-    ("(attacks generally)", None,
-     "bounded at roughly 55 units with a weapon and 20 to 31 unarmed, while a reduction "
-     "has no range requirement - none of which the simulator can express"),
+    # PARTLY WIRED, AND THE MEANING IS NOW KNOWN. The weapon's own range figure is a
+    # MULTIPLE of the unarmed move range: a sword is 1.2, a stone axe 1.0. Measured at the
+    # state that closed a landed attack rather than the one before it, an unarmed card and
+    # a range-1.0 weapon both reach about 18.7 units and a 1.2 sword about 21.4. So an
+    # attack has a radius in world units - Formulas.UNARMED_REACH - and a sweeping card
+    # reaches whoever stands inside it.
+    #
+    # What is still missing is everyone ELSE's position. A log before schema 16 measured
+    # the distance to the sampled opponent only, so the offline search falls back to the
+    # measured share of bystanders a sweep lands on. The live client has every position
+    # and uses them.
+    ("(attacks generally)", "weapon_range",
+     "reach is the unarmed 18.7 units times the weapon's range figure; the crowd's own "
+     "positions arrive with schema 16 and the offline fallback is a measured share"),
     ("Opportunity Knocks", "boost_greatest", "raises the opponent's greatest opening"),
     ("Quick Barrage", "gain_when_above", "gains initiative when the opponent is open"),
     ("Shield Up", "block_mult_without", "half the block weight without a shield"),

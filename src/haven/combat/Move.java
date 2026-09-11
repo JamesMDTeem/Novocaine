@@ -156,6 +156,45 @@ public final class Move {
      * everything still alive - an upper bound, and it is called out as one wherever a crowd
      * is fought.
      */
+    /**
+     * Whether the card sets its user's lowest STANDING opening to zero. Dash, and nothing else.
+     *
+     * The mechanic: Dash looks at the openings you actually have, takes the lowest of
+     * them, and sets it to nothing. A colour already at zero is not a candidate - it is
+     * not an opening - so the card does something in any fight where anything is open on
+     * you at all. The sheet's wording is "Dash completely removes your slightest opening".
+     *
+     * THE CORPUS DOES NOT SHOW THIS HAPPENING, and that is recorded here as an open
+     * discrepancy rather than as a reason to model it differently. Dash was thrown 278
+     * times, every one of them logged from the server's own "used" message rather than
+     * from our click, so every one was accepted and executed. Across all 278 no opening of
+     * ours ever fell to zero afterwards - not against the state that closed the move, and
+     * not against a state sampled seventy ticks earlier, which rules out the obvious
+     * explanation that the log was already showing the after. Our own openings are live in
+     * those files: they move at some point in all 93 of the files a Dash appears in.
+     *
+     * So something in the recording is not seeing it, and what that is has not been found.
+     * The known peculiarities of those throws are that all 278 belong to one character and
+     * that several were thrown while withdrawing, at a hundred units out. Neither explains
+     * a card that resolves without touching the thing it resolves on.
+     */
+    public final boolean clearsLeast;
+
+    /**
+     * What a reduction hands to the OPPONENT, as a multiple of the points it took off us.
+     *
+     * Feigned Dodge, and nothing else: "For every unit of opening reduced by Feigned
+     * Dodge, twice that amount is given to the opponent." It is a reduction and an attack
+     * in one, and the model used to carry only the reduction half - which priced it as a
+     * defensive card with no cost, and it was in nearly every deck the search recommended.
+     *
+     * NEVER THROWN IN THE CORPUS, so what lands on the opponent is applied the way every
+     * other opening in this model is applied, with the (1 - Oc) falloff and no weight
+     * ratio - the same choice made for Parry's counter-opening, for the same reason. The
+     * prose reads as though it might be flat, and nothing observed can separate the two.
+     */
+    public final double reduceToFoe;
+
     public final int targets;
     /** See {@link #targets}. Per target, from the main one; the last entry repeats. */
     public final double[] targetDamage;
@@ -278,6 +317,8 @@ public final class Move {
         this.flatDamage = b.flatDamage;
         this.grievous = b.grievous;
         this.boostGreatest = b.boostGreatest;
+        this.clearsLeast = b.clearsLeast;
+        this.reduceToFoe = b.reduceToFoe;
         this.targets = b.targets;
         this.targetDamage = b.targetDamage;
         this.ipCost = b.ipCost;
@@ -308,6 +349,7 @@ public final class Move {
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
         this.grievous = o.grievous;
         this.boostGreatest = o.boostGreatest;
+        this.clearsLeast = o.clearsLeast; this.reduceToFoe = o.reduceToFoe;
         this.targets = o.targets; this.targetDamage = o.targetDamage;
         this.ipCost = o.ipCost; this.ipGain = o.ipGain; this.foeIpGain = o.foeIpGain;
         this.gainColour = o.gainColour; this.gainAbove = o.gainAbove;
@@ -381,6 +423,8 @@ public final class Move {
         private final double[] reduces = new double[4];
         private double damageShare = 0, flatDamage = 0, grievous = 0;
         private double boostGreatest = 0;
+        private boolean clearsLeast = false;
+        private double reduceToFoe = 0;
         private int targets = 1;
         private double[] targetDamage = {1.0};
         private int ipCost = 0, ipGain = 0, foeIpGain = 0, gainColour = -1;
@@ -423,6 +467,12 @@ public final class Move {
         public Builder flatDamage(double v) {this.flatDamage = v; return(this);}
         public Builder grievous(double v) {this.grievous = v; return(this);}
         public Builder boostGreatest(double v) {this.boostGreatest = v; return(this);}
+
+        /** See Move.clearsLeast - Dash, which wipes the smallest of the four. */
+        public Builder clearsLeast(boolean v) {this.clearsLeast = v; return(this);}
+
+        /** See Move.reduceToFoe - what a reduction hands over, per point taken off us. */
+        public Builder reduceToFoe(double v) {this.reduceToFoe = v; return(this);}
 
         /** See Move.targets - how many it lands on, and what each takes. */
         public Builder targets(int n, double... scale) {
