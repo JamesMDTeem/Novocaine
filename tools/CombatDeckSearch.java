@@ -427,6 +427,7 @@ public class CombatDeckSearch {
          * For Shade they are not - Shade has never learned Parry, Oak Stance or Combat
          * Meditation, and the walrus deck below is built on Oak Stance. */
         boolean ownedOnly = false;
+        int slotOverride = -1;
         for(int i = 0; i < argv.length; i++) {
             if("-n".equals(argv[i]) && ((i + 1) < argv.length))
                 copies = Integer.parseInt(argv[++i]);
@@ -438,6 +439,11 @@ public class CombatDeckSearch {
                 kind = argv[++i];
             else if("-owned".equals(argv[i]))
                 ownedOnly = true;
+            /* The game saves five, but they are not all for creatures - reserving one for
+             * players changes which four the greedy picks, because it has to cover the
+             * whole roster with fewer and stops being able to afford a specialist. */
+            else if("-slots".equals(argv[i]) && ((i + 1) < argv.length))
+                slotOverride = Integer.parseInt(argv[++i]);
             else if("-aim".equals(argv[i]) && ((i + 1) < argv.length))
                 aim = Advisor.Aim.valueOf(argv[++i].toUpperCase());
             else
@@ -466,7 +472,7 @@ public class CombatDeckSearch {
         }
         Pack.DeckRules rules = Pack.deckRules(root.resolve("moves_sheet.json"));
         MAX_POINTS = rules.maxPoints;
-        SAVED_DECKS = rules.saved;
+        SAVED_DECKS = (slotOverride > 0) ? slotOverride : rules.saved;
         HELD_SHIELD = who.shield;
         Combatant me = who.combatant();
 
@@ -683,7 +689,7 @@ public class CombatDeckSearch {
                 covered++;
         }
         System.out.println();
-        System.out.printf("  %d of %d opponents are killed by one of those five.%n",
+        System.out.printf("  %d of %d opponents are killed by one of those.%n",
                           covered, owners.size());
     }
 
