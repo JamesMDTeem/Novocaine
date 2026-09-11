@@ -180,7 +180,7 @@ public class CombatAudit {
 
         uncovered("FoeModel", FoeModel.class, new String[] {
             "period", "pressure", "pressureAgainst", "damageCoef", "nGaps", "nHits",
-            "modes", "fleesBelow", "restores",
+            "modes", "fleesBelow", "restores", "restoresByColour",
             "condFeature", "condCut", "whenPressure", "elsePressure",
         });
     }
@@ -592,6 +592,24 @@ public class CombatAudit {
         restores.restore(selfOpen);
         live("a restoring card takes back a share of its own openings", before,
              selfOpen.opening(Formulas.RED), "FoeModel.restore");
+
+        /* AND IT HAS TO AIM. The flat share defends all four colours equally, and four of
+         * the six restoring cards in the corpus do not: Roar of the Wild takes back
+         * yellow and red and leaves green and blue completely alone. Applying one share
+         * everywhere makes a creature look defended in the very colour an attacker should
+         * be using, so this checks that a colour the profile leaves at zero really is
+         * left alone. */
+        Combatant aimed = open(60);
+        FoeModel picky = new FoeModel(50, press, 100, 2.0, 10, 10, Double.NaN,
+                                      new int[0], 0, null, 0, null, null,
+                                      new double[] {0, 0, 0, 0.25});
+        double greenBefore = aimed.opening(Formulas.GREEN);
+        double redBefore = aimed.opening(Formulas.RED);
+        picky.restore(aimed);
+        live("  and it takes back only the colours it names",
+             redBefore, aimed.opening(Formulas.RED), "FoeModel.restore");
+        same("  leaving the colours it does not name untouched",
+             greenBefore, aimed.opening(Formulas.GREEN));
 
         FoeModel split = new FoeModel(50, press, 100, 2.0, 10, 10, Double.NaN, new int[0],
                                       0, "my_open", 25.0, new double[] {0, 0, 0, 9.0},

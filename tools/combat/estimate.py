@@ -1928,6 +1928,41 @@ def bucket(eng):
     return "%s#%s" % (res.split("/")[-1], eng.gob)
 
 
+def theirs(eng, m):
+    """Did THIS creature throw that move, or did something else in the fight?
+
+    The collection loops credited every foe move in an engagement to the engagement's
+    species, and in a mixed fight that is simply wrong. Ants came out of it holding Bear
+    Down, Chomp, Fell Scratch and Rampant Rage; counted properly, an ant threw Ant Spit
+    1058 times and every one of the others zero. The Fell Scratches were a cave angler's,
+    thirty-nine of them.
+
+    It is not a rounding error in a mix. It puts cards in a creature's list that the
+    creature does not have, and the policy, the conditional rule and the pressure are all
+    built from that list. Fifteen species carry at least one such card, and two - the bee
+    swarm and the mare - have no correctly attributed moves at all, so their entire
+    repertoire is somebody else's.
+
+    MATCHING THE SPECIES, NOT THE ID. A swarm is many individuals with many ids, and
+    another ant's Ant Spit is still an ant's: of 1166 in ant fights, 108 came from a
+    different gob and all of them count. Rejecting anything but the engagement's own id
+    would throw away a tenth of the evidence to fix a problem that is about species.
+
+    A row with no id at all is kept, because there is nothing to test it against and it is
+    73 rows out of 16148.
+    """
+    g = m.get("gob")
+    if (g is None) or (g == eng.gob):
+        return True
+    them = gob_species().get(g)
+    if them is None:
+        return True                     # unresolvable; 73 rows in the whole corpus
+    mine = eng.res or gob_species().get(eng.gob)
+    if mine is None:
+        return True
+    return them == mine
+
+
 # gob id -> resource, over the WHOLE corpus. Built once, lazily.
 _GOB_RES = None
 
@@ -2397,6 +2432,12 @@ def collect(paths):
         "foe_state_by": defaultdict(lambda: defaultdict(list)),
         "foe_close_by": defaultdict(lambda: defaultdict(list)),
         "foe_close": [],
+        # THE SAME THING PER COLOUR, because a restoration is not one share spread evenly.
+        # Roar of the Wild takes back yellow and red and leaves green and blue untouched;
+        # Careful Approach does the opposite halves. One number for all four is wrong for
+        # four of the six restoring cards in the corpus.
+        "foe_close_col_by": defaultdict(lambda: defaultdict(list)),
+        "foe_close_col": [],
         "foe_state": [],
         "foe_gaps_by": defaultdict(lambda: defaultdict(list)),
         "engagements_by": defaultdict(lambda: defaultdict(int)),
@@ -2525,7 +2566,7 @@ def collect(paths):
             # taken more than their whole estimated hitpool before running.
             # What each of the opponent's cards was seen to do to US, for foe_card_opens.
             for fm in eng.moves:
-                if fm.get("actor") != "foe":
+                if (fm.get("actor") != "foe") or not theirs(eng, fm):
                     continue
                 nm = fm.get("name") or fm.get("move")
                 if not nm:
@@ -2692,7 +2733,7 @@ def collect(paths):
                 rec["sep"].append((db - da) / dt)
 
             for fm in eng.moves:
-                if fm.get("actor") != "foe":
+                if (fm.get("actor") != "foe") or not theirs(eng, fm):
                     continue
                 fb, _fa = eng.brackets(fm)
                 rec["foe_moves_by"][eng.gob][(log.header or {}).get("char")].append(
@@ -2719,6 +2760,14 @@ def collect(paths):
                         _stand = float(sum(_bv))
                         rec["foe_close_by"][eng.gob][(log.header or {}).get("char")].append(
                             sum(max(0, _bv[i] - _av[i]) for i in range(4)) / _stand)
+                        # Per colour, and only where that colour had something standing:
+                        # a share of nothing is not a measurement, and counting it as a
+                        # full restoration is how a card that does nothing to a colour
+                        # ends up looking like it clears it.
+                        rec["foe_close_col_by"][eng.gob][(log.header or {}).get("char")]\
+                            .append(tuple((max(0, _bv[i] - _av[i]) / float(_bv[i]))
+                                          if (_bv[i] >= 5) else None
+                                          for i in range(4)))
                 if fb is not None:
                     rec["foe_state_by"][eng.gob][(log.header or {}).get("char")].append(
                         (fm.get("name") or fm.get("move"),
@@ -2841,7 +2890,10 @@ def collect(paths):
                             if eng.offence_ok:
                                 rec["agi_obs_clean"].add(o)
                                 rec["agi_obs_clean_by_gob"][eng.gob].add(o)
-                else:
+                elif theirs(eng, m):
+                    # THIS creature's card, not whatever else was in the fight - see
+                    # theirs(). Ants came out of this holding Bear Down, Chomp, Fell
+                    # Scratch and Rampant Rage, and threw none of them once.
                     rec["their_moves"][m.get("name") or m.get("move")].add(m.get("cd"))
 
             if eng.defence_ok:
@@ -2870,6 +2922,9 @@ def collect(paths):
         for gob, byc in rec["foe_close_by"].items():
             if byc:
                 rec["foe_close"].extend(max(byc.values(), key=len))
+        for gob, byc in rec["foe_close_col_by"].items():
+            if byc:
+                rec["foe_close_col"].extend(max(byc.values(), key=len))
         for gob, byc in rec["foe_state_by"].items():
             if byc:
                 rec["foe_state"].extend(max(byc.values(), key=len))
@@ -3212,7 +3267,7 @@ def animal_move_cooldowns(paths=None):
                 continue
             seq = defaultdict(list)
             for m in eng.moves:
-                if m.get("actor") != "foe":
+                if (m.get("actor") != "foe") or not theirs(eng, m):
                     continue
                 nm, t = m.get("name") or m.get("move"), m.get("t")
                 if nm and (t is not None):
@@ -3312,24 +3367,31 @@ def animal_move_soak(paths=None):
 
 
 def animal_move_restores(paths=None):
-    """The share of its OWN standing openings each restoring card takes back.
+    """The share of its own standing openings each restoring card takes back, PER COLOUR.
 
-    Per card, because the cards differ by nearly four times and a per-creature figure
-    averages whichever ones that creature happens to hold: Swift Evasion 0.30 and
-    Unstoppable 0.29 against Rampant Rage 0.08. A creature holding Bristle and Rampant
-    Rage is not described by the mean of the two.
+    NOT THE SAME SHARE OFF EVERY COLOUR, which is what the aggregate assumed and what the
+    code doing the restoring still says in a comment - that no restoring card names a
+    colour, so there is nothing to aim it at. The corpus names them plainly:
 
-    A SHARE AND NOT A NUMBER OF POINTS, which is the shape our own reductions take and was
-    settled for the aggregate figure already: splitting by how much was standing when the
-    card landed holds steady where a points figure does not.
+        Roar of the Wild   green 0.00  blue 0.00  yellow 0.14  red 0.15
+        Careful Approach   green 0.20  blue 0.20  yellow 0.00  red 0.00
+        Unstoppable        green 0.30  blue 0.00              red 0.30
+        Bristle            green 0.20  blue 0.20  yellow 0.19  red 0.20
 
-    Only fights where something was actually standing count - below a handful of points
-    the ratio is dominated by rounding, and a card that restores nothing would read as
-    restoring everything.
+    Only Bristle is uniform. Roar of the Wild and Careful Approach restore two colours
+    each and leave the other two entirely alone, which is the opposite halves in each
+    case - so a model that spreads one share over all four is wrong about both, and
+    wrong in a way that makes every creature holding them look harder to open than it is.
+
+    The controls say the method invents nothing: Fell Scratch reads 0.000 on all four
+    over 3743 red observations, and Chomp the same.
+
+    A colour needs something standing before a share of it means anything, so a colour
+    below a few points is skipped rather than counted as fully restored.
     """
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
-    obs = defaultdict(list)
+    obs = defaultdict(lambda: defaultdict(list))
     for p in sorted(paths):
         try:
             log = fightlog.read(p, None)
@@ -3339,7 +3401,10 @@ def animal_move_restores(paths=None):
             continue
         for eng in log.engagements:
             for m in eng.moves:
-                if m.get("actor") != "foe":
+                if (m.get("actor") != "foe") or not theirs(eng, m):
+                    continue
+                nm = m.get("name") or m.get("move")
+                if not nm:
                     continue
                 before, after = eng.brackets(m)
                 if (before is None) or (after is None):
@@ -3347,24 +3412,25 @@ def animal_move_restores(paths=None):
                 bv, av = before.get("foe"), after.get("foe")
                 if not bv or not av:
                     continue
-                stand = sum(bv)
-                if stand <= 5:
-                    continue
-                fell = sum(max(0, bv[c] - av[c]) for c in range(4))
-                nm = m.get("name") or m.get("move")
-                if nm:
-                    obs[nm].append(fell / float(stand))
+                for c in range(4):
+                    if bv[c] >= 5:
+                        obs[nm][c].append(max(0, bv[c] - av[c]) / float(bv[c]))
     out = {}
-    for nm, v in obs.items():
-        if len(v) < 30:
-            continue
-        v.sort()
-        share = v[len(v) // 2]
-        # Everything restores a little, because openings decay; only a card that takes
-        # back materially more than the noise is doing something worth modelling.
-        if share <= 0.02:
-            continue
-        out[nm] = {"share": round(share, 3), "n": len(v)}
+    for nm, bycol in obs.items():
+        shares, ns, any_real = {}, {}, False
+        for c in range(4):
+            v = sorted(bycol.get(c) or ())
+            if len(v) < 15:
+                continue
+            share = v[len(v) // 2]
+            ns[COLOURS[c]] = len(v)
+            # Everything falls a little, because openings decay; only a colour taken back
+            # materially more than the noise is being restored.
+            if share > 0.02:
+                shares[COLOUR_AT[c]] = round(share, 3)
+                any_real = True
+        if any_real:
+            out[nm] = {"by_colour": shares, "n": ns}
     return out
 
 
@@ -5012,6 +5078,16 @@ def period_of(gaps_ms):
 
 COLOURS = ("red", "green", "blue", "yellow")
 
+# THE INDEX ORDER, WHICH IS NOT THE ORDER ABOVE. COLOURS is a set of names to iterate;
+# this is the order the openings ARRAYS use, everywhere - Openings.toJson writes
+# [green, blue, yellow, red] and Formulas numbers them GREEN 0, BLUE 1, YELLOW 2, RED 3.
+#
+# Indexing COLOURS with one of those numbers silently relabels every colour without
+# changing a single value, which has now caused the same error twice: once reading Cleave
+# as striking green when it strikes blue, and once here. Use this when the subscript is a
+# number and COLOURS when it is a name.
+COLOUR_AT = ("green", "blue", "yellow", "red")
+
 
 # How many individuals must have been watched giving up before their median is reported as
 # a species threshold. Below this the reading is one animal's temperament.
@@ -5076,6 +5152,39 @@ def restores(rec):
     if len(v) < RESTORE_MIN_N:
         return None
     return round(sum(v) / float(len(v)), 2)
+
+
+def restores_by_colour(rec):
+    """The same, split by colour, because the cards do not spread it evenly.
+
+    The scalar above says a creature takes back some share of everything, which is what
+    the model has been applying - the same fraction off all four colours. Measured per
+    colour the restoring cards disagree with that flatly:
+
+        Roar of the Wild   yellow and red, nothing at all in green or blue
+        Careful Approach   green and blue, nothing in yellow or red
+        Unstoppable        green and red
+        Bristle            all four, evenly, and it is the only one that does
+
+    So a creature holding Roar of the Wild is not hard to open in green; it is exactly as
+    open in green as it would be with no restoration at all, and the flat share was
+    telling the optimizer otherwise.
+
+    Averaged over every action with that colour standing, matching the scalar and the
+    period beside it: a creature that spends a third of its turns restoring takes back a
+    third as much per action as one that does nothing else.
+    """
+    rows = rec.get("foe_close_col") or ()
+    out, ns = {}, {}
+    for c in range(4):
+        v = [r[c] for r in rows if (r[c] is not None)]
+        if len(v) < RESTORE_MIN_N:
+            continue
+        ns[COLOUR_AT[c]] = len(v)
+        out[COLOUR_AT[c]] = round(sum(v) / float(len(v)), 3)
+    if not out:
+        return None
+    return {"by_colour": out, "n": ns}
 
 
 def threat(rec):
@@ -5219,7 +5328,8 @@ def threat(rec):
             # uses. A share rather than points: see restores.
             #
             # Null below RESTORE_MIN_N, where the mean is one creature's habits.
-            "restores": restores(rec)}
+            "restores": restores(rec),
+            "restores_by_colour": restores_by_colour(rec)}
 
 
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")

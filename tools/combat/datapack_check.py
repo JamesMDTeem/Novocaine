@@ -664,9 +664,27 @@ def animal_cards():
     check("damage spans more than tenfold across cards",
           field("Shredding Paw", "damage", "coef")
           > (10 * field("Vampirism", "damage", "coef")), True)
-    check("restoration spans more than threefold",
-          field("Swift Evasion", "restores", "share")
-          > (3 * field("Rampant Rage", "restores", "share")), True)
+    def restore_of(nm, colour):
+        return (((moves.get(nm) or {}).get("restores") or {})
+                .get("by_colour", {}).get(colour))
+
+    # Compared on a colour both actually restore. The old threefold figure came from the
+    # scalar, which mixed a card's strong colours with the ones it does not touch at all -
+    # exactly the averaging this file exists to replace. On green, which both name, the
+    # spread is real but smaller.
+    check("restoration differs by half again between cards",
+          restore_of("Swift Evasion", "green")
+          > (1.4 * restore_of("Rampant Rage", "green")), True)
+
+    # AND IT IS AIMED, which is the part the model had wrong. Roar of the Wild takes back
+    # yellow and red and nothing else; a flat share would defend green too, which is the
+    # colour an attacker should then be using.
+    roar = ((moves.get("Roar of the Wild") or {}).get("restores") or {}).get("by_colour", {})
+    check("  and a restoration names its colours", sorted(roar), ["red", "yellow"])
+    care = ((moves.get("Careful Approach") or {}).get("restores") or {}).get("by_colour", {})
+    check("  another naming the opposite halves", sorted(care), ["blue", "green"])
+    bris = ((moves.get("Bristle") or {}).get("restores") or {}).get("by_colour", {})
+    check("  and only one is even across all four", len(bris), 4)
 
     # Grievous is the sharpest: three cards, and the rest are not merely small, they are
     # zero. A per-creature rate would smear those three across everything.
@@ -681,8 +699,52 @@ def animal_cards():
           < (0.7 * field("Fell Scratch", "armour", "soaked_share")), True)
 
 
+def moves_belong_to_their_owner():
+    """Does a creature's move list contain only moves that creature was seen throwing?
+
+    THE COLLECTOR CREDITED EVERY FOE MOVE IN A FIGHT TO THE FIGHT'S SPECIES. In a mixed
+    fight that is simply wrong, and it was not rare: ants came out of it holding Bear
+    Down, Chomp, Fell Scratch and Rampant Rage, having thrown Ant Spit 1058 times and
+    each of the others exactly zero. The thirty-nine Fell Scratches belonged to a cave
+    angler standing next to them.
+
+    It is not a small error in a mix. It puts cards in a creature's repertoire that the
+    creature does not have, and the policy, the conditional rule, the pressure and the
+    recommended counter-deck are all built on that repertoire. Fifteen species carried at
+    least one, and the bee swarm and the mare had no correctly attributed moves at all -
+    their entire listed repertoire was somebody else's.
+
+    The test is by species and not by id, because a swarm is many individuals: another
+    ant's Ant Spit is still an ant's, and 108 of 1166 came from a different gob.
+    """
+    print("")
+    print("a creature's moves are its own")
+    path = os.path.join(_est3root(), "data", "combat", "opponents.json")
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            doc = _json4.load(f)
+    except (OSError, ValueError):
+        return
+    by = dict((v["name"], v) for v in doc.get("opponents") or [])
+    check("an ant throws one card and it is Ant Spit",
+          (by.get("ants") or {}).get("moves"), ["Ant Spit"])
+    check("  and so does a red ant", (by.get("redants") or {}).get("moves"), ["Ant Spit"])
+    # The adder's own card is Serpent's Strike; Chomp and Fell Scratch were its company.
+    check("the adder keeps its own card",
+          "Serpent's Strike" in ((by.get("adder") or {}).get("moves") or []), True)
+    check("  and loses the ones it never threw",
+          "Fell Scratch" in ((by.get("adder") or {}).get("moves") or []), False)
+    # An empty list is the honest answer where every move was someone else's, and is not
+    # the same as the creature having no moves - it is us never having seen one.
+    empty = [nm for nm, v in by.items()
+             if (v.get("kind") == "creature") and not v.get("moves")]
+    check("some creature is left with an empty repertoire, honestly", len(empty) > 0, True)
+    print("    never seen throwing anything of their own: %s" % ", ".join(sorted(empty)[:6]))
+
+
 def main():
     primitives()
+    moves_belong_to_their_owner()
     animal_cards()
     how_thin_is_the_damage()
     every_key_is_read()

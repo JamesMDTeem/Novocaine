@@ -799,12 +799,30 @@ public class CombatDeckSearch {
         return(c);
     }
 
+    /**
+     * The crowd's clock. CARRY EVERYTHING ELSE ACROSS, which this did not.
+     *
+     * It rebuilt the opponent through the eight-argument constructor, which defaults the
+     * restorations to NaN and the learned rule to null - so every swarm run was fought
+     * against a creature that never took its openings back and never changed its
+     * behaviour, while the same creature fought alone did both. The two runs were not
+     * comparing the same animal.
+     *
+     * The approximation this is part of remains a poor one, and it is called out where it
+     * is printed: five opponents are modelled as one with five times the health, and
+     * openings do not work that way. Opening one bee does not open the others, and damage
+     * goes as the SQUARE of the opening, so five bees each a fifth open is far less
+     * damage than one bee fully open. Pooling their health lets our openings accumulate
+     * against the crowd as though it were a single animal.
+     */
     static FoeModel faster(FoeModel m, int copies) {
         if(copies <= 1)
             return(m);
         long period = Math.max(1, Math.round(m.period / ((copies + 1) / 2.0)));
         return(new FoeModel(period, m.pressure, m.pressureAgainst, m.damageCoef,
-                            m.nGaps, m.nHits, m.fleesBelow, m.modes));
+                            m.nGaps, m.nHits, m.fleesBelow, m.modes, m.restores,
+                            m.condFeature, m.condCut, m.whenPressure, m.elsePressure,
+                            m.restoresByColour));
     }
 
     /** Five decks, chosen greedily for what they cover between them. */

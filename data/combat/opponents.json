@@ -109,7 +109,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -212,7 +213,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -302,7 +304,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -421,7 +424,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -507,7 +511,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -661,7 +666,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -819,7 +825,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -917,7 +924,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -1058,7 +1066,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -1201,7 +1210,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -1337,7 +1347,15 @@
     },
     "pressure_against": 260.0,
     "pressure_n": 18,
-    "restores": 0.08
+    "restores": 0.08,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.084
+     },
+     "n": {
+      "red": 72
+     }
+    }
    }
   },
   {
@@ -1431,7 +1449,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -1486,44 +1505,34 @@
    "kind": "creature",
    "moves": [
     "Careful Approach",
-    "Chomp",
-    "Fell Scratch",
     "Roar of the Wild",
     "Serpent's Strike"
    ],
    "name": "adder",
    "policy": {
-    "attack_share_above_0_ip": 0.673,
-    "attack_share_at_0_ip": 0.85,
+    "attack_share_above_0_ip": 0.605,
+    "attack_share_at_0_ip": 0.857,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
-     40,
-     52
+     42,
+     43
     ],
     "mix": [
      [
       "Serpent's Strike",
-      0.656
+      0.733
      ],
      [
       "Roar of the Wild",
-      0.208
-     ],
-     [
-      "Fell Scratch",
-      0.094
+      0.233
      ],
      [
       "Careful Approach",
-      0.031
-     ],
-     [
-      "Chomp",
-      0.01
+      0.035
      ]
     ],
-    "n": 96,
+    "n": 86,
     "solo_n": 68
    },
    "policy_rule": null,
@@ -1578,7 +1587,15 @@
     },
     "pressure_against": 438.07142857142856,
     "pressure_n": 35,
-    "restores": 0.05
+    "restores": 0.05,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.057
+     },
+     "n": {
+      "red": 49
+     }
+    }
    }
   },
   {
@@ -1633,11 +1650,7 @@
    },
    "kind": "creature",
    "moves": [
-    "Ant Spit",
-    "Bear Down",
-    "Chomp",
-    "Fell Scratch",
-    "Rampant Rage"
+    "Ant Spit"
    ],
    "name": "ants",
    "policy": {
@@ -1646,81 +1659,19 @@
     "ip_conditioned": false,
     "ip_group_contaminated": false,
     "ip_n": [
-     838,
-     17
+     784,
+     16
     ],
     "mix": [
      [
       "Ant Spit",
-      0.966
-     ],
-     [
-      "Fell Scratch",
-      0.031
-     ],
-     [
-      "Bear Down",
-      0.002
-     ],
-     [
-      "Rampant Rage",
-      0.001
+      1.0
      ]
     ],
-    "n": 1038,
+    "n": 971,
     "solo_n": 511
    },
-   "policy_rule": {
-    "cut": 12.0,
-    "feature": "distance",
-    "n": 864,
-    "otherwise": [
-     [
-      "Ant Spit",
-      255
-     ],
-     [
-      "Fell Scratch",
-      5
-     ]
-    ],
-    "otherwise_pressure": {
-     "blue": 4.07,
-     "green": 4.25,
-     "red": 0.0,
-     "yellow": 0.0
-    },
-    "pooled_pressure": {
-     "blue": 4.04,
-     "green": 4.28,
-     "red": 0.0,
-     "yellow": 0.0
-    },
-    "sim_feature": null,
-    "test_bits": 0.006,
-    "train_bits": 0.014,
-    "when": [
-     [
-      "Ant Spit",
-      167
-     ],
-     [
-      "Fell Scratch",
-      3
-     ],
-     [
-      "Bear Down",
-      1
-     ]
-    ],
-    "when_pressure": {
-     "blue": 3.98,
-     "green": 4.33,
-     "red": 0.0,
-     "yellow": 0.0
-    },
-    "wording": "it is more than 12 units away"
-   },
+   "policy_rule": null,
    "relative_speed": {
     "hi": 20.2,
     "lo": 16.7,
@@ -1766,14 +1717,26 @@
      "ticks": 45.8
     },
     "pressure": {
-     "blue": 4.03,
-     "green": 4.29,
+     "blue": 4.15,
+     "green": 4.18,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 376.875,
     "pressure_n": 853,
-    "restores": 0.0
+    "restores": 0.0,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.0,
+      "green": 0.001,
+      "red": 0.0
+     },
+     "n": {
+      "blue": 66,
+      "green": 87,
+      "red": 526
+     }
+    }
    }
   },
   {
@@ -1919,7 +1882,17 @@
     },
     "pressure_against": 431.5,
     "pressure_n": 52,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.02,
+      "red": 0.002
+     },
+     "n": {
+      "blue": 31,
+      "red": 91
+     }
+    }
    }
   },
   {
@@ -2113,7 +2086,17 @@
     },
     "pressure_against": 366.25,
     "pressure_n": 145,
-    "restores": 0.0
+    "restores": 0.0,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.0,
+      "red": 0.0
+     },
+     "n": {
+      "blue": 38,
+      "red": 261
+     }
+    }
    }
   },
   {
@@ -2279,7 +2262,19 @@
     },
     "pressure_against": 451.75,
     "pressure_n": 67,
-    "restores": 0.06
+    "restores": 0.06,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.033,
+      "green": 0.113,
+      "red": 0.061
+     },
+     "n": {
+      "blue": 74,
+      "green": 36,
+      "red": 146
+     }
+    }
    }
   },
   {
@@ -2419,7 +2414,8 @@
     },
     "pressure_against": 339.3,
     "pressure_n": 15,
-    "restores": 0.02
+    "restores": 0.02,
+    "restores_by_colour": null
    }
   },
   {
@@ -2473,40 +2469,30 @@
    },
    "kind": "creature",
    "moves": [
-    "Bear Down",
     "Fell Scratch",
-    "Roar of the Wild",
-    "Thunder Over"
+    "Roar of the Wild"
    ],
    "name": "beelarva",
    "policy": {
-    "attack_share_above_0_ip": 0.955,
-    "attack_share_at_0_ip": 0.9,
+    "attack_share_above_0_ip": 0.947,
+    "attack_share_at_0_ip": 0.89,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     110,
-     44
+     100,
+     38
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.848
+      0.912
      ],
      [
       "Roar of the Wild",
-      0.079
-     ],
-     [
-      "Thunder Over",
-      0.039
-     ],
-     [
-      "Bear Down",
-      0.034
+      0.087
      ]
     ],
-    "n": 178,
+    "n": 160,
     "solo_n": 4
    },
    "policy_rule": null,
@@ -2548,14 +2534,22 @@
      "ticks": 48.0
     },
     "pressure": {
-     "blue": 0.3,
-     "green": 4.36,
+     "blue": 0.06,
+     "green": 4.52,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 480.0,
     "pressure_n": 59,
-    "restores": 0.02
+    "restores": 0.02,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.019
+     },
+     "n": {
+      "red": 100
+     }
+    }
    }
   },
   {
@@ -2609,35 +2603,9 @@
     "wiki": 50
    },
    "kind": "creature",
-   "moves": [
-    "Bear Down",
-    "Careful Approach",
-    "Fell Scratch",
-    "Serpent's Strike"
-   ],
+   "moves": [],
    "name": "beeswarm",
-   "policy": {
-    "mix": [
-     [
-      "Fell Scratch",
-      0.55
-     ],
-     [
-      "Bear Down",
-      0.25
-     ],
-     [
-      "Serpent's Strike",
-      0.15
-     ],
-     [
-      "Careful Approach",
-      0.05
-     ]
-    ],
-    "n": 20,
-    "solo_n": 0
-   },
+   "policy": null,
    "policy_rule": null,
    "relative_speed": {
     "hi": 45.8,
@@ -2667,14 +2635,15 @@
     "flees_below": null,
     "period": null,
     "pressure": {
-     "blue": 2.34,
-     "green": 3.14,
+     "blue": 3.13,
+     "green": 1.9,
      "red": 0.0,
-     "yellow": 1.35
+     "yellow": 3.0
     },
     "pressure_against": 480.0,
     "pressure_n": 7,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -2738,18 +2707,18 @@
    ],
    "name": "boar",
    "policy": {
-    "attack_share_above_0_ip": 0.675,
+    "attack_share_above_0_ip": 0.677,
     "attack_share_at_0_ip": 0.85,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
      254,
-     249
+     248
     ],
     "mix": [
      [
       "Mule Kick",
-      0.52
+      0.521
      ],
      [
       "Bear Down",
@@ -2757,7 +2726,7 @@
      ],
      [
       "Roar of the Wild",
-      0.143
+      0.141
      ],
      [
       "Bristle",
@@ -2772,13 +2741,13 @@
       0.004
      ]
     ],
-    "n": 540,
+    "n": 539,
     "solo_n": 293
    },
    "policy_rule": {
     "cut": 25.0,
     "feature": "our greatest opening",
-    "n": 508,
+    "n": 507,
     "otherwise": [
      [
       "Mule Kick",
@@ -2794,16 +2763,16 @@
      ]
     ],
     "otherwise_pressure": {
-     "blue": 2.66,
+     "blue": 2.67,
      "green": 0.0,
      "red": 0.0,
-     "yellow": 5.71
+     "yellow": 5.73
     },
     "pooled_pressure": {
      "blue": 2.68,
      "green": 0.0,
      "red": 0.0,
-     "yellow": 5.41
+     "yellow": 5.42
     },
     "sim_feature": "my_open",
     "test_bits": 0.004,
@@ -2880,14 +2849,26 @@
      "ticks": 41.2
     },
     "pressure": {
-     "blue": 2.65,
+     "blue": 2.66,
      "green": 0.0,
      "red": 0.0,
-     "yellow": 5.55
+     "yellow": 5.56
     },
     "pressure_against": 333.34615384615387,
     "pressure_n": 183,
-    "restores": 0.04
+    "restores": 0.04,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.059,
+      "green": 0.025,
+      "red": 0.038
+     },
+     "n": {
+      "blue": 81,
+      "green": 67,
+      "red": 357
+     }
+    }
    }
   },
   {
@@ -3034,7 +3015,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -3148,7 +3130,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -3223,7 +3206,8 @@
     },
     "pressure_against": 277.5,
     "pressure_n": 3,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -3420,7 +3404,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -3528,7 +3513,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -3614,7 +3600,8 @@
     },
     "pressure_against": 270.0,
     "pressure_n": 9,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -3761,7 +3748,15 @@
     },
     "pressure_against": 260.0,
     "pressure_n": 25,
-    "restores": 0.09
+    "restores": 0.09,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.088
+     },
+     "n": {
+      "red": 105
+     }
+    }
    }
   },
   {
@@ -3817,77 +3812,62 @@
    "moves": [
     "Blood & Gore",
     "Careful Approach",
-    "Chomp",
-    "Fell Scratch",
     "Low Horn Swipe",
     "Mule Kick",
     "Roar of the Wild",
-    "Shredding Paw",
     "Thunder Over"
    ],
    "name": "cattle",
    "policy": {
-    "attack_share_above_0_ip": 0.794,
-    "attack_share_at_0_ip": 0.904,
+    "attack_share_above_0_ip": 0.767,
+    "attack_share_at_0_ip": 0.911,
     "ip_conditioned": true,
     "ip_group_contaminated": true,
     "ip_n": [
-     125,
-     170
+     123,
+     150
     ],
     "mix": [
      [
       "Low Horn Swipe",
-      0.329
+      0.354
      ],
      [
       "Mule Kick",
-      0.314
-     ],
-     [
-      "Roar of the Wild",
-      0.14
+      0.338
      ],
      [
       "Thunder Over",
-      0.14
+      0.151
      ],
      [
-      "Fell Scratch",
-      0.052
-     ],
-     [
-      "Chomp",
-      0.009
+      "Roar of the Wild",
+      0.148
      ],
      [
       "Blood & Gore",
-      0.006
-     ],
-     [
-      "Shredding Paw",
-      0.006
+      0.007
      ],
      [
       "Careful Approach",
       0.003
      ]
     ],
-    "n": 328,
+    "n": 305,
     "solo_n": 51
    },
    "policy_rule": {
     "cut": 25.0,
     "feature": "its greatest opening",
-    "n": 297,
+    "n": 275,
     "otherwise": [
      [
       "Roar of the Wild",
-      31
+      30
      ],
      [
       "Mule Kick",
-      11
+      12
      ],
      [
       "Low Horn Swipe",
@@ -3896,38 +3876,38 @@
     ],
     "otherwise_pressure": {
      "blue": 0.0,
-     "green": 2.74,
+     "green": 2.28,
      "red": 0.0,
-     "yellow": 3.13
+     "yellow": 3.35
     },
     "pooled_pressure": {
      "blue": 0.0,
-     "green": 4.34,
-     "red": 0.12,
-     "yellow": 3.27
+     "green": 3.97,
+     "red": 0.13,
+     "yellow": 3.47
     },
     "sim_feature": "foe_open",
-    "test_bits": 0.291,
-    "train_bits": 0.094,
+    "test_bits": 0.256,
+    "train_bits": 0.144,
     "when": [
      [
       "Low Horn Swipe",
-      39
+      43
      ],
      [
       "Thunder Over",
-      19
+      20
      ],
      [
-      "Fell Scratch",
-      10
+      "Mule Kick",
+      12
      ]
     ],
     "when_pressure": {
      "blue": 0.0,
-     "green": 5.26,
-     "red": 0.19,
-     "yellow": 3.35
+     "green": 4.94,
+     "red": 0.21,
+     "yellow": 3.54
     },
     "wording": "its worst opening is over 25"
    },
@@ -3976,13 +3956,23 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 4.47,
-     "red": 0.11,
-     "yellow": 3.24
+     "green": 4.15,
+     "red": 0.12,
+     "yellow": 3.42
     },
     "pressure_against": 384.0625,
     "pressure_n": 95,
-    "restores": 0.03
+    "restores": 0.03,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.003,
+      "red": 0.018
+     },
+     "n": {
+      "green": 67,
+      "red": 172
+     }
+    }
    }
   },
   {
@@ -4225,7 +4215,21 @@
     },
     "pressure_against": 377.57142857142856,
     "pressure_n": 73,
-    "restores": 0.09
+    "restores": 0.09,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.078,
+      "green": 0.068,
+      "red": 0.083,
+      "yellow": 0.039
+     },
+     "n": {
+      "blue": 408,
+      "green": 147,
+      "red": 469,
+      "yellow": 243
+     }
+    }
    }
   },
   {
@@ -4343,7 +4347,8 @@
     },
     "pressure_against": 267.5,
     "pressure_n": 10,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -4499,7 +4504,15 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": 0.0
+    "restores": 0.0,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.0
+     },
+     "n": {
+      "blue": 43
+     }
+    }
    }
   },
   {
@@ -4605,7 +4618,8 @@
     },
     "pressure_against": 275.0,
     "pressure_n": 4,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -4744,7 +4758,15 @@
     },
     "pressure_against": 354.8,
     "pressure_n": 65,
-    "restores": 0.0
+    "restores": 0.0,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.0
+     },
+     "n": {
+      "red": 99
+     }
+    }
    }
   },
   {
@@ -4873,7 +4895,15 @@
     },
     "pressure_against": 519.1666666666666,
     "pressure_n": 23,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.006
+     },
+     "n": {
+      "red": 37
+     }
+    }
    }
   },
   {
@@ -4941,22 +4971,22 @@
    ],
    "name": "greenooze",
    "policy": {
-    "attack_share_above_0_ip": 0.507,
+    "attack_share_above_0_ip": 0.505,
     "attack_share_at_0_ip": 0.7,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
      40,
-     300
+     299
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.547
+      0.546
      ],
      [
       "Roar of the Wild",
-      0.248
+      0.249
      ],
      [
       "Careful Approach",
@@ -4971,13 +5001,13 @@
       0.016
      ]
     ],
-    "n": 371,
+    "n": 370,
     "solo_n": 122
    },
    "policy_rule": {
     "cut": 12.0,
     "feature": "distance",
-    "n": 340,
+    "n": 339,
     "otherwise": [
      [
       "Fell Scratch",
@@ -5000,13 +5030,13 @@
     },
     "pooled_pressure": {
      "blue": 0.27,
-     "green": 5.16,
+     "green": 5.15,
      "red": 0.0,
      "yellow": 0.0
     },
     "sim_feature": null,
     "test_bits": 0.375,
-    "train_bits": 0.416,
+    "train_bits": 0.424,
     "when": [
      [
       "Roar of the Wild",
@@ -5023,7 +5053,7 @@
     ],
     "when_pressure": {
      "blue": 0.14,
-     "green": 2.65,
+     "green": 2.62,
      "red": 0.0,
      "yellow": 0.0
     },
@@ -5074,14 +5104,26 @@
      "ticks": 40.9
     },
     "pressure": {
-     "blue": 0.24,
-     "green": 5.52,
+     "blue": 0.25,
+     "green": 5.51,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 328.5,
     "pressure_n": 66,
-    "restores": 0.06
+    "restores": 0.06,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.041,
+      "green": 0.039,
+      "red": 0.054
+     },
+     "n": {
+      "blue": 54,
+      "green": 90,
+      "red": 281
+     }
+    }
    }
   },
   {
@@ -5202,7 +5244,8 @@
     },
     "pressure_against": 402.5,
     "pressure_n": 11,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -5256,50 +5299,35 @@
    },
    "kind": "creature",
    "moves": [
-    "Bear Down",
     "Chomp",
     "Fell Scratch",
-    "Roar of the Wild",
-    "Shredding Paw",
-    "Thunder Over"
+    "Roar of the Wild"
    ],
    "name": "honeybee",
    "policy": {
-    "attack_share_above_0_ip": 0.971,
-    "attack_share_at_0_ip": 0.981,
+    "attack_share_above_0_ip": 1.0,
+    "attack_share_at_0_ip": 0.978,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     106,
-     34
+     92,
+     14
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.848
-     ],
-     [
-      "Bear Down",
-      0.053
-     ],
-     [
-      "Thunder Over",
-      0.04
-     ],
-     [
-      "Shredding Paw",
-      0.026
+      0.974
      ],
      [
       "Roar of the Wild",
-      0.02
+      0.017
      ],
      [
       "Chomp",
-      0.013
+      0.009
      ]
     ],
-    "n": 151,
+    "n": 115,
     "solo_n": 0
    },
    "policy_rule": null,
@@ -5340,14 +5368,22 @@
      "ticks": 59.1
     },
     "pressure": {
-     "blue": 0.71,
-     "green": 6.38,
-     "red": 0.47,
+     "blue": 0.19,
+     "green": 7.03,
+     "red": 0.15,
      "yellow": 0.0
     },
     "pressure_against": 480.0,
     "pressure_n": 56,
-    "restores": 0.0
+    "restores": 0.0,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.001
+     },
+     "n": {
+      "red": 72
+     }
+    }
    }
   },
   {
@@ -5499,7 +5535,8 @@
     },
     "pressure_against": 576.25,
     "pressure_n": 4,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -5553,55 +5590,45 @@
    },
    "kind": "creature",
    "moves": [
-    "Ant Spit",
     "Bristle",
     "Careful Approach",
     "Chomp",
     "Fell Scratch",
-    "Roar of the Wild",
-    "Serpent's Strike"
+    "Roar of the Wild"
    ],
    "name": "lynx",
    "policy": {
-    "attack_share_above_0_ip": 0.878,
+    "attack_share_above_0_ip": 0.87,
     "attack_share_at_0_ip": 0.75,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
      24,
-     74
+     69
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.683
+      0.724
      ],
      [
       "Chomp",
-      0.106
+      0.112
      ],
      [
       "Careful Approach",
-      0.077
-     ],
-     [
-      "Ant Spit",
-      0.038
+      0.082
      ],
      [
       "Bristle",
-      0.038
+      0.041
      ],
      [
       "Roar of the Wild",
-      0.038
-     ],
-     [
-      "Serpent's Strike",
-      0.019
+      0.041
      ]
     ],
-    "n": 104,
+    "n": 98,
     "solo_n": 45
    },
    "policy_rule": null,
@@ -5659,7 +5686,19 @@
     },
     "pressure_against": 355.0,
     "pressure_n": 16,
-    "restores": 0.02
+    "restores": 0.02,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.027,
+      "red": 0.011,
+      "yellow": 0.039
+     },
+     "n": {
+      "blue": 70,
+      "red": 48,
+      "yellow": 36
+     }
+    }
    }
   },
   {
@@ -5774,7 +5813,8 @@
     },
     "pressure_against": 622.5,
     "pressure_n": 13,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -5788,20 +5828,9 @@
    },
    "hitpoints": null,
    "kind": "creature",
-   "moves": [
-    "Fell Scratch"
-   ],
+   "moves": [],
    "name": "mare",
-   "policy": {
-    "mix": [
-     [
-      "Fell Scratch",
-      1.0
-     ]
-    ],
-    "n": 5,
-    "solo_n": 0
-   },
+   "policy": null,
    "policy_rule": null,
    "relative_speed": {
     "hi": 59.5,
@@ -6003,7 +6032,19 @@
     },
     "pressure_against": 390.8125,
     "pressure_n": 74,
-    "restores": 0.04
+    "restores": 0.04,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.018,
+      "green": 0.073,
+      "red": 0.045
+     },
+     "n": {
+      "blue": 61,
+      "green": 69,
+      "red": 214
+     }
+    }
    }
   },
   {
@@ -6120,7 +6161,8 @@
     },
     "pressure_against": 607.5,
     "pressure_n": 1,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -6240,7 +6282,8 @@
     },
     "pressure_against": 607.5,
     "pressure_n": 3,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -6338,29 +6381,21 @@
    ],
    "name": "queenant",
    "policy": {
-    "attack_share_above_0_ip": 1.0,
-    "attack_share_at_0_ip": 1.0,
-    "ip_conditioned": false,
-    "ip_group_contaminated": true,
-    "ip_n": [
-     15,
-     11
-    ],
     "mix": [
      [
       "Ant Spit",
-      0.679
+      0.545
      ],
      [
       "Fell Scratch",
-      0.286
+      0.364
      ],
      [
       "Rampant Rage",
-      0.036
+      0.091
      ]
     ],
-    "n": 28,
+    "n": 11,
     "solo_n": 0
    },
    "policy_rule": null,
@@ -6389,14 +6424,15 @@
      "ticks": 41.4
     },
     "pressure": {
-     "blue": 4.52,
-     "green": 7.79,
+     "blue": 3.85,
+     "green": 8.31,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 402.5,
     "pressure_n": 14,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -6454,55 +6490,27 @@
    },
    "kind": "creature",
    "moves": [
-    "Bear Down",
     "Bristle",
-    "Chomp",
     "Fell Scratch",
-    "Roar of the Wild",
-    "Shredding Paw",
-    "Thunder Over"
+    "Roar of the Wild"
    ],
    "name": "queenbee",
    "policy": {
-    "attack_share_above_0_ip": 0.903,
-    "attack_share_at_0_ip": 0.727,
-    "ip_conditioned": true,
-    "ip_group_contaminated": true,
-    "ip_n": [
-     11,
-     31
-    ],
     "mix": [
      [
       "Fell Scratch",
-      0.667
-     ],
-     [
-      "Roar of the Wild",
-      0.098
-     ],
-     [
-      "Bear Down",
-      0.078
-     ],
-     [
-      "Thunder Over",
-      0.078
-     ],
-     [
-      "Chomp",
-      0.039
+      0.818
      ],
      [
       "Bristle",
-      0.02
+      0.091
      ],
      [
-      "Shredding Paw",
-      0.02
+      "Roar of the Wild",
+      0.091
      ]
     ],
-    "n": 51,
+    "n": 11,
     "solo_n": 0
    },
    "policy_rule": null,
@@ -6533,13 +6541,14 @@
     },
     "pressure": {
      "blue": 0.0,
-     "green": 8.58,
+     "green": 8.26,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 493.3333333333333,
     "pressure_n": 4,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -6631,84 +6640,28 @@
    },
    "kind": "creature",
    "moves": [
-    "Ant Spit",
-    "Fell Scratch",
-    "Roar of the Wild"
+    "Ant Spit"
    ],
    "name": "redants",
    "policy": {
     "attack_share_above_0_ip": 1.0,
-    "attack_share_at_0_ip": 0.99,
+    "attack_share_at_0_ip": 1.0,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     196,
-     39
+     163,
+     35
     ],
     "mix": [
      [
       "Ant Spit",
-      0.895
-     ],
-     [
-      "Fell Scratch",
-      0.098
-     ],
-     [
-      "Roar of the Wild",
-      0.007
+      1.0
      ]
     ],
-    "n": 275,
+    "n": 234,
     "solo_n": 21
    },
-   "policy_rule": {
-    "cut": 25.0,
-    "feature": "its greatest opening",
-    "n": 242,
-    "otherwise": [
-     [
-      "Ant Spit",
-      51
-     ],
-     [
-      "Fell Scratch",
-      3
-     ]
-    ],
-    "otherwise_pressure": {
-     "blue": 5.12,
-     "green": 5.6,
-     "red": 0.0,
-     "yellow": 0.0
-    },
-    "pooled_pressure": {
-     "blue": 4.96,
-     "green": 5.77,
-     "red": 0.0,
-     "yellow": 0.0
-    },
-    "sim_feature": "foe_open",
-    "test_bits": 0.003,
-    "train_bits": 0.038,
-    "when": [
-     [
-      "Ant Spit",
-      61
-     ],
-     [
-      "Fell Scratch",
-      6
-     ]
-    ],
-    "when_pressure": {
-     "blue": 4.82,
-     "green": 5.92,
-     "red": 0.0,
-     "yellow": 0.0
-    },
-    "wording": "its worst opening is over 25"
-   },
+   "policy_rule": null,
    "relative_speed": {
     "informative": true,
     "measured": false,
@@ -6751,14 +6704,24 @@
      "ticks": 49.3
     },
     "pressure": {
-     "blue": 4.97,
-     "green": 5.77,
+     "blue": 5.53,
+     "green": 5.52,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 372.5,
     "pressure_n": 235,
-    "restores": 0.0
+    "restores": 0.0,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.001,
+      "red": 0.0
+     },
+     "n": {
+      "green": 49,
+      "red": 159
+     }
+    }
    }
   },
   {
@@ -6967,7 +6930,17 @@
     },
     "pressure_against": 341.40909090909093,
     "pressure_n": 67,
-    "restores": 0.03
+    "restores": 0.03,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.04,
+      "red": 0.017
+     },
+     "n": {
+      "blue": 49,
+      "red": 126
+     }
+    }
    }
   },
   {
@@ -7169,7 +7142,15 @@
     },
     "pressure_against": 435.0,
     "pressure_n": 66,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.011
+     },
+     "n": {
+      "red": 148
+     }
+    }
    }
   },
   {
@@ -7269,101 +7250,101 @@
    ],
    "name": "royalguardant",
    "policy": {
-    "attack_share_above_0_ip": 0.835,
-    "attack_share_at_0_ip": 0.886,
+    "attack_share_above_0_ip": 0.816,
+    "attack_share_at_0_ip": 0.869,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     149,
-     133
+     122,
+     114
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.461
+      0.519
      ],
      [
       "Ant Spit",
-      0.397
+      0.319
      ],
      [
       "Roar of the Wild",
-      0.097
+      0.115
      ],
      [
       "Swift Evasion",
-      0.019
+      0.023
      ],
      [
       "Careful Approach",
-      0.016
+      0.012
      ],
      [
       "Shredding Paw",
-      0.006
+      0.008
      ],
      [
       "Bristle",
-      0.003
+      0.004
      ]
     ],
-    "n": 310,
+    "n": 260,
     "solo_n": 22
    },
    "policy_rule": {
-    "cut": 12.0,
-    "feature": "distance",
-    "n": 284,
+    "cut": 0.5,
+    "feature": "their initiative",
+    "n": 238,
     "otherwise": [
      [
       "Fell Scratch",
-      11
+      28
      ],
      [
       "Ant Spit",
-      9
+      17
      ],
      [
-      "Bristle",
-      1
+      "Roar of the Wild",
+      9
      ]
     ],
     "otherwise_pressure": {
-     "blue": 3.25,
-     "green": 7.8,
+     "blue": 2.71,
+     "green": 7.04,
      "red": 0.0,
      "yellow": 0.0
     },
     "pooled_pressure": {
-     "blue": 3.19,
-     "green": 6.88,
-     "red": 0.1,
+     "blue": 2.64,
+     "green": 6.74,
+     "red": 0.12,
      "yellow": 0.0
     },
-    "sim_feature": null,
-    "test_bits": 0.065,
-    "train_bits": 0.042,
+    "sim_feature": "foe_ip",
+    "test_bits": 0.042,
+    "train_bits": 0.018,
     "when": [
      [
       "Fell Scratch",
-      50
+      29
      ],
      [
       "Ant Spit",
-      45
+      19
      ],
      [
       "Roar of the Wild",
-      19
+      9
      ]
     ],
     "when_pressure": {
-     "blue": 3.18,
-     "green": 6.63,
-     "red": 0.13,
+     "blue": 2.56,
+     "green": 6.4,
+     "red": 0.25,
      "yellow": 0.0
     },
-    "wording": "it is more than 12 units away"
+    "wording": "it holds a point of initiative"
    },
    "relative_speed": {
     "informative": true,
@@ -7409,14 +7390,24 @@
      "ticks": 45.8
     },
     "pressure": {
-     "blue": 3.08,
-     "green": 6.91,
-     "red": 0.09,
+     "blue": 2.48,
+     "green": 6.76,
+     "red": 0.11,
      "yellow": 0.0
     },
     "pressure_against": 372.5,
     "pressure_n": 155,
-    "restores": 0.02
+    "restores": 0.03,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.025,
+      "red": 0.025
+     },
+     "n": {
+      "green": 65,
+      "red": 184
+     }
+    }
    }
   },
   {
@@ -7476,111 +7467,52 @@
     "Fell Scratch",
     "Rampant Rage",
     "Roar of the Wild",
-    "Shredding Paw",
-    "Thunder Over"
+    "Shredding Paw"
    ],
    "name": "sentinelbee",
    "policy": {
-    "attack_share_above_0_ip": 0.979,
-    "attack_share_at_0_ip": 0.97,
+    "attack_share_above_0_ip": 0.974,
+    "attack_share_at_0_ip": 0.966,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     133,
-     47
+     119,
+     39
     ],
     "mix": [
      [
       "Bear Down",
-      0.593
+      0.657
      ],
      [
       "Fell Scratch",
-      0.332
+      0.285
      ],
      [
       "Shredding Paw",
-      0.025
-     ],
-     [
-      "Thunder Over",
-      0.025
+      0.029
      ],
      [
       "Roar of the Wild",
-      0.01
+      0.012
      ],
      [
       "Bristle",
-      0.005
+      0.006
      ],
      [
       "Careful Approach",
-      0.005
+      0.006
      ],
      [
       "Rampant Rage",
-      0.005
+      0.006
      ]
     ],
-    "n": 199,
+    "n": 172,
     "solo_n": 0
    },
-   "policy_rule": {
-    "cut": 25.0,
-    "feature": "its greatest opening",
-    "n": 183,
-    "otherwise": [
-     [
-      "Bear Down",
-      48
-     ],
-     [
-      "Fell Scratch",
-      4
-     ],
-     [
-      "Thunder Over",
-      1
-     ]
-    ],
-    "otherwise_pressure": {
-     "blue": 7.87,
-     "green": 0.83,
-     "red": 0.17,
-     "yellow": 0.0
-    },
-    "pooled_pressure": {
-     "blue": 5.5,
-     "green": 2.99,
-     "red": 0.2,
-     "yellow": 0.0
-    },
-    "sim_feature": "foe_open",
-    "test_bits": 0.382,
-    "train_bits": 0.302,
-    "when": [
-     [
-      "Fell Scratch",
-      26
-     ],
-     [
-      "Bear Down",
-      9
-     ],
-     [
-      "Careful Approach",
-      1
-     ]
-    ],
-    "when_pressure": {
-     "blue": 2.42,
-     "green": 5.81,
-     "red": 0.23,
-     "yellow": 0.0
-    },
-    "wording": "its worst opening is over 25"
-   },
+   "policy_rule": null,
    "relative_speed": {
     "hi": 60.0,
     "lo": 54.1,
@@ -7624,14 +7556,24 @@
      "ticks": 57.2
     },
     "pressure": {
-     "blue": 5.43,
-     "green": 2.91,
-     "red": 0.45,
+     "blue": 5.98,
+     "green": 2.44,
+     "red": 0.52,
      "yellow": 0.0
     },
     "pressure_against": 480.0,
     "pressure_n": 73,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.018,
+      "red": 0.004
+     },
+     "n": {
+      "green": 35,
+      "red": 120
+     }
+    }
    }
   },
   {
@@ -7779,7 +7721,15 @@
     },
     "pressure_against": 462.0,
     "pressure_n": 34,
-    "restores": 0.04
+    "restores": 0.04,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.06
+     },
+     "n": {
+      "green": 43
+     }
+    }
    }
   },
   {
@@ -7904,7 +7854,8 @@
     },
     "pressure_against": 218.66666666666666,
     "pressure_n": 8,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   },
   {
@@ -8010,7 +7961,8 @@
     },
     "pressure_against": null,
     "pressure_n": 0,
-    "restores": 0.13
+    "restores": 0.13,
+    "restores_by_colour": null
    }
   },
   {
@@ -8070,42 +8022,37 @@
     "Bear Down",
     "Bristle",
     "Fell Scratch",
-    "Rampant Rage",
     "Shredding Paw"
    ],
    "name": "vulturebee",
    "policy": {
-    "attack_share_above_0_ip": 0.895,
-    "attack_share_at_0_ip": 0.965,
+    "attack_share_above_0_ip": 0.938,
+    "attack_share_at_0_ip": 1.0,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     57,
-     19
+     50,
+     16
     ],
     "mix": [
      [
       "Bear Down",
-      0.631
+      0.662
      ],
      [
       "Fell Scratch",
-      0.298
-     ],
-     [
-      "Bristle",
-      0.024
-     ],
-     [
-      "Rampant Rage",
-      0.024
+      0.297
      ],
      [
       "Shredding Paw",
-      0.024
+      0.027
+     ],
+     [
+      "Bristle",
+      0.014
      ]
     ],
-    "n": 84,
+    "n": 74,
     "solo_n": 0
    },
    "policy_rule": null,
@@ -8146,14 +8093,22 @@
      "ticks": 57.5
     },
     "pressure": {
-     "blue": 5.73,
-     "green": 2.64,
-     "red": 0.41,
+     "blue": 5.87,
+     "green": 2.58,
+     "red": 0.46,
      "yellow": 0.0
     },
     "pressure_against": 420.25,
     "pressure_n": 34,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.012
+     },
+     "n": {
+      "red": 42
+     }
+    }
    }
   },
   {
@@ -8319,7 +8274,17 @@
     },
     "pressure_against": 471.25,
     "pressure_n": 27,
-    "restores": 0.08
+    "restores": 0.08,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.072,
+      "red": 0.08
+     },
+     "n": {
+      "green": 31,
+      "red": 69
+     }
+    }
    }
   },
   {
@@ -8374,108 +8339,102 @@
     "Bristle",
     "Careful Approach",
     "Fell Scratch",
-    "Rampant Rage",
     "Roar of the Wild",
-    "Shredding Paw",
     "Swift Evasion"
    ],
    "name": "warriorant",
    "policy": {
-    "attack_share_above_0_ip": 0.752,
-    "attack_share_at_0_ip": 0.837,
-    "ip_conditioned": false,
+    "attack_share_above_0_ip": 0.721,
+    "attack_share_at_0_ip": 0.846,
+    "ip_conditioned": true,
     "ip_group_contaminated": true,
     "ip_n": [
-     147,
-     161
+     136,
+     136
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.423
+      0.456
      ],
      [
       "Ant Spit",
-      0.374
+      0.337
      ],
      [
       "Roar of the Wild",
-      0.117
+      0.12
      ],
      [
       "Careful Approach",
-      0.057
+      0.065
      ],
      [
       "Swift Evasion",
-      0.02
+      0.019
      ],
      [
       "Bristle",
       0.003
-     ],
-     [
-      "Rampant Rage",
-      0.003
-     ],
-     [
-      "Shredding Paw",
-      0.003
      ]
     ],
-    "n": 350,
+    "n": 309,
     "solo_n": 2
    },
    "policy_rule": {
-    "cut": 12.0,
-    "feature": "distance",
-    "n": 317,
+    "cut": 0.5,
+    "feature": "our initiative",
+    "n": 280,
     "otherwise": [
      [
-      "Ant Spit",
-      36
+      "Fell Scratch",
+      44
      ],
      [
-      "Fell Scratch",
-      28
+      "Ant Spit",
+      26
+     ],
+     [
+      "Roar of the Wild",
+      11
      ]
     ],
     "otherwise_pressure": {
-     "blue": 3.51,
-     "green": 6.64,
+     "blue": 1.99,
+     "green": 5.66,
      "red": 0.0,
      "yellow": 0.0
     },
     "pooled_pressure": {
-     "blue": 2.65,
-     "green": 5.51,
+     "blue": 2.4,
+     "green": 5.45,
      "red": 0.0,
      "yellow": 0.0
     },
-    "sim_feature": null,
-    "test_bits": 0.216,
-    "train_bits": 0.059,
+    "sim_feature": "my_ip",
+    "test_bits": 0.038,
+    "train_bits": 0.055,
     "when": [
      [
-      "Fell Scratch",
-      33
+      "Ant Spit",
+      22
      ],
      [
-      "Ant Spit",
-      25
+      "Fell Scratch",
+      14
      ],
      [
       "Roar of the Wild",
-      22
+      8
      ]
     ],
     "when_pressure": {
-     "blue": 2.01,
-     "green": 4.68,
+     "blue": 3.0,
+     "green": 5.16,
      "red": 0.0,
      "yellow": 0.0
     },
-    "wording": "it is more than 12 units away"
+    "wording": "we hold a point of initiative"
    },
    "relative_speed": {
     "informative": true,
@@ -8515,14 +8474,24 @@
      "ticks": 43.3
     },
     "pressure": {
-     "blue": 2.6,
-     "green": 5.58,
+     "blue": 2.33,
+     "green": 5.53,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 372.5,
     "pressure_n": 160,
-    "restores": 0.02
+    "restores": 0.03,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.038,
+      "red": 0.022
+     },
+     "n": {
+      "green": 81,
+      "red": 223
+     }
+    }
    }
   },
   {
@@ -8576,7 +8545,6 @@
    },
    "kind": "creature",
    "moves": [
-    "Bear Down",
     "Bristle",
     "Careful Approach",
     "Chomp",
@@ -8584,123 +8552,114 @@
     "Rampant Rage",
     "Roar of the Wild",
     "Shredding Paw",
-    "Swift Evasion",
     "Thunder Over",
     "Unstoppable"
    ],
    "name": "warriordrone",
    "policy": {
-    "attack_share_above_0_ip": 0.958,
+    "attack_share_above_0_ip": 0.964,
     "attack_share_at_0_ip": 0.959,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     172,
-     95
+     145,
+     83
     ],
     "mix": [
      [
-      "Fell Scratch",
-      0.448
-     ],
-     [
       "Thunder Over",
-      0.434
+      0.51
      ],
      [
-      "Shredding Paw",
-      0.031
+      "Fell Scratch",
+      0.421
      ],
      [
       "Chomp",
-      0.024
-     ],
-     [
-      "Roar of the Wild",
-      0.017
-     ],
-     [
-      "Bear Down",
-      0.014
+      0.02
      ],
      [
       "Rampant Rage",
-      0.01
-     ],
-     [
-      "Careful Approach",
-      0.007
-     ],
-     [
-      "Swift Evasion",
-      0.007
-     ],
-     [
-      "Bristle",
-      0.003
-     ],
-     [
-      "Unstoppable",
-      0.003
-     ]
-    ],
-    "n": 290,
-    "solo_n": 2
-   },
-   "policy_rule": {
-    "cut": 25.0,
-    "feature": "its greatest opening",
-    "n": 270,
-    "otherwise": [
-     [
-      "Thunder Over",
-      31
-     ],
-     [
-      "Fell Scratch",
-      27
+      0.012
      ],
      [
       "Roar of the Wild",
-      3
+      0.012
+     ],
+     [
+      "Shredding Paw",
+      0.012
+     ],
+     [
+      "Bristle",
+      0.004
+     ],
+     [
+      "Careful Approach",
+      0.004
+     ],
+     [
+      "Unstoppable",
+      0.004
+     ]
+    ],
+    "n": 247,
+    "solo_n": 2
+   },
+   "policy_rule": {
+    "cut": 12.0,
+    "feature": "distance",
+    "n": 231,
+    "otherwise": [
+     [
+      "Thunder Over",
+      22
+     ],
+     [
+      "Fell Scratch",
+      19
+     ],
+     [
+      "Unstoppable",
+      1
      ]
     ],
     "otherwise_pressure": {
-     "blue": 0.14,
-     "green": 4.93,
+     "blue": 0.56,
+     "green": 5.19,
      "red": 0.0,
      "yellow": 0.0
     },
     "pooled_pressure": {
-     "blue": 0.43,
-     "green": 5.13,
+     "blue": 0.29,
+     "green": 4.92,
      "red": 0.0,
      "yellow": 0.0
     },
-    "sim_feature": "foe_open",
-    "test_bits": 0.08,
-    "train_bits": 0.048,
+    "sim_feature": null,
+    "test_bits": 0.062,
+    "train_bits": 0.056,
     "when": [
      [
-      "Fell Scratch",
-      35
+      "Thunder Over",
+      40
      ],
      [
-      "Thunder Over",
-      20
+      "Fell Scratch",
+      26
      ],
      [
       "Shredding Paw",
-      7
+      3
      ]
     ],
     "when_pressure": {
-     "blue": 0.81,
-     "green": 5.39,
+     "blue": 0.1,
+     "green": 4.73,
      "red": 0.0,
      "yellow": 0.0
     },
-    "wording": "its worst opening is over 25"
+    "wording": "it is more than 12 units away"
    },
    "relative_speed": {
     "hi": 59.8,
@@ -8740,14 +8699,24 @@
      "ticks": 45.1
     },
     "pressure": {
-     "blue": 0.45,
-     "green": 5.14,
+     "blue": 0.3,
+     "green": 5.01,
      "red": 0.0,
      "yellow": 0.0
     },
     "pressure_against": 480.0,
     "pressure_n": 85,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "green": 0.031,
+      "red": 0.008
+     },
+     "n": {
+      "green": 38,
+      "red": 142
+     }
+    }
    }
   },
   {
@@ -8900,7 +8869,15 @@
     },
     "pressure_against": 414.8,
     "pressure_n": 21,
-    "restores": 0.01
+    "restores": 0.01,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.016
+     },
+     "n": {
+      "red": 41
+     }
+    }
    }
   },
   {
@@ -8961,41 +8938,37 @@
     "Careful Approach",
     "Chomp",
     "Fell Scratch",
-    "Low Horn Swipe",
-    "Mule Kick",
     "Rampant Rage",
     "Roar of the Wild",
-    "Serpent's Strike",
     "Shredding Paw",
-    "Swift Evasion",
-    "Thunder Over"
+    "Swift Evasion"
    ],
    "name": "wolf",
    "policy": {
-    "attack_share_above_0_ip": 0.821,
-    "attack_share_at_0_ip": 0.849,
+    "attack_share_above_0_ip": 0.822,
+    "attack_share_at_0_ip": 0.844,
     "ip_conditioned": false,
     "ip_group_contaminated": true,
     "ip_n": [
-     709,
-     1753
+     684,
+     1734
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.749
+      0.763
      ],
      [
       "Chomp",
-      0.054
+      0.055
      ],
      [
       "Roar of the Wild",
-      0.052
+      0.051
      ],
      [
       "Bristle",
-      0.031
+      0.032
      ],
      [
       "Rampant Rage",
@@ -9016,35 +8989,19 @@
      [
       "Shredding Paw",
       0.014
-     ],
-     [
-      "Low Horn Swipe",
-      0.006
-     ],
-     [
-      "Thunder Over",
-      0.005
-     ],
-     [
-      "Mule Kick",
-      0.002
-     ],
-     [
-      "Serpent's Strike",
-      0.002
      ]
     ],
-    "n": 2950,
+    "n": 2899,
     "solo_n": 211
    },
    "policy_rule": {
     "cut": 25.0,
     "feature": "our greatest opening",
-    "n": 2487,
+    "n": 2443,
     "otherwise": [
      [
       "Fell Scratch",
-      675
+      687
      ],
      [
       "Roar of the Wild",
@@ -9057,19 +9014,19 @@
     ],
     "otherwise_pressure": {
      "blue": 0.44,
-     "green": 8.45,
-     "red": 0.21,
-     "yellow": 0.04
+     "green": 8.48,
+     "red": 0.22,
+     "yellow": 0.0
     },
     "pooled_pressure": {
-     "blue": 0.76,
-     "green": 8.42,
-     "red": 0.42,
-     "yellow": 0.05
+     "blue": 0.77,
+     "green": 8.47,
+     "red": 0.43,
+     "yellow": 0.0
     },
     "sim_feature": "my_open",
-    "test_bits": 0.075,
-    "train_bits": 0.041,
+    "test_bits": 0.069,
+    "train_bits": 0.044,
     "when": [
      [
       "Fell Scratch",
@@ -9085,10 +9042,10 @@
      ]
     ],
     "when_pressure": {
-     "blue": 1.77,
-     "green": 8.34,
-     "red": 1.07,
-     "yellow": 0.08
+     "blue": 1.79,
+     "green": 8.44,
+     "red": 1.09,
+     "yellow": 0.0
     },
     "wording": "our worst opening is over 25"
    },
@@ -9138,14 +9095,28 @@
      "ticks": 43.2
     },
     "pressure": {
-     "blue": 0.8,
-     "green": 8.52,
+     "blue": 0.81,
+     "green": 8.57,
      "red": 0.52,
-     "yellow": 0.05
+     "yellow": 0.01
     },
     "pressure_against": 438.3333333333333,
     "pressure_n": 538,
-    "restores": 0.03
+    "restores": 0.03,
+    "restores_by_colour": {
+     "by_colour": {
+      "blue": 0.014,
+      "green": 0.049,
+      "red": 0.024,
+      "yellow": 0.034
+     },
+     "n": {
+      "blue": 401,
+      "green": 546,
+      "red": 1417,
+      "yellow": 62
+     }
+    }
    }
   },
   {
@@ -9293,7 +9264,15 @@
     },
     "pressure_against": 381.9166666666667,
     "pressure_n": 31,
-    "restores": 0.02
+    "restores": 0.02,
+    "restores_by_colour": {
+     "by_colour": {
+      "red": 0.009
+     },
+     "n": {
+      "red": 43
+     }
+    }
    }
   },
   {
@@ -9397,7 +9376,8 @@
     },
     "pressure_against": 615.0,
     "pressure_n": 2,
-    "restores": null
+    "restores": null,
+    "restores_by_colour": null
    }
   }
  ],

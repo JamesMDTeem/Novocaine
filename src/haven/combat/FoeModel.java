@@ -131,6 +131,24 @@ public final class FoeModel {
     public final double restores;
 
     /**
+     * The same, split by colour, which is how the cards actually work.
+     *
+     * The scalar above is one share taken off everything, and four of the six restoring
+     * cards in the corpus do not do that. Roar of the Wild takes back yellow and red and
+     * leaves green and blue entirely alone; Careful Approach does the opposite halves;
+     * Unstoppable takes green and red. Only Bristle is even across all four.
+     *
+     * Applying the flat share made every creature holding one of those look harder to
+     * open in colours it does not defend at all - which is precisely the colour an
+     * attacker should be aiming at, so the error pointed the optimizer away from the
+     * right answer rather than merely blurring it.
+     *
+     * Null where the corpus could not split it, and {@link #restore} then falls back to
+     * the scalar rather than restoring nothing.
+     */
+    public final double[] restoresByColour;
+
+    /**
      * What it does depends on the state, and this is the one split the corpus can hold up.
      *
      * A creature is not a fixed mix. Fitting one split per species - chosen on the first
@@ -177,6 +195,14 @@ public final class FoeModel {
                     double damageCoef, int nGaps, int nHits, double fleesBelow,
                     int[] modes, double restores, String condFeature, double condCut,
                     double[] whenPressure, double[] elsePressure) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, fleesBelow,
+             modes, restores, condFeature, condCut, whenPressure, elsePressure, null);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow,
+                    int[] modes, double restores, String condFeature, double condCut,
+                    double[] whenPressure, double[] elsePressure, double[] byColour) {
         this.condFeature = condFeature;
         this.condCut = condCut;
         this.whenPressure = whenPressure;
@@ -184,6 +210,7 @@ public final class FoeModel {
         this.modes = (modes == null) ? new int[0] : modes;
         this.fleesBelow = fleesBelow;
         this.restores = restores;
+        this.restoresByColour = byColour;
         this.period = period;
         this.pressure = pressure;
         this.pressureAgainst = pressureAgainst;
@@ -256,11 +283,27 @@ public final class FoeModel {
 
     /** Its own openings, after the card it just threw took some of them back. */
     public void restore(Combatant self) {
-        if((self == null) || Double.isNaN(restores) || (restores <= 0))
+        if(self == null)
             return;
-        /* The same share off every colour, which is what a share of the standing total
-         * means and what close() already does for one colour on our own side. None of the
-         * restoring cards names a colour in the corpus, so there is nothing to aim it at. */
+        if((restoresByColour == null) && (Double.isNaN(restores) || (restores <= 0)))
+            return;
+        /* PER COLOUR WHERE THE CORPUS CAN SPLIT IT. The comment that used to sit here
+         * said no restoring card names a colour so there was nothing to aim it at, and
+         * that is no longer true - measured per colour, Roar of the Wild takes back
+         * yellow and red only, Careful Approach green and blue only, Unstoppable green
+         * and red. A flat share defends colours the creature does not defend, which
+         * steers an attacker away from exactly the colour it should be using.
+         *
+         * The scalar is the fallback, not the default: where a creature was watched too
+         * little to split, one share off everything is still better than nothing. */
+        if(restoresByColour != null) {
+            for(int c = 0; c < 4; c++) {
+                double s = restoresByColour[c];
+                if(s > 0)
+                    self.close(c, (s > 1.0) ? 1.0 : s);
+            }
+            return;
+        }
         double share = (restores > 1.0) ? 1.0 : restores;
         for(int c = 0; c < 4; c++)
             self.close(c, share);

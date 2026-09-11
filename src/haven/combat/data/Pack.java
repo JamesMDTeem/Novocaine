@@ -569,12 +569,26 @@ public final class Pack {
              * actions were watched to mean anything - see estimate.restores. */
             double back = t.isNull("restores") ? Double.NaN
                 : t.optDouble("restores", Double.NaN);
+            /* And the same split by colour, which is how the cards actually behave -
+             * see FoeModel.restoresByColour. Absent where the corpus could not split it,
+             * and the scalar above then carries it. */
+            double[] byCol = null;
+            JSONObject rb = t.optJSONObject("restores_by_colour");
+            JSONObject rbc = (rb == null) ? null : rb.optJSONObject("by_colour");
+            if(rbc != null) {
+                byCol = new double[4];
+                for(String k : rbc.keySet()) {
+                    Integer ix = COLOUR.get(k);
+                    if(ix != null)
+                        byCol[ix.intValue()] = rbc.optDouble(k, 0);
+                }
+            }
             Object[] rule = policyRule(j);
             return(new FoeModel(period, pressure, against, coef,
                                 per.optInt("n", 0), nHits, flees, modes, back,
                                 rule[0] == null ? null : (String)rule[0],
                                 (rule[1] == null) ? 0 : ((Double)rule[1]).doubleValue(),
-                                (double[])rule[2], (double[])rule[3]));
+                                (double[])rule[2], (double[])rule[3], byCol));
         }
 
         /**
