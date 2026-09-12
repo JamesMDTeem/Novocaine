@@ -30,27 +30,6 @@ public final class Formulas {
     public static final int GREEN = 0, BLUE = 1, YELLOW = 2, RED = 3;
 
     /**
-     * Raw damage before armour.
-     *
-     * {@code basedmg * share * sqrt(sqrt(ql * str) / 10) * opening^2}
-     *
-     * Verified end to end against a sparring corpus: a Bronze Sword (base damage 90) at
-     * quality 28.68 wielded at strength 82, using Quick Barrage (listed at 25% of weapon
-     * damage), predicts a coefficient of 49.55. Fits of five separate fights returned 48.6,
-     * 49.7, 49.8, 49.8 and 51.6. The four inputs come from four independent places - the
-     * data pack, the character sheet, the client's gear dump and the log header - so the
-     * agreement is not circular.
-     *
-     * The exponent on the opening is 2. The wiki's worked example computes a fourth root
-     * somewhere in its damage term; fits with the exponent fixed at 2 return R^2 of 0.9966
-     * or better on every clean fight, which no other exponent comes close to.
-     *
-     * @param opening the opening in the attack's own school, 0..1 - NOT the combined
-     *                opening across all four colours. Reading the combined value inflates
-     *                the opening whenever another colour happens to be up, and understates
-     *                the coefficient badly.
-     */
-    /**
      * The share of the OTHER opponents that a sweeping attack actually lands on.
      *
      * Full Circle's text is "your main target and all other opponents in range", and the
@@ -131,6 +110,27 @@ public final class Formulas {
         return(UNARMED_REACH * weaponRange);
     }
 
+    /**
+     * Raw damage before armour.
+     *
+     * {@code basedmg * share * sqrt(sqrt(ql * str) / 10) * opening^2}
+     *
+     * Verified end to end against a sparring corpus: a Bronze Sword (base damage 90) at
+     * quality 28.68 wielded at strength 82, using Quick Barrage (listed at 25% of weapon
+     * damage), predicts a coefficient of 49.55. Fits of five separate fights returned 48.6,
+     * 49.7, 49.8, 49.8 and 51.6. The four inputs come from four independent places - the
+     * data pack, the character sheet, the client's gear dump and the log header - so the
+     * agreement is not circular.
+     *
+     * The exponent on the opening is 2. The wiki's worked example computes a fourth root
+     * somewhere in its damage term; fits with the exponent fixed at 2 return R^2 of 0.9966
+     * or better on every clean fight, which no other exponent comes close to.
+     *
+     * @param opening the opening in the attack's own school, 0..1 - NOT the combined
+     *                opening across all four colours. Reading the combined value inflates
+     *                the opening whenever another colour happens to be up, and understates
+     *                the coefficient badly.
+     */
     public static double rawDamage(double basedmg, double share, double ql, double str,
                                    double opening) {
         return(basedmg * share * Math.sqrt(Math.sqrt(ql * str) / 10.0) * opening * opening);

@@ -96,12 +96,20 @@ public final class Sim {
         return(ghost.use((actor == a) ? ca : cb, m));
     }
 
-    /** Whether a move is legal for this actor right now, without applying it. */
+    /**
+     * Whether a move is legal for this actor right now, without applying it.
+     *
+     * The initiative test is against the ENTRY REQUIREMENT, not the cost. A card written
+     * "N+M" spends N but cannot be begun below N+M: Think is "0+4" and costs nothing yet needs
+     * four in hand, and Cleave is "4+2" and needs six while spending four. See
+     * Move.ipRequirement. A card with no trailing number has a requirement equal to its cost,
+     * so this is the same test it has always been for everything else.
+     */
     public String refuse(Combatant actor, Move m) {
         if(tick < actor.readyAt)
             return("on cooldown until tick " + actor.readyAt);
-        if(actor.ip < m.ipCost)
-            return("needs " + m.ipCost + " initiative, has " + actor.ip);
+        if(actor.ip < m.ipRequirement())
+            return("needs " + m.ipRequirement() + " initiative, has " + actor.ip);
         if(!actor.alive())
             return("dead");
         return(null);
@@ -372,6 +380,8 @@ public final class Sim {
 
         parried(actor, m, target);
 
+        /* The requirement was a precondition only - what leaves the pool is the COST, so a
+         * "0+4" Think pays nothing while still needing four in hand to be begun. */
         actor.ip -= m.ipCost;
         if(gains)
             actor.ip += m.ipGain;

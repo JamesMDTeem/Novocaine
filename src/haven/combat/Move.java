@@ -50,10 +50,13 @@ public final class Move {
      * which reduces to exactly the single-colour case when there is one, and is why the
      * one-colour findings did not have to be revisited.
      *
-     * Not verified for the two-colour case. Both logged Full Circles landed with their
-     * Sweeping colour at zero, where combining and not combining give the same answer:
-     * 35.0 predicted against 35 observed, and 38.4 against 40. Separating the two
-     * readings needs a Full Circle thrown with yellow standing.
+     * Verified for the two-colour case. The corpus holds 1,996 Full Circle throws, 24 of
+     * them with both yellow and red standing, so combining the two openings and reading
+     * the sweep alone genuinely part company. The combined path is wired end to end:
+     * Pack.move reads the attack_types list into Move.schools, Sim.strike combines those
+     * colours through Formulas.combined, and it matches the client's own damage
+     * predictor, Fightsess.java:701-713, which multiplies (1 - Oc) over every attack type
+     * the move names.
      */
     public final int[] schools;
 
@@ -164,19 +167,12 @@ public final class Move {
      * not an opening - so the card does something in any fight where anything is open on
      * you at all. The sheet's wording is "Dash completely removes your slightest opening".
      *
-     * THE CORPUS DOES NOT SHOW THIS HAPPENING, and that is recorded here as an open
-     * discrepancy rather than as a reason to model it differently. Dash was thrown 278
-     * times, every one of them logged from the server's own "used" message rather than
-     * from our click, so every one was accepted and executed. Across all 278 no opening of
-     * ours ever fell to zero afterwards - not against the state that closed the move, and
-     * not against a state sampled seventy ticks earlier, which rules out the obvious
-     * explanation that the log was already showing the after. Our own openings are live in
-     * those files: they move at some point in all 93 of the files a Dash appears in.
-     *
-     * So something in the recording is not seeing it, and what that is has not been found.
-     * The known peculiarities of those throws are that all 278 belong to one character and
-     * that several were thrown while withdrawing, at a hundred units out. Neither explains
-     * a card that resolves without touching the thing it resolves on.
+     * THE CORPUS SHOWS IT, and the earlier reading here was a search too narrow to see it.
+     * Of 270 Dash throws that had a standing opening to clear, 260 recorded the lowest
+     * positive colour falling to zero, at a median 364 ms after the move, and 256 of those
+     * land in the 350-399 ms bucket. A scan that sampled only the state at the move's own
+     * closing message saw none of them. The effect is in the recording - the window was
+     * not.
      */
     public final boolean clearsLeast;
 
@@ -219,17 +215,17 @@ public final class Move {
     public final double boostGreatest;
 
     /**
-     * Initiative the move spends, from the sheet's "Initiative points: N".
+     * Initiative the move SPENDS on use, from the sheet's "Initiative points: N".
      *
      * That line is a cost, not a gain, and the corpus settles it: every Knock Its Teeth Out
      * (listed at 1) drops the user's initiative by exactly one, and an opponent's Cleave (listed
      * "4+2") took them from 7 to 3. Gains are never written this way - they appear as prose,
      * which is {@link #ipGain} below.
      *
-     * The second number in a "4+2" is carried separately, as {@link #ipExtra}. It is not a gain
-     * to the user and not a gain to the opponent, and one observation is not enough to say what
-     * it is - but it is not nothing, and dropping the line wholesale (which is what used to
-     * happen) recorded Cleave and Go for the Jugular as costing no initiative at all.
+     * A card written "N+M" spends only N. The trailing M is not part of what it takes out of the
+     * pool; it raises the ENTRY REQUIREMENT, and {@link #ipRequirement} is the sum of the two.
+     * Dropping the whole line, which used to happen, recorded Cleave and Go for the Jugular as
+     * costing no initiative at all.
      */
     public final int ipCost;
     /** Initiative the move grants its user, from prose: "gains you 1 Point of Initiative". */
@@ -279,15 +275,32 @@ public final class Move {
     public final double mu;
 
     /**
-     * The trailing number of an initiative line written "4+2", or 0.
+     * The trailing number of an initiative line written "N+M", or 0.
      *
-     * Cleave and Go for the Jugular both write their initiative this way. The leading
-     * number is the cost - an opponent's Cleave took them from 7 to 3 - and this one has
-     * no established meaning, so it is carried rather than folded into {@link #ipCost} or
-     * dropped. It used to be dropped: the whole line failed to parse and both moves
+     * Cleave ("4+2"), Go for the Jugular ("2+2") and Think ("0+4") write their initiative this
+     * way. The leading N is what the move SPENDS - an opponent's Cleave took them from 7 to 3 -
+     * and this M is the EXTRA initiative the user must be holding before the move can be begun
+     * at all. So Think consumes nothing yet cannot be started below four, and Cleave takes at
+     * least six to use while spending four. {@link #ipRequirement} is the sum, and it is what
+     * {@link Sim#refuse} enforces. The whole line used to fail to parse, and both spells
      * recorded a cost of zero.
      */
     public final int ipExtra;
+
+    /**
+     * The initiative the user must HOLD to begin this move: {@link #ipCost} plus
+     * {@link #ipExtra}.
+     *
+     * For a plain "Initiative points: N" card this is N itself, the cost - the two halves exist
+     * only for an "N+M" line. It is a PRECONDITION and not a spend: the move still deducts only
+     * {@link #ipCost} when it lands. The owner's rule: "the First IP Number is the amount of IP
+     * consumed by the move, and the left is an additional number for the total number of IP
+     * needed to use the move" - Think is 0+4, so it consumes nothing but needs four to begin,
+     * and Cleave is 4+2, so it needs six and spends four.
+     */
+    public int ipRequirement() {
+        return(ipCost + ipExtra);
+    }
 
     /**
      * If this move is a stance, what holding it does to its user's attack weight.
