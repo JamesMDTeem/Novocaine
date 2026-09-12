@@ -304,8 +304,11 @@ public final class Pack {
         b.damageShare(dbl(j, "damage_share", 0)).flatDamage(dbl(j, "damage_flat", 0))
             .grievous(dbl(j, "grievous_pct", 0) / 100.0)
             .boostGreatest(j.isNull("boost_greatest") ? 0.0 : dbl(j, "boost_greatest", 0))
-            /* "Initiative points: N" is what the move SPENDS - see Move.ipCost. The trailing
-             * number of a "4+2" comes through separately and unresolved. */
+            /* "Initiative points: N" is what the move SPENDS - see Move.ipCost. For an
+             * "N+M" line the trailing number comes through separately as the EXTRA
+             * initiative the user must hold before the move can begin, which Move.ipExtra
+             * documents and Move.ipRequirement sums with the cost. It is a precondition,
+             * not a second charge. */
             .ipCost(integer(j, "initiative", 0))
             .ipExtra(integer(j, "initiative_extra", 0))
             .foeIpGain(integer(j, "opponent_initiative", 0))
@@ -338,16 +341,24 @@ public final class Pack {
                  : attack ? Move.Weight.WEAPON : Move.Weight.NONE);
 
         /* Gains and their conditions are written as prose on the sheet, so they are not in the
-         * structured fields and are read from the notes. Only the two the corpus actually
-         * pinned are handled; anything else is left at zero rather than guessed, and the move
-         * will simply under-report its initiative. */
+         * structured fields and are read from the notes. The number is read from the gain
+         * sentence itself; a move whose sentence does not say it is left at zero rather than
+         * guessed, and will simply under-report its initiative. */
         JSONArray notes = j.optJSONArray("notes");
         StringBuilder prose = new StringBuilder();
         for(int i = 0; (notes != null) && (i < notes.length()); i++)
             prose.append(notes.getString(i)).append(' ');
         String text = prose.toString();
-        if(text.contains("Point of Initiative")) {
-            b.ipGain(1);
+        /* The gain is its OWN sentence - "gains you N Points of Initiative" - and not any
+         * "Point of Initiative" in the notes. Think separated the two: its gain sentence is
+         * plural ("2 Points") while the cooldown sentence under it is singular ("for each
+         * Point of Initiative you have"), so a substring test read the cooldown line and
+         * pinned the gain at one. Steal Thunder's sentence entangles the gain with a steal
+         * the model has no field for ("take 3 ... and gain you 2 of them"), so it does not
+         * name Initiative in the gain clause and stays at zero rather than guessed. */
+        Matcher gain = IP_GAIN.matcher(text);
+        if(gain.find()) {
+            b.ipGain(Integer.parseInt(gain.group(1)));
             /* Quick Barrage's threshold, which the corpus separated across 28 uses without a
              * single ambiguity: it gains at 27% Cornered and above, never at 25% or below, and
              * the test is taken before its own opening lands. */
@@ -373,6 +384,12 @@ public final class Pack {
     private static final Pattern SHARES =
         Pattern.compile("targets will receive ([^.]*?) of the");
     private static final Pattern PCT = Pattern.compile("([0-9]+(?:\\.[0-9]+)?)%");
+    /* "gains you 1 Point of Initiative" / "gains you 2 Points of Initiative", case- and
+     * plural-tolerant, anchored on the gain verb so a COOLDOWN sentence that merely
+     * mentions a Point of Initiative cannot supply the number - see Pack.move. */
+    private static final Pattern IP_GAIN =
+        Pattern.compile("gains?\\s+you\\s+(\\d+)\\s+points?\\s+of\\s+initiative",
+                        Pattern.CASE_INSENSITIVE);
     private static final String[] WORDS =
         {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"};
 
@@ -458,7 +475,12 @@ public final class Pack {
          */
         public final String kind;
         public final int engagements;
-        /** Bounds, or NaN where the corpus could not constrain the value at all. */
+        /**
+         * Bounds, or NaN where the corpus could not constrain the value at all.
+         *
+         * Agility is the exception: an open side is a direction rather than an absence, so
+         * a missing floor is 0 and a missing ceiling is +infinity - see the constructor.
+         */
         public final double dwLo, dwHi, agiLo, agiHi, hpLo, hpHi;
 
         /**
@@ -563,8 +585,13 @@ public final class Pack {
             this.dwLo = dw[0];
             this.dwHi = dw[1];
             double[] ag = range(j, "agility");
-            this.agiLo = ag[0];
-            this.agiHi = ag[1];
+            /* An open side is a DIRECTION and not a missing measurement, and collapsing it
+             * onto the other bound inverted it: twelve species record only a floor ("at
+             * least this agile", whose pessimistic end is +infinity - the cooldown factor
+             * clamps it) and thirty-one only a ceiling (whose optimistic end is zero).
+             * range() keeps NaN for the genuinely unconstrained cases elsewhere. */
+            this.agiLo = Double.isNaN(ag[0]) ? 0.0 : ag[0];
+            this.agiHi = Double.isNaN(ag[1]) ? Double.POSITIVE_INFINITY : ag[1];
             double[] hp = range(j, "hitpoints");
             this.hpLo = hp[0];
             this.hpHi = hp[1];
@@ -692,8 +719,10 @@ public final class Pack {
                                 (rule[1] == null) ? 0 : ((Double)rule[1]).doubleValue(),
                                 (double[])rule[2], (double[])rule[3], byCol,
                                 /* Its actual cards, where the corpus can name them.
-                                 * Null leaves the averaged action in place, which is
-                                 * what eight of the forty-nine creatures still need. */
+                                 * Null leaves the averaged action in place. Measured: 58
+                                 * of the 61 modelled opponents take the card path, two
+                                 * creatures (mammoth, troll) still need the average, and
+                                 * six have no model at all. */
                                 repertoire(j, lib, ours, species)));
         }
 
@@ -805,6 +834,52 @@ public final class Pack {
             return(Double.isNaN(first) ? fallback : first);
         }
 
+        /**
+         * One real creature of this species, as a Combatant, or null if it constrains nothing.
+         *
+         * THE POINT OF THIS IS THAT toughest() DESCRIBES NOBODY. It takes an independent
+         * extreme on each of four axes, so the creature it builds is simultaneously the most
+         * defended, fastest, largest and strongest ever seen - and the corpus contains no such
+         * animal. Measured in the factor the simulator actually uses, the chimera's cooldown
+         * factor sits a median 0.057 from the toughest individual really observed and 0.122 at
+         * the tail, against a band 0.200 wide, always in the direction of an opponent harder
+         * than any that was fought.
+         *
+         * So a caller that wants the hardest fight sweeps the individuals and takes the worst
+         * OUTCOME, rather than assembling a worst INPUT on every axis at once.
+         *
+         * WHAT COMES FROM THE CREATURE AND WHAT DOES NOT, exactly, because a half-filled
+         * individual is a smaller chimera and saying so is the only thing that stops it being
+         * one silently:
+         *
+         *   agility     the creature's own, where it has one - the top of its interval, since
+         *               a faster opponent lengthens OUR cooldowns. Usually a CAP rather than
+         *               a reading: see Individual.agiCapped. Still far tighter than the
+         *               species envelope, which is set by whichever observation was made at
+         *               the highest agility and therefore loosens as the character trains
+         *   skill       the species', always - see estimate.py's individuals() for why a
+         *               per-creature skill cannot be published yet
+         *   hitpoints   the damage that actually killed it; NaN where it survived, because a
+         *               survivor's total is a floor on its hitpoints and not a reading
+         *   armour      always the species reading - armour is fitted from pooled soak and
+         *               the corpus does not separate it per creature
+         *
+         * Anything NaN falls back to the species entry, which is the same pooled extreme
+         * toughest() would have used. So this is not a whole creature; it is a real animal
+         * on the axes the corpus separated and its species on the rest, which is strictly
+         * less of a chimera than four independent maxima and is said plainly rather than
+         * implied.
+         */
+        public Combatant individual(Individual ind) {
+            if(ind == null)
+                return(null);
+            double agi = Double.isNaN(ind.agiHi) ? ind.agiLo : ind.agiHi;
+            double hp = Double.isNaN(ind.hp) ? planHpHi() : ind.hp;
+            return(build(Double.isNaN(ind.skill) ? pick(skillHi, skill) : ind.skill,
+                         Double.isNaN(agi) ? pick(agiHi, agiLo) : agi,
+                         hp, pick(armHi, armLo)));
+        }
+
         private Combatant build(double dw, double agi, double hp, double arm) {
             Combatant c = new Combatant(name);
             /* A skill, because that is what the corpus can actually recover - see
@@ -812,7 +887,10 @@ public final class Pack {
              * is 1 and its block weight is its skill. */
             c.blockSkill = dw;
             c.blockMult = 1.0;
-            c.agi = Double.isNaN(agi) ? 0 : agi;
+            /* The endpoints arrive already resolved: the constructor turns an open agility
+             * side into +infinity or zero rather than letting a NaN pick the WRONG end of
+             * the interval in toughest()/weakest(). */
+            c.agi = agi;
             c.hp = c.maxHp = Double.isNaN(hp) ? 0 : hp;
             if(armSplit && !Double.isNaN(armHard)) {
                 c.armHard = armHard;
@@ -1025,6 +1103,85 @@ public final class Pack {
                 if(c != null)
                     out.put(k, c.optString(field, null));
             }
+        }
+        return(out);
+    }
+
+    /**
+     * One creature, measured on its own rather than pooled with its species.
+     *
+     * Written by estimate.py's individuals() into data/combat/individuals.json, beside the
+     * pack and not inside it: the running client parses opponents.json at startup and has no
+     * use for 1,647 rows that only the offline sweep reads.
+     *
+     * Every field is that ONE creature's. agiLo/agiHi is the interval its own cooldowns
+     * allow, skill its own median defence weight, hp the damage that actually killed it -
+     * NaN where it survived, because a survivor's total is a floor on its hitpoints and
+     * dressing a floor as a value is how the pooled entry came to describe an animal nobody
+     * killed.
+     */
+    public static final class Individual {
+        public final long gob;
+        public final double agiLo, agiHi, skill, hp;
+        /**
+         * Whether this creature's agility ceiling is a measurement or the observer's limit.
+         *
+         * The cooldown factor is 1 - 0.1*clamp(log2(agiMe/agiFoe), -1, 1), so once an animal
+         * is slower than half our agility the cooldown stops moving and every slower animal
+         * reports the same ticks. Such an observation says "at most half OUR agility" and
+         * nothing about how much less - a fact about the observer.
+         *
+         * It is most of the corpus: 1,417 of 1,647 per-creature agility readings are capped,
+         * and the corpus was recorded while our own agility rose from 58 to 283, so the same
+         * animal's ceiling reads four times looser at the end than at the start. A consumer
+         * that treats it as a measurement watches every creature get faster as the character
+         * trains.
+         *
+         * It is still a true upper bound and still worth using - the tightest per-creature
+         * bound runs about four times tighter than the pooled species one (badger 36.3
+         * against 161.1, bat 31.6 against 148.1) - but it is a bound, and anything reporting
+         * it as a speed should say so.
+         */
+        public final boolean agiCapped;
+
+        Individual(JSONObject j) {
+            this.gob = j.optLong("gob", -1);
+            JSONObject a = j.optJSONObject("agility");
+            this.agiLo = ((a == null) || a.isNull("lo")) ? Double.NaN : a.optDouble("lo");
+            this.agiHi = ((a == null) || a.isNull("hi")) ? Double.NaN : a.optDouble("hi");
+            this.agiCapped = (a != null) && a.optBoolean("capped", false);
+            /* Deliberately absent from the file today, and read anyway so that shipping it
+             * later needs no change here. A per-creature skill is not safe to publish while
+             * the equalization branch can differ between one animal's rows and its species':
+             * the two answers then sit a factor apart with nothing to choose between them.
+             * See estimate.py's individuals(). Until then this is NaN and the species skill
+             * fills in, which is what the field below does for every unmeasured axis. */
+            JSONObject d = j.optJSONObject("skill");
+            this.skill = ((d == null) || d.isNull("value")) ? Double.NaN : d.optDouble("value");
+            JSONObject h = j.optJSONObject("hitpoints");
+            this.hp = ((h == null) || h.isNull("value")) ? Double.NaN : h.optDouble("value");
+        }
+
+        public String toString() {
+            return("gob " + gob + " agi " + agiLo + "-" + agiHi + (agiCapped ? " (at the cap)" : "")
+                   + " skill " + skill + (Double.isNaN(hp) ? " (survived)" : " hp " + hp));
+        }
+    }
+
+    /** Every measured individual, by species name. See Individual. */
+    public static Map<String, List<Individual>> individuals(Path path) throws IOException {
+        Map<String, List<Individual>> out = new LinkedHashMap<String, List<Individual>>();
+        JSONObject doc = read(path).optJSONObject("species");
+        if(doc == null)
+            return(out);
+        for(String name : doc.keySet()) {
+            JSONArray arr = doc.optJSONArray(name);
+            if(arr == null)
+                continue;
+            List<Individual> rows = new ArrayList<Individual>();
+            for(int i = 0; i < arr.length(); i++)
+                rows.add(new Individual(arr.getJSONObject(i)));
+            out.put(name, rows);
         }
         return(out);
     }

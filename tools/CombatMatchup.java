@@ -3,7 +3,8 @@
  *
  *   javac -d %TEMP%\matchup -sourcepath src src\haven\combat\data\Pack.java tools\CombatMatchup.java
  *   java -cp %TEMP%\matchup CombatMatchup badger
- *   java -cp %TEMP%\matchup CombatMatchup            (every opponent the corpus knows)
+ *   java -cp %TEMP%\matchup CombatMatchup -char Shade badger
+ *   java -cp %TEMP%\matchup CombatMatchup            (every opponent; character defaults to ZzxcuV3)
  *
  * NOT part of the client build - build.xml compiles src/ only.
  *
@@ -42,14 +43,13 @@ public class CombatMatchup {
     static final Path MOVES = Paths.get("data", "combat", "moves_sheet.json");
     static final Path FOES = Paths.get("data", "combat", "opponents.json");
 
-    /* The character that fought the corpus, from the log headers and its gear dump. */
+    /* The character every fight is priced for, loaded from the pack rather than invented.
+     * Held as the Fighter so each fight gets a fresh body: the simulator mutates the
+     * Combatant it is handed, and a reused one would open the next fight already wounded. */
+    static Pack.Fighter who = null;
+
     static Combatant me() {
-        Combatant c = new Combatant("me");
-        c.str = 82; c.agi = 81; c.unarmed = 58; c.melee = 111;
-        c.weaponDamage = 90; c.weaponQl = 28.68; c.weaponPen = 0.125;
-        c.armHard = 5; c.armSoft = 2;
-        c.hp = c.maxHp = 100;
-        return(c);
+        return((who == null) ? new Combatant("me") : who.combatant());
     }
 
     /** One simulated fight, run to a kill or to a stalemate. */
@@ -132,6 +132,51 @@ public class CombatMatchup {
         return(out);
     }
 
+    /**
+     * The hardest fight this species actually offers, by simulating every creature of it.
+     *
+     * NOT o.toughest(), WHICH IS NOBODY. That builds a creature from an independent extreme
+     * on each of four axes - most defended, fastest, largest, most armoured, all at once -
+     * and the corpus contains no such animal. In the cooldown factor the simulator uses, it
+     * sits a median 0.057 from the toughest individual really observed and 0.122 at the
+     * tail, against a band 0.200 wide, always harder than anything that was ever fought. A
+     * deck that only wins against it is a deck judged against an opponent it cannot meet.
+     *
+     * So the sweep runs the fight against each measured individual and keeps the WORST
+     * OUTCOME: a fight that did not kill beats one that did, and among kills the slowest
+     * wins. That is the same question - what is the worst this can go - asked of real
+     * animals instead of an assembled one.
+     *
+     * Falls back to o.toughest() when the species has no individual records, which is the
+     * 22 of 84 entries with too little measured to constrain one; the caller is told which
+     * it got.
+     */
+    static Outcome hardest(Combatant me, Pack.Opponent o, List<Pack.Individual> rows,
+                           List<Move> deck, boolean[] real) {
+        Outcome worst = null;
+        int n = 0;
+        if(rows != null) {
+            for(Pack.Individual ind : rows) {
+                Combatant c = o.individual(ind);
+                if((c == null) || !(c.hp > 0))
+                    continue;
+                Outcome got = fight(me, c, deck);
+                n++;
+                if((worst == null) || worseThan(got, worst))
+                    worst = got;
+            }
+        }
+        real[0] = (n > 0);
+        return((worst != null) ? worst : fight(me, o.toughest(), deck));
+    }
+
+    /** Which of two outcomes is the worse for us. A fight we did not win is the worst. */
+    static boolean worseThan(Outcome a, Outcome b) {
+        if(a.killed != b.killed)
+            return(!a.killed);
+        return(a.ticks > b.ticks);
+    }
+
     static String describe(Outcome o) {
         if(!o.killed)
             return("no kill - " + o.stalled);
@@ -140,8 +185,47 @@ public class CombatMatchup {
     }
 
     public static void main(String[] args) throws Exception {
+        /* ONE CHARACTER, AND A REAL ONE. This used to be six literals - str 82, agi 81,
+         * unarmed 58, melee 111, a bronze sword at ql 28.68, armour 5/2 - and they were
+         * nobody's: none of the nine characters in characters.json matches (Santa Samus
+         * 422/82/56/150, ZzxcuV3 112/131/94/158, Shade 189/166/149/243; N7 sec 3). Attributes
+         * decide the attack and block weights and the gear decides how fast everything dies,
+         * so every matchup was priced for a character who does not exist. Same rule as
+         * CombatDeckSearch and CombatMeta: load the pack's character, and let -char name
+         * another. */
+        String charName = "ZzxcuV3";
+        for(int i = 0; i < args.length; i++) {
+            if("-char".equals(args[i]) && ((i + 1) < args.length))
+                charName = args[++i];
+        }
+        Map<String, Pack.Fighter> chars =
+            Pack.characters(Paths.get("data", "combat", "characters.json"));
+        who = chars.get(charName);
+        if(who == null) {
+            System.out.printf("no character named %s. known: %s%n", charName, chars.keySet());
+            return;
+        }
+
         Map<String, Move> moves = Pack.moves(MOVES);
         Map<String, Pack.Opponent> foes = Pack.opponents(FOES);
+        /* The joint per-individual records, which live beside the pack rather than in
+         * it - see Pack.individuals. Absent is not an error: a checkout without the
+         * corpus regenerated still runs, against the chimera, and says so per row. */
+        Map<String, java.util.List<Pack.Individual>> singles;
+        try {
+            singles = Pack.individuals(Paths.get("data", "combat", "individuals.json"));
+        } catch(java.io.IOException e) {
+            singles = new java.util.LinkedHashMap<String, java.util.List<Pack.Individual>>();
+            System.out.println("no individuals.json - every hardest reading is the"
+                               + " pooled chimera; run estimate.py --write-pack");
+        }
+
+        System.out.printf("as: %s  (str %.0f, agi %.0f, unarmed %.0f, melee %.0f, hp %.0f,"
+                          + " hard %.0f, soft %.0f, %s)%n",
+                          who.name, who.str, who.agi, who.unarmed, who.melee, who.hp,
+                          who.armHard, who.armSoft,
+                          (who.weapon == null) ? "bare-handed"
+                              : String.format("%s q%.1f", who.weapon, who.weaponQl));
 
         /* The deck the corpus was fought with. */
         List<Move> deck = new ArrayList<Move>();
@@ -170,9 +254,11 @@ public class CombatMatchup {
                                   "no ceiling on its hitpoints", describe(easy));
                 continue;
             }
-            Outcome hard = fight(me(), o.toughest(), deck);
-            System.out.printf("%-14s %-6d %-34s %-34s%n",
-                              o.name, o.engagements, describe(hard), describe(easy));
+            boolean[] real = new boolean[1];
+            Outcome hard = hardest(me(), o, singles.get(o.name), deck, real);
+            System.out.printf("%-14s %-6d %-34s %-34s%s%n",
+                              o.name, o.engagements, describe(hard), describe(easy),
+                              real[0] ? "" : "   (no individual measured)");
             if(hard.killed != easy.killed)
                 System.out.printf("%-21s %s%n", "",
                                   "-> the corpus does not settle this matchup");
@@ -180,7 +266,7 @@ public class CombatMatchup {
         System.out.println();
         for(Pack.Opponent o : foes.values()) {
             if(o.simulable()) {
-                Outcome hard = fight(me(), o.toughest(), deck);
+                Outcome hard = hardest(me(), o, singles.get(o.name), deck, new boolean[1]);
                 if(!hard.opening.isEmpty())
                     System.out.printf("  %-12s opens: %s%n", o.name,
                                       String.join(", ", hard.opening));
