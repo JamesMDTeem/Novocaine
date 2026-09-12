@@ -109,10 +109,23 @@ public final class Optimizer {
          * be advanced by whichever branch happened to be expanded last.
          */
         final int[] foeActs;
+        /**
+         * How many of each of its own cards each opponent has thrown along this line.
+         *
+         * `foeActs` above says how many actions an opponent has taken; this says WHICH.
+         * {@link Repertoire#pick} deals by largest deficit against this tally, so without
+         * it the creature would replay one card forever - the same failure the action
+         * counter fixes, one level down. One row per opponent, sized to that opponent's
+         * repertoire; an empty row where the opponent still throws the averaged action.
+         *
+         * Per node, like `foeActs`, because each line the search explores has its own
+         * history and a shared tally would be advanced by whichever branch ran last.
+         */
+        final int[][] foeThrown;
         final double hpLost;
 
         Node(Combatant me, Combatant[] foes, List<Move> path, long tick, long[] foeNext,
-             double hpLost, int[] foeActs) {
+             double hpLost, int[] foeActs, int[][] foeThrown) {
             this.me = me;
             this.foes = foes;
             this.path = path;
@@ -120,6 +133,7 @@ public final class Optimizer {
             this.foeNext = foeNext;
             this.hpLost = hpLost;
             this.foeActs = foeActs;
+            this.foeThrown = foeThrown;
         }
 
         /** The one we are hitting: the first still standing. See Optimizer.step. */
@@ -148,8 +162,10 @@ public final class Optimizer {
      *
      * Beam search rather than exhaustive: a ten-card deck over a thirty-move fight is 10^30
      * lines, and rather than an arbitrary cut this keeps the best `beam` partial states at
-     * each depth. Deterministic, so no averaging over rollouts - the model has no random
-     * element and fits of the logged damage leave no room for one.
+     * each depth. It can keep up to 1.5x that, because {@link #prune} takes three ends of
+     * `beam/2` (best rate, best hitpoints kept, best openings standing) and the three lists
+     * need not overlap. Deterministic, so no averaging over rollouts - the model has no
+     * random element and fits of the logged damage leave no room for one.
      *
      * The beam is ranked on damage dealt per tick spent, which is the only scalar that is
      * defensible here: it is the rate the fight is actually being won at, and it does not
@@ -207,15 +223,17 @@ public final class Optimizer {
             trigger = null;
         Combatant[] f0 = new Combatant[foes.length];
         long[] next0 = new long[foes.length];
+        int[][] thrown0 = new int[foes.length][];
         double hp0 = 0;
         for(int i = 0; i < foes.length; i++) {
             f0[i] = foes[i].copy();
             next0[i] = (models[i].period == Long.MAX_VALUE) ? Long.MAX_VALUE : models[i].period;
+            thrown0[i] = new int[cardCount(models[i])];
             hp0 += f0[i].hp;
         }
         List<Node> live = new ArrayList<Node>();
         live.add(new Node(me.copy(), f0, new ArrayList<Move>(), 0, next0, 0,
-                          new int[foes.length]));
+                          new int[foes.length], thrown0));
         List<Plan> done = new ArrayList<Plan>();
 
         while(!live.isEmpty()) {
@@ -328,6 +346,12 @@ public final class Optimizer {
         return(Formulas.combined(all));
     }
 
+    /** How many cards this opponent's repertoire holds, or 0 when it throws an average. */
+    private static int cardCount(FoeModel m) {
+        return(((m == null) || (m.cards == null) || !m.cards.usable())
+               ? 0 : m.cards.cards.length);
+    }
+
     /**
      * Applies one of our moves, letting every opponent act for the clock ticks it owns.
      *
@@ -344,12 +368,27 @@ public final class Optimizer {
             foes[i] = n.foes[i].copy();
         long[] foeNext = n.foeNext.clone();
         int[] acts = n.foeActs.clone();
+        int[][] thrown = new int[n.foeThrown.length][];
+        for(int i = 0; i < thrown.length; i++)
+            thrown[i] = (n.foeThrown[i] == null) ? new int[0] : n.foeThrown[i].clone();
         long tick = n.tick;
         double hpLost = n.hpLost;
 
         /* Wait until we may act, and let the opponents act on their own clocks meanwhile.
          * A long cooldown is not merely slow, it is a window they get to swing in, and a
-         * short one is not. */
+         * short one is not.
+         *
+         * SAME-TICK ATTACKERS ARE SERIALISED, AND THE LATER ONE BENEFITS. The loop picks
+         * the earliest foeNext[who] and lets it act before advancing that foe's clock. When
+         * two foes are due on the same tick, the tie in the pick below breaks by array
+         * index, so the second one acts against the openings the first one just applied
+         * rather than against the state both swung into. The error runs one way: the later
+         * same-tick attacker reads a defender the earlier one opened, so a same-tick crowd
+         * OVERSTATES its damage. N6 N-14 registered this as structural (Optimizer.java:
+         * 381-409); the corpus cannot settle simultaneity, and Duel.java:34-36 says so
+         * outright - real simultaneous resolution is not something the corpus settles. The
+         * serialisation is deliberately left in place; this records the hypothesis and its
+         * direction rather than changing behaviour. */
         long ready = Math.max(tick, me.readyAt);
         while(me.alive()) {
             /* Whichever of them is due first. A dead one is due never, which is the whole
@@ -369,7 +408,7 @@ public final class Optimizer {
              * either. The frontier sorts that out on its own once the damage stops: a plan
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
-            hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who], null);
+            hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who], thrown[who]);
             acts[who]++;
             /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
              * opponent attacks, not when it is played, so it lands here rather than in
@@ -396,7 +435,7 @@ public final class Optimizer {
          * So the node comes back with the path it arrived with - the move was never thrown
          * - and the caller records it as a plan that did not kill. */
         if(!me.alive())
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts));
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown));
 
         int main = -1;
         for(int i = 0; i < foes.length; i++) {
@@ -406,7 +445,7 @@ public final class Optimizer {
             }
         }
         if(main < 0)
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts));
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown));
 
         Sim sim = new Sim(me, foes[main]);
         sim.advanceTo(tick);
@@ -470,7 +509,7 @@ public final class Optimizer {
         }
         List<Move> path = new ArrayList<Move>(n.path);
         path.add(m);
-        return(new Node(me, foes, path, tick, foeNext, hpLost, acts));
+        return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown));
     }
 
     /**

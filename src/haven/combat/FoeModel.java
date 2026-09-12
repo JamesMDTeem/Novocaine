@@ -25,7 +25,7 @@ public final class FoeModel {
      * This is the opening PRESSURE measured in {@code estimate.py}: gain / (1 - Oc), which
      * is fully observed and needs nothing about the creature's own weight. It is measured
      * against a particular defence weight of ours - see {@link #pressureAgainst} - and
-     * scales as the cube root when ours changes, which {@link #openingsOn} applies.
+     * scales as the cube root when ours changes, which {@link #act} applies.
      */
     public final double[] pressure;
 
@@ -70,8 +70,15 @@ public final class FoeModel {
      * So Ant Spit penetrates about three times better than anything else measured, and
      * the rest are indistinguishable at these counts. Averaging a spitting ant and a
      * scratching one into a single coefficient hides that, and the hiding is invisible
-     * until the armour changes. Modelling it properly needs penetration per move, which
-     * the pack has no field for.
+     * until the armour changes.
+     *
+     * THE PER-MOVE SOAK IS MEASURED AND SHIPPED, AND NOT CONSUMED HERE. It is not a
+     * field the pack lacks: {@link BeastMove#soaked} is filled from the pack's
+     * {@code soaked_share}, and the measured file carries it for 8 of its 24 cards
+     * (Pack.java parses it, the fit writes it). What is missing is a reader - {@link #play}
+     * still passes a penetration of 0.0 to {@link Formulas#dealtDamage}, so every card is
+     * treated as fully soaked and Ant Spit's 0.50 is priced like everyone else's 0.83.
+     * That is a known gap on this side of the model, not an absent measurement.
      */
     public final double damageCoef;
 
@@ -279,7 +286,9 @@ public final class FoeModel {
      * @param step   how many actions this creature has already taken, so the card dealt
      *               out follows the measured mix over the fight rather than being drawn
      *               at random. The search must be repeatable.
-     * @param thrown running count per card, or null to deal purely on the step number.
+     * @param thrown running count per card, which the deal reads and this increments. Null
+     *               when the caller cannot carry one: {@link Repertoire#pick} then replays
+     *               the same deficit deal from `step`, so the sequence is unchanged.
      */
     public double act(Combatant me, double myBlockWeight, Combatant self, int step,
                       int[] thrown) {
@@ -287,7 +296,7 @@ public final class FoeModel {
             return(0);
         if((cards != null) && cards.usable()) {
             int i = cards.pick(me, self, step, thrown);
-            if(thrown != null)
+            if((thrown != null) && (i < thrown.length))
                 thrown[i]++;
             return(play(cards.cards[i], me, myBlockWeight, self));
         }
@@ -415,11 +424,13 @@ public final class FoeModel {
          * meant a change of armour was silently ignored. Fitted to the swing instead, it
          * describes the creature, and the soaking belongs where the defender is known.
          *
-         * Penetration is taken as zero because a creature's is unmeasured per move and
-         * varies: matched on swing size, most of their moves are soaked at 0.80 to 0.83
-         * while Ant Spit alone sits at 0.50. Zero is the conservative end for everything
-         * except the spitters, and inventing a per-creature figure from the one exception
-         * would be worse than admitting the gap. */
+         * Penetration is taken as zero, which treats every one of its cards as fully
+         * soaked. That is conservative against the spitters, whose measured soak is 0.50
+         * where most moves sit at 0.80-0.83, but it is not a gap in the data: the per-card
+         * share is measured and shipped as {@link BeastMove#soaked}, and this path simply
+         * does not read it yet. Zero is used rather than a per-creature figure because the
+         * gap is per MOVE, and averaging the one exception into the creature is the same
+         * mistake one level up. */
         double raw = damageCoef * combined * combined;
         double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, 0.0);
         me.hp -= dealt;

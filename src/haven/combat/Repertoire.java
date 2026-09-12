@@ -13,7 +13,7 @@ package haven.combat;
  * reads {Ant Spit 255, Fell Scratch 5} - and the loader read only the per-colour pressure
  * summary beside it, which is the same averaging one level down.
  *
- * DETERMINISTIC, BY LARGEST REMAINDER. The search has to be repeatable, so the card
+ * DETERMINISTIC, BY LARGEST DEFICIT. The search has to be repeatable, so the card
  * cannot be drawn at random; and taking the mix-weighted average of every card's effect
  * would be the aggregate again, with a Chomp's single heavy blow smeared into a
  * permanent drizzle. So the cards are dealt out in proportion, each action going to
@@ -79,57 +79,69 @@ public final class Repertoire {
     /**
      * Which card it throws on action number `step`, in the state it is in.
      *
-     * Largest remainder: after `step` actions each card is owed step*share of them, and
-     * the one furthest short of what it is owed goes next. Ties break on the card's own
-     * order so the answer never depends on how the array was built.
+     * LARGEST DEFICIT, AGAINST THE TALLY THE CALLER CARRIES. After this action each card
+     * is owed mix[i]*(step+1) of them, and the one furthest short of what it is owed goes
+     * next. Ties break on the card's own order so the answer never depends on how the
+     * array was built.
+     *
+     * WHY NOT LARGEST REMAINDER. The first version was stateless - it recomputed the deal
+     * from the step number alone, allocating n actions by largest remainder (Hamilton) and
+     * taking whichever card gained a seat between n and n+1. Largest remainder is not
+     * house-monotone: the Alabama paradox lets a card hold a seat at n and lose it at n+1,
+     * and the lost seat is never represented. The smallest counterexample is a [1/7, 3/7,
+     * 3/7] mix, whose allocation is [1, 1, 1] at n=3 and [0, 2, 2] at n=4: card 1 loses
+     * its seat, so it is never thrown, and 200 draws come out [57, 86, 57] against a
+     * nominal [28.6, 85.7, 85.7]. At corpus scale the bear's Fell Scratch is dealt 14% of
+     * actions where the measured mix says 29%. No stateless Hamilton schedule is
+     * house-monotone, so the count is carried rather than re-derived.
+     *
+     * A null (or too-short) tally is replayed from this same rule, so a caller that cannot
+     * carry one still deals the identical, deterministic sequence.
      */
     public int pick(Combatant me, Combatant self, int step, int[] thrown) {
         double[] m = mixNow(me, self);
-        /* STATELESS, BECAUSE THE CALLER HAS NO GOOD PLACE TO KEEP THE COUNT. The first
-         * version took a running tally and the search had nowhere to put one, so it
-         * passed null - and with no tally every card is equally owed at every step, the
-         * first one always wins, and the creature threw its opening card for the whole
-         * fight. The restructure was inert and looked fine.
-         *
-         * So the deal is computed from the step number alone. Allocating n actions by
-         * largest remainder is exact and needs no history: give each card floor(share*n),
-         * then hand the leftovers to the largest fractional parts. The card thrown at
-         * step n is whichever one gains a seat between n and n+1. */
-        int[] at = allocate(m, step);
-        int[] next = allocate(m, step + 1);
-        for(int i = 0; i < cards.length; i++) {
-            if(next[i] > at[i])
-                return(i);
+        int[] counts = ((thrown != null) && (thrown.length >= m.length))
+            ? thrown : replay(m, step);
+        int best = -1;
+        double bestDeficit = 0;
+        for(int i = 0; (i < cards.length) && (i < m.length); i++) {
+            if(m[i] <= 0)
+                continue;
+            double deficit = (m[i] * (step + 1)) - counts[i];
+            if((best < 0) || (deficit > bestDeficit)) {
+                best = i;
+                bestDeficit = deficit;
+            }
         }
-        return(0);
+        return((best < 0) ? 0 : best);
     }
 
-    /** Largest-remainder allocation of n actions across the mix. */
-    private static int[] allocate(double[] m, int n) {
-        int[] out = new int[m.length];
-        double[] rem = new double[m.length];
-        int given = 0;
-        for(int i = 0; i < m.length; i++) {
-            double exact = m[i] * n;
-            out[i] = (int)Math.floor(exact);
-            rem[i] = exact - out[i];
-            given += out[i];
-        }
-        /* Hand out what rounding down left over, largest fractional part first. Ties go
-         * to the earlier card so the sequence never depends on array order beyond what
-         * the mix itself says. */
-        for(; given < n; given++) {
+    /**
+     * The tally a caller that cannot carry one would have produced.
+     *
+     * Runs the deficit deal from zero for `step` actions. This is O(step) and is only
+     * reached by callers that pass a null tally; the optimizer carries the real count on
+     * its search node and never comes here.
+     */
+    private static int[] replay(double[] m, int step) {
+        int[] counts = new int[m.length];
+        for(int s = 0; s < step; s++) {
             int best = -1;
+            double bestDeficit = 0;
             for(int i = 0; i < m.length; i++) {
-                if((m[i] > 0) && ((best < 0) || (rem[i] > rem[best])))
+                if(m[i] <= 0)
+                    continue;
+                double deficit = (m[i] * (s + 1)) - counts[i];
+                if((best < 0) || (deficit > bestDeficit)) {
                     best = i;
+                    bestDeficit = deficit;
+                }
             }
             if(best < 0)
                 break;
-            out[best]++;
-            rem[best] -= 1.0;
+            counts[best]++;
         }
-        return(out);
+        return(counts);
     }
 
     private static double biggest(Combatant c) {
