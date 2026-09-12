@@ -125,6 +125,23 @@ public final class Prediction {
         final boolean armed;
         /* Card resource -> the level it sits at in the deck we are fighting with. */
         final Map<String, Integer> levels;
+        /**
+         * The who=me buff resources as the recorder last sampled them, and whether a shield
+         * is in hand. Both are set live by {@link CombatRecorder}, because neither is a
+         * fight-start constant the way the attributes are.
+         *
+         * The held stance is the one Move among these buff resources that is a stance -
+         * exactly one card is, per Move.stance - and it decides the block weight (Shield Up
+         * 2.5x, Parry 0.8x) and, for two of them, the attack weight. Without it a prediction
+         * prices a character who cannot exist: the live model read blockSkill 0, blockMult 1
+         * and attackMult 1 (Combatant.java:66,91) while the offline tools applied the stance
+         * as a Combatant property (CombatDeckSearch.withStance, Duel.java:138-139,
+         * FoeModel.java:478-479). The shield is only for Shield Up, whose 2.5x falls to 0.5x
+         * without one (Move.blockRequires).
+         *
+         * volatile: written from the message loop, read from wherever the advisor runs. */
+        volatile String[] buffs = null;
+        volatile boolean shield = false;
 
         Me(double str, double agi, double unarmed, double melee,
            double armHard, double armSoft,
@@ -313,6 +330,7 @@ public final class Prediction {
         a.weaponRange = me.weaponRange;
         a.hp = a.maxHp = 100;
         a.ip = myIp;
+        applyStance(a, me);
 
         /* The toughest reading the corpus allows. Every opponent number is an interval, and a
          * prediction has to pick one end or report two; picking the pessimistic end means a
@@ -414,6 +432,14 @@ public final class Prediction {
                 Move m = byRes.get(e.getKey());
                 if(m == null)
                     continue;
+                /* A STANCE IS HELD, NOT THROWN (Move.stance). The offline tools apply the
+                 * stance as a Combatant property and skip it in every deck walk
+                 * (CombatDeckSearch.withStance; Duel.java:138-139 and :192-193;
+                 * FoeModel.java:478-479); leaving it in the live deck let Optimizer and Sim
+                 * plan to throw one, which no fight can do. It is applied to `a` instead, by
+                 * applyStance below. */
+                if(m.stance)
+                    continue;
                 if((m.weight == Move.Weight.WEAPON) && !me.armed)
                     continue;
                 deck.add((e.getValue() > 1) ? m.withMu(muAt(e.getValue())) : m);
@@ -435,6 +461,7 @@ public final class Prediction {
         a.weaponRange = me.weaponRange;
         a.hp = a.maxHp = 100;
         a.ip = myIp;
+        applyStance(a, me);
 
         List<Combatant> bs = new ArrayList<Combatant>();
         List<FoeModel> ms = new ArrayList<FoeModel>();
@@ -466,6 +493,43 @@ public final class Prediction {
             return(null);
         return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,
                            front.size(), stamp));
+    }
+
+    /**
+     * Applies the held stance to our side of a prediction, by the rule the offline search uses.
+     *
+     * The same three fields {@code CombatDeckSearch.withStance} sets: the block skill the
+     * stance names, its multiplier (with Shield Up's no-shield fallback), and the attack factor
+     * two of the stances carry. See {@link Me#buffs} for why the stance is read from the buffs
+     * the recorder sampled rather than from the deck.
+     *
+     * PARRY'S COUNTER-OPENING IS NOT APPLIED HERE. Parry "when attacked" opens whoever swung,
+     * and Optimizer sources that from the cards in the THROWN deck (Optimizer.search's trigger
+     * array). A stance is never thrown and is now filtered out of the deck, so after this change
+     * there is no path for it. Pricing it would mean Optimizer reading the held stance as well
+     * as the deck, which is outside this fix. The cost: a held Parry gets its 0.8x block weight
+     * but not the openings it would answer a swing with.
+     */
+    private static void applyStance(Combatant a, Me me) {
+        String[] names = me.buffs;
+        if((names == null) || (byRes == null))
+            return;
+        Move st = null;
+        for(String r : names) {
+            Move m = byRes.get(r);
+            if((m != null) && m.stance) {
+                st = m;
+                break;
+            }
+        }
+        if(st == null)
+            return;
+        a.blockMult = st.blockMult;
+        if((st.blockRequires != null) && !me.shield && !Double.isNaN(st.blockMultWithout))
+            a.blockMult = st.blockMultWithout;
+        if(st.blockSkill != null)
+            a.blockSkill = a.skill(st.blockSkill);
+        a.attackMult = st.attackMult;
     }
 
     /**

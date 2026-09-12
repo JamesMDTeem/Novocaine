@@ -40,6 +40,9 @@ public final class CombatRecorder {
     /* When the last state line went out, for the heartbeat in sample(). */
     private static volatile long lastBeat = 0;
     private static volatile String lastFoes = null;
+    /* When the last foes row went out, for the heartbeat in sampleFoes(). Kept apart from
+     * lastBeat because the sampled duel and the crowd are emitted on their own gates. */
+    private static volatile long lastFoesBeat = 0;
     /* Per combatant, keyed by who+gob. A single shared key was wrong in both directions,
      * and which one it was wrong in depended on how many combatants carried buffs.
      *
@@ -252,6 +255,7 @@ public final class CombatRecorder {
              * long pause opens with a heartbeat it did not earn. */
             lastBeat = 0;
             lastFoes = null;
+            lastFoesBeat = 0;
             lastBuffs.clear();
             named.clear();
             foeResById.clear();
@@ -344,6 +348,11 @@ public final class CombatRecorder {
                                    (hands[1] == null) ? 0 : Double.parseDouble(hands[1]),
                                    (hands[3] == null) ? 0 : Double.parseDouble(hands[3])},
                                readDeck(gui), wstats);
+            /* Shield Up's 2.5x block weight falls to 0.5x without a shield, and only the
+             * model can apply that - see Prediction.applyStance. Read once at fight start:
+             * no corpus fight swaps a shield mid-fight (0 res=null gear-removal rows, N7 sec 4). */
+            if(me != null)
+                me.shield = hasShield(eq);
         } catch(Exception e) {
             /* a header we could not build is still better than a lost fight */
         }
@@ -404,6 +413,30 @@ public final class CombatRecorder {
             }
         }
         return(new int[] {hard, soft});
+    }
+
+    /**
+     * Whether a shield is equipped, by the rule the pack build uses: any gear resource whose
+     * name contains "shield" (estimate.py:5363). A broken shield still counts - Shield Up only
+     * asks that one is held. Used for the one stance whose multiplier depends on it; see
+     * Prediction.applyStance.
+     */
+    private static boolean hasShield(Equipory eq) {
+        if(eq == null)
+            return(false);
+        for(int i = 0; i < eq.slots.length; i++) {
+            WItem w = eq.slots[i];
+            if(w == null)
+                continue;
+            try {
+                String res = w.item.getres().name;
+                if((res != null) && res.contains("shield"))
+                    return(true);
+            } catch(Exception e) {
+                /* a still-loading item costs that slot, not the answer */
+            }
+        }
+        return(false);
     }
 
     /**
@@ -603,8 +636,26 @@ public final class CombatRecorder {
                     WpnSnap prev = lw.get(e.getKey());
                     if (!e.getValue().equals(prev)) {
                         WpnSnap w = e.getValue();
-                        if (w.res != null && !w.stats.isEmpty())
+                        if (w.res != null && !w.stats.isEmpty()) {
                             log(CombatEvent.weapon(t, e.getKey(), w.res, w.stats));
+                        } else if (prev != null && prev.res != null && !prev.stats.isEmpty()) {
+                            /* AND THE HAND THAT STOPPED HOLDING A WEAPON. The guard above
+                             * writes a row only for an item that HAS weapon figures, so a
+                             * hand going from a weapon to a shield, a tool or nothing at
+                             * all wrote no row for that slot and the file went on
+                             * describing the weapon that had left. Exactly the gap the
+                             * gear writer above was fixed for, one snapshot later.
+                             *
+                             * It is not cosmetic. The pickaxe carries coolmod 1.15, and in
+                             * pool/Santa_Samus-1789072636788-Santa_Samus-62.jsonl slot 6
+                             * goes pickaxe -> roundshield at t=9265 with no `wpn` row of
+                             * its own; the only witness to the swap is the `gear` row, so
+                             * fightlog.held_coolmod has to reconstruct the hands from gear
+                             * rather than read them here. A null res and an empty `v` is
+                             * the removal, matching the gear writer's null-res convention.
+                             */
+                            log(CombatEvent.weapon(t, e.getKey().intValue(), null, null));
+                        }
                     }
                 }
                 lastWpn = curWpn;
@@ -1045,6 +1096,8 @@ public final class CombatRecorder {
      * else is swinging, and that is what decides whether a gain on our own target was ours.
      *
      * Gated on the values, like sample(), because these change rarely against a frame rate.
+     * And, like sample(), floored by a 500 ms heartbeat so a lull cannot leave the crowd's
+     * openings unmeasured for as long as it lasts - see the comment on the gate below.
      *
      * @param packed gob and four openings per relation, five entries each
      */
@@ -1074,8 +1127,21 @@ public final class CombatRecorder {
             for(int i = 0; (dist != null) && (i < dist.length); i++)
                 k.append(dist[i]).append(',');
             String key = k.toString();
-            if(key.equals(lastFoes))
+            /* THE VALUE GATE HAS NO FLOOR OF ITS OWN. An opening change fires a row at
+             * once, which is why the VALUE is current on a change - but during a lull
+             * nothing bounds the gap, and openings decay while nobody looks. Measured on
+             * the corpus: the last foes row before one of our moves is p50 834 ms / p90
+             * 4208 ms old, against p50 111 ms / p90 705 for the sampled state, and
+             * quiet-step decay is 5.26 points/s - so a median crowd gap carries ~4.4
+             * points of unmodelled drift (N6 N-8). sample() has had a 500 ms floor since
+             * it was added (see HEARTBEAT); the crowd now gets the same one. Not a
+             * substitute for the value gate - a change still fires immediately, this only
+             * stops silence from being unbounded. */
+            long ts = now();
+            boolean beat = (ts - lastFoesBeat) >= HEARTBEAT;
+            if(key.equals(lastFoes) && !beat)
                 return;
+            lastFoesBeat = ts;
             lastFoes = key;
             /* Kept as well as logged, because the advisor below needs it live. This is the
              * only place the client hands over every opponent's openings at once. */
@@ -1140,9 +1206,17 @@ public final class CombatRecorder {
                     /* a still-loading resource is skipped, not fatal */
                 }
             }
+            java.util.Collections.sort(names);
+            /* Our held stance is one of these resources; see Prediction.Me.buffs. Recorded on
+             * every who=me sample, including an empty one, so a dropped stance cannot leave a
+             * stale figure standing on the prediction. */
+            if("me".equals(who)) {
+                Prediction.Me m = me;
+                if(m != null)
+                    m.buffs = names.toArray(new String[names.size()]);
+            }
             if(names.isEmpty())
                 return;
-            java.util.Collections.sort(names);
             String id = who + gobId;
             String key = names.toString();
             if(key.equals(lastBuffs.get(id)))
