@@ -467,7 +467,7 @@ def report_todo():
         owned = estimate.LEVELS
         have = owned.get("Take Aim")
         reach = [l for l in range(1, min(have or 0, estimate.MU_LEVELS) + 1)
-                 if l not in estimate.MU_MEASURED] if have else []
+                 if l not in estimate.measured_mu()[0]] if have else []
         if reach:
             lvl = reach[0]
             mu = fn_(lvl)
@@ -567,7 +567,7 @@ def report_discrimination():
     print("  observation at level 1 can separate anything - and if this ever reports")
     print("  level 1 as decisive, the instrument is broken and not the hypotheses.\n")
 
-    measured = sorted(estimate.MU_MEASURED)
+    measured = sorted(estimate.measured_mu()[0])
     print("  Already measured: %s" % (", ".join("level %d" % l for l in measured)
                                       if measured else "nothing"))
     print("  Still live: %s" % ", ".join(LIVE))
@@ -587,7 +587,7 @@ def report_separation(live):
     owned = estimate.LEVELS
     found = False
     for lvl in range(1, estimate.MU_LEVELS + 1):
-        if lvl in estimate.MU_MEASURED:
+        if lvl in estimate.measured_mu()[0]:
             continue
         for i, a in enumerate(live):
             for b in live[i + 1:]:
@@ -620,6 +620,108 @@ def report_separation(live):
                               " first." % (nm, have, lvl))
     if not found:
         print("  Nothing left that any card in the deck can settle.")
+    print()
+
+
+def report_falsification(live):
+    """Exactly one curve is standing, so the job is to try to KILL it.
+
+    The other half of the pair report_separation covers. With more than one survivor the
+    question is which is right, and a reading that splits them answers it. With one there
+    is nothing left to separate it FROM, so the only experiment worth running is one that
+    could prove the survivor WRONG - which is what pins_mu exists to say. A reading whose
+    pinned interval contains the survivor's mu fails to kill it; a reading that excludes
+    the mu kills it, and this prints the integer cooldowns that would.
+
+    THE INTEGER DISPLAY IS WHAT MAKES ONE READING DECISIVE. The card reports
+    floor(base/mu), and initiative scales that integer and floors again, so a single
+    mismatched tick is a refutation rather than noise. Take Aim's rising-initiative ladder
+    is many independent readings of the same integer, each a separate chance to catch a
+    wrong survivor; Dash carries no initiative term, so its one reading is every reading.
+
+    Kept to the cooldown ladder the rest of this file uses. The boost and the opponent
+    questions are different shapes and have their own reports.
+    """
+    if not live:
+        # The caller routes an empty field here only once every candidate has been
+        # killed. A real state, and not one to dress up as a result.
+        print("  No curve survives, so there is nothing to falsify.\n")
+        return
+    if len(live) > 1:
+        # report_separation is the report for this state. Falsifying one of several
+        # survivors would answer a question nobody is asking.
+        print("  %d curves survive, so the question is separating them, not killing one.\n"
+              % len(live))
+        return
+    sole = live[0]
+    fn = dict(HYPOTHESES)[sole]
+    print("  One candidate survives (%s), so the job is to FALSIFY it." % sole)
+    print("  A reading whose pinned interval excludes its mu kills the curve, and the")
+    print("  cooldown is an integer, so one reading is decisive. Take Aim's ladder at")
+    print("  rising initiative is many independent readings of one integer; Dash has no")
+    print("  initiative term, so one reading is every reading.\n")
+
+    for nm, spec in INSTRUMENTS.items():
+        base, scale = spec["base"], spec["ip_scale"]
+        # Every initiative the ladder can reach. The measured ladders run to 17 and
+        # separable() searches 0-20; Dash's scale is zero, so only 0 means anything.
+        ips = list(range(0, 21)) if scale else [0]
+        print("  %s (base %.0f%s)"
+              % (nm, base, ", initiative scale %.2f" % scale if scale
+                 else ", no initiative term"))
+        for lvl in range(1, spec["max_level"] + 1):
+            mu = fn(lvl)
+            if mu is None:
+                print("      level %d: the survivor has no opinion here, so there is "
+                      "nothing to falsify." % lvl)
+                continue
+            # The ladder of integer cooldowns the survivor predicts: at 0 IP it is just
+            # floor(base/mu), and initiative scales that integer and floors again.
+            rungs = {}
+            for ip in ips:
+                r = raw_cooldown(base, mu, scale, ip)
+                if r is not None:
+                    rungs[ip] = int(math.floor(r))
+            # Every integer the card can show at this level, at each rung of the ladder,
+            # and the subset whose pinned interval excludes the survivor's mu. cands in
+            # pins_mu is injective for f >= 1, so a reading names exactly one integer C
+            # and only the survivor's own reading can admit its mu - which is why one
+            # mismatched reading is enough to kill it.
+            refuters = {}
+            for ip in ips:
+                f = 1.0 + (scale * ip)
+                out = []
+                for c in range(1, int(base) + 1):
+                    y = int(math.floor(c * f))
+                    iv = pins_mu(y, ip, base, scale)
+                    if (iv is None) or (not (iv[0] < mu <= iv[1])):
+                        out.append(y)
+                refuters[ip] = sorted(set(out))
+            zero = refuters.get(0) or []
+            if not zero:
+                print("      level %d: mu %.3f.  nothing this card can read at this "
+                      "level excludes it." % (lvl, mu))
+                continue
+            y0 = rungs.get(0)
+            iv = pins_mu(y0, 0, base, scale) if y0 is not None else None
+            if (y0 is None) or (iv is None):
+                print("      level %d: mu %.3f.  no integer cooldown is defined here."
+                      % (lvl, mu))
+                continue
+            lo, hi = iv
+            near = sorted(zero, key=lambda y: (abs(y - y0), y))[:3]
+            line = ("      level %d: mu %.3f.  0 IP reads %d, admitting %.3f-%.3f; "
+                    "%d other cooldown(s) exclude it (nearest %s)."
+                    % (lvl, mu, y0, lo, hi, len(zero),
+                       ", ".join(str(y) for y in near)))
+            if scale:
+                # The ladder itself, because each rung is another independent reading of
+                # the same integer rather than one reading repeated.
+                ladder = [rungs[ip] for ip in ips[:4] if ip in rungs]
+                line += "  ladder %s%s" % (" ".join(str(y) for y in ladder),
+                                           " ..." if len(rungs) > 4 else "")
+            print(line)
+        print()
     print()
 
 
@@ -673,7 +775,7 @@ def report_boost():
     except Exception:
         uses, lo, hi = (), None, None
     if lo is not None:
-        n = sum(1 for b, a, _l in uses if (b > 0) and (a < 100))
+        n = sum(1 for u in uses if (u[0] > 0) and (u[1] < 100))
         print()
         print("  %d use(s), %d uncensored, giving a multiplier in [%.4f, %.4f]:"
               % (len(uses), n, lo, hi))
@@ -681,7 +783,7 @@ def report_boost():
               % 1.45)
         print("      0.4 flat, with mu not scaling it              %.4f   EXCLUDED"
               % 1.40)
-        zeros = [a for b, a, _l in uses if b == 0]
+        zeros = [u[1] for u in uses if u[0] == 0]
         if zeros:
             print("  and one use against NOTHING standing, which opened %d - a share of what"
                   % zeros[0])

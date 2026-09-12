@@ -169,6 +169,11 @@ def replay_damage(log, eng, moves, weapons):
     strength = attrs.get("str")
     if not strength:
         return out
+    # THE PAIRING IS VETTED PER OBSERVATION BEFORE IT GETS HERE. fightlog.hits drops the
+    # damage for a move when another combatant announced inside the same window, because
+    # their numbers over the same victim cannot be told from ours - see
+    # fightlog._announcement_by_other. This function therefore inherits the R1 fix by using
+    # the shared primitive rather than re-pairing damage of its own.
     for h in fightlog.hits(eng, log.me):
         wep = weapon_at(log, weapons, h.get("t"))
         if h.get("actor") != "me":
@@ -238,10 +243,13 @@ def replay(paths):
             # instead of condemning the engagement, and running both meant the openings half
             # was gated twice: once by a rule the project had already decided was too coarse.
             #
-            # The damage half still needs it, for the reason below - hits() pairs a damage
-            # number to a move by time, and there is no per-observation test that can tell
-            # whose number it was. So the gate moved down to the half that cannot do without
-            # it, and the openings half now sees every fight its own four tests allow.
+            # The damage half still leans on it, because a pairing is made by time and a
+            # third party's numbers over the same target look identical. It is no longer
+            # the only defence: hits() now vetoes a pairing outright when another
+            # combatant's move announcement falls inside the window (see
+            # fightlog._announcement_by_other), so this gate is the floor under the pairs
+            # that carry no announcement. The openings half sees every fight its own four
+            # tests allow.
             clean = eng.offence_ok
             if not clean:
                 skipped["contaminated (damage half only)"] += 1
@@ -262,9 +270,10 @@ def replay(paths):
             # The median is fine in all three - -0.29, -0.52, -0.42 - so this is not bias,
             # it is somebody else's number landing on our move. Being in a party is the
             # worse case, which is what you would expect: more people hitting one target.
-            # Unlike the openings half there is no per-observation test that can tell whose
-            # number it was, so separating them would report a population and not a
-            # measurement.
+            # There IS now a per-observation test for the announced case - the veto in
+            # hits() - but an unannounced third party leaves no row to test, so this gate
+            # remains the floor for that residue. Separating on the announcement alone
+            # would report a population and not a measurement.
             # THE LAST HIT OF AN ENGAGEMENT IS NOT A SOUND OBSERVATION, and is scored
             # separately rather than dropped. A blow that kills is recorded at the health
             # it actually removed, not the damage it would have done, so a killing blow
@@ -319,7 +328,10 @@ def replay(paths):
                         ob = o.get("pct")
                 if not ob:
                     continue
-                wa = estimate.attack_weight_bounds(m, attrs, lv.get(mv))
+                # `lv` and not just `lv.get(mv)`: a stance held for the fight multiplies
+                # every attack in it, and the prediction this replay scores has to price
+                # the same weight the recovery did. See estimate.collect.
+                wa = estimate.attack_weight_bounds(m, attrs, lv.get(mv), lv)
                 if not wa:
                     continue
                 wa_lo, wa_hi = wa

@@ -300,9 +300,25 @@ public class CombatDeckSearch {
             floor = Math.min(floor, takeScore);
         }
         cur = topUp(cur, sheet, sc, floor);
+        Deck untrimmed = cur.copy();
         cur = trim(cur, sheet, sc);
         cur.score = sc.score(cur);
-        cur.score = Math.min(cur.score, floor);
+        /* THE FLOOR IS EARNED BY A SUPERSET, AND TRIM TAKES CARDS AWAY. The bound above is
+         * the whole reason the greedy can accept a measured-worse step: a card that is
+         * never thrown measures exactly as well as no card, and adding a card cannot make
+         * the true optimum worse, so a deck is never scored above the best of the decks it
+         * contains. That is a fact about the SUPERSET. Trim removes the cards the plan
+         * never threw, and the moment it does, the deck the bound was proven for no longer
+         * exists - clamping the trimmed deck's score to it reports a number that belongs to
+         * a different deck. Measured on the warriordrone at five opponents: the returned
+         * deck scored 756, while the clamp reported 730, which is the superset's number.
+         *
+         * So the floor is kept only while trim returned the deck unchanged - where the
+         * bound still names this deck - and dropped the moment the cards move. There is no
+         * weaker invariant trim could inherit: removing cards is exactly the operation
+         * monotonicity does not survive. */
+        if(cur.levels.equals(untrimmed.levels))
+            cur.score = Math.min(cur.score, floor);
         return(cur);
     }
 

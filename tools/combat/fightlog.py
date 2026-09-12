@@ -24,6 +24,12 @@ import json
 import os
 
 COLOURS = ("green", "blue", "yellow", "red")
+
+# One server tick, in milliseconds. "One tick is 0.06 seconds" (Sim.java). It is the
+# outside limit on how far a card's announcement can sit from its own `move` row - every
+# effect of one action lands on one tick - and measuring the two across 651 files gives
+# p50 3 ms, p90 57 ms, max 60 ms, which is that limit exactly.
+TICK_MS = 60
 GREEN, BLUE, YELLOW, RED = 0, 1, 2, 3
 
 BOW_RES = frozenset({"huntersbow", "rangersbow"})
@@ -73,10 +79,17 @@ def is_ranged(rows):
 # in either order, so the pairing window is symmetric.
 PAIR_MS = 150
 
-# A state event fires two to six milliseconds AFTER the move it follows and already
-# carries that move's effect. So the state at or before a move's timestamp is the state
-# that move read, and the next one is the state it produced. This slack absorbs the
-# handful of milliseconds either way; it is not a settle window.
+# A state event usually fires two to six milliseconds AFTER the move it follows and already
+# carries that move's effect. So the state at or before a move's timestamp is normally the
+# state that move read, and the next one is the state it produced. THIS IS TRUE FOR THE
+# ATTACKS - median 6 ms across the corpus - AND IT IS NOT A CLAIM ABOUT EVERY CARD. Dash is
+# the counterexample: its "completely removes your slightest opening" clear lands about
+# 364 ms after the move, not six. Of 270 throws that opened with a standing colour, 260
+# record the lowest positive colour falling to 0 at a median gap of 364 ms, the histogram
+# concentrated at 350-399 for 256 of them. So for Dash the state at or before the move does
+# NOT yet carry the effect, and the "recording defect" this comment used to imply for it was
+# a false alarm - the clear is simply slower than the bracket rule assumes. This slack only
+# absorbs the handful of milliseconds either way; it is not a settle window.
 SLACK_MS = 60
 
 # How far from a state showing an opening rise one of our moves may be and still be a
@@ -206,6 +219,82 @@ class Engagement(object):
                 # Another move landed first; this one's result is no longer separable.
                 break
         return (before, after)
+
+    def announced_before(self, move, me_gob=None):
+        """The state this move ACTUALLY read, when its own announcement beat its `move` row.
+
+        An action reaches the log as two client messages - the `gfx/fx/fight/` overlay that
+        announces the card, and the `move` row that books it - a median of 3 ms apart and up
+        to one server tick. A `state` row can land between them, and that state already
+        carries the action's own effect. brackets() pairs on the `move` row, so when that
+        happens it reads the world the move CREATED as the world the move read.
+
+        It is rare and it is not small. Three of the corpus's 98 bracketed Opportunity
+        Knocks uses move when the anchor does, and two of them are the difference between a
+        card that did nothing and a card that did what its text says:
+
+            0346-1788466272144-BonkiDonki-5        100 -> 100   becomes   73 -> 100
+            BonkiDonki-1788646023805-BonkiDonki-147 100 ->  99   becomes   71 ->  99
+            BonkiDonki-1789063767114-BonkiDonki-29   52 ->  52   becomes   55 ->  52
+
+        The first two are held at an unknown card level, so they feed the pooled interval
+        and not the per-level ones. The third is the corpus's only use of the card against
+        a PERSON, and correcting its anchor does not rescue it: the opening was 55 and fell
+        to 52 across the throw. That reading is an open question, not a measurement of the
+        card - see estimate_check.opportunity_knocks.
+
+        Returns brackets()'s `before` unchanged whenever there is no announcement, none
+        inside a tick, or no state between the two - so a caller can use it everywhere and
+        only the affected reads move. THE INTERVENING-MOVE STOP IS KEPT: walking back past
+        another `move` row would credit this card with the previous one's work, which is the
+        defect brackets() itself was fixed for, so the walk stops there and returns None.
+        None therefore means "un-separable, do not use this read", exactly as it does from
+        brackets(), and a caller must drop the observation rather than fall back to the
+        state on the far side of the announcement - which is the contaminated one.
+
+        Across the corpus 3,318 of 28,444 of our own bracketed moves anchor earlier than
+        brackets() puts them, 937 of those change an opening colour by a point or more and
+        180 by twenty or more; 77 are dropped as un-separable.
+
+        MOST OF THE MOVED ANCHORS CHANGE NOTHING, and that is the recorder's restate()
+        rather than luck. onMove calls restate(), which re-emits the last known state
+        values with a FRESH timestamp, so the row sitting between an announcement and
+        its move row is very often that re-emission: correct values, lying clock.
+        Walking back past it lands on the genuine sample it was copied from, which is
+        why 2,381 of the 3,318 read identically either way. The 937 that do differ are
+        the ones where a real sample landed in the gap, and those are the whole point.
+        """
+        i = self.order.get(id(move))
+        if i is None:
+            return None
+        before, _after = self.brackets(move)
+        if before is None:
+            return None
+        t = move.get("t") or 0
+        card = move.get("name")
+        # WHOSE GOB THE ANNOUNCEMENT IS ON. Our own moves announce on us; a creature's
+        # announce on the creature, and its `move` row carries the actor in `gob`. Getting
+        # this backwards would look for our card on the opponent and simply never match,
+        # which is a silent no-op rather than a visible failure.
+        actor = me_gob if (move.get("actor") == "me") else (move.get("gob") or self.gob)
+        if actor is None:
+            return before
+        anchor = None
+        for o in self.overlays:
+            if (o.get("gob") != actor) or (overlay_move(o.get("res") or "") != card):
+                continue
+            ot = o.get("t") or 0
+            if 0 <= (t - ot) <= TICK_MS:
+                anchor = ot if anchor is None else min(anchor, ot)
+        if (anchor is None) or ((before.get("t") or 0) < anchor):
+            return before
+        for j in range(i - 1, -1, -1):
+            ev = self.seq[j].get("ev")
+            if ev == "move":
+                return None
+            if (ev == "state") and ((self.seq[j].get("t") or 0) < anchor):
+                return self.seq[j]
+        return None
 
     def __repr__(self):
         return "<Engagement %s gob=%s %d states %d moves%s>" % (
@@ -441,11 +530,35 @@ def _diagnose(log, opens=None):
         if eng.res is None:
             eng.notes.append("opponent never identified (no resource in the log)")
 
-    if len(log.engagements) > 1:
+    # SIMULTANEOUS OPPONENTS, NOT TARGET SWITCHES. This used to fire only when the file
+    # sampled more than one gob, so a crowd fought through a single sampled target - the
+    # normal shape, and the one the defence gate most needs to catch - read as a duel.
+    # The Shade wolf log is the case: a foes row carries six relations, the file samples
+    # one engagement throughout, and both gates reported usable. Corpus-wide that is 51
+    # files, 21 of them with foe moves from two or more gobs. The direct evidence is a
+    # foes row carrying two or more relations; two distinct gobs throwing a foe move is
+    # the fallback for logs that predate the event. Either sets it for every engagement
+    # in the file, and target switching still counts, because it is the same defect seen
+    # from another angle. Conservative on purpose: the loss is a measurement, the miss
+    # is a wrong defence weight.
+    foe_move_gobs = set()
+    for eng in log.engagements:
+        for m in eng.moves:
+            if (m.get("actor") == "foe") and (m.get("gob") is not None):
+                foe_move_gobs.add(m["gob"])
+    crowd_rows = [r for r in log.foes if len(r.get("o") or []) >= 2]
+    if crowd_rows or (len(foe_move_gobs) >= 2) or (len(log.engagements) > 1):
+        why = []
+        if len(log.engagements) > 1:
+            why.append("%d opponents sampled in one file" % len(log.engagements))
+        if crowd_rows:
+            why.append("a foes row carries %d relations at once"
+                       % max(len(r.get("o") or []) for r in crowd_rows))
+        if len(foe_move_gobs) >= 2:
+            why.append("%d distinct gobs threw a move" % len(foe_move_gobs))
         for eng in log.engagements:
             eng.multi_opponent = True
-            eng.notes.append("the log retargets: %d opponents sampled in one file"
-                             % len(log.engagements))
+            eng.notes.append("more than one opponent: " + "; ".join(why))
 
     if not log.complete:
         for eng in log.engagements:
@@ -570,7 +683,7 @@ def unattributed_rises(eng, opens=None):
     return out
 
 
-def opening_gains(eng):
+def opening_gains(eng, me_gob=None):
     """Every (actor, move, colour, standing, gain) this engagement supports.
 
     The actor is first and is not optional. A gain our move caused measures the
@@ -587,7 +700,12 @@ def opening_gains(eng):
     out = []
     for m in eng.moves:
         key = "foe" if m.get("actor") == "me" else "mine"
-        before, after = eng.brackets(m)
+        # ANCHORED ON THE ANNOUNCEMENT. See Engagement.announced_before: a state landing
+        # between a card's announcement and its `move` row already carries that card's
+        # effect, so brackets()' `before` can be the world the move CREATED. It affects
+        # 3,318 of 28,444 of our bracketed moves, and understates the gain every time.
+        _b, after = eng.brackets(m)
+        before = eng.announced_before(m, me_gob)
         if before is None or after is None:
             continue
         bv, av = before.get(key), after.get(key)
@@ -825,6 +943,94 @@ def foe_range(row):
     return {g: d for g, d in zip(gobs, dist) if d >= 0}
 
 
+# Hand slots. The recorder writes a `gear` row for every equipment slot and a `wpn` row
+# for slots 6 and 7 only - the two hands - so these are the slots a weapon can be in.
+HAND_SLOTS = (6, 7)
+
+
+def coolmod_hands(log):
+    """Every hand resource in this fight that carries a weapon cooldown modifier.
+
+    The `wpn` row is the item's own tooltip, read off the server, and one of its figures
+    is Coolmod - the weapon's attack-cooldown modifier. It is written for both hands at
+    the start of a fight and again whenever a hand changes, and until now NOTHING READ IT.
+
+    Returns {resource: coolmod} for the resources whose modifier is not 1.0, empty when
+    the fight held no such weapon. Corpus-wide that is 19 of 5,599 files and one item, the
+    pickaxe at 1.15.
+    """
+    out = {}
+    for w in (log.weapons or []):
+        v = w.get("v") or {}
+        cm = v.get("coolmod")
+        res = w.get("res")
+        if res and (cm is not None) and (abs(cm - 1.0) > 1e-9):
+            out[res] = cm
+    return out
+
+
+def held_coolmod(log, t, mods=None):
+    """Whether a cooldown-modifying weapon was in hand at `t`, as the largest modifier.
+
+    None when no hand held one, which is the ordinary case.
+
+    READ FROM `gear`, NOT FROM `wpn`. A `wpn` row is written only for an item that has
+    weapon tooltips, so a hand that changes FROM a pickaxe TO a shield writes a `wpn` row
+    for the other hand and nothing at all for this one - the same removal-blindness the
+    `gear` writer was fixed for. `gear` carries every slot change including a removal (a
+    null res), so the hands are reconstructed from it and the modifier is looked up by
+    resource. Demonstrated in pool/Santa_Samus-1789072636788-Santa_Samus-62.jsonl: slot 6
+    goes pickaxe -> roundshield at t=9265 with no `wpn` row of its own.
+
+    WHAT THIS IS FOR, and what it is not. It says a modifier was held. It does not say
+    whether the reported cooldown already carries it, and no caller may multiply or divide
+    by it. THE MECHANIC IS NOT IN DOUBT - the owner states that a pickaxe lengthens the
+    cooldown and that the sword is the ordinary one, and the item's own tooltip says 1.15 -
+    but whether the number in the `move` row has it applied is, and the corpus says both
+    things:
+
+    FOR. In pool/Santa_Samus-1789072636788-Santa_Samus-62.jsonl the reported Quick Barrage
+    cooldown falls 23 -> 20 against ONE greenooze gob at one card level and zero initiative,
+    exactly when the hands go from two pickaxes to sword-and-shield. 23/20 is 1.15 to the
+    digit. A gob's agility does not change mid-fight, so nothing else can produce it. This
+    is also the only fight in the corpus that contains a mid-fight swap off a modifying
+    weapon, which is the only configuration that can show the modifier at all.
+
+    AGAINST. Over all 108 observations taken with a pickaxe in hand, the reported cooldown
+    divided by the card's base gives 0.90, 0.95, 1.00, 1.025, 1.05, 1.075 and 1.15 - every
+    one an ordinary agility factor except the three 1.15s, which are that one gob. Divide
+    instead by 1.15 and they become 0.783, 0.826, 0.870, 0.891, 0.913, 0.935 and 1.00, of
+    which 104 of 108 fall below the 0.9 floor that the other 21,081 observations in the
+    corpus respect exactly. So in 105 observations the modifier is NOT in the number, and
+    in 3 it is.
+
+    Two things it is not: staleness in the `cd` field, which was tested - the first reading
+    of a slice differs from a unanimous tail in 6 of 2,275 slices, and five of those six are
+    Take Aim, whose cooldown really does climb - and a fast opponent, which the within-gob
+    swap rules out.
+
+    So the one honest use is to EXCLUDE an observation taken with one of these in hand.
+    See estimate.agility_band, whose whole reading is that a slice at one card, level and
+    initiative isolates the opponent's agility and nothing else. Settling it needs a
+    deliberate test rather than more corpus: one opponent, one card, swapped weapons, which
+    is what that greenooze fight accidentally was.
+    """
+    if mods is None:
+        mods = coolmod_hands(log)
+    if not mods:
+        return None
+    hands = {}
+    for g in (log.gear or []):
+        slot = g.get("slot")
+        if slot not in HAND_SLOTS:
+            continue
+        if (g.get("t") or 0) > t:
+            break
+        hands[slot] = g.get("res")
+    held = [mods[r] for r in hands.values() if r in mods]
+    return max(held) if held else None
+
+
 # How long after the state row that closes a bracket a further rise in the same
 # colour is still the same rise finishing rather than a second cause. Only 13 of the
 # corpus's 1667 late rises arrive this promptly; the rest are hundreds of milliseconds
@@ -940,7 +1146,10 @@ def attributed_gains(eng, opens, me_gob=None):
             continue
         mine = (m.get("actor") == "me")
         key = "foe" if mine else "mine"
-        before, after = eng.brackets(m)
+        # See opening_gains: the announcement, not the `move` row, is where this card's
+        # own effect begins.
+        _b, after = eng.brackets(m)
+        before = eng.announced_before(m, me_gob)
         if before is None or after is None:
             continue
         bv, av = before.get(key), after.get(key)
@@ -1109,6 +1318,58 @@ def attributed_gains(eng, opens, me_gob=None):
     return out
 
 
+def _announcement_by_other(eng, me_gob, move):
+    """A move announcement on a gob that is neither us nor this opponent, near the move.
+
+    Damage is victim-keyed: the client draws a floating number over the creature hit and
+    never records the attacker, so when somebody else's card announcement falls inside the
+    same pairing window as our move, their numbers over the same target cannot be told
+    from ours. The announcement is the only signal that says so, and it is decisive - the
+    pairing is dropped, never reassigned. This is the damage half's per-observation test,
+    the same one attributed_gains runs for openings.
+
+    AN ANNOUNCEMENT IS A CARD ICON (gfx/fx/...), NOT AN OUTCOME SOUND. The namespaces are
+    disjoint and overlay_outcome() is the existing classifier for the second, but it names
+    only hit1/miss/ip and there are others (sfx/fight/antspit among them), so the gfx/fx/
+    prefix is the guard that actually keeps every outcome sound out of the veto.
+    """
+    t = move.get("t")
+    if t is None:
+        return None
+    for o in eng.overlays:
+        ot = o.get("t")
+        if (ot is None) or (abs(ot - t) > PAIR_MS):
+            continue
+        if o.get("gob") in (me_gob, eng.gob):
+            continue
+        res = o.get("res") or ""
+        if overlay_outcome(res) is not None:
+            continue
+        if not res.startswith("gfx/fx/"):
+            continue
+        return o
+    return None
+
+
+def _cluster(rows):
+    """Damage rows grouped into hits: one hit is a run of rows within a millisecond.
+
+    ARM and SHP for one blow are emitted together on the same millisecond, which is
+    what makes them safe to group without going near the move list - the same rule
+    soak_pairs uses. Two attackers whose floats land in the same millisecond are one
+    group and cannot be separated; that is a real limit, not this function's choice.
+    """
+    out = []
+    cur = None
+    for d in sorted(rows, key=lambda r: r["t"]):
+        if (cur is None) or ((d["t"] - cur[-1]["t"]) > 1):
+            cur = [d]
+            out.append(cur)
+        else:
+            cur.append(d)
+    return out
+
+
 def hits(eng, me_gob):
     """Every attack in this engagement paired with the damage it did.
 
@@ -1120,10 +1381,42 @@ def hits(eng, me_gob):
     out = []
     for m in eng.moves:
         target = eng.gob if m.get("actor") == "me" else me_gob
-        near = [d for d in eng.damage
-                if abs(d["t"] - m["t"]) <= PAIR_MS and d.get("gob") == target]
+        # SOMEBODY ELSE ANNOUNCED INSIDE THIS WINDOW. Their damage over the same target
+        # is indistinguishable from ours, so the pair is not made at all - see
+        # _announcement_by_other. Dropping it loses an observation; keeping it would
+        # credit a stranger's hit to our card, which is the "numbers weirdly" report.
+        if _announcement_by_other(eng, me_gob, m) is not None:
+            near = []
+        else:
+            near = [d for d in eng.damage
+                    if abs(d["t"] - m["t"]) <= PAIR_MS and d.get("gob") == target]
+        # ONE HIT, NOT EVERY FLOAT IN THE WINDOW. This summed every damage row on the
+        # target within 150 ms into a single number and compared it with a single
+        # expectation. A hit is a cluster of channels on one millisecond - the same
+        # grouping soak_pairs uses, and for the same reason - and a window can hold
+        # more than one: 893 of 18,523 paired moves do, median 71 ms apart.
+        #
+        # They are not one card striking twice. 741 of the 893 have no second `move`
+        # row in the window at all, and the rate is flat across cards - 5.8% for Quick
+        # Barrage, 4.6% for Full Circle, 2.3% for Fell Scratch - where a multi-strike
+        # card would be near 100%. They are somebody else's hits on the same victim,
+        # the ones _announcement_by_other cannot see because no announcement of theirs
+        # reached this log.
+        #
+        # So the pairing takes the cluster nearest the move and leaves the rest. Over
+        # the 753 such windows where a prediction is computable, the root-mean-square
+        # error of predicted against observed damage is 66.0 summing the window and
+        # 26.1 taking the nearest cluster. `clusters` carries how many there were, so
+        # a consumer can tell a clean pairing from one that had company.
+        #
+        # Isolated over the whole corpus by swapping only this grouping: summing the
+        # window hands cards 552,201 points of raw damage where the nearest cluster
+        # hands them 520,838 - 6.0% of all attributed damage belonged to somebody
+        # else - and credits 50 blows against us to foe cards that did not land them.
+        groups = _cluster(near)
+        chosen = min(groups, key=lambda g: abs(g[0]["t"] - m["t"])) if groups else []
         chans = {}
-        for d in near:
+        for d in chosen:
             chans[d["ch"]] = chans.get(d["ch"], 0) + d["v"]
         # The opening the attack READ, by file position - the same rule opening_gains
         # uses, and for the same reason. This used to take the last state stamped within
@@ -1132,7 +1425,23 @@ def hits(eng, me_gob):
         # opening, so a one-step overshoot is not a small error: a badger's Quick Barrage
         # at a true 14% red was predicted against 28% and came out at 3.9 points where
         # the log recorded 1.
-        before, _after = eng.brackets(m)
+        # AND BY ITS OWN ANNOUNCEMENT, not its `move` row. The two are separate
+        # client messages a median of 3 ms apart, and a state landing between them
+        # already carries the card's effect - so the move row's `before` can be the
+        # world the move made. That is the same one-step overshoot described just
+        # above, arriving by a different route, and it matters here for the same
+        # reason: the damage term SQUARES the opening. The audit's worked case is an
+        # ant in pool/Shade/0740-1788545411918-Shade-36.jsonl, where the move row
+        # reads red 55 and the announcement reads 33 - an expectation of 22.96
+        # against 8.27, on an observed 8.
+        #
+        # 937 of 46,665 bracketed moves read a different opening for it, and 896 of
+        # those read LOWER - median 7 points, down to 34 - which is the inflation
+        # coming out. replay.py is the control, because its damage half owes nothing
+        # to any fitted quantity: over its clean gated set the root-mean-square error
+        # of predicted against observed damage falls from 6.788 to 5.416 points, at a
+        # cost of 8 of 3,997 observations dropped as un-separable.
+        before = eng.announced_before(m, me_gob)
         if before is None:
             continue
         key = "foe" if m.get("actor") == "me" else "mine"
@@ -1145,6 +1454,7 @@ def hits(eng, me_gob):
             "hhp": chans.get("HHP", 0),
             "soaked": chans.get("ARM", 0),
             "raw": chans.get("ARM", 0) + chans.get("SHP", 0),
+            "clusters": len(groups),
             "ip_before": before.get("myip" if m.get("actor") == "me" else "foeip"),
         })
     return out

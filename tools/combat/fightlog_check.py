@@ -203,6 +203,116 @@ def pairing():
     # defence weight near 1 from a single Quick Barrage that a listed 10% cannot produce.
     check("two moves with no state between them credit neither", len(gains), 0)
 
+    _the_announcement_is_the_anchor()
+
+
+def _the_announcement_is_the_anchor():
+    """A card's effect begins at its announcement, not at its `move` row.
+
+    One action arrives as two client messages - the `gfx/fx/fight/` overlay that announces
+    the card and the `move` row that books it - a median of 3 ms apart and at most one
+    server tick. A `state` row can land between them, and that state ALREADY CARRIES the
+    action's own effect. Pairing on the `move` row then reads the world the move created as
+    the world the move read, and the gain comes out short by whatever had already landed.
+
+    The fixture puts a state between the two, holding part of the rise. Read from the move
+    row the gain is 8; read from the announcement it is the whole 20, which is what the
+    card did. Both numbers are named, because asserting only the answer would pass equally
+    well if the anchor were ignored and the intermediate state simply stopped existing.
+
+    Corpus effect, measured over 26,808 candidate gains: 724 come out LARGER, by a median
+    of 9 points and up to 34; 3 come out smaller; 67 are dropped as un-separable because a
+    move row sits between the state and the announcement. The direction is the whole claim -
+    an anchor that has been reading a partly-risen opening can only have been understating.
+    """
+    print("\nthe announcement, not the move row, is where a card begins")
+    rows = [begin(),
+            state(1000, foe=(0, 0, 0, 10)),
+            {"ev": "overlay", "t": 2000, "gob": ME, "res": "gfx/fx/fight/barrage"},
+            state(2003, foe=(0, 0, 0, 22)),
+            move(2006),
+            state(2050, foe=(0, 0, 0, 30)),
+            end()]
+    log = load(rows)
+    eng = log.engagements[0]
+    m = eng.moves[0]
+    check("  the move row alone would read the opening at",
+          (eng.brackets(m)[0] or {}).get("foe"), [0, 0, 0, 22])
+    check("  its own announcement reads it at",
+          (eng.announced_before(m, ME) or {}).get("foe"), [0, 0, 0, 10])
+    gains = fightlog.opening_gains(eng, ME)
+    check("  so the gain is the whole rise, not the tail of it",
+          [(g[2], g[3], g[4]) for g in gains], [("red", 10, 20)])
+
+    # AND THE MOVE-STOP IS KEPT. Walking back past another move row would credit this card
+    # with the previous one's work, which is the defect brackets() itself was fixed for.
+    rows = [begin(),
+            state(1000, foe=(0, 0, 0, 10)),
+            move(1500),
+            {"ev": "overlay", "t": 2000, "gob": ME, "res": "gfx/fx/fight/barrage"},
+            state(2003, foe=(0, 0, 0, 22)),
+            move(2006),
+            state(2050, foe=(0, 0, 0, 30)),
+            end()]
+    eng = load(rows).engagements[0]
+    check("  a move between the state and the announcement is un-separable",
+          eng.announced_before(eng.moves[1], ME), None)
+
+    # AN ANNOUNCEMENT ON SOMEBODY ELSE IS NOT OURS. Looking for our card on the opponent's
+    # gob would never match, which is a silent no-op rather than a visible failure, so the
+    # case is pinned rather than left to the reading above.
+    rows = [begin(),
+            state(1000, foe=(0, 0, 0, 10)),
+            {"ev": "overlay", "t": 2000, "gob": OTHER, "res": "gfx/fx/fight/barrage"},
+            state(2003, foe=(0, 0, 0, 22)),
+            move(2006),
+            state(2050, foe=(0, 0, 0, 30)),
+            end()]
+    eng = load(rows).engagements[0]
+    check("  a stranger's announcement does not move our anchor",
+          (eng.announced_before(eng.moves[0], ME) or {}).get("foe"), [0, 0, 0, 22])
+
+
+def _one_hit_not_the_whole_window():
+    """A move is paired with ONE hit, not with every float inside 150 ms.
+
+    This used to sum the window. A hit is a cluster of channels on one millisecond,
+    and a window can hold more than one: 893 of 18,523 paired moves in the corpus do,
+    a median of 71 ms apart. They are not one card striking twice - 741 of the 893
+    have no second `move` row in the window, and the rate is flat across cards where
+    a multi-strike card would be near universal. They are somebody else's blows on
+    the same victim, arriving without an announcement this log could see.
+
+    The fixture is the shape that matters: one move of ours, two separate hits on the
+    target, no second move row. Both the chosen values and the count of what was
+    passed over are named, because a check that only read `raw` would pass equally
+    well if the far cluster had simply been dropped from the log.
+
+    Worth, measured on the corpus: over 753 windows where a prediction is computable
+    the root-mean-square error of predicted against observed damage is 66.0 summing
+    the window and 26.1 taking the nearest cluster. On replay.py's clean gated set,
+    this and the announcement anchor together take it from 6.788 to 4.556.
+    """
+    print("\n  one move, one hit")
+    log = load([begin(), state(1000, foe=(0, 0, 0, 40)),
+                dmg(1990, FOE, "ARM", 4), dmg(1990, FOE, "SHP", 6),
+                move(2000),
+                dmg(2100, FOE, "SHP", 90),
+                end()])
+    h = fightlog.hits(log.engagements[0], ME)[0]
+    check("  the window held two hits", h["clusters"], 2)
+    check("    and the nearer one is the move's", h["raw"], 10)
+    check("    so the far one is not summed in", h["shp"], 6)
+
+    # ARM and SHP of ONE blow share a millisecond and must stay together - that is
+    # the whole reason a hit is a cluster rather than a row.
+    log = load([begin(), state(1000, foe=(0, 0, 0, 40)),
+                dmg(1999, FOE, "ARM", 15), dmg(2000, FOE, "SHP", 3),
+                move(2000), end()])
+    h = fightlog.hits(log.engagements[0], ME)[0]
+    check("  one blow's two channels stay one hit", h["clusters"], 1)
+    check("    and both are counted", h["raw"], 18)
+
 
 def damage():
     print("\npairing moves with their damage")
@@ -222,6 +332,8 @@ def damage():
                 dmg(1999, OTHER, "SHP", 99), move(2000), end()])
     h = fightlog.hits(log.engagements[0], ME)[0]
     check("a stranger's damage is not credited to our move", h["raw"], 0)
+
+    _one_hit_not_the_whole_window()
 
     print("\nsoak pairs, which do not go through the move list at all")
     # The client draws a floating number over a creature for damage from ANY source -

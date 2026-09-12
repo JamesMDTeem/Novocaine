@@ -10,6 +10,7 @@ that actually went wrong, kept as checks so they cannot go wrong again quietly.
 Exits 0 when every check passes, 1 otherwise.
 """
 
+import glob
 import math
 import os
 import re
@@ -17,6 +18,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import estimate  # noqa: E402
+import estimate_parallel  # noqa: E402
 import model  # noqa: E402
 from estimate import summarise_hp  # noqa: E402
 
@@ -343,6 +345,47 @@ def deck_history():
               estimate.levels_at(500, "Us"), {})
     finally:
         estimate.DECKS = saved
+    _the_fights_own_dump_wins()
+
+
+def _the_fights_own_dump_wins():
+    """A fight is dated by its OWN deck dump, not by the one before it.
+
+    The dump a fight writes at its start lands a few milliseconds after the header's wall,
+    so a rule keyed on `stamp <= when` hides it and dates the fight to the previous deck.
+    `levels_after` exists for that and for two days it was unreachable: `levels_for_log`
+    returned early whenever the stale deck merely EXPLAINED the fight - held every card it
+    threw, at any non-zero level - which the stale deck usually does.
+
+    The control is the file the rule was written from. Santa Samus threw Full Circle at
+    t=7199; the dump before the wall holds it at 3 and the dump four milliseconds later
+    holds it at 5. Both readings are named here, because asserting only the answer would
+    pass just as well if the timeline reader had quietly started returning 5 too, and then
+    nothing would be testing the ordering.
+
+    A fifth of a card's attack weight rides on this: mu(3) is 1.25 against mu(5)'s 1.5.
+    """
+    print("\na fight is dated by its own dump")
+    name = "Santa_Samus-1788294092265-Santa_Samus-10.jsonl"
+    hits = glob.glob(os.path.join(estimate.ROOT, "data", "combat", "pool", "**", name),
+                     recursive=True)
+    if not hits:
+        print("    (this corpus does not hold the file the rule was written from)")
+        return
+    log = estimate.fightlog.read(hits[0])
+    h = log.header or {}
+    thrown = set(m.get("name") for eng in log.engagements for m in eng.moves
+                 if (m.get("actor") == "me") and m.get("name"))
+    check("  the dump before the wall holds Full Circle at",
+          (estimate.levels_at(h.get("wall"), h.get("char")) or {}).get("Full Circle"), 3)
+    check("    and it explains every card the fight threw, so it used to win",
+          all((estimate.levels_at(h.get("wall"), h.get("char")) or {}).get(n)
+              for n in thrown), True)
+    check("  the fight's own dump holds it at",
+          (estimate.levels_after(h.get("wall"), h.get("char"), thrown) or {}).get(
+              "Full Circle"), 5)
+    check("    and that is the one the fight is dated by",
+          (estimate.levels_for_log(log) or {}).get("Full Circle"), 5)
 
 
 def mu_measurement():
@@ -456,36 +499,77 @@ def _corpus_sweep():
     """
     if _SWEEP:
         return _SWEEP
-    moves = estimate.load_moves()
-    opens = estimate.opens_map(moves)
-    scaling = set(n for n, m in moves.items() if m.get("stance") and m.get("attack_mult"))
+    # These four are whole-corpus COUNTS, so the order the files are visited in cannot
+    # change the answer - an ordered map is still used, for the same shape as the rest.
     gains = thrown = openers = stance_fights = 0
-    for pth in estimate.fightlog.default_logs(estimate.ROOT)[0]:
-        try:
-            log = estimate.fightlog.read(pth, opens)
-        except Exception:
-            continue
-        if not log.rows:
-            continue
-        lv = estimate.levels_for_log(log)
-        if lv and any(lv.get(n) for n in scaling):
-            stance_fights += 1
-        for eng in log.engagements:
-            gains += sum(1 for g in estimate.fightlog.attributed_gains(
-                eng, opens, log.me) if g[0] == "me")
-            for m in eng.moves:
-                if m.get("actor") != "me":
-                    continue
-                thrown += 1
-                if opens.get(m.get("name") or m.get("move")):
-                    openers += 1
+    for part in estimate_parallel.map_chunks(
+            "corpus_sweep", estimate.fightlog.default_logs(estimate.ROOT)[0]):
+        gains += part["gains"]
+        thrown += part["thrown"]
+        openers += part["openers"]
+        stance_fights += part["stance_fights"]
     _SWEEP.update({"gains": gains, "thrown": thrown, "openers": openers,
                    "stance_fights": stance_fights})
     return _SWEEP
 
 
+def _weight_callers():
+    """Where attack_weight_bounds is called from, and whether the deck goes with it.
+
+    {label: True/False}, one entry per production file - the recovery in
+    estimate.collect and the prediction in replay - reading the source text, because the
+    argument that was missing is invisible in every output the call feeds.
+
+    Deliberately not counting this file's own calls, which pass decks on purpose to test
+    the arithmetic, and deliberately keyed on the file so that a new consumer added
+    without the deck shows up as a new False rather than being silently uncovered.
+    """
+    out = {}
+    for label, rel in (("estimate.collect", "estimate.py"), ("replay", "replay.py")):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), rel)
+        with open(path, "r", encoding="utf-8") as f:
+            src = f.read()
+        for call in _call_args(src, "attack_weight_bounds"):
+            if call and (call[0] == "move"):
+                continue                      # the definition's own signature
+            out[label] = out.get(label, True) and (len(call) >= 4)
+    return out
+
+
+def _call_args(src, name):
+    """Every call to `name` in `src`, as its top-level argument list.
+
+    Written by scanning rather than by regular expression because the argument that
+    matters here is the LAST one, and `lv.get(name)` closes a paren of its own: a
+    non-greedy pattern stops at the inner bracket and reports three arguments for a call
+    that has four, which is a check that reads green for the broken code and red for the
+    fixed one. Depth counting is what separates them.
+    """
+    out = []
+    i = src.find(name + "(")
+    while i >= 0:
+        j = i + len(name) + 1
+        depth, start, args = 1, j, []
+        while (j < len(src)) and depth:
+            c = src[j]
+            if c in "([{":
+                depth += 1
+            elif c in ")]}":
+                depth -= 1
+                if not depth:
+                    break
+            elif (c == ",") and (depth == 1):
+                args.append(src[start:j])
+                start = j + 1
+            j += 1
+        args.append(src[start:j])
+        out.append([a.strip() for a in args])
+        i = src.find(name + "(", j)
+    return out
+
+
 def a_stance_scales_every_attack():
-    """Two of the three stances scale every attack we make, and one has never been held.
+    """Two of the three stances scale every attack we make, and recovery now prices them.
 
     A stance sits on the bar and is on continuously, so a deck holding one is a fight
     fought under it. Combat Meditation takes every attack to a quarter weight and Oak
@@ -493,9 +577,17 @@ def a_stance_scales_every_attack():
     fight under Oak Stance that ignored it would report an opponent twice as strong as it
     is - silently, with nothing in the output to say so.
 
-    THE CORPUS HAS NEVER DONE IT, and that is asserted rather than assumed. Shield Up is
-    the only stance ever held, in 3296 of the 3299 fights whose deck is known, and it is a
-    block-weight stance that does nothing to attacks. The day that changes this fires.
+    THIS USED TO BE A TRIPWIRE. estimate.collect passed the card's level and dropped the
+    deck, so the multiplier was never applied, and what stood in for applying it was an
+    assertion that the corpus had never been fought under a scaling stance - true while
+    Shield Up, a block stance that does nothing to attacks, was the only one ever held.
+    On 2026-09-10 Shade fought two under Oak Stance at level 1 and it fired, which is what
+    a tripwire is for. collect() and replay now pass the deck.
+
+    So the count below is a reading and not a verdict: the fights are counted and named,
+    and what is asserted is that the recovery path really applies the multiplier. A stance
+    fight in the corpus is now ordinary data, and zero of them would make the last check
+    here unexercised rather than safe.
     """
     print("\na stance scales every attack made under it")
     moves = estimate.load_moves()
@@ -511,11 +603,23 @@ def a_stance_scales_every_attack():
     check("  and a stance at level 0 is not held",
           estimate.attack_weight_bounds(qb, at, 1, {"Oak Stance": 0}), (200.0, 200.0))
 
-    # The tripwire. Recovery does not thread the deck through yet, which is safe only for
-    # as long as this holds. Counted in the shared corpus pass - see _corpus_sweep.
+    # How many fights the multiplier is actually doing something to. Counted in the
+    # shared corpus pass - see _corpus_sweep.
     worn = _corpus_sweep()["stance_fights"]
     print("    %d fight(s) fought under a stance that scales attacks" % worn)
-    check("  and no fight in the corpus was fought under one", worn, 0)
+    # AND THAT RECOVERY ASKS FOR IT. The bug was one dropped argument in a call that read
+    # as complete, and neither of the two stance fights produces a defence-weight row, so
+    # no corpus reading can distinguish the fixed code from the broken code today. What
+    # can is the call itself: every caller that recovers or predicts a weight must hand
+    # attack_weight_bounds the DECK and not only the card's level. Read out of the sources
+    # rather than asserted about behaviour, for the same reason datapack_check reads its
+    # symbols: a mechanic nothing passes is invisible from the output.
+    callers = _weight_callers()
+    for where, deck in sorted(callers.items()):
+        print("    %-28s passes the deck: %s" % (where, deck))
+    check("  every recovery caller passes the deck, not just the level",
+          sorted(w for w, d in callers.items() if not d), [])
+    check("    and there were callers to read", len(callers) >= 2, True)
 
 
 def coverage_has_a_floor():
@@ -1080,9 +1184,18 @@ def agility_band():
     level and one initiative, the ratio of the longest reported cooldown to the shortest
     is the ratio of the two extreme factors, whatever those factors are. A +-10% band
     allows 1.1/0.9 = 1.2222 and no more. A +-20% band would allow 1.5.
+
+    THE SLICE ONLY ISOLATES THE OPPONENT IF NOTHING ELSE IN IT MOVES, and for two days it
+    did not. A weapon carries its own cooldown modifier, the `wpn` row has recorded it
+    since the recorder was written, and nothing read it: the widest slice read 1.2778 and
+    the claim above would have been retired on an artefact. Those observations are now
+    excluded upstream, and the two checks below say so rather than leaving the count in a
+    printed line: one that the exclusion really fired, and one that it is the exclusion
+    and not the corpus that puts the widest slice on 1.1/0.9. The second fails if the gate
+    is deleted, which the count alone would not.
     """
     print("\nthe agility band, and which cards ride it")
-    ratios, spreads, flat = estimate.agility_band()
+    ratios, spreads, flat, excluded = estimate.agility_band()
     if not ratios:
         print("  (no level-1 zero-initiative attack in the corpus)")
         return
@@ -1098,6 +1211,16 @@ def agility_band():
     widest = max(spreads.values()) if spreads else 1.0
     near("  the widest spread for one card at one level and initiative", widest,
          1.1 / 0.9, 1e-4)
+    # AND THE EXCLUSION THAT KEEPS IT HONEST, as a reading rather than a printed aside.
+    # Pinning the count would make this a census that a quiet week moves; what is asserted
+    # is that the exclusion fired at all, and that no surviving observation was taken with
+    # one of these in hand. The second half is the one that would catch the gate being
+    # removed or inverted.
+    print("    %d observation(s) excluded for a cooldown-modifying weapon, and with"
+          " them in the widest slice reads %.4f" % (excluded["n"], excluded["widest"]))
+    check("  the coolmod exclusion fired", excluded["n"] > 0, True)
+    check("    and it is what puts the widest slice on 1.1/0.9",
+          excluded["widest"] > (1.1 / 0.9) + 1e-4, True)
     # AND THE EDGE IS A PILE-UP, NOT A TAIL, which is what says the band ends there
     # rather than the corpus merely running out of fast creatures. If it ran to 1.2 there
     # would be readings between 1.1 and 1.2 and no reason for any to land exactly on 1.1.
@@ -1126,7 +1249,7 @@ def agility_carriers():
     fight it is thrown in.
     """
     print("\nwhich cards take the modifier")
-    ratios, spreads, _flat = estimate.agility_band()
+    ratios, spreads, _flat, _excluded = estimate.agility_band()
     moves = estimate.load_moves()
     riders, still = [], []
     for (name, _lvl, _ip), spread in spreads.items():
@@ -1158,7 +1281,7 @@ def opportunity_knocks():
         return
     # THE DECISIVE CASE. Under the ordinary rule, dO = cbrt(Wa/Wd) * Ob * (1 - Oc), an
     # opponent with nothing open is the EASIEST to open and the gain is at its largest.
-    zeros = [(b, a) for b, a, _l in uses if b == 0]
+    zeros = [(u[0], u[1]) for u in uses if u[0] == 0]
     check("  used against nothing standing, it opens nothing", [a for _b, a in zeros],
           [0] * len(zeros))
     check("    and there was such a use to check", len(zeros) > 0, True)
@@ -1167,15 +1290,44 @@ def opportunity_knocks():
     # Intersecting them together is guaranteed to empty once the corpus holds enough of
     # both, and it did - the instrument reported itself unusable from 2026-09-04, and the
     # fault was this arithmetic rather than the data.
-    bylv = estimate.ok_boost_by_level()
+    # PEOPLE AND ANIMALS ARE NOT ONE POPULATION HERE. The corpus holds exactly one
+    # Opportunity Knocks ever thrown at a person - BonkiDonki at t=56848 against gob
+    # 2018887187 - and it gained nothing. The opening was 39, rose to 55 when an earlier
+    # swing of ours opened it, and read 52 four milliseconds after this card's own
+    # announcement; it then sat on 52 for the next 1.7 seconds. So the card did not fail to
+    # be measured, and it did not decay away either - 3 points in 12 ms is fifty times the
+    # quiet decay rate of 5.26 points a second. Something took 3 points off across the
+    # throw and the card's 40% never arrived. A player can defend; an animal cannot.
+    #
+    # Eight level-1 uses against animals sit on 1.40 to four figures. Pooled, that one
+    # reading made this control red without saying anything about the constant it is a
+    # control on, so the levels are read over creatures and the player use is reported
+    # beside them as the open question it is. One observation is a hypothesis; it is
+    # written down and not built on.
+    bylv = estimate.ok_boost_by_level(kinds=("creature",))
+    players = [u for u in uses if (u[3] == "player") and (u[0] > 0) and (u[1] < 100)]
+    if players:
+        print("    against a person: %s" % ", ".join(
+            "level %s, %d -> %d" % (u[2], u[0], u[1]) for u in players))
+    # What is asserted is the SPLIT, not the person's reading. "The one player use gained
+    # nothing" is a single observation and pinning it would turn a hypothesis into a rule
+    # the next PvP fight breaks; what has to hold is that the constant below is read off
+    # creatures only. Counting both sides back up to the whole is what fails if the filter
+    # is dropped or inverted.
+    uncensored = [u for u in uses if (u[0] > 0) and (u[1] < 100)]
+    creatures = sum(len(v["uses"]) for v in bylv.values())
+    check("  the level readings are taken over creatures alone",
+          creatures + len(players), len(uncensored))
+    check("    and the person's use is held out", len(players) > 0, True)
     lvl1 = bylv.get(1)
     check("  level 1 is measured, and it is the control", lvl1 is not None, True)
     if lvl1:
-        print("    level 1: [%.4f, %.4f] from %d use(s), %d agreeing"
+        print("    level 1: [%.4f, %.4f] from %d creature use(s), %d agreeing"
               % (lvl1["lo"], lvl1["hi"], len(lvl1["uses"]), lvl1["agree"]))
         # mu is 1.0 at level 1 by definition, so the card's own text names the answer
         # before any fitting: 1 + 0.4 * 1.0. Nothing here is free to move.
-        check("    every level-1 use agrees", lvl1["agree"] == len(lvl1["uses"]), True)
+        check("    every level-1 creature use agrees",
+              lvl1["agree"] == len(lvl1["uses"]), True)
         check("    and the interval contains the text's own 1.4000",
               lvl1["lo"] <= 1.40 <= lvl1["hi"], True)
         check("    the multiplier is bounded on both sides",
@@ -1211,8 +1363,9 @@ def mu_instruments_agree():
     that could have contradicted it.
     """
     print("\nmu, from two instruments that share nothing")
-    check("  they do not disagree at any level", estimate.MU_DISPUTED, {})
-    two = estimate.MU_MEASURED.get(2)
+    _measured, _disputed = estimate.measured_mu()
+    check("  they do not disagree at any level", _disputed, {})
+    two = _measured.get(2)
     check("    and level 2 is measured", two is not None, True)
     if two is None:
         return
@@ -1233,7 +1386,7 @@ def mu_instruments_agree():
     # knife-edge either side of the answer. Linear fits every other measured level, so the
     # bound is the more likely thing to be a shade too tight. This check takes the part
     # that is decisive and leaves the part that is not.
-    ok2 = estimate.ok_boost_by_level().get(2)
+    ok2 = estimate.ok_boost_by_level(kinds=("creature",)).get(2)
     if ok2:
         oklo, okhi = (ok2["lo"] - 1.0) / estimate.OK_BOOST, (ok2["hi"] - 1.0) / estimate.OK_BOOST
         print("    Opportunity Knocks reads mu(2) in [%.4f, %.4f] from %d agreeing use(s)"
@@ -1383,13 +1536,18 @@ def attribution_provenance():
         check("    and is not marked as rescued from contaminated fights",
               bool(got.get("from_contaminated")), False)
     check("  some species carry both kinds of evidence", mixed > 0, True)
-    # Ten fields since the character joined the row: (move, colour, standing, gain, wa,
-    # wd, lo, hi, clean, char). The ninth is still provenance and the tenth is whose
-    # reading it is, which _wd_rows needs to keep the frames apart.
-    check("  and every wd row records which kind it is, and whose it is",
-          all(len(w) == 10 for rec in per.values() for w in rec["wd"]), True)
+    # Eleven fields: (move, colour, standing, gain, wa, wd, lo, hi, clean, char, gob).
+    # The ninth is provenance, the tenth is whose reading it is - which _wd_rows needs to
+    # keep the skill frames apart - and the eleventh is WHICH CREATURE, which is what lets
+    # a per-animal reading be taken at all. Pinned as an exact width on purpose: every
+    # other consumer unpacks this row by position, so a field appearing or moving is a
+    # silent mis-read everywhere rather than an error anywhere.
+    check("  and every wd row records which kind it is, whose, and which creature",
+          all(len(w) == 11 for rec in per.values() for w in rec["wd"]), True)
     check("  and every wd row names a character",
           all(w[9] for rec in per.values() for w in rec["wd"]), True)
+    check("    and a creature",
+          all(w[10] is not None for rec in per.values() for w in rec["wd"]), True)
     # The converse: anything measured only from contaminated evidence must say so.
     for name, rec in per.items():
         if rec["wd"] and not [w for w in rec["wd"] if w[8]]:

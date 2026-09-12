@@ -205,10 +205,12 @@ ATTACK_MULT_RE = re.compile(
     r"all your attacks will have\s*(\d+(?:\.\d+)?)\s*%\s*of their normal attack weight",
     re.I)
 
-# "Initiative points: 4+2" - a cost of four, and a second number whose meaning is not
-# established. Splitting it is not a guess: the corpus shows an opponent's Cleave taking
-# them from 7 to 3, so the leading number is the cost. The trailing one is kept in its
-# own field rather than folded into the cost or dropped.
+# "Initiative points: 4+2" - the leading N is the cost the move SPENDS, and the trailing M is
+# the additional initiative the user must be HOLDING before the move can be begun, so the entry
+# requirement is N+M. Splitting it is not a guess: the corpus shows an opponent's Cleave taking
+# them from 7 to 3, so the leading number is the cost. The trailing one is kept in its own field
+# and summed with the cost at load time (Move.ipRequirement) rather than folded into the cost.
+# Think is "0+4": it consumes nothing but cannot be started below four.
 IP_PAIR_RE = re.compile(r"^\s*(\d+)\s*\+\s*(\d+)\s*$")
 # Take Aim: "The cooldown of Take Aim increases by 20% for each Point of Initiative you
 # have." Read from the prose because the sheet has no structured field for it, and
@@ -305,8 +307,9 @@ def parse_move(m, problems):
     rec["weight_mult"] = mult_of(rec["attack_weight"])
     rec["block_mult"] = mult_of(rec["block_weight"])
     rec["grievous_pct"] = num_field(fields, "Grievous damage", problems, where)
-    # "Initiative points: N" is what the move SPENDS. Cleave writes "4+2"; the leading
-    # number is the cost and the trailing one is recorded unresolved.
+    # "Initiative points: N" is what the move SPENDS. Cleave writes "4+2": the leading number is
+    # the cost, and the trailing one the additional initiative needed to begin the move, which
+    # the loader sums into the entry requirement. Single numbers stay a bare cost.
     rec["initiative"] = None
     rec["initiative_extra"] = None
     if "Initiative points" in fields:

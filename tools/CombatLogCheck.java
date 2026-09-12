@@ -293,6 +293,16 @@ public class CombatLogCheck {
               "{\"ev\":\"wpn\",\"t\":0,\"slot\":7,"
               + "\"res\":\"gfx/invobjs/bronzesword\","
               + "\"v\":{\"damage\":12.0000,\"armpen\":0.1250}}");
+        /* AND THE HAND EMPTYING, which for two months wrote nothing at all. A slot that
+         * goes from a weapon to a shield or to nothing has no weapon figures to write, so
+         * the old writer skipped it and the file went on naming the weapon that had left.
+         * A null res with an empty `v` is the removal, the same convention the gear row
+         * uses, and it is pinned here because it is the only row whose whole content is
+         * an absence. */
+        check("weapon, hand emptied",
+              CombatEvent.weapon(4200, 6, null, null),
+              "{\"ev\":\"wpn\",\"t\":4200,\"slot\":6,"
+              + "\"res\":null,\"v\":{}}");
     }
 
     static void writer() {

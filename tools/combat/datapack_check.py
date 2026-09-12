@@ -464,28 +464,50 @@ def every_key_is_read():
 # So a note here is what the card says about itself, and "no field" means the simulator
 # is playing a different card from the one in the game.
 #
-# Each entry is (card, field that would hold it or None, what the text says). A None means
-# the mechanic is not modelled, and the count of those is the finding.
+# Each entry is (card, field that holds it or None, what the text says, Java symbol(s)).
+# A None means the mechanic is not modelled and the symbol is the field that would
+# implement it, which must still be ABSENT from Move/Combatant. A named field must EXIST
+# and be READ by something the simulator runs; see text_mechanics for the check. Six
+# mechanics remain unmodelled as of this review (two are Steal Thunder - theft and reach).
 TEXT_MECHANICS = [
     ("Steal Thunder", None,
-     "takes 3 initiative from the target and gains you 2, to the extent it is unblocked"),
-    ("Feigned Dodge", None,
-     "the opening it takes off you is put ON the opponent at twice the amount, so it "
-     "is a reduction and an attack in one and the model has only the reduction"),
+     "takes 3 initiative from the target and gains you 2, to the extent it is unblocked",
+     ("stealIp",)),
     ("Bloodlust", None,
-     "charges 25% per mu; your attack weight rises by four times the charge"),
+     "charges 25% per mu; your attack weight rises by four times the charge",
+     ("chargeLevel",)),
     ("Combat Meditation", None,
-     "charges 25% per mu; your cooldown falls by the charge"),
-    ("Dash", None, "completely removes your slightest opening"),
-    ("Oak Stance", None, "your greatest opening is reduced by 5% per mu"),
+     "charges 25% per mu; your cooldown falls by the charge",
+     ("chargeCooldown",)),
+    ("Oak Stance", None, "your greatest opening is reduced by 5% per mu",
+     ("greatestOpeningDelta",)),
+    ("Take Aim", None, "reaches about 148 where an attack reaches about 55",
+     ("moveReach",)),
+    ("Steal Thunder", None,
+     "text says a small distance; never thrown in the corpus, so unmeasured",
+     ("moveReach",)),
+    # WIRED, AND WRONGLY LISTED AS GAPS UNTIL NOW. Dash and Feigned Dodge have had fields
+    # since Move.clearsLeast and Move.reduceToFoe were parsed (Pack.java:359-366) and
+    # applied (Sim.java:336-360); the old check certified the opposite by asserting the
+    # gap list merely contained Feigned Dodge. Feigned Dodge is not undervalued any more:
+    # both the reduction and the attacking half are modelled.
+    ("Dash", "clearsLeast", "completely removes your slightest opening",
+     ("clearsLeast",)),
+    ("Feigned Dodge", "reduceToFoe",
+     "the opening it takes off you is put ON the opponent at twice the amount, so it "
+     "is a reduction and an attack in one and the model has only the reduction",
+     ("reduceToFoe",)),
     # MEASURED AND WIRED. A single-target attack raises an opening on a second opponent
     # 10 times in 566 throws made with two standing; Full Circle does it 46 times in 143
     # and reaches five at once. Move.targets and Move.targetDamage carry it, and the
     # optimizer plays it against a real crowd rather than one pooled opponent.
-    ("Full Circle", "targets", "attacks your target and every other opponent in range"),
-    ("Punch 'em Both", "targets", "attacks your target and one other"),
+    ("Full Circle", "targets", "attacks your target and every other opponent in range",
+     ("targets",)),
+    ("Punch 'em Both", "targets", "attacks your target and one other",
+     ("targets",)),
     ("Storm of Swords", "target_damage",
-     "attacks up to five, at 100/125/150/175/200% of the weapon's damage"),
+     "attacks up to five, at 100/125/150/175/200% of the weapon's damage",
+     ("targetDamage",)),
     # RANGE IS A MECHANIC AND NOT A DETAIL, AND THE LOGS ALREADY MEASURE IT. Every state
     # row carries the distance to the opponent, so the reach of each card is the largest
     # distance it was ever seen resolving at. Across the corpus:
@@ -510,9 +532,6 @@ TEXT_MECHANICS = [
     #
     # The simulator has no notion of standing apart at all, which is the same hole that
     # leaves four of fourteen learned policy rules unreadable.
-    ("Take Aim", None, "reaches about 148 where an attack reaches about 55"),
-    ("Steal Thunder", None,
-     "text says a small distance; never thrown in the corpus, so unmeasured"),
     # PARTLY WIRED, AND THE MEANING IS NOW KNOWN. The weapon's own range figure is a
     # MULTIPLE of the unarmed move range: a sword is 1.2, a stone axe 1.0. Measured at the
     # state that closed a landed attack rather than the one before it, an unarmed card and
@@ -526,13 +545,24 @@ TEXT_MECHANICS = [
     # and uses them.
     ("(attacks generally)", "weapon_range",
      "reach is the unarmed 18.7 units times the weapon's range figure; the crowd's own "
-     "positions arrive with schema 16 and the offline fallback is a measured share"),
-    ("Opportunity Knocks", "boost_greatest", "raises the opponent's greatest opening"),
-    ("Quick Barrage", "gain_when_above", "gains initiative when the opponent is open"),
-    ("Shield Up", "block_mult_without", "half the block weight without a shield"),
-    ("Take Aim", "ip_scale", "cooldown rises 20% per point of initiative"),
-    ("Combat Meditation", "attack_mult", "a quarter of the normal attack weight"),
-    ("Oak Stance", "attack_mult", "half the normal attack weight"),
+     "positions arrive with schema 16 and the offline fallback is a measured share",
+     ("weaponRange",)),
+    ("Opportunity Knocks", "boost_greatest", "raises the opponent's greatest opening",
+     ("boostGreatest",)),
+    # gainColour/gainAbove are the real Move fields. Pack reads the threshold out of the
+    # sheet's "25% Oppressive" prose and hands both to Sim.use, which tests the colour
+    # against the threshold before granting the point. The ledger used to name a
+    # `gain_when_above` field that has never existed in either Move or the packed JSON.
+    ("Quick Barrage", "gainColour/gainAbove", "gains initiative when the opponent is open",
+     ("gainColour", "gainAbove")),
+    ("Shield Up", "block_mult_without", "half the block weight without a shield",
+     ("blockMultWithout",)),
+    ("Take Aim", "ip_scale", "cooldown rises 20% per point of initiative",
+     ("ipScale",)),
+    ("Combat Meditation", "attack_mult", "a quarter of the normal attack weight",
+     ("attackMult",)),
+    ("Oak Stance", "attack_mult", "half the normal attack weight",
+     ("attackMult",)),
 ]
 
 
@@ -540,22 +570,37 @@ def text_mechanics():
     """How much of what the cards say about themselves the model actually has."""
     print("")
     print("what the card text says, against whether anything can hold it")
-    gaps = [(c, w) for c, f, w in TEXT_MECHANICS if f is None]
+    gaps = [(c, w) for c, f, w, _sym in TEXT_MECHANICS if f is None]
     print("  %d of %d documented mechanics have no field at all:"
           % (len(gaps), len(TEXT_MECHANICS)))
     for c, w in gaps:
         print("    %-20s %s" % (c, w))
-    # Not an assertion that the number is zero - it is not, and pretending otherwise
-    # would be worse than recording it. The assertion is that the list is maintained:
-    # if it ever shrinks to nothing the check should be deleted, and if a mechanic is
-    # implemented its entry must gain a field name.
-    check("the unmodelled list is still being kept", len(gaps) > 0, True)
-    # Feigned Dodge is the one to watch: it is in nearly every deck the optimizer
-    # recommends and the half that is missing is the ATTACKING half, so the card is
-    # undervalued rather than overvalued. The decks are not wrong to hold it; they are
-    # holding it for less than it is worth.
-    check("  and Feigned Dodge is on it, being in nearly every recommended deck",
-          any(c == "Feigned Dodge" for c, _w in gaps), True)
+    # THE LIST IS A TEST, NOT A NOTE. It used to assert only that it was non-empty and
+    # named Feigned Dodge, which certified a false statement the moment that card was
+    # wired: Dash and Feigned Dodge had fields (Move.clearsLeast/reduceToFoe) that Pack
+    # parsed and Sim applied, while the ledger still called them unmodelled. The check now
+    # reads the model source both ways. A wired entry's field must exist in Move/Combatant
+    # AND be read by something the simulator runs, so deleting Move.clearsLeast or dropping
+    # its use in Sim.use fails here. A gap entry names the field that would implement it
+    # and that field must still be absent, so a mechanic cannot be quietly implemented and
+    # left on the gap list. The count is the reconciled six.
+    model = "\n".join(_read_tool(r) for r in
+                      ("src/haven/combat/Move.java", "src/haven/combat/Combatant.java"))
+    consumers = "\n".join(_read_tool(r) for r in
+                          ("src/haven/combat/Sim.java", "src/haven/combat/FoeModel.java",
+                           "src/haven/combat/Combatant.java", "src/haven/combat/Formulas.java",
+                           "src/haven/combat/Optimizer.java",
+                           "tools/CombatDeckSearch.java", "tools/CombatAudit.java"))
+    missing = [c for c, f, _w, sym in TEXT_MECHANICS
+               if f and not all(s in model for s in sym)]
+    unread = [c for c, f, _w, sym in TEXT_MECHANICS
+              if f and not any(s in consumers for s in sym)]
+    gapped = [c for c, f, _w, sym in TEXT_MECHANICS
+              if f is None and any(s in model for s in sym)]
+    check("every wired mechanic's field exists in the model", missing, [])
+    check("every wired mechanic's field is read by the model", unread, [])
+    check("every gap mechanic still has no field", gapped, [])
+    check("the unmodelled count is the reconciled six", len(gaps), 6)
 
 
 def how_thin_is_the_damage():

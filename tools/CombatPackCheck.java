@@ -73,11 +73,14 @@ public class CombatPackCheck {
         sheetNumbers();
         reductions();
         initiativeLines();
+        proseEffects();
         takeAimLadder();
         opportunityKnocks();
         weightsAndSchools();
         threatBlocks();
         whoIsWho();
+        openAgilityBounds();
+        realIndividuals();
         packedInTheJar();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
@@ -97,11 +100,136 @@ public class CombatPackCheck {
      * Ruse, Flex, Parry, Chin Up, Left Hook. That is the check below: if an entry called
      * a creature is throwing our cards, the classification has broken.
      */
+    /**
+     * A one-sided agility bound is a DIRECTION, and the two readings must go opposite ways.
+     *
+     * The estimator writes an unmeasured side of an interval as JSON null, with the stated
+     * contract that a null ceiling reads "at least lo". Pack.range turned null into NaN and
+     * pick() treats NaN as absent, so toughest() fell back to the LOWER bound for every
+     * species with no measured ceiling and weakest() to the UPPER bound for every species
+     * with no floor - each reading the opposite of what it is named for. The fix makes the
+     * open sides 0 and +infinity at construction.
+     *
+     * Nothing pinned it. The two readings are what CombatMatchup fights a deck against, and
+     * a matchup that only wins against the weakest is supposed to report "not known"; with
+     * the bounds crossed it reported the reverse, silently and on every crowded species.
+     * Eleven entries in the pack have a floor and no ceiling and forty-nine have a ceiling
+     * and no floor, so this is most of the pack, not a corner.
+     *
+     * What is asserted is the DIRECTION and not either number, because the numbers are
+     * measured and move whenever the corpus does: for a species with a floor and no
+     * ceiling, the toughest reading must be at least as fast as the weakest, and for one
+     * with a ceiling and no floor it must be at least as slow. The species is found by its
+     * shape rather than named, for the same reason.
+     */
+    static void openAgilityBounds() throws Exception {
+        System.out.println();
+        System.out.println("a one-sided agility bound points somewhere");
+        Map<String, Pack.Opponent> foes = Pack.opponents(FOES);
+        Pack.Opponent noCeiling = null, noFloor = null;
+        for(Pack.Opponent o : foes.values()) {
+            if(Double.isInfinite(o.agiHi) && (o.agiLo > 0) && (noCeiling == null))
+                noCeiling = o;
+            if((o.agiLo == 0) && !Double.isInfinite(o.agiHi) && (o.agiHi > 0) && (noFloor == null))
+                noFloor = o;
+        }
+        check("the pack holds a species with a floor and no ceiling", noCeiling != null, true);
+        check("  and one with a ceiling and no floor", noFloor != null, true);
+        if(noCeiling != null) {
+            System.out.println("    " + noCeiling.name + ": at least " + noCeiling.agiLo);
+            check("  its toughest reading is the faster of the two",
+                  noCeiling.toughest().agi >= noCeiling.weakest().agi, true);
+            check("    and the weakest sits on the measured floor",
+                  noCeiling.weakest().agi, noCeiling.agiLo);
+        }
+        if(noFloor != null) {
+            System.out.println("    " + noFloor.name + ": at most " + noFloor.agiHi);
+            check("  its weakest reading is the slower of the two",
+                  noFloor.weakest().agi <= noFloor.toughest().agi, true);
+            check("    and the toughest sits on the measured ceiling",
+                  noFloor.toughest().agi, noFloor.agiHi);
+        }
+    }
+
+    /**
+     * The per-individual records are real creatures, and only on the axes they measured.
+     *
+     * These exist because toughest() describes nobody: it takes an independent extreme on
+     * each of four axes and the corpus holds no animal that is all four at once. A consumer
+     * now sweeps the individuals instead. That only helps if each row really is one creature
+     * and is honest about what it does not know.
+     *
+     * NO PER-CREATURE SKILL IS PUBLISHED, and the check is that none appears. Running the
+     * species' own skill derivation over one animal's rows was tried and does not survive:
+     * the recovery picks an equalization branch - F = Wd/2 below the dead zone, F = 2*Wd
+     * above it - and one creature's rows can land on a different branch from the pooled set.
+     * The median individual then came out 2.93x the species value for caveangler, 1.87x for
+     * wolf and 0.49x for horse, which are branch boundaries rather than noise. Until the
+     * branch can be pinned per creature, the skill comes from the species and this asserts
+     * that nothing has quietly started shipping one.
+     *
+     * Absence of the file is not failure. A checkout whose corpus has not been regenerated
+     * has no individuals.json, and the tools fall back to the pooled reading and say so.
+     */
+    static void realIndividuals() throws Exception {
+        System.out.println();
+        System.out.println("the individuals are real creatures, and only where measured");
+        Path path = Paths.get("data", "combat", "individuals.json");
+        if(!java.nio.file.Files.exists(path)) {
+            System.out.println("  (no individuals.json in this checkout - nothing to check)");
+            return;
+        }
+        Map<String, Pack.Opponent> foes = Pack.opponents(FOES);
+        Map<String, java.util.List<Pack.Individual>> singles = Pack.individuals(path);
+        int rows = 0, withSkill = 0, withAgi = 0, withHp = 0, thin = 0, capped = 0;
+        java.util.List<String> orphan = new java.util.ArrayList<String>();
+        for(Map.Entry<String, java.util.List<Pack.Individual>> e : singles.entrySet()) {
+            if(!foes.containsKey(e.getKey()))
+                orphan.add(e.getKey());
+            for(Pack.Individual ind : e.getValue()) {
+                rows++;
+                int axes = 0;
+                if(!Double.isNaN(ind.skill)) {
+                    withSkill++;
+                    axes++;
+                }
+                if(!Double.isNaN(ind.agiLo) || !Double.isNaN(ind.agiHi)) {
+                    withAgi++;
+                    axes++;
+                    if(ind.agiCapped)
+                        capped++;
+                }
+                if(!Double.isNaN(ind.hp)) {
+                    withHp++;
+                    axes++;
+                }
+                if(axes < 2)
+                    thin++;
+            }
+        }
+        System.out.println("  " + rows + " creature(s) across " + singles.size()
+                           + " species: " + withAgi + " with an agility, " + withHp
+                           + " that died, " + withSkill + " with a skill");
+        check("every species named has a pack entry", orphan, new java.util.ArrayList<String>());
+        check("  no creature carries a skill of its own", withSkill, 0);
+        check("  every row carries at least two measured axes", thin, 0);
+        check("    and there are rows to check", rows > 500, true);
+        /* MOST AGILITY READINGS ARE THE OBSERVER'S LIMIT, NOT THE ANIMAL'S. Printed and
+         * asserted because the flag is the only thing separating a bound from a speed, and
+         * a writer that stopped setting it would leave every consumer reading caps as
+         * measurements with nothing to notice. See Individual.agiCapped. */
+        System.out.println("  of those agility readings, " + capped
+                           + " are at the clamp - a bound on our own agility, not the animal's");
+        check("  the cap is recorded rather than passed off as a speed", capped > 0, true);
+        check("    and some creatures were measured outright", (withAgi - capped) > 0, true);
+    }
+
     static void whoIsWho() throws Exception {
         System.out.println();
         System.out.println("people and animals are different problems");
         Map<String, Pack.Opponent> foes = Pack.opponents(FOES);
         int players = 0, creatures = 0, unknown = 0, ourCards = 0;
+        int bodies = 0, misclassed = 0;
         for(Pack.Opponent o : foes.values()) {
             if(o.isPlayer())
                 players++;
@@ -109,6 +237,11 @@ public class CombatPackCheck {
                 unknown++;
             else
                 creatures++;
+            boolean body = (o.res != null) && o.res.contains("gfx/borka/body");
+            if(body)
+                bodies++;
+            if(body != o.isPlayer())
+                misclassed++;
             if(!o.isPlayer()) {
                 for(String mv : o.moves) {
                     if(moves.containsKey(mv))
@@ -117,7 +250,18 @@ public class CombatPackCheck {
             }
         }
         check("every entry is classed", players + creatures + unknown, foes.size());
-        check("  players are found by gfx/borka/body", players, 10);
+        /* THE RULE, NOT THE CENSUS. This pinned the player count at ten, which was true of
+         * the corpus the day it was written and stopped being true the first time two new
+         * people were fought - a red check reporting nothing but that somebody played.
+         * What the classification actually claims is that the marker is the resource, so
+         * that is what is asserted: every gfx/borka/body entry is a player and no other
+         * entry is. The count is still printed, because it is worth seeing; it is just not
+         * the thing that can fail. */
+        System.out.println("  " + players + " player(s), " + creatures + " creature(s), "
+                           + unknown + " unclassifiable");
+        check("  the marker is the resource: body entries and players are the same set",
+              misclassed, 0);
+        check("    and the corpus has some of each", (bodies > 0) && (creatures > 0), true);
         check("  and nothing called a creature throws a card off our own sheet",
               ourCards, 0);
 
@@ -325,21 +469,109 @@ public class CombatPackCheck {
     }
 
     /**
-     * The initiative line, including the two moves that write it as "N+M".
+     * The initiative line, including the three moves that write it as "N+M".
      *
-     * These both read as zero until the parser learned the form, which meant the simulator
-     * would happily throw a six-point Cleave from an empty initiative pool.
+     * OWNER'S RULE. For a card written "N+M" the first number N is the initiative SPENT on
+     * use and the trailing M raises the ENTRY REQUIREMENT: the card cannot be begun while the
+     * actor holds fewer than N+M points. Think is "0+4" - it costs nothing but needs four to
+     * start - and Cleave is "4+2": six to use, four spent. Cleave and Go for the Jugular used
+     * to read as costing zero on both counts, and even after the parse was fixed the
+     * requirement was carried and enforced by nothing, so the simulator would happily throw a
+     * six-point Cleave from four in hand.
+     *
+     * Every X+Y card is pinned on BOTH numbers, a plain single-number card is pinned to show
+     * the requirement collapses to the cost there, and the gate itself is exercised through
+     * Sim.use - the path Optimizer.step and Duel decide fights on - rather than only inspected.
      */
     static void initiativeLines() {
-        System.out.println("\ninitiative costs, including the \"4+2\" form");
+        System.out.println("\ninitiative costs and entry requirements, including the \"4+2\" form");
         check("Knock Its Teeth Out costs one", m("Knock Its Teeth Out").ipCost, 1);
         check("Rip Apart costs six", m("Rip Apart").ipCost, 6);
+
+        /* The three "N+M" cards, each with both halves asserted. */
         check("Cleave costs four", m("Cleave").ipCost, 4);
-        check("  with its trailing two carried, not folded in", m("Cleave").ipExtra, 2);
+        check("  and carries a trailing two", m("Cleave").ipExtra, 2);
+        check("  so needs six to begin", m("Cleave").ipRequirement(), 6);
         check("Go for the Jugular costs two", m("Go for the Jugular").ipCost, 2);
-        check("  and carries a trailing two as well", m("Go for the Jugular").ipExtra, 2);
+        check("  and carries a trailing two", m("Go for the Jugular").ipExtra, 2);
+        check("  so needs four to begin", m("Go for the Jugular").ipRequirement(), 4);
+        check("Think costs nothing", m("Think").ipCost, 0);
+        check("  but carries a trailing four", m("Think").ipExtra, 4);
+        check("  so still needs four to begin", m("Think").ipRequirement(), 4);
+
+        /* A single number is both halves: no trailing figure, so requirement equals cost. */
+        check("Rip Apart's requirement is its cost alone",
+              m("Rip Apart").ipRequirement(), m("Rip Apart").ipCost);
+
         check("Zig-Zag Ruse hands the opponent two", m("Zig-Zag Ruse").foeIpGain, 2);
         check("Punch's silent sheet means no cost, not an unread one", m("Punch").ipCost, 0);
+        check("  and its requirement is still zero", m("Punch").ipRequirement(), 0);
+
+        /* THE GATE ITSELF. Cleave at five was allowed before this was enforced; at six it is
+         * allowed and pays four. Think pays nothing, so four in hand becomes six. */
+        gate("Cleave", 5, false, 5);
+        gate("Cleave", 6, true, 2);
+        gate("Go for the Jugular", 3, false, 3);
+        gate("Go for the Jugular", 4, true, 2);
+        gate("Think", 3, false, 3);
+        gate("Think", 4, true, 6);
+    }
+
+    /**
+     * One direct throw of a packed card at a given initiative, through {@link Sim#use}.
+     *
+     * The requirement has to be enforced on the MODEL path that decides fights - Sim.refuse,
+     * which Optimizer.step and Duel both pass through - and not merely stored. {@code ipAfter}
+     * is the pool left after a landing move; it is only checked when {@code wantOk} is true,
+     * since a refusal leaves the pool alone.
+     */
+    static void gate(String name, int ip, boolean wantOk, int ipAfter) {
+        Combatant me = me();
+        me.ip = ip;
+        me.readyAt = 0;
+        Sim.Result r = new Sim(me, foe()).use(me, m(name));
+        check("  " + name + " at " + ip + " initiative is "
+              + (wantOk ? "allowed" : "refused"), r.ok, wantOk);
+        if(wantOk) {
+            check("    and pays down to " + ipAfter, me.ip, ipAfter);
+        } else {
+            check("    and refuses without spending", me.ip, ip);
+        }
+    }
+
+    /**
+     * The effects the sheet states only in prose, which no structured field carries.
+     *
+     * Each of these was parsed and stored while nothing read it back, so the parse gets the
+     * same control as the numbers above. Think is the one that had separated the two
+     * readings: its gain sentence says "2 Points" while the cooldown sentence under it says
+     * "each Point of Initiative", so a substring test on the singular phrase read the
+     * cooldown line and pinned the gain at one. The parser now matches the gain sentence
+     * itself. Steal Thunder is deliberately absent: its sentence entangles the gain with a
+     * steal the model has no field for ("take 3 ... and gain you 2 of them"), so it stays
+     * at zero rather than being given a number the rest of the move cannot honour.
+     */
+    static void proseEffects() {
+        System.out.println("\nthe effects the sheet states only in prose");
+        check("Low Blow gains one initiative", m("Low Blow").ipGain, 1);
+        check("Quick Barrage gains one", m("Quick Barrage").ipGain, 1);
+        check("Take Aim gains one", m("Take Aim").ipGain, 1);
+        check("Watch Its Moves gains one", m("Watch Its Moves").ipGain, 1);
+        check("Think gains two, from its own sentence not the cooldown's",
+              m("Think").ipGain, 2);
+
+        /* Dash says "completely removes your slightest opening". The corpus now shows it:
+         * of 270 throws with a standing opening to clear, 260 drop the lowest positive
+         * colour to zero, at a median 364 ms after the move and 256 of them in the
+         * 350-399 ms bucket. The earlier search sampled only the move's own closing
+         * message and missed every one. */
+        check("Dash clears the least standing opening", m("Dash").clearsLeast, true);
+
+        /* Feigned Dodge is a reduction and an attack at once: "twice that amount is given
+         * to the opponent". Read as structured fields alone it is free defence, which is
+         * how it came to sit in nearly every recommended deck. */
+        near("Feigned Dodge hands the foe twice what it takes",
+             m("Feigned Dodge").reduceToFoe, 2.0, 1e-9);
     }
 
     /**

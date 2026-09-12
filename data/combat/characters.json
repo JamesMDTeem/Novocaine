@@ -1,17 +1,17 @@
 {
  "characters": [
   {
-   "agi": 102,
+   "agi": 180,
    "armour": {
-    "hard": 75,
+    "hard": 16,
     "pieces": 23,
-    "soft": 57
+    "soft": 16
    },
-   "con": 89,
-   "hhp": 301,
-   "hp": 306,
-   "logs": 724,
-   "melee": 183,
+   "con": 136,
+   "hhp": 343,
+   "hp": 379,
+   "logs": 1160,
+   "melee": 167,
    "name": "BonkiDonki",
    "owned": {
     "Artful Evasion": 4,
@@ -30,11 +30,11 @@
     "Knock Its Teeth Out": 0,
     "Left Hook": 0,
     "Low Blow": 0,
-    "Opportunity Knocks": 1,
-    "Parry": 0,
+    "Opportunity Knocks": 0,
+    "Parry": 1,
     "Punch": 0,
     "Punch 'em Both": 0,
-    "Quick Barrage": 5,
+    "Quick Barrage": 4,
     "Quick Dodge": 0,
     "Raven's Bite": 0,
     "Regain Composure": 0,
@@ -52,26 +52,30 @@
     "Uppercut": 0,
     "Watch Its Moves": 0,
     "Yield Ground": 0,
-    "Zig-Zag Ruse": 4
+    "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 129,
-   "unarmed": 165,
+   "str": 141,
+   "unarmed": 173,
    "weapon": {
-    "armour_pen": 0.125,
-    "base_damage": 90,
-    "name": "Bronze Sword",
-    "ql": 61.8481,
+    "armour_pen": 0.1,
+    "base_damage": 100,
+    "name": "Fyrdsman's Sword",
+    "ql": 88.0578,
     "range": 1.2
    }
   },
   {
    "agi": 10,
-   "armour": null,
+   "armour": {
+    "hard": 0,
+    "pieces": 1,
+    "soft": 0
+   },
    "con": 10,
-   "hhp": 100,
+   "hhp": 98,
    "hp": 100,
-   "logs": 1,
+   "logs": 3,
    "melee": 1,
    "name": "Cart Retriever",
    "owned": {},
@@ -80,17 +84,17 @@
    "unarmed": 1
   },
   {
-   "agi": 21,
+   "agi": 65,
    "armour": {
-    "hard": 3,
+    "hard": 79,
     "pieces": 23,
-    "soft": 3
+    "soft": 90
    },
-   "con": 13,
-   "hhp": 114,
-   "hp": 114,
-   "logs": 83,
-   "melee": 10,
+   "con": 36,
+   "hhp": 190,
+   "hp": 190,
+   "logs": 124,
+   "melee": 100,
    "name": "Japcek",
    "owned": {
     "Artful Evasion": 0,
@@ -134,46 +138,53 @@
     "Yield Ground": 0,
     "Zig-Zag Ruse": 2
    },
-   "shield": false,
-   "str": 19,
-   "unarmed": 10,
+   "shield": true,
+   "str": 78,
+   "unarmed": 54,
    "weapon": {
-    "armour_pen": 0.125,
-    "base_damage": 90,
-    "name": "Bronze Sword",
-    "ql": 61.8481,
+    "armour_pen": 0.1,
+    "base_damage": 100,
+    "name": "Fyrdsman's Sword",
+    "ql": 94.2772,
     "range": 1.2
    }
   },
   {
-   "agi": 26,
+   "agi": 29,
    "armour": {
     "hard": 5,
-    "pieces": 20,
+    "pieces": 21,
     "soft": 8
    },
-   "con": 23,
-   "hhp": 149,
-   "hp": 152,
-   "logs": 428,
+   "con": 44,
+   "hhp": 201,
+   "hp": 210,
+   "logs": 499,
    "melee": 1,
    "name": "Pikapolonica",
    "owned": {},
    "shield": false,
-   "str": 23,
-   "unarmed": 2
+   "str": 62,
+   "unarmed": 2,
+   "weapon": {
+    "armour_pen": 0.2,
+    "base_damage": 45,
+    "name": "Butcher's Cleaver",
+    "ql": 93.407,
+    "range": 1.0
+   }
   },
   {
-   "agi": 82,
+   "agi": 101,
    "armour": {
-    "hard": 52,
+    "hard": 55,
     "pieces": 21,
-    "soft": 58
+    "soft": 59
    },
-   "con": 109,
-   "hhp": 311,
-   "hp": 343,
-   "logs": 1219,
+   "con": 111,
+   "hhp": 283,
+   "hp": 346,
+   "logs": 1506,
    "melee": 150,
    "name": "Santa Samus",
    "owned": {
@@ -181,11 +192,11 @@
     "Bloodlust": 0,
     "Chin Up": 0,
     "Chop": 0,
-    "Cleave": 0,
-    "Dash": 2,
+    "Cleave": 1,
+    "Dash": 3,
     "Feigned Dodge": 0,
     "Flex": 0,
-    "Full Circle": 5,
+    "Full Circle": 3,
     "Go for the Jugular": 0,
     "Haymaker": 0,
     "Jump": 0,
@@ -193,7 +204,7 @@
     "Knock Its Teeth Out": 0,
     "Left Hook": 0,
     "Low Blow": 0,
-    "Opportunity Knocks": 1,
+    "Opportunity Knocks": 2,
     "Parry": 0,
     "Punch": 0,
     "Punch 'em Both": 0,
@@ -206,7 +217,7 @@
     "Sidestep": 5,
     "Sideswipe": 0,
     "Steal Thunder": 0,
-    "Sting": 1,
+    "Sting": 0,
     "Storm of Swords": 0,
     "Take Aim": 2,
     "Takedown": 0,
@@ -218,28 +229,28 @@
     "Zig-Zag Ruse": 3
    },
    "shield": true,
-   "str": 422,
+   "str": 514,
    "unarmed": 56,
    "weapon": {
-    "armour_pen": 0.125,
-    "base_damage": 90,
-    "name": "Bronze Sword",
-    "ql": 61.8481,
+    "armour_pen": 0.1,
+    "base_damage": 100,
+    "name": "Fyrdsman's Sword",
+    "ql": 88.7368,
     "range": 1.2
    }
   },
   {
-   "agi": 166,
+   "agi": 283,
    "armour": {
-    "hard": 78,
+    "hard": 84,
     "pieces": 23,
-    "soft": 66
+    "soft": 92
    },
-   "con": 72,
-   "hhp": 282,
-   "hp": 288,
-   "logs": 1494,
-   "melee": 243,
+   "con": 164,
+   "hhp": 415,
+   "hp": 425,
+   "logs": 1708,
+   "melee": 292,
    "name": "Shade",
    "owned": {
     "Artful Evasion": 0,
@@ -247,18 +258,20 @@
     "Chin Up": 0,
     "Chop": 0,
     "Cleave": 1,
+    "Combat Meditation": 0,
     "Dash": 0,
     "Feigned Dodge": 0,
     "Flex": 0,
     "Full Circle": 2,
     "Go for the Jugular": 0,
     "Haymaker": 0,
-    "Jump": 4,
+    "Jump": 5,
     "Kick": 0,
     "Knock Its Teeth Out": 0,
     "Left Hook": 0,
     "Low Blow": 0,
-    "Opportunity Knocks": 1,
+    "Oak Stance": 0,
+    "Opportunity Knocks": 0,
     "Punch": 0,
     "Punch 'em Both": 0,
     "Quick Barrage": 5,
@@ -282,13 +295,13 @@
     "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 189,
-   "unarmed": 149,
+   "str": 281,
+   "unarmed": 160,
    "weapon": {
-    "armour_pen": 0.125,
-    "base_damage": 90,
-    "name": "Bronze Sword",
-    "ql": 68.536,
+    "armour_pen": 0.1,
+    "base_damage": 100,
+    "name": "Fyrdsman's Sword",
+    "ql": 94.2772,
     "range": 1.2
    }
   },
@@ -311,34 +324,41 @@
    "unarmed": 1
   },
   {
-   "agi": 35,
+   "agi": 36,
    "armour": {
     "hard": 5,
-    "pieces": 22,
+    "pieces": 23,
     "soft": 8
    },
    "con": 20,
    "hhp": 141,
    "hp": 141,
-   "logs": 9,
+   "logs": 10,
    "melee": 2,
    "name": "Stealth",
    "owned": {},
    "shield": false,
    "str": 13,
-   "unarmed": 2
+   "unarmed": 2,
+   "weapon": {
+    "armour_pen": 0.2,
+    "base_damage": 55,
+    "name": "Woodsman's Axe",
+    "ql": 27.8338,
+    "range": 1.2
+   }
   },
   {
-   "agi": 131,
+   "agi": 138,
    "armour": {
     "hard": 79,
     "pieces": 23,
     "soft": 67
    },
-   "con": 95,
-   "hhp": 297,
-   "hp": 308,
-   "logs": 597,
+   "con": 117,
+   "hhp": 320,
+   "hp": 342,
+   "logs": 624,
    "melee": 158,
    "name": "ZzxcuV3",
    "owned": {
@@ -385,13 +405,13 @@
     "Zig-Zag Ruse": 2
    },
    "shield": true,
-   "str": 112,
-   "unarmed": 94,
+   "str": 167,
+   "unarmed": 114,
    "weapon": {
     "armour_pen": 0.125,
     "base_damage": 90,
     "name": "Bronze Sword",
-    "ql": 38.0613,
+    "ql": 68.65,
     "range": 1.2
    }
   }

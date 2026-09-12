@@ -259,17 +259,21 @@ def coverage():
 
 
 def both_report_branches():
-    """The branch that is unreachable today still has to run.
+    """Both report branches run, whether or not they are reachable today.
 
-    report_separation takes the live field as an argument rather than reading the module
-    global, so it can be exercised here with a chosen field instead of only whichever
-    curves happen to be standing today.
+    report_separation and report_falsification each take the live field as an argument
+    rather than reading the module global, so they can be exercised here with a chosen
+    field instead of only whichever curves happen to be standing today. The falsification
+    branch is the one that used to be a NameError waiting for the survivor count to drop
+    to one.
     """
     print("\nboth report branches run")
     import io as _io
     from contextlib import redirect_stdout
     for name, fn, live in (("separation", experiment.report_separation,
-                            ("linear", "wiki")),):
+                            ("linear", "wiki")),
+                           ("falsification", experiment.report_falsification,
+                            ("linear",))):
         buf = _io.StringIO()
         try:
             with redirect_stdout(buf):

@@ -13,6 +13,7 @@ Verifies:
     - every pool file parses as .jsonl with a begin first line and an end line
       (via fightlog.read, not a reimplementation)
     - reports pool file count
+    - THE POOL HAS BEEN PULLED RECENTLY (see how_stale)
 
 Exits 0 when every check passes, 1 otherwise.
 """
@@ -21,6 +22,7 @@ import glob
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fightlog  # noqa: E402
@@ -28,6 +30,17 @@ import fightlog  # noqa: E402
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 POOL_DIR = os.path.join(ROOT, "data", "combat", "pool")
 MANIFEST = os.path.join(POOL_DIR, "manifest.json")
+LAST_SYNC = os.path.join(POOL_DIR, "last-sync.json")
+
+# How long the corpus may go unpulled before this is a failure.
+#
+# 36 hours, and the number is chosen against two real events rather than taste. The
+# corpus sat two days behind the server while every check passed, which is what this
+# exists to catch, so the limit has to be under two days. And tools/check-combat.ps1 now
+# pulls before it regenerates anything, so in normal use the stamp is minutes old; the
+# only way to reach 36 hours is for the sync to have actually stopped working. A tighter
+# limit would flag a laptop that was merely shut for a long weekend.
+STALE_HOURS = 36
 
 failures = []
 
@@ -162,9 +175,51 @@ def default_logs_includes_pool():
           (len(paths), len(paths) - len(pool_in_default), len(pool_in_default)))
 
 
+def how_stale():
+    """Has anyone actually pulled from the server lately?
+
+    THE CHECK THIS FILE WAS MISSING. Everything above verifies that the pool is
+    internally consistent, and a pool that stopped being refreshed two days ago is
+    perfectly consistent. The corpus went stale for two days, the estimates were built
+    from it the whole time, and every check stayed green.
+
+    The tempting check is the age of the newest FIGHT, and it does not work: a quiet
+    weekend and a broken sync produce the same reading. What separates them is the age
+    of the last SYNC, which tools/combat/sync_pool.py stamps on every successful pull by
+    either route. That statement is true whether or not anybody played.
+
+    A pool with no files at all is a fresh checkout, not a stale one, and is left alone.
+    """
+    print("\nhow stale is the corpus")
+    files = sorted(glob.glob(os.path.join(POOL_DIR, "*.jsonl")))
+    if not files:
+        print("  no pooled fights - fresh checkout, nothing to be stale")
+        return
+    if not os.path.exists(LAST_SYNC):
+        print("  last-sync.json absent: nothing has recorded a pull")
+        print("  run: python tools/combat/sync_pool.py --from-db")
+        check("the pool records when it was last pulled", False, True)
+        return
+    try:
+        with open(LAST_SYNC, "r", encoding="utf-8") as f:
+            doc = json.load(f)
+        at = int(doc.get("at") or 0)
+    except Exception as e:
+        print("  last-sync.json unreadable: %s" % e)
+        check("last-sync.json is valid JSON", False, True)
+        return
+    hours = (time.time() - (at / 1000.0)) / 3600.0
+    print("  last pulled %.1f hours ago, by the %s route" % (hours, doc.get("source")))
+    if hours > STALE_HOURS:
+        print("  the corpus has not been refreshed in over %d hours." % STALE_HOURS)
+        print("  run: python tools/combat/sync_pool.py --from-db")
+    check("pulled within %d hours" % STALE_HOURS, hours <= STALE_HOURS, True)
+
+
 def main():
     pooled_corpus()
     default_logs_includes_pool()
+    how_stale()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

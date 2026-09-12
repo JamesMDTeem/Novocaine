@@ -28,6 +28,7 @@ from collections import Counter, defaultdict
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fightlog  # noqa: E402
 import model  # noqa: E402
+import estimate_parallel  # noqa: E402
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 SHEET = os.path.join(ROOT, "data", "combat", "moves_sheet.json")
@@ -171,6 +172,52 @@ def _mu_from_takeaim_old(cooldown, ip):
     return (lo, hi)
 
 
+def _measure_mu_file(path):
+    """The per-log half of measure_mu: the usable (level, band) pairs it holds.
+
+    Lifted out so the raw parse can run in the pool; the per-level intersection is
+    order-independent, so the parent only concatenates. Returns (per, suspect), each
+    {level: [band]}.
+    """
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            recs = [json.loads(ln) for ln in f if ln.strip()]
+    except (OSError, ValueError):
+        return ({}, {})
+    if fightlog.is_ranged(recs):  # ranged: no openings, melee instruments do not apply
+        return ({}, {})
+    begin = next((r for r in recs if r.get("ev") == "begin"), {})
+    wall = begin.get("wall")
+    level = levels_at(wall, begin.get("char")).get("Take Aim")
+    if not level:
+        return ({}, {})
+    per = defaultdict(list)
+    suspect = defaultdict(list)
+    before = None
+    for i, r in enumerate(recs):
+        if r.get("ev") == "state":
+            before = r
+            continue
+        if r.get("ev") != "move" or r.get("actor") != "me":
+            continue
+        if not str(r.get("move") or "").endswith("takeaim"):
+            continue
+        if before is None:
+            continue
+        after = next((x for x in recs[i + 1:] if x.get("ev") == "state"), None)
+        ip = before.get("myip")
+        if ip is None:
+            continue
+        band = mu_from_takeaim(r.get("cd"), ip)
+        if band is None:
+            continue
+        # Take Aim grants a point. If the state after it shows the same ip, a sample
+        # was dropped and this ip cannot be trusted.
+        stale = (after is not None) and (after.get("myip") == ip)
+        (suspect if stale else per)[level].append(band)
+    return (dict(per), dict(suspect))
+
+
 def measure_mu(logs=None):
     """mu per card level, read off Take Aim's reported cooldown. {level: (lo, hi)}.
 
@@ -200,41 +247,12 @@ def measure_mu(logs=None):
         logs, _dirs = fightlog.default_logs(ROOT)
     per = defaultdict(list)
     suspect = defaultdict(list)
-    for path in logs:
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                recs = [json.loads(ln) for ln in f if ln.strip()]
-        except (OSError, ValueError):
-            continue
-        if fightlog.is_ranged(recs):  # ranged: no openings, melee instruments do not apply
-            continue
-        begin = next((r for r in recs if r.get("ev") == "begin"), {})
-        wall = begin.get("wall")
-        level = levels_at(wall, begin.get("char")).get("Take Aim")
-        if not level:
-            continue
-        before = None
-        for i, r in enumerate(recs):
-            if r.get("ev") == "state":
-                before = r
-                continue
-            if r.get("ev") != "move" or r.get("actor") != "me":
-                continue
-            if not str(r.get("move") or "").endswith("takeaim"):
-                continue
-            if before is None:
-                continue
-            after = next((x for x in recs[i + 1:] if x.get("ev") == "state"), None)
-            ip = before.get("myip")
-            if ip is None:
-                continue
-            band = mu_from_takeaim(r.get("cd"), ip)
-            if band is None:
-                continue
-            # Take Aim grants a point. If the state after it shows the same ip, a sample
-            # was dropped and this ip cannot be trusted.
-            stale = (after is not None) and (after.get("myip") == ip)
-            (suspect if stale else per)[level].append(band)
+    # One ordered map over the corpus; the intersection below is order-independent.
+    for part in estimate_parallel.map_chunks("measure_mu", list(logs)):
+        for level, bands in part[0].items():
+            per[level].extend(bands)
+        for level, bands in part[1].items():
+            suspect[level].extend(bands)
     out = {}
     for level, bands in per.items():
         lo = max(b[0] for b in bands)
@@ -353,8 +371,9 @@ def mu_bounds(level):
     # Measured, wherever Take Aim has been logged at that level - see MU_MEASURED. A
     # measurement beats a stated range: at level 2 it narrows 1.0-1.5 to 1.14-1.18, which
     # is the difference between a defence weight known to 50% and one known to 3%.
-    if level in MU_MEASURED:
-        return MU_MEASURED[level]
+    _measured = measured_mu()[0]
+    if level in _measured:
+        return _measured[level]
     if level == 1:
         return (1.0, 1.0)
     # An unmeasured level keeps the devs' stated range, and is NOT interpolated. The
@@ -501,6 +520,40 @@ def levels_at(when, char):
     return best
 
 
+# How soon after a fight's wall a same-character deck dump can still be that fight's own.
+# The recorder dumps the deck a few milliseconds after the header stamps its wall, so a
+# dump written just after the wall is the deck the fight was fought with; anything much
+# later is a different fight's deck and must not be borrowed backwards.
+DECK_RACE_MS = 2000
+
+
+def levels_after(when, char, thrown):
+    """The first same-character dump AFTER the fight's wall, if it is almost certainly the
+    fight's own deck and it contains every card the fight threw.
+
+    The fight-start dump is written a few milliseconds after the header's wall
+    (Fightview.java), so levels_at's `stamp <= when` rule dates the fight to the PREVIOUS
+    deck. Read on 2026-09-11: pool/Santa_Samus-1788294092265-Santa_Samus-10.jsonl threw
+    Full Circle at t=7199; the previous dump (14 s earlier) has it at level 3 and the dump
+    4 ms after the wall has it at level 5, and the old rule scored the card at level 3 -
+    mu 1.25 where the fight held 1.5, a fifth off that card's attack weight. Only a dump
+    within DECK_RACE_MS of the wall counts, and only when it holds every thrown card; a
+    dump that cannot explain the fight is not the fight's deck either.
+    """
+    if not DECKS or when is None or char is None:
+        return {}
+    mine = [(w, l) for w, l, c in DECKS if c == char]
+    for stamp, levels in mine:
+        if stamp <= when:
+            continue
+        if (stamp - when) > DECK_RACE_MS:
+            return {}
+        if all((not nm) or levels.get(nm) for nm in thrown):
+            return levels
+        return {}
+    return {}
+
+
 def deck_from_header(header):
     """The deck a schema-14 header names, keyed by display name. {} for older logs.
 
@@ -561,19 +614,40 @@ def levels_for_log(log):
     own = deck_from_header(h)
     if own:
         return own
-    lv = levels_at(h.get("wall"), h.get("char"))
-    if not lv:
-        return {}
+    # Every card the fight threw. A deck that cannot explain all of them is the wrong deck.
+    thrown = set()
     for eng in log.engagements:
         for m in eng.moves:
             if m.get("actor") != "me":
                 continue
             nm = m.get("name")
-            if nm and not lv.get(nm):
-                # Thrown but not held: the dump does not describe this fight. Unknown is
-                # the correct answer, exactly as it is for a fight older than every dump.
-                return {}
-    return lv
+            if nm:
+                thrown.add(nm)
+    # THE FIGHT'S OWN DUMP FIRST, then the timeline. The dump a fight writes at its start
+    # lands a few milliseconds AFTER the header's wall, so `stamp <= when` hides it from the
+    # fight it belongs to and the fight is dated by the PREVIOUS deck.
+    #
+    # This used to run second, after an early return on the timeline deck, and that made it
+    # unreachable for the case it was written for. The example it was written from,
+    # pool/Santa_Samus-1788294092265-Santa_Samus-10.jsonl, throws Full Circle at t=7199; the
+    # dump before the wall holds Full Circle 3 and the dump four milliseconds after holds
+    # 5. Level 3 "explains" the fight - Full Circle is in the deck at a non-zero level - so
+    # the early return fired and levels_after was never called. The function was correct and
+    # dead: it returns 5 when asked, and nothing asked.
+    #
+    # The guard that stops this grabbing an unrelated later deck is levels_after's own: the
+    # dump must land inside DECK_RACE_MS of the wall AND contain every card the fight threw.
+    # A deck that satisfies both, four milliseconds after the fight opened, is the fight's.
+    if thrown:
+        nxt = levels_after(h.get("wall"), h.get("char"), thrown)
+        if nxt:
+            return nxt
+    lv = levels_at(h.get("wall"), h.get("char"))
+    if lv and all(lv.get(nm) for nm in thrown):
+        return lv
+    # Thrown but not held, and no dump just after the wall explains it either: unknown is
+    # the correct answer, exactly as it is for a fight older than every dump.
+    return {}
 
 
 def ok_boost(logs=None):
@@ -602,41 +676,20 @@ def ok_boost(logs=None):
     at levels 1 and 2, and the intervals no longer intersect - CURRENT counts are printed
     by report_ok_boost and pinned by the opportunity_knocks check.
 
-    Returns (uses, lo, hi) - every uncensored (before, after, level) and the intersection,
-    or (uses, None, None) when the intersection is empty.
+    Returns (uses, lo, hi) - every (before, after, level, kind) use and the intersection
+    over the uncensored ones, or (uses, None, None) when the intersection is empty. `kind`
+    is "player" or "creature": the only use ever thrown at a person gained nothing at all,
+    and the two populations are not pooled by anything that reads a constant off this.
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
+    # One ordered map over the corpus; the per-file half lives in estimate_parallel.
     uses = []
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
-            continue
-        lv = levels_for_log(log)
-        for eng in log.engagements:
-            states = sorted(eng.states, key=lambda st: st["t"])
-            for m in eng.moves:
-                if (m.get("actor") != "me") or (m.get("name") != "Opportunity Knocks"):
-                    continue
-                before = after = None
-                for st in states:
-                    if st["t"] <= m["t"]:
-                        before = st
-                    elif after is None:
-                        after = st
-                if (before is None) or (after is None):
-                    continue
-                fb, fa = before.get("foe"), after.get("foe")
-                if (not fb) or (not fa):
-                    continue
-                i = max(range(len(fb)), key=lambda k: fb[k])
-                uses.append((fb[i], fa[i], (lv or {}).get("Opportunity Knocks")))
+    for part in estimate_parallel.map_chunks("ok_boost", sorted(logs)):
+        uses.extend(part)
     lo, hi = 0.0, float("inf")
     kept = []
-    for b, a, level in uses:
+    for b, a, level, _kind in uses:
         if (b <= 0) or (a >= 100):
             # Nothing to divide by, or clipped at the ceiling.
             continue
@@ -652,7 +705,7 @@ def ok_boost(logs=None):
 
 
 
-def ok_boost_by_level(logs=None):
+def ok_boost_by_level(logs=None, kinds=None):
     """Opportunity Knocks measured WITHIN each card level, which is the only way it works.
 
     The card multiplies the greatest standing opening by 1 + 0.4*mu, and mu is a function
@@ -687,8 +740,10 @@ def ok_boost_by_level(logs=None):
     uses, _lo, _hi = ok_boost(logs)
     out = {}
     bylv = defaultdict(list)
-    for b, a, level in uses:
+    for b, a, level, kind in uses:
         if (b <= 0) or (a >= 100):
+            continue
+        if kinds and (kind not in kinds):
             continue
         bylv[level].append((b, a))
     for level, v in bylv.items():
@@ -757,7 +812,7 @@ def _mu_measured():
         return (out, disputed)
     if blo is None:
         return (out, disputed)
-    levels = set(l for _b, _a, l in _uses if l)
+    levels = set(u[2] for u in _uses if u[2])
     if len(levels) != 1:
         # The reading is one interval over whatever levels the uses came from, so it can
         # only be attributed if they were all at the same level.
@@ -784,11 +839,35 @@ def _mu_measured():
 # rather than inlined because mu(2) is now read through it - see _mu_measured.
 OK_BOOST = 0.40
 
-MU_MEASURED, MU_DISPUTED = _mu_measured()
-for _lvl, (_a, _b) in sorted(MU_DISPUTED.items()):
-    sys.stderr.write(
-        "mu at level %d DISPUTED: Take Aim says %s, Opportunity Knocks says %s - "
-        "they do not meet, so neither is folded in\n" % (_lvl, _a, _b))
+# Populated by measured_mu() on first use, not at import. Kept as module names so any
+# reader that has already asked for the measurement can still reach it directly.
+MU_MEASURED = {}
+MU_DISPUTED = {}
+_MU_STATE = None
+
+
+def measured_mu():
+    """(measured, disputed), computed once per process on first use.
+
+    Running `_mu_measured()` at import made every spawned worker pay two full corpus
+    sweeps - measure_mu() over the raw logs and ok_boost() over the same corpus - before
+    it could be told a single file to parse. The measurement is a pure function of the
+    corpus, so it is deferred to the first reader and memoised. The disputed-mu warning
+    moves with it and still prints exactly once, in whichever process first asks; the
+    tools render reports in the parent, so a normal run is byte-identical to the old
+    import-time write.
+    """
+    global _MU_STATE, MU_MEASURED, MU_DISPUTED
+    if _MU_STATE is None:
+        measured, disputed = _mu_measured()
+        MU_MEASURED = measured
+        MU_DISPUTED = disputed
+        for _lvl, (_a, _b) in sorted(disputed.items()):
+            sys.stderr.write(
+                "mu at level %d DISPUTED: Take Aim says %s, Opportunity Knocks says %s - "
+                "they do not meet, so neither is folded in\n" % (_lvl, _a, _b))
+        _MU_STATE = (measured, disputed)
+    return _MU_STATE
 
 
 def load_moves():
@@ -842,9 +921,12 @@ def stance_attack_mult(deck):
     ever held, in 3296 of the 3299 fights whose deck is known.
 
     Left un-applied, a fight under Oak Stance recovers an opponent twice as strong as it
-    is, because our own weight is the numerator of everything. It is silent, which is why
-    the check beside this asserts the corpus has still never done it rather than trusting
-    that nobody will.
+    is, because our own weight is the numerator of everything. It WAS left un-applied:
+    collect() passed the card's level and dropped the deck, and the check beside this
+    asserted that the corpus had never been fought under a scaling stance rather than
+    pricing one. That held until 2026-09-10, when Shade fought two under Oak Stance at
+    level 1. collect() and replay now pass the deck, so the multiplier is applied where it
+    was only being watched for.
     """
     mult = 1.0
     if not deck:
@@ -1005,42 +1087,10 @@ def weapons_seen(logs=None):
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
-    out = {}
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        ql = {}
-        for g in (log.gear or []):
-            if g.get("res"):
-                ql[g["res"]] = g.get("ql")
-        for w in (log.weapons or []):
-            res = w.get("res")
-            v = w.get("v") or {}
-            if (not res) or ("damage" not in v):
-                continue
-            base = res.rsplit("/", 1)[-1]
-            q = ql.get(res)
-            rec = out.setdefault(base, {"res": res, "n": 0, "quality": [],
-                                        "recovered_base": []})
-            rec["n"] += 1
-            for k in ("damage", "armpen", "range", "grievous"):
-                if k in v:
-                    rec.setdefault(k, set()).add(round(float(v[k]), 4))
-            if q and (q > 0):
-                rec["quality"].append(round(q, 4))
-                rec["recovered_base"].append(round(v["damage"] / math.sqrt(q / 10.0), 3))
-    # Sets do not serialise, and a weapon read at two qualities has two damages and one
-    # base - so the tooltip figures are kept as sorted lists and the base as a range.
-    for base, rec in out.items():
-        for k in ("damage", "armpen", "range", "grievous"):
-            if k in rec:
-                rec[k] = sorted(rec[k])
-        rec["quality"] = sorted(set(rec["quality"]))
-        b = sorted(set(rec["recovered_base"]))
-        rec["recovered_base"] = {"lo": b[0], "hi": b[-1]} if b else None
-    return out
+    # Raw sightings are mapped in order; the reduce (sorted sets, base range) runs once,
+    # in weapons_seen_merge, so it is identical to the old single pass.
+    return estimate_parallel.weapons_seen_merge(
+        estimate_parallel.map_chunks("weapons_seen", sorted(logs)))
 
 
 def _wiki_weapons_by_key():
@@ -1183,11 +1233,11 @@ def report_ok_boost():
     print("  The card's text says 40% * mu of the greatest standing opening. The")
     print("  simulator has implemented that on the text alone since it was written.")
     print()
-    levels = sorted(set(l for _b, _a, l in uses if l))
+    levels = sorted(set(u[2] for u in uses if u[2]))
     print("  %d use(s), %d of them uncensored, at card level(s) %s"
-          % (len(uses), sum(1 for b, a, _l in uses if (b > 0) and (a < 100)),
+          % (len(uses), sum(1 for u in uses if (u[0] > 0) and (u[1] < 100)),
              ", ".join(str(l) for l in levels)))
-    zeros = [(b, a) for b, a, _l in uses if b == 0]
+    zeros = [(u[0], u[1]) for u in uses if u[0] == 0]
     if zeros:
         print("  and %d with NOTHING standing, which gained %s - a share, not a number of"
               % (len(zeros), ", ".join(str(a) for _b, a in zeros)))
@@ -1226,61 +1276,41 @@ def agility_band(logs=None):
     cooldown to the smallest is the ratio of the two extreme factors. A ten percent band
     allows at most 1.1/0.9 = 1.2222. A twenty percent band allows 1.5.
 
-    Returns (ratios, spreads, flat) - every level-1 zero-initiative attack ratio, the
-    per (card, level, initiative) max/min spreads, and the maneuvers, which take no
-    agility term and are the control.
+    A WEAPON WITH A COOLDOWN MODIFIER IS NOT THE OPPONENT, and observations taken with one
+    in hand are excluded rather than corrected. The `wpn` row has carried the item's own
+    Coolmod since the recorder was written, nothing read it, and one slice (Quick Barrage
+    at level 5 and zero initiative) read 1.2778 on it - past the ten percent band's 1.2222
+    and into the twenty percent band, on an artefact.
+
+    Dropped and not divided through. The mechanic is stated by the owner and printed on the
+    item; what the corpus disagrees about is whether the reported cooldown already carries
+    it, and it disagrees 105 observations to 3. fightlog.held_coolmod carries both sides and
+    the two hypotheses that were tested and rejected. An observation that might or might not
+    have a 1.15 in it constrains nothing, so it is not used.
+
+    Returns (ratios, spreads, flat, excluded) - every level-1 zero-initiative attack
+    ratio, the per (card, level, initiative) max/min spreads, the maneuvers, which take no
+    agility term and are the control, and what the coolmod exclusion cost: a dict with
+    `n`, the observation count, and `widest`, the widest spread the same corpus gives when
+    the excluded observations are put back in.
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
-    moves = load_moves()
+    # The per-file half maps the corpus in order; the set arithmetic below is the reduce.
     ratios = []
     groups = defaultdict(set)
     flat = defaultdict(set)
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
-            continue
-        lv = levels_for_log(log)
-        for eng in log.engagements:
-            sp = (eng.res or "?").split("/")[-1]
-            states = sorted(eng.states, key=lambda st: st["t"])
-            for m in eng.moves:
-                if m.get("actor") != "me":
-                    continue
-                name = m.get("name") or m.get("move")
-                mv = moves.get(name)
-                cd = m.get("cd")
-                if (not mv) or (not cd) or (cd <= 0) or (mv.get("cooldown") is None):
-                    continue
-                ip = None
-                for st in states:
-                    if st["t"] <= m["t"]:
-                        ip = st.get("myip")
-                    else:
-                        break
-                # Declaring an attack TYPE is sufficient and not necessary. Opportunity
-                # Knocks declares none, carries an attack skill, and rides the band -
-                # base 45 reporting 41 against everything at the bottom of it. Splitting
-                # on types alone put it in the control, where a card that moves 41 to 45
-                # was being used as evidence that maneuvers do not move.
-                attack = bool(mv.get("attack_types") or []) or bool(mv.get("attack_skill"))
-                key = (name, (lv or {}).get(name), ip)
-                if attack:
-                    groups[key].add(cd)
-                    if ((lv or {}).get(name) == 1) and (ip == 0):
-                        ratios.append((name, sp, cd / float(mv["cooldown"])))
-                elif not mv.get("ip_scale"):
-                    # The control has to hold everything else still, or it is not a
-                    # control. Level and initiative are held by the key; Take Aim is
-                    # excluded outright because its cooldown scales WITH initiative
-                    # (ip_scale 0.2), and the initiative here is read from the state
-                    # sample before the move, which is a tick or two stale. That
-                    # staleness alone gave Take Aim a spread of 1.2000 - one initiative
-                    # point - which would have read as agility and is not.
-                    flat[key].add(cd)
+    held = defaultdict(set)
+    dropped = 0
+    for part in estimate_parallel.map_chunks("agility_band", sorted(logs)):
+        ratios.extend(part[0])
+        for key, ticks in part[1].items():
+            groups[key].update(ticks)
+        for key, ticks in part[2].items():
+            flat[key].update(ticks)
+        dropped += part[3]
+        for key, ticks in part[4].items():
+            held[key].update(ticks)
     spreads = {}
     for key, ticks in groups.items():
         if len(ticks) > 1:
@@ -1289,11 +1319,19 @@ def agility_band(logs=None):
     # only the slices that varied is a control that passes by being empty.
     flats = dict((key, max(ticks) / float(min(ticks)))
                  for key, ticks in flat.items())
-    return (ratios, spreads, flats)
+    # What the exclusion is worth, as the same arithmetic over the same slices with the
+    # excluded observations put back. This is not a second reading of the band - it is the
+    # reading the band WOULD give if nothing read Coolmod, kept so a check can say so.
+    ungated = 1.0
+    for key in set(list(groups.keys()) + list(held.keys())):
+        ticks = groups.get(key, set()) | held.get(key, set())
+        if len(ticks) > 1:
+            ungated = max(ungated, max(ticks) / float(min(ticks)))
+    return (ratios, spreads, flats, {"n": dropped, "widest": ungated})
 
 
 def report_agility_band():
-    ratios, spreads, flat = agility_band()
+    ratios, spreads, flat, dropped = agility_band()
     if not ratios:
         return
     lo = min(r for _n, _s, r in ratios)
@@ -1313,6 +1351,8 @@ def report_agility_band():
         print("  widest spread for ONE card at one level and initiative: %.4f" % w)
         print("      a band of +-10%% allows 1.1/0.9 = %.4f" % (1.1 / 0.9))
         print("      a band of +-20%% would allow         %.4f" % (1.2 / 0.8))
+    print("  %d observation(s) excluded for a cooldown-modifying weapon in hand" % dropped["n"])
+    print("      with them in, the widest slice reads %.4f" % dropped["widest"])
     # The control: maneuvers take no agility term, so at a fixed level and initiative
     # they must not move at all however fast the opponent is.
     if flat:
@@ -1577,71 +1617,11 @@ def agility_control(logs=None):
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
-    moves = load_moves()
+    # Ordered map; rows are appended per species in file order, then merged.
     out = defaultdict(list)
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
-            continue
-        if not log.agility:
-            continue
-        agi_me = ((log.header or {}).get("attr") or {}).get("agi")
-        if not agi_me:
-            continue
-        # Our own reading, per opponent, from the same fight - so the two routes are
-        # answering about the same individual and not about a species average.
-        obs = defaultdict(list)
-        for eng in log.engagements:
-            for m in eng.moves:
-                if m.get("actor") != "me":
-                    continue
-                nm = m.get("name")
-                mv = moves.get(nm)
-                cd = m.get("cd")
-                if (not mv) or (not cd) or (cd <= 0):
-                    continue
-                # Maneuvers take no agility term, so they say nothing about the opponent -
-                # the same test the per-opponent report uses, and for the same reason.
-                if not (mv.get("attack_types") or mv.get("attack_skill")):
-                    continue
-                if mv.get("cooldown") is None:
-                    continue
-                obs[eng.gob].append((mv["cooldown"], cd))
-        # The client narrows one bracket per opponent over the fight; the last is tightest.
-        best = {}
-        for r in log.agility:
-            best[r["gob"]] = (r.get("min"), r.get("max"))
-        for gob, (lo_r, hi_r) in best.items():
-            iv = agility_interval(obs.get(gob, []), agi_me) if obs.get(gob) else None
-            clo = (lo_r or 0.0) * agi_me
-            chi = float("inf") if (hi_r is None or hi_r >= 2.0) else hi_r * agi_me
-            if iv is None:
-                agree = None
-            else:
-                olo, ohi, _capped = iv
-                if (olo > ohi) or (clo > chi):
-                    # A CROSSED interval - lo past hi - is how either route reports that
-                    # one creature's own observations contradict each other, and
-                    # _pool_agility drops exactly these as faulty. It cannot agree or
-                    # disagree with anything, so scoring it as a disagreement invents a
-                    # finding out of data the estimator has already flagged as bad.
-                    #
-                    # It was inventing five: greenooze with the client's bracket crossed at
-                    # 72.8 past 45.2, and beeswarm, honeybee, warriordrone and goldeneagle
-                    # with ours crossed. Against 1767 genuine agreements, five fabricated
-                    # disagreements were enough to keep this check - the only one here that
-                    # is not the corpus grading its own homework - permanently red.
-                    agree = None
-                else:
-                    # Intervals agree when they intersect. Neither is a point estimate, so
-                    # anything stricter would report a disagreement that is not one.
-                    agree = (clo <= ohi) and (olo <= chi)
-            sp = (log.names.get(gob) or "?").split("/")[-1]
-            out[sp].append((gob, clo, chi, iv[0] if iv else None,
-                            iv[1] if iv else None, agree))
+    for part in estimate_parallel.map_chunks("agility_control", sorted(logs)):
+        for sp, rows in part.items():
+            out[sp].extend(rows)
     return out
 
 
@@ -1683,40 +1663,11 @@ def report_agility_control():
 def agi_records_by_species(logs=None):
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
+    # Ordered map; records are appended per species in file order, then merged.
     out = defaultdict(list)
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
-            continue
-        if not log.agility:
-            continue
-        agi_me = ((log.header or {}).get("attr") or {}).get("agi")
-        if not agi_me:
-            continue
-        for r in log.agility:
-            mn = r.get("min")
-            mx = r.get("max")
-            if mn == 0 and mx == 2:
-                continue
-            if mn is None and mx is None:
-                continue
-            gob = r.get("gob")
-            sp = (log.names.get(gob) or "?").split("/")[-1]
-            lo = (mn or 0.0) * agi_me
-            hi = float("inf") if (mx is None or mx >= 2.0) else mx * agi_me
-            out[sp].append({
-                "gob": gob,
-                "min": mn,
-                "max": mx,
-                "agiMe": agi_me,
-                "lo": lo,
-                "hi": hi,
-                "file": os.path.basename(path),
-                "t": r.get("t"),
-            })
+    for part in estimate_parallel.map_chunks("agi_records", sorted(logs)):
+        for sp, rows in part.items():
+            out[sp].extend(rows)
     return out
 
 
@@ -2069,15 +2020,22 @@ def gain_interval(wa, gain, ob, standing, wa_hi=None):
     return (lo, hi)
 
 
-def stance_of(log, gob):
+def stance_of(log, gob, who=None):
     """The stance resource a combatant was holding, from the schema-5 buffs samples.
 
     Returns the LAST one seen, or None. A stance can be swapped mid-fight and this does not
     try to track that - it is a starting point for reading the corpus, not a timeline.
+
+    `who` selects by the buff row's own combatant tag ("me"/"foe") instead of by gob. Our own
+    buffs rows are written with gob = -1 (CombatRecorder.java), so the gob filter can never
+    pick our stance out; when `who` is given it is used instead.
     """
     best = None
     for r in log.buffs:
-        if (gob is not None) and (r.get("gob") != gob):
+        if who is not None:
+            if r.get("who") != who:
+                continue
+        elif (gob is not None) and (r.get("gob") != gob):
             continue
         for res in r.get("res") or []:
             nm = (res or "").rsplit("/", 1)[-1]
@@ -2136,7 +2094,7 @@ def block_weight(moves, stance, attrs, gear, level):
             "%s: %s %g x %g x mu %.3f-%.3f%s" % (stance, skill, base, mult, lo, hi, why))
 
 
-def own_defence_weight(moves, attrs, gear, levels):
+def own_defence_weight(moves, attrs, gear, levels, held=None):
     """OUR defence weight - the one term in the opening formula we do not have to infer.
 
     Returns (wd, description) or (None, why not).
@@ -2161,6 +2119,28 @@ def own_defence_weight(moves, attrs, gear, levels):
     of 250%" - a factor of five, and the difference between a defence weight of 312 and
     one of 62.
     """
+    if held:
+        mh = moves.get(held)
+        if (mh is not None) and mh.get("block_weight"):
+            skill = mh.get("block_skill") or "melee"
+            base = attrs.get(skill)
+            lvl = levels.get(held) or 0
+            if base and (lvl >= 1):
+                mult = mh.get("block_mult") or 1.0
+                why = ""
+                need = mh.get("block_requires")
+                if need:
+                    if any(need in (g.get("res") or "") for g in gear):
+                        why = " (%s equipped)" % need
+                    else:
+                        mult = mh.get("block_mult_without") or mult
+                        why = " (no %s equipped, so the reduced multiplier)" % need
+                lo, hi = mu_bounds(lvl)
+                wd = base * mult * ((lo + hi) / 2.0)
+                # The stance came from the buffs rows, so this is the one actually held,
+                # not the strongest the deck would have allowed.
+                return (wd, "%s: %s %g x %g x mu %.3f%s (held, from the log)"
+                        % (held, skill, base, mult, (lo + hi) / 2.0, why))
     best = None
     for name, m in moves.items():
         if not m.get("block_weight"):
@@ -2410,13 +2390,42 @@ def collect_cached(paths):
     return _COLLECTED[key]
 
 
-def collect(paths):
-    _FOE_CARD.clear()
-    _CARD_SHEET.clear()
-    moves = load_moves()
-    wiki = wiki_creatures()
-    opens = opens_map(moves)
-    per = defaultdict(lambda: {
+# ---------------------------------------------------------------------------------
+# collect()'s serial/parallel merge. See estimate_parallel for the pool.
+#
+# _collect_file reduces one log; these put the projections back together in exactly
+# sorted(paths) order, which is the determinism contract. Every list extends, every
+# nested dict keeps its first-seen key order, and every integer sums, so the merged rec
+# is what the old shared accumulator held after the same files.
+# ---------------------------------------------------------------------------------
+
+_LIST_KEYS = ("skipped", "wd", "foe_close", "foe_close_col", "foe_state", "hits",
+              "took", "soak", "soak_clean", "foe_moves", "sep", "myspd", "foespd",
+              "ip_edges", "foe_gaps", "flee")
+_SET_KEYS = ("agi_me", "agi_obs", "agi_obs_clean", "boost_moves",
+             "mu_scaled_openings", "my_wd", "killed", "partial")
+_INT_KEYS = ("engagements", "sfx_brackets")
+_NESTED_LIST = ("foe_moves_by", "foe_state_by", "foe_close_by", "foe_close_col_by",
+                "foe_gaps_by", "soak_by", "soak_clean_by")
+_NESTED_INT = ("dealt_by", "engagements_by")
+_NESTED_SET = ("cd", "their_moves", "agi_obs_by_gob", "agi_obs_clean_by_gob")
+
+
+def _by_char_int():
+    return defaultdict(int)
+
+
+def _by_char_list():
+    return defaultdict(list)
+
+
+def _blank_rec():
+    """A fresh per-bucket accumulator.
+
+    Named rather than a lambda because collect()'s projections cross a process boundary,
+    and a lambda default_factory does not pickle. The nested factories are named too.
+    """
+    return {
         "engagements": 0, "skipped": [], "wd": [], "cd": defaultdict(set),
         # Damage dealt to each individual, kept PER LOGGING CHARACTER. The client draws
         # every damage number landing on a target, whoever threw it, so each party member
@@ -2425,26 +2434,26 @@ def collect(paths):
         # creature's hitpoints once per witness: a boar's 483 became 966, a bear's 1143
         # became 3429 across three loggers, and the corpus total came out 1.84x what the
         # creatures actually had. See where this is folded into "dealt".
-        "dealt_by": defaultdict(lambda: defaultdict(int)),
+        "dealt_by": defaultdict(_by_char_int),
         # The same problem for everything else a witness records about the CREATURE
         # rather than about itself: how often it acted, what it threw, and how many
         # separate engagements it gave us. Buffered per (individual, witness) and folded
         # to the fullest witness below, exactly as the damage is.
-        "foe_moves_by": defaultdict(lambda: defaultdict(list)),
-        "foe_state_by": defaultdict(lambda: defaultdict(list)),
-        "foe_close_by": defaultdict(lambda: defaultdict(list)),
+        "foe_moves_by": defaultdict(_by_char_list),
+        "foe_state_by": defaultdict(_by_char_list),
+        "foe_close_by": defaultdict(_by_char_list),
         "foe_close": [],
         # THE SAME THING PER COLOUR, because a restoration is not one share spread evenly.
         # Roar of the Wild takes back yellow and red and leaves green and blue untouched;
         # Careful Approach does the opposite halves. One number for all four is wrong for
         # four of the six restoring cards in the corpus.
-        "foe_close_col_by": defaultdict(lambda: defaultdict(list)),
+        "foe_close_col_by": defaultdict(_by_char_list),
         "foe_close_col": [],
         "foe_state": [],
-        "foe_gaps_by": defaultdict(lambda: defaultdict(list)),
-        "engagements_by": defaultdict(lambda: defaultdict(int)),
-        "soak_by": defaultdict(lambda: defaultdict(list)),
-        "soak_clean_by": defaultdict(lambda: defaultdict(list)),
+        "foe_gaps_by": defaultdict(_by_char_list),
+        "engagements_by": defaultdict(_by_char_int),
+        "soak_by": defaultdict(_by_char_list),
+        "soak_clean_by": defaultdict(_by_char_list),
         "hits": [], "their_moves": defaultdict(set), "agi_me": set(), "took": [],
         # (base cooldown, ticks, OUR agility at that fight). Kept beside "cd" rather than
         # derived from it later, because "cd" has thrown the third away by then.
@@ -2497,412 +2506,543 @@ def collect(paths):
         # place a log records that (damage has no channel for a miss).
         "sfx": {"hits": 0, "misses": 0, "ips": 0, "brackets_with_hit": 0, "brackets_with_miss": 0},
         "sfx_brackets": 0,
-    })
-    for p in sorted(paths):
-        log = fightlog.read(p, opens)
-        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
-            continue
-        if not log.rows:
-            continue
-        # A creature's own clock, measured per GOB across the whole file.
+    }
+
+
+def _merge_rec(dst, src):
+    """Merge one per-bucket partial into dst, in file order.
+
+    Order is the point. Lists concatenate, first-seen key order survives, integers sum,
+    and the per-bucket outcome_examples cap is applied here because it was global in the
+    serial loop - a per-file extractor cannot enforce it.
+    """
+    for key, val in src.items():
+        if key == "res":
+            if not dst.get("res"):
+                dst["res"] = val
+        elif key == "outcome_examples":
+            room = 4 - len(dst["outcome_examples"])
+            if room > 0:
+                dst["outcome_examples"].extend(val[:room])
+        elif key in _LIST_KEYS:
+            dst[key].extend(val)
+        elif key in _SET_KEYS:
+            dst[key].update(val)
+        elif key in _INT_KEYS:
+            dst[key] += val
+        elif key == "sfx":
+            for k2, v2 in val.items():
+                dst["sfx"][k2] += v2
+        elif key in ("dealt", "outcomes"):
+            for k2, v2 in val.items():
+                dst[key][k2] += v2
+        elif key == "fought_in":
+            dfi = dst.setdefault("fought_in", {})
+            for loc, v2 in val.items():
+                dfi[loc] = dfi.get(loc, 0) + v2
+        elif key == "wd_by_gob":
+            for g, v2 in val.items():
+                dst["wd_by_gob"].setdefault(g, []).extend(v2)
+        elif key == "wd_by_gob_move":
+            for g, md in val.items():
+                dm = dst["wd_by_gob_move"].setdefault(g, {})
+                for n2, v2 in md.items():
+                    dm.setdefault(n2, []).extend(v2)
+        elif key in ("last_hit", "deck_at"):
+            for k2, v2 in val.items():
+                dst[key][k2] = v2
+        elif key in _NESTED_LIST:
+            for g, byc in val.items():
+                dg = dst[key].setdefault(g, _by_char_list())
+                for c, v2 in byc.items():
+                    dg[c].extend(v2)
+        elif key in _NESTED_INT:
+            for g, byc in val.items():
+                dg = dst[key].setdefault(g, _by_char_int())
+                for c, v2 in byc.items():
+                    dg[c] += v2
+        elif key == "pressure":
+            for k2, v2 in val.items():
+                dst["pressure"][k2].extend(v2)
+        elif key in _NESTED_SET:
+            for k2, v2 in val.items():
+                dst[key].setdefault(k2, set()).update(v2)
+        # hp and wiki are fold outputs; a partial carries None and there is nothing to do.
+
+
+def _merge_per(dst, src):
+    """Merge a {bucket: partial} projection in file order.
+
+    A bucket is created on first sight, in the order the serial loop would have created
+    it, which is what the fold's tie-breaks read.
+    """
+    for bucket, rec in src.items():
+        _merge_rec(dst.setdefault(bucket, _blank_rec()), rec)
+
+
+def _merge_foe(dst, src):
+    """Accumulate the per-file _FOE_CARD tallies into the module global."""
+    for nm, d in src.items():
+        slot = dst.setdefault(nm, {"uses": 0, "rise": [0, 0, 0, 0]})
+        slot["uses"] += d["uses"]
+        for i in range(4):
+            slot["rise"][i] += d["rise"][i]
+
+
+def _collect_file(p, moves, opens):
+    """One log, reduced to the projection collect() merges.
+
+    The per-file body of collect(), lifted out so a worker can run it and ship plain
+    data - a parsed Log never crosses a process boundary (see estimate_parallel).
+    Everything the body used to mutate in shared state travels back explicitly: the
+    per-bucket partial, and the _FOE_CARD tallies as `foe_delta`. _CARD_SHEET is
+    written in place by _read_card_row, and the chunk runner reads it back out.
+    """
+    per = defaultdict(_blank_rec)
+    foe_delta = {}
+    log = fightlog.read(p, opens)
+    if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
+        return per, foe_delta
+    if not log.rows:
+        return per, foe_delta
+    # A creature's own clock, measured per GOB across the whole file.
+    #
+    # Not per engagement, and not gated on defence_ok, which is where this started and
+    # where it was wrong in two ways at once. Engagements split on the SAMPLED
+    # opponent, so in a crowded fight one creature's actions are scattered across
+    # several of them and the gaps between them are lost at every boundary. And
+    # defence_ok excludes exactly the crowded fights - which for a swarming species is
+    # nearly all of them, so ants read 8 gaps out of 144 engagements.
+    #
+    # Neither confound applies to timing. A move row carries the gob that ACTED (see
+    # Fightview.Relation.use), so filtering on it gives one creature's own actions,
+    # and how often it swings does not depend on who else is in the fight. The gate
+    # stays where it belongs - on pressure and damage, which genuinely cannot be
+    # attributed when a second opponent is opening us at the same time.
+    bygob = defaultdict(list)
+    for r in log.rows:
+        if r.get("ev") == "card":
+            _read_card_row(r)
+        elif (r.get("ev") == "move") and (r.get("actor") == "foe") and r.get("gob"):
+            bygob[r["gob"]].append(r["t"])
+    gaps_for = {}
+    for g, ts in bygob.items():
+        ts.sort()
+        out = []
+        for a, b in zip(ts, ts[1:]):
+            d = b - a
+            # Under a tick is the same action arriving twice; over thirty seconds is a
+            # lull that is not a cooldown - it withdrew, or we did.
+            if 60 <= d <= 30000:
+                out.append(d)
+        gaps_for[g] = out
+
+    attrs = (log.header or {}).get("attr") or {}
+    agi_me = attrs.get("agi")
+    # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
+    lv = levels_for_log(log)
+    # The stance the buffs rows say we were holding, so our defence weight is the one we
+    # actually fought with rather than the strongest card the deck could have held.
+    held = stance_of(log, None, who="me")
+    my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv, held=held)
+    for eng in log.engagements:
+        rec = per[bucket(eng)]
+        rec["engagements_by"][eng.gob][(log.header or {}).get("char")] += 1
+        # Where it was fought. Carried so the inside/outside question is answerable
+        # from the pack rather than only from a fresh pass over the logs - see
+        # location_of() for what the corpus can and cannot say about it today.
+        loc = location_of(eng)
+        if loc:
+            rec.setdefault("fought_in", {})
+            rec["fought_in"][loc] = rec["fought_in"].get(loc, 0) + 1
+        # Explicit outcome field, not a silent gate change - see fightlog._infer_outcome.
+        # Players excluded, award + gst + HP trail combined. Reported below alongside
+        # problems so a reader can see killed/fled/unknown without guessing which gate
+        # tripped.
+        oc = getattr(eng, "outcome", "unknown")
+        rec["outcomes"][oc] += 1
+        # THE FLEE THRESHOLD, PER INDIVIDUAL. A creature that gives up AND then keeps
+        # taking damage tells us both numbers without any population estimate: what it
+        # had taken when the olive branch went up, and what it had taken by the end.
         #
-        # Not per engagement, and not gated on defence_ok, which is where this started and
-        # where it was wrong in two ways at once. Engagements split on the SAMPLED
-        # opponent, so in a crowded fight one creature's actions are scattered across
-        # several of them and the gaps between them are lost at every boundary. And
-        # defence_ok excludes exactly the crowded fights - which for a swarming species is
-        # nearly all of them, so ants read 8 gaps out of 144 engagements.
-        #
-        # Neither confound applies to timing. A move row carries the gob that ACTED (see
-        # Fightview.Relation.use), so filtering on it gives one creature's own actions,
-        # and how often it swings does not depend on who else is in the fight. The gate
-        # stays where it belongs - on pressure and damage, which genuinely cannot be
-        # attributed when a second opponent is opening us at the same time.
-        bygob = defaultdict(list)
-        for r in log.rows:
-            if r.get("ev") == "card":
-                _read_card_row(r)
-            elif (r.get("ev") == "move") and (r.get("actor") == "foe") and r.get("gob"):
-                bygob[r["gob"]].append(r["t"])
-        gaps_for = {}
-        for g, ts in bygob.items():
-            ts.sort()
-            out = []
-            for a, b in zip(ts, ts[1:]):
-                d = b - a
-                # Under a tick is the same action arriving twice; over thirty seconds is a
-                # lull that is not a cooldown - it withdrew, or we did.
-                if 60 <= d <= 30000:
-                    out.append(d)
-            gaps_for[g] = out
+        # Doing it against the pack's hitpoint band instead does not work, and the
+        # reason is worth keeping. That band is the spread across INDIVIDUALS - the
+        # boar's is 212 to 677 around a wiki 450 - so dividing one creature's damage
+        # by it gives anything from 0.77 to 2.47, and several species come out having
+        # taken more than their whole estimated hitpool before running.
+        # What each of the opponent's cards was seen to do to US, for foe_card_opens.
+        for fm in eng.moves:
+            if (fm.get("actor") != "foe") or not theirs(eng, fm):
+                continue
+            nm = fm.get("name") or fm.get("move")
+            if not nm:
+                continue
+            slot = foe_delta.setdefault(nm, {"uses": 0, "rise": [0, 0, 0, 0]})
+            slot["uses"] += 1
+            fb, fa = eng.brackets(fm)
+            if (fb is None) or (fa is None):
+                continue
+            fbv, fav = fb.get("mine"), fa.get("mine")
+            if not fbv or not fav:
+                continue
+            for i in range(4):
+                if fav[i] > fbv[i]:
+                    slot["rise"][i] += 1
 
-        attrs = (log.header or {}).get("attr") or {}
-        agi_me = attrs.get("agi")
-        # The deck as it stood for THIS fight, so a card's mu is the one it was used at.
-        lv = levels_for_log(log)
-        my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv)
-        for eng in log.engagements:
-            rec = per[bucket(eng)]
-            rec["engagements_by"][eng.gob][(log.header or {}).get("char")] += 1
-            # Where it was fought. Carried so the inside/outside question is answerable
-            # from the pack rather than only from a fresh pass over the logs - see
-            # location_of() for what the corpus can and cannot say about it today.
-            loc = location_of(eng)
-            if loc:
-                rec.setdefault("fought_in", {})
-                rec["fought_in"][loc] = rec["fought_in"].get(loc, 0) + 1
-            # Explicit outcome field, not a silent gate change - see fightlog._infer_outcome.
-            # Players excluded, award + gst + HP trail combined. Reported below alongside
-            # problems so a reader can see killed/fled/unknown without guessing which gate
-            # tripped.
-            oc = getattr(eng, "outcome", "unknown")
-            rec["outcomes"][oc] += 1
-            # THE FLEE THRESHOLD, PER INDIVIDUAL. A creature that gives up AND then keeps
-            # taking damage tells us both numbers without any population estimate: what it
-            # had taken when the olive branch went up, and what it had taken by the end.
-            #
-            # Doing it against the pack's hitpoint band instead does not work, and the
-            # reason is worth keeping. That band is the spread across INDIVIDUALS - the
-            # boar's is 212 to 677 around a wiki 450 - so dividing one creature's damage
-            # by it gives anything from 0.77 to 2.47, and several species come out having
-            # taken more than their whole estimated hitpool before running.
-            # What each of the opponent's cards was seen to do to US, for foe_card_opens.
-            for fm in eng.moves:
-                if (fm.get("actor") != "foe") or not theirs(eng, fm):
-                    continue
-                nm = fm.get("name") or fm.get("move")
-                if not nm:
-                    continue
-                slot = _FOE_CARD.setdefault(nm, {"uses": 0, "rise": [0, 0, 0, 0]})
-                slot["uses"] += 1
-                fb, fa = eng.brackets(fm)
-                if (fb is None) or (fa is None):
-                    continue
-                fbv, fav = fb.get("mine"), fa.get("mine")
-                if not fbv or not fav:
-                    continue
-                for i in range(4):
-                    if fav[i] > fbv[i]:
-                        slot["rise"][i] += 1
-
-            flee_at = None
-            for st in (getattr(eng, "states", None) or ()):
-                if (st.get("gst") or 0) & 2:
-                    flee_at = st.get("t")
-                    break
-            if flee_at is not None:
-                hits = [d for d in eng.damage
-                        if d.get("gob") == eng.gob and d.get("ch") in ("SHP", "ARM")]
-                total = sum((d.get("v") or 0) for d in hits)
-                before = sum((d.get("v") or 0) for d in hits if d["t"] <= flee_at)
-                # It has to have kept taking damage afterwards, or the fight merely ended
-                # there and the flight point is a floor rather than a reading. And it has
-                # to have taken SOME first: a creature already running when we met it
-                # reads as a threshold of zero, which is not a threshold.
-                if (total > before > 0):
-                    rec["flee"].append(before / float(total))
-            if len(rec["outcome_examples"]) < 4:
-                rec["outcome_examples"].append((eng.gob, oc, getattr(eng, "outcome_detail", "")))
-            # Sfx hit/miss/ip per bracket - counts + which swings connected. The only place
-            # a log records a miss, since a miss has no damage channel at all. Surfacing
-            # counts here so the per-species report can show hit rate beside defence weight
-            # without mixing it into the gate verdicts - lines_lost already covers shedding.
-            try:
-                _rows, _agg = fightlog.engagement_sfx(eng)
-                rec["sfx"]["hits"] += _agg["hits"]
-                rec["sfx"]["misses"] += _agg["misses"]
-                rec["sfx"]["ips"] += _agg["ips"]
-                rec["sfx"]["brackets_with_hit"] += _agg["brackets_with_hit"]
-                rec["sfx"]["brackets_with_miss"] += _agg["brackets_with_miss"]
-                rec["sfx_brackets"] += len(_rows)
-            except Exception:
-                pass
-            # Once per gob per file, not once per engagement - an engagement is a slice of
-            # one creature's fight and adding its gaps again at every slice would count the
-            # same milliseconds several times over.
-            if eng.gob in gaps_for:
-                rec["foe_gaps_by"][eng.gob][(log.header or {}).get("char")].extend(
-                    gaps_for.pop(eng.gob))
-            if agi_me:
-                rec["agi_me"].add(agi_me)
-
-            # Hitpoints are accumulated BEFORE the usability gate, and per gob rather
-            # than per engagement. A creature does not care who hurt it or in how many
-            # sittings, so a group fight and an interrupted one both still measure it -
-            # they are only useless for attributing openings.
-            rec["res"] = rec["res"] or eng.res
+        flee_at = None
+        for st in (getattr(eng, "states", None) or ()):
+            if (st.get("gst") or 0) & 2:
+                flee_at = st.get("t")
+                break
+        if flee_at is not None:
             hits = [d for d in eng.damage
-                    if d.get("ch") == "SHP" and d.get("gob") == eng.gob]
-            rec["dealt_by"][eng.gob][(log.header or {}).get("char")] += sum(
-                d["v"] for d in hits)
-            # Armour reads off every hit the creature took, whoever threw it: the ratio
-            # of absorbed to through is a property of the armour, not of the attacker.
-            pairs = fightlog.soak_pairs(eng)
-            rec["soak_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
-            # Hits from a fight nobody else was in. soak_pairs deliberately takes hits
-            # from every attacker, on the argument that the absorbed/through split is a
-            # property of the armour - but that argument has a hole. Penetration bypasses
-            # armour entirely, so the split depends on the ATTACKER's penetration too, and
-            # the fit assumes zero. Worse, two hits landing inside the same two-millisecond
-            # bucket merge into one synthetic hit with both their ARM and both their SHP.
-            # Neither can happen when we are the only one swinging.
-            if not eng.others_present:
-                rec["soak_clean_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
-            # The killing blow, for the overkill bound - it is the last damage this
-            # opponent took, and however much of it exceeded the opponent's remaining
-            # health is not evidence of anything.
-            if hits:
-                rec["last_hit"][eng.gob] = hits[-1]["v"]
-            # Deliberately NOT gated on whether anyone else was attacking. The client
-            # draws a floating number over a creature for damage from any source, so our
-            # total is the creature's total intake while it was in view - which is what
-            # the ceiling below needs. What can still be missed is a fight that started
-            # before we could see it, and no flag in a log detects that.
-            if died(eng, log):
-                rec["killed"].add(eng.gob)
+                    if d.get("gob") == eng.gob and d.get("ch") in ("SHP", "ARM")]
+            total = sum((d.get("v") or 0) for d in hits)
+            before = sum((d.get("v") or 0) for d in hits if d["t"] <= flee_at)
+            # It has to have kept taking damage afterwards, or the fight merely ended
+            # there and the flight point is a floor rather than a reading. And it has
+            # to have taken SOME first: a creature already running when we met it
+            # reads as a threshold of zero, which is not a threshold.
+            if (total > before > 0):
+                rec["flee"].append(before / float(total))
+        if len(rec["outcome_examples"]) < 4:
+            rec["outcome_examples"].append((eng.gob, oc, getattr(eng, "outcome_detail", "")))
+        # Sfx hit/miss/ip per bracket - counts + which swings connected. The only place
+        # a log records a miss, since a miss has no damage channel at all. Surfacing
+        # counts here so the per-species report can show hit rate beside defence weight
+        # without mixing it into the gate verdicts - lines_lost already covers shedding.
+        try:
+            _rows, _agg = fightlog.engagement_sfx(eng)
+            rec["sfx"]["hits"] += _agg["hits"]
+            rec["sfx"]["misses"] += _agg["misses"]
+            rec["sfx"]["ips"] += _agg["ips"]
+            rec["sfx"]["brackets_with_hit"] += _agg["brackets_with_hit"]
+            rec["sfx"]["brackets_with_miss"] += _agg["brackets_with_miss"]
+            rec["sfx_brackets"] += len(_rows)
+        except Exception:
+            pass
+        # Once per gob per file, not once per engagement - an engagement is a slice of
+        # one creature's fight and adding its gaps again at every slice would count the
+        # same milliseconds several times over.
+        if eng.gob in gaps_for:
+            rec["foe_gaps_by"][eng.gob][(log.header or {}).get("char")].extend(
+                gaps_for.pop(eng.gob))
+        if agi_me:
+            rec["agi_me"].add(agi_me)
 
-            # What the opponent does to US, taken BEFORE the offence gate and under the
-            # DEFENCE one - the two fail for different reasons. Someone else hitting the
-            # boar spoils what we can learn about the boar's defence and says nothing
-            # about what the boar did to us; another opponent attacking US is what spoils
-            # this direction, because then a rise on us may be someone else's move.
-            #
-            # This is measurable at all only because our own defence weight is known
-            # rather than inferred - see own_defence_weight. With Wd_us known,
-            #
-            #     gain = cbrt(Wa_foe / Wd_us) * Ob * (1 - Oc)
-            #     P    = gain / (1 - Oc)  =  cbrt(Wa_foe / Wd_us) * Ob
-            #
-            # P is how many points the move opens on a fresh colour, and it is fully
-            # measured. Splitting it into the creature's attack weight and the move's own
-            # listed opening is NOT possible here: the wiki's animal-move table records
-            # WHICH colours a move opens and never by how much. So the product is what
-            # gets reported, because the product is what was measured - and it is the
-            # useful half anyway, since it falls as the cube root of our own defence
-            # weight and so says directly what a heavier stance would buy.
-            # ATTRIBUTION IS PER OBSERVATION, NOT PER ENGAGEMENT.
-            #
-            # This used to skip a whole engagement the moment anything else was happening
-            # in it, and "anything else" included another player fighting a DIFFERENT
-            # animal a few paces away - which cannot touch what our sword did to our boar.
-            # It cost most of a busy world: sixteen of thirty-four boar engagements,
-            # twenty of twenty-two beelarva, and every bear fight in the corpus.
-            #
-            # A move's bracket already excludes every move the log records. What it cannot
-            # see is another PLAYER, whose moves never enter our fightview. attributed_
-            # gains() tests each bracket for that directly - a stray colour, or a second
-            # hit landing on the target inside the window - and keeps the observations
-            # that pass. The engagement-level problems are still reported, because they
-            # remain the honest description of the fight; they no longer decide on their
-            # own what may be measured.
-            # PER-BRACKET ATTRIBUTION IS BUILT BUT NOT YET TRUSTED, and the corpus is
-            # why. fightlog.attributed_gains() tests each bracket on its own - a stray
-            # colour, or a second hit landing inside the window - instead of discarding a
-            # whole engagement because something else was happening somewhere in it. That
-            # is the right idea and it multiplies the corpus six-fold. It also breaks a
-            # measurement that was previously solid: the fox goes from a consistent 57-71
-            # across 17 observations to a contradictory 38-57 across 24, and DOWNWARD,
-            # which is the direction an unseen extra opening pushes a defence weight.
-            #
-            # Both tests are blind to the one case that matters - another player opening
-            # the SAME colour inside the same bracket - and no amount of tightening the
-            # engagement gate fixes that, because the evidence simply is not in the log.
-            #
-            # It IS in the game. Openings are drawn over every opponent's head, not only
-            # the one we have targeted, and the client only samples the target's. With
-            # every relation's openings recorded, a third party's work shows up as a rise
-            # on a creature we never touched, and this becomes decidable rather than
-            # hopeful. That is the next step; until the logs carry it, the engagement gate
-            # stands.
-            if eng.states:
-                rec["ip_edges"].append((eng.gob, (log.header or {}).get("wall") or 0,
-                                        eng.states[0].get("myip"),
-                                        eng.states[-1].get("myip")))
+        # Hitpoints are accumulated BEFORE the usability gate, and per gob rather
+        # than per engagement. A creature does not care who hurt it or in how many
+        # sittings, so a group fight and an interrupted one both still measure it -
+        # they are only useless for attributing openings.
+        rec["res"] = rec["res"] or eng.res
+        hits = [d for d in eng.damage
+                if d.get("ch") == "SHP" and d.get("gob") == eng.gob]
+        rec["dealt_by"][eng.gob][(log.header or {}).get("char")] += sum(
+            d["v"] for d in hits)
+        # Armour reads off every hit the creature took, whoever threw it: the ratio
+        # of absorbed to through is a property of the armour, not of the attacker.
+        pairs = fightlog.soak_pairs(eng)
+        rec["soak_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
+        # Hits from a fight nobody else was in. soak_pairs deliberately takes hits
+        # from every attacker, on the argument that the absorbed/through split is a
+        # property of the armour - but that argument has a hole. Penetration bypasses
+        # armour entirely, so the split depends on the ATTACKER's penetration too, and
+        # the fit assumes zero. Worse, two hits landing inside the same two-millisecond
+        # bucket merge into one synthetic hit with both their ARM and both their SHP.
+        # Neither can happen when we are the only one swinging.
+        if not eng.others_present:
+            rec["soak_clean_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
+        # The killing blow, for the overkill bound - it is the last damage this
+        # opponent took, and however much of it exceeded the opponent's remaining
+        # health is not evidence of anything.
+        if hits:
+            rec["last_hit"][eng.gob] = hits[-1]["v"]
+        # Deliberately NOT gated on whether anyone else was attacking. The client
+        # draws a floating number over a creature for damage from any source, so our
+        # total is the creature's total intake while it was in view - which is what
+        # the ceiling below needs. What can still be missed is a fight that started
+        # before we could see it, and no flag in a log detects that.
+        if died(eng, log):
+            rec["killed"].add(eng.gob)
 
-            for st in eng.states:
-                if st.get("foespd") is not None:
-                    rec["foespd"].append(st["foespd"])
-                if st.get("myspd") is not None:
-                    rec["myspd"].append(st["myspd"])
+        # What the opponent does to US, taken BEFORE the offence gate and under the
+        # DEFENCE one - the two fail for different reasons. Someone else hitting the
+        # boar spoils what we can learn about the boar's defence and says nothing
+        # about what the boar did to us; another opponent attacking US is what spoils
+        # this direction, because then a rise on us may be someone else's move.
+        #
+        # This is measurable at all only because our own defence weight is known
+        # rather than inferred - see own_defence_weight. With Wd_us known,
+        #
+        #     gain = cbrt(Wa_foe / Wd_us) * Ob * (1 - Oc)
+        #     P    = gain / (1 - Oc)  =  cbrt(Wa_foe / Wd_us) * Ob
+        #
+        # P is how many points the move opens on a fresh colour, and it is fully
+        # measured. Splitting it into the creature's attack weight and the move's own
+        # listed opening is NOT possible here: the wiki's animal-move table records
+        # WHICH colours a move opens and never by how much. So the product is what
+        # gets reported, because the product is what was measured - and it is the
+        # useful half anyway, since it falls as the cube root of our own defence
+        # weight and so says directly what a heavier stance would buy.
+        # ATTRIBUTION IS PER OBSERVATION, NOT PER ENGAGEMENT.
+        #
+        # This used to skip a whole engagement the moment anything else was happening
+        # in it, and "anything else" included another player fighting a DIFFERENT
+        # animal a few paces away - which cannot touch what our sword did to our boar.
+        # It cost most of a busy world: sixteen of thirty-four boar engagements,
+        # twenty of twenty-two beelarva, and every bear fight in the corpus.
+        #
+        # A move's bracket already excludes every move the log records. What it cannot
+        # see is another PLAYER, whose moves never enter our fightview. attributed_
+        # gains() tests each bracket for that directly - a stray colour, or a second
+        # hit landing on the target inside the window - and keeps the observations
+        # that pass. The engagement-level problems are still reported, because they
+        # remain the honest description of the fight; they no longer decide on their
+        # own what may be measured.
+        # PER-BRACKET ATTRIBUTION IS BUILT BUT NOT YET TRUSTED, and the corpus is
+        # why. fightlog.attributed_gains() tests each bracket on its own - a stray
+        # colour, or a second hit landing inside the window - instead of discarding a
+        # whole engagement because something else was happening somewhere in it. That
+        # is the right idea and it multiplies the corpus six-fold. It also breaks a
+        # measurement that was previously solid: the fox goes from a consistent 57-71
+        # across 17 observations to a contradictory 38-57 across 24, and DOWNWARD,
+        # which is the direction an unseen extra opening pushes a defence weight.
+        #
+        # Both tests are blind to the one case that matters - another player opening
+        # the SAME colour inside the same bracket - and no amount of tightening the
+        # engagement gate fixes that, because the evidence simply is not in the log.
+        #
+        # It IS in the game. Openings are drawn over every opponent's head, not only
+        # the one we have targeted, and the client only samples the target's. With
+        # every relation's openings recorded, a third party's work shows up as a rise
+        # on a creature we never touched, and this becomes decidable rather than
+        # hopeful. That is the next step; until the logs carry it, the engagement gate
+        # stands.
+        if eng.states:
+            rec["ip_edges"].append((eng.gob, (log.header or {}).get("wall") or 0,
+                                    eng.states[0].get("myip"),
+                                    eng.states[-1].get("myip")))
 
-            for a, b in zip(eng.states, eng.states[1:]):
-                da, db = a.get("dist"), b.get("dist")
-                dt = (b["t"] - a["t"]) / 1000.0
-                # A sample gap under a twentieth of a second divides by almost nothing and
-                # a gap over two seconds has any amount of movement hidden inside it.
-                if (da is None) or (db is None) or not (0.05 < dt < 2.0):
-                    continue
-                rec["sep"].append((db - da) / dt)
+        for st in eng.states:
+            if st.get("foespd") is not None:
+                rec["foespd"].append(st["foespd"])
+            if st.get("myspd") is not None:
+                rec["myspd"].append(st["myspd"])
 
-            for fm in eng.moves:
-                if (fm.get("actor") != "foe") or not theirs(eng, fm):
-                    continue
-                fb, _fa = eng.brackets(fm)
-                rec["foe_moves_by"][eng.gob][(log.header or {}).get("char")].append(
+        for a, b in zip(eng.states, eng.states[1:]):
+            da, db = a.get("dist"), b.get("dist")
+            dt = (b["t"] - a["t"]) / 1000.0
+            # A sample gap under a twentieth of a second divides by almost nothing and
+            # a gap over two seconds has any amount of movement hidden inside it.
+            if (da is None) or (db is None) or not (0.05 < dt < 2.0):
+                continue
+            rec["sep"].append((db - da) / dt)
+
+        for fm in eng.moves:
+            if (fm.get("actor") != "foe") or not theirs(eng, fm):
+                continue
+            fb, _fa = eng.brackets(fm)
+            rec["foe_moves_by"][eng.gob][(log.header or {}).get("char")].append(
+                (fm.get("name") or fm.get("move"),
+                 fb.get("foeip") if fb else None,
+                 eng.defence_ok and not eng.others_present))
+            # THE STATE THE CARD WAS CHOSEN IN. foe_moves carries the card and the
+            # initiative and nothing else, which is all a mix needs; a rule needs the
+            # rest. Kept per witness alongside it so the same fullest-witness fold
+            # applies - the client draws every combatant's moves, so two party members
+            # log the same card twice.
+            # WHAT ITS OWN CARD TOOK OFF ITSELF. Six opponent cards close the
+            # opponent's openings and the model knew about none of them: Unstoppable
+            # 25.2 points a use, Bristle 16.4, Swift Evasion 11.9, Careful Approach
+            # 4.9, Roar of the Wild 3.4, against a baseline of 0.04 in brackets where
+            # nothing acted at all. Attacking cards sit at 0.1, which is the decay.
+            #
+            # Nothing WE do closes their openings, so a fall in their bracket is
+            # theirs or it is decay, and the baseline says decay is nothing.
+            _fa2 = eng.brackets(fm)[1]
+            if (fb is not None) and (_fa2 is not None):
+                _bv, _av = fb.get("foe"), _fa2.get("foe")
+                if _bv and _av and any(_bv):
+                    _stand = float(sum(_bv))
+                    rec["foe_close_by"][eng.gob][(log.header or {}).get("char")].append(
+                        sum(max(0, _bv[i] - _av[i]) for i in range(4)) / _stand)
+                    # Per colour, and only where that colour had something standing:
+                    # a share of nothing is not a measurement, and counting it as a
+                    # full restoration is how a card that does nothing to a colour
+                    # ends up looking like it clears it.
+                    rec["foe_close_col_by"][eng.gob][(log.header or {}).get("char")]\
+                        .append(tuple((max(0, _bv[i] - _av[i]) / float(_bv[i]))
+                                      if (_bv[i] >= 5) else None
+                                      for i in range(4)))
+            # Only the sampled relation's state belongs to this move. On 23.0% of foe moves
+            # (3,721 of 16,148) the acting gob is not the engagement's sampled gob, and the
+            # state sampled beside that move is the SAMPLED relation's foeip/myip/dist/hpf
+            # - the wrong relation's numbers. foe_moves_by keeps the move itself (the
+            # species mix wants it), but the state row must not follow a stranger's move.
+            if (fb is not None) and (fm.get("gob") in (None, eng.gob)):
+                rec["foe_state_by"][eng.gob][(log.header or {}).get("char")].append(
                     (fm.get("name") or fm.get("move"),
-                     fb.get("foeip") if fb else None,
-                     eng.defence_ok and not eng.others_present))
-                # THE STATE THE CARD WAS CHOSEN IN. foe_moves carries the card and the
-                # initiative and nothing else, which is all a mix needs; a rule needs the
-                # rest. Kept per witness alongside it so the same fullest-witness fold
-                # applies - the client draws every combatant's moves, so two party members
-                # log the same card twice.
-                # WHAT ITS OWN CARD TOOK OFF ITSELF. Six opponent cards close the
-                # opponent's openings and the model knew about none of them: Unstoppable
-                # 25.2 points a use, Bristle 16.4, Swift Evasion 11.9, Careful Approach
-                # 4.9, Roar of the Wild 3.4, against a baseline of 0.04 in brackets where
-                # nothing acted at all. Attacking cards sit at 0.1, which is the decay.
-                #
-                # Nothing WE do closes their openings, so a fall in their bracket is
-                # theirs or it is decay, and the baseline says decay is nothing.
-                _fa2 = eng.brackets(fm)[1]
-                if (fb is not None) and (_fa2 is not None):
-                    _bv, _av = fb.get("foe"), _fa2.get("foe")
-                    if _bv and _av and any(_bv):
-                        _stand = float(sum(_bv))
-                        rec["foe_close_by"][eng.gob][(log.header or {}).get("char")].append(
-                            sum(max(0, _bv[i] - _av[i]) for i in range(4)) / _stand)
-                        # Per colour, and only where that colour had something standing:
-                        # a share of nothing is not a measurement, and counting it as a
-                        # full restoration is how a card that does nothing to a colour
-                        # ends up looking like it clears it.
-                        rec["foe_close_col_by"][eng.gob][(log.header or {}).get("char")]\
-                            .append(tuple((max(0, _bv[i] - _av[i]) / float(_bv[i]))
-                                          if (_bv[i] >= 5) else None
-                                          for i in range(4)))
-                if fb is not None:
-                    rec["foe_state_by"][eng.gob][(log.header or {}).get("char")].append(
-                        (fm.get("name") or fm.get("move"),
-                         fb.get("foeip"), fb.get("myip"), fb.get("dist"),
-                         max(fb.get("mine") or [0]), max(fb.get("foe") or [0]),
-                         fb.get("hpf")))
+                     fb.get("foeip"), fb.get("myip"), fb.get("dist"),
+                     max(fb.get("mine") or [0]), max(fb.get("foe") or [0]),
+                     fb.get("hpf")))
 
-            # PER OBSERVATION, not per engagement. attributed_gains applies three tests
-            # to each gain in turn - colour, damage and overlay - so an engagement being
-            # contaminated somewhere does not make every move inside it ambiguous.
-            #
-            # This used to be gated on eng.offence_ok as well, and that gate was doing
-            # something other than what it looked like. For twelve species the engagements
-            # that passed it were precisely the ones in which we never attacked, so the
-            # corpus reported "fought plenty, measured nothing" - which read as a fact
-            # about those creatures and was a selection effect in the gate.
-            #
-            # Removing it is checked against the species that have observations on BOTH
-            # sides: ants 10.3 vs 10.3, beeswarm 31.2 vs 30.5, redants 22.0 vs 20.8,
-            # warriorant 38.6 vs 36.2, sentinelbee 125.0 vs 103.8, fox 61.0 vs 72.3. Six
-            # of seven agree within 25%, the seventh being horse at two observations a
-            # side. Fifteen species get a first measurement they never had.
-            attributed = fightlog.attributed_gains(eng, opens, log.me)
-            if eng.problems:
-                rec["skipped"].append((os.path.basename(p), eng.problems,
-                                       len(attributed)))
+        # PER OBSERVATION, not per engagement. attributed_gains applies three tests
+        # to each gain in turn - colour, damage and overlay - so an engagement being
+        # contaminated somewhere does not make every move inside it ambiguous.
+        #
+        # This used to be gated on eng.offence_ok as well, and that gate was doing
+        # something other than what it looked like. For twelve species the engagements
+        # that passed it were precisely the ones in which we never attacked, so the
+        # corpus reported "fought plenty, measured nothing" - which read as a fact
+        # about those creatures and was a selection effect in the gate.
+        #
+        # Removing it is checked against the species that have observations on BOTH
+        # sides: ants 10.3 vs 10.3, beeswarm 31.2 vs 30.5, redants 22.0 vs 20.8,
+        # warriorant 38.6 vs 36.2, sentinelbee 125.0 vs 103.8, fox 61.0 vs 72.3. Six
+        # of seven agree within 25%, the seventh being horse at two observations a
+        # side. Fifteen species get a first measurement they never had.
+        attributed = fightlog.attributed_gains(eng, opens, log.me)
+        if eng.problems:
+            rec["skipped"].append((os.path.basename(p), eng.problems,
+                                   len(attributed)))
 
-            if my_wd:
-                for actor, name, colour, standing, gain in attributed:
-                    if actor == "me":
-                        continue
-                    oc = min(standing, 99) / 100.0
-                    if (1.0 - oc) <= 0.02:
-                        continue
-                    rec["pressure"][(name, colour)].append(gain / (1.0 - oc))
-                    rec["my_wd"].add(round(my_wd, 1))
-
+        if my_wd:
             for actor, name, colour, standing, gain in attributed:
-                # Only our own attacks measure the opponent's defence. Theirs measure
-                # ours, against an attack weight the log does not record.
-                if actor != "me":
+                if actor == "me":
                     continue
-                m = moves.get(name)
-                if m is None:
+                oc = min(standing, 99) / 100.0
+                if (1.0 - oc) <= 0.02:
                     continue
-                ob, ob_scales_with_mu = None, False
-                for o in m.get("openings") or []:
-                    if o.get("colour") == colour:
-                        ob = o.get("pct")
-                        ob_scales_with_mu = bool(o.get("mu"))
-                if not ob:
-                    continue
-                if ob_scales_with_mu:
-                    # This move's OPENING carries the deck weighting, not its attack
-                    # weight - "Openings: 20% * mu Off Balance". The correction is then
-                    # cubed rather than linear (see mu_ratio), so mixing one of these in
-                    # with the attacks would be wrong by 125% at mu 1.5. Every move that
-                    # does this today is a maneuver with no attack weight at all, so the
-                    # case does not arise; refusing it here is what keeps that from being
-                    # a silent assumption.
-                    rec["mu_scaled_openings"].add(name)
-                    continue
-                if m.get("boost_greatest"):
-                    # Opportunity Knocks MULTIPLIES the greatest standing opening. It takes
-                    # neither the cube root of the weight ratio nor the (1 - Oc) falloff -
-                    # the guide states both exclusions outright, and Sim keeps it out of
-                    # the openings loop for exactly that reason. So its gain is not a
-                    # function of Wd at all, and pushing one through defence_weight would
-                    # not read a wrong weight, it would read a meaningless one.
-                    #
-                    # No such move exists in this corpus today - the only sighting is an
-                    # overlay on another player - which is precisely when to write the
-                    # refusal down. The alternative is that the first OK-bearing log
-                    # silently poisons an opponent's Wd and nothing says which one.
-                    rec["boost_moves"].add(name)
-                    continue
-                bounds = attack_weight_bounds(m, attrs, lv.get(name))
-                if not bounds or not bounds[0]:
-                    continue
-                wa, wa_hi = bounds
-                wd = model.defence_weight(wa, gain, ob, standing / 100.0)
-                if wd > 0:
-                    lo, hi = gain_interval(wa, gain, ob, standing, wa_hi)
-                    # The ninth field is PROVENANCE: whether the engagement this came
-                    # from was clean as a whole. Per-observation attribution earns the
-                    # contaminated ones their place, but they are not equal evidence and
-                    # the pack must be able to tell them apart - see write_pack.
-                    # The tenth field is WHOSE reading this is. A defence weight recovered
-                    # from an opening gain is in the recovering character's skill frame -
-                    # inside the equalization dead zone the skill term is pinned to 1 and
-                    # the inversion hands back the ATTACKER's own weight - so readings from
-                    # two characters are not interchangeable and must not be pooled.
-                    rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi,
-                                      eng.offence_ok, (log.header or {}).get("char")))
-                    rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
-                    # Per individual AND per move. mu can only be read between two moves
-                    # thrown at the same creature - see report_mu.
-                    rec["wd_by_gob_move"].setdefault(eng.gob, {}).setdefault(
-                        name, []).append((wd, lo, hi, gain))
-                    rec["deck_at"][eng.gob] = lv
+                rec["pressure"][(name, colour)].append(gain / (1.0 - oc))
+                rec["my_wd"].add(round(my_wd, 1))
 
+        for actor, name, colour, standing, gain in attributed:
+            # Only our own attacks measure the opponent's defence. Theirs measure
+            # ours, against an attack weight the log does not record.
+            if actor != "me":
+                continue
+            m = moves.get(name)
+            if m is None:
+                continue
+            ob, ob_scales_with_mu = None, False
+            for o in m.get("openings") or []:
+                if o.get("colour") == colour:
+                    ob = o.get("pct")
+                    ob_scales_with_mu = bool(o.get("mu"))
+            if not ob:
+                continue
+            if ob_scales_with_mu:
+                # This move's OPENING carries the deck weighting, not its attack
+                # weight - "Openings: 20% * mu Off Balance". The correction is then
+                # cubed rather than linear (see mu_ratio), so mixing one of these in
+                # with the attacks would be wrong by 125% at mu 1.5. Every move that
+                # does this today is a maneuver with no attack weight at all, so the
+                # case does not arise; refusing it here is what keeps that from being
+                # a silent assumption.
+                rec["mu_scaled_openings"].add(name)
+                continue
+            if m.get("boost_greatest"):
+                # Opportunity Knocks MULTIPLIES the greatest standing opening. It takes
+                # neither the cube root of the weight ratio nor the (1 - Oc) falloff -
+                # the guide states both exclusions outright, and Sim keeps it out of
+                # the openings loop for exactly that reason. So its gain is not a
+                # function of Wd at all, and pushing one through defence_weight would
+                # not read a wrong weight, it would read a meaningless one.
+                #
+                # No such move exists in this corpus today - the only sighting is an
+                # overlay on another player - which is precisely when to write the
+                # refusal down. The alternative is that the first OK-bearing log
+                # silently poisons an opponent's Wd and nothing says which one.
+                rec["boost_moves"].add(name)
+                continue
+            # THE DECK, NOT JUST THE CARD'S LEVEL. A stance sits on the bar for the whole
+            # fight and multiplies every attack made under it - Oak Stance halves them,
+            # Combat Meditation quarters them - so an opponent recovered from a gain made
+            # under one, with the stance left out of our weight, reads as twice or four
+            # times the opponent it is. This passed `lv.get(name)` and dropped `lv`, which
+            # was safe only while the corpus held no such fight, and estimate_check carried
+            # a tripwire saying exactly that. Two fights on 2026-09-10 (Shade, Oak Stance
+            # at level 1) tripped it. The deck is in hand here; passing it is the fix, and
+            # the tripwire becomes a reading that the stance is priced.
+            bounds = attack_weight_bounds(m, attrs, lv.get(name), lv)
+            if not bounds or not bounds[0]:
+                continue
+            wa, wa_hi = bounds
+            wd = model.defence_weight(wa, gain, ob, standing / 100.0)
+            if wd > 0:
+                lo, hi = gain_interval(wa, gain, ob, standing, wa_hi)
+                # The ninth field is PROVENANCE: whether the engagement this came
+                # from was clean as a whole. Per-observation attribution earns the
+                # contaminated ones their place, but they are not equal evidence and
+                # the pack must be able to tell them apart - see write_pack.
+                # The tenth field is WHOSE reading this is. A defence weight recovered
+                # from an opening gain is in the recovering character's skill frame -
+                # inside the equalization dead zone the skill term is pinned to 1 and
+                # the inversion hands back the ATTACKER's own weight - so readings from
+                # two characters are not interchangeable and must not be pooled.
+                # The eleventh field is WHICH CREATURE. The ten above describe a
+                # reading; this says whose it is, so the same skill derivation that
+                # produces the species value can be run over one animal - see
+                # individuals(). Appended rather than inserted because several
+                # readers unpack this tuple by position.
+                rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi,
+                                  eng.offence_ok, (log.header or {}).get("char"),
+                                  eng.gob))
+                rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
+                # Per individual AND per move. mu can only be read between two moves
+                # thrown at the same creature - see report_mu.
+                rec["wd_by_gob_move"].setdefault(eng.gob, {}).setdefault(
+                    name, []).append((wd, lo, hi, gain))
+                rec["deck_at"][eng.gob] = lv
+
+        # rec["hits"] is deliberately NOT filled. fightlog.hits() was collected here and
+        # read by nothing - the damage replay builds its own pair list from the same
+        # function - so a stored copy only invited a later reader to assume the damage
+        # observations were consumed somewhere. The key stays declared in _blank_rec /
+        # _LIST_KEYS so an empty merge does not KeyError, but it is always empty.
+
+        for m in eng.moves:
+            if m.get("actor") == "me":
+                name = m.get("name") or m.get("move")
+                if m.get("cd", -1) > 0:
+                    rec["cd"][name].add(m["cd"])
+                    mv = moves.get(name)
+                    # Maneuvers take no agility term, so they say nothing about the
+                    # opponent and are not observations of it. Opportunity Knocks
+                    # declares an attack_skill and no attack_types yet rides the band.
+                    if (agi_me and mv and (mv.get("cooldown") is not None)
+                            and (mv.get("attack_types") or mv.get("attack_skill"))):
+                        o = (mv["cooldown"], m["cd"], agi_me)
+                        rec["agi_obs"].add(o)
+                        rec["agi_obs_by_gob"][eng.gob].add(o)
+                        if eng.offence_ok:
+                            rec["agi_obs_clean"].add(o)
+                            rec["agi_obs_clean_by_gob"][eng.gob].add(o)
+            elif theirs(eng, m):
+                # THIS creature's card, not whatever else was in the fight - see
+                # theirs(). Ants came out of this holding Bear Down, Chomp, Fell
+                # Scratch and Rampant Rage, and threw none of them once.
+                rec["their_moves"][m.get("name") or m.get("move")].add(m.get("cd"))
+
+        if eng.defence_ok:
             for h in fightlog.hits(eng, log.me):
-                if h["actor"] == "me":
-                    rec["hits"].append(h)
+                if h["actor"] != "me":
+                    rec["took"].append(h)
+    return per, foe_delta
 
-            for m in eng.moves:
-                if m.get("actor") == "me":
-                    name = m.get("name") or m.get("move")
-                    if m.get("cd", -1) > 0:
-                        rec["cd"][name].add(m["cd"])
-                        mv = moves.get(name)
-                        # Maneuvers take no agility term, so they say nothing about the
-                        # opponent and are not observations of it. Opportunity Knocks
-                        # declares an attack_skill and no attack_types yet rides the band.
-                        if (agi_me and mv and (mv.get("cooldown") is not None)
-                                and (mv.get("attack_types") or mv.get("attack_skill"))):
-                            o = (mv["cooldown"], m["cd"], agi_me)
-                            rec["agi_obs"].add(o)
-                            rec["agi_obs_by_gob"][eng.gob].add(o)
-                            if eng.offence_ok:
-                                rec["agi_obs_clean"].add(o)
-                                rec["agi_obs_clean_by_gob"][eng.gob].add(o)
-                elif theirs(eng, m):
-                    # THIS creature's card, not whatever else was in the fight - see
-                    # theirs(). Ants came out of this holding Bear Down, Chomp, Fell
-                    # Scratch and Rampant Rage, and threw none of them once.
-                    rec["their_moves"][m.get("name") or m.get("move")].add(m.get("cd"))
 
-            if eng.defence_ok:
-                for h in fightlog.hits(eng, log.me):
-                    if h["actor"] != "me":
-                        rec["took"].append(h)
-
+def collect(paths):
+    _FOE_CARD.clear()
+    _CARD_SHEET.clear()
+    moves = load_moves()
+    wiki = wiki_creatures()
+    opens = opens_map(moves)
+    per = defaultdict(_blank_rec)
+    for _part, _foe, _cards in estimate_parallel.map_chunks("collect", sorted(paths)):
+        _merge_per(per, _part)
+        _merge_foe(_FOE_CARD, _foe)
+        for _nm, _sheet in _cards.items():
+            _CARD_SHEET.setdefault(_nm, _sheet)
     for rec in per.values():
         # Fold the per-logger tallies into one figure per individual: the FULLEST witness,
         # not the sum. Every witness sees the whole fight's damage drawn on the target, so
@@ -3254,32 +3394,11 @@ def animal_move_cooldowns(paths=None):
     """
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
+    # Ordered map of raw gaps; the median/floor reduce below stays single-pass.
     gaps = defaultdict(list)
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, None)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        for eng in log.engagements:
-            if getattr(eng, "others_present", True):
-                continue
-            if not getattr(eng, "offence_ok", False):
-                continue
-            seq = defaultdict(list)
-            for m in eng.moves:
-                if (m.get("actor") != "foe") or not theirs(eng, m):
-                    continue
-                nm, t = m.get("name") or m.get("move"), m.get("t")
-                if nm and (t is not None):
-                    seq[nm].append(t)
-            for nm, ts in seq.items():
-                ts = sorted(set(ts))
-                for a, b in zip(ts, ts[1:]):
-                    d = (b - a) / 60.0          # milliseconds to ticks
-                    if 0.5 < d < 400:
-                        gaps[nm].append(d)
+    for part in estimate_parallel.map_chunks("animal_cooldowns", sorted(paths)):
+        for nm, v in part.items():
+            gaps[nm].extend(v)
     out = {}
     for nm, v in gaps.items():
         if len(v) < CD_MIN_PAIRS:
@@ -3341,24 +3460,9 @@ def animal_move_soak(paths=None):
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
     band = defaultdict(list)
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, None)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        for eng in log.engagements:
-            for h in fightlog.hits(eng, log.me):
-                if h.get("actor") == "me":
-                    continue
-                shp, soak = (h.get("shp") or 0), (h.get("soaked") or 0)
-                tot = shp + soak
-                if (tot < 4) or (tot >= 8):
-                    continue                    # matched band, so size cannot explain it
-                nm = h.get("move")
-                if nm:
-                    band[nm].append(soak / float(tot))
+    for part in estimate_parallel.map_chunks("animal_soak", sorted(paths)):
+        for nm, v in part.items():
+            band[nm].extend(v)
     out = {}
     for nm, v in band.items():
         if len(v) < 10:
@@ -3393,30 +3497,11 @@ def animal_move_restores(paths=None):
     """
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
-    obs = defaultdict(lambda: defaultdict(list))
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, None)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        for eng in log.engagements:
-            for m in eng.moves:
-                if (m.get("actor") != "foe") or not theirs(eng, m):
-                    continue
-                nm = m.get("name") or m.get("move")
-                if not nm:
-                    continue
-                before, after = eng.brackets(m)
-                if (before is None) or (after is None):
-                    continue
-                bv, av = before.get("foe"), after.get("foe")
-                if not bv or not av:
-                    continue
-                for c in range(4):
-                    if bv[c] >= 5:
-                        obs[nm][c].append(max(0, bv[c] - av[c]) / float(bv[c]))
+    obs = defaultdict(_by_char_list)
+    for part in estimate_parallel.map_chunks("animal_restores", sorted(paths)):
+        for nm, bycol in part.items():
+            for c, v in bycol.items():
+                obs[nm][c].extend(v)
     out = {}
     for nm, bycol in obs.items():
         shares, ns, any_real = {}, {}, False
@@ -3452,21 +3537,9 @@ def animal_move_grievous(paths=None):
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
     obs = defaultdict(list)
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, None)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        for eng in log.engagements:
-            for h in fightlog.hits(eng, log.me):
-                if h.get("actor") == "me":
-                    continue
-                shp, hhp = (h.get("shp") or 0), (h.get("hhp") or 0)
-                nm = h.get("move")
-                if nm and (shp > 0):
-                    obs[nm].append(hhp / float(shp))
+    for part in estimate_parallel.map_chunks("animal_grievous", sorted(paths)):
+        for nm, v in part.items():
+            obs[nm].extend(v)
     out = {}
     for nm, v in obs.items():
         if len(v) < 10:
@@ -3687,54 +3760,17 @@ def mu_from_reductions(logs=None):
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
-    moves = load_moves()
-    opens = opens_map(moves)
-    red = dict((n, [(t["colour"], t["pct"]) for t in (m.get("reduces") or [])])
-               for n, m in moves.items() if m.get("reduces"))
+    # Ordered map; midpoints, spans and inert counts are merged per key in file order.
     out = defaultdict(list)
     spans = defaultdict(list)
     inert = defaultdict(int)
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path, opens)
-        except Exception:
-            continue
-        if fightlog.is_ranged(log):  # ranged: no openings, melee instruments do not apply
-            continue
-        lv = levels_for_log(log)
-        for eng in log.engagements:
-            for m in eng.moves:
-                nm = m.get("name")
-                if (m.get("actor") != "me") or (nm not in red):
-                    continue
-                level = lv.get(nm)
-                if not level:
-                    continue
-                before_s, after_s = eng.brackets(m)
-                if (before_s is None) or (after_s is None):
-                    continue
-                bv, av = before_s.get("mine"), after_s.get("mine")
-                if not bv or not av:
-                    continue
-                for colour, pct in red[nm]:
-                    i = fightlog.COLOURS.index(colour)
-                    share = pct / 100.0
-                    before, after = bv[i], av[i]
-                    # Below 8 points the display's truncation is worth more than the
-                    # reduction itself, and the interval covers everything.
-                    if (before < 8) or (share <= 0):
-                        continue
-                    if after >= before:
-                        inert[(level, nm)] += 1
-                        continue
-                    lo = (1.0 - ((after + 1.0) / (before + 1.0))) / share
-                    hi = (1.0 - (after / before)) / share
-                    out[(level, nm)].append((lo + hi) / 2.0)
-                    # The raw pair travels with the interval. A reading that misses
-                    # containing 1.0 at level 1 needs the standing values to say by how
-                    # much, and (lo, hi) alone cannot: adding a point back to `after` is
-                    # not a transformation of the interval. See decayed_span().
-                    spans[(level, nm)].append((lo, hi, before, after, share))
+    for part in estimate_parallel.map_chunks("mu_from_reductions", sorted(logs)):
+        for key, vals in part[0].items():
+            out[key].extend(vals)
+        for key, n in part[1].items():
+            inert[key] += n
+        for key, vals in part[2].items():
+            spans[key].extend(vals)
     return out, inert, spans
 
 
@@ -3778,7 +3814,7 @@ def report_mu_reductions():
     for (level, nm), vals in sorted(rows.items()):
         vals = sorted(vals)
         med = vals[len(vals) // 2]
-        direct = MU_MEASURED.get(level)
+        direct = measured_mu()[0].get(level)
         print("  %-6s %-15s %-5d %-8.3f %-8s %d"
               % (level, nm[:15], len(vals), med,
                  ("%.3f-%.3f" % direct) if direct else "-", inert.get((level, nm), 0)))
@@ -4337,7 +4373,54 @@ def foe_skill_entry(rec):
     hundreds of rows is stable, while the rows behind them scatter by thirty. An interval
     built from the medians is far too tight to hold a single observation, and a single
     observation is exactly what replay compares against it.
+
+    ONE SPECIES READ BY SEVERAL CHARACTERS IS SEVERAL MEASUREMENTS. Equalization's dead
+    zone means the same animal yields a different apparent weight to each attacker, so a
+    pooled median can sit where no character ever measured it (Simpson's paradox;
+    wd_consensus_by_char exists for the same reason). The rows are split by character and
+    the per-character entries combined honestly.
     """
+    rows = [r for r in (rec.get("wd") or ()) if len(r) > 9 and r[9]]
+    chars = sorted(set(r[9] for r in rows))
+    if len(chars) > 1:
+        parts = []
+        for c in chars:
+            sub = dict(rec)
+            sub["wd"] = [r for r in rows if r[9] == c]
+            got = foe_skill_entry(sub)
+            if got:
+                parts.append(got)
+        if not parts:
+            return None
+        if len(parts) == 1:
+            return parts[0]
+        vals = sorted(p["value"] for p in parts if p.get("value") is not None)
+        moves = []
+        for p in parts:
+            for mv in p.get("moves") or ():
+                if mv not in moves:
+                    moves.append(mv)
+        lo = min(p["lo"] for p in parts)
+        hi = max(p["hi"] for p in parts)
+        n = sum(p.get("n") or 0 for p in parts)
+        obs = sum(p.get("obs") or 0 for p in parts)
+        if not vals:
+            return {"value": None, "lo": round(lo, 1), "hi": round(hi, 1),
+                    "n": 0, "moves": moves, "equalized": True}
+        med = vals[len(vals) // 2]
+        out = {"value": round(med, 1), "lo": round(lo, 1), "hi": round(hi, 1),
+               "n": n, "obs": obs, "moves": moves, "equalized": False}
+        # A creature read differently by different characters is exactly the case the split
+        # exists to expose; report the disagreement rather than average it away.
+        for p in parts:
+            if p.get("value") is None:
+                # A part that measured only a bound carries no value to compare; it cannot
+                # disagree with anyone, and `q["lo"] <= None` raises.
+                continue
+            others = [q for q in parts if q is not p and q.get("value") is not None]
+            if others and not any(q["lo"] <= p["value"] <= q["hi"] for q in others):
+                out["disputed"] = True
+        return out
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
@@ -4672,7 +4755,7 @@ def report_mu(per):
           % ("level", "mu", "interval", "n", "Take Aim says", "linear said", "measured on"))
     for lvl, mu, lo, hi, n, name, mv, ref in sorted(rows):
         pred = mu_linear(lvl)
-        direct = MU_MEASURED.get(lvl)
+        direct = measured_mu()[0].get(lvl)
         print("  %-6s %-6.2f %-16s %-5d %-13s %-11s %s vs %s, %s"
               % (lvl, mu, "%.2f - %.2f" % (lo, hi), n,
                  ("%.3f-%.3f" % direct) if direct else "-",
@@ -4804,7 +4887,8 @@ def report(per, moves):
             # against one opponent therefore measure the RATIO of their mu, which is
             # otherwise only readable from moves whose cooldown divides by it.
             bymove = defaultdict(list)
-            for mv, _c, _st, _g, wa, wd, lo, hi, _clean, _char in rec["wd"]:
+            for row in rec["wd"]:
+                mv, wa, wd, lo, hi = row[0], row[4], row[5], row[6], row[7]
                 bymove[mv].append((wa, wd, lo, hi))
             if len(bymove) > 1:
                 print("                   per move. Read the Wd/Wa column, not the Wd one:")
@@ -5335,6 +5419,10 @@ def threat(rec):
 
 
 PACK = os.path.join(ROOT, "data", "combat", "opponents.json")
+# The per-individual joint records. Beside the pack and NOT inside it: the running
+# client parses opponents.json at startup and these rows took it from 325 KB to
+# 1.2 MB, for data only the offline sweep reads. See individuals().
+INDIVIDUALS = os.path.join(ROOT, "data", "combat", "individuals.json")
 SEEN = os.path.join(ROOT, "data", "combat", "weapons_seen.json")
 CHARS = os.path.join(ROOT, "data", "combat", "characters.json")
 WEAPONS_PACK = os.path.join(ROOT, "data", "combat", "weapons.json")
@@ -5343,11 +5431,42 @@ WEAPONS_PACK = os.path.join(ROOT, "data", "combat", "weapons.json")
 # the data pack is keyed on the page title, and nothing derives one from the other.
 # Lives here rather than in replay because it is a fact about the corpus, and the
 # character export needs it too - replay reads it back off this module.
+#
+# THE JOIN MISSES SILENTLY, AND IT WAS MISSING. A resource with no entry here resolves to
+# no weapon, so replay.weapon_at returns None and every weapon-based damage prediction in
+# that fight quietly declines - no error, no count, just fewer rows. Five resources that
+# occur in the corpus had no entry, `fyrdsword` in 589 files; and one entry that was here,
+# "fyrdswordsman", occurs in no file at all and was a guess at the same item's resource.
+#
+# THE IDENTIFICATIONS ARE NOT GUESSES. The `wpn` row carries the item's OWN tooltip, and
+# two of its figures - armour penetration and range - are also columns in the wiki table,
+# so each resource can be identified against the table without touching its name:
+#
+#     resource         tooltip (armpen, range)   table rows matching both
+#     fyrdsword        0.10, 1.2                 Fyrdsman's Sword          (unique)
+#     pickaxe          0.30, 1.2                 Pickaxe                   (unique)
+#     woodsmansaxe     0.20, 1.2                 Woodsman's Axe            (unique)
+#     stoneaxe         0.20, 1.0                 four rows share this pair
+#     butcherscleaver  0.20, 1.0                 the same four
+#
+# The last two are separated by the resource basename, which is what the join is for; the
+# first three are pinned by the item itself. `huntersbow` is deliberately absent: a bow
+# carries neither figure, and fightlog.is_ranged excludes those fights anyway.
+#
+# Note the tooltip's DAMAGE is not the table's base and must never be substituted for it -
+# bronzesword tooltips 224 or 236 against a table base of 90.
 WEAPON_RES = {
     "bronzesword": "Bronze Sword",
+    "fyrdsword": "Fyrdsman's Sword",
+    "pickaxe": "Pickaxe",
+    "stoneaxe": "Stone Axe",
+    "woodsmansaxe": "Woodsman's Axe",
+    "butcherscleaver": "Butcher's Cleaver",
+    # Not seen in this corpus. Kept because the table has the rows and a fight with one
+    # would otherwise decline silently, which is the defect above; they are unconfirmed
+    # spellings and the first log carrying one will say whether they were right.
     "cutblade": "Cutblade",
     "hirdswordsman": "Hirdsman's Sword",
-    "fyrdswordsman": "Fyrdsman's Sword",
     "battleaxe": "Battleaxe of the Twelfth Bay",
     "boarspear": "Boar Spear",
 }
@@ -5388,6 +5507,90 @@ def report_sfx_and_outcomes(per):
     print()
 
 
+def _weapons_pack_map():
+    """{wiki name: (basedmg, armorpen)} from the weapons pack, or {} on failure."""
+    try:
+        with open(WEAPONS_PACK, "r", encoding="utf-8", errors="replace") as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        doc = []
+    rows = doc if isinstance(doc, list) else sum(
+        (v for v in doc.values() if isinstance(v, list)), [])
+    wep = {}
+    for r in rows:
+        if not isinstance(r, dict) or not r.get("name"):
+            continue
+        def _v(k):
+            v = r.get(k)
+            return v.get("value") if isinstance(v, dict) else v
+        if _v("basedmg"):
+            wep[r["name"]] = (_v("basedmg"), _v("armorpen"))
+    return wep
+
+
+def _character_file(p, wep):
+    """One log's contribution to write_characters, or None if it carries no character.
+
+    A per-file projection: one fight for the character, the newest attributes it logged,
+    the last weapon/armour seen WITHIN the file, and the fight's wall time. The parent
+    keeps the reading with the newest wall time (file order breaks ties), because path
+    order is not time order.
+    """
+    try:
+        log = fightlog.read(p, None)
+    except (OSError, ValueError):
+        return None
+    if not log.rows:
+        return None
+    head = log.header or {}
+    who, attr = head.get("char"), head.get("attr") or {}
+    if not who or not attr:
+        return None
+    d = {"logs": 1, "attr": attr}
+    # The game's own figures for what is in hand, keyed by resource basename. The gear
+    # rows say WHAT is held and the weapon rows say what it does.
+    wrange = {}
+    for w in log.weapons:
+        v = w.get("v") or {}
+        if v.get("range") is not None:
+            wrange[(w.get("res") or "").split("/")[-1]] = v["range"]
+    # Slot state, not a running total: a row with a null resource is a slot being
+    # emptied, and summing rows in file order would keep counting armour that has
+    # been taken off.
+    slots = {}
+    for g in log.gear:
+        sl = g.get("slot")
+        if sl is not None:
+            if g.get("res") is None:
+                slots.pop(sl, None)
+            else:
+                slots[sl] = g
+        res = (g.get("res") or "").split("/")[-1]
+        nm = WEAPON_RES.get(res)
+        if nm and (nm in wep):
+            dmg, pen = wep[nm]
+            d["weapon"] = {"name": nm, "base_damage": dmg, "ql": g.get("ql"),
+                           "armour_pen": (pen or 0) / 100.0,
+                           # HOW FAR IT REACHES, which only the item knows - the wiki
+                           # table has no range column. It is a multiple of the unarmed
+                           # reach: a sword is 1.2, a stone axe is 1.0, and the corpus
+                           # puts an unarmed swing and a 1.0 weapon at the same 18.7
+                           # units. Without it a sweeping card has no radius and every
+                           # opponent stands inside every swing.
+                           "range": wrange.get(res)}
+    if slots:
+        d["armour"] = {
+            "hard": sum((g.get("hard") or 0) for g in slots.values()),
+            "soft": sum((g.get("soft") or 0) for g in slots.values()),
+            "pieces": len(slots),
+        }
+        # Shield Up is 250% of the block weight with a shield and 50% without - a
+        # factor of five on the one number a stance exists to set. Whether we are
+        # holding one is therefore not a detail, and it is in the gear rows.
+        d["shield"] = any(("shield" in (g.get("res") or "")) for g in slots.values())
+    return (who, d, head.get("wall") or 0)
+
+
 def write_characters(paths=None):
     """Every character the corpus has fought as, with the numbers a fight needs.
 
@@ -5409,22 +5612,7 @@ def write_characters(paths=None):
     """
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
-    try:
-        with open(WEAPONS_PACK, "r", encoding="utf-8", errors="replace") as f:
-            doc = json.load(f)
-    except (OSError, ValueError):
-        doc = []
-    rows = doc if isinstance(doc, list) else sum(
-        (v for v in doc.values() if isinstance(v, list)), [])
-    wep = {}
-    for r in rows:
-        if not isinstance(r, dict) or not r.get("name"):
-            continue
-        def _v(k):
-            v = r.get(k)
-            return v.get("value") if isinstance(v, dict) else v
-        if _v("basedmg"):
-            wep[r["name"]] = (_v("basedmg"), _v("armorpen"))
+    wep = _weapons_pack_map()
 
     # The newest dump per character. DECKS is (wall time, {move: level}, character),
     # oldest first, so the last one wins.
@@ -5433,70 +5621,24 @@ def write_characters(paths=None):
         if ch and lv:
             owned[ch] = lv
 
+    # Ordered map; per-file projections fold by WALL TIME, newest reading wins. The newest
+    # reading and not the last file sorted by path: attributes are trained between fights,
+    # so the character as it stands is the newest reading, and path order is not time order.
+    # File order breaks ties so the merge stays deterministic and parallel == serial.
     seen = {}
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, None)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        head = log.header or {}
-        who, attr = head.get("char"), head.get("attr") or {}
-        if not who or not attr:
-            continue
-        d = seen.setdefault(who, {"name": who, "logs": 0})
-        d["logs"] += 1
-        # LAST WINS. Attributes are trained between fights, so the newest reading is the
-        # character as it stands; an older one describes somebody who has since improved.
-        d["attr"] = attr
-        # WHAT IS WORN, AND WHAT IT SOAKS. A duel fought naked is not this character's
-        # duel: ZzxcuV3 carries 79 hard and 67 soft, against a Bronze Sword listed at 90,
-        # so leaving armour out roughly doubles how fast everything dies and hands the
-        # fight to whoever swings first. The client writes hard and soft on every gear
-        # row itself, so this needs no matching against the wiki.
-        #
-        # Slot state, not a running total: a row with a null resource is a slot being
-        # emptied, and summing rows in file order would keep counting armour that has
-        # been taken off.
-        # The game's own figures for what is in hand, keyed by resource basename. The
-        # gear rows say WHAT is held and the weapon rows say what it does.
-        wrange = {}
-        for w in log.weapons:
-            v = w.get("v") or {}
-            if v.get("range") is not None:
-                wrange[(w.get("res") or "").split("/")[-1]] = v["range"]
-        slots = {}
-        for g in log.gear:
-            sl = g.get("slot")
-            if sl is not None:
-                if g.get("res") is None:
-                    slots.pop(sl, None)
-                else:
-                    slots[sl] = g
-            res = (g.get("res") or "").split("/")[-1]
-            nm = WEAPON_RES.get(res)
-            if nm and (nm in wep):
-                dmg, pen = wep[nm]
-                d["weapon"] = {"name": nm, "base_damage": dmg, "ql": g.get("ql"),
-                               "armour_pen": (pen or 0) / 100.0,
-                               # HOW FAR IT REACHES, which only the item knows - the wiki
-                               # table has no range column. It is a multiple of the unarmed
-                               # reach: a sword is 1.2, a stone axe is 1.0, and the corpus
-                               # puts an unarmed swing and a 1.0 weapon at the same 18.7
-                               # units. Without it a sweeping card has no radius and every
-                               # opponent stands inside every swing.
-                               "range": wrange.get(res)}
-        if slots:
-            d["armour"] = {
-                "hard": sum((g.get("hard") or 0) for g in slots.values()),
-                "soft": sum((g.get("soft") or 0) for g in slots.values()),
-                "pieces": len(slots),
-            }
-            # Shield Up is 250% of the block weight with a shield and 50% without - a
-            # factor of five on the one number a stance exists to set. Whether we are
-            # holding one is therefore not a detail, and it is in the gear rows.
-            d["shield"] = any(("shield" in (g.get("res") or "")) for g in slots.values())
+    wall_of = {}
+    for part in estimate_parallel.map_chunks("write_characters", sorted(paths)):
+        for who, rec, wall in part:
+            d = seen.setdefault(who, {"name": who, "logs": 0})
+            d["logs"] += rec["logs"]
+            if wall >= wall_of.get(who, -1):
+                wall_of[who] = wall
+                d["attr"] = rec["attr"]
+                if "weapon" in rec:
+                    d["weapon"] = rec["weapon"]
+                if "armour" in rec:
+                    d["armour"] = rec["armour"]
+                    d["shield"] = rec["shield"]
 
     out = []
     for who in sorted(seen):
@@ -5557,6 +5699,97 @@ def kind_of(name, res):
     if str(name).startswith("?#"):
         return "unknown"
     return "creature"
+
+
+def individuals(rec):
+    """Every creature of this species the corpus measured on more than one axis, singly.
+
+    THE PACK'S OTHER INTERVALS ARE MARGINAL, AND A CONSUMER COMBINED THEM. Pack.Opponent's
+    toughest() took an independent extreme on each of skill, agility, hitpoints and armour,
+    which describes a creature that was simultaneously the most defended, fastest, largest
+    and strongest ever seen. No such animal existed, and every live prediction and every
+    deck recommendation was generated against it. The joint was unrecoverable from the pack
+    because the pack threw the identity away here: every quantity is keyed by gob inside
+    collect() and every quantity was written out pooled.
+
+    So the identity is kept. One row per individual, carrying what was measured OF THAT ONE
+    CREATURE, and a consumer that wants the hardest opponent simulates against each and
+    takes the worst rather than building a chimera.
+
+    Corpus-wide: 3,476 individuals carry at least one axis and 2,992 carry both an agility
+    interval and a defence weight. The distortion this removes is worth a median 0.057 of
+    cooldown factor and 0.122 at the tail, against a band 0.200 wide, always in the
+    direction of an opponent harder than any that was ever fought.
+
+    ONLY THE ONES THAT CONSTRAIN A FIGHT ARE WRITTEN. A record with one axis cannot stand
+    in for an opponent - the other three would have to come from the pooled intervals, which
+    is the chimera again in miniature - so an individual needs at least an agility reading
+    and a defence weight to earn a row. That is 2,976 of 3,476, and it keeps this file at a
+    size the client can still load: the untrimmed form took opponents.json from 325 KB to
+    1.6 MB, which is shipped in the jar and parsed at startup.
+
+    Numbers are rounded to a tenth. The agility interval is already the width of a
+    quantised cooldown reading, so the digits below that are arithmetic, not measurement.
+    """
+    agi = rec.get("agi_obs_by_gob") or {}
+    wd = rec.get("wd_by_gob") or {}
+    dealt = rec.get("dealt") or {}
+    killed = rec.get("killed") or set()
+    out = []
+    for gob in sorted(set(agi) & set(wd)):
+        row = {"gob": gob}
+        axes = []
+        if gob in agi:
+            got = _pool_agility(list(agi[gob]), {gob: agi[gob]})
+            iv = got[0] if isinstance(got, tuple) else got
+            capped = False
+            try:
+                lo, hi = iv[0], iv[1]
+                capped = bool(iv[2]) if len(iv) > 2 else False
+            except (TypeError, IndexError):
+                lo = hi = None
+            if (lo is not None) or (hi is not None):
+                # `capped` IS NOT A DETAIL. An observation whose cooldown sat at the clamp
+                # says only "this animal is at most half OUR agility", which is a fact about
+                # the observer. The corpus was recorded across our agility rising from 58 to
+                # 283, so the same animal's ceiling reads more than four times looser at the
+                # end than at the start, and 66 of the pack's 74 agility entries are set by
+                # such a bound. A consumer that treats it as a measurement will watch every
+                # creature get faster as the character trains.
+                row["agility"] = {
+                    "lo": (None if lo is None else round(lo, 1)),
+                    "hi": (None if (hi is None) or (hi == float("inf")) else round(hi, 1)),
+                    "capped": capped,
+                    "n": len(agi[gob])}
+                axes.append("agility")
+        # NO PER-INDIVIDUAL SKILL, AND THE REASON IS THE EQUALIZATION BRANCH.
+        #
+        # The obvious move is to run foe_skill_entry over this one creature's rows, the way
+        # wd_consensus_by_char runs it per character. It does not survive its own check. The
+        # recovery picks a branch - F = Wd/2 below the dead zone, F = 2*Wd above it, only a
+        # bound inside it - and the branch is decided from how the opponent's skill compares
+        # with ours. One creature's rows can land on a different branch from the pooled set,
+        # and the two answers then differ by up to a factor of four with nothing in either
+        # to say which is right. Measured over the corpus: the median individual came out
+        # 2.93x the species value for caveangler, 1.87x for wolf and 0.49x for horse, while
+        # the other 49 species agreed. Those ratios are branch boundaries, not noise.
+        #
+        # So the skill is left to the species entry, where the branch is decided once over
+        # every observation, and a consumer filling out an individual takes it from there.
+        # Agility and hitpoints have no such ambiguity and are the creature's own.
+        #
+        # Making it per-individual needs the branch pinned first - the same open question
+        # the pack already records as `equalized` - not a wider tolerance on this check.
+        # HITPOINTS ONLY FOR THE ONES THAT DIED. A survivor's total damage is a floor on
+        # its hitpoints and not a reading of them, and a floor dressed as a value is how
+        # the pooled entry came to describe an animal nobody killed.
+        if (gob in killed) and dealt.get(gob):
+            row["hitpoints"] = {"value": dealt[gob], "killed": True}
+            axes.append("hitpoints")
+        if len(axes) < 2:
+            continue
+        out.append(row)
+    return out
 
 
 def write_pack(per, moves):
@@ -5679,6 +5912,24 @@ def write_pack(per, moves):
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
     print("wrote %s  (%d opponent(s))" % (os.path.relpath(PACK, ROOT), len(out)))
+
+    # ONE FILE, ONE AUDIENCE. The joint per-individual records go beside the pack
+    # rather than into it, because the running client loads opponents.json and has no
+    # use for them - the sweep that reads them is offline, and the pack is already the
+    # thing a fight is decided from. Keyed by species so a consumer joins on the name
+    # it already has.
+    joint = {}
+    for nm in sorted(per):
+        rows = individuals(per[nm])
+        if rows:
+            joint[nm] = rows
+    with open(INDIVIDUALS, "w", encoding="utf8") as f:
+        json.dump({"source": "one row per creature measured on two or more axes",
+                   "species": joint}, f, indent=1, sort_keys=True)
+        f.write("\n")
+    print("wrote %s  (%d creature(s) across %d species)"
+          % (os.path.relpath(INDIVIDUALS, ROOT),
+             sum(len(v) for v in joint.values()), len(joint)))
 
     # What the client itself said about the weapons we held, which beats the scrape
     # where the two disagree - see weapons_seen. Written beside the pack rather than

@@ -222,6 +222,28 @@ public class CombatMeta {
             List<Move> rm = resp.moves(sheet);
             Combatant rc = CombatDeckSearch.withStance(who.combatant(), resp, sheet);
             double gain = against(who, sheet, resp, decks, mix, JUDGE_DEPTH);
+            /* THE POOL IS ITS OWN BEST RESPONSE, AND IT MUST BE TRIED. The greedy builds the
+             * answer from an empty deck and never considers the decks already in the pool,
+             * so it can return something that scores WORSE THAN EVEN while a pool deck
+             * scores zero against the same mixture - and a zero response is always available
+             * by symmetry, since the mixture's own value is zero. Observed on ZzxcuV3:
+             * answer 2 scored -0.274 while answer 1, in the pool at weight 1.0, scores 0.
+             * A best response with no floor is not a lower bound on anything, and the
+             * stopping rule below reads a negative number as "the greedy got lost" rather
+             * than as "nothing here beats zero".
+             *
+             * So every pool deck is evaluated against the same mixture and the best of them
+             * floors the gain. When a pool deck wins it is reported as the answer, so the
+             * deck printed is the one the score belongs to. */
+            for(int i = 0; i < decks.size(); i++) {
+                double v = against(who, sheet, decks.get(i), decks, mix, JUDGE_DEPTH);
+                if(v > gain) {
+                    gain = v;
+                    resp = decks.get(i);
+                    rm = resp.moves(sheet);
+                    rc = CombatDeckSearch.withStance(who.combatant(), resp, sheet);
+                }
+            }
 
             System.out.printf("  %-12s %s%n", "answer " + r,
                               CombatDeckSearch.shorten(resp, sheet));
@@ -287,9 +309,13 @@ public class CombatMeta {
                 }
                 break;
             }
-            decks.add(resp);
-            pool.add(rm);
-            names.add("answer " + r);
+            /* A pool deck that won the floor above is already in the pool; adding it twice
+             * would only duplicate a row in the payoff matrix. */
+            if(!decks.contains(resp)) {
+                decks.add(resp);
+                pool.add(rm);
+                names.add("answer " + r);
+            }
 
             int n = pool.size();
             double[][] np = new double[n][n];

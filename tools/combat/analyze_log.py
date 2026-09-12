@@ -57,21 +57,27 @@ def states(rows):
     return [r for r in rows if r.get("ev") == "state"]
 
 
-def near_before(sts, t):
-    best = None
-    for s in sts:
-        if s["t"] <= t:
-            best = s
-        else:
-            break
-    return best
+def brackets_of(log):
+    """{move t: (before, after)} for every move, from the shared primitives.
 
+    THIS FILE USED TO PAIR ITS OWN. `near_before` took the last state at or before a
+    move's timestamp and `near_after` the first within 600 ms, which is neither
+    brackets()' file-position rule nor its intervening-move stop nor the announcement
+    anchor - so a human reading one log here saw the same inflated openings and damage
+    that fightlog.hits was fixed for, and saw them after the fix. A second copy of a
+    rule is a copy that drifts, and this one had.
 
-def near_after(sts, t, window):
-    for s in sts:
-        if t < s["t"] <= t + window:
-            return s
-    return None
+    Keyed on the move's `t` rather than on identity, because this module reads the
+    file into its own rows for printing and fightlog parses its own; the timestamps
+    are the same integers in both.
+    """
+    out = {}
+    for eng in log.engagements:
+        for m in eng.moves:
+            _b, after = eng.brackets(m)
+            before = eng.announced_before(m, log.me)
+            out[m.get("t")] = (before, after)
+    return out
 
 
 def header(rows):
@@ -180,7 +186,7 @@ def report_moves(rows):
             print("      %-6s %-24s %s" % (actor, name, cds))
 
 
-def report_effects(rows):
+def report_effects(rows, log):
     """For every move, the opening it inflicted and the damage it did.
 
     This is the raw material the formulas are checked against: opening growth
@@ -188,6 +194,7 @@ def report_effects(rows):
     sts = states(rows)
     if not sts:
         return
+    brk = brackets_of(log)
     dmgs = [r for r in rows if r.get("ev") == "dmg"]
     moves = [r for r in rows if r.get("ev") == "move"]
     if not moves:
@@ -199,8 +206,7 @@ def report_effects(rows):
           % ("t(ms)", "actor", "move", "before", "after", "damage", "delta"))
     for m in moves:
         t = m["t"]
-        b = near_before(sts, t)
-        a = near_after(sts, t, AFTER_MS)
+        b, a = brk.get(t, (None, None))
         if b is None:
             continue
         key = "foe" if m["actor"] == "me" else "mine"
@@ -280,16 +286,16 @@ def combined(op, colours=None):
 # error survived as long as it did.
 soaked = model.dealt_damage
 
-def move_colours(rows):
+def move_colours(rows, log):
     """Which openings each move actually raises, learned from the fight rather than
     looked up. A move's damage reads the opening it is itself aimed at: Quick Barrage
     is Oppressive and reads Cornered alone. Reading the combined opening instead
     understates C badly whenever some other colour happens to be up."""
-    sts = states(rows)
+    brk = brackets_of(log)
     seen = defaultdict(lambda: [0, 0, 0, 0])
     uses = defaultdict(int)
     for m in [r for r in rows if r.get("ev") == "move"]:
-        b, a = near_before(sts, m["t"]), near_after(sts, m["t"], AFTER_MS)
+        b, a = brk.get(m["t"], (None, None))
         if b is None or a is None:
             continue
         key = "foe" if m["actor"] == "me" else "mine"
@@ -342,7 +348,7 @@ def fit_soak(pts, armpen=0.0):
     return (c, h, sf, (e / len(pts)) ** 0.5)
 
 
-def report_damage_model(rows):
+def report_damage_model(rows, log):
     """Recover the attacker's damage constant and the defender's armour from a fight.
 
     Within one fight everything in the damage term except the opening is constant -
@@ -355,8 +361,9 @@ def report_damage_model(rows):
         return
     foe = h.get("foegob")
     dmgs = [r for r in rows if r.get("ev") == "dmg"]
-    cols = move_colours(rows)
+    cols = move_colours(rows, log)
     wp = weapon_of(rows)
+    brk = brackets_of(log)
     armpen, wname, wql, basedmg = 0.0, None, 0.0, None
     if wp and wp[0] != "unmatched":
         rec, wql, _res = wp
@@ -366,7 +373,7 @@ def report_damage_model(rows):
         basedmg = val(rec.get("basedmg"))
     pts = defaultdict(list)
     for m in [r for r in rows if r.get("ev") == "move" and r["actor"] == "me"]:
-        b = near_before(sts, m["t"])
+        b, _a = brk.get(m["t"], (None, None))
         if b is None or not b.get("foe"):
             continue
         hits = [x for x in dmgs if abs(x["t"] - m["t"]) <= PAIR_MS
@@ -475,7 +482,7 @@ def collect(path):
         for m in eng.moves:
             if m.get("actor") == "me" and m.get("cd", -1) >= 0:
                 out["cd"].append((m.get("name") or m["move"], m["cd"]))
-        for actor, name, colour, standing, gain in fightlog.opening_gains(eng):
+        for actor, name, colour, standing, gain in fightlog.opening_gains(eng, log.me):
             out["open"].append((actor, name, colour, standing, gain))
     return out
 
@@ -546,11 +553,14 @@ def main(argv):
             print("%s: empty" % p)
             continue
         seen += 1
+        # The same file, parsed by the shared reader, so the brackets this drill-down
+        # prints are the ones every estimator uses. See brackets_of.
+        log = fightlog.read(p)
         fights.append(collect(p))
         report_header(rows, p)
         report_moves(rows)
-        report_effects(rows)
-        report_damage_model(rows)
+        report_effects(rows, log)
+        report_damage_model(rows, log)
         report_damage(rows)
         report_anomalies(rows, bad)
         print()
