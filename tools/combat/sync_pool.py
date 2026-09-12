@@ -3,6 +3,21 @@
 
     python tools/combat/sync_pool.py
     python tools/combat/sync_pool.py --dry-run
+    python tools/combat/sync_pool.py --from-db            [no credentials needed]
+
+TWO WAYS IN. The HTTP path below is the portable one and the only one that works
+from a machine that is not the server's own host. It needs the endpoint and the
+client token, and if you do not have those the pool simply cannot be refreshed.
+
+--from-db is the fallback for the machine that HOSTS the mapper server: it reads
+the same rows straight out of the server's SQLite through `wsl sqlite3 -readonly`,
+which needs no token at all. It exists because the corpus silently went stale for
+two days - every fight was reaching the server, and nothing was bringing them down
+- and the reason nobody noticed is that a stale pool looks exactly like a quiet
+one. Read-only is not a convention here: this is the LIVE database behind a
+running service, so the query goes through sqlite3's own -readonly flag rather
+than through Python, which would otherwise open it read-write and create WAL
+files under a server that is mid-write.
 
 Config SOLELY from env vars:
 
@@ -23,9 +38,11 @@ and paging resumes from the local manifest's max receivedAt.
 Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is the one exception that requires scipy/numpy (see tools/combat/requirements.txt) for O(t)=O0*exp(-t/tau) fitting.
 """
 
+import io
 import json
 import os
 import re
+import subprocess
 import sys
 
 # ---------------------------------------------------------------------------
@@ -185,11 +202,216 @@ def _get_json_soft(url, token, endpoint_for_redact=""):
 # main
 # ---------------------------------------------------------------------------
 
+DEFAULT_DB = "/home/james/HnHMapperServer/data/grids.db"
+
+
+def _wsl_sqlite(db, sql):
+    """Run one read-only query against the server database and return its stdout.
+
+    Shells out to `wsl.exe -e sqlite3 -readonly` rather than using Python's own
+    sqlite3 module. The database lives inside WSL and is open by a running
+    service; reaching it over the \\wsl.localhost share and letting Python open
+    it would take a write lock and drop WAL files beside a live writer.
+    """
+    out = subprocess.run(
+        ["wsl.exe", "-e", "sqlite3", "-readonly", db, sql],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if out.returncode != 0:
+        _eprint("sqlite3 failed: " + out.stderr.decode("utf-8", "replace").strip())
+        sys.exit(2)
+    return out.stdout.decode("utf-8", "replace")
+
+
+def stamp_sync(root, source, fights, decks):
+    """Record that a pull happened, so staleness can be told apart from quiet.
+
+    THE POINT OF THIS FILE. The corpus went two days stale and every check stayed
+    green, because a pool nobody has refreshed looks exactly like a pool nobody has
+    added to. The age of the newest FIGHT cannot separate those two - a weekend with
+    no fighting reads the same as a sync that has stopped running. The age of the last
+    SYNC can, and it is true regardless of whether anyone played.
+
+    Written on every successful pull by either path. tools/combat/pool_check.py reads
+    it and fails when it is too old.
+    """
+    import time
+    path = os.path.join(root, "data", "combat", "pool", "last-sync.json")
+    doc = {"at": int(time.time() * 1000), "source": source,
+           "fights": fights, "decks": decks}
+    try:
+        d = os.path.dirname(path)
+        if not os.path.exists(d):
+            os.makedirs(d, exist_ok=True)
+        with io.open(path, "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(json.dumps(doc, indent=2, sort_keys=True) + "\n")
+    except Exception as e:
+        _eprint("could not write last-sync.json: %s" % e)
+
+
+def _posix(win_path):
+    """C:\\x\\y -> /mnt/c/x/y, so a WSL process can reach a Windows path."""
+    q = os.path.abspath(win_path)
+    return "/mnt/" + q[0].lower() + q[2:].replace(chr(92), "/")
+
+
+def _iso_to_ms(ts):
+    """'2026-09-11 18:33:28.7416062' -> epoch ms, to match the HTTP path's manifest."""
+    import datetime
+    ts = (ts or "").strip()
+    if not ts:
+        return 0
+    head = ts[:19]
+    frac = ts[20:23] if len(ts) > 20 else "0"
+    try:
+        dt = datetime.datetime.strptime(head, "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return 0
+    try:
+        ms = int((frac + "000")[:3])
+    except ValueError:
+        ms = 0
+    return int(dt.timestamp() * 1000) + ms
+
+
+def _sync_from_db(argv, dry_run):
+    """Fill the pool from the server's own SQLite. See the module docstring."""
+    db = DEFAULT_DB
+    if "--db" in argv:
+        i = argv.index("--db")
+        if i + 1 < len(argv):
+            db = argv[i + 1]
+
+    root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    pool_dir = os.path.join(root, "data", "combat", "pool")
+    manifest_path = os.path.join(pool_dir, "manifest.json")
+    manifest = _load_manifest(manifest_path)
+
+    rows = _wsl_sqlite(db, "SELECT Id, CharacterId, FightId, ReceivedAt FROM CombatLogs ORDER BY Id;")
+    want = []
+    for line in rows.splitlines():
+        parts = line.split("|", 3)
+        if len(parts) != 4:
+            continue
+        rid, char_id, fight_id, recv = parts
+        if fight_id in manifest:
+            continue
+        fname = "%s-%s.jsonl" % (_sanitize(char_id), _sanitize(fight_id))
+        want.append((rid, fight_id, fname, _iso_to_ms(recv)))
+
+    print("server rows: %d   already pooled: %d   to fetch: %d"
+          % (len(rows.splitlines()), len(manifest), len(want)))
+    if dry_run or not want:
+        for _, fid, _, _ in want[:20]:
+            print("  would fetch " + fid)
+        if len(want) > 20:
+            print("  ... and %d more" % (len(want) - 20))
+        return 0
+
+    if not os.path.exists(pool_dir):
+        os.makedirs(pool_dir, exist_ok=True)
+
+    # One sqlite3 invocation for the whole batch. Per-row subprocesses cost more
+    # in process startup than in query time once the backlog runs to hundreds.
+    #
+    # The batch goes in through .read rather than as an argument: a backlog of a
+    # few hundred fights builds a script well past the Windows command-line limit,
+    # and the failure it produces ("filename or extension is too long") names
+    # neither sqlite nor the length as the cause.
+    posix_pool = _posix(pool_dir)
+    script_path = os.path.join(pool_dir, ".sync-batch.sql")
+    with io.open(script_path, "w", encoding="utf-8", newline="\n") as fh:
+        for rid, _, fname, _ in want:
+            fh.write(".output %s/%s\n" % (posix_pool, fname))
+            fh.write("SELECT PayloadJson FROM CombatLogs WHERE Id=%s;\n" % rid)
+        fh.write(".output stdout\n")
+    try:
+        _wsl_sqlite(db, ".read %s" % _posix(script_path))
+    finally:
+        try:
+            os.remove(script_path)
+        except OSError:
+            pass
+
+    wrote = 0
+    for _, fight_id, fname, recv in want:
+        fpath = os.path.join(pool_dir, fname)
+        if os.path.exists(fpath) and (os.path.getsize(fpath) > 0):
+            manifest[fight_id] = recv
+            wrote += 1
+        else:
+            _eprint("  empty or missing after extract: " + fname)
+    _save_manifest(manifest_path, manifest)
+    print("wrote %d fights, manifest now %d" % (wrote, len(manifest)))
+
+    # DECKS TOO. The decks went stale alongside the fights and for the same reason, and a
+    # fight without the deck it was thrown from cannot be read for move levels - which is
+    # what left 2418 of 3022 pooled fights unusable the last time the two drifted apart.
+    decks = _decks_from_db(db, root, dry_run)
+    if not dry_run:
+        stamp_sync(root, "db", wrote, decks)
+    return 0
+
+
+def _decks_from_db(db, root, dry_run):
+    """The deck half of --from-db. Names files exactly as the HTTP path does."""
+    decks_dir = os.path.join(root, "data", "combat", "pool", "decks")
+    manifest_path = os.path.join(decks_dir, "manifest.json")
+    manifest = _load_manifest(manifest_path)
+
+    rows = _wsl_sqlite(db, "SELECT Id, DeckId, ReceivedAt FROM CombatDecks ORDER BY Id;")
+    want = []
+    for line in rows.splitlines():
+        parts = line.split("|", 2)
+        if len(parts) != 3:
+            continue
+        rid, deck_id, recv = parts
+        if deck_id in manifest:
+            continue
+        want.append((rid, deck_id, "deck-%s.json" % _sanitize(deck_id), _iso_to_ms(recv)))
+
+    print("server decks: %d   already pooled: %d   to fetch: %d"
+          % (len(rows.splitlines()), len(manifest), len(want)))
+    if dry_run or not want:
+        return 0
+
+    if not os.path.exists(decks_dir):
+        os.makedirs(decks_dir, exist_ok=True)
+    posix_dir = _posix(decks_dir)
+    script_path = os.path.join(decks_dir, ".sync-batch.sql")
+    with io.open(script_path, "w", encoding="utf-8", newline="\n") as fh:
+        for rid, _, fname, _ in want:
+            fh.write(".output %s/%s\n" % (posix_dir, fname))
+            fh.write("SELECT PayloadJson FROM CombatDecks WHERE Id=%s;\n" % rid)
+        fh.write(".output stdout\n")
+    try:
+        _wsl_sqlite(db, ".read %s" % _posix(script_path))
+    finally:
+        try:
+            os.remove(script_path)
+        except OSError:
+            pass
+
+    wrote = 0
+    for _, deck_id, fname, recv in want:
+        fpath = os.path.join(decks_dir, fname)
+        if os.path.exists(fpath) and (os.path.getsize(fpath) > 0):
+            manifest[deck_id] = recv
+            wrote += 1
+        else:
+            _eprint("  empty or missing after extract: " + fname)
+    _save_manifest(manifest_path, manifest)
+    print("wrote %d decks, manifest now %d" % (wrote, len(manifest)))
+    return wrote
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
 
     dry_run = "--dry-run" in argv
+
+    if "--from-db" in argv:
+        return _sync_from_db(argv, dry_run)
 
     endpoint = os.environ.get("HHM_COMBATLOG_ENDPOINT", "").strip()
     token = os.environ.get("HHM_COMBATLOG_TOKEN", "").strip()
@@ -337,6 +559,10 @@ def main(argv=None):
     print("pool sync: downloaded %d  skipped %d  present %d" % (downloaded, skipped, present + downloaded))
 
     _sync_decks(endpoint, token, root, dry_run)
+    if not dry_run:
+        # Same stamp the --from-db path writes. Whichever route refreshed the pool, the
+        # staleness check reads one file and does not care which.
+        stamp_sync(root, "http", len(manifest), None)
     return 0
 
 
