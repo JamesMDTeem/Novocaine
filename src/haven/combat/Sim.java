@@ -138,9 +138,7 @@ public final class Sim {
             double[] own = new double[m.schools.length];
             for(int i = 0; i < own.length; i++)
                 own[i] = target.opening(m.schools[i]);
-            raw = Formulas.rawDamage(actor.damageBase(m), actor.damageShare(m),
-                                     actor.damageQuality(m), actor.str,
-                                     Formulas.combined(own));
+            raw = actor.rawDamage(m, Formulas.combined(own));
             /* WHAT THIS TARGET TAKES, which is not always a full swing: Storm of
              * Swords gives its five targets 100%, 125%, 150%, 175% and 200% of the
              * weapon's damage. Applied to the raw swing before armour, because that is

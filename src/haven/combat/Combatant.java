@@ -267,6 +267,31 @@ public final class Combatant {
         return((m.damageShare > 0) ? m.damageShare : 1.0);
     }
 
+    /**
+     * Damage-dealing gloves worn - Lynx Claw Gloves, Cutthroat Knuckles - as a base damage and
+     * quality; 0 when none are.
+     *
+     * An unarmed blow in them carries the gloves' own term on top of the card's, priced the way
+     * a weapon is at the gloves' quality: {@code base * sqrt(sqrt(ql * str) / 10)}, which is the
+     * wiki's {@code 4 * sqrt(sqrt(strength * q_gloves) / 10)} for the lynx claws. Without it,
+     * Shade's Punches in those gloves read 1.23-1.28x the model; with it the model predicts
+     * 1.27-1.29x the bare card. A weapon card never reads the gloves.
+     */
+    public double gloveDamage, gloveQl;
+
+    /**
+     * Raw damage of one blow before armour, at this opening - the card's term and, for an
+     * unarmed card, the gloves'. The one place both are summed, so Sim and FoeModel cannot
+     * price the same blow two ways.
+     */
+    public double rawDamage(Move m, double opening) {
+        double raw = Formulas.rawDamage(damageBase(m), damageShare(m), damageQuality(m), str,
+                                        opening);
+        if((m.damageShare <= 0) && (m.flatDamage > 0) && (gloveDamage > 0))
+            raw += Formulas.rawDamage(gloveDamage, 1.0, gloveQl, str, opening);
+        return(raw);
+    }
+
     public boolean alive() {
         return(hp > 0);
     }
@@ -276,6 +301,7 @@ public final class Combatant {
         c.str = str; c.agi = agi; c.unarmed = unarmed; c.melee = melee;
         c.weaponDamage = weaponDamage; c.weaponQl = weaponQl; c.weaponPen = weaponPen;
         c.weaponRange = weaponRange; c.distance = distance;
+        c.gloveDamage = gloveDamage; c.gloveQl = gloveQl;
         c.armHard = armHard; c.armSoft = armSoft;
         c.penetrable = penetrable;
         c.hp = hp; c.maxHp = maxHp; c.hhp = hhp;

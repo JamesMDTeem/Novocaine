@@ -98,7 +98,29 @@ public class CombatSimCheck {
         check("  and takes more through it", pr.dealt > r.dealt, true);
     }
 
+    /**
+     * Gloves add their own term to an unarmed blow and nothing to a weapon one.
+     *
+     * The wiki's figure for Lynx Claw Gloves is 4 * sqrt(sqrt(strength * q_gloves) / 10), the
+     * weapon form at the gloves' quality - and added to the card's own term it predicts Shade's
+     * gloved Punches at 1.27-1.29x the bare card against 1.23-1.28x logged.
+     */
+    static void gloves() {
+        System.out.println("\ngloves add their own term to an unarmed blow");
+        Combatant a = me();
+        double bare = a.rawDamage(kito(), 0.5), weapon = a.rawDamage(barrage(), 0.5);
+        a.gloveDamage = 4;
+        a.gloveQl = 50;
+        near("  Knock Its Teeth Out gains 4 * sqrt(sqrt(str * q) / 10) at the opening",
+             a.rawDamage(kito(), 0.5) - bare, 4 * Math.sqrt(Math.sqrt(82 * 50) / 10.0) * 0.25,
+             1e-9);
+        near("  a weapon card does not read the gloves", a.rawDamage(barrage(), 0.5), weapon, 1e-9);
+        near("  and a copy keeps them", a.copy().rawDamage(kito(), 0.5), a.rawDamage(kito(), 0.5),
+             1e-9);
+    }
+
     public static void main(String[] args) {
+        gloves();
         beeSwarm();
         unarmedPenetration();
         boarArmour();

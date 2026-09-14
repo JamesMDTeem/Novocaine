@@ -368,7 +368,7 @@ public final class CombatRecorder {
                                new double[] {
                                    (hands[1] == null) ? 0 : Double.parseDouble(hands[1]),
                                    (hands[3] == null) ? 0 : Double.parseDouble(hands[3])},
-                               readDeck(gui), wstats);
+                               readDeck(gui), wstats, readWorn(eq));
             /* Shield Up's 2.5x block weight falls to 0.5x without a shield, and only the
              * model can apply that - see Prediction.applyStance. Read once at fight start:
              * no corpus fight swaps a shield mid-fight (0 res=null gear-removal rows, N7 sec 4). */
@@ -458,6 +458,33 @@ public final class CombatRecorder {
             }
         }
         return(false);
+    }
+
+    /**
+     * Every equipped slot as {res, ql} pairs in slot order - a slot we could not read comes back
+     * null. For what Prediction reads off the body rather than the hands: damage-dealing gloves.
+     */
+    private static String[] readWorn(Equipory eq) {
+        if(eq == null)
+            return(new String[0]);
+        String[] out = new String[eq.slots.length * 2];
+        for(int i = 0; i < eq.slots.length; i++) {
+            WItem w = eq.slots[i];
+            if(w == null)
+                continue;
+            try {
+                double ql = 0;
+                for(ItemInfo info : w.item.info()) {
+                    if(info instanceof Quality)
+                        ql = ((Quality)info).q;
+                }
+                out[i * 2] = w.item.getres().name;
+                out[(i * 2) + 1] = Double.toString(ql);
+            } catch(Exception e) {
+                /* a still-loading item costs that slot */
+            }
+        }
+        return(out);
     }
 
     /**

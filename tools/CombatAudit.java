@@ -199,6 +199,7 @@ public class CombatAudit {
             "weaponDamage", "weaponQl", "weaponPen", "armHard", "armSoft", "penetrable",
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
             "readyAt", "whenAttacked", "weaponRange", "distance", "hhp",
+            "gloveDamage", "gloveQl",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
@@ -527,6 +528,19 @@ public class CombatAudit {
         live("  and strength stands in for the weapon's quality",
              once(fist, fighter(), open(50)).raw,
              once(fist, strongArm(), open(50)).raw, "Combatant.damageQuality");
+
+        /* Gloves are the exception on the other side: worn, not held, and they add their own
+         * term to an unarmed blow - base 4 at quality 50, the lynx claws - while an armed
+         * swing never reads them. */
+        Combatant gloved = fighter();
+        gloved.gloveDamage = 4;
+        gloved.gloveQl = 50;
+        live("  gloves add their own term to an unarmed blow",
+             once(fist, fighter(), open(50)).raw,
+             once(fist, gloved, open(50)).raw, "Combatant.rawDamage");
+        same("    and nothing to an armed swing",
+             once(base().build(), fighter(), open(50)).raw,
+             once(base().build(), gloved, open(50)).raw);
 
         Combatant heavy = fighter();
         heavy.weaponDamage = 230;

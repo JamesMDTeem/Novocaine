@@ -142,6 +142,9 @@ public final class Prediction {
          * volatile: written from the message loop, read from wherever the advisor runs. */
         volatile String[] buffs = null;
         volatile boolean shield = false;
+        /* Damage-dealing gloves worn at fight start, as a base and a quality - see
+         * Combatant.gloveDamage. 0 when none are, or when the recorder did not say. */
+        double gloveDamage = 0, gloveQl = 0;
 
         Me(double str, double agi, double unarmed, double melee,
            double armHard, double armSoft,
@@ -264,6 +267,45 @@ public final class Prediction {
                       (levels == null) ? new LinkedHashMap<String, Integer>() : levels));
     }
 
+    /** Glove resources whose damage adds to an unarmed blow; each has a row in the weapon table. */
+    private static final String[] GLOVES = {"lynxclawgloves", "cutthroatknuckles"};
+
+    /**
+     * As above, with everything worn, as {res, ql} pairs in slot order - read for gloves.
+     *
+     * The weapon join above only ever looks in the hands; damage-dealing gloves are worn, and an
+     * unarmed blow in them adds their own term (Combatant.gloveDamage). The same table carries
+     * them - Lynx Claw Gloves at base 4, Cutthroat Knuckles at 5 - so the join is the same one.
+     */
+    public static Me me(SortedMap<String, Integer> attrs, int armHard, int armSoft,
+                        String[] handRes, double[] handQl, Map<String, Integer> levels,
+                        java.util.List<Map<String, Double>> live, String[] worn) {
+        Me m = me(attrs, armHard, armSoft, handRes, handQl, levels, live);
+        if((m == null) || (worn == null) || (weapons == null))
+            return(m);
+        for(int i = 0; (i + 1) < worn.length; i += 2) {
+            if(worn[i] == null)
+                continue;
+            String base = worn[i].substring(worn[i].lastIndexOf('/') + 1);
+            for(String g : GLOVES) {
+                double[] w = g.equals(base) ? weapons.get(Pack.key(base)) : null;
+                if(w == null)
+                    continue;
+                try {
+                    double ql = Double.parseDouble(worn[i + 1]);
+                    if(ql > 0) {
+                        m.gloveDamage = w[0];
+                        m.gloveQl = ql;
+                        return(m);
+                    }
+                } catch(Exception e) {
+                    /* a quality we could not read prices no gloves rather than guessed ones */
+                }
+            }
+        }
+        return(m);
+    }
+
     private static double num(SortedMap<String, Integer> a, String k) {
         Integer v = a.get(k);
         return((v == null) ? 0 : v.doubleValue());
@@ -328,6 +370,8 @@ public final class Prediction {
         a.weaponQl = me.weaponQl;
         a.weaponPen = me.weaponPen;
         a.weaponRange = me.weaponRange;
+        a.gloveDamage = me.gloveDamage;
+        a.gloveQl = me.gloveQl;
         a.hp = a.maxHp = 100;
         a.ip = myIp;
         applyStance(a, me);
@@ -521,6 +565,8 @@ public final class Prediction {
         a.weaponQl = me.weaponQl;
         a.weaponPen = me.weaponPen;
         a.weaponRange = me.weaponRange;
+        a.gloveDamage = me.gloveDamage;
+        a.gloveQl = me.gloveQl;
         a.hp = a.maxHp = 100;
         a.ip = myIp;
         applyStance(a, me);

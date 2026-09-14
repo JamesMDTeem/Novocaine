@@ -521,8 +521,7 @@ public final class FoeModel {
             }
             if((m.damageShare > 0) || (m.flatDamage > 0)) {
                 hitters++;
-                dmg += Formulas.rawDamage(owner.damageBase(m), owner.damageShare(m),
-                                          owner.damageQuality(m), owner.str, 1.0);
+                dmg += owner.rawDamage(m, 1.0);
             }
         }
         if(acts == 0)
