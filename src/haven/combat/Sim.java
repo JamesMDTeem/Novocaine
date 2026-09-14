@@ -400,11 +400,11 @@ public final class Sim {
      *
      * What an extra target gets is the damage and the openings, and nothing else. The
      * cooldown is the swing's and is paid once. The reductions are on the user and happen
-     * once. The initiative is the part worth being explicit about: this model carries one
-     * initiative number per combatant, while the game keeps it per relation - so a card
-     * that gains a point "against your opponent" would, applied per target, hand out one
-     * point per body standing nearby. It is applied to the main target only, which is the
-     * conservative reading and the one the prose supports.
+     * once. The initiative is the part worth being explicit about: the game keeps it per
+     * relation, and Optimizer carries ours per opponent and loads the one being swung at into
+     * {@code actor.ip} before each use - but a Sim holds two combatants, so a card that gains a
+     * point "against your opponent" is credited against the main target only here. Applied
+     * per splash target it would hand out one point per body standing nearby.
      *
      * @param index which target this is, counting the main one as zero.
      */

@@ -412,6 +412,18 @@ public final class Prediction {
      */
     public static Advised advise(Me me, String[] foeRes, int[][] foeOpen,
                                  double[] foeDist, int myIp, int beam, long horizon) {
+        return(advise(me, foeRes, foeOpen, foeDist, null, myIp, beam, horizon));
+    }
+
+    /**
+     * The same, with the initiative we hold against EACH opponent, aligned with foeRes.
+     *
+     * The game keeps initiative per relation, so points built on the first animal are not
+     * points against the second. Null, or a negative entry, is read as {@code myIp} - which
+     * is what a caller that only saw the sampled relation can honestly say.
+     */
+    public static Advised advise(Me me, String[] foeRes, int[][] foeOpen, double[] foeDist,
+                                 int[] foeMyIp, int myIp, int beam, long horizon) {
         load();
         if((me == null) || !me.usable() || (byRes == null) || (foes == null))
             return(null);
@@ -467,6 +479,7 @@ public final class Prediction {
 
         List<Combatant> bs = new ArrayList<Combatant>();
         List<FoeModel> ms = new ArrayList<FoeModel>();
+        List<Integer> ips = new ArrayList<Integer>();
         for(int i = 0; i < foeRes.length; i++) {
             Pack.Opponent oi = (i == 0) ? o : find(foeRes[i]);
             if((oi == null) || !oi.simulable() || (oi.threat == null)
@@ -485,12 +498,17 @@ public final class Prediction {
             }
             bs.add(bi);
             ms.add(oi.threat);
+            ips.add(Integer.valueOf(((foeMyIp != null) && (i < foeMyIp.length)
+                                     && (foeMyIp[i] >= 0)) ? foeMyIp[i] : myIp));
         }
         Combatant[] bb = bs.toArray(new Combatant[0]);
         FoeModel[] mm = ms.toArray(new FoeModel[0]);
-        List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon);
+        int[] ia = new int[ips.size()];
+        for(int i = 0; i < ia.length; i++)
+            ia[i] = ips.get(i).intValue();
+        List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon, ia);
         Advisor.Advice adv = Advisor.next(a, bb, deck, mm, Advisor.Aim.FASTEST,
-                                          0, beam, horizon);
+                                          0, beam, horizon, ia);
         if((adv == null) || (adv.move == null) || (adv.plan == null))
             return(null);
         return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,

@@ -110,6 +110,8 @@ public final class CombatRecorder {
     private static volatile long[] lastCrowd = null;
     /** And how far away each of them was, in the same order. */
     private static volatile int[] lastCrowdDist = null;
+    /** And the initiative we hold against each of them, in the same order (schema 20). */
+    private static volatile int[] lastCrowdIp = null;
 
     /* Per foe gob, the wall time of its last action and the card it threw. One cooldown per
      * combatant, set by the card thrown, so the gap to the next action keyed by this card is
@@ -269,6 +271,7 @@ public final class CombatRecorder {
             foeResById.clear();
             lastCrowd = null;
             lastCrowdDist = null;
+            lastCrowdIp = null;
             lastFoeAct.clear();
             lastFoeCard.clear();
             /* Per FIGHT, not per session, so every log describes the cards it contains. A
@@ -812,11 +815,15 @@ public final class CombatRecorder {
                                      ADVICE_BEAM, ADVICE_HORIZON));
         }
         int[] dists = lastCrowdDist;
+        int[] crowdIp = lastCrowdIp;
         java.util.List<String> res = new java.util.ArrayList<String>();
         java.util.List<int[]> ops = new java.util.ArrayList<int[]>();
         java.util.List<Double> ds = new java.util.ArrayList<Double>();
+        java.util.List<Integer> ips = new java.util.ArrayList<Integer>();
         res.add(mine);
         ops.add(open);
+        /* The one we are aimed at carries the sampled relation's own figure. */
+        ips.add(Integer.valueOf(lastMyIp));
         /* The one we are swinging at is by definition the one we are on, and the sweep
          * question is about the others - so its own distance is not needed and is left
          * unknown rather than filled with the sampled figure, which belongs to whichever
@@ -837,12 +844,19 @@ public final class CombatRecorder {
              * than a zero that would put the animal on top of us. */
             int dv = ((dists != null) && ((i / 5) < dists.length)) ? dists[i / 5] : -1;
             ds.add(Double.valueOf((dv < 0) ? Double.NaN : (double)dv));
+            /* What we hold against THIS one, where the crowd sample carried it; -1 says
+             * unknown, which the advisor reads as the sampled figure. */
+            ips.add(Integer.valueOf(((crowdIp != null) && ((i / 5) < crowdIp.length))
+                                    ? crowdIp[i / 5] : -1));
         }
         double[] da = new double[ds.size()];
         for(int i = 0; i < da.length; i++)
             da[i] = ds.get(i).doubleValue();
+        int[] ia = new int[ips.size()];
+        for(int i = 0; i < ia.length; i++)
+            ia[i] = ips.get(i).intValue();
         return(Prediction.advise(m, res.toArray(new String[0]),
-                                 ops.toArray(new int[0][]), da, lastMyIp,
+                                 ops.toArray(new int[0][]), da, ia, lastMyIp,
                                  ADVICE_BEAM, ADVICE_HORIZON));
     }
 
@@ -1190,6 +1204,15 @@ public final class CombatRecorder {
     }
 
     public static void sampleFoes(long[] packed, int[] gst, int[] dist) {
+        sampleFoes(packed, gst, dist, null, null);
+    }
+
+    /**
+     * The crowd, with each relation's initiative on both sides - ours against it, and its
+     * against us. The game keeps initiative per relation, and until schema 20 only the
+     * sampled relation's pair was ever written, so a crowd plan had nothing to start from.
+     */
+    public static void sampleFoes(long[] packed, int[] gst, int[] dist, int[] ip, int[] oip) {
         if(!active() || (packed == null) || (packed.length == 0))
             return;
         try {
@@ -1210,6 +1233,10 @@ public final class CombatRecorder {
              * here to answer. */
             for(int i = 0; (dist != null) && (i < dist.length); i++)
                 k.append(dist[i]).append(',');
+            /* Initiative changes on its own schedule - a card spends it, a hit grants it - and
+             * a change nobody else notices is still a change in what the next plan can do. */
+            for(int i = 0; (ip != null) && (oip != null) && (i < ip.length) && (i < oip.length); i++)
+                k.append(ip[i]).append('/').append(oip[i]).append(',');
             String key = k.toString();
             /* THE VALUE GATE HAS NO FLOOR OF ITS OWN. An opening change fires a row at
              * once, which is why the VALUE is current on a change - but during a lull
@@ -1231,7 +1258,8 @@ public final class CombatRecorder {
              * only place the client hands over every opponent's openings at once. */
             lastCrowd = packed.clone();
             lastCrowdDist = (dist == null) ? null : dist.clone();
-            log(CombatEvent.foes(now(), packed, gst, dist));
+            lastCrowdIp = (ip == null) ? null : ip.clone();
+            log(CombatEvent.foes(now(), packed, gst, dist, ip, oip));
         } catch(Exception e) {
             /* never propagate into tick() */
         }

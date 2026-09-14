@@ -122,11 +122,24 @@ public final class Optimizer {
          * history and a shared tally would be advanced by whichever branch ran last.
          */
         final int[][] foeThrown;
+        /**
+         * OUR INITIATIVE, HELD AGAINST EACH OPPONENT SEPARATELY.
+         *
+         * The game keeps initiative per relation: points built against one animal are not
+         * points against the next, and a re-aggro forfeits the pool against that one alone
+         * (25 of 26 logged boundaries reset it to 0). One number on the Combatant let a
+         * crowd fight spend points built on the first animal against the second, which
+         * prices every initiative card in a crowd as though the whole crowd were one
+         * relation. `me.ip` is loaded from here before each use against a relation and
+         * written back after, so Sim and FoeModel keep reading the one field they know.
+         */
+        final int[] myIp;
         final double hpLost;
 
         Node(Combatant me, Combatant[] foes, List<Move> path, long tick, long[] foeNext,
-             double hpLost, int[] foeActs, int[][] foeThrown) {
+             double hpLost, int[] foeActs, int[][] foeThrown, int[] myIp) {
             this.me = me;
+            this.myIp = myIp;
             this.foes = foes;
             this.path = path;
             this.tick = tick;
@@ -206,6 +219,19 @@ public final class Optimizer {
      */
     public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
                                     FoeModel[] models, int beam, long maxTicks) {
+        return(search(me, foes, deck, models, beam, maxTicks, null));
+    }
+
+    /**
+     * The same, starting from the initiative we already hold against EACH opponent.
+     *
+     * {@code myIp0[i]} is our initiative against {@code foes[i]}; null, or an array of the
+     * wrong length, starts every relation at {@code me.ip}, which is the one-opponent case
+     * and what a caller that only knows the sampled relation can say.
+     */
+    public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
+                                    FoeModel[] models, int beam, long maxTicks,
+                                    int[] myIp0) {
         /* Everything the deck opens when the OPPONENT swings, summed once. A deck holds
          * at most one such card in the corpus - Parry - but summing costs nothing and
          * assumes nothing about that staying true. */
@@ -232,8 +258,11 @@ public final class Optimizer {
             hp0 += f0[i].hp;
         }
         List<Node> live = new ArrayList<Node>();
+        int[] ip0 = new int[foes.length];
+        for(int i = 0; i < foes.length; i++)
+            ip0[i] = ((myIp0 != null) && (myIp0.length == foes.length)) ? myIp0[i] : me.ip;
         live.add(new Node(me.copy(), f0, new ArrayList<Move>(), 0, next0, 0,
-                          new int[foes.length], thrown0));
+                          new int[foes.length], thrown0, ip0));
         List<Plan> done = new ArrayList<Plan>();
 
         while(!live.isEmpty()) {
@@ -373,6 +402,7 @@ public final class Optimizer {
             thrown[i] = (n.foeThrown[i] == null) ? new int[0] : n.foeThrown[i].clone();
         long tick = n.tick;
         double hpLost = n.hpLost;
+        int[] myIp = n.myIp.clone();
 
         /* Wait until we may act, and let the opponents act on their own clocks meanwhile.
          * A long cooldown is not merely slow, it is a window they get to swing in, and a
@@ -409,8 +439,11 @@ public final class Optimizer {
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
             long[] gap = new long[1];
+            /* The relation that is acting is the one whose initiative a rule on ours reads. */
+            me.ip = myIp[who];
             hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who],
                                       thrown[who], gap);
+            myIp[who] = me.ip;
             acts[who]++;
             /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
              * opponent attacks, not when it is played, so it lands here rather than in
@@ -442,7 +475,7 @@ public final class Optimizer {
          * So the node comes back with the path it arrived with - the move was never thrown
          * - and the caller records it as a plan that did not kill. */
         if(!me.alive())
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown));
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp));
 
         int main = -1;
         for(int i = 0; i < foes.length; i++) {
@@ -452,13 +485,17 @@ public final class Optimizer {
             }
         }
         if(main < 0)
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown));
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp));
 
         Sim sim = new Sim(me, foes[main]);
         sim.advanceTo(tick);
+        /* Against THIS relation, with what we hold against it: legality, the initiative-
+         * scaled cooldown and the cost all read and write the one we are swinging at. */
+        me.ip = myIp[main];
         Sim.Result r = sim.use(me, m);
         if(!r.ok)
             return(null);
+        myIp[main] = me.ip;
         /* AND EVERYONE ELSE IT REACHES. Three cards hit more than the one in front of us -
          * see Move.targets - and what they do to the rest is the reason to hold one: the
          * damage, and openings that are still standing on the next animal when this one
@@ -518,7 +555,7 @@ public final class Optimizer {
         }
         List<Move> path = new ArrayList<Move>(n.path);
         path.add(m);
-        return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown));
+        return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown, myIp));
     }
 
     /**

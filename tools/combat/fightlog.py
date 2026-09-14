@@ -990,6 +990,21 @@ def foe_range(row):
     return {g: d for g, d in zip(gobs, dist) if d >= 0}
 
 
+def foe_ip(row):
+    """Initiative on both sides of each relation, from a schema-20 `foes` row, as
+    {gob: (ours against it, its against us)}.
+
+    Empty for anything earlier: before 20 only the SAMPLED relation's pair was written, on
+    the state row, so a crowd fight never recorded what we held against the others. The
+    game keeps initiative per relation, and that is the input a per-relation plan needs.
+    """
+    gobs = [r[0] for r in (row.get("o") or [])]
+    ip, oip = row.get("ip"), row.get("oip")
+    if (ip is None) or (oip is None):
+        return {}
+    return {g: (a, b) for g, a, b in zip(gobs, ip, oip)}
+
+
 # Hand slots. The recorder writes a `gear` row for every equipment slot and a `wpn` row
 # for slots 6 and 7 only - the two hands - so these are the slots a weapon can be in.
 HAND_SLOTS = (6, 7)

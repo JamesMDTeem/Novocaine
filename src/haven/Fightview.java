@@ -465,6 +465,10 @@ public class Fightview extends Widget {
 		 * because the event is written behind a change gate and a raw distance changes
 		 * every frame. */
 		int[] dists = new int[lsrel.size()];
+		/* And the initiative held on both sides of each relation. The game keeps it per
+		 * relation; only the sampled one's pair reached the log before schema 20. */
+		int[] ips = new int[lsrel.size()];
+		int[] oips = new int[lsrel.size()];
 		Gob self = null;
 		try {
 		    self = ui.sess.glob.oc.getgob(ui.gui.map.plgob);
@@ -482,6 +486,8 @@ public class Fightview extends Widget {
 		    packed[n++] = o.yellow;
 		    packed[n++] = o.red;
 		    gsts[gi] = rel.gst;
+		    ips[gi] = rel.ip;
+		    oips[gi] = rel.oip;
 		    dists[gi] = -1;
 		    try {
 			Gob og = ui.sess.glob.oc.getgob(rel.gobid);
@@ -499,7 +505,7 @@ public class Fightview extends Widget {
 			rel.gobid, "foe", rel.buffs.children(Buff.class));
 		}
 		haven.automated.combat.CombatRecorder.sampleBuffs(-1, "me", buffs.children(Buff.class));
-		haven.automated.combat.CombatRecorder.sampleFoes(packed, gsts, dists);
+		haven.automated.combat.CombatRecorder.sampleFoes(packed, gsts, dists, ips, oips);
 	    } catch(Exception e) {
 		/* telemetry must never break the tick loop */
 	    }

@@ -78,6 +78,17 @@ public final class Advisor {
     public static Advice next(Combatant me, Combatant[] foes, List<Move> deck,
                               FoeModel[] models, Aim aim, double budget, int beam,
                               long horizon) {
+        return(next(me, foes, deck, models, aim, budget, beam, horizon, null));
+    }
+
+    /**
+     * The same, with the initiative we hold against EACH of them - see
+     * {@link Optimizer#search(Combatant, Combatant[], List, FoeModel[], int, long, int[])}.
+     * Null starts every relation at {@code me.ip}.
+     */
+    public static Advice next(Combatant me, Combatant[] foes, List<Move> deck,
+                              FoeModel[] models, Aim aim, double budget, int beam,
+                              long horizon, int[] myIp) {
         if((me == null) || (foes == null) || (foes.length == 0) || (deck == null)
            || deck.isEmpty())
             return(new Advice(null, null, "nothing to plan with"));

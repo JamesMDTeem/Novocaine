@@ -126,6 +126,40 @@ public class CombatOptimizerCheck {
               Optimizer.beamWasEnough(narrow), false);
     }
 
+    /**
+     * INITIATIVE IS HELD AGAINST EACH OPPONENT, NOT IN ONE POOL.
+     *
+     * The game keeps it per relation. The known answer: two opponents that die to one
+     * Cleave each, a deck holding only Cleave (spends 4, cannot be begun below 6), and six
+     * initiative against each of them. Per relation, the first Cleave spends the first
+     * opponent's six and the second opponent's six are untouched, so both die. In one pool
+     * the first Cleave leaves two, the second is refused, and nothing kills the second - so
+     * this fails if the pool is ever shared again. The control holds six against the first
+     * and nothing against the second, where the second must survive.
+     */
+    static void initiativeIsPerRelation() {
+        System.out.println("\ninitiative is held against each opponent, not in one pool");
+        Move cleave = Move.of("Cleave").kind(Move.Kind.ATTACK).weight(Move.Weight.UNARMED)
+            .school(Formulas.RED).flatDamage(500).ipCost(4).ipExtra(2).cooldown(45).build();
+        List<Move> deck = Optimizer.deck(cleave);
+        FoeModel[] still = {FoeModel.inert(), FoeModel.inert()};
+        Combatant[] two = new Combatant[2];
+        for(int i = 0; i < 2; i++) {
+            two[i] = foe(1, 20);
+            two[i].open(Formulas.RED, 60);
+        }
+        boolean both = false;
+        for(Optimizer.Plan p : Optimizer.search(me(), two, deck, still, 20, 2000,
+                                                new int[] {6, 6}))
+            both |= p.killed;
+        check("six against each: Cleave kills the first and still the second", both, true);
+        boolean control = false;
+        for(Optimizer.Plan p : Optimizer.search(me(), two, deck, still, 20, 2000,
+                                                new int[] {6, 0}))
+            control |= p.killed;
+        check("  six against the first only: the second cannot be Cleaved", control, false);
+    }
+
     /** Hitpoints between the fastest plan on a frontier and the cheapest. */
     static double spread(List<Optimizer.Plan> f) {
         if(f.size() < 2)
@@ -144,6 +178,7 @@ public class CombatOptimizerCheck {
         defenceEarnsItsPlace();
         clocksAreSeparate();
         theCardThatGoesLast();
+        initiativeIsPerRelation();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);

@@ -172,7 +172,16 @@ public class CombatLogCheck {
          * the card it threw sets how long, so the gap to the next action - any card - keyed by
          * the card thrown before it is the observable; the same-card gap `since` carried was a
          * rotation. No pooled log carried a foeact row when the meaning changed. */
-        check("schema constant", CombatEvent.SCHEMA, 19);
+        /* 20 adds each relation's initiative, both sides, to the foes event as two more
+         * parallel arrays. The game keeps initiative per relation, and only the sampled
+         * relation's pair was ever written. Older foes forms are byte-identical. */
+        check("schema constant", CombatEvent.SCHEMA, 20);
+        check("foes carries each relation's initiative, ours and theirs",
+              CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8},
+                               new int[] {0, 2}, new int[] {12, 30},
+                               new int[] {6, 0}, new int[] {1, 3}),
+              "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]],"
+              + "\"g\":[0,2],\"d\":[12,30],\"ip\":[6,0],\"oip\":[1,3]}");
 
         check("foeact",
               CombatEvent.foeact(100, 77L, "paginae/atk/bite", "Bite",

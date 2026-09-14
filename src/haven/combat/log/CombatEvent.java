@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 19;
+    public static final int SCHEMA = 20;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -277,6 +277,31 @@ public final class CombatEvent {
                .raw("g", g.toString())
                .raw("d", d.toString())
                .end());
+    }
+
+    /**
+     * The same, with EACH relation's initiative on both sides (schema 20).
+     *
+     * The game keeps initiative per relation - ours against this one, and this one's against
+     * us - and until now only the SAMPLED relation's pair reached the log, on the state row.
+     * A crowd fight therefore never recorded how much we held against the others, which is
+     * the input a per-relation plan starts from. Two more parallel arrays, `ip` (ours against
+     * each) and `oip` (each one's against us), in the same order as `o`; the older forms stay
+     * byte-identical so every reader and pin written against them keeps working.
+     */
+    public static String foes(long t, long[] packed, int[] gst, int[] dist, int[] ip, int[] oip) {
+        String base = foes(t, packed, gst, dist);
+        if((ip == null) || (oip == null))
+            return(base);
+        StringBuilder e = new StringBuilder(base.substring(0, base.length() - 1));
+        e.append(",\"ip\":[");
+        for(int i = 0; i < ip.length; i++)
+            e.append((i > 0) ? "," : "").append(ip[i]);
+        e.append("],\"oip\":[");
+        for(int i = 0; i < oip.length; i++)
+            e.append((i > 0) ? "," : "").append(oip[i]);
+        e.append("]}");
+        return(e.toString());
     }
 
     /**
