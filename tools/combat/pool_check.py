@@ -107,36 +107,54 @@ def pooled_corpus():
         _san_re = _re.compile(r"[^A-Za-z0-9_-]")
         def _sanitize(s):
             return _san_re.sub("_", str(s)) if s is not None else "_"
-        file_stems = [os.path.splitext(os.path.basename(p))[0] for p in files]
+        # One line per PROPERTY, not per entry: this printed two lines per manifest entry and
+        # three per file, 39,600 lines a run, which buried the other sixteen checks. A failure
+        # still names its first few offenders. The stems go in a set, keyed by the part after
+        # the character prefix too, so the lookup is not every entry against every file.
+        file_stems = set()
+        for p in files:
+            stem = os.path.splitext(os.path.basename(p))[0]
+            file_stems.add(stem)
+            for i, ch in enumerate(stem):
+                if ch == "-":
+                    file_stems.add(stem[i + 1:])
+        missing, not_int = [], []
         for fight_id in sorted(manifest.keys()):
             val = manifest[fight_id]
             # Filename uses sanitized fightId, so compare sanitized form
-            fid_san = _sanitize(fight_id)
-            present = False
-            for stem in file_stems:
-                if stem == fid_san or stem == fight_id or stem.endswith("-" + fid_san) or stem.endswith("-" + fight_id):
-                    present = True
-                    break
-            check("manifest entry %s has its file" % fight_id[:18], present, True)
-            check("manifest entry %s receivedAt is int" % fight_id[:18], isinstance(val, int), True)
+            if (_sanitize(fight_id) not in file_stems) and (fight_id not in file_stems):
+                missing.append(fight_id[:18])
+            if not isinstance(val, int):
+                not_int.append(fight_id[:18])
+        check("every manifest entry has its file (%d entries)" % len(manifest), missing[:5], [])
+        check("every manifest receivedAt is an int", not_int[:5], [])
+        if missing:
+            print("    %d manifest entries have no file" % len(missing))
 
     # every pool file parses as .jsonl with a begin first line and an end line
+    unreadable, no_begin, no_end, unparseable = [], [], [], []
     for path in files:
         name = os.path.basename(path)
         try:
             log = fightlog.read(path)
         except Exception as e:
-            check("%s parses" % name[:32], False, True)
-            print("    read error: %s" % e)
+            unreadable.append("%s (%s)" % (name[:32], e))
             continue
-        has_begin = log.header is not None and log.header.get("ev") == "begin"
-        check("%s begins with begin" % name[:32], has_begin, True)
-        has_end = log.end is not None
-        check("%s ends with end" % name[:32], has_end, True)
+        if not (log.header is not None and log.header.get("ev") == "begin"):
+            no_begin.append(name[:32])
+        if log.end is None:
+            no_end.append(name[:32])
         # Also ensure unparseable count is zero - valid jsonl
-        check("%s has no unparseable lines" % name[:32], log.unparseable, 0)
         if log.unparseable:
-            print("    unparseable lines: %d" % log.unparseable)
+            unparseable.append("%s (%d)" % (name[:32], log.unparseable))
+    check("every pool file parses (%d files)" % len(files), unreadable[:5], [])
+    check("every pool file begins with begin", no_begin[:5], [])
+    check("every pool file ends with end", no_end[:5], [])
+    check("no pool file has unparseable lines", unparseable[:5], [])
+    for label, bad in (("unreadable", unreadable), ("without begin", no_begin),
+                       ("without end", no_end), ("with unparseable lines", unparseable)):
+        if bad:
+            print("    %d file(s) %s" % (len(bad), label))
 
     # report pool file count as reading (not verdict) - already printed
     print("  pool file count: %d" % len(files))

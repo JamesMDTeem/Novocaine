@@ -101,6 +101,73 @@ def hitpoints():
           (hp["lo"], hp["hi"]), (4000, 4000))
     check("nothing at all is still nothing", summarise_hp({}, set(), {}, None), None)
 
+    # A bat that died to a blow with no number took 52 before it: it had MORE than 52. The
+    # sum is a floor, like a survivor's, and it must not enter the pinned band.
+    hp = summarise_hp({1: 52}, set(), {}, None, {1})
+    check("an undrawn kill is a floor, not the hitpoints", (hp["lo"], hp["hi"]), (53, None))
+    check("  and is counted as one", (hp["floor_kills"], hp["pinned_n"]), (1, 0))
+    hp = summarise_hp({1: 52}, {1}, {}, None, {1})
+    check("  a drawn kill of the same gob wins", (hp["lo"], hp["hi"]), (52, 52))
+    kill_kinds()
+
+
+def kill_kinds():
+    """kill_kind on synthetic logs whose answers are known.
+
+    A drawn kill has its number at the award. An undrawn one - the bat, the adder - has the
+    award, the relation's deletion and a landing blow in the same instant and no number. An
+    award with neither is not a kill (the escapes are where re-hits turn up), and a creature
+    hit after an award was alive past it.
+    """
+    import json
+    import tempfile
+    me, bat = 11, 22
+
+    def log(tail):
+        rows = [{"ev": "begin", "t": 0, "wall": 0, "schema": 12, "char": "c", "megob": me,
+                 "foegob": bat, "foeres": "gfx/kritter/bat/bat", "attrb": {}, "attr": {},
+                 "hard": 0, "soft": 0},
+                {"ev": "foe", "t": 1, "gob": bat, "res": "gfx/kritter/bat/bat", "how": "new"}]
+        for t in (10, 1000, 2000, 3000, 4000):
+            rows.append({"ev": "state", "t": t, "gob": bat, "mine": [0, 0, 0, 0],
+                         "foe": [0, 0, 0, 0], "myip": 0, "foeip": 0, "hpf": 10000,
+                         "stam": 1.0, "energy": 1.0, "dist": 5.0})
+        rows.append({"ev": "dmg", "t": 1500, "gob": bat, "ch": "SHP", "v": 12})
+        rows.extend(tail)
+        rows.append({"ev": "end", "t": 9000, "reason": "ended"})
+        fd, path = tempfile.mkstemp(suffix=".jsonl")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            for r in rows:
+                f.write(json.dumps(r) + "\n")
+        try:
+            lg = estimate.fightlog.read(path)
+        finally:
+            os.unlink(path)
+        eng = [e for e in lg.engagements if e.gob == bat]
+        return estimate.kill_kind(eng[-1], lg) if eng else "no engagement"
+
+    award = lambda t: {"ev": "dmg", "t": t, "gob": me, "ch": "#ffff", "v": 2}
+    land = lambda t: {"ev": "overlay", "t": t, "gob": me, "gobres": "gfx/borka/body",
+                      "res": "sfx/fight/hit1"}
+    gone = lambda t: {"ev": "foe", "t": t, "gob": bat, "res": None, "how": "del"}
+    check("kill: the last blow drawn at the award",
+          log([{"ev": "dmg", "t": 4500, "gob": bat, "ch": "SHP", "v": 40}, award(4500)]), "drawn")
+    check("kill: an undrawn blow lands as the relation goes",
+          log([award(2580), land(2580), gone(2581)]), "undrawn")
+    check("not a kill: an award a second later with nothing landing",
+          log([award(2580), gone(2581)]), None)
+    # 700 ms before the drawn hit at 1500 - outside the drawn window, which accepts either
+    # order within AWARD_KILL_MS because the award and the number share a frame.
+    check("not a kill: hit again after the award",
+          log([award(800), land(800), gone(801)]), None)
+    # The case the old 500 ms window got wrong: a drawn hit 300 ms before an UNDRAWN killing
+    # blow. The drawn hit is not what killed it, and its total is short by the blow that did.
+    check("undrawn: a drawn hit shortly before the undrawn killing blow",
+          log([{"ev": "dmg", "t": 2280, "gob": bat, "ch": "SHP", "v": 30},
+               award(2580), land(2580), gone(2581)]), "undrawn")
+    check("  while a number in the award's own frame is still the kill",
+          log([{"ev": "dmg", "t": 2579, "gob": bat, "ch": "SHP", "v": 30}, award(2580)]), "drawn")
+
 
 def _wd_rows(per):
     """The defence-weight census, one row per species, read in ONE character's frame.

@@ -1624,7 +1624,10 @@ def flee_points(logs=None):
                     if (eng.gob not in flee) or (t < flee[eng.gob]):
                         flee[eng.gob] = t
                     break
-            if died(eng, log.me):
+            # Only a kill whose last blow was drawn has a total that IS its health; one
+            # that died to an undrawn blow is short by it, so it falls to the survivor
+            # branch below and bounds the fraction from one side (see kill_kind).
+            if kill_kind(eng, log) == "drawn":
                 tot = sum(v for _t, v in hits.get(eng.gob, []))
                 died_at[eng.gob] = tot
                 shp = [d for d in eng.damage
@@ -2541,7 +2544,7 @@ _LIST_KEYS = ("skipped", "wd", "foe_close", "foe_close_col", "foe_state", "hits"
               "took", "soak", "soak_clean", "foe_moves", "foe_choice", "sep", "myspd",
               "foespd", "ip_edges", "foe_gaps", "flee")
 _SET_KEYS = ("agi_me", "agi_obs", "agi_obs_clean", "boost_moves",
-             "mu_scaled_openings", "my_wd", "killed", "partial")
+             "mu_scaled_openings", "my_wd", "killed", "killed_floor", "partial")
 _INT_KEYS = ("engagements", "sfx_brackets")
 _NESTED_LIST = ("foe_moves_by", "foe_state_by", "foe_choice_by", "foe_close_by",
                 "foe_close_col_by",
@@ -2641,6 +2644,9 @@ def _blank_rec():
         # Damage per opponent GOB, accumulated across every file that gob appears in -
         # see summarise_hp for why this cannot be done per file.
         "dealt": defaultdict(int), "killed": set(),
+        # Gobs that died to a blow the client drew no number for, so their sum is short by
+        # that blow and bounds them from below only - see kill_kind.
+        "killed_floor": set(),
         # Explicit outcome inference: per-engagement killed/fled/player/unknown kept
         # alongside problems, not as a silent gate change. Surface the field so a
         # later reader can gate on it deliberately rather than having it laundered
@@ -2914,8 +2920,11 @@ def _collect_file(p, moves, opens):
         # total is the creature's total intake while it was in view - which is what
         # the ceiling below needs. What can still be missed is a fight that started
         # before we could see it, and no flag in a log detects that.
-        if died(eng, log):
+        _kill = kill_kind(eng, log)
+        if _kill == "drawn":
             rec["killed"].add(eng.gob)
+        elif _kill == "undrawn":
+            rec["killed_floor"].add(eng.gob)
 
         # What the opponent does to US, taken BEFORE the offence gate and under the
         # DEFENCE one - the two fail for different reasons. Someone else hitting the
@@ -3306,7 +3315,7 @@ def collect(paths):
                 rec["soak_clean"].extend(max(byc.values(), key=len))
         rec["wiki"] = wiki_for(wiki, rec["res"])
         rec["hp"] = summarise_hp(rec["dealt"], rec["killed"], rec["last_hit"],
-                                 wiki_for(wiki, rec["res"]))
+                                 wiki_for(wiki, rec["res"]), rec["killed_floor"])
     return per, moves
 
 
@@ -3338,22 +3347,75 @@ def died(eng, log):
     median of 17 against its 90 hitpoints. So a kill needs damage on this creature and an
     award within AWARD_KILL_MS of the last of it - on either side, since the award and the
     number are drawn in the same frame and can be logged in either order.
+
+    THAT WAS HALF RIGHT, and the half it got wrong was every bat (later 2026-09-14). The
+    "1,080 ms" was not an escape: it is Quick Barrage's 18-tick cooldown, the gap between the
+    last hit the log DREW and the blow that killed. Some creatures - bat, adder, swan, crane,
+    pelican, golden eagle, eagle owl, wood scorpion - take their killing blow with no number
+    drawn at all. What the log does carry at that instant is the award, the creature's
+    relation being deleted, and a blow landing (`sfx/fight/hit*`). 384 bats, 87 adders and 34
+    swans died that way, and not one of them was ever hit again - where the awards that fit
+    neither rule are the ones followed by more fighting (34 ants, 10 wild bees, 8 bats). See
+    kill_kind(), which says which of the two a kill was.
+    """
+    return kill_kind(eng, log) is not None
+
+
+def kill_kind(eng, log):
+    """How this engagement's opponent died: "drawn", "undrawn", or None if it did not.
+
+    "drawn" - the killing blow has a number, so the damage summed over the creature is its
+    hitpoints. "undrawn" - the creature died to a blow the client drew no number for, so the
+    sum is short by exactly that blow and says only that it had MORE than the sum.
     """
     if PLAYER in (eng.res or ""):
-        return False
+        return None
+    awards = [d["t"] for d in eng.damage
+              if d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
+              and (d.get("t") is not None)]
+    if not awards:
+        return None
     shp = [d["t"] for d in eng.damage
            if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP") and (d.get("t") is not None)]
-    if not shp:
-        return False
-    last = max(shp)
-    return any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
-               and (d.get("t") is not None) and (abs(d["t"] - last) <= AWARD_KILL_MS)
-               for d in eng.damage)
+    if shp:
+        last = max(shp)
+        if any(abs(a - last) <= AWARD_KILL_MS for a in awards):
+            return "drawn"
+    # Indexed once per log: a long file has many engagements and scanning every row for each
+    # of them is quadratic.
+    idx = getattr(log, "_kill_index", None)
+    if idx is None:
+        dels_by = defaultdict(list)
+        for r in (getattr(log, "rows", None) or []):
+            if r.get("ev") == "foe" and r.get("how") == "del" and (r.get("t") is not None):
+                dels_by[r.get("gob")].append(r["t"])
+        idx = (dels_by, [o["t"] for o in (getattr(log, "overlays", None) or [])
+                         if str(o.get("res", "")).startswith("sfx/fight/hit")
+                         and (o.get("t") is not None)])
+        try:
+            log._kill_index = idx
+        except AttributeError:
+            pass
+    dels, lands = idx[0].get(eng.gob, ()), idx[1]
+    for a in awards:
+        if shp and (a < max(shp)):
+            # The creature took a drawn hit after this award, so it was alive past it.
+            continue
+        if (any(abs(t - a) <= UNDRAWN_KILL_MS for t in dels)
+                and any(abs(t - a) <= UNDRAWN_KILL_MS for t in lands)):
+            return "undrawn"
+    return None
 
 
 # How close the fight-end award must sit to the creature's last damage to mean it died -
-# see died(). Kills sit at 0-1 ms; escapes at about 1,080 ms.
-AWARD_KILL_MS = 500
+# see died(). 4,005 of 4,077 drawn kills sit at 0-2 ms and 21 more by 20 ms. It was 500, and
+# that let a drawn hit a few hundred ms BEFORE an undrawn killing blow pass as the killing
+# blow: every bat, adder, swan, pelican and golden eagle kill between 21 and 500 ms has a blow
+# landing and the relation deleted at the award, so kill_kind reads those as undrawn instead.
+AWARD_KILL_MS = 20
+# How close the award, the relation's deletion and a landing blow must sit for an undrawn
+# kill. In the corpus all three share a millisecond or two; 100 ms is slack, not a fit.
+UNDRAWN_KILL_MS = 100
 
 
 def norm(name):
@@ -3885,7 +3947,7 @@ def write_animal_moves(per, paths=None):
     return doc
 
 
-def summarise_hp(dealt, killed, last_hit, wiki_entry):
+def summarise_hp(dealt, killed, last_hit, wiki_entry, killed_floor=()):
     """Hitpoints, as the range a fresh one of these could have.
 
     The wiki's stated figure is the baseline and it is a good one. Its boar died three
@@ -3909,6 +3971,11 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     (D - last hit, D], which put the bear's floor at 478 while 43 of its 45 kills totalled
     800 or more.) A kill total can still read LOW - damage nobody saw - but never high.
 
+    Unless the killing blow itself had no number. A bat, adder, swan and a few others die to a
+    blow the client draws nothing for (see kill_kind), so what such a creature took before it
+    is short by exactly that blow: it had MORE than D, which is a survivor's arithmetic even
+    though it is dead. `killed_floor` names those, and a gob in `killed` is never read as one.
+
     Both hold in a group fight. The client draws a floating number over a creature for
     damage from any source - the bear log carries thirty for a fight this character sat
     out entirely - so D is the creature's whole intake while in view, not our share. What
@@ -3922,6 +3989,7 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     pin_lo, pin_hi, pin_n = None, None, 0
 
     kills = []
+    floors = 0
     for gob, d in sorted(dealt.items()):
         if d <= 0:
             continue
@@ -3934,6 +4002,11 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
             lo = d if lo is None else min(lo, d)
             hi = d if hi is None else max(hi, d)
             kills.append(d)
+        elif gob in killed_floor:
+            # Dead, but the blow that did it had no number, so this sum is short by it.
+            per.append("died to an undrawn blow after taking %d, so that one had more than that" % d)
+            sur = d + 1 if sur is None else max(sur, d + 1)
+            floors += 1
         else:
             # A survivor proves some individual was AT LEAST this big, which raises the
             # top of the range and says nothing about the bottom. Letting it lower the
@@ -4021,6 +4094,8 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
             "pinned_lo": pin_lo if pin_n >= PIN_MIN_N else None,
             "pinned_hi": pin_hi if pin_n >= PIN_MIN_N else None,
             "pinned_n": pin_n,
+            # Kills whose last blow had no number - floors, and not in the pinned band.
+            "floor_kills": floors,
             "from": "; ".join(per) or "wiki only"}
 
 
