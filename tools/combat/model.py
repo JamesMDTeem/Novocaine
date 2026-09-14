@@ -115,6 +115,19 @@ def agility_cooldown_factor(agi_me, agi_foe):
     return 1.0 - (0.1 * l)
 
 
+def cooldown_scales(mv):
+    """Whether a move's cooldown moves with anything other than the die.
+
+    A cooldown carries up to two scaling terms: an initiative term (`ip_scale`, the
+    `(1 + ip_scale * ip)` factor) and a mu division (`cooldown_mu`, text like "80 / mu").
+    Dash declares the mu division and no initiative term, so it is NOT a fixed-cooldown
+    card even though `ip_scale` is zero - its reported ticks move with the opponent's
+    relative agility. Only a move with NEITHER term has a cooldown that cannot move at a
+    fixed (level, initiative) slice, which is what makes it usable as a control.
+    """
+    return bool(mv.get("ip_scale")) or bool(mv.get("cooldown_mu"))
+
+
 def cooldown_ticks(base, mu_divides, mu, ip_scale, ip, is_attack, agi_me, agi_foe):
     """A move's cooldown in whole server ticks. Floors, and floors TWICE - see the Java."""
     cd = base

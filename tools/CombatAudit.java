@@ -204,7 +204,7 @@ public class CombatAudit {
         uncovered("FoeModel", FoeModel.class, new String[] {
             "period", "pressure", "pressureAgainst", "damageCoef", "nGaps", "nHits",
             "modes", "fleesBelow", "restores", "restoresByColour", "cards",
-            "condFeature", "condCut", "whenPressure", "elsePressure",
+            "condFeature", "condCut", "whenPressure", "elsePressure", "soakedShare",
         });
     }
 
@@ -663,6 +663,18 @@ public class CombatAudit {
         new FoeModel(50, new double[4], 100, Double.NaN, 10, 0).act(h1, h1.defenceWeight());
         new FoeModel(50, new double[4], 100, 2.0, 10, 10).act(h2, h2.defenceWeight());
         live("its damage coefficient costs us health", h1.hp, h2.hp, "FoeModel.act");
+
+        /* ITS PENETRATION on the averaged action: the share of its swing our armour stopped,
+         * measured per creature. Against armour far bigger than the swing, no share means
+         * fully soaked and a measured share must let its complement through. */
+        Combatant s1 = open(50), s2 = open(50);
+        s1.armHard = s2.armHard = 1000;
+        new FoeModel(50, new double[4], 100, 200.0, 10, 10, Double.NaN, new int[0], Double.NaN,
+                     null, 0, null, null, null, null, Double.NaN).act(s1, s1.defenceWeight());
+        new FoeModel(50, new double[4], 100, 200.0, 10, 10, Double.NaN, new int[0], Double.NaN,
+                     null, 0, null, null, null, null, 0.8).act(s2, s2.defenceWeight());
+        live("  and its measured soak share lets part of a swing through armour", s1.hp, s2.hp,
+             "FoeModel.act");
 
         /* Fleeing, restoring, and the conditional split - all measured off the corpus. */
         Combatant runner = fighter();

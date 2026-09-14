@@ -134,6 +134,14 @@ public class Fightview extends Widget {
 				lastDefenceDuration = Config.nonAttackDefences.get(lastact.get().name);
 			}
 		} catch (Loading ignored) {}
+		try {
+			if (lastact != null && lastact.get() != null) {
+				haven.automated.combat.CombatRecorder.onFoeAction(gobid, lastact.get().name,
+					haven.automated.combat.CombatRecorder.moveName(lastact.get()),
+					haven.automated.combat.CombatRecorder.readOpenings(Fightview.this.buffs.children(Buff.class)), ip, oip, gst, buffs.children(Buff.class),
+					lastActCleave, lastActDefence, lastDefenceDuration);
+			}
+		} catch (Loading ignored) {}
 		playCombatSoundEffect(lastact);
 	}
 

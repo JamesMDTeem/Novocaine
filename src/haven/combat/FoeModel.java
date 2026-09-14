@@ -33,7 +33,7 @@ public final class FoeModel {
     public final double pressureAgainst;
 
     /**
-     * Damage coefficient: SHP through our armour per unit of squared opening.
+     * Damage coefficient: the WHOLE swing, before our armour, per unit of squared opening.
      *
      * Their damage follows the same shape ours does - proportional to the square of the
      * opening it reads - so one coefficient captures it without needing their strength or
@@ -41,46 +41,24 @@ public final class FoeModel {
      * creature land a hit, and the optimizer then refuses to report damage taken rather
      * than reporting zero.
      *
-     * THROUGH OUR ARMOUR, AND THAT IS TWO LIMITATIONS WORTH NAMING.
-     *
-     * Armour is not bypassed - the game applies it and the logs show it plainly. Of 3098
-     * blows creatures landed on us, 2623 carry a soak figure, and for most moves the soak
-     * is nearly the whole swing: Fell Scratch, Low Horn Swipe, Mule Kick and Wingbeat all
-     * sit at a median soak share of 1.00, Chomp and Blood and Gore at 0.85. So the number
-     * fitted here is what got through, and applying armour again in the simulator would
-     * subtract it twice. That is why nothing here touches armHard or armSoft.
-     *
-     * The first limitation is that it is fitted to the armour we happened to be wearing.
-     * Change the gear and this coefficient describes a fight that no longer happens. It
-     * is a measurement of a matchup, not of the creature.
-     *
-     * The second is that penetration is a property of the MOVE and this is a property of
-     * the creature. Matched on swing size so that a fixed soak cannot explain it - every
-     * blow between 4 and 7 points - the moves cluster tightly and one does not:
-     *
-     *   Ant Spit         35 hits   soak share 0.50   half of it gets through
-     *   Mule Kick        23        0.80
-     *   Thunder Over     27        0.80
-     *   Tail Splash      10        0.82
-     *   Bear Down        27        0.83
-     *   Chomp            10        0.83
-     *   Fell Scratch    315        0.83
-     *   Low Horn Swipe   37        0.83
-     *
-     * So Ant Spit penetrates about three times better than anything else measured, and
-     * the rest are indistinguishable at these counts. Averaging a spitting ant and a
-     * scratching one into a single coefficient hides that, and the hiding is invisible
-     * until the armour changes.
-     *
-     * THE PER-MOVE SOAK IS MEASURED AND SHIPPED, AND NOT CONSUMED HERE. It is not a
-     * field the pack lacks: {@link BeastMove#soaked} is filled from the pack's
-     * {@code soaked_share}, and the measured file carries it for 8 of its 24 cards
-     * (Pack.java parses it, the fit writes it). What is missing is a reader - {@link #play}
-     * still passes a penetration of 0.0 to {@link Formulas#dealtDamage}, so every card is
-     * treated as fully soaked and Ant Spit's 0.50 is priced like everyone else's 0.83.
-     * That is a known gap on this side of the model, not an absent measurement.
+     * Fitted to SHP + ARM (the estimator's `before_armour` flag), so it describes the
+     * creature rather than the gear worn that day, and our armour is applied in act() and
+     * play() where the defender is known. (This comment used to describe the older fit to
+     * what got through, and said the per-card soak went unread; both stopped being true.)
      */
     public final double damageCoef;
+
+    /**
+     * The share of this creature's swing our armour stopped, over all its cards, or NaN.
+     *
+     * Its complement is the penetration the averaged action applies. Measured on hits our
+     * armour touched, it does not depend on the size of the blow: across every animal hit
+     * in the corpus the median share through is about 15% for swings of 4-7, 8-15, 16-30,
+     * 31-60 and 61+ alike (2026-09-14), which is penetration against armour bigger than the
+     * swing - exactly what {@link Formulas#dealtDamage} models - and not a fixed soak or a
+     * one-point floor. The card path reads the same thing per card, {@link BeastMove#soaked}.
+     */
+    public final double soakedShare;
 
     /** How many observations each figure rests on, for the report to carry. */
     public final int nGaps, nHits;
@@ -164,12 +142,11 @@ public final class FoeModel {
      * pressure, the single coefficient, the flat restoration - is the fallback for
      * creatures the corpus cannot break down, and stays because some cannot.
      *
-     * The CLOCK is still the creature's measured rotation rather than the chosen card's
-     * own cooldown. Per-card cooldowns are measured and shipped, but scheduling by them
-     * needs a timer per card in the search state, which the optimizer's node does not
-     * carry. The rotation is itself a measurement - the median gap between this
-     * creature's actions - so this is not a guess standing in for one, it is a coarser
-     * measurement than the one available.
+     * The CLOCK follows the card thrown: {@link #act} reports that card's measured cooldown
+     * as the gap to this creature's next action, falling back to the period. That needs no
+     * timer per card, because a combatant has ONE cooldown and the card thrown sets its
+     * length (Fightsess draws a single atkcs/atkct) - there are no independent card timers
+     * to carry.
      */
     public final Repertoire cards;
 
@@ -238,6 +215,17 @@ public final class FoeModel {
                     int[] modes, double restores, String condFeature, double condCut,
                     double[] whenPressure, double[] elsePressure, double[] byColour,
                     Repertoire rep) {
+        this(period, pressure, pressureAgainst, damageCoef, nGaps, nHits, fleesBelow,
+             modes, restores, condFeature, condCut, whenPressure, elsePressure, byColour,
+             rep, Double.NaN);
+    }
+
+    public FoeModel(long period, double[] pressure, double pressureAgainst,
+                    double damageCoef, int nGaps, int nHits, double fleesBelow,
+                    int[] modes, double restores, String condFeature, double condCut,
+                    double[] whenPressure, double[] elsePressure, double[] byColour,
+                    Repertoire rep, double soakedShare) {
+        this.soakedShare = soakedShare;
         this.condFeature = condFeature;
         this.condCut = condCut;
         this.whenPressure = whenPressure;
@@ -292,16 +280,50 @@ public final class FoeModel {
      */
     public double act(Combatant me, double myBlockWeight, Combatant self, int step,
                       int[] thrown) {
-        if((self != null) && fleeing(self))
+        return(act(me, myBlockWeight, self, step, thrown, null));
+    }
+
+    /**
+     * The same, reporting the gap to this creature's next action through {@code gapOut}.
+     *
+     * PER-CARD COOLDOWNS WHERE THE CORPUS MEASURED THEM. A creature that throws Bristle and
+     * then Fell Scratch is not acting on one clock: the cards are back at different times,
+     * and the median gap between its actions is a blend of them. Where the card it just
+     * threw carries a measured cooldown, that is the gap; where it does not - a card path
+     * built from our own sheet, or a creature the corpus never timed per card - the single
+     * measured period stands in. The gap is written into a caller-owned slot rather than a
+     * field, so this stays a function of the search node and nothing is stored on the model
+     * the whole beam shares.
+     */
+    public double act(Combatant me, double myBlockWeight, Combatant self, int step,
+                      int[] thrown, long[] gapOut) {
+        if((self != null) && fleeing(self)) {
+            if((gapOut != null) && (gapOut.length > 0))
+                gapOut[0] = period;
             return(0);
+        }
         if((cards != null) && cards.usable()) {
             int i = cards.pick(me, self, step, thrown);
             if((thrown != null) && (i < thrown.length))
                 thrown[i]++;
+            if((gapOut != null) && (gapOut.length > 0))
+                gapOut[0] = gapFor(i);
             return(play(cards.cards[i], me, myBlockWeight, self));
         }
+        if((gapOut != null) && (gapOut.length > 0))
+            gapOut[0] = period;
         restore(self);
         return(act(me, myBlockWeight, pressureNow(me, self)));
+    }
+
+    /** The thrown card's own measured cooldown, or the creature's single period otherwise. */
+    private long gapFor(int i) {
+        if((cards != null) && (i >= 0) && (i < cards.cards.length)) {
+            long cd = cards.cards[i].cooldown;
+            if(cd > 0)
+                return(cd);
+        }
+        return(period);
     }
 
     /**
@@ -334,7 +356,16 @@ public final class FoeModel {
             o[c] = me.opening(c);
         double combined = Formulas.combined(o);
         double raw = m.damageCoef * combined * combined;
-        double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, 0.0);
+        /* PER-CARD PENETRATION, MEASURED AND NOW READ. {@link BeastMove#soaked} is the share
+         * of this card's swing OUR armour stopped, so its penetration is the complement -
+         * which is exactly the fraction {@link Formulas#dealtDamage} expects in its
+         * {@code armpen} argument. Ant Spit's measured 0.50 stops the swing half way where
+         * Fell Scratch and the rest sit at 0.80-0.86, and treating every card as fully
+         * soaked priced the spitter like everyone else. A card with no measured share (NaN
+         * from a pack that never carried one, or 0 from our own sheet via fromOurCard)
+         * keeps the old reading of fully soaked rather than inventing a penetration. */
+        double armpen = ((m.soaked > 0) && (m.soaked <= 1.0)) ? (1.0 - m.soaked) : 0.0;
+        double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, armpen);
         me.hp -= dealt;
         return(dealt);
     }
@@ -424,15 +455,15 @@ public final class FoeModel {
          * meant a change of armour was silently ignored. Fitted to the swing instead, it
          * describes the creature, and the soaking belongs where the defender is known.
          *
-         * Penetration is taken as zero, which treats every one of its cards as fully
-         * soaked. That is conservative against the spitters, whose measured soak is 0.50
-         * where most moves sit at 0.80-0.83, but it is not a gap in the data: the per-card
-         * share is measured and shipped as {@link BeastMove#soaked}, and this path simply
-         * does not read it yet. Zero is used rather than a per-creature figure because the
-         * gap is per MOVE, and averaging the one exception into the creature is the same
-         * mistake one level up. */
+         * PENETRATION IS THE CREATURE'S OWN MEASURED SHARE, where it has one. This path is
+         * the average over its cards, so the soak share averaged over the same cards is
+         * the consistent figure - the objection that the exception is per MOVE applies to
+         * the card path, which reads BeastMove.soaked per card. Taking zero here priced
+         * every creature without a card repertoire at exactly nothing, since a whole swing
+         * against armour bigger than it is fully soaked. No measured share keeps zero. */
+        double armpen = ((soakedShare > 0) && (soakedShare <= 1.0)) ? (1.0 - soakedShare) : 0.0;
         double raw = damageCoef * combined * combined;
-        double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, 0.0);
+        double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, armpen);
         me.hp -= dealt;
         return(dealt);
     }
@@ -488,7 +519,7 @@ public final class FoeModel {
                         refBlock, 1.0, m.openings[c], 0.0);
                 }
             }
-            if(m.damageShare > 0) {
+            if((m.damageShare > 0) || (m.flatDamage > 0)) {
                 hitters++;
                 dmg += Formulas.rawDamage(owner.damageBase(m), owner.damageShare(m),
                                           owner.damageQuality(m), owner.str, 1.0);
@@ -500,7 +531,15 @@ public final class FoeModel {
             press[c] /= acts;
         /* Damage is averaged over EVERY action, not over the attacks alone. A deck that is
          * half setup swings half as often, and averaging over the hitters would price it as
-         * though every tick landed a blow. */
+         * though every tick landed a blow: act() deals this coefficient on every action of
+         * the clock above, and that clock is the mean over every action too. The expected
+         * damage of an action IS a fraction of a blow when some actions do not hit - the
+         * estimator averages pressure over every action for the same reason.
+         *
+         * `hitters` gates on FLAT-damage cards as well as weapon-share ones. The share-only
+         * test dropped a flat-damage card from the numerator entirely, so a deck mixing the
+         * two read the share cards alone; that part of the 2026-09-13 change was right and
+         * stays. Reverting the denominator to `hitters` was not (2026-09-14 review). */
         double coef = (hitters > 0) ? (dmg / acts) : Double.NaN;
         return(new FoeModel(Math.max(1, Math.round(cd / acts)), press, refBlock, coef,
                             acts, hitters));

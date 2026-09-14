@@ -34,14 +34,46 @@ public final class Repertoire {
     public final double condCut;
     public final double[] whenMix, elseMix;
 
+    /**
+     * The threshold gates the corpus reproduced, or null.
+     *
+     * A gate is a measured reading, not a guess: the estimator writes one per move that is
+     * chosen more often once a colour's standing opening passes a cut, and marks
+     * {@code reproduces} only where the split survives data it was not chosen on. Read them
+     * through {@link #mixNow}, never directly - it applies only the vouched-for ones, and
+     * only in the state the fight is actually in.
+     */
+    public final Gate[] gates;
+
+    /** A reproduced threshold: boost {@code card}'s share by {@code lift} once past the cut. */
+    public static final class Gate {
+        public final int card, colour;
+        public final boolean onTarget;
+        public final double cut, lift;
+
+        public Gate(int card, int colour, boolean onTarget, double cut, double lift) {
+            this.card = card;
+            this.colour = colour;
+            this.onTarget = onTarget;
+            this.cut = cut;
+            this.lift = lift;
+        }
+    }
+
     public Repertoire(BeastMove[] cards, double[] mix, String condFeature, double condCut,
                       double[] whenMix, double[] elseMix) {
+        this(cards, mix, condFeature, condCut, whenMix, elseMix, null);
+    }
+
+    public Repertoire(BeastMove[] cards, double[] mix, String condFeature, double condCut,
+                      double[] whenMix, double[] elseMix, Gate[] gates) {
         this.cards = cards;
         this.mix = mix;
         this.condFeature = condFeature;
         this.condCut = condCut;
         this.whenMix = whenMix;
         this.elseMix = elseMix;
+        this.gates = gates;
     }
 
     public boolean usable() {
@@ -58,6 +90,36 @@ public final class Repertoire {
      * behaviour and the report should say so rather than pretending the rule fired.
      */
     public double[] mixNow(Combatant me, Combatant self) {
+        double[] base = baseMix(me, self);
+        if((gates == null) || (gates.length == 0))
+            return(base);
+        double[] out = null;
+        for(int g = 0; g < gates.length; g++) {
+            Gate gate = gates[g];
+            Combatant side = gate.onTarget ? me : self;
+            if((side == null) || (gate.card < 0) || (gate.card >= base.length))
+                continue;
+            double standing = side.opening(gate.colour) * 100.0;
+            if(standing > gate.cut) {
+                if(out == null)
+                    out = base.clone();
+                out[gate.card] *= gate.lift;
+            }
+        }
+        if(out == null)
+            return(base);
+        double tot = 0;
+        for(int i = 0; i < out.length; i++)
+            tot += Math.max(0.0, out[i]);
+        if(tot <= 0)
+            return(base);
+        for(int i = 0; i < out.length; i++)
+            out[i] = Math.max(0.0, out[i]) / tot;
+        return(out);
+    }
+
+    /** The unconditional or learned split, before any reproduced threshold gate. */
+    private double[] baseMix(Combatant me, Combatant self) {
         if((condFeature == null) || (whenMix == null) || (elseMix == null))
             return(mix);
         double v;

@@ -186,9 +186,22 @@ def _measure_mu_file(path):
         return ({}, {})
     if fightlog.is_ranged(recs):  # ranged: no openings, melee instruments do not apply
         return ({}, {})
-    begin = next((r for r in recs if r.get("ev") == "begin"), {})
-    wall = begin.get("wall")
-    level = levels_at(wall, begin.get("char")).get("Take Aim")
+    # THE LEVEL COMES FROM levels_for_log AND NOT FROM levels_at, which is the difference
+    # between asking the fight and asking the calendar. levels_at interpolates the dump
+    # history; levels_for_log prefers the header's own deck, then a dump landing inside the
+    # race window that explains every card the fight threw, and answers "unknown" when
+    # neither does. This function used to take the calendar, and on 2026-09-12 a corpus of
+    # 367 new fights produced the failure that shows why: one file, Santa Samus 119, was
+    # dated to Take Aim level 2 by the timeline while its four Take Aim uses all read mu
+    # 1.0, which is level 1. Four bands of (0.9677, 1.0000) against 191 of (1.1111, 1.1538)
+    # emptied the intersection and DELETED level 2 from the measurement entirely - the one
+    # level that discriminates the linear mu curve from the square root. levels_for_log
+    # declines to date that fight, which is the honest answer and costs four observations.
+    try:
+        log = fightlog.read(path)
+    except (OSError, ValueError):
+        return ({}, {})
+    level = (levels_for_log(log) or {}).get("Take Aim")
     if not level:
         return ({}, {})
     per = defaultdict(list)
@@ -265,7 +278,28 @@ def measure_mu(logs=None):
         lo, hi = max(lo, MU_MIN_STATED), min(hi, MU_MAX)
         if lo <= hi:
             out[level] = (lo, hi, len(bands), len(suspect.get(level, ())))
+        else:
+            # AN EMPTY INTERSECTION USED TO DELETE THE LEVEL IN SILENCE, and that is how a
+            # single mislevelled fight took mu(2) - the only level that separates the linear
+            # curve from the square root - out of the measurement without a word. The
+            # deletion is correct: an intersection that does not close means one of the
+            # bands is wrong, and nothing here can say which, so publishing any of it would
+            # be inventing. What was wrong was doing it quietly.
+            #
+            # So the level is still withheld, and the consensus is recorded beside it: the
+            # value the most bands cover, how many cover it, and how many do not. A check
+            # reads this and a reader sees it, which turns "level 2 is missing" into "level
+            # 2 has 191 bands agreeing and 4 disagreeing, go and look at those 4".
+            depth, span = deepest_interval([(b[0], b[1]) for b in bands])
+            MU_CONTRADICTED[level] = {"n": len(bands), "agree": depth, "span": span,
+                                      "strict": (lo, hi)}
     return out
+
+
+# Levels measure_mu withheld because their bands do not intersect - see the else branch
+# above. Empty on a healthy corpus; a non-empty entry names a level whose observations
+# contradict each other and is a finding, not a warning to be tuned away.
+MU_CONTRADICTED = {}
 
 
 # Measured at import, so every defence weight this tool reports is corrected by a mu that
@@ -480,6 +514,67 @@ def deck_history():
 
 
 DECKS = deck_history()
+
+
+def learned_levels():
+    """Per character, how far each card has been LEARNED - `maxlevel`, not `decklevel`.
+
+    THE TWO ARE DIFFERENT QUESTIONS AND THE PACK CARRIED ONLY ONE. A dump gives both: how
+    many points the character has bought into a card, and how many are currently slotted in
+    the deck. `DECKS` above carries the second, because everything that reads a fight wants
+    to know what was thrown. The pack's Fighter then published those same numbers under the
+    name `owned`, whose own docstring claimed a level of 0 meant "known but not on the bar" -
+    the value is the bar.
+
+    It matters because it separates two questions a matchup cannot answer at once. What do I
+    throw RIGHT NOW ranges over the ten cards in the deck; what deck should I BUILD for this
+    creature ranges over every card learned, inside the deck's point budget. ZzxcuV3 has
+    learned all 41 and slots 10 of them for all 30 of 30 points, so the two sets differ by
+    thirty-one cards - Knock Its Teeth Out among them, learned at 2 and not slotted, which
+    the matchup was planning with until today.
+
+    The newest dump per character wins, for the same reason the attribute readings do: cards
+    are bought and never unbought, so the latest dump is the character as it stands.
+    """
+    out = {}
+    dirs = list(fightlog.find_log_dirs(ROOT))
+    dirs.append(os.path.join(ROOT, "data", "combat", "pool", "decks"))
+    newest = {}
+    for d in dirs:
+        for p in sorted(glob.glob(os.path.join(d, "deck-*.json"))):
+            stamp = os.path.basename(p).rsplit("-", 1)[-1].split(".")[0]
+            try:
+                when = int(stamp)
+            except ValueError:
+                continue
+            try:
+                with open(p, "r", encoding="utf8") as f:
+                    doc = json.load(f)
+            except (OSError, ValueError):
+                continue
+            body = doc.get("body", doc)
+            char = body.get("char") or doc.get("char")
+            if not char:
+                base = os.path.basename(p)
+                if base.startswith("deck-") and base.count("-") >= 2:
+                    char = base[len("deck-"):].rsplit("-", 1)[0]
+            if not char:
+                continue
+            lv = dict((m.get("name"), m.get("maxlevel")) for m in (body.get("moves") or ())
+                      if m.get("name") and m.get("maxlevel") is not None)
+            # A probe fired while the sheet was still loading carries a handful of cards
+            # rather than the whole book - the same fault deck_history guards, and guarded
+            # the same way: judge it on card COUNT, never on levels.
+            if not lv:
+                continue
+            if when >= newest.get(char, (-1, 0))[0]:
+                if len(lv) >= (newest.get(char, (-1, 0))[1] * 0.75):
+                    newest[char] = (when, len(lv))
+                    out[char] = lv
+    return out
+
+
+LEARNED = learned_levels()
 
 
 def levels_at(when, char):
@@ -1289,10 +1384,11 @@ def agility_band(logs=None):
     have a 1.15 in it constrains nothing, so it is not used.
 
     Returns (ratios, spreads, flat, excluded) - every level-1 zero-initiative attack
-    ratio, the per (card, level, initiative) max/min spreads, the maneuvers, which take no
-    agility term and are the control, and what the coolmod exclusion cost: a dict with
-    `n`, the observation count, and `widest`, the widest spread the same corpus gives when
-    the excluded observations are put back in.
+    ratio, the per (card, level, initiative) max/min spreads, the maneuvers, which carry
+    no scaling term at all (neither an initiative term nor a mu division) and are the
+    control, and what the coolmod exclusion cost: a dict with `n`, the observation count,
+    and `widest`, the widest spread the same corpus gives when the excluded observations
+    are put back in.
     """
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
@@ -1994,6 +2090,48 @@ GAIN_SLOP = 1.5
 # wide band. This threshold is for the places a single number is wanted.
 MIN_GAIN = 10
 
+# The joint skill fit's three constants. See foe_skill_joint.
+#
+# Four rows, because the fit has one free parameter and a branch structure: fewer than that
+# and a single scattered observation moves the answer across a band edge.
+JOINT_MIN_ROWS = 4
+# How much worse than the best a fit may be and still count as the same answer, in units of
+# chi-square. One, which is the one-deviation interval for weights that are inverse
+# variances - and they are, by construction; see GAIN_SIGMA.
+JOINT_CHISQ = 1.0
+# How wide that interval may be before the fit is calling itself a measurement on nothing.
+# A factor of four is the width of the dead zone itself - from half our skill to twice it -
+# so an interval wider than the thing it is trying to resolve is a bound, not a value.
+JOINT_IDENTIFIABLE = 4.0
+# The log-space deviation a one-point gain carries, from which every row's weight follows.
+#
+# Wd goes as the inverse cube of the gain and the gain is an integer, so a half-point
+# truncation is a fractional error of about 3 * 0.5 = 1.5 divided by the gain. At a gain of
+# 20 that is 7.5% and at 10 it is 15%, which is the table MIN_GAIN was derived from.
+GAIN_SIGMA = 1.5
+
+# The slope test's constants. See foe_skill_slope.
+#
+# Gains of eight and up, because the shape is read off many rows and the smallest gains
+# carry a third-power error that would flatten any slope. Twenty rows and a twofold range
+# of our own skill, because a slope needs a lever: a character who did not train between
+# the fights in question cannot tell a proportional k**3 from a flat one. Twofold and not
+# threefold, which was the first guess and was badly placed - it blocked twenty species
+# whose range sits between 2.3 and 2.94, wolf among them at 2.81 over 303 rows. A doubling
+# of our skill is a lever of log 2, which separates a slope of 0 from one of 1 far outside
+# the scatter; this threshold is only here to exclude a character who never trained. And a half, which
+# is the midpoint between the two things being told apart - proportional is 1 and flat is 0 -
+# TWO thresholds rather than one, because the slopes are a continuum: 0.7 and above is
+# proportional enough to be reading the creature, 0.3 and below is flat enough to be
+# reading the band, and the gap between them is where this corpus has not settled it.
+# A single cut at the midpoint was tried, with a check asserting nothing lands near it.
+# That is false - cattle sits at 0.62 and sentinelbee at 0.63.
+SLOPE_MIN_GAIN = 8
+SLOPE_MIN_ROWS = 20
+SLOPE_MIN_RANGE = 2.0
+SLOPE_MEASURABLE = 0.7
+SLOPE_IN_BAND = 0.3
+
 
 def gain_interval(wa, gain, ob, standing, wa_hi=None):
     """The defence weight an observed gain allows, as an interval.
@@ -2400,12 +2538,13 @@ def collect_cached(paths):
 # ---------------------------------------------------------------------------------
 
 _LIST_KEYS = ("skipped", "wd", "foe_close", "foe_close_col", "foe_state", "hits",
-              "took", "soak", "soak_clean", "foe_moves", "sep", "myspd", "foespd",
-              "ip_edges", "foe_gaps", "flee")
+              "took", "soak", "soak_clean", "foe_moves", "foe_choice", "sep", "myspd",
+              "foespd", "ip_edges", "foe_gaps", "flee")
 _SET_KEYS = ("agi_me", "agi_obs", "agi_obs_clean", "boost_moves",
              "mu_scaled_openings", "my_wd", "killed", "partial")
 _INT_KEYS = ("engagements", "sfx_brackets")
-_NESTED_LIST = ("foe_moves_by", "foe_state_by", "foe_close_by", "foe_close_col_by",
+_NESTED_LIST = ("foe_moves_by", "foe_state_by", "foe_choice_by", "foe_close_by",
+                "foe_close_col_by",
                 "foe_gaps_by", "soak_by", "soak_clean_by")
 _NESTED_INT = ("dealt_by", "engagements_by")
 _NESTED_SET = ("cd", "their_moves", "agi_obs_by_gob", "agi_obs_clean_by_gob")
@@ -2441,6 +2580,12 @@ def _blank_rec():
         # to the fullest witness below, exactly as the damage is.
         "foe_moves_by": defaultdict(_by_char_list),
         "foe_state_by": defaultdict(_by_char_list),
+        # The raw material behind policy_model: one row per foe card choice, carrying the
+        # WHOLE decision state (both ends' four openings, both IP, distance, health) rather
+        # than the two maxima foe_state_by keeps. Buffered per witness and folded to the
+        # fullest, exactly like the others. See estimate.policy_model.
+        "foe_choice_by": defaultdict(_by_char_list),
+        "foe_choice": [],
         "foe_close_by": defaultdict(_by_char_list),
         "foe_close": [],
         # THE SAME THING PER COLOUR, because a restoration is not one share spread evenly.
@@ -2620,11 +2765,18 @@ def _collect_file(p, moves, opens):
     # stays where it belongs - on pressure and damage, which genuinely cannot be
     # attributed when a second opponent is opening us at the same time.
     bygob = defaultdict(list)
+    last_card = {}
+    card_gap = {}
     for r in log.rows:
         if r.get("ev") == "card":
             _read_card_row(r)
         elif (r.get("ev") == "move") and (r.get("actor") == "foe") and r.get("gob"):
-            bygob[r["gob"]].append(r["t"])
+            t = r["t"]
+            bygob[r["gob"]].append(t)
+            key = (r["gob"], r.get("name") or r.get("move"))
+            if key in last_card:
+                card_gap[id(r)] = t - last_card[key]
+            last_card[key] = t
     gaps_for = {}
     for g, ts in bygob.items():
         ts.sort()
@@ -2838,6 +2990,13 @@ def _collect_file(p, moves, opens):
                 continue
             rec["sep"].append((db - da) / dt)
 
+        # Schema-17 `foeact` rows, indexed for the choice learner below. Built once per
+        # engagement; each row is consumed by exactly one move row, in the order the client
+        # saw them, so repeated uses of the same card pair up correctly. A log without them
+        # (every log in the corpus today) leaves this empty and changes nothing.
+        _foeact = {}
+        for _r in getattr(eng, "foeact", ()):
+            _foeact.setdefault((_r.get("gob"), _r.get("move")), []).append(_r)
         for fm in eng.moves:
             if (fm.get("actor") != "foe") or not theirs(eng, fm):
                 continue
@@ -2885,6 +3044,54 @@ def _collect_file(p, moves, opens):
                      fb.get("foeip"), fb.get("myip"), fb.get("dist"),
                      max(fb.get("mine") or [0]), max(fb.get("foe") or [0]),
                      fb.get("hpf")))
+            # THE DECISION STATE, FROM THE RELATION THAT ACTUALLY ACTED. Schema 17 writes a
+            # `foeact` row from inside Fightview.Relation.use carrying the acting relation's
+            # OWN four openings and both initiatives. The bracket above cannot: it samples
+            # the engagement's relation, so on a foe move thrown by a different relation its
+            # "mine" is our openings against the SAMPLED foe, not against the one that acted
+            # - which is why those rows were dropped before. Prefer the foeact row; fall back
+            # to the bracket on every pre-17 log, so the training set is unchanged until
+            # fresh fights are recorded. Schema 18 adds the other side's four as `oo`; without it the bracket fills that side.
+            _acts = _foeact.get((fm.get("gob"), fm.get("move")))
+            if _acts:
+                _act = _acts.pop(0)
+                _o = tuple(_act.get("o") or (0, 0, 0, 0))
+                # THE OTHER SIDE, schema 18. A rule that says "it throws X once green stands
+                # at 40" reads OUR side as often as its own - 126 of the 242 threshold rows
+                # the learner reports sit on this side. Schema 17 wrote only the creature's
+                # own four, so a row without `oo` falls back to the bracket's reading of our
+                # openings - the same relation's state, a heartbeat older - and its source
+                # tag says so.
+                _oo = _act.get("oo")
+                _mine = (tuple(_oo) if (isinstance(_oo, (list, tuple)) and (len(_oo) == 4))
+                         else None)
+                _src = "foeact"
+                if (_mine is None) and (fb is not None) and (fm.get("gob") in (None, eng.gob)) \
+                        and fb.get("mine"):
+                    _mine = tuple(fb.get("mine"))
+                    _src = "foeact+bracket"
+                _m4 = _mine if (_mine is not None) else (None, None, None, None)
+                _since = _act.get("since")
+                rec["foe_choice_by"][eng.gob][(log.header or {}).get("char")].append(
+                    (_act.get("name") or fm.get("name") or fm.get("move"),
+                     _act.get("ip"), _act.get("oip"), _act.get("dist"), None,
+                     _m4[0], _m4[1], _m4[2], _m4[3],
+                     _o[0], _o[1], _o[2], _o[3],
+                     None if (_since is None or _since < 0)
+                     else int(round(_since * 1000.0)),
+                     eng.defence_ok and not eng.others_present,
+                     bool(eng.offence_ok), _src))
+            elif (fb is not None) and (fm.get("gob") in (None, eng.gob)):
+                _mine = tuple(fb.get("mine") or (0, 0, 0, 0))
+                _foe = tuple(fb.get("foe") or (0, 0, 0, 0))
+                rec["foe_choice_by"][eng.gob][(log.header or {}).get("char")].append(
+                    (fm.get("name") or fm.get("move"),
+                     fb.get("foeip"), fb.get("myip"), fb.get("dist"), fb.get("hpf"),
+                     _mine[0], _mine[1], _mine[2], _mine[3],
+                     _foe[0], _foe[1], _foe[2], _foe[3],
+                     card_gap.get(id(fm)),
+                     eng.defence_ok and not eng.others_present,
+                     bool(eng.offence_ok), "bracket"))
 
         # PER OBSERVATION, not per engagement. attributed_gains applies three tests
         # to each gain in turn - colour, damage and overlay - so an engagement being
@@ -3070,6 +3277,9 @@ def collect(paths):
         for gob, byc in rec["foe_state_by"].items():
             if byc:
                 rec["foe_state"].extend(max(byc.values(), key=len))
+        for gob, byc in rec["foe_choice_by"].items():
+            if byc:
+                rec["foe_choice"].extend(max(byc.values(), key=len))
         for gob, byc in rec["foe_moves_by"].items():
             if byc:
                 rec["foe_moves"].extend(max(byc.values(), key=len))
@@ -3139,10 +3349,45 @@ def wiki_for(wiki, res):
     "gfx/kritter/wildbees/beeswarm" is the swarm the wiki calls Wild Bees, and its name
     is the directory rather than the file. Trying every segment costs nothing and is the
     difference between having a baseline for that creature and not.
+
+    THE FILE NAME OUTRANKS A DIRECTORY THAT MERELY CONTAINS IT. The queen ant lives in
+    "gfx/kritter/ants/queenant" and the wiki calls it Giant Ant Queen (900), but its
+    directory is the worker table "Ants" (50), so walking the segments handed the queen
+    the worker's baseline - a number the corpus contradicts by a factor of eighteen and
+    which would have priced the queen as a trivial kill. Every wiki name is therefore
+    scored by how much of it this path spells out, and the best one is taken before any
+    directory segment is tried. "beeswarm" and "mare" spell out only their own species,
+    so the swarm still reads Wild Bees and the mare still falls back to the horse.
     """
     if not res:
         return None
-    for part in reversed(res.split("/")):
+    parts = [p for p in res.split("/") if p]
+    if not parts:
+        return None
+    last = norm(parts[-1])
+    if last and (last in wiki):
+        return wiki[last]
+    # The file name does not appear verbatim, so score every wiki name by how much of
+    # it this path spells out and take the best. The wiki names the queen by its full
+    # title "Giant Ant Queen" while the path offers "ants/queenant": both of the
+    # queen's content words are there and the worker's "Ants" supplies only one, so the
+    # queen stops reading the worker's 50. A name is a candidate only if its head noun
+    # (its last word) appears at all, which keeps "Ants" out of "warriorant"'s way.
+    hay = " ".join(parts).lower()
+    best, best_score = None, None
+    for k, e in wiki.items():
+        if not k:
+            continue
+        words = [w for w in re.split(r"[^a-z0-9]+", str(e.get("name") or "").lower()) if w]
+        if not words or (words[-1] not in hay):
+            continue
+        hit = sum(1 for w in words if w in hay)
+        score = (hit, -(len(words) - hit), -len(k))
+        if (best_score is None) or (score > best_score):
+            best, best_score = e, score
+    if best is not None:
+        return best
+    for part in reversed(parts[:-1]):
         e = wiki.get(norm(part))
         if e is not None:
             return e
@@ -3373,12 +3618,18 @@ DMG_MIN_OBS = 5
 
 
 def animal_move_cooldowns(paths=None):
-    """Each creature move's cooldown, from how soon it comes round again.
+    """Each creature move's cooldown, from how soon the creature acts again after it.
 
-    CREATURES ACT AS SOON AS THEY CAN, which turns the gap between two uses of the same
-    move into a measurement. Interleaving other cards can only make that gap LONGER, never
-    shorter, so the floor of the distribution is the cooldown and the median is the
-    creature's whole rotation. That is why this takes a low quantile and not an average.
+    A COMBATANT HAS ONE COOLDOWN, and the card it throws sets how long it lasts - Fightsess
+    draws a single atkcs/atkct for us, and no card carries a timer of its own. So the gap
+    from throwing a card to this creature's NEXT action, whatever that is, is the cooldown
+    that card imposes, and hesitation can only make it longer: a low quantile of that gap is
+    the cooldown. `ticks` is that quantile and `floor` its minimum.
+
+    Until 2026-09-14 this read the gap between two throws of the SAME card, which only
+    approximates a cooldown when the card is often thrown back to back; for a card a creature
+    rarely repeats it drifts toward the rotation. The same-card gap is still reported, as
+    `rotation` (its median), because that is what it measures.
 
     The client never reports an opponent's cooldown - it is -1 on all 6896 Fell Scratch
     rows - so this is the only route to the number, and it was worth having: the moves land
@@ -3395,18 +3646,19 @@ def animal_move_cooldowns(paths=None):
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
     # Ordered map of raw gaps; the median/floor reduce below stays single-pass.
-    gaps = defaultdict(list)
+    nxt, same = defaultdict(list), defaultdict(list)
     for part in estimate_parallel.map_chunks("animal_cooldowns", sorted(paths)):
-        for nm, v in part.items():
-            gaps[nm].extend(v)
+        for (kind, nm), v in part.items():
+            (nxt if kind == "next" else same)[nm].extend(v)
     out = {}
-    for nm, v in gaps.items():
+    for nm, v in nxt.items():
         if len(v) < CD_MIN_PAIRS:
             continue
         v.sort()
+        rot = sorted(same.get(nm) or ())
         out[nm] = {"ticks": round(v[int(len(v) * 0.05)], 1),
                    "floor": round(v[0], 1),
-                   "rotation": round(v[len(v) // 2], 1),
+                   "rotation": round(rot[len(rot) // 2], 1) if rot else None,
                    "n": len(v)}
     return out
 
@@ -3701,9 +3953,26 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
         else:
             verdict = "every individual seen is consistent with the wiki's %d" % stated
 
+    # THE PINNED BAND AGAINST THE WIKI, which the envelope hides. The envelope runs from the
+    # smallest bracket to the largest, so it straddles almost any stated figure; the band of
+    # individuals a kill pinned does not. The queen ant's wrong join (Ants 50 against 797-940)
+    # showed only because it had no pinned band to hide behind - the warrior ant sits pinned
+    # at 74-125 against the same 50 and its envelope, 0-335, reported nothing. "above" or
+    # "below" is a baseline gap, a depth-scaled species, or the wrong wiki row; it says which
+    # to look at, not which it is.
+    pinned_vs_wiki = None
+    if (stated is not None) and (pin_n >= PIN_MIN_N):
+        if pin_lo > stated:
+            pinned_vs_wiki = "above"
+        elif pin_hi < stated:
+            pinned_vs_wiki = "below"
+        else:
+            pinned_vs_wiki = "inside"
+
     if use_lo is None and use_hi is None:
         return None
     return {"lo": use_lo, "hi": use_hi, "wiki": stated, "verdict": verdict,
+            "pinned_vs_wiki": pinned_vs_wiki,
             "observed_lo": lo, "observed_hi": hi,
             # The band from individuals a kill pinned, and how many there were. Null where
             # too few did. Median width across the 14 species with enough of them is 54% of
@@ -3753,8 +4022,16 @@ def mu_from_reductions(logs=None):
     and not the measurement, and it began failing the moment the corpus grew past the two
     readings the old "comes back at 0.98" wording was written from.
 
-    @return (midpoints, inert, spans) - midpoints and spans share keys and order, so
-            spans[k][i] describes the reading midpoints[k][i] is the midpoint of. Each
+    TWO KINDS OF CANCELLED BRACKET, COUNTED APART. `inert` is a use that removed nothing
+    at all; `netted` is one that removed something but less than its listed share, which mu
+    cannot explain because mu's floor is 1.0. Both are the same cause - the opponent adding
+    to the same colour inside the same bracket - and neither is a reading. They are counted
+    and reported rather than merged into the medians, which is what one of them used to be:
+    a level-1 Zig-Zag Ruse leaving 12 of 13 put mu(1) at 0.143 and broke the containment
+    control outright.
+
+    @return (midpoints, inert, spans, netted) - midpoints and spans share keys and order,
+            so spans[k][i] describes the reading midpoints[k][i] is the midpoint of. Each
             span is (lo, hi, before, after, share): the interval, and the two standing
             values it was inverted from, which decayed_span() needs.
     """
@@ -3764,6 +4041,7 @@ def mu_from_reductions(logs=None):
     out = defaultdict(list)
     spans = defaultdict(list)
     inert = defaultdict(int)
+    netted = defaultdict(int)
     for part in estimate_parallel.map_chunks("mu_from_reductions", sorted(logs)):
         for key, vals in part[0].items():
             out[key].extend(vals)
@@ -3771,7 +4049,9 @@ def mu_from_reductions(logs=None):
             inert[key] += n
         for key, vals in part[2].items():
             spans[key].extend(vals)
-    return out, inert, spans
+        for key, n in part[3].items():
+            netted[key] += n
+    return out, inert, spans, netted
 
 
 def decayed_span(span):
@@ -3795,7 +4075,7 @@ def decayed_span(span):
 
 
 def report_mu_reductions():
-    rows, inert, _spans = mu_from_reductions()
+    rows, inert, _spans, netted = mu_from_reductions()
     if not rows:
         return
     print("=" * 78)
@@ -3809,15 +4089,16 @@ def report_mu_reductions():
     print("  Read these as FLOORS on mu. The level-1 control is CONTAINMENT, not the")
     print("  median: every Zig-Zag Ruse interval brackets 1.0, and the midpoint median")
     print("  sits just above it because a midpoint of an interval floored at 1.0 must.\n")
-    print("  %-6s %-15s %-5s %-8s %-8s %s"
-          % ("level", "card", "n", "median", "Take Aim", "uses that did nothing"))
+    print("  %-6s %-15s %-5s %-8s %-8s %-10s %s"
+          % ("level", "card", "n", "median", "Take Aim", "did nothing", "part-cancelled"))
     for (level, nm), vals in sorted(rows.items()):
         vals = sorted(vals)
         med = vals[len(vals) // 2]
         direct = measured_mu()[0].get(level)
-        print("  %-6s %-15s %-5d %-8.3f %-8s %d"
+        print("  %-6s %-15s %-5d %-8.3f %-8s %-10d %d"
               % (level, nm[:15], len(vals), med,
-                 ("%.3f-%.3f" % direct) if direct else "-", inert.get((level, nm), 0)))
+                 ("%.3f-%.3f" % direct) if direct else "-", inert.get((level, nm), 0),
+                 netted.get((level, nm), 0)))
     print()
     print("  Against the curves still standing after Take Aim's level-2 measurement:\n")
     print("  %-6s %-9s %-11s %-11s %-11s %s"
@@ -4039,6 +4320,169 @@ def _bits(counter):
             p = v / float(n)
             out -= p * math.log(p, 2)
     return out
+
+
+# policy_model fires only past this many foe card choices that carried a before-state.
+# Below it the pack reports null and the consumer must fall back to policy.mix.
+POLICY_MODEL_MIN_N = 60
+# The coarse cuts a threshold row is tried at, once per opened colour and per side.
+POLICY_MODEL_CUTS = (20.0, 40.0, 50.0)
+# A threshold becomes a GATE only when it survives rows it was not chosen on: at least this
+# many held-out throws above the cut, a held-out lift at least this large, and a held-out
+# excess over independence at least this many standard deviations. Calibrated on gates whose
+# answer is KNOWN rather than claimed - Cleave cannot be begun below 6 initiative and reads
+# lift 7.0 / z 21 on held-out throws; Quick Barrage, which needs none, reads z -12; Cleave
+# with its initiative shuffled reads z 0.3. See estimate_check's known-answer control.
+POLICY_GATE_MIN_K = 10
+POLICY_GATE_MIN_LIFT = 1.2
+POLICY_GATE_MIN_Z = 3.0
+# CLAIMS about animal behaviour, measured as hypotheses. These come from the wiki and the
+# forums and are NOT dev-stated - they are community observations, and the wiki's animal
+# move table has already been shown wrong against our logs (2026-09-10). A claim is never a
+# control: a control is an input whose answer is known independently. Each is tested with
+# the same held-out test as every other threshold, and may simply fail.
+# (key, move, colour index in COLOURS, side, cut, where the claim comes from). GREEN is 0.
+POLICY_MODEL_HYPOTHESES = (
+    ("bat_wingbeat_green_40", "Wingbeat", 0, "target", 40.0,
+     "wiki/forum claim, not dev-stated: bat throws Wingbeat once our green passes 40"),
+)
+
+
+def threshold_test(pairs, move, cuts):
+    """Whether `move` is chosen more often once a value stands above a cut, on held-out rows.
+
+    `pairs` is (move thrown, value standing when it was thrown) for EVERY choice in the
+    population, so the base rate is in the same rows. The cut is chosen by lift on the even
+    rows and judged on the odd ones, where the count of `move` above the cut is compared
+    with what independence predicts (a hypergeometric mean and variance). Returns the cut,
+    the train and held-out lifts, the held-out z and support, and `reproduces`, or None when
+    no cut has both the move and the value above it in the training rows.
+
+    Separate from policy_model so the test can be run on a population whose gate is known
+    - our own cards' initiative requirements - before anything trusts it on a creature.
+    """
+    train, test = pairs[0::2], pairs[1::2]
+
+    def at(rows, cut):
+        n_mv = sum(1 for m, _v in rows if m == move)
+        above = sum(1 for _m, v in rows if v > cut)
+        k = sum(1 for m, v in rows if (m == move) and (v > cut))
+        return len(rows), n_mv, above, k
+
+    best = None
+    for cut in cuts:
+        n, n_mv, above, k = at(train, cut)
+        if (n_mv == 0) or (above == 0):
+            continue
+        lift = (k / float(above)) / (n_mv / float(n))
+        if (best is None) or (lift > best[0]):
+            best = (lift, cut)
+    if best is None:
+        return None
+    train_lift, cut = best
+    n, n_mv, above, k = at(test, cut)
+    lift = z = 0.0
+    if n_mv and above and (n > 1):
+        p = above / float(n)
+        lift = (k / float(above)) / (n_mv / float(n))
+        var = n_mv * p * (1.0 - p) * (n - n_mv) / float(n - 1)
+        z = ((k - (n_mv * p)) / math.sqrt(var)) if var > 0 else 0.0
+    return {"cut": cut, "train_lift": round(train_lift, 3), "lift": round(lift, 3),
+            "z": round(z, 2), "test_k": k, "test_n": n_mv,
+            "reproduces": bool((k >= POLICY_GATE_MIN_K) and (lift >= POLICY_GATE_MIN_LIFT)
+                               and (z >= POLICY_GATE_MIN_Z))}
+
+
+def policy_model(rec):
+    """The state-conditioned policy, as a NEW key beside policy and policy_rule.
+
+    policy is a marginal mixture and policy_rule is one held-out split; neither can say
+    "throws X only when colour C stands above T" - a shape the wiki and forums CLAIM some
+    creatures have, which is a hypothesis for this to test and not a fact it assumes. This
+    reports, per species: the mixture (weights), per-(move, opened colour, side) threshold
+    rows each judged on held-out rows (threshold_test), the standing each move was chosen
+    at, the held-out information gain of the split policy_rule already fits, and the
+    community claims (POLICY_MODEL_HYPOTHESES) measured with the same test. Null below
+    POLICY_MODEL_MIN_N choices, which is the signal to fall back to policy.mix - see
+    PACK-ADDITIONS.md for the schema and reading rules.
+    """
+    rows = [r for r in (rec.get("foe_choice") or ()) if r and r[0]]
+    pol = foe_policy(rec)
+    if (len(rows) < POLICY_MODEL_MIN_N) or (not pol) or (not pol.get("mix")):
+        return None
+    n = len(rows)
+    base = Counter(r[0] for r in rows)
+    weights = [[k, round(v / float(n), 3)] for k, v in
+               sorted(base.items(), key=lambda kv: (-kv[1], kv[0]))]
+    thresholds, gates = [], []
+    for mv in base:
+        mv_rows = [r for r in rows if r[0] == mv]
+        for ci in sorted(foe_card_opens(mv) or ()):
+            if ci >= len(fightlog.COLOURS):
+                continue
+            cname = fightlog.COLOURS[ci]
+            for side, off in (("target", 5 + ci), ("self", 9 + ci)):
+                # The standing THIS move was chosen at - its own rows. This read every
+                # choice's rows, so every move of a species reported the same "minimum".
+                mv_vals = sorted(r[off] for r in mv_rows if r[off] is not None)
+                if not mv_vals:
+                    continue
+                gates.append({"move": mv, "opened_colour": cname, "on": side,
+                              "min_standing": round(mv_vals[0], 1),
+                              "median_standing": round(mv_vals[len(mv_vals) // 2], 1),
+                              "n": len(mv_vals)})
+                # EVERY ROW IS JUDGED ON HELD-OUT DATA. The first version flagged every row
+                # `reproduces: False` and let only the one claimed bat row be overwritten,
+                # so no other gate could ever reach the simulator whatever the corpus said.
+                pairs = [(r[0], r[off]) for r in rows if r[off] is not None]
+                t = threshold_test(pairs, mv, POLICY_MODEL_CUTS)
+                if t is None:
+                    continue
+                row = {"move": mv, "colour": cname, "on": side, "cut": t["cut"],
+                       "share_above": round(sum(1 for v in mv_vals if v > t["cut"])
+                                            / float(len(mv_vals)), 3),
+                       "n": len(mv_rows), "claimed": None}
+                row.update(t)
+                thresholds.append(row)
+    hypotheses = {}
+    for key, hmv, ci, side, cut, source in POLICY_MODEL_HYPOTHESES:
+        off = (5 if side == "target" else 9) + ci
+        pairs = [(r[0], r[off]) for r in rows if r[off] is not None]
+        vals = [v for m, v in pairs if m == hmv]
+        t = threshold_test(pairs, hmv, (cut,)) if vals else None
+        hypotheses[key] = {"move": hmv, "colour": fightlog.COLOURS[ci], "on": side,
+                           "cut": cut, "source": source, "n": len(vals),
+                           "share_above": (round(sum(1 for v in vals if v > cut)
+                                                 / float(len(vals)), 3) if vals else 0.0),
+                           "lift": t["lift"] if t else None, "z": t["z"] if t else None,
+                           "reproduces": bool(t and t["reproduces"])}
+        for row in thresholds:
+            if (row["move"] == hmv) and (row["colour"] == fightlog.COLOURS[ci]) \
+                    and (row["on"] == side):
+                row["claimed"] = source
+    # THE ONE SPLIT policy_rule ALREADY FITS, reported for what it is. Both figures are
+    # information GAINS in bits over the base mix, the first on the half it was chosen on
+    # and the second on the half it was not. The first version published `held_out_bits` as
+    # the held-out gain MINUS the base entropy - a gain less an entropy, negative for every
+    # species by construction (bat 0.088 - 1.361 = -1.273) - and that was read as the split
+    # overfitting. It does not: the held-out gains are positive.
+    rule = foe_policy_rule(rec)
+    base_bits = _bits(base)
+    conf = {"of": "policy_rule's single split, fitted on foe_state (greatest opening a side)",
+            "base_bits": round(base_bits, 3),
+            "train_gain_bits": rule["train_bits"] if rule else 0.0,
+            "held_out_gain_bits": rule["test_bits"] if rule else 0.0,
+            "feature": rule["feature"] if rule else None,
+            "cut": rule["cut"] if rule else None,
+            "n": rule["n"] if rule else 0}
+    return {"n": n, "n_clean": sum(1 for r in rows if r[14]), "min_n": POLICY_MODEL_MIN_N,
+            "n_from_foeact": sum(1 for r in rows if (len(r) > 16) and str(r[16]).startswith("foeact")),
+            "weights": weights, "thresholds": thresholds,
+            "gates_reproducing": sum(1 for t in thresholds if t["reproduces"]),
+            "gates": gates, "confidence": conf,
+            "fallback_mix": [list(x) for x in pol["mix"]],
+            "hypotheses": hypotheses,
+            "source": "state-conditioned choice contexts from the row before each foe move"}
 
 
 def foe_policy_rule(rec):
@@ -4354,8 +4798,369 @@ def report_wd_consensus(per):
     print()
 
 
+def foe_skill_joint(rec):
+    """The opponent's skill as ONE number that explains every card at once.
+
+    THE BRANCH IS A PROPERTY OF THE PAIR, NOT OF THE CARD, and foe_skill_from has to guess
+    it per card. The guess is a comparison of that card's inverted weight against our skill
+    with that card, so two cards whose weights straddle the true answer land on opposite
+    sides of the dead zone and their skills come out a factor apart. That is most of what
+    the pack reports as `disputed`, and the ratios say so outright rather than looking like
+    noise: caveangler reads Sting 431.4 against Quick Barrage 136.0 (3.17x), boar reads
+    Knock Its Teeth Out 146.1 against Full Circle 55.1 (2.65x), horse 117.0 against 57.5
+    (2.03x), bear 117.5 against 62.3 (1.89x). Two is one branch flip and four is two.
+
+    THE DEAD ZONE IS INFORMATIVE ONCE MORE THAN ONE CARD IS IN HAND, which is what makes
+    this worth doing rather than a tidier way to average. Inverting the model instead of
+    the observation, one row predicts
+
+        Wd = S / equalize(S, F)
+
+    for our skill S with that card and the opponent's skill F - which reproduces
+    foe_skill_from's three cases exactly: Wd = 2F below the band, F/2 above it, and S
+    inside. The band edges sit at S/2 and 2S, so a card with a different weight puts them
+    somewhere different, and several cards therefore BRACKET F between their edges. Pooling
+    characters is right here for the same reason and not despite it: a second character's
+    rows carry a different S, so they move the edges again. Nothing has to guess a branch;
+    the branch falls out of whichever F fits.
+
+    Returns {value, lo, hi, n, obs, moves, residual} or None. `value` is None where the fit
+    is flat - every row in band across a wide range of F - and lo/hi then bound it, which is
+    the same honest answer the per-card path gives, arrived at without a vote.
+    """
+    # EVERY GAIN, WEIGHTED - NOT ONLY THE BIG ONES. MIN_GAIN exists because half a point of
+    # rounding on an integer gain becomes a third-power error on the inverted weight, and
+    # its own note says what to do about it: "Interval arithmetic already handles this
+    # correctly, since a small gain simply yields a wide band. This threshold is for the
+    # places a single number is wanted."
+    #
+    # This is a least-squares over many rows, not a single number, so the threshold is the
+    # wrong tool here and it was expensive. Boar is the case the owner noticed: 348
+    # engagements, 584 attributed gains of ours, and MIN_GAIN throws away 412 of them, so
+    # the pack reported 172 observations for an animal fought hundreds of times.
+    #
+    # The weight comes from the same arithmetic the threshold was derived from. With Wd
+    # going as the inverse cube of the gain, a half-point truncation is a fractional error
+    # of about 3 * 0.5 / gain, so the log-space deviation is GAIN_SIGMA / gain and the
+    # weight is its inverse square. That reproduces the note's own table - 8% at a gain of
+    # 20, 15% at 10, 30% at 5 - and lets a gain of 3 contribute what it is worth instead of
+    # nothing or the same as a gain of 20.
+    rows = [r for r in (rec.get("wd") or ())
+            if (len(r) > 9) and (r[3] > 0) and r[4] and (r[5] > 0)]
+    if len(rows) < JOINT_MIN_ROWS:
+        return None
+    obs, moves = [], []
+    for r in rows:
+        m = load_moves().get(r[0]) or {}
+        mult = m.get("weight_mult") or 1.0
+        our = (r[4] / mult) if mult else r[4]
+        if our > 0:
+            sigma = GAIN_SIGMA / float(r[3])
+            obs.append((our, r[5], 1.0 / (sigma * sigma)))
+            if r[0] not in moves:
+                moves.append(r[0])
+    if len(obs) < JOINT_MIN_ROWS:
+        return None
+    wsum = sum(o[2] for o in obs)
+
+    def ssq(f):
+        """The weighted sum of squared log errors - the quantity the fit minimises.
+
+        Log space, because a branch error is multiplicative and an absolute error would let
+        the species with the biggest numbers decide the fit. Weighted, because a gain of 3
+        and a gain of 30 carry an order of magnitude different precision and pooling them
+        flat is what made every earlier comparison unreadable.
+
+        UNNORMALISED, and that is what makes the interval below meaningful. The weights are
+        inverse variances, so this is a chi-square, and the set of f within 1.0 of its
+        minimum is the one-deviation interval - the standard reading, and one that tightens
+        as observations accumulate instead of drifting with the residual's scale. An earlier
+        version took every f within a fixed 0.05 of the ROOT MEAN SQUARE, which is not a
+        statement about anything: admitting weaker rows raised the RMS, the fixed slack then
+        admitted proportionally more candidates, and the intervals got WIDER as the data got
+        better.
+        """
+        tot = 0.0
+        for our, wd, w in obs:
+            pred = our / model.equalize(our, f)
+            if pred <= 0:
+                return float("inf")
+            tot += w * ((math.log(wd) - math.log(pred)) ** 2)
+        return tot
+
+    def residual(f):
+        """The same error as a weighted RMS, for reporting only. Never for the interval."""
+        v = ssq(f)
+        return float("inf") if (v == float("inf")) else math.sqrt(v / wsum)
+
+    # A FIXED, DERIVED CANDIDATE SET, so the answer does not depend on a starting guess or
+    # on iteration order - parallel and serial must agree byte for byte. Every interesting
+    # F is a band edge or a branch solution of some row, and the grid fills the gaps.
+    cand = set()
+    for our, wd, _w in obs:
+        cand.update((wd / 2.0, wd * 2.0, our / 2.0, our * 2.0, our, wd))
+    lo_g = min(min(o[0], o[1]) for o in obs) / 8.0
+    hi_g = max(max(o[0], o[1]) for o in obs) * 8.0
+    if lo_g > 0:
+        steps = 240
+        ratio = (hi_g / lo_g) ** (1.0 / steps)
+        f = lo_g
+        for _i in range(steps + 1):
+            cand.add(f)
+            f *= ratio
+    cand = sorted(c for c in cand if c and (c > 0))
+    if not cand:
+        return None
+    scored = sorted((ssq(c), c) for c in cand)
+    best_ssq, best = scored[0]
+    if not (best_ssq < float("inf")):
+        return None
+
+    # TWO DIFFERENT WIDTHS, AND THE PACK WANTS THE SECOND ONE.
+    #
+    # The fit's own precision is how well the observations locate the MEAN, and with
+    # hundreds of rows it is tiny - a chi-square interval on wolf came out 109.3 to 110.8,
+    # under a percent, from rows that scatter forty. Shipping that would be the project's
+    # oldest mistake in a new place: an aggregate standing in for a distribution. A
+    # simulator does not want to know how precisely we know the average wolf. It wants to
+    # know what range of wolves it might meet.
+    #
+    # So the interval is the SPREAD OF THE OBSERVATIONS, inverted at the branch the fit
+    # settled, and the fit's precision is reported separately as `fit_lo`/`fit_hi`. Fixing
+    # the branch globally is the whole gain over the per-card path, which had to guess the
+    # branch per card and then reported the disagreement between those guesses as the
+    # width - red deer came out 53.3 to 632.2 that way, which is not a description of red
+    # deer.
+    #
+    # A row whose own S puts the fitted F inside the dead zone constrains nothing and is
+    # counted as such rather than inverted; if that is most of them, the species is
+    # equalized and no value is published.
+    close = [c for v, c in scored if v <= (best_ssq + JOINT_CHISQ)]
+    fit_lo, fit_hi = min(close), max(close)
+    implied, inband = [], 0
+    for our, wd, _w in obs:
+        if best < (our / 2.0):
+            implied.append(wd / 2.0)
+        elif best > (our * 2.0):
+            implied.append(wd * 2.0)
+        else:
+            inband += 1
+    out = {"n": len(moves), "obs": len(obs), "moves": moves,
+           "residual": round(residual(best), 3),
+           "fit_lo": round(fit_lo, 1), "fit_hi": round(fit_hi, 1),
+           "in_band": inband}
+    if (len(implied) <= inband) or ((fit_hi / fit_lo) > JOINT_IDENTIFIABLE):
+        # Most rows sit in the dead zone, or the fit is flat across it. Either way the
+        # answer is a bound, and the bound is the band itself around our own skill.
+        ours = sorted(o[0] for o in obs)
+        mid = ours[len(ours) // 2]
+        out["value"] = None
+        out["lo"] = round(mid / 2.0, 1)
+        out["hi"] = round(mid * 2.0, 1)
+        out["equalized"] = True
+        return out
+    implied.sort()
+    k = len(implied)
+    # THE TAILS ARE WIDER THAN THE PER-CARD PATH'S, and the reason is what the interval is
+    # for. This is not the precision of a mean, it is the range of animals a simulator might
+    # meet, and replay.py tests SINGLE observations against it - so a tenth in each tail
+    # guarantees a fifth of them miss by construction. A twentieth is the same convention
+    # applied to a reading that is now consistent across cards rather than an average of
+    # branch guesses, and it is still far tighter than what it replaces: red deer was 53.3
+    # to 632.2 from the per-card path and is 83 to 152 here.
+    lo = implied[int(k * 0.05)]
+    hi = implied[min(k - 1, int(k * 0.95))]
+    out["value"] = round(best, 1)
+    out["lo"] = round(min(lo, best), 1)
+    out["hi"] = round(max(hi, best), 1)
+    out["equalized"] = False
+    return out
+
+
+def foe_skill_slope(rec):
+    """Whether the corpus can measure this creature's skill at all, from the owner's test.
+
+    THE IDEA IS THE OWNER'S and it is better than inverting gains, because it reads a shape
+    rather than a magnitude. Below the band equalize(S, F) = S/(2F), so k**3 rises IN
+    PROPORTION to our own skill; inside the band equalize is pinned to 1 and k**3 is flat
+    whatever we do. Our skill runs 58 to 417 across this corpus, a factor of seven, so the
+    slope of log k**3 against log S tells the two apart without trusting a single gain.
+
+    The slopes are a CONTINUUM and not two groups - they run from -0.04 to 1.17 - so the
+    extremes are read and the middle is reported as unsettled. It says the published skill
+    is wrong for exactly the animals worth fighting:
+
+        slope ~ 1, the inversion measures them      slope ~ 0, it does not
+          beaver 1.17  bat 1.08  beelarva 1.09        moose -0.02  goldeneagle -0.04
+          caverat 1.00  fox 1.00  otter 1.00          bear 0.20  wolf 0.21  lynx 0.28
+          swan 1.00  warriordrone 0.98                boar 0.35  reddeer 0.36  horse 0.42
+          badger 0.93  ants 0.86  honeybee 0.86       greenooze 0.22  reindeer 0.34
+
+    For the flat ones the band holds across every observation, which BOUNDS them instead:
+    F is in [max(S)/2, 2*min(S)], giving 209-250 for bear and moose and 209-297 for wolf -
+    two to four times the value the inversion publishes. Their k**3 is flat at 1.33, and a
+    constant that does not move with our skill is a term the model is missing rather than
+    anything about the creature.
+
+    Returns {slope, flat, n, band_lo, band_hi, measurable} or None. `measurable` is the
+    reading a consumer wants and it has three states: True where the inversion measures the
+    creature, False where it is reading the band instead, and None in the middle, where the
+    slopes form a continuum and this corpus does not settle it. A skill from a False species
+    is not a measurement, and `band_lo`/`band_hi` is what the corpus does support for it.
+    """
+    pts = []
+    for r in (rec.get("wd") or ()):
+        if (len(r) < 10) or not r[4] or not (r[5] > 0) or (r[3] < SLOPE_MIN_GAIN):
+            continue
+        m = load_moves().get(r[0]) or {}
+        mult = m.get("weight_mult") or 1.0
+        our = (r[4] / mult) if mult else r[4]
+        eq = ((r[4] / r[5]) / mult) if mult else (r[4] / r[5])
+        if (our > 0) and (eq > 0):
+            pts.append((math.log(our), math.log(eq), our, eq))
+    if len(pts) < SLOPE_MIN_ROWS:
+        return None
+    # OUR SKILL HAS TO ACTUALLY VARY, or the slope is fitted to nothing. A character who
+    # trained between two fights is what makes this readable; one who did not is not
+    # evidence either way.
+    ours = sorted(p[2] for p in pts)
+    if (ours[-1] / ours[0]) < SLOPE_MIN_RANGE:
+        return None
+    mx = sum(p[0] for p in pts) / len(pts)
+    my = sum(p[1] for p in pts) / len(pts)
+    den = sum((p[0] - mx) ** 2 for p in pts)
+    if den <= 0:
+        return None
+    slope = sum((p[0] - mx) * (p[1] - my) for p in pts) / den
+    eqs = sorted(p[3] for p in pts)
+    lo, hi = ours[-1] / 2.0, 2.0 * ours[0]
+    # THREE ANSWERS, NOT TWO. The slopes do not fall into two clean groups - they run from
+    # -0.04 to 1.17 with cattle at 0.62 and sentinelbee at 0.63 in the middle - so a single
+    # threshold would be a cut through a continuum dressed as a classification. Near one the
+    # inversion measures the creature, near zero it is reading the band instead, and between
+    # them the corpus has not settled it; None says so rather than guessing.
+    if slope >= SLOPE_MEASURABLE:
+        verdict = True
+    elif slope <= SLOPE_IN_BAND:
+        verdict = False
+    else:
+        verdict = None
+    out = {"slope": round(slope, 2), "flat": round(eqs[len(eqs) // 2], 2),
+           "n": len(pts), "measurable": verdict}
+    if lo <= hi:
+        out["band_lo"], out["band_hi"] = round(lo, 1), round(hi, 1)
+    return out
+
+
 def foe_skill_entry(rec):
     """What the pack should carry for an opponent's combat skill.
+
+    THE PER-CARD READING IS WHAT SHIPS, and the joint fit beside it does not, because
+    measuring it showed both of them share a flaw that the joint fit hides and the per-card
+    path at least declares.
+
+    foe_skill_joint resolves the per-card path's branch guessing and it looked like a clear
+    win: twenty-nine of thirty `disputed` entries became values, the intervals tightened
+    hard (red deer 53.3-632.2 to 83-152), and the values correlated BETTER with hitpoints,
+    which is the only external check available - pearson 0.783 against 0.695 on the
+    thirty-seven species both can read.
+
+    IT IS STILL WRONG, AND THE TEST THAT SHOWS IT IS THE SLOPE. Below the band
+    equalize = S/(2F), so k**3 must rise in PROPORTION to our own skill; inside the band it
+    is flat. Our skill runs from 58 to 417 across this corpus, so the slope of log k**3
+    against log S separates the two outright:
+
+        slope ~ 1   bat 1.08, beaver 1.17, caverat 1.00, fox 1.00, otter 1.00, swan 1.00,
+                    badger 0.93, ants 0.86 - these really are below the band and the
+                    inversion measures them
+        slope ~ 0   moose -0.02, goldeneagle -0.04, bear 0.20, wolf 0.21, lynx 0.28,
+                    reddeer 0.36, boar 0.35, horse 0.42 - these are INSIDE the band, and
+                    their k**3 is flat at 1.33 whatever our skill is
+
+    A flat k**3 is not a skill measurement. For those species the band holds throughout the
+    corpus, which bounds them at 209-250 for bear and moose, 209-297 for wolf - two to four
+    times what either reading publishes - and the leftover 1.33 is a constant the model is
+    missing rather than anything about the animal. Both readings attribute it to
+    equalization and so drive every big animal's skill down.
+
+    So nothing here changes yet. The per-card path keeps reporting `disputed` where it
+    cannot tell, which is the honest state, and the joint fit stays as an instrument with
+    its evidence attached. Publishing it would have replaced thirty honest "cannot tell"s
+    with thirty confident wrong numbers, and the hitpoint correlation would have gone up
+    while doing it.
+
+    WHAT CHANGED, 2026-09-12: the slope now RESOLVES the disputed state, and only that.
+
+    The 1.33 is still unnamed, and the reasoning that held this back turned out to apply to
+    the VALUE and not to the CLASSIFICATION. A constant multiplies every in-band row alike,
+    so it moves k**3 up and down bodily; it cannot bend a flat line into a rising one. The
+    flatness is therefore a reading of the band and not of the missing term, and the bound
+    it implies - F in [max(S)/2, 2*min(S)] - depends on nothing but the flatness.
+
+    Two further things say the classification is not an artefact:
+
+      - It SORTS BY TOUGHNESS without being told to. The measurable set is bat, beaver,
+        caverat, fox, otter, swan, badger, ants; the flat set is bear, moose, wolf, lynx,
+        boar, reddeer, horse, greenooze. Weak animals below our skill and strong animals
+        beside it is exactly what the band predicts, and no step of the slope test can see
+        hitpoints or armour.
+      - The constant is BOUNDED where the naive reading is not. If 1.33 also multiplies the
+        below-band rows then a measurable species reads 1/1.33 of its true skill, a uniform
+        25% underestimate. The flat species read a THIRD, and only because a flat line was
+        being inverted as though it sloped.
+
+    So: `measurable` True clears `disputed` and the value stands. False replaces the value
+    with the band and marks it equalized, which is what the corpus supports - a bound. None
+    leaves the entry exactly as the per-card path wrote it, disputed and all, because a
+    slope in the middle of the continuum settles nothing. The per-card numbers are kept
+    under `naive`/`naive_lo`/`naive_hi` wherever they are displaced, so nothing is lost and
+    the substitution is visible in the pack rather than implied by it.
+    """
+    out = _foe_skill_percard(rec)
+    if out is None:
+        return None
+    sl = foe_skill_slope(rec)
+    if (sl is None) or (sl.get("measurable") is None):
+        return out
+    out = dict(out)
+    out["slope"] = sl["slope"]
+    if sl["measurable"]:
+        # Outside the band, so the inversion is reading the creature and the per-card bound
+        # that raised the dispute is the artefact - it came from a minority of rows whose
+        # branch was guessed wrong. Clear the dispute and leave the value alone.
+        if out.pop("disputed", None):
+            out.pop("bound_lo", None)
+            out.pop("bound_hi", None)
+            out["resolved"] = "slope: the inversion measures this species"
+        return out
+    lo, hi = sl.get("band_lo"), sl.get("band_hi")
+    if (lo is None) or (hi is None) or not (lo <= hi):
+        # Flat, and yet NO SINGLE SKILL FITS IN THE BAND THROUGHOUT. The band closes only
+        # while our own skill stays inside a factor of four; wider than that and
+        # [max(S)/2, 2*min(S)] is empty, so a creature cannot have been equalized with all
+        # of it. The lynx is the case - flat at 1.33 over 65 rows spanning more than
+        # fourfold - and it is the sharpest evidence yet that the 1.33 is a term the model
+        # is missing rather than equalization, because for this one species equalization
+        # cannot produce it. Nothing is published in place of the value: the per-card
+        # reading stays, disputed as it was, which is the honest state.
+        return out
+    if out.get("value") is not None:
+        out["naive"] = out["value"]
+        out["naive_lo"], out["naive_hi"] = out["lo"], out["hi"]
+    out["value"] = None
+    out["lo"], out["hi"] = lo, hi
+    out["n"] = 0
+    out["slope_n"] = sl["n"]
+    out["equalized"] = True
+    out.pop("disputed", None)
+    out.pop("bound_lo", None)
+    out.pop("bound_hi", None)
+    out["resolved"] = "slope: the inversion reads the band, not the creature"
+    return out
+
+
+def _foe_skill_percard(rec):
+    """The per-card reading: invert each row, guess its branch, and see if the cards agree.
 
     {value, lo, hi, n, moves, equalized} - value is None when every move equalized, and
     lo/hi then bound it. Disagreement between moves is reported rather than averaged: a
@@ -4387,7 +5192,7 @@ def foe_skill_entry(rec):
         for c in chars:
             sub = dict(rec)
             sub["wd"] = [r for r in rows if r[9] == c]
-            got = foe_skill_entry(sub)
+            got = _foe_skill_percard(sub)
             if got:
                 parts.append(got)
         if not parts:
@@ -4414,20 +5219,76 @@ def foe_skill_entry(rec):
         # exists to expose; report the disagreement rather than average it away.
         for p in parts:
             if p.get("value") is None:
-                # A part that measured only a bound carries no value to compare; it cannot
-                # disagree with anyone, and `q["lo"] <= None` raises.
+                # A part that measured only a bound carries no value to compare, and
+                # `q["lo"] <= None` raises. Its bound is not discarded - see below.
                 continue
             others = [q for q in parts if q is not p and q.get("value") is not None]
             if others and not any(q["lo"] <= p["value"] <= q["hi"] for q in others):
                 out["disputed"] = True
+        # AND A BOUND-ONLY PART STILL DISAGREES. This loop used to skip those parts
+        # entirely, in both the interval and the dispute test, so a character whose rows
+        # equalized was simply not consulted. The eagle owl is the case and replay is what
+        # exposed it: Santa Samus at attack weight 157 reads it near 44-86, Shade at 292
+        # reads it dead centre of the band and so bounds it to 146-584, and the published
+        # answer was 64.5 with an interval three points wide that mentioned neither the
+        # contradiction nor Shade. Then Shade's own Full Circle gain fell outside that
+        # interval and read as a model failure.
+        #
+        # Equalization compares SKILLS, so two characters of different skill reading the
+        # same creature into disjoint ranges is a real contradiction and not a quirk of
+        # which card was thrown. It is reported, never reconciled: the bound is published
+        # beside the value so a reader can see both.
+        blo, bhi = 0.0, float("inf")
+        bounded = [q for q in parts if q.get("value") is None]
+        for q in bounded:
+            blo, bhi = max(blo, q["lo"]), min(bhi, q["hi"])
+        if bounded and (blo <= bhi) and not (blo <= med <= bhi):
+            out["disputed"] = True
+            out["bound_lo"], out["bound_hi"] = round(blo, 1), round(bhi, 1)
         return out
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
             bymove[row[0]].append((row[4], row[5]))
     ests, spread, lo_b, hi_b, used = [], [], 0.0, float("inf"), []
+    thin = []
     for mv, obs in sorted(bymove.items()):
         if len(obs) < 3:
+            # TOO FEW ROWS FOR A MEDIAN IS NOT TOO FEW ROWS TO COUNT. These used to be
+            # discarded outright, and replay then held the published interval to the very
+            # gains that had been thrown out of it - the eagle owl's skill came from four
+            # Quick Barrage rows as 48.7-68.7, and its Full Circle gain of 15, from rows
+            # this branch dropped, needs about 85. That reads as a model failure and is
+            # really the estimator refusing to look at its own evidence.
+            #
+            # So the rows widen the SPREAD, which is what the interval is built from, while
+            # contributing no median to `ests` and no bound. A card seen twice should make
+            # the answer less certain, never more.
+            m = load_moves().get(mv) or {}
+            mult = m.get("weight_mult") or 1.0
+            got_t, bounds_t = [], []
+            for wa, wd in obs:
+                our = (wa / mult) if mult else wa
+                skill, blo, bhi, _branch = foe_skill_from(our, wd)
+                if skill is not None:
+                    got_t.append(skill)
+                elif blo is not None:
+                    bounds_t.append((blo, bhi))
+            if got_t or bounds_t:
+                if mv not in thin:
+                    thin.append(mv)
+            # The same majority rule the main path uses: a move whose rows mostly land
+            # inside the band has measured nothing and BOUNDS instead. Dropping the bound
+            # was the second half of the eagle owl - Shade's only qualifying row against it
+            # was a Full Circle sitting dead centre of the band, which bounds the creature
+            # to 146-584, and because one row is fewer than three the whole character was
+            # discarded and the contradiction with the other two never surfaced.
+            if bounds_t and (len(got_t) <= len(bounds_t)):
+                bounds_t.sort()
+                mid = bounds_t[len(bounds_t) // 2]
+                lo_b, hi_b = max(lo_b, mid[0]), min(hi_b, mid[1])
+            else:
+                spread.extend(got_t)
             continue
         m = load_moves().get(mv) or {}
         mult = m.get("weight_mult") or 1.0
@@ -4451,7 +5312,7 @@ def foe_skill_entry(rec):
         got.sort()
         ests.append(got[len(got) // 2])
         spread.extend(got)
-    if not used:
+    if not used and not thin:
         return None
     if ests:
         ests.sort()
@@ -4461,7 +5322,13 @@ def foe_skill_entry(rec):
         if k >= 10:
             lo, hi = spread[int(k * 0.10)], spread[min(k - 1, int(k * 0.90))]
         else:
-            lo, hi = ests[0], ests[-1]
+            # THE RAW OBSERVATIONS AND NOT THE MOVE MEDIANS, because with one move the
+            # medians are one number and the interval comes out ZERO WIDE. That is a
+            # fabricated certainty and replay is where it shows: the eagle owl published
+            # 64.5 to 64.5 from a single card's four rows, and two of its own gains then
+            # fell outside a prediction band three points across. Four observations are a
+            # thin measurement, which is a wide interval - not a precise one.
+            lo, hi = spread[0], spread[-1]
         lo, hi = min(lo, med), max(hi, med)
         # Some moves equalized and some did not, and they disagree. That is not an average
         # waiting to be taken: a creature near our own skill is exactly where the branch
@@ -4471,13 +5338,27 @@ def foe_skill_entry(rec):
         out = {"value": round(med, 1),
                "lo": round(lo, 1), "hi": round(hi, 1),
                "n": len(ests), "obs": k, "moves": used, "equalized": False}
+        if thin:
+            # Named, because a reader comparing `moves` with `obs` would otherwise find
+            # more observations than the listed cards can account for.
+            out["also_seen"] = thin
         if disputed:
             out["disputed"] = True
             out["bound_lo"], out["bound_hi"] = round(lo_b, 1), round(hi_b, 1)
         return out
     if hi_b < float("inf"):
-        return {"value": None, "lo": round(lo_b, 1), "hi": round(hi_b, 1),
-                "n": 0, "moves": used, "equalized": True}
+        out = {"value": None, "lo": round(lo_b, 1), "hi": round(hi_b, 1),
+               "n": 0, "moves": used, "equalized": True}
+        if thin:
+            out["also_seen"] = thin
+        return out
+    # Thin rows that yielded estimates but no bound and no card reached three rows: the
+    # spread is all there is, so it is published as a bound rather than as a value. A
+    # single reading is an interval, never a point.
+    if spread and not used:
+        spread.sort()
+        return {"value": None, "lo": round(spread[0], 1), "hi": round(spread[-1], 1),
+                "n": 0, "moves": [], "also_seen": thin, "equalized": False}
     return None
 
 
@@ -5083,7 +5964,7 @@ def report(per, moves):
             s = rec["sfx"]
             tot_sw = s["hits"] + s["misses"]
             hr = ("%.0f%%" % (100.0 * s["hits"] / tot_sw)) if tot_sw else "-"
-            print("  sfx              %d hit, %d miss, %d ip   hit rate %s   (%d bracket(s), %d with hit, %d with miss)"
+            print("  sfx              %d hit, %d miss, %d ip   soft-damage share %s   (%d bracket(s), %d with hit, %d with miss)"
                   % (s["hits"], s["misses"], s["ips"], hr, rec.get("sfx_brackets", 0), s["brackets_with_hit"], s["brackets_with_miss"]))
         print()
 
@@ -5363,7 +6244,7 @@ def threat(rec):
     # simulator to apply it at any defence at all.
     against = (sum(wds) / len(wds)) if wds else None
 
-    coefs = []
+    coefs, soak_shares = [], []
     for h in (rec.get("took") or ()):
         o = [min(x, 100) / 100.0 for x in (h.get("openings") or [])]
         if len(o) != 4:
@@ -5388,6 +6269,13 @@ def threat(rec):
         swing = (h.get("shp") or 0) + (h.get("soaked") or 0)
         if swing <= 0:
             continue
+        # THE SHARE OUR ARMOUR STOPPED, over this creature's own cards - the averaged
+        # action's penetration is its complement. Hits the armour touched, and of 4 points
+        # or more: below that the display's rounding floors what gets through at 0 or 1.
+        # Above it the share does not move with the size of the blow (about 15% through at
+        # 4-7, 8-15, 16-30, 31-60 and 61+ alike), so pooling sizes is sound.
+        if ((h.get("soaked") or 0) > 0) and (swing >= 4):
+            soak_shares.append(h["soaked"] / float(swing))
         c = model.combined(o)
         # An attack that landed against nothing standing is not evidence about the
         # coefficient - it is evidence that the opening term is not the whole story, and
@@ -5396,10 +6284,14 @@ def threat(rec):
             continue
         coefs.append(swing / (c * c))
     coefs.sort()
+    soak_shares.sort()
     damage = ({"coef": round(coefs[len(coefs) // 2], 1), "n": len(coefs),
                "lo": round(coefs[0], 1), "hi": round(coefs[-1], 1),
                # So no reader mistakes this for the old figure, which meant the opposite.
-               "before_armour": True}
+               "before_armour": True,
+               "soaked_share": (round(soak_shares[len(soak_shares) // 2], 3)
+                                if len(soak_shares) >= 10 else None),
+               "soaked_n": len(soak_shares)}
               if coefs else None)
 
     if (period is None) and (pn == 0) and (damage is None):
@@ -5487,13 +6379,14 @@ def report_sfx_and_outcomes(per):
     print("=" * 78)
     print("SFX OUTCOME OVERLAYS AND FIGHT OUTCOME")
     print("=" * 78)
-    print("  sfx/fight/hit1+miss(+ip) are per-bracket hit/miss facts - the only place a")
-    print("  log records which swings connected, since a miss has no damage channel.")
+    print("  sfx/fight/hit1+miss(+ip) are per-bracket facts about whether soft hitpoints")
+    print("  went through. NOT an accuracy - cards here have no accuracy, and Flex misses")
+    print("  100% of the time on a null damage share. See fightlog.OVERLAY_OUTCOME.")
     if tot_eng:
         have = sfx_bh + sfx_bm
         print("  corpus: %d engagement(s), %d bracket(s) with sfx (%d hit, %d miss, %d ip)"
               % (tot_eng, sfx_brackets, sfx_hits, sfx_misses, sfx_ips))
-        print("          brackets with hit %d, with miss %d, hit rate %s over %d bracket sfx"
+        print("          brackets with hit %d, with miss %d, soft-damage share %s over %d bracket sfx"
               % (sfx_bh, sfx_bm,
                  ("%.0f%%" % (100.0 * sfx_hits / (sfx_hits + sfx_misses))) if (sfx_hits + sfx_misses) else "-",
                  sfx_hits + sfx_misses))
@@ -5658,7 +6551,12 @@ def write_characters(paths=None):
         # would be best if I had everything" - a fair question, and not the same question
         # as "what should I put on the bar tonight". Both are worth asking and they are
         # different answers, so the deck has to be recorded for the second one to exist.
+        # The DECK - how many points of each card are slotted right now. Named `owned` for
+        # historical reasons and kept under that name because Pack reads it; `known` beside
+        # it is the other question. See learned_levels.
         d["owned"] = dict(sorted(owned.get(who, {}).items()))
+        # And what the character has LEARNED, which is the set a deck can be built from.
+        d["known"] = dict(sorted(LEARNED.get(who, {}).items()))
         d.setdefault("armour", None)
         d.setdefault("shield", False)
         out.append(d)
@@ -5858,9 +6756,15 @@ def write_pack(per, moves):
         # at both ends and report an interval; given a fabricated point it would report a
         # confident answer to a question the corpus never answered.
         entry["skill"] = foe_skill_entry(rec)
+        # WHETHER THAT SKILL IS A MEASUREMENT, which the skill itself cannot say.
+        # See foe_skill_slope: a species whose k**3 does not move with our own skill
+        # is inside the equalization band, and the number above is then an artefact
+        # of a constant the model is missing rather than a reading of the creature.
+        entry["skill_slope"] = foe_skill_slope(rec)
         # Reported beside the skill, never inside it - see wd_consensus.
         entry["defence_weight_late"] = wd_consensus(rec)
         entry["policy"] = foe_policy(rec)
+        entry["policy_model"] = policy_model(rec)
         entry["policy_rule"] = foe_policy_rule(rec)
         entry["relative_speed"] = relative_speed(rec)
         # What it does to us. Everything else in this entry is our attacks on it.

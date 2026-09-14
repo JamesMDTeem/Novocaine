@@ -71,6 +71,32 @@ public final class Formulas {
     public static final double SWEEP_REACH = 0.40;
 
     /**
+     * The expected number of bystanders a sweep reaches, interpolated from the measurement.
+     *
+     * {@link #SWEEP_REACH} is the pooled mean over every crowd size, and applying it as a
+     * coefficient - 0.40 times N - draws a straight line through a curve that is not one.
+     * The corpus measures it super-linear, on FULL CIRCLE (landed, at least one bystander
+     * standing), so this is live for that card in every crowd and not only for the two
+     * sweeps the corpus has never seen thrown:
+     *
+     *   bystanders standing   1      2      3      4+
+     *   reached               0.33   0.79   1.80   2.50
+     *   throws                55     28     10     6
+     *
+     * The tail rests on ten throws and six, and the shape is at least as likely to be crowd
+     * geometry - a big crowd is a swarm bunched together - as a property of the card. A
+     * lookup, not an interpolation: the argument is a whole number of bystanders, and the
+     * last measured point holds where the corpus stops. Zero bystanders is zero; the
+     * opponent in front is struck by the primary swing and is never counted here.
+     */
+    public static double sweepReach(int others) {
+        if(others <= 0)
+            return(0.0);
+        double[] at = {0.0, 0.33, 0.79, 1.80, 2.50};
+        return(at[Math.min(others, 4)]);
+    }
+
+    /**
      * How far an UNARMED attack reaches, in the world units a log measures distance in.
      *
      * A weapon declares a range and the figure is a multiple of this one: a sword is 1.2,

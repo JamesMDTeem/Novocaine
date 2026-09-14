@@ -177,7 +177,9 @@ public class CombatSimCheck {
 
         /* Damage averaged over EVERY action, not over the attacks. Adding a card that
          * never hits has to lower the damage per tick, because the deck now spends ticks
-         * not hitting. */
+         * not hitting - and act() deals the coefficient on every action, so the coefficient
+         * itself is the per-action figure and must fall. (Restored 2026-09-14: the 09-13
+         * rewrite asserted the opposite to match a change that overstated deck damage.) */
         java.util.List<Move> half = new java.util.ArrayList<Move>(hitters);
         half.add(Move.of("Take Aim").res("paginae/atk/takeaim").cooldown(30).build());
         FoeModel h = FoeModel.fromDeck(half, who, who.defenceWeight());

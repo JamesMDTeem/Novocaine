@@ -177,6 +177,31 @@ public class CombatMatchup {
         return(a.ticks > b.ticks);
     }
 
+    /**
+     * The hardest REAL creature for this deck, as a Combatant, or the pooled toughest().
+     *
+     * The optimizer needs the animal itself, not its outcome, and it has to be the same sweep
+     * the table above runs: the hardest is the one that fights us worst, which depends on the
+     * deck, so it is chosen by the outcome and only then handed to the search.
+     */
+    static Combatant hardestFoe(Pack.Opponent o, List<Pack.Individual> rows, List<Move> deck) {
+        Combatant best = null;
+        Outcome worst = null;
+        if(rows != null) {
+            for(Pack.Individual ind : rows) {
+                Combatant c = o.individual(ind);
+                if((c == null) || !(c.hp > 0))
+                    continue;
+                Outcome got = fight(me(), c, deck);
+                if((worst == null) || worseThan(got, worst)) {
+                    worst = got;
+                    best = c;
+                }
+            }
+        }
+        return((best != null) ? best : o.toughest());
+    }
+
     static String describe(Outcome o) {
         if(!o.killed)
             return("no kill - " + o.stalled);
@@ -227,38 +252,105 @@ public class CombatMatchup {
                           (who.weapon == null) ? "bare-handed"
                               : String.format("%s q%.1f", who.weapon, who.weaponQl));
 
-        /* The deck the corpus was fought with. */
+        /* THE CARDS ACTUALLY SLOTTED, and this was hard-coded to three of them.
+         *
+         * It read "the deck the corpus was fought with" and named Quick Barrage, Knock Its
+         * Teeth Out and Full Circle. ZzxcuV3 has LEARNED Knock Its Teeth Out, at level 2 -
+         * what it does not have is the card in its deck, which holds ten cards for all 30
+         * of its 30 points and not that one. So every plan this report printed opened with
+         * a card that cannot be thrown without rebuilding the deck first, and it was the
+         * second card of nearly every one of them.
+         *
+         * THE TWO SETS ARE DIFFERENT QUESTIONS. What do I throw RIGHT NOW ranges over the
+         * slotted cards, which is this report; what deck should I BUILD for this creature
+         * ranges over all 41 learned inside the point budget, which is CombatDeckSearch
+         * with -owned. Reading one where the other was meant is how a plan for an
+         * unthrowable card gets printed as though it were advice.
+         *
+         * Attacks only. The maneuvers and the stances are slotted and matter, but the
+         * greedy policy below picks the highest-damage LEGAL move, and a frontier over a
+         * deck that includes Take Aim is a larger search than this report is. */
         List<Move> deck = new ArrayList<Move>();
-        for(String n : new String[] {"Quick Barrage", "Knock Its Teeth Out", "Full Circle"}) {
-            Move m = moves.get(n);
-            if(m != null)
-                deck.add(m);
+        List<String> skipped = new ArrayList<String>();
+        if(who == null) {
+            for(String n : new String[] {"Quick Barrage", "Full Circle"}) {
+                Move m = moves.get(n);
+                if(m != null)
+                    deck.add(m);
+            }
+        } else {
+            for(Map.Entry<String, Integer> e : who.owned.entrySet()) {
+                if(who.slotted(e.getKey()) <= 0)
+                    continue;
+                Move m = moves.get(e.getKey());
+                if(m == null)
+                    continue;
+                if(m.kind == Move.Kind.ATTACK)
+                    deck.add(m);
+                else
+                    skipped.add(m.name);
+            }
         }
+        java.util.Collections.sort(skipped);
         System.out.println("deck: " + deck);
+        if(!skipped.isEmpty())
+            System.out.println("      also slotted, not searched here: " + String.join(", ", skipped));
+        if((who != null) && !who.known.isEmpty()) {
+            int slots = 0;
+            for(Integer v : who.owned.values()) {
+                if((v != null) && (v.intValue() > 0))
+                    slots++;
+            }
+            System.out.printf("      and %d more learned but NOT slotted, of %d learned -"
+                              + " a deck built from those is CombatDeckSearch, not this%n",
+                              who.known.size() - slots, who.known.size());
+        }
         System.out.println("policy: always the highest-damage legal move\n");
+
+        /* SAY WHAT HAPPENS TO THE PLAYERS. Twelve records sit in the pack and the tool used to
+         * say nothing about them, so the reader could not tell "unsupported" from "no data".
+         * Prediction.find compares a res path segment or the full name, and a player is stored
+         * as body#<gob> under res gfx/borka/body - the two never meet, so live PvP advice
+         * returns null no matter how much was measured. Their deck sim still runs here. */
+        int players = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.isPlayer())
+                players++;
+        }
+        if(players > 0) {
+            System.out.printf("%d player record(s) in the pack: live PvP advice is"
+                              + " UNSUPPORTED -%n", players);
+            System.out.println("  Prediction.find keys on a res segment or the full name, so"
+                               + " gfx/borka/body");
+            System.out.println("  cannot resolve a player stored as body#<gob>. The deck sim"
+                               + " below still prices them.\n");
+        }
 
         System.out.printf("%-14s %-6s %-34s %-34s%n",
                           "opponent", "eng", "vs the toughest reading", "vs the weakest reading");
         System.out.println("-".repeat(92));
         for(Pack.Opponent o : foes.values()) {
             if(!o.simulable()) {
-                System.out.printf("%-14s %-6d %s%n", o.name, o.engagements,
-                                  "not enough measured - " + missing(o));
+                System.out.printf("%-14s %-6d %s%s%n", o.name, o.engagements,
+                                  "not enough measured - " + missing(o),
+                                  o.isPlayer() ? "   PLAYER" : "");
                 continue;
             }
-            Outcome easy = fight(me(), o.weakest(), deck);
+            Outcome easy = fight(me(), o.weakestReal(), deck);
             if(!o.hpBounded()) {
                 /* It survived everything we ever did to it, so nothing caps its health.
                  * The floor is a floor, not an answer. */
-                System.out.printf("%-14s %-6d %-34s %-34s%n", o.name, o.engagements,
-                                  "no ceiling on its hitpoints", describe(easy));
+                System.out.printf("%-14s %-6d %-34s %-34s%s%n", o.name, o.engagements,
+                                  "no ceiling on its hitpoints", describe(easy),
+                                  o.isPlayer() ? "   PLAYER" : "");
                 continue;
             }
             boolean[] real = new boolean[1];
             Outcome hard = hardest(me(), o, singles.get(o.name), deck, real);
-            System.out.printf("%-14s %-6d %-34s %-34s%s%n",
+            System.out.printf("%-14s %-6d %-34s %-34s%s%s%n",
                               o.name, o.engagements, describe(hard), describe(easy),
-                              real[0] ? "" : "   (no individual measured)");
+                              real[0] ? "" : "   (no individual measured)",
+                              o.isPlayer() ? "   PLAYER" : "");
             if(hard.killed != easy.killed)
                 System.out.printf("%-21s %s%n", "",
                                   "-> the corpus does not settle this matchup");
@@ -290,7 +382,7 @@ public class CombatMatchup {
                 continue;
             }
             planned++;
-            frontier(o, deck);
+            frontier(o, singles.get(o.name), deck);
         }
         /* Counted over EVERY opponent, not inside the loop above, which is where this was
          * first written and where it was wrong by a factor of ten: the loop skips anything
@@ -343,14 +435,16 @@ public class CombatMatchup {
      * correct answers, and which is wanted depends on what else is nearby and how far the
      * hearth is. Collapsing them into a single score would be picking for the player.
      */
-    static void frontier(Pack.Opponent o, List<Move> deck) {
+    static void frontier(Pack.Opponent o, List<Pack.Individual> rows, List<Move> deck) {
         FoeModel model = o.threat;
         if(model == null) {
             System.out.printf("  %-14s no threat model - never seen it act on us%n", o.name);
             return;
         }
+        Combatant foe = hardestFoe(o, rows, deck);
+        boolean real = (rows != null) && !rows.isEmpty();
         List<Optimizer.Plan> all =
-            Optimizer.search(me(), o.toughest(), deck, model, BEAM, MAX_TICKS);
+            Optimizer.search(me(), foe, deck, model, BEAM, MAX_TICKS);
         List<Optimizer.Plan> front = Optimizer.frontier(all);
         if(front.isEmpty()) {
             System.out.printf("  %-14s no plan kills it within the cap%n", o.name);
@@ -363,6 +457,9 @@ public class CombatMatchup {
         System.out.printf("  %-14s acts every %d ticks (%d gap%s), damage from %d hit%s%n",
                           o.name, model.period, model.nGaps, model.nGaps == 1 ? "" : "s",
                           model.nHits, model.nHits == 1 ? "" : "s");
+        System.out.println(real
+            ? "      priced against the hardest measured INDIVIDUAL of this species"
+            : "      priced against the pooled toughest - no individual rows in the pack");
         if(model.multiClock()) {
             StringBuilder sb = new StringBuilder();
             for(int m : model.modes)
@@ -401,6 +498,30 @@ public class CombatMatchup {
             System.out.printf("      %5.1f s  %6.1f hp   %s%n",
                               Formulas.ticksToSeconds(pl.ticks), pl.hpLost,
                               names(pl.moves));
+        }
+        /* AND THE SAME FIGHT AT THE TOP OF ITS MEASURED DAMAGE. The hitpoint column above
+         * is priced with the damage coefficient's POINT estimate, and that coefficient is
+         * an interval: the badger's runs 8.9 to 123.5 around a median of 27.6. Every other
+         * opponent stat in this report is run at both ends and damage was the one that was
+         * not, which made a column of zeros look like a finding. It is not - zero at a hard
+         * soak in the eighties is arithmetic, since nothing gets through until the raw swing
+         * clears the soak, and the question a plan has to answer is what the WORST reading
+         * costs. Printed as one line rather than a second frontier, because the plans
+         * themselves barely move and the cost is what changed. */
+        if(o.threatHi != null) {
+            List<Optimizer.Plan> worst =
+                Optimizer.frontier(Optimizer.search(me(), foe, deck, o.threatHi,
+                                                    BEAM, MAX_TICKS));
+            if(!worst.isEmpty()) {
+                double lo = Double.MAX_VALUE, hi = -Double.MAX_VALUE;
+                for(Optimizer.Plan pl : worst) {
+                    lo = Math.min(lo, pl.hpLost);
+                    hi = Math.max(hi, pl.hpLost);
+                }
+                System.out.printf("      at the top of its measured damage the same fight"
+                                  + " costs %.1f to %.1f hp over %d plan(s)%n",
+                                  lo, hi, worst.size());
+            }
         }
     }
 

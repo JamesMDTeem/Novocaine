@@ -121,6 +121,12 @@ class Engagement(object):
         # is what we believed the game was about to do, and conflating the two would let a
         # prediction be read as an observation.
         self.predictions = []
+        # Schema 17. The acting relation's own decision state at the instant it threw a card
+        # (foeact) and its defence timers (mvfx). A new event is version-tolerant - an old log
+        # carries none and the reader ignores what it does not know - but it must still be
+        # NAMED, or a newer log looks merely quiet and the corpus shrinks silently.
+        self.foeact = []
+        self.mvfx = []
         # States and moves in the order the client wrote them, plus the position of each
         # move within it. See brackets() for why file order and not timestamps.
         self.seq = []
@@ -391,7 +397,7 @@ def read(path, opens=None):
 
     known = ("begin", "gear", "end", "foe", "hp", "overlay", "party", "agi", "wpn",
              "atkres", "buffs", "foes", "state", "predict", "advice", "move", "dmg",
-             "card")
+             "card", "foeact", "mvfx")
     for r in log.rows:
         ev = r.get("ev")
         if ev not in known:
@@ -469,6 +475,18 @@ def _segment(log):
             # card a person chose and this is about the card they did not.
             if cur is not None:
                 cur.advice.append(r)
+        elif ev == "foeact":
+            # Schema 17. A creature's own decision state at the instant it threw a card.
+            # The sampled `state` row is about the target relation and can lag or name a
+            # different opponent, which is why a threshold learner cannot be fitted from
+            # it alone - this row is the acting relation's own openings/IP/reach.
+            if cur is not None:
+                cur.foeact.append(r)
+        elif ev == "mvfx":
+            # Schema 17. A creature's defence timers at the moment it acted, computed on
+            # the client and never written before now.
+            if cur is not None:
+                cur.mvfx.append(r)
         elif ev == "overlay":
             if cur is not None:
                 cur.overlays.append(r)
@@ -760,10 +778,35 @@ OVERLAY_MOVE = {
     "gfx/fx/fight/zigzag": "Zig-Zag Ruse",
 }
 
-# Outcome sounds, which arrive by the same path and are NOT move announcements. hit1 and
-# miss say whether a swing connected, which nothing else in a log does; ip says a point of
-# initiative was taken. They follow many different cards, which is how they were told
-# apart from the icons above.
+# Outcome sounds, which arrive by the same path and are NOT move announcements. They follow
+# many different cards, which is how they were told apart from the icons above.
+#
+# "MISS" IS THE GAME'S OWN RESOURCE NAME AND IT IS NOT AN ACCURACY ROLL. This file used to
+# say hit1 and miss "say whether a swing connected", and the owner's reading is the correct
+# one: cards in this game have no accuracy, so nothing here is a roll that failed. What the
+# sound reports is that the action put no SOFT HITPOINTS through - which happens when the
+# card deals no damage at all, or when our armour soaked the whole swing, or when the
+# opening was too small for the squared term to clear the hard soak.
+#
+# The corpus settles it three separate ways, over 11,371 bracketed actions:
+#
+#   A CARD THAT CANNOT MISS STILL "MISSES". Flex is 100% miss over 200 brackets and
+#   Opportunity Knocks 100% over 61. Both have a null damage share on the sheet - they are
+#   not attacks and cannot whiff. Unstoppable 99%, Wingbeat 98%, Rampant Rage 98%.
+#
+#   THE RATE TRACKS THE DAMAGE SHARE, MONOTONICALLY. Cleave at 150% of weapon damage misses
+#   2% of the time, Full Circle at 100% misses 3%, Quick Barrage at 25% misses 45%. An
+#   accuracy roll does not know a card's damage multiplier.
+#
+#   HALF OF ALL "MISSES" CARRY AN ARMOUR NUMBER. 2841 of 5737 miss brackets have an ARM
+#   channel on the target and only 65 have SHP, against 1451 ARM and 4890 SHP for hit
+#   brackets. A swing that never landed produces no soak figure, so those 2841 are hits
+#   whose damage our armour absorbed entirely. The openings agree: median combined opening
+#   0.22 on a miss against 0.39 on a hit.
+#
+# So the pair is a threshold reading and not a connection reading. It is still useful, and
+# arguably more so - a miss beside an ARM row bounds the swing below our hard soak - but no
+# hit RATE computed from it is an accuracy, and nothing may treat a miss as "did not land".
 OVERLAY_OUTCOME = {
     "sfx/fight/hit1": "hit",
     "sfx/fight/miss": "miss",
@@ -832,11 +875,15 @@ def _infer_outcome(eng, me_gob, health):
 def _bracket_sfx(eng, move):
     """Outcome sounds inside one move's bracket, never confused with announcements.
 
-    Returns dict with counts and which-swings-connected - counts of hit1/miss/ip
-    whose timestamps fall within the bracket's state pair, plus a boolean for whether
-    this swing produced an explicit hit or miss at all. An announcement is gfx/fx/fight/*
-    and an outcome is sfx/fight/* - the two namespaces are disjoint and this function
-    only counts the second.
+    Returns dict with counts of hit1/miss/ip whose timestamps fall within the bracket's
+    state pair, plus `connected`. An announcement is gfx/fx/fight/* and an outcome is
+    sfx/fight/* - the two namespaces are disjoint and this function only counts the second.
+
+    `connected` IS A THRESHOLD AND NOT AN ACCURACY. True means soft hitpoints went
+    through, False means none did, None means the bracket held both sounds or neither.
+    False does NOT mean the action failed to land: cards here have no accuracy, and half
+    of the False brackets carry an armour number proving the swing arrived. See
+    OVERLAY_OUTCOME for the evidence.
     """
     before, after = eng.brackets(move)
     if before is None or after is None:

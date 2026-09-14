@@ -332,10 +332,12 @@ public final class Prediction {
         a.ip = myIp;
         applyStance(a, me);
 
-        /* The toughest reading the corpus allows. Every opponent number is an interval, and a
-         * prediction has to pick one end or report two; picking the pessimistic end means a
-         * residual that comes out negative is the interesting direction. */
-        Combatant b = o.toughest();
+        /* The hardest reading the corpus allows, and where it measured the creature, the
+         * hardest REAL one: toughest() assembles an animal that is simultaneously the most
+         * defended, fastest, largest and strongest ever logged, and no such creature exists.
+         * hardestReal() falls back to exactly that reading when the pack ships no rows, so a
+         * prediction is never silently widened. */
+        Combatant b = o.hardestReal();
         for(int c = 0; c < 4; c++) {
             if(foeOpen[c] > 0)
                 b.open(c, foeOpen[c]);
@@ -470,7 +472,7 @@ public final class Prediction {
             if((oi == null) || !oi.simulable() || (oi.threat == null)
                || (foeOpen[i] == null) || (foeOpen[i].length < 4))
                 continue;
-            Combatant bi = oi.toughest();
+            Combatant bi = oi.hardestReal();
             /* WHERE IT IS STANDING, which decides whether a sweeping card reaches it. NaN
              * when the caller does not know, and that has to stay expressible: a model
              * that defaulted an unknown position to zero would put every animal inside
@@ -554,7 +556,28 @@ public final class Prediction {
             if(o != null)
                 return(o);
         }
+        playerUnsupported(res);
         return(null);
+    }
+
+    private static boolean playerNotice;
+
+    /**
+     * Names the one res that will never resolve, once, instead of failing silently.
+     *
+     * A player is stored under res gfx/borka/body but named body#&lt;gob&gt;, and `find` keys on
+     * the resource segment or the full name, so the two never meet. The caller then gets a
+     * null prediction that is indistinguishable from "no measurement of this creature",
+     * which is the reading a user would draw from it. That silent null is the defect; this
+     * is the explicit statement of it, printed once per session.
+     */
+    private static void playerUnsupported(String res) {
+        if(playerNotice || (res == null) || (res.indexOf("borka/body") < 0))
+            return;
+        playerNotice = true;
+        System.err.println("combat pack: live PvP advice is UNSUPPORTED for " + res
+            + " - a player is stored as body#<gob>, which this resource cannot name;"
+            + " the advisor reports no prediction for it");
     }
 
     /** Colour order, so a caller can build foeOpen without importing Formulas. */

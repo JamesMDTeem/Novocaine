@@ -265,6 +265,54 @@ public class CombatPackCheck {
         check("  and nothing called a creature throws a card off our own sheet",
               ourCards, 0);
 
+        /* THE SUPPORT BEHIND THE CARD MIXTURE, AND THE PRE-ARMOUR FLAG. `policy.n`,
+         * `policy.solo_n` and `threat.damage.before_armour` were written by the estimator
+         * and read by nothing: a two-card mixture resting on eleven throws looked exactly
+         * like one resting on four hundred, and the flag on the damage coefficient -
+         * saying it is a pre-soak figure - was invisible. Consumed here so a rename or a
+         * dropped count is not silent. */
+        int withPolicy = 0, beforeArmour = 0;
+        long policyThrows = 0, soloThrows = 0;
+        int blend = 0, late = 0, slope = 0, fought = 0, ipCond = 0, ipContam = 0, ipShare = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.policyN > 0) {
+                withPolicy++;
+                policyThrows += o.policyN;
+                soloThrows += o.policySoloN;
+            }
+            if(o.threatBeforeArmour)
+                beforeArmour++;
+            if(!o.blended.isEmpty())
+                blend++;
+            if(!Double.isNaN(o.defenceWeightLateLo) || !Double.isNaN(o.defenceWeightLateHi))
+                late++;
+            if(!Double.isNaN(o.skillSlope))
+                slope++;
+            if(o.foughtInSites > 0)
+                fought++;
+            if(o.policyIpConditioned)
+                ipCond++;
+            if(o.policyIpGroupContaminated)
+                ipContam++;
+            if(!Double.isNaN(o.policyAttackShareAt0)
+               && !Double.isNaN(o.policyAttackShareAbove0))
+                ipShare++;
+        }
+        System.out.println("  " + withPolicy + " opponent(s) publish a card mixture resting on "
+                           + policyThrows + " measured throw(s), " + soloThrows
+                           + " of them solo; " + beforeArmour
+                           + " price damage before armour; " + blend + " are blended across "
+                           + "axes, " + late + " carry a late defence weight, " + slope
+                           + " a skill slope, " + fought + " name the sites fought in");
+        System.out.println("  of the mixtures, " + ipCond + " are conditioned on initiative, "
+                           + ipContam + " are contamination-flagged, " + ipShare
+                           + " publish both attack shares");
+        check("  the mixture's support is read, not just written", withPolicy > 0, true);
+        check("    and the pre-armour damage flag is read", beforeArmour > 0, true);
+        check("    and a blended reading says so", blend > 0, true);
+        check("    and the sites fought in are read", fought > 0, true);
+        check("    and an initiative-conditioned mixture is read", ipShare > 0, true);
+
         /* The deck search ran on six literals that were nobody's - melee and unarmed
          * were Shade's, the strength, agility and health belonged to no character in the
          * corpus. A deck built for a character who does not exist is not wrong in a way
@@ -337,6 +385,18 @@ public class CombatPackCheck {
              * is not, and a weapon's penetration against a player is what it says. */
             check("    and is penetrable, unlike the animals", zz.combatant().penetrable,
                   true);
+        }
+
+        /* THE KIT COUNT AND THE BODY UNDER THE SOAK. `armour.pieces`, `con` and `hhp` were
+         * written by the recorder and read by nothing: a character with no gear rows and
+         * one with twenty-three both read as "hard 0, soft 0" without the count, and the
+         * maximum-hitpoint pool grievous damage eats was invisible. Consumed here so a
+         * rename or a dropped count is not silent. */
+        if(zz != null) {
+            check("  the armour reading names how many pieces it counted",
+                  zz.armourPieces > 0, true);
+            check("  and the body underneath names its constitution", zz.con > 0, true);
+            check("    and the hitpoint pool grievous would eat", zz.hhp > 0, true);
         }
 
         /* Shield Up is 250% of the block weight holding a shield and 50% without - five
@@ -760,6 +820,23 @@ public class CombatPackCheck {
         check("  and it reports its damage as unknown, not as zero",
               anySilentRefusesDamage(foes), true);
 
+        /* AND THE DAMAGE IS AN INTERVAL LIKE EVERYTHING ELSE. Every other opponent stat in
+         * this pack is a band and every matchup runs both ends of it; damage was read as
+         * the point estimate alone, and Pack dropped the `lo`/`hi` beside it. The badger's
+         * coefficient is 27.6 on an interval of 8.9 to 123.5 - a factor of fourteen - so a
+         * plan priced at the median was not a plan priced at the worst the corpus allows,
+         * and that is the number a person deciding whether to take a fight wants. */
+        int withHi = 0, ordered = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat == null) || (o.threatHi == null))
+                continue;
+            withHi++;
+            if(o.threatHi.damageCoef >= o.threat.damageCoef)
+                ordered++;
+        }
+        check("some opponent carries the top of its measured damage", withHi > 0, true);
+        check("  and the pessimistic model is never the weaker one", ordered, withHi);
+
         /* WHETHER WE CAN LEAVE. The estimator has measured relative speed all along and
          * nothing read it back out, so the matchup answered "can I take this" without
          * "can I get out if I am wrong" - and the second is the only mitigation a losing
@@ -979,7 +1056,7 @@ public class CombatPackCheck {
      * every loader returning an empty map, the predictor declines every move, and the log
      * simply has no predictions in it, which looks exactly like a quiet fight.
      */
-    static void packedInTheJar() {
+    static void packedInTheJar() throws java.io.IOException {
         System.out.println("\nthe pack, from the classpath");
         int nm = Pack.movesFromJar().size();
         int nf = Pack.opponentsFromJar().size();
@@ -1042,5 +1119,56 @@ public class CombatPackCheck {
                 unknownPen++;
         }
         check("  and an absent penetration stays absent, not zero", unknownPen > 0, true);
+
+        /* THE JAR AND THE CHECKOUT MUST AGREE, AND THIS CHECK CANNOT SEE THE DIFFERENCE.
+         * check-combat.ps1 copies every data/combat/*.json onto this classpath, so a file the
+         * build's copy step forgot is present here anyway and the whole seam goes unnoticed.
+         * Load one opponent from the jar and the same one from data/combat and require BOTH to
+         * carry a repertoire; before the jar loader read moves_sheet.json, the jar side came
+         * back null for every opponent and the single averaged action silently stood in. */
+        Map<String, Pack.Opponent> fromJar = Pack.opponentsFromJar();
+        Map<String, Pack.Opponent> fromDisk = Pack.opponents(FOES);
+        Pack.Opponent jc = firstWithCards(fromJar);
+        Pack.Opponent dc = (jc == null) ? null : fromDisk.get(jc.name);
+        check("a jar-loaded opponent carries its cards",
+              (jc != null) && (jc.threat != null) && (jc.threat.cards != null), true);
+        check("  and the same opponent off disk carries them too",
+              (dc != null) && (dc.threat != null) && (dc.threat.cards != null), true);
+        System.out.println("  (read \""
+            + ((jc == null) ? "(no cards in the jar)" : jc.name) + "\" from the jar and \""
+            + ((dc == null) ? "(absent)" : dc.name) + "\" from " + FOES + ")");
+        System.out.println("  pack self-description: " + Pack.formatStamp());
+        System.out.println("  " + playerState(fromDisk));
+    }
+
+    /** The first opponent whose model takes the card path, for the jar/disk comparison. */
+    static Pack.Opponent firstWithCards(Map<String, Pack.Opponent> foes) {
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat != null) && (o.threat.cards != null))
+                return(o);
+        }
+        return(null);
+    }
+
+    /**
+     * The player opponents, named, with what the tool does with them.
+     *
+     * Twelve records exist and nothing in the output said what became of them: Prediction.find
+     * keys on a res path segment or the full name, so `gfx/borka/body` can never resolve a
+     * player stored as `body#<gob>` - live PvP advice returns null while looking exactly like
+     * an opponent with no data. This names that state instead of leaving it to be inferred.
+     */
+    static String playerState(Map<String, Pack.Opponent> foes) {
+        int n = 0, simulable = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.isPlayer())
+                continue;
+            n++;
+            if(o.simulable())
+                simulable++;
+        }
+        return(n + " player record(s), " + simulable + " simulable; live PvP advice is"
+               + " UNSUPPORTED - find() cannot key res gfx/borka/body to a player named"
+               + " body#<gob>");
     }
 }

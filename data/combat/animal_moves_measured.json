@@ -6,45 +6,50 @@
   "ants": 0.751,
   "badger": 1.0,
   "bat": 1.0,
-  "bear": 1.067,
-  "beaver": 1.0,
-  "beelarva": 0.509,
-  "boar": 1.0,
-  "boreworm": 1.16,
-  "cattle": 1.06,
-  "caveangler": 1.261,
-  "caverat": 1.033,
-  "fox": 0.739,
-  "goldeneagle": 1.159,
-  "greenooze": 1.067,
-  "greyseal": 1.056,
-  "honeybee": 0.778,
-  "lynx": 1.161,
+  "bear": 1.024,
+  "beaver": 1.029,
+  "beelarva": 0.543,
+  "boar": 1.053,
+  "boreworm": 1.192,
+  "cattle": 1.0,
+  "caveangler": 1.21,
+  "cavelouse": 1.194,
+  "caverat": 0.95,
+  "crane": 0.817,
+  "eagleowl": 1.086,
+  "fox": 0.757,
+  "goldeneagle": 1.192,
+  "greenooze": 1.114,
+  "greyseal": 1.192,
+  "honeybee": 0.794,
+  "lynx": 1.192,
   "mammoth": 1.0,
-  "moose": 1.045,
-  "narwhal": 1.161,
-  "pelican": 0.844,
+  "moose": 1.078,
+  "narwhal": 1.024,
+  "orca": 1.371,
+  "pelican": 0.927,
   "queenant": 0.911,
+  "queenbee": 1.163,
   "redants": 1.0,
-  "reddeer": 1.083,
-  "reindeer": 0.975,
+  "reddeer": 1.1,
+  "reindeer": 1.0,
   "royalguardant": 1.44,
-  "sentinelbee": 0.859,
-  "sheep": 0.687,
-  "swan": 1.017,
-  "vulturebee": 0.871,
-  "walrus": 1.067,
+  "sentinelbee": 0.877,
+  "sheep": 0.707,
+  "swan": 0.977,
+  "vulturebee": 0.914,
+  "walrus": 1.024,
   "warriorant": 1.187,
-  "warriordrone": 0.89,
-  "wildgoat": 1.033,
+  "warriordrone": 0.884,
+  "wildgoat": 1.002,
   "wolf": 1.0,
-  "wolverine": 1.017
+  "wolverine": 1.0
  },
  "moves": [
   {
    "name": "'Rus Tusk",
    "openings": {
-    "red": 10.31
+    "red": 10.74
    },
    "damage": null,
    "cooldown": null,
@@ -69,7 +74,7 @@
     "ticks": 6.1,
     "floor": 1.9,
     "rotation": 44.0,
-    "n": 84
+    "n": 93
    },
    "armour": {
     "soaked_share": 0.5,
@@ -78,66 +83,69 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 279
+    "n": 280
    }
   },
   {
    "name": "Badgering",
    "openings": {
-    "red": 13.0
+    "red": 11.54
    },
    "damage": {
-    "coef": 28.3,
+    "coef": 29.3,
     "lo": 18.2,
     "hi": 123.5,
-    "n": 27,
+    "n": 51,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 43.0,
     "floor": 42.9,
-    "rotation": 44.2,
-    "n": 20
+    "rotation": 44.0,
+    "n": 47
    },
-   "armour": null,
+   "armour": {
+    "soaked_share": 0.83,
+    "n": 12
+   },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 12
+    "n": 19
    }
   },
   {
    "name": "Bear Down",
    "openings": {
-    "blue": 10.31
+    "blue": 10.74
    },
    "damage": {
-    "coef": 50.2,
+    "coef": 47.8,
     "lo": 4.9,
     "hi": 400.0,
-    "n": 103,
+    "n": 129,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 47.0,
-    "floor": 42.0,
-    "rotation": 51.2,
-    "n": 49
+    "ticks": 40.2,
+    "floor": 24.0,
+    "rotation": 133.0,
+    "n": 153
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 33
+    "n": 42
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 81
+    "n": 102
    }
   },
   {
    "name": "Blood & Gore",
    "openings": {
-    "red": 18.67
+    "red": 18.52
    },
    "damage": null,
    "cooldown": null,
@@ -145,24 +153,35 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.241,
-    "n": 20
+    "n": 21
    }
   },
   {
    "name": "Breathing Rage",
    "openings": {
-    "blue": 10.53
+    "blue": 10.2
    },
-   "damage": null,
-   "cooldown": null,
+   "damage": {
+    "coef": 46.0,
+    "lo": 8.7,
+    "hi": 277.8,
+    "n": 14,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 41.0,
+    "floor": 41.0,
+    "rotation": 80.5,
+    "n": 12
+   },
    "armour": {
     "soaked_share": 0.86,
-    "n": 10
+    "n": 13
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 14
+    "n": 16
    }
   },
   {
@@ -170,24 +189,24 @@
    "openings": null,
    "damage": null,
    "cooldown": {
-    "ticks": 29.9,
-    "floor": 29.1,
+    "ticks": 29.0,
+    "floor": 2.1,
     "rotation": 109.0,
-    "n": 63
+    "n": 214
    },
    "armour": null,
    "restores": {
     "by_colour": {
      "green": 0.2,
-     "blue": 0.196,
-     "yellow": 0.189,
+     "blue": 0.2,
+     "yellow": 0.2,
      "red": 0.2
     },
     "n": {
-     "red": 415,
-     "green": 370,
-     "blue": 94,
-     "yellow": 631
+     "red": 701,
+     "green": 731,
+     "blue": 280,
+     "yellow": 1108
     }
    },
    "grievous": null
@@ -197,22 +216,22 @@
    "openings": null,
    "damage": null,
    "cooldown": {
-    "ticks": 29.1,
+    "ticks": 28.9,
     "floor": 2.0,
-    "rotation": 34.0,
-    "n": 74
+    "rotation": 40.2,
+    "n": 215
    },
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.182,
+     "green": 0.191,
      "blue": 0.2
     },
     "n": {
-     "red": 366,
-     "green": 433,
-     "blue": 169,
-     "yellow": 422
+     "red": 515,
+     "green": 583,
+     "blue": 249,
+     "yellow": 623
     }
    },
    "grievous": null
@@ -220,119 +239,141 @@
   {
    "name": "Chomp",
    "openings": {
-    "blue": 14.11
+    "blue": 14.12
    },
    "damage": {
-    "coef": 96.0,
-    "lo": 27.4,
+    "coef": 105.0,
+    "lo": 14.8,
     "hi": 164.4,
-    "n": 43,
+    "n": 59,
     "before_armour": true
    },
-   "cooldown": null,
+   "cooldown": {
+    "ticks": 81.2,
+    "floor": 81.0,
+    "rotation": 266.9,
+    "n": 38
+   },
    "armour": {
     "soaked_share": 0.86,
-    "n": 10
+    "n": 12
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.167,
-    "n": 107
+    "n": 161
    }
   },
   {
    "name": "Crush Underfoot",
    "openings": {
     "blue": 7.45,
-    "green": 7.0,
-    "red": 7.53,
+    "green": 7.22,
+    "red": 7.45,
     "yellow": 7.07
    },
-   "damage": null,
-   "cooldown": null,
+   "damage": {
+    "coef": 331.9,
+    "lo": 315.1,
+    "hi": 395.2,
+    "n": 6,
+    "before_armour": true
+   },
+   "cooldown": {
+    "ticks": 32.0,
+    "floor": 31.0,
+    "rotation": 156.0,
+    "n": 47
+   },
    "armour": null,
    "restores": null,
-   "grievous": null
+   "grievous": {
+    "per_soft": 0.333,
+    "n": 12
+   }
   },
   {
    "name": "Fell Scratch",
    "openings": {
-    "green": 9.47
+    "green": 9.21
    },
    "damage": {
-    "coef": 30.9,
+    "coef": 34.5,
     "lo": 2.6,
     "hi": 400.0,
-    "n": 461,
+    "n": 681,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 41.5,
-    "floor": 40.0,
-    "rotation": 49.9,
-    "n": 862
+    "floor": 1.9,
+    "rotation": 49.4,
+    "n": 1557
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 295
+    "n": 425
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 682
+    "n": 950
    }
   },
   {
    "name": "Heavy Antlers",
    "openings": null,
    "damage": {
-    "coef": 112.5,
+    "coef": 110.8,
     "lo": 69.1,
     "hi": 130.5,
-    "n": 7,
+    "n": 9,
     "before_armour": true
    },
    "cooldown": null,
    "armour": null,
    "restores": null,
-   "grievous": null
+   "grievous": {
+    "per_soft": 0.263,
+    "n": 12
+   }
   },
   {
    "name": "Low Horn Swipe",
    "openings": {
-    "green": 10.26
+    "green": 10.2
    },
    "damage": {
-    "coef": 26.9,
+    "coef": 27.1,
     "lo": 3.0,
     "hi": 204.1,
-    "n": 153,
+    "n": 186,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 19.6,
-    "floor": 18.1,
+    "floor": 17.8,
     "rotation": 22.0,
-    "n": 130
+    "n": 245
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 48
+    "n": 55
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 107
+    "n": 123
    }
   },
   {
    "name": "Maddening Roar",
    "openings": null,
    "damage": {
-    "coef": 79.7,
+    "coef": 69.2,
     "lo": 23.3,
     "hi": 126.5,
-    "n": 15,
+    "n": 20,
     "before_armour": true
    },
    "cooldown": null,
@@ -340,35 +381,35 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 18
+    "n": 24
    }
   },
   {
    "name": "Mule Kick",
    "openings": {
-    "yellow": 10.53
+    "yellow": 10.0
    },
    "damage": {
-    "coef": 27.7,
+    "coef": 28.1,
     "lo": 4.1,
-    "hi": 156.3,
-    "n": 157,
+    "hi": 277.8,
+    "n": 191,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 35.8,
-    "floor": 31.9,
+    "ticks": 34.9,
+    "floor": 17.0,
     "rotation": 40.0,
-    "n": 229
+    "n": 369
    },
    "armour": {
     "soaked_share": 0.8,
-    "n": 34
+    "n": 36
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 82
+    "n": 92
    }
   },
   {
@@ -385,7 +426,7 @@
     "ticks": 18.0,
     "floor": 17.8,
     "rotation": 20.9,
-    "n": 31
+    "n": 34
    },
    "armour": null,
    "restores": null,
@@ -402,11 +443,14 @@
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.2
+     "green": 0.2,
+     "yellow": 0.19
     },
     "n": {
-     "red": 110,
-     "yellow": 108
+     "red": 196,
+     "green": 32,
+     "blue": 23,
+     "yellow": 194
     }
    },
    "grievous": null
@@ -416,22 +460,22 @@
    "openings": null,
    "damage": null,
    "cooldown": {
-    "ticks": 29.1,
-    "floor": 11.8,
-    "rotation": 35.0,
-    "n": 365
+    "ticks": 28.9,
+    "floor": 8.0,
+    "rotation": 35.1,
+    "n": 668
    },
    "armour": null,
    "restores": {
     "by_colour": {
      "yellow": 0.146,
-     "red": 0.148
+     "red": 0.149
     },
     "n": {
-     "red": 370,
-     "green": 333,
-     "blue": 86,
-     "yellow": 1216
+     "red": 602,
+     "green": 514,
+     "blue": 172,
+     "yellow": 1708
     }
    },
    "grievous": null
@@ -439,20 +483,20 @@
   {
    "name": "Serpent's Strike",
    "openings": {
-    "yellow": 12.0
+    "yellow": 9.78
    },
    "damage": {
-    "coef": 25.5,
+    "coef": 44.4,
     "lo": 7.3,
-    "hi": 156.3,
-    "n": 24,
+    "hi": 204.1,
+    "n": 29,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 42.2,
+    "ticks": 42.3,
     "floor": 41.0,
-    "rotation": 44.4,
-    "n": 48
+    "rotation": 44.0,
+    "n": 99
    },
    "armour": null,
    "restores": null,
@@ -461,13 +505,13 @@
   {
    "name": "Shredding Paw",
    "openings": {
-    "red": 18.29
+    "red": 18.18
    },
    "damage": {
-    "coef": 122.8,
+    "coef": 143.3,
     "lo": 24.6,
     "hi": 392.6,
-    "n": 22,
+    "n": 32,
     "before_armour": true
    },
    "cooldown": null,
@@ -475,14 +519,19 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.333,
-    "n": 63
+    "n": 93
    }
   },
   {
    "name": "Swift Evasion",
    "openings": null,
    "damage": null,
-   "cooldown": null,
+   "cooldown": {
+    "ticks": 29.0,
+    "floor": 8.1,
+    "rotation": 105.0,
+    "n": 45
+   },
    "armour": null,
    "restores": {
     "by_colour": {
@@ -491,9 +540,9 @@
      "red": 0.304
     },
     "n": {
-     "red": 53,
-     "green": 27,
-     "yellow": 108
+     "red": 62,
+     "green": 28,
+     "yellow": 141
     }
    },
    "grievous": null
@@ -502,54 +551,71 @@
    "name": "Tail Splash",
    "openings": null,
    "damage": {
-    "coef": 121.3,
-    "lo": 5.9,
+    "coef": 82.8,
+    "lo": 2.3,
     "hi": 158.7,
-    "n": 12,
+    "n": 24,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 40.8,
-    "floor": 40.8,
+    "floor": 40.0,
     "rotation": 206.0,
-    "n": 19
+    "n": 51
    },
    "armour": {
     "soaked_share": 0.8,
-    "n": 16
+    "n": 23
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 46
+    "n": 66
    }
   },
   {
    "name": "Thunder Over",
    "openings": {
-    "green": 3.37
+    "green": 3.45
    },
    "damage": {
-    "coef": 39.5,
+    "coef": 41.5,
     "lo": 4.5,
-    "hi": 156.3,
-    "n": 41,
+    "hi": 165.3,
+    "n": 49,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 30.0,
-    "floor": 30.0,
-    "rotation": 59.5,
-    "n": 28
+    "ticks": 28.2,
+    "floor": 26.0,
+    "rotation": 55.0,
+    "n": 49
    },
    "armour": {
     "soaked_share": 0.8,
-    "n": 28
+    "n": 31
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 59
+    "n": 68
+   }
+  },
+  {
+   "name": "Trunk Gunk",
+   "openings": null,
+   "damage": null,
+   "cooldown": {
+    "ticks": 57.0,
+    "floor": 57.0,
+    "rotation": 81.0,
+    "n": 12
+   },
+   "armour": null,
+   "restores": null,
+   "grievous": {
+    "per_soft": 0.1,
+    "n": 11
    }
   },
   {
@@ -564,9 +630,10 @@
      "red": 0.303
     },
     "n": {
-     "red": 122,
-     "green": 109,
-     "yellow": 239
+     "red": 159,
+     "green": 210,
+     "blue": 17,
+     "yellow": 391
     }
    },
    "grievous": null
@@ -575,43 +642,49 @@
    "name": "Vampirism",
    "openings": null,
    "damage": {
-    "coef": 9.6,
+    "coef": 9.3,
     "lo": 3.9,
-    "hi": 33.7,
-    "n": 17,
+    "hi": 52.0,
+    "n": 23,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 18.0,
-    "floor": 17.8,
-    "rotation": 22.2,
-    "n": 31
+    "floor": 3.1,
+    "rotation": 22.1,
+    "n": 98
    },
    "armour": null,
    "restores": null,
-   "grievous": null
+   "grievous": {
+    "per_soft": 0.091,
+    "n": 11
+   }
   },
   {
    "name": "Wingbeat",
    "openings": {
-    "yellow": 9.88
+    "yellow": 9.0
    },
    "damage": {
-    "coef": 19.5,
+    "coef": 30.3,
     "lo": 3.3,
     "hi": 400.0,
-    "n": 28,
+    "n": 40,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 26.1,
-    "floor": 26.1,
+    "ticks": 36.0,
+    "floor": 15.0,
     "rotation": 44.0,
-    "n": 19
+    "n": 75
    },
    "armour": null,
    "restores": null,
-   "grievous": null
+   "grievous": {
+    "per_soft": 0.111,
+    "n": 10
+   }
   }
  ]
 }

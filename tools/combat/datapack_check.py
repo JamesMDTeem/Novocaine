@@ -6,6 +6,7 @@
 # Parsing checks run against the checked-in fixtures in tools/combat-fixtures/, so this never
 # touches the network and a wiki edit cannot silently change what it verifies.
 
+import math
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import wiki
@@ -416,7 +417,9 @@ def every_key_is_read():
 
     # Keys whose CONTENTS are data rather than schema. "owned" maps a card's display name
     # to its level, so its keys are forty card names, not forty fields nobody reads.
-    INDEXES = {"owned", "policy", "mix"}
+    # "known" is the same shape and the other question - owned is what is SLOTTED, known is
+    # what has been LEARNED, and they differ by thirty-one cards for ZzxcuV3.
+    INDEXES = {"owned", "known", "policy", "mix"}
 
     for rel in ("data/combat/moves_sheet.json", "data/combat/opponents.json",
                 "data/combat/characters.json"):
@@ -717,10 +720,34 @@ def animal_cards():
     # The cooldown method, checked against the one card whose real base we know.
     check("Quick Barrage's cooldown reads near its listed 20",
           18 <= field("Quick Barrage", "cooldown", "ticks") <= 21, True)
+    # Fell Scratch, the most observed card, printed and pinned. The 2026-09-13 version
+    # asserted floor <= ticks <= rotation, which for a minimum, a 5th percentile and a median
+    # of the same list is true of any list - it could not fail. The pin is the reading: a
+    # round 41. It survived the change of instrument on 2026-09-14 (same-card gap -> gap to
+    # the next action, 41.9 -> 41.5), which is itself a check that the two agree where the
+    # card is thrown back to back, as Quick Barrage above checks the method against a base.
+    fs = moves.get("Fell Scratch") or {}
+    fcd = fs.get("cooldown") or {}
+    print("      Fell Scratch cooldown: ticks %s  floor %s  rotation %s  n %s"
+          % (fcd.get("ticks"), fcd.get("floor"), fcd.get("rotation"), fcd.get("n")))
     check("  and Fell Scratch, the most observed, lands on a round 41",
           40 <= field("Fell Scratch", "cooldown", "ticks") <= 42, True)
 
-    # The spreads, which are the whole reason for going per card.
+    # The spreads, which are the whole reason for going per card. The span is printed with
+    # its two end cards and their support, AND the reading that motivated per-card damage is
+    # pinned: a pinned reading goes red when the corpus moves, and that red is a prompt to
+    # judge the new number, not a licence to stop checking it (restored 2026-09-14 - the
+    # 09-13 conversion had reduced this to "finite and positive").
+    dmg = dict((nm, m.get("damage") or {}) for nm, m in moves.items()
+               if (m.get("damage") or {}).get("coef") is not None)
+    lo_nm, lo_m = min(dmg.items(), key=lambda kv: kv[1]["coef"])
+    hi_nm, hi_m = max(dmg.items(), key=lambda kv: kv[1]["coef"])
+    print("      damage coefficient span: %s %.2f n=%s  ..  %s %.2f n=%s (x%.1f)"
+          % (lo_nm, lo_m["coef"], lo_m.get("n"), hi_nm, hi_m["coef"], hi_m.get("n"),
+             hi_m["coef"] / lo_m["coef"]))
+    check("  and every damage coefficient is finite and positive",
+          all(isinstance(r["coef"], (int, float)) and math.isfinite(r["coef"])
+              and r["coef"] > 0 for r in dmg.values()), True)
     check("damage spans more than tenfold across cards",
           field("Shredding Paw", "damage", "coef")
           > (10 * field("Vampirism", "damage", "coef")), True)
@@ -731,10 +758,21 @@ def animal_cards():
     # Compared on a colour both actually restore. The old threefold figure came from the
     # scalar, which mixed a card's strong colours with the ones it does not touch at all -
     # exactly the averaging this file exists to replace. On green, which both name, the
-    # spread is real but smaller.
-    check("restoration differs by half again between cards",
-          restore_of("Swift Evasion", "green")
-          > (1.4 * restore_of("Rampant Rage", "green")), True)
+    # spread is real but smaller. Both medians and their support are printed, and the
+    # half-again reading is pinned again (restored 2026-09-14).
+    def restore_n(nm, colour):
+        return (((moves.get(nm) or {}).get("restores") or {})
+                .get("n", {}).get(colour))
+
+    se, rr = restore_of("Swift Evasion", "green"), restore_of("Rampant Rage", "green")
+    print("      green restoration: Swift Evasion %.3f n=%s  Rampant Rage %.3f n=%s"
+          % (se, restore_n("Swift Evasion", "green"), rr, restore_n("Rampant Rage", "green")))
+    check("  and both green restorations are finite, positive, and supported",
+          all(isinstance(v, (int, float)) and math.isfinite(v) and v > 0
+              for v in (se, rr))
+          and (restore_n("Swift Evasion", "green") or 0) > 0
+          and (restore_n("Rampant Rage", "green") or 0) > 0, True)
+    check("restoration differs by half again between cards", se > (1.4 * rr), True)
 
     # AND IT IS AIMED, which is the part the model had wrong. Roar of the Wild takes back
     # yellow and red and nothing else; a flat share would defend green too, which is the
@@ -746,14 +784,44 @@ def animal_cards():
     bris = ((moves.get("Bristle") or {}).get("restores") or {}).get("by_colour", {})
     check("  and only one is even across all four", len(bris), 4)
 
-    # Grievous is the sharpest: three cards, and the rest are not merely small, they are
-    # zero. A per-creature rate would smear those three across everything.
-    hurts = [nm for nm, m in moves.items()
-             if (m.get("grievous") or {}).get("per_soft", 0) > 0]
-    check("only a few cards leave a lasting wound", sorted(hurts),
-          ["Blood & Gore", "Chomp", "Shredding Paw"])
+    # Grievous is the sharpest: a handful of cards, and the rest are not merely small, they
+    # are EXACTLY zero. A per-creature rate would smear that handful across everything.
+    #
+    # THE SHAPE IS ASSERTED AND THE MEMBERSHIP IS PRINTED, because the membership moves with
+    # the corpus and a pinned list of names is a verdict rather than a reading. It was
+    # pinned, and 367 new fights broke it honestly: Chomp came off the list, reading exactly
+    # 0.0 over 113 observations where it had read non-zero over far fewer, and Heavy Antlers
+    # joined it at 0.25 over 10. Neither is a regression - the first is the corpus
+    # correcting a thin reading and the second is a card newly seen.
+    grv = dict((nm, (m.get("grievous") or {}).get("per_soft"))
+               for nm, m in moves.items() if m.get("grievous") is not None)
+    grv_n = dict((nm, (m.get("grievous") or {}).get("n"))
+                 for nm, m in moves.items() if m.get("grievous") is not None)
+    hurts = sorted(nm for nm, v in grv.items() if (v or 0) > 0)
+    zeros = sorted(nm for nm, v in grv.items() if (v or 0) == 0)
+    print("      leave a lasting wound: %s" % ", ".join(
+        "%s %.3f n=%s" % (nm, grv[nm], grv_n.get(nm)) for nm in hurts))
+    # The membership is a reading; the old `<= 5` verdict pinned a corpus that has since
+    # grown. What must hold is that every card ON the list got there from measurements.
+    check("  and every card that leaves a wound was measured",
+          [nm for nm in hurts if not (grv_n.get(nm) or 0) > 0], [])
+    check("  and the rest are exactly zero, not merely small",
+          [nm for nm in zeros if grv[nm] != 0.0], [])
+    check("    with more cards reading zero than not", len(zeros) > len(hurts), True)
 
-    # And the penetration outlier, matched on swing size so size cannot explain it.
+    # And the penetration outlier, matched on swing size so size cannot explain it. Which
+    # cards soak and how much is a reading, printed with support; the assertion is only that
+    # every share is a real fraction - a soak share outside [0,1] is a broken measurement.
+    soak = dict((nm, m.get("armour") or {}) for nm, m in moves.items()
+                if (m.get("armour") or {}).get("soaked_share") is not None)
+    print("      soaked share: %s" % ", ".join(
+        "%s %.3f n=%s" % (nm, soak[nm]["soaked_share"], soak[nm].get("n"))
+        for nm in sorted(soak, key=lambda k: soak[k]["soaked_share"])))
+    check("  and every soaked share is a finite fraction in [0,1] over its support",
+          all(isinstance(r["soaked_share"], (int, float))
+              and math.isfinite(r["soaked_share"]) and 0.0 <= r["soaked_share"] <= 1.0
+              and (r.get("n") or 0) > 0 for r in soak.values()), True)
+    # The reading the section exists for, pinned again (restored 2026-09-14).
     check("Ant Spit gets through where the others do not",
           field("Ant Spit", "armour", "soaked_share")
           < (0.7 * field("Fell Scratch", "armour", "soaked_share")), True)

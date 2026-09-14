@@ -126,8 +126,14 @@ git-dirty-flag = ${git-dirty-flag}
          pack it was built with. Pack.slurp reads these off the classpath; a build without
          them loses the in-fight prediction and nothing else. -->
     <copy todir="build/classes/haven/combat/data">
+      <!-- animal_moves_measured.json is the per-card file: without it a creature falls back to
+           its averaged action, and moves_sheet.json is what a PLAYER opponent throws - without
+           it Pack.opponentsFromJar cannot build a repertoire for any opponent and the live
+           advisor declines every move. individuals.json is the per-creature rows the hardest
+           reading sweeps instead of the pooled chimera. All three are read by Pack.slurp; a
+           build without them loses the in-fight advice and nothing else. -->
       <fileset dir="data/combat"
-               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,constants.json" />
+               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,constants.json,animal_moves_measured.json,individuals.json" />
     </copy>
     <copy file="local-boot.properties" tofile="build/classes/haven/boot-props" failonerror="false" quiet="true" />
   </target>

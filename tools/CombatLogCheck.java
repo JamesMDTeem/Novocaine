@@ -162,7 +162,30 @@ public class CombatLogCheck {
          * ONE opponent, so a fight against several has never recorded who was within
          * reach - which is why nothing downstream models range, while three cards in the
          * sheet hit "all other opponents in range". */
-        check("schema constant", CombatEvent.SCHEMA, 16);
+        /* 17 adds two rows carrying what the client had in hand and threw away: the
+         * opponent's decision state at the instant it acted (foeact - its openings, IP,
+         * reach and the observed gap since it last threw that card), and the per-relation
+         * defence timers (mvfx - lastActCleave/lastActDefence/lastDefenceDuration). Both
+         * are new events, so an old reader ignores them and an old log stays readable;
+         * no existing key moved. 18 adds `oo` to the foeact row - the other side's openings at the same instant, null on rows written before it existed. */
+        /* 19 replaces foeact's `since`/`rd` with `gap`/`prev`. A combatant has ONE cooldown and
+         * the card it threw sets how long, so the gap to the next action - any card - keyed by
+         * the card thrown before it is the observable; the same-card gap `since` carried was a
+         * rotation. No pooled log carried a foeact row when the meaning changed. */
+        check("schema constant", CombatEvent.SCHEMA, 19);
+
+        check("foeact",
+              CombatEvent.foeact(100, 77L, "paginae/atk/bite", "Bite",
+                                 new Openings(0, 0, 0, 9), new Openings(4, 0, 0, 0), 3, 2, 12.0, 0, 4.5,
+                                 "paginae/atk/growl"),
+              "{\"ev\":\"foeact\",\"t\":100,\"gob\":77,\"move\":\"paginae/atk/bite\","
+              + "\"name\":\"Bite\",\"o\":[0,0,0,9],\"oo\":[4,0,0,0],\"ip\":3,\"oip\":2,\"dist\":12.0000,"
+              + "\"gst\":0,\"gap\":4.5000,\"prev\":\"paginae/atk/growl\"}");
+
+        check("mvfx",
+              CombatEvent.mvfx(105, 77L, "paginae/atk/shieldup", "Shield Up", 1200, 900, 4300),
+              "{\"ev\":\"mvfx\",\"t\":105,\"gob\":77,\"move\":\"paginae/atk/shieldup\","
+              + "\"name\":\"Shield Up\",\"cleave\":1200,\"def\":900,\"dur\":4300}");
 
         /* Advice, schema 15: what the model would have thrown, logged and not acted on.
          * The frontier count is part of it because one plan is not a choice. */

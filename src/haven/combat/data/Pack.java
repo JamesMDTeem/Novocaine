@@ -50,7 +50,47 @@ public final class Pack {
     }
 
     private static JSONObject read(Path p) throws IOException {
-        return(new JSONObject(new String(Files.readAllBytes(p), StandardCharsets.UTF_8)));
+        JSONObject doc = new JSONObject(new String(Files.readAllBytes(p), StandardCharsets.UTF_8));
+        checkFormat(doc, p.getFileName().toString());
+        return(doc);
+    }
+
+    /**
+     * The pack format this client understands.
+     *
+     * A renamed or retyped key used to be absorbed silently: every field is read through an
+     * opt* accessor with a default, so a pack written by a newer estimator loads as though
+     * the field were merely missing. A `format` block (and the `generated` stamp beside it)
+     * is the one additive key that lets Pack SAY it does not understand a file instead of
+     * quietly substituting defaults. Absent is not an error - older packs have none - so
+     * the reader only complains when a file advertises a version above this constant.
+     */
+    public static final int FORMAT = 1;
+
+    private static boolean formatWarned;
+    private static String formatSeen = "(none declared)";
+
+    private static void checkFormat(JSONObject doc, String what) {
+        if(doc == null)
+            return;
+        JSONObject block = doc.optJSONObject("format");
+        int v = (block != null) ? block.optInt("version", -1) : doc.optInt("format", -1);
+        if(v < 0)
+            return;
+        String gen = (block != null) ? block.optString("generated", null) : null;
+        formatSeen = what + " declares format " + v
+            + ((gen == null) ? "" : (", generated " + gen));
+        if((v > FORMAT) && !formatWarned) {
+            formatWarned = true;
+            System.err.println("[combat pack] " + what + " declares format " + v
+                + " but this client understands at most " + FORMAT
+                + " - unknown fields are ignored, not defaulted safely");
+        }
+    }
+
+    /** What the last-loaded pack file said about its own format, for a check to print. */
+    public static String formatStamp() {
+        return(formatSeen);
     }
 
     /**
@@ -77,8 +117,11 @@ public final class Pack {
     /** Every move in the packed sheet, or an empty map when the jar carries no pack. */
     public static Map<String, Move> movesFromJar() {
         String doc = slurp("moves_sheet.json");
-        return((doc == null) ? new LinkedHashMap<String, Move>()
-               : moves(new JSONObject(doc)));
+        if(doc == null)
+            return(new LinkedHashMap<String, Move>());
+        JSONObject j = new JSONObject(doc);
+        checkFormat(j, "moves_sheet.json");
+        return(moves(j));
     }
 
     /** Every opponent the corpus knows, from the jar, with their cards where shipped. */
@@ -86,11 +129,48 @@ public final class Pack {
         String doc = slurp("opponents.json");
         if(doc == null)
             return(new LinkedHashMap<String, Opponent>());
+        JSONObject foes = new JSONObject(doc);
+        checkFormat(foes, "opponents.json");
         /* The card file rides in the jar beside the opponents. A client built from a pack
          * that predates it simply gets the averaged action back, which is what it had. */
         String cd = slurp("animal_moves_measured.json");
         Cards lib = (cd == null) ? null : new Cards(new JSONObject(cd));
-        return(opponents(new JSONObject(doc), lib));
+        /* AND OUR OWN SHEET, which the path loader has always loaded and this one never did.
+         * Without it `ours` is null, every opponent's repertoire comes back null, and the
+         * live advisor has only the single averaged action - so the shipped pack did not
+         * drive the card-by-card simulation it was built for. See opponents(Path), which
+         * does exactly this; the two paths must agree. */
+        String sheet = slurp("moves_sheet.json");
+        Map<String, Move> ours =
+            (sheet == null) ? null : moves(new JSONObject(sheet));
+        Map<String, Opponent> out = opponents(foes, lib, ours);
+        /* The per-individual rows, where the build shipped them, so a client prices the
+         * hardest REAL creature rather than the pooled chimera. Absent is not fatal: the
+         * loaders then fall back to toughest() and say so. */
+        String ind = slurp("individuals.json");
+        if(ind != null)
+            attach(out, individuals(new JSONObject(ind)));
+        return(out);
+    }
+
+    /** Every measured individual the jar carries, by species name; empty when not shipped. */
+    public static Map<String, List<Individual>> individualsFromJar() {
+        String doc = slurp("individuals.json");
+        if(doc == null)
+            return(new LinkedHashMap<String, List<Individual>>());
+        JSONObject j = new JSONObject(doc);
+        checkFormat(j, "individuals.json");
+        return(individuals(j));
+    }
+
+    /** Hands each opponent its own per-creature rows, where the corpus measured any. */
+    private static void attach(Map<String, Opponent> foes,
+                               Map<String, List<Individual>> rows) {
+        for(Map.Entry<String, List<Individual>> e : rows.entrySet()) {
+            Opponent o = foes.get(e.getKey());
+            if(o != null)
+                o.useIndividuals(e.getValue());
+        }
     }
 
     /**
@@ -527,6 +607,15 @@ public final class Pack {
         public final FoeModel threat;
 
         /**
+         * The same model at the top of its measured damage, or null where there is no top.
+         *
+         * Read {@link #threat} for the expected fight and this one for the worst the corpus
+         * allows. A page or a matchup that reports one number for damage taken is reporting
+         * the median of a wide interval as though it were a measurement.
+         */
+        public final FoeModel threatHi;
+
+        /**
          * Whether we can leave, and how much faster than it we move.
          *
          * Measured and then thrown away until now, which made the matchup report answer
@@ -558,6 +647,76 @@ public final class Pack {
         public final double hpPinLo, hpPinHi;
         public final int hpPinN;
 
+        /**
+         * How many observations stand behind each interval, where the pack published one.
+         *
+         * `n` was written by the estimator and parsed by nothing, so a reading built on one
+         * sample looked exactly like a reading built on four hundred. These are read off
+         * the same objects the bounds come from and are reported, never used to weight: the
+         * corpus decides its own support and a consumer only needs to be able to SAY how
+         * thin it is. Zero means the pack published none (older packs), not "no data".
+         */
+        public final int dwN, agiN, speedN, periodN;
+
+        /**
+         * How many choices the measured card mixture (`policy.mix`) rests on, and how
+         * many of those were solo fights. Zero means the pack published no policy.
+         *
+         * The mixture itself is read by repertoire(); these are its support, so a reader
+         * can say a two-card mix rests on eleven throws or on four hundred. They are
+         * reported, never used to weight - the corpus decides its own support.
+         */
+        public final int policyN, policySoloN;
+
+        /**
+         * Whether the threat block's damage coefficient was measured BEFORE armour soaked
+         * any of it.
+         *
+         * `threat.damage.before_armour` is a flag beside the coefficient (coef/hi/lo/n),
+         * written by the estimator and read by nothing. It says the coefficient is a
+         * pre-soak figure, which is worth being able to state; NaN would be a lie here,
+         * so this is a boolean. False on a pack that does not publish it.
+         */
+        public final boolean threatBeforeArmour;
+
+        /**
+         * The estimator's remaining published diagnostics, read here so a rename is not
+         * silent rather than because the sim prices them.
+         *
+         * `blended` names the axes along which a species' reading is a POOLED blend (the
+         * audit's chimera concern in the estimator's own words); `defence_weight_late` and
+         * `skill_slope` are alternative readings published BESIDE the ones the sim uses;
+         * `fought_in` counts the sites the corpus came from; and the `policy.ip_*` /
+         * `attack_share_*` pair says whether the card mixture only holds under one
+         * initiative condition and by how much the attack share splits. None of these
+         * drives a fight - they are read, reported, and left to the reader to weigh.
+         * `defence_weight_late` is an interval, so it is carried as its two ends; the slope
+         * is the `slope` member of its object.
+         */
+        public final List<String> blended;
+        public final double defenceWeightLateLo, defenceWeightLateHi, skillSlope;
+        public final int foughtInSites;
+        public final boolean policyIpConditioned, policyIpGroupContaminated;
+        public final int policyIpN;
+        public final double policyAttackShareAt0, policyAttackShareAbove0;
+
+        /**
+         * The per-creature rows, or null where the pack ships none.
+         *
+         * Set by the loaders, not the constructor, so an Opponent built by hand (a test
+         * fixture) simply has none. See hardestReal()/weakestReal(), which sweep these.
+         */
+        private List<Individual> people;
+
+        private void useIndividuals(List<Individual> rows) {
+            this.people = rows;
+        }
+
+        /** The per-creature rows this opponent carries, or an empty list when none. */
+        public List<Individual> individuals() {
+            return((people == null) ? new ArrayList<Individual>() : people);
+        }
+
         Opponent(JSONObject j, Cards lib) {
             this(j, lib, null);
         }
@@ -582,9 +741,13 @@ public final class Pack {
                 this.hasSkill = true;
             }
             double[] dw = range(j, "defence_weight");
+            JSONObject dwo = j.optJSONObject("defence_weight");
+            this.dwN = (dwo == null) ? 0 : dwo.optInt("n", 0);
             this.dwLo = dw[0];
             this.dwHi = dw[1];
             double[] ag = range(j, "agility");
+            JSONObject ago = j.optJSONObject("agility");
+            this.agiN = (ago == null) ? 0 : ago.optInt("n", 0);
             /* An open side is a DIRECTION and not a missing measurement, and collapsing it
              * onto the other bound inverted it: twelve species record only a floor ("at
              * least this agile", whose pessimistic end is +infinity - the cooldown factor
@@ -622,13 +785,67 @@ public final class Pack {
             for(int i = 0; (a != null) && (i < a.length()); i++)
                 mv.add(a.getString(i));
             this.moves = mv;
+            JSONObject tperiod = (j.optJSONObject("threat") == null) ? null
+                : j.optJSONObject("threat").optJSONObject("period");
+            this.periodN = (tperiod == null) ? 0 : tperiod.optInt("n", 0);
+            JSONObject pol = j.optJSONObject("policy");
+            this.policyN = (pol == null) ? 0 : pol.optInt("n", 0);
+            this.policySoloN = (pol == null) ? 0 : pol.optInt("solo_n", 0);
+            JSONObject tdmg = (j.optJSONObject("threat") == null) ? null
+                : j.optJSONObject("threat").optJSONObject("damage");
+            this.threatBeforeArmour = (tdmg != null)
+                && tdmg.optBoolean("before_armour", false);
+            List<String> bl = new ArrayList<String>();
+            JSONArray ba = j.optJSONArray("blended");
+            for(int i = 0; (ba != null) && (i < ba.length()); i++)
+                bl.add(ba.getString(i));
+            this.blended = bl;
+            /* BOTH ARE OBJECTS, not numbers. defence_weight_late is {against, agrees, depth,
+             * lo, hi, n} and skill_slope is {flat, slope, n, measurable, ...}; reading either
+             * with optDouble returned NaN for every opponent, and the check that counted them
+             * then printed "0 carry a late defence weight, 0 a skill slope" over a pack that
+             * published 51 and 39. */
+            JSONObject late = j.optJSONObject("defence_weight_late");
+            this.defenceWeightLateLo = (late == null) ? Double.NaN
+                : late.optDouble("lo", Double.NaN);
+            this.defenceWeightLateHi = (late == null) ? Double.NaN
+                : late.optDouble("hi", Double.NaN);
+            JSONObject slope = j.optJSONObject("skill_slope");
+            this.skillSlope = (slope == null) ? Double.NaN
+                : slope.optDouble("slope", Double.NaN);
+            JSONObject fi = j.optJSONObject("fought_in");
+            this.foughtInSites = (fi == null) ? 0 : fi.keySet().size();
+            this.policyIpConditioned = (pol != null)
+                && pol.optBoolean("ip_conditioned", false);
+            this.policyIpGroupContaminated = (pol != null)
+                && pol.optBoolean("ip_group_contaminated", false);
+            JSONArray ipn = (pol == null) ? null : pol.optJSONArray("ip_n");
+            int ips = 0;
+            for(int i = 0; (ipn != null) && (i < ipn.length()); i++)
+                ips += ipn.optInt(i, 0);
+            this.policyIpN = ips;
+            this.policyAttackShareAt0 = (pol == null) ? Double.NaN
+                : pol.optDouble("attack_share_at_0_ip", Double.NaN);
+            this.policyAttackShareAbove0 = (pol == null) ? Double.NaN
+                : pol.optDouble("attack_share_above_0_ip", Double.NaN);
             this.threat = threat(j.optJSONObject("threat"), j, lib, ours,
-                                 j.optString("name", "?"));
+                                 j.optString("name", "?"), "coef");
+            /* THE SAME OPPONENT AT THE TOP OF ITS MEASURED DAMAGE. Every other stat on
+             * this class is an interval and every matchup runs both ends of it; damage was
+             * the one exception, because Pack read `coef` and dropped the `lo`/`hi` beside
+             * it. The badger's coefficient is 27.6 with an interval of 8.9 to 123.5, a
+             * factor of fourteen, so a plan priced at the median is not a plan priced at
+             * the worst the corpus allows - and with a hard soak in the eighties the
+             * difference is the whole answer, since nothing gets through until the raw
+             * swing clears it. Null when the block carries no upper bound. */
+            this.threatHi = threat(j.optJSONObject("threat"), j, lib, ours,
+                                   j.optString("name", "?"), "hi");
             JSONObject sp = j.optJSONObject("relative_speed");
             if(sp == null) {
                 this.speedLo = this.speedHi = Double.NaN;
                 this.speedMedian = this.ourTop = Double.NaN;
                 this.weOutrunIt = this.speedMeasured = false;
+                this.speedN = 0;
             } else {
                 this.speedMeasured = sp.optBoolean("measured", false);
                 this.speedLo = sp.optDouble("lo", Double.NaN);
@@ -636,6 +853,7 @@ public final class Pack {
                 this.speedMedian = sp.optDouble("median", Double.NaN);
                 this.ourTop = sp.optDouble("our_top", Double.NaN);
                 this.weOutrunIt = sp.optBoolean("we_outrun_it", false);
+                this.speedN = sp.optInt("n", 0);
             }
         }
 
@@ -660,7 +878,8 @@ public final class Pack {
          * choosing the matchup's answer rather than computing it.
          */
         private static FoeModel threat(JSONObject t, JSONObject j, Cards lib,
-                                       Map<String, Move> ours, String species) {
+                                       Map<String, Move> ours, String species,
+                                       String coefKey) {
             if(t == null)
                 return(null);
             JSONObject per = t.optJSONObject("period");
@@ -683,11 +902,19 @@ public final class Pack {
 
             double coef = Double.NaN;
             int nHits = 0;
+            /* The share of its swing our armour stopped, over all its cards - the averaged
+             * action's penetration, as BeastMove.soaked is a card's. NaN where unmeasured. */
+            double soak = Double.NaN;
             JSONObject dm = t.optJSONObject("damage");
             if(dm != null) {
-                coef = dm.optDouble("coef", Double.NaN);
+                coef = dm.optDouble(coefKey, Double.NaN);
                 nHits = dm.optInt("n", 0);
+                soak = dm.optDouble("soaked_share", Double.NaN);
             }
+            /* No upper bound means no pessimistic model, rather than one that quietly
+             * falls back to the median and looks like a second opinion. */
+            if(!"coef".equals(coefKey) && Double.isNaN(coef))
+                return(null);
             double flees = t.isNull("flees_below") ? Double.NaN
                 : t.optDouble("flees_below", Double.NaN);
             JSONArray md = per.optJSONArray("modes");
@@ -723,7 +950,7 @@ public final class Pack {
                                  * of the 61 modelled opponents take the card path, two
                                  * creatures (mammoth, troll) still need the average, and
                                  * six have no model at all. */
-                                repertoire(j, lib, ours, species)));
+                                repertoire(j, lib, ours, species, coefKey), soak));
         }
 
         /**
@@ -807,6 +1034,70 @@ public final class Pack {
         public Combatant weakest() {
             return(build(pick(skillLo, skill), pick(agiLo, agiHi), pick(planHpLo(), hpHi),
                          pick(armLo, armHi)));
+        }
+
+        /**
+         * The hardest reading that is a REAL creature, or the pooled toughest() when the
+         * pack ships no per-individual rows.
+         *
+         * toughest() takes an independent extreme on each axis and builds an animal that is
+         * simultaneously the most defended, fastest, largest and strongest ever logged -
+         * which the corpus contains none of. Where rows exist, each candidate is built from
+         * ONE creature (individual()), so a consumer that cannot afford the deck-aware sweep
+         * in CombatMatchup.hardest() still prices a real animal. The ordering is the same
+         * one toughest() maximises - skill, then agility, then health, then armour - applied
+         * to whole creatures instead of to each axis separately.
+         */
+        public Combatant hardestReal() {
+            return(real(true));
+        }
+
+        /** The easiest real creature, or the pooled weakest() when none are shipped. */
+        public Combatant weakestReal() {
+            return(real(false));
+        }
+
+        private Combatant real(boolean hard) {
+            Combatant best = null;
+            for(Individual ind : individuals()) {
+                Combatant c = individual(ind);
+                if((c == null) || !(c.hp > 0))
+                    continue;
+                if((best == null) || (hard ? harder(c, best) : harder(best, c)))
+                    best = c;
+            }
+            if(best != null)
+                return(best);
+            return(hard ? toughest() : weakest());
+        }
+
+        /** Whether a is the harder opponent in the ordering real() ranks on. */
+        private static boolean harder(Combatant a, Combatant b) {
+            if(more(a.blockSkill, b.blockSkill))
+                return(true);
+            if(less(a.blockSkill, b.blockSkill))
+                return(false);
+            if(more(a.agi, b.agi))
+                return(true);
+            if(less(a.agi, b.agi))
+                return(false);
+            if(more(a.hp, b.hp))
+                return(true);
+            if(less(a.hp, b.hp))
+                return(false);
+            return((a.armHard + a.armSoft) > (b.armHard + b.armSoft));
+        }
+
+        private static boolean more(double a, double b) {
+            return(rank(a) > rank(b));
+        }
+
+        private static boolean less(double a, double b) {
+            return(rank(a) < rank(b));
+        }
+
+        private static double rank(double v) {
+            return(Double.isNaN(v) ? Double.NEGATIVE_INFINITY : v);
         }
 
         /**
@@ -935,7 +1226,19 @@ public final class Pack {
         } catch(IOException e) {
             ours = null;
         }
-        return(opponents(read(path), lib, ours));
+        Map<String, Opponent> out = opponents(read(path), lib, ours);
+        /* The per-creature rows, where the corpus measured any. `hardest()` sweeps them;
+         * anyone else who wants the hardest REAL opponent reads them off the Opponent.
+         * Absence is not failure - a checkout whose corpus has not been regenerated has no
+         * individuals.json and every reading falls back to the pooled one. */
+        try {
+            Path side = path.resolveSibling("individuals.json");
+            if(Files.exists(side))
+                attach(out, individuals(side));
+        } catch(IOException e) {
+            /* Per-individual rows are an optimisation, not a requirement. */
+        }
+        return(out);
     }
 
     /**
@@ -967,13 +1270,28 @@ public final class Pack {
         /**
          * The cards this character knows, by display name, and the level each sits at.
          *
-         * A level of 0 means known but not currently on the bar - the dump lists every
-         * card the character has, slotted or not - so this is ownership, not a loadout.
-         * Points are re-assignable freely inside the thirty, which is why a search that
-         * ranges over levels is realistic and not a fantasy: the only thing a character
-         * cannot do is play a card they have never learned.
+         * THE VALUE IS THE LOADOUT, AND THIS DOCSTRING USED TO DENY IT. It said a level of
+         * 0 meant "known but not currently on the bar - so this is ownership, not a
+         * loadout"; the number the estimator writes here is the dump's `decklevel`, which
+         * is exactly the bar. {@link #known} is the other one, the dump's `maxlevel`, and
+         * the two differ by a lot: ZzxcuV3 has learned all 41 cards and slots 10 of them
+         * for all 30 of 30 points.
+         *
+         * Which to read depends on the question. What do I throw RIGHT NOW ranges over
+         * this map's non-zero entries; what deck should I BUILD ranges over {@link #known}
+         * inside the point budget. Points are re-assignable freely inside the thirty, so a
+         * search that ranges over levels is realistic and not a fantasy - the only thing a
+         * character cannot do is play a card they have never learned.
          */
         public final Map<String, Integer> owned;
+
+        /**
+         * How far each card has been LEARNED, which is the set a deck can be built from.
+         *
+         * Empty on a pack written before this was published, and {@link #knows} then falls
+         * back to {@link #owned}'s key set, which is what it always read.
+         */
+        public final Map<String, Integer> known;
         /**
          * What the character is wearing, and whether a shield is in hand.
          *
@@ -989,6 +1307,18 @@ public final class Pack {
          */
         public final double armHard, armSoft;
         public final boolean shield;
+
+        /**
+         * How many gear rows the pack counted on the character, and its constitution and
+         * maximum hitpoints, or 0 / NaN where the pack published none.
+         *
+         * `armour.pieces`, `con` and `hhp` were written by the recorder and read by
+         * nothing. The piece count separates "no armour measured" from "no armour worn";
+         * `hhp` is the pool grievous damage eats (the audit's M3), kept so a check can
+         * name it even though the sim does not price it yet.
+         */
+        public final int armourPieces;
+        public final double con, hhp;
 
         private Fighter(JSONObject j) {
             this.name = j.optString("name", "?");
@@ -1012,15 +1342,42 @@ public final class Pack {
                     own.put(k, od.optInt(k, 0));
             }
             this.owned = own;
+            Map<String, Integer> kn = new LinkedHashMap<String, Integer>();
+            JSONObject kd = j.optJSONObject("known");
+            if(kd != null) {
+                for(String k : kd.keySet()) {
+                    int v = kd.optInt(k, 0);
+                    if(v > 0)
+                        kn.put(k, v);
+                }
+            }
+            this.known = kn;
             JSONObject arm = j.optJSONObject("armour");
             this.armHard = (arm == null) ? 0 : arm.optDouble("hard", 0);
             this.armSoft = (arm == null) ? 0 : arm.optDouble("soft", 0);
+            this.armourPieces = (arm == null) ? 0 : arm.optInt("pieces", 0);
+            this.con = j.optDouble("con", Double.NaN);
+            this.hhp = j.optDouble("hhp", Double.NaN);
             this.shield = j.optBoolean("shield", false);
         }
 
-        /** Whether this character has learned the card at all. */
+        /**
+         * Whether this character has learned the card at all - NOT whether it is slotted.
+         *
+         * Reads {@link #known} where the pack carries it. The fallback is {@link #owned}'s
+         * key set, which is what this always read: the dump lists every card, so key
+         * presence is a weaker version of the same question and was right by accident.
+         */
         public boolean knows(String cardName) {
+            if(!known.isEmpty())
+                return(known.containsKey(cardName));
             return(owned.isEmpty() || owned.containsKey(cardName));
+        }
+
+        /** How many points of this card are slotted right now, zero if it is not. */
+        public int slotted(String cardName) {
+            Integer v = owned.get(cardName);
+            return((v == null) ? 0 : v.intValue());
         }
 
         /** This character as the simulator takes them. */
@@ -1170,8 +1527,13 @@ public final class Pack {
 
     /** Every measured individual, by species name. See Individual. */
     public static Map<String, List<Individual>> individuals(Path path) throws IOException {
+        return(individuals(read(path)));
+    }
+
+    /** The same, already parsed - the jar path parses from a slurped String. */
+    static Map<String, List<Individual>> individuals(JSONObject doc0) {
         Map<String, List<Individual>> out = new LinkedHashMap<String, List<Individual>>();
-        JSONObject doc = read(path).optJSONObject("species");
+        JSONObject doc = doc0.optJSONObject("species");
         if(doc == null)
             return(out);
         for(String name : doc.keySet()) {
@@ -1321,6 +1683,15 @@ public final class Pack {
 
     public static Repertoire repertoire(JSONObject j, Cards lib, Map<String, Move> ours,
                                         String species) {
+        return(repertoire(j, lib, ours, species, "coef"));
+    }
+
+    /**
+     * @param coefKey which end of the measured damage interval to split across the cards -
+     *                "coef" for the expected fight, "hi" for the worst the corpus allows.
+     */
+    public static Repertoire repertoire(JSONObject j, Cards lib, Map<String, Move> ours,
+                                        String species, String coefKey) {
         if((lib == null) && (ours == null))
             return(null);
         JSONObject pol = j.optJSONObject("policy");
@@ -1333,7 +1704,7 @@ public final class Pack {
         /* A player's measured hitting power, to be split across the cards that hit. */
         JSONObject th = j.optJSONObject("threat");
         JSONObject dm = (th == null) ? null : th.optJSONObject("damage");
-        double coef = (dm == null) ? Double.NaN : dm.optDouble("coef", Double.NaN);
+        double coef = (dm == null) ? Double.NaN : dm.optDouble(coefKey, Double.NaN);
         double norm = 0;
         if((ours != null) && !Double.isNaN(coef)) {
             for(int i = 0; i < mixa.length(); i++) {
@@ -1372,6 +1743,13 @@ public final class Pack {
         double[] mix = new double[cards.size()];
         for(int i = 0; i < mix.length; i++)
             mix[i] = share.get(i) / tot;
+        /* THE MEASURED MIXTURE, WHERE THE CORPUS IS THICK ENOUGH TO HAVE ONE. policy_model
+         * is null under its own min_n sampled choices, and its weights only replace
+         * policy.mix at or above that floor; below it the shipped mixture stands as before. */
+        double[] weights = policyWeights(j, cards);
+        if(weights != null)
+            mix = weights;
+        Repertoire.Gate[] gates = policyGates(j, cards);
 
         /* The learned split, as CARD COUNTS rather than as the pressure they average to. */
         String feat = null;
@@ -1388,7 +1766,8 @@ public final class Pack {
                 when = other = null;
             }
         }
-        return(new Repertoire(cards.toArray(new BeastMove[0]), mix, feat, cut, when, other));
+        return(new Repertoire(cards.toArray(new BeastMove[0]), mix, feat, cut, when, other,
+                              gates));
     }
 
     /** A [[card, count], ...] side of a rule, as shares over the cards we kept. */
@@ -1412,6 +1791,102 @@ public final class Pack {
         for(int i = 0; i < out.length; i++)
             out[i] /= tot;
         return(out);
+    }
+
+    /**
+     * The measured mixture, or null when the corpus is too thin to beat the shipped one.
+     *
+     * policy_model carries its own floor in min_n; below it the sampled choices are too few
+     * to estimate a mixture from, so the caller keeps policy.mix. Above it, weights are the
+     * same card order and shape as policy.mix, matched here onto the cards we kept.
+     */
+    private static double[] policyWeights(JSONObject j, List<BeastMove> cards) {
+        JSONObject pm = j.optJSONObject("policy_model");
+        if(pm == null)
+            return(null);
+        if(pm.optInt("n", 0) < pm.optInt("min_n", 0))
+            return(null);
+        JSONArray arr = pm.optJSONArray("weights");
+        if((arr == null) || (arr.length() == 0))
+            return(null);
+        double[] out = new double[cards.size()];
+        double tot = 0;
+        for(int i = 0; i < arr.length(); i++) {
+            JSONArray row = arr.optJSONArray(i);
+            if(row == null)
+                continue;
+            String nm = row.optString(0, null);
+            for(int k = 0; k < cards.size(); k++) {
+                if(cards.get(k).name.equals(nm)) {
+                    double w = row.optDouble(1, 0);
+                    out[k] += w;
+                    tot += w;
+                }
+            }
+        }
+        if(tot <= 0)
+            return(null);
+        for(int i = 0; i < out.length; i++)
+            out[i] /= tot;
+        return(out);
+    }
+
+    /**
+     * The threshold gates the corpus reproduced, or null.
+     *
+     * Only rows whose reproduces flag is true become gates - the estimator sets it from a
+     * held-out test on rows the cut was not chosen on (estimate.threshold_test), and `lift`
+     * is the HELD-OUT lift, so the multiplier applied is the one that survived. A row
+     * flagged false is a reading the estimator recorded and declined to licence, and that
+     * includes the wiki's bat claim unless the corpus bears it out.
+     * A row is also dropped if its card was not kept, its colour is unknown, or its lift is
+     * not a positive factor.
+     */
+    private static Repertoire.Gate[] policyGates(JSONObject j, List<BeastMove> cards) {
+        JSONObject pm = j.optJSONObject("policy_model");
+        JSONArray arr = (pm == null) ? null : pm.optJSONArray("thresholds");
+        if(arr == null)
+            return(null);
+        List<Repertoire.Gate> gates = new ArrayList<Repertoire.Gate>();
+        for(int i = 0; i < arr.length(); i++) {
+            JSONObject row = arr.optJSONObject(i);
+            if((row == null) || !row.optBoolean("reproduces", false))
+                continue;
+            String nm = row.optString("move", null);
+            int card = -1;
+            for(int k = 0; k < cards.size(); k++) {
+                if(cards.get(k).name.equals(nm)) {
+                    card = k;
+                    break;
+                }
+            }
+            int colour = colourIndex(row.opt("colour"));
+            double lift = row.optDouble("lift", 1.0);
+            if((card < 0) || (colour < 0) || !(lift > 0))
+                continue;
+            boolean onTarget = !"self".equals(row.optString("on", "target"));
+            gates.add(new Repertoire.Gate(card, colour, onTarget,
+                                          row.optDouble("cut", 0), lift));
+        }
+        if(gates.isEmpty())
+            return(null);
+        return(gates.toArray(new Repertoire.Gate[0]));
+    }
+
+    /** A threshold's colour as an index, or -1: the file names colours, our arrays order them. */
+    private static int colourIndex(Object c) {
+        if(c instanceof Number)
+            return(((Number)c).intValue());
+        String s = String.valueOf(c);
+        if("green".equals(s))
+            return(0);
+        if("blue".equals(s))
+            return(1);
+        if("yellow".equals(s))
+            return(2);
+        if("red".equals(s))
+            return(3);
+        return(-1);
     }
 
     private static Map<String, Opponent> opponents(JSONObject doc, Cards lib) {

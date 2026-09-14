@@ -408,7 +408,9 @@ public final class Optimizer {
              * either. The frontier sorts that out on its own once the damage stops: a plan
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
-            hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who], thrown[who]);
+            long[] gap = new long[1];
+            hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who],
+                                      thrown[who], gap);
             acts[who]++;
             /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
              * opponent attacks, not when it is played, so it lands here rather than in
@@ -417,7 +419,12 @@ public final class Optimizer {
              * exactly one in 753. A sword is required, which is why this reads armed. */
             if((trigger != null) && me.armed())
                 Sim.trigger(foes[who], trigger);
-            foeNext[who] += models[who].period;
+            /* PER-CARD COOLDOWNS WHERE THE CARD HAS ONE. The gap the model reports is the
+             * thrown card's own measured cooldown, falling back to the creature's single
+             * period when the card has none. Scheduling every action on the period collapsed
+             * a creature that throws a fast card and a slow one onto one clock neither of
+             * them kept. */
+            foeNext[who] += gap[0];
         }
         tick = ready;
         if(tick > maxTicks)
@@ -460,8 +467,10 @@ public final class Optimizer {
         if(m.splashes()) {
             /* HOW MANY OF THEM IT REACHES, which is measured rather than "all of them".
              * Full Circle lands on 0.40 of the bystanders in the corpus - see
-             * Formulas.SWEEP_REACH - and giving it every one of them was what made a crowd
-             * free: five animals died in the same time as three.
+             * Formulas.sweepReach - and giving it every one of them was what made a crowd
+             * free: five animals died in the same time as three. The per-size measurement is
+             * super-linear, so sweepReach interpolates it rather than drawing a straight line
+             * through it.
              *
              * The fractional part goes on the MARGINAL target rather than being spread
              * over all of them. With one bystander standing, the card reaches it 0.4 of
@@ -490,7 +499,7 @@ public final class Optimizer {
              * Without them the measured share stands in, because the alternative readings
              * are both wrong in a known direction: everybody in reach makes a crowd free,
              * and nobody in reach deletes a card that demonstrably lands on up to five. */
-            double expect = positions ? inReach : (Formulas.SWEEP_REACH * others);
+            double expect = positions ? inReach : Formulas.sweepReach(others);
             expect = Math.min(expect, (double)(m.targets - 1));
             int whole = (int)Math.floor(expect);
             double part = expect - whole;

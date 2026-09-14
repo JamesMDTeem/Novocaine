@@ -111,6 +111,14 @@ public final class CombatRecorder {
     /** And how far away each of them was, in the same order. */
     private static volatile int[] lastCrowdDist = null;
 
+    /* Per foe gob, the wall time of its last action and the card it threw. One cooldown per
+     * combatant, set by the card thrown, so the gap to the next action keyed by this card is
+     * that card's cooldown - the client is never told it, so the observable is recorded. */
+    private static final java.util.Map<Long, Long> lastFoeAct =
+        new java.util.concurrent.ConcurrentHashMap<Long, Long>();
+    private static final java.util.Map<Long, String> lastFoeCard =
+        new java.util.concurrent.ConcurrentHashMap<Long, String>();
+
     private static final java.util.Map<Long, Integer> lastHp =
         new java.util.concurrent.ConcurrentHashMap<Long, Integer>();
     /* Per opponent, so one creature's narrowing bracket never suppresses another's - the
@@ -261,6 +269,8 @@ public final class CombatRecorder {
             foeResById.clear();
             lastCrowd = null;
             lastCrowdDist = null;
+            lastFoeAct.clear();
+            lastFoeCard.clear();
             /* Per FIGHT, not per session, so every log describes the cards it contains. A
              * fight sees a handful of distinct cards, so this is a few lines per file. */
             carded.clear();
@@ -682,6 +692,13 @@ public final class CombatRecorder {
         if(stateSinceMove || (a == null))
             return;
         try {
+            /* Stamped now(), and that is not a stale snapshot claiming to be current. The
+             * sampler is VALUE-gated: a decaying opening changes the value and fires a row of
+             * its own, so a snapshot that has produced no new row is still the state. The
+             * offline anchor walk (fightlog, "correct values, lying clock") relies on this
+             * row sitting at the move. Stamping it with the old observation time instead -
+             * tried 2026-09-13 - wrote an earlier t after rows already logged with later ones
+             * (the card's own announcement among them), so the file stopped being ordered. */
             log(CombatEvent.state(now(), (Openings)a[0], (Openings)a[1],
                                   ((Integer)a[2]).intValue(), ((Integer)a[3]).intValue(),
                                   ((Integer)a[4]).intValue(), ((Double)a[5]).doubleValue(),
@@ -912,6 +929,62 @@ public final class CombatRecorder {
         }
     }
 
+    /**
+     * The decision state behind one opponent's action - both sides' openings (its own and ours), both
+     * initiatives, reach, aggression and the card's observed cooldown gap - plus its defence timers
+     * when it has any. Called from Fightview.Relation.use at the instant the action lands; see
+     * CombatEvent.foeact/mvfx. `other` is the player's openings against that creature at that instant
+     * (schema 18): a decision rule reads both sides, and schema 17 recorded only the creature's own.
+     */
+    public static void onFoeAction(long gobId, String moveRes, String moveName,
+                                   Openings other,
+                                   int ip, int oip, int gst,
+                                   java.util.Collection<haven.Buff> foeBuffs,
+                                   Long lastActCleave, Long lastActDefence,
+                                   Long lastDefenceDuration) {
+        if(!active())
+            return;
+        try {
+            Openings open = (foeBuffs == null) ? Openings.ZERO : readOpenings(foeBuffs);
+            long wall = System.currentTimeMillis();
+            double dist = -1;
+            long[] crowd = lastCrowd;
+            int[] crowdDist = lastCrowdDist;
+            if((crowd != null) && (crowdDist != null)) {
+                for(int i = 0; (i < crowdDist.length) && ((i * 5 + 4) < crowd.length); i++) {
+                    if(crowd[i * 5] == gobId) {
+                        dist = crowdDist[i];
+                        break;
+                    }
+                }
+            }
+            /* THE GAP SINCE THIS CREATURE'S PREVIOUS ACTION, whatever it threw, and which card
+             * that was. One cooldown per combatant, set by the card thrown, so the gap keyed by
+             * the previous card is that card's cooldown (plus any hesitation, which only ever
+             * lengthens it). The same-card gap this row carried until schema 19 was a rotation. */
+            Long prevWall = lastFoeAct.get(gobId);
+            String prevCard = lastFoeCard.get(gobId);
+            double gap = (prevWall == null) ? -1.0 : (wall - prevWall.longValue()) / 1000.0;
+            lastFoeAct.put(gobId, Long.valueOf(wall));
+            if(moveRes != null)
+                lastFoeCard.put(gobId, moveRes);
+            log(CombatEvent.foeact(now(), gobId, moveRes, moveName, open, other, ip, oip, dist, gst,
+                                   gap, prevCard));
+            if((lastActCleave != null) || (lastActDefence != null) || (lastDefenceDuration != null))
+                log(CombatEvent.mvfx(now(), gobId, moveRes, moveName,
+                                     relTime(lastActCleave), relTime(lastActDefence),
+                                     (lastDefenceDuration == null) ? -1L
+                                         : lastDefenceDuration.longValue()));
+        } catch(Exception e) {
+            /* never propagate into the fightview message path */
+        }
+    }
+
+    /** A wall-clock stamp as milliseconds since t0, or -1 when it was never set. */
+    private static long relTime(Long wall) {
+        return((wall == null) ? -1L : (wall.longValue() - t0));
+    }
+
     /* The "colour code" on a damage message is a packed RGBA4444 value - GobDamageInfo decodes
      * these same constants with Utils.col16 - so 61455 is 0xf00f, opaque red, and so on. 35071
      * (0x88ff, blue) is Initiative, which the client does not render but which is logged here:
@@ -1008,6 +1081,13 @@ public final class CombatRecorder {
     public static void onDamage(long gobId, int colourCode, int value) {
         if(!active())
             return;
+        /* NOT GATED ON THIS FIGHT'S COMBATANTS, deliberately. A gate was added on 2026-09-13 on
+         * the theory that scenery decay leaks in, and no such row was ever shown in the corpus.
+         * What it would have dropped was measured instead: 18,360 of 151,546 damage rows (12%)
+         * land on gobs no other row of their file names, and 2,935 of those gobs are combatants
+         * in ANOTHER character's log - party fights, which the multi-witness fold and the
+         * per-individual hitpoints are built from. Offline readers already key damage to the
+         * gobs they care about, so an extra row costs a line and a missing one costs a fight. */
         try {
             log(CombatEvent.damage(now(), gobId, channel(colourCode), value));
         } catch(Exception e) {
@@ -1044,7 +1124,11 @@ public final class CombatRecorder {
              * point of recording it is to catch the moments we were actually withdrawing. */
             String key = gobId + ":" + mine.toJson() + foe.toJson() + myIp + ":" + foeIp
                 + ":" + hp + ":" + (long)dist + ":" + (long)mySpeed + ":" + (long)foeSpeed
-                + ":" + gst + ":" + tile;
+                + ":" + gst + ":" + tile
+                /* Stamina and energy change independently of every term above, so a step that
+                 * moved only one of them fired no sample at all (N-10). Quantised to a
+                 * thousandth so meter jitter cannot turn the gate into a per-frame stream. */
+                + ":" + (long)(stam * 1000) + ":" + (long)(energy * 1000);
             /* THE VALUE GATE HIDES THE ONE THING THAT ONLY TIME REVEALS. Openings decay on
              * their own, and a decay changes the value - so it does fire a sample - but it
              * fires it whenever the next frame happens to land, not when the decay
@@ -1079,7 +1163,7 @@ public final class CombatRecorder {
             lastStateArgs = new Object[] {mine, foe, myIp, foeIp, hp, stam, energy, dist,
                                           gobId, mySpeed, foeSpeed, gst, tile};
             stateSinceMove = true;
-            log(CombatEvent.state(now(), mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId,
+            log(CombatEvent.state(ts, mine, foe, myIp, foeIp, hp, stam, energy, dist, gobId,
                                   mySpeed, foeSpeed, gst, tile));
         } catch(Exception e) {
             /* never propagate into tick() */

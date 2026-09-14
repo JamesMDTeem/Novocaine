@@ -52,6 +52,33 @@ public class CombatDeckSearch {
      * exactly how a stale copy gets found.
      */
     static final int MAX_CARDS = 10, MAX_PER_CARD = 5;
+    /**
+     * Per-card level ceilings, or null for none - set by -owned, from what is LEARNED.
+     *
+     * -owned used to restrict which CARDS the search may use and not how far it may level
+     * them, which is half the restriction and the half that matters less. Every deck it
+     * recommended for ZzxcuV3 wanted Full Circle 5 and Quick Barrage 5 on a character who
+     * has bought two of each, and Sideswipe 5 and Uppercut 5 where three are bought - so
+     * "what can I put on the bar tonight" came back as a deck needing a great deal of
+     * learning first, with nothing in the output to say so. The ceiling is the dump's
+     * `maxlevel`, which the pack now publishes as Fighter.known.
+     */
+    static Map<String, Integer> CEILING = null;
+    /**
+     * Whether to admit an opponent whose skill is only BOUNDED - set by -bounded.
+     *
+     * Pack.simulable() refuses these and is right to for a single simulation: an equalized
+     * entry carries 209-296 rather than a number, and simulating the midpoint would invent
+     * the figure the estimator declined to produce. But a DECK is a coarser answer than a
+     * plan, and the bound has two ends the corpus does support. So a bounded opponent is
+     * searched twice, once at each end, and a deck is only reported when the two ends pick
+     * the same cards. Where they disagree the run says so and recommends nothing - which is
+     * the same discipline CombatMatchup's greedy half already uses for every opponent.
+     *
+     * This is the only way to answer for the narwhal, the bear, the moose, the wolf and the
+     * lynx, whose skills the slope test showed are read as a band and not a value.
+     */
+    static boolean BOUNDED = false;
     static int MAX_POINTS = 30, SAVED_DECKS = 5;
     /* Beam for the inner search. 20 costs 1.5 ms against 4 at 60, and this runs it tens of
      * thousands of times; the frontier it loses is not one a deck comparison can see. */
@@ -438,6 +465,15 @@ public class CombatDeckSearch {
         int at = (have == null) ? 0 : have.intValue();
         if(at >= MAX_PER_CARD)
             return(null);
+        if(CEILING != null) {
+            Move mm = sheet.get(res);
+            Integer cap = (mm == null) ? null : CEILING.get(mm.name);
+            /* A card absent from the ceiling map has been learned to level 0, which the
+             * card filter should already have removed; refusing it here too costs nothing
+             * and means a future caller cannot set one restriction without the other. */
+            if((cap == null) || (at >= cap.intValue()))
+                return(null);
+        }
         if((at == 0) && (d.levels.size() >= MAX_CARDS))
             return(null);
         if(d.points() >= MAX_POINTS)
@@ -619,6 +655,8 @@ public class CombatDeckSearch {
                 kind = argv[++i];
             else if("-owned".equals(argv[i]))
                 ownedOnly = true;
+            else if("-bounded".equals(argv[i]))
+                BOUNDED = true;
             /* The game saves five, but they are not all for creatures - reserving one for
              * players changes which four the greedy picks, because it has to cover the
              * whole roster with fewer and stops being able to afford a specialist. */
@@ -633,6 +671,24 @@ public class CombatDeckSearch {
         Map<String, Move> sheet = byRes(Pack.moves(root.resolve("moves_sheet.json")));
         // reassigned below when -owned narrows it to what the character has learned
         Map<String, Pack.Opponent> foes = Pack.opponents(root.resolve("opponents.json"));
+
+        /* WHICH READINGS ARE POOLED, SAID ONCE. crowd() prices the hardest/easiest REAL
+         * individual where the pack measured one and falls back to the pooled chimera where it
+         * did not, so a run that silently priced an assembled animal has to be distinguishable
+         * from one that priced a logged one. */
+        int withRows = 0, pooled = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if(o.individuals().isEmpty()) {
+                if(o.simulable())
+                    pooled++;
+            } else {
+                withRows++;
+            }
+        }
+        System.out.printf("individuals: %d opponent(s) carry per-creature rows and are priced"
+                          + " against the hardest REAL one;%n", withRows);
+        System.out.printf("  %d simulable opponent(s) carry none and are priced against the"
+                          + " pooled chimera%n", pooled);
 
         /* ONE CHARACTER, AND A REAL ONE. This was six literals - str 195, agi 192,
          * unarmed 149, melee 243, hp 303 - and they were nobody's: melee and unarmed are
@@ -666,6 +722,23 @@ public class CombatDeckSearch {
             System.out.printf("restricted to the %d card(s) %s has learned, of %d%n",
                               mine.size(), who.name, sheet.size());
             sheet = mine;
+            /* AND TO THE LEVELS ACTUALLY BOUGHT. See CEILING. Without this the run answers
+             * "what would be best among the cards I know, if every one were maxed", which
+             * is a different and much more expensive question than the one -owned names. */
+            if(who.known.isEmpty()) {
+                System.out.println("  (this pack carries no learned levels, so levels are"
+                                   + " unrestricted - regenerate characters.json)");
+            } else {
+                CEILING = who.known;
+                int atMax = 0, pts = 0;
+                for(Map.Entry<String, Integer> e : who.known.entrySet()) {
+                    pts += e.getValue().intValue();
+                    if(e.getValue().intValue() >= MAX_PER_CARD)
+                        atMax++;
+                }
+                System.out.printf("  and to the levels bought: %d of them at the %d cap,"
+                                  + " %d points learned in all%n", atMax, MAX_PER_CARD, pts);
+            }
         }
 
         System.out.printf("deck limits: %d cards, %d points, %d per card;"
@@ -687,7 +760,9 @@ public class CombatDeckSearch {
             Pack.Opponent o = e.getValue();
             if((only != null) && !only.equals(e.getKey()))
                 continue;
-            if(!o.simulable() || (o.threat == null))
+            if(o.threat == null)
+                continue;
+            if(!o.simulable() && !(BOUNDED && bounded(o)))
                 continue;
             /* PEOPLE AND ANIMALS ARE DIFFERENT PROBLEMS, so a run answers one of them.
              * A player holds a deck at levels with a stance somebody chose, and can
@@ -718,6 +793,55 @@ public class CombatDeckSearch {
             Combatant[] mob = crowd(o, copies);
             FoeModel[] mods = models(o, copies);
             Deck d = build(sheet, me, mob, mods, aim);
+            /* BOTH ENDS FOR A BOUNDED OPPONENT, and the cards have to agree or there is no
+             * answer. The row above is the hard end - toughest() already takes skillHi -
+             * and this is the same greedy at skillLo. Two different card sets mean the deck
+             * depends on where in the band the creature really sits, which the corpus does
+             * not say, so nothing is recommended. */
+            if(BOUNDED && !o.simulable()) {
+                Deck easy = build(sheet, me, crowd(o, copies, true), mods, aim);
+                java.util.Set<String> hardSet = cards(d, sheet), easySet = cards(easy, sheet);
+                boolean both = (easy.score < NO_KILL) && (d.score < NO_KILL);
+                boolean same = both && hardSet.equals(easySet);
+                /* A SUBSET IS NOT A DISAGREEMENT. The first version of this called any
+                 * difference a conflict, and the narwhal's two ends differ by the hard end
+                 * wanting one card MORE - which is what a harder fight should want, and
+                 * means the hard-end deck is right for both. A real conflict is each end
+                 * holding a card the other does not. */
+                boolean nested = both && !same
+                    && (hardSet.containsAll(easySet) || easySet.containsAll(hardSet));
+                System.out.printf("  %-16s skill only BOUNDED to %.0f-%.0f; run at both ends%n",
+                                  n.substring(0, Math.min(16, n.length())), o.skillLo, o.skillHi);
+                System.out.printf("      %-8s %-8s %-8s %s%n", "end",
+                                  (aim == Advisor.Aim.SAFEST) ? "hp lost" : "ticks",
+                                  "points", "deck");
+                System.out.printf("      %-8s %-8s %-8d %s%n", "hardest",
+                                  (d.score >= NO_KILL) ? "no kill"
+                                      : String.format("%.0f", headline(d.score, aim)),
+                                  d.points(), shorten(d, sheet));
+                System.out.printf("      %-8s %-8s %-8d %s%n", "easiest",
+                                  (easy.score >= NO_KILL) ? "no kill"
+                                      : String.format("%.0f", headline(easy.score, aim)),
+                                  easy.points(), shorten(easy, sheet));
+                if(same) {
+                    System.out.println("      the two ends pick the SAME cards, so the deck"
+                                       + " does not depend on where in the band it sits");
+                } else if(nested) {
+                    java.util.Set<String> extra = new java.util.TreeSet<String>(
+                        hardSet.containsAll(easySet) ? hardSet : easySet);
+                    extra.removeAll(hardSet.containsAll(easySet) ? easySet : hardSet);
+                    System.out.printf("      one end's cards CONTAIN the other's - the harder"
+                                      + " end adds %s, so the hard-end deck is right at both%n",
+                                      String.join(", ", extra));
+                } else {
+                    System.out.println("      the two ends hold cards the other does not - the"
+                                       + " deck depends on where in the band it sits, which the"
+                                       + " corpus does not say");
+                }
+                if(d.score < NO_KILL)
+                    best.put(n, d);
+                continue;
+            }
             if(d.score >= NO_KILL)
                 continue;
             boolean held = beamHeld(d, sheet, me, crowd(o, copies), mods, aim, d.score);
@@ -844,10 +968,34 @@ public class CombatDeckSearch {
      * alive to swing. See crowdNote for what pooling them got wrong.
      */
     static Combatant[] crowd(Pack.Opponent o, int copies) {
+        return(crowd(o, copies, false));
+    }
+
+    /** @param weak run the easiest end of the bounds rather than the hardest. */
+    static Combatant[] crowd(Pack.Opponent o, int copies, boolean weak) {
         Combatant[] out = new Combatant[Math.max(1, copies)];
+        /* One REAL animal per copy. The pooled toughest()/weakest() assembles four independent
+         * extremes and the corpus contains no such creature; where the pack measured this
+         * species, each copy is built from a single logged individual instead. The copies must
+         * stay distinct objects - a fight spends their hitpoints - so each is built fresh.
+         * Where the pack ships no rows, hardestReal()/weakestReal() fall back to the pooled
+         * reading, and the run prints how many opponents that affects. */
         for(int i = 0; i < out.length; i++)
-            out[i] = o.toughest();
+            out[i] = weak ? o.weakestReal() : o.hardestReal();
         return(out);
+    }
+
+    /**
+     * Whether this opponent's skill is bounded on both sides without being named.
+     *
+     * Both ends have to be real numbers or there is nothing to run twice, and the
+     * hitpoints still have to be capped - an opponent that survived everything we ever did
+     * has no answer to "how long to kill it" at either end of its skill.
+     */
+    static boolean bounded(Pack.Opponent o) {
+        return(o.hasSkill && o.hpBounded()
+               && !Double.isNaN(o.skillLo) && !Double.isNaN(o.skillHi)
+               && (o.skillLo > 0) && (o.skillHi >= o.skillLo));
     }
 
     /**
@@ -945,6 +1093,22 @@ public class CombatDeckSearch {
         if(xs.size() > max)
             sb.append(" and ").append(xs.size() - max).append(" more");
         return(sb.toString());
+    }
+
+    /**
+     * Just the card NAMES in a deck, for comparing two runs.
+     *
+     * Names and not levels, because the levels are the cheapest reading of a tie - see the
+     * note the run prints - and two runs differing only in where the last spare points
+     * landed have not disagreed about anything.
+     */
+    static java.util.Set<String> cards(Deck d, Map<String, Move> sheet) {
+        java.util.Set<String> out = new java.util.TreeSet<String>();
+        for(String res : d.levels.keySet()) {
+            Move m = sheet.get(res);
+            out.add((m == null) ? res : m.name);
+        }
+        return(out);
     }
 
     static String shorten(Deck d, Map<String, Move> sheet) {

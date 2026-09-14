@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 16;
+    public static final int SCHEMA = 19;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -581,6 +581,66 @@ public final class CombatEvent {
                .put("t", t)
                .put("gob", gobId)
                .put("q", quarters)
+               .end());
+    }
+
+    /**
+     * The decision state behind one opponent's action, written at the instant it lands.
+     *
+     * `o` is the opponent's four openings at decision time (g,b,y,r, as state/foes use them),
+     * `ip`/`oip` its initiative and ours, `dist` how far it was in whole units (-1 unresolved),
+     * `gst` its aggression state.
+     *
+     * `gap` is seconds since this same creature's PREVIOUS action, whatever card that was, -1
+     * the first time; `prev` is that previous card's resource, null the first time. A combatant
+     * has ONE cooldown - Fightsess draws a single atkcs/atkct - and the card thrown sets how
+     * long it lasts, so the gap from an action to the next one is the cooldown of the card
+     * thrown first: offline, the cooldown a card imposes is the low envelope of `gap` keyed by
+     * `prev`. The client is never told an opponent's cooldown (Fightview.use passes cd=-1 for
+     * every foe), so this is the observable. Schema 19 replaced `since`/`rd`, which carried
+     * the gap between two throws of the SAME card - a rotation, not a cooldown.
+     *
+     * `oo` is the OTHER side's four openings at the instant it acted (schema 18; null on a
+     * row written before that).
+     */
+    public static String foeact(long t, long gob, String moveRes, String moveName,
+                                Openings open, Openings other, int ip, int oip, double dist, int gst,
+                                double gap, String prev) {
+        return(new JsonObj()
+               .put("ev", "foeact")
+               .put("t", t)
+               .put("gob", gob)
+               .put("move", moveRes)
+               .put("name", moveName)
+               .raw("o", (open == null ? Openings.ZERO : open).toJson())
+               .raw("oo", (other == null ? null : other.toJson()))
+               .put("ip", ip)
+               .put("oip", oip)
+               .put("dist", dist)
+               .put("gst", gst)
+               .put("gap", gap)
+               .put("prev", prev)
+               .end());
+    }
+
+    /**
+     * A creature's defence timers at the moment it acted - the previously unwritten mvfx data.
+     *
+     * `cleave`/`def` are when the corresponding Fightview.Relation timers were last set and
+     * `dur` the duration given to the last defence, all in milliseconds relative to t0; -1 is
+     * never-or-unknown. Emitted only when at least one is known.
+     */
+    public static String mvfx(long t, long gob, String moveRes, String moveName,
+                              long cleave, long def, long dur) {
+        return(new JsonObj()
+               .put("ev", "mvfx")
+               .put("t", t)
+               .put("gob", gob)
+               .put("move", moveRes)
+               .put("name", moveName)
+               .put("cleave", cleave)
+               .put("def", def)
+               .put("dur", dur)
                .end());
     }
 

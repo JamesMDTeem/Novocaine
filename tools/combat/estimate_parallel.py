@@ -343,6 +343,16 @@ def _agility_band_chunk(paths):
     # them back in; estimate_check reads them to show what the exclusion is worth - the
     # widest slice with them in, against the widest slice without - which is the only form
     # of this control that fails if the gate is deleted.
+    #
+    # `flat` is the control: moves whose cooldown carries NO scaling term at all, so at a
+    # fixed (card, level, initiative) slice the only thing left between the base and the
+    # reported ticks would be noise - and there is none, so the slice must read 1.0. The
+    # test is model.cooldown_scales, not `not ip_scale`: Dash declares `80 / mu` - divided
+    # by the level weighting of OUR card, cooldown_mu=True - and no initiative term, so it
+    # moves with the card's level and is not a control. Classifying on ip_scale alone put
+    # Dash in here, and its slices across levels (80 at level 1 against 58 at level 4 is the
+    # 1.379) read as a broken control - see estimate_check. Nothing about the opponent or
+    # anyone's agility enters a manoeuvre's cooldown.
     held = defaultdict(set)
     dropped = 0
     for path in paths:
@@ -397,7 +407,7 @@ def _agility_band_chunk(paths):
                     groups[key].add(cd)
                     if ((lv or {}).get(name) == 1) and (ip == 0):
                         ratios.append((name, sp, cd / float(mv["cooldown"])))
-                elif not mv.get("ip_scale"):
+                elif not estimate.model.cooldown_scales(mv):
                     flat[key].add(cd)
     return (ratios, dict(groups), dict(flat), dropped, dict(held))
 
@@ -514,6 +524,9 @@ def _mu_from_reductions_chunk(paths):
     out = defaultdict(list)
     spans = defaultdict(list)
     inert = defaultdict(int)
+    # Partly cancelled: the card removed something, but less than its listed share, which
+    # mu cannot explain. See the comment at the gate below.
+    netted = defaultdict(int)
     for path in paths:
         try:
             log = estimate.fightlog.read(path, opens)
@@ -556,9 +569,29 @@ def _mu_from_reductions_chunk(paths):
                         continue
                     lo = (1.0 - ((after + 1.0) / (before + 1.0))) / share
                     hi = (1.0 - (after / before)) / share
+                    # A READING BELOW ONE IS NOT A SMALL mu, IT IS A CANCELLED BRACKET.
+                    # mu's floor is 1.0 by definition, so a card removing LESS than its
+                    # listed share cannot be a measurement of mu - and the one mechanism
+                    # that produces it is the one this instrument already declares: a gain
+                    # the opponent put on the same colour inside the same bracket nets
+                    # against the reduction and can only ever make it look smaller.
+                    #
+                    # The asymmetry is the whole point and it is not a convenience. A
+                    # reading that removes MORE than the card allows is a genuine
+                    # contradiction - a mislabelled deck or a wrong level - and must never
+                    # be explained away; this control caught exactly that once, a Zig-Zag
+                    # Ruse leaving 7 of 20 where the card leaves 10. One that removes LESS
+                    # carries no information, because it is a floor below the floor.
+                    #
+                    # 2026-09-12: without this, one bracket (a level-1 Zig-Zag Ruse leaving
+                    # 12 of 13, a single point off a 50% card) put mu(1) at 0.143 to 0.154
+                    # and broke the control whose entire job is to contain 1.0.
+                    if hi < (1.0 - 1e-9):
+                        netted[(level, nm)] += 1
+                        continue
                     out[(level, nm)].append((lo + hi) / 2.0)
                     spans[(level, nm)].append((lo, hi, before, after, share))
-    return (dict(out), dict(inert), dict(spans))
+    return (dict(out), dict(inert), dict(spans), dict(netted))
 
 
 # ---------------------------------------------------------------------------------
@@ -581,18 +614,29 @@ def _animal_cooldowns_chunk(paths):
             if not getattr(eng, "offence_ok", False):
                 continue
             seq = defaultdict(list)
+            acts = set()
             for m in eng.moves:
                 if (m.get("actor") != "foe") or not estimate.theirs(eng, m):
                     continue
                 nm, t = m.get("name") or m.get("move"), m.get("t")
                 if nm and (t is not None):
                     seq[nm].append(t)
+                    acts.add((t, nm))
+            # ("next", card): the gap from throwing `card` to this creature's NEXT action,
+            # whatever that was. One cooldown per combatant, set by the card thrown, so this
+            # is the cooldown the card imposes - see animal_move_cooldowns.
+            acts = sorted(acts)
+            for (ta, na), (tb, _nb) in zip(acts, acts[1:]):
+                d = (tb - ta) / 60.0            # milliseconds to ticks
+                if 0.5 < d < 400:
+                    gaps[("next", na)].append(d)
+            # ("same", card): the gap between two throws of the same card - the rotation.
             for nm, ts in seq.items():
                 ts = sorted(set(ts))
                 for a, b in zip(ts, ts[1:]):
-                    d = (b - a) / 60.0          # milliseconds to ticks
+                    d = (b - a) / 60.0
                     if 0.5 < d < 400:
-                        gaps[nm].append(d)
+                        gaps[("same", nm)].append(d)
     return dict(gaps)
 
 
