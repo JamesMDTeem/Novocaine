@@ -1,4 +1,8 @@
 {
+ "format": {
+  "generated": "tools/combat/estimate.py --write-pack",
+  "version": 1
+ },
  "note": "Damage is QUALITY-SCALED, as the tooltip gives it. recovered_base divides sqrt(ql/10) back out.",
  "source": "the client's own WeaponInfo, over the corpus",
  "weapons": {

@@ -1,5 +1,9 @@
 {
  "source": "tools/combat/estimate.py over the logged corpus",
+ "format": {
+  "version": 1,
+  "generated": "tools/combat/estimate.py --write-pack"
+ },
  "note": "Per-CARD, not per-creature. Opening percentages are ratios: the fit has a gauge freedom that nothing here resolves.",
  "species_factor": {
   "adder": 1.0,

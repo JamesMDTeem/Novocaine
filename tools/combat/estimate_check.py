@@ -52,10 +52,12 @@ def hitpoints():
     hp = summarise_hp({7: 84 + 42}, {7}, {7: 42}, None)
     check("a kill sums every file the gob appears in", hp["observed_hi"], 126)
 
-    # The overkill bound, which is the whole reason a kill is a CEILING and not a floor.
-    # A kill at 126 whose last hit was 42 says the creature was somewhere in (84, 126].
-    check("a kill puts a ceiling on it", hp["hi"], 126)
-    check("and a floor one last hit below", hp["lo"], 84)
+    # A KILL IS THE CREATURE'S HITPOINTS, not a ceiling. A killing blow is logged at the
+    # health it removed, never at the damage it carried, so everything the creature took
+    # sums to exactly what it had. Subtracting the last hit for an "overkill" the log never
+    # records put bears at 478 when 43 of 45 bear kills totalled 800 or more (2026-09-14).
+    check("a kill is the hitpoints it took", hp["hi"], 126)
+    check("  from both ends, with no last hit taken off", hp["lo"], 126)
 
     # A survivor proves one was bigger. It never caps anything, and it must never lower
     # the floor - doing so put the boar at 64 on the strength of one that walked away
@@ -64,20 +66,20 @@ def hitpoints():
     check("a survivor has no ceiling", hp["hi"], None)
     check("and reports what it walked away from", hp["lo"], 64)
     hp = summarise_hp({1: 499, 2: 63}, {1}, {1: 256}, None)
-    check("a survivor does not drag the floor down", hp["lo"], 243)
+    check("a survivor does not drag the floor down", hp["lo"], 499)
     check("the kill still caps it", hp["hi"], 499)
 
     # Individuals of a species differ - the wiki lists a base quality beside every one -
-    # so several fights are an ENVELOPE, not an intersection. Two badgers at 190-210 and
-    # 171-342 make a third anywhere in 171-342.
+    # so several fights are an ENVELOPE, not an intersection. Badgers dying at 210 and 342
+    # make a third anywhere in 210-342.
     hp = summarise_hp({1: 210, 2: 342}, {1, 2}, {1: 20, 2: 171}, None)
     check("two individuals give the envelope, not the overlap",
-          (hp["lo"], hp["hi"]), (171, 342))
+          (hp["lo"], hp["hi"]), (210, 342))
 
     print("\n  against the wiki baseline")
     # The wiki's figure is kept when our fights are consistent with it, and is included
     # in the range either way.
-    hp = summarise_hp({1: 126}, {1}, {1: 42}, WIKI(110))
+    hp = summarise_hp({1: 110}, {1}, {1: 42}, WIKI(110))
     check("a consistent wiki value sits inside the range",
           hp["lo"] <= 110 <= hp["hi"], True)
     check("and is reported as consistent", "consistent" in hp["verdict"], True)

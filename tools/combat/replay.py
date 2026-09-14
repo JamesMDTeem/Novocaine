@@ -74,7 +74,13 @@ def opponent_bounds(name, pack):
 
 
 def _armoured(name, pack):
-    """Whether the pack says this species carries armour at all (a measured floor above 0)."""
+    """Whether this target may carry armour: a species with a measured floor above 0, or a
+    PLAYER, whose armour the pack rarely knows. Schema-2 logs write only SHP and IP on a
+    player - never an armour row - and ZzxcuV3's Quick Barrages on two players read a steady
+    12-13 points short of the model, which is that armour; it was the whole of the 7.46
+    "standing gap" in player damage."""
+    if str(name).startswith("body#"):
+        return True
     arm = (pack.get(name) or {}).get("armour") or {}
     return (arm.get("total_lo") or 0) > 0
 
@@ -191,12 +197,27 @@ def replay_damage(log, eng, moves, weapons):
         if m is None:
             continue
         share, flat = m.get("damage_share"), m.get("damage_flat")
+        glove = None
         if share:
             if not wep or not wep[1]:
+                continue
+            # A TOOL IN HAND BEFORE SCHEMA 13 IS NOT EVIDENCE OF THE WEAPON SWUNG. Swaps were
+            # first logged at schema 13 ("Notice a weapon swap"), so an older log's weapon is
+            # its t=0 snapshot - and a gathering tool is exactly what someone holds when a
+            # fight finds them and swaps away from. Pickaxe hits read 1.37-1.40x the model in
+            # schema 3-10 logs and 0.98-0.99 in 12 and 16, and Shade's wildgoat fight matches
+            # the sword he held that day to the digit (x1.68). Such a hit is not scored.
+            if (log.schema < 13) and (weapon_name_at(log, h.get("t")) in SWAPPED_FROM_TOOLS):
                 continue
             base, ql = wep[0], wep[1]
         elif flat:
             base, share, ql = flat, 1.0, strength
+            # GLOVES ADD THEIR OWN TERM TO AN UNARMED BLOW: damage = base * sqrt(sqrt(str *
+            # glove quality) / 10), beside the card's flat figure (the wiki's formula for
+            # gloves). Left out, every Punch Shade threw in Lynx Claw Gloves read 1.23-1.28x
+            # the prediction at glove quality 39 and 68 and strength 178-291 - the formula
+            # predicts 1.27-1.29 there - while ZzxcuV3's in poor man's gloves read 1.02.
+            glove = gloves_at(log, weapons, h.get("t"))
         else:
             continue
         # The opening the attack reads is the combined one over ITS OWN attack types.
@@ -206,8 +227,50 @@ def replay_damage(log, eng, moves, weapons):
         if not own:
             continue
         pred = model.raw_damage(base, share, ql, strength, model.combined(own))
+        if glove:
+            pred += model.raw_damage(glove[0], 1.0, glove[1], strength, model.combined(own))
         out.append((h.get("move"), pred, observed))
     return out
+
+
+# Tools carried for gathering, which a fight finds in hand and which are swapped away from -
+# see replay_damage. Only these are distrusted in pre-schema-13 logs; a sword at t=0 was
+# almost always the sword swung (swords read 1.02 across every schema).
+SWAPPED_FROM_TOOLS = ("Pickaxe", "Woodsman's Axe")
+
+# Glove resources whose damage adds to an unarmed blow, and their rows in weapons.json.
+# "lynxclawgloves" is confirmed by the corpus; "cutthroatknuckles" is an unconfirmed spelling.
+GLOVE_RES = {"lynxclawgloves": "Lynx Claw Gloves", "cutthroatknuckles": "Cutthroat Knuckles"}
+
+
+def weapon_name_at(log, t):
+    """The weapons.json name of the weapon in hand at time `t` - the same walk as weapon_at,
+    returning the name, since two weapons can share a base damage figure."""
+    found = None
+    for g in log.gear:
+        if (t is not None) and ((g.get("t") or 0) > t):
+            break
+        name = WEAPON_RES.get((g.get("res") or "").split("/")[-1])
+        if name:
+            found = name
+    return found
+
+
+def gloves_at(log, weapons, t):
+    """(base damage, quality) of damage-dealing gloves worn at time `t`, or None.
+
+    Gear rows are per slot and in time order; a slot that empties or changes stops counting,
+    which is tracked per slot rather than by the last matching row."""
+    slots = {}
+    for g in log.gear:
+        if (t is not None) and ((g.get("t") or 0) > t):
+            break
+        slots[g.get("slot")] = g
+    for g in slots.values():
+        nm = GLOVE_RES.get((g.get("res") or "").split("/")[-1])
+        if nm and weapons.get(nm) and g.get("ql"):
+            return (weapons[nm], g.get("ql"))
+    return None
 
 
 def replay(paths):
@@ -376,6 +439,31 @@ def replay(paths):
     return stats, dmg, misses, skipped, final_dmg, by_char
 
 
+# How long a single move's opening update may take to finish arriving - see
+# logged_predictions. Full Circle's second colour lands about 7 ms after its first.
+SETTLE_MS = 20
+
+
+def settled_after(eng, after, mv):
+    """The state once `mv`'s own update has finished arriving.
+
+    The last state row within SETTLE_MS of `after`, stopping before any later move - so a
+    gain split across two rows is read whole and the next card's effects never are."""
+    t0 = after.get("t") or 0
+    nxt = min([m.get("t") for m in eng.moves
+               if (m.get("t") is not None) and (m.get("t") > (mv.get("t") or 0))] or [None],
+              key=lambda x: float("inf") if x is None else x)
+    best = after
+    for s in eng.states:
+        st = s.get("t") or 0
+        if st <= t0:
+            continue
+        if (st - t0) > SETTLE_MS or ((nxt is not None) and (st >= nxt)):
+            break
+        best = s
+    return best
+
+
 def logged_predictions(paths, opens=None):
     """Predictions the CLIENT wrote at the time, against what actually followed.
 
@@ -423,6 +511,13 @@ def logged_predictions(paths, opens=None):
                 before, after = eng.brackets(mv)
                 if (before is None) or (after is None):
                     continue
+                # A GAIN CAN ARRIVE IN TWO ROWS. Full Circle's red and green land as separate
+                # state updates a few milliseconds apart: on ants the row 3 ms after the move
+                # carried red only, and green went 0 -> 47 at +10 ms against a predicted 47.1,
+                # so reading the first row scored a correct prediction as "observed 0". The
+                # after-state is taken once the update settles - the last row within SETTLE_MS
+                # of the first one - which a following move's own effects cannot reach.
+                after = settled_after(eng, after, mv)
                 opened = pr.get("opened") or []
                 for c, colour in enumerate(("green", "blue", "yellow", "red")):
                     if c >= len(opened):

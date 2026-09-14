@@ -1640,10 +1640,10 @@ def flee_points(logs=None):
             # creature and it is not a flight, so it says nothing about a threshold.
             continue
         if gob in died_at:
-            # It died later, so its health is bracketed by the total it took and that
-            # total less the overkill on the final blow.
+            # It died later, so its health is the total it took: the killing blow is logged
+            # at the health it removed, so there is no overkill to take off (2026-09-14).
             hi = died_at[gob]
-            lo = hi - last_hit.get(gob, 0)
+            lo = hi
         else:
             # A survivor. Its health is at least everything it absorbed, and nothing here
             # bounds it above, so the fraction standing can only be bounded one way.
@@ -3329,11 +3329,31 @@ def died(eng, log):
     knockout. What is deliberately NOT required is that the award be ours: two boars and
     a bear in this corpus were finished by other people, and their hitpoints count just
     the same.
+
+    AND THE AWARD MUST ARRIVE WITH THE LAST BLOW (2026-09-14). A fight also ends when the
+    creature escapes, and the award fires then too. For bears, boars, wolves and foxes the
+    award lands in the same millisecond as the last damage on the creature (p50 0 ms); for
+    bats and adders it lands about 1,080 ms after it, and 32 bat and 16 adder "kills" carried
+    no damage on the creature at all. Counting those as deaths put the bat's kill totals at a
+    median of 17 against its 90 hitpoints. So a kill needs damage on this creature and an
+    award within AWARD_KILL_MS of the last of it - on either side, since the award and the
+    number are drawn in the same frame and can be logged in either order.
     """
     if PLAYER in (eng.res or ""):
         return False
+    shp = [d["t"] for d in eng.damage
+           if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP") and (d.get("t") is not None)]
+    if not shp:
+        return False
+    last = max(shp)
     return any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
+               and (d.get("t") is not None) and (abs(d["t"] - last) <= AWARD_KILL_MS)
                for d in eng.damage)
+
+
+# How close the fight-end award must sit to the creature's last damage to mean it died -
+# see died(). Kills sit at 0-1 ms; escapes at about 1,080 ms.
+AWARD_KILL_MS = 500
 
 
 def norm(name):
@@ -3609,6 +3629,15 @@ def animal_card_fit(per, min_obs=5, rounds=200):
 
 ANIMAL_MOVES_OUT = os.path.join(ROOT, "data", "combat", "animal_moves_measured.json")
 
+# THE PACK SAYS WHICH SHAPE IT IS. Pack.java checks this block on every file it loads and warns
+# when a file declares a newer version than it understands; without it a renamed or re-typed
+# key was absorbed silently by a default (the late defence weight and the skill slope read as
+# NaN for weeks because Java expected numbers and the files held objects). Bump `version`
+# whenever a key is renamed, removed or changes type - adding a key does not need a bump.
+# Deterministic on purpose: no timestamp, so regenerating an unchanged corpus stays
+# byte-identical and the suite's "nothing moved" reading still means something.
+PACK_FORMAT = {"version": 1, "generated": "tools/combat/estimate.py --write-pack"}
+
 # A cooldown needs pairs before its floor means anything, and a damage coefficient needs
 # observations before its median does. Both are low because the alternative is shipping
 # nothing for the moves seen least often, and a figure with its own count beside it can be
@@ -3841,6 +3870,7 @@ def write_animal_moves(per, paths=None):
                     "restores": rest.get(nm),
                     "grievous": grev.get(nm)})
     doc = {"source": "tools/combat/estimate.py over the logged corpus",
+           "format": PACK_FORMAT,
            "note": "Per-CARD, not per-creature. Opening percentages are ratios: the fit "
                    "has a gauge freedom that nothing here resolves.",
            "species_factor": dict((k, round(v, 3)) for k, v in sorted(f.items())),
@@ -3874,8 +3904,10 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     symmetric:
 
     A creature that SURVIVED taking D had more than D. A creature that DIED having taken
-    D had at most D - but possibly far less, since the killing blow overshoots by however
-    much it overshoots, so a kill at D says only (D - last hit, D].
+    D had D: the killing blow is logged at the health it removed, not the damage it
+    carried, so there is no overshoot in the sum. (Until 2026-09-14 this read a kill as
+    (D - last hit, D], which put the bear's floor at 478 while 43 of its 45 kills totalled
+    800 or more.) A kill total can still read LOW - damage nobody saw - but never high.
 
     Both hold in a group fight. The client draws a floating number over a creature for
     damage from any source - the bear log carries thirty for a fight this character sat
@@ -3889,19 +3921,19 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     # than replacing it: the envelope is honest and this is useful, and those are two jobs.
     pin_lo, pin_hi, pin_n = None, None, 0
 
+    kills = []
     for gob, d in sorted(dealt.items()):
         if d <= 0:
             continue
         if gob in killed:
-            floor, ceil = d - last_hit.get(gob, 0), d
-            per.append("died at %d with a last hit of %d, so that one had %d to %d"
-                       % (d, last_hit.get(gob, 0), floor, ceil))
-            lo = floor if lo is None else min(lo, floor)
-            hi = ceil if hi is None else max(hi, ceil)
-            if (last_hit.get(gob, 0) / float(d)) <= PIN_SHARE:
-                pin_n += 1
-                pin_lo = floor if pin_lo is None else min(pin_lo, floor)
-                pin_hi = ceil if pin_hi is None else max(pin_hi, ceil)
+            # A KILL IS THE HITPOINTS. The killing blow is logged at the health it removed,
+            # so what the creature took sums to what it had - the "(d - last hit, d]"
+            # bracket this used to write put bears at 478 when 43 of 45 bear kills came to
+            # 800 or more. What can still make a total read LOW is damage nobody saw.
+            per.append("died having taken %d, so that one had %d" % (d, d))
+            lo = d if lo is None else min(lo, d)
+            hi = d if hi is None else max(hi, d)
+            kills.append(d)
         else:
             # A survivor proves some individual was AT LEAST this big, which raises the
             # top of the range and says nothing about the bottom. Letting it lower the
@@ -3940,7 +3972,7 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
         # "consistent" because it was not a survivor.
         above = [g for g, d in dealt.items()
                  if d > 0 and ((g not in killed and d + 1 > stated)
-                               or (g in killed and (d - last_hit.get(g, 0)) > stated))]
+                               or (g in killed and d > stated))]
         if below and not above:
             verdict = ("%d of these died before taking the wiki's %d, so they were below "
                        "its base quality (or already hurt when we met them)"
@@ -3960,6 +3992,15 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry):
     # at 74-125 against the same 50 and its envelope, 0-335, reported nothing. "above" or
     # "below" is a baseline gap, a depth-scaled species, or the wrong wiki row; it says which
     # to look at, not which it is.
+    # THE PINNED BAND IS NOW THE KILLS THEMSELVES. It used to keep only kills whose last hit
+    # was a small share of the total, because the last hit was treated as overkill; with a
+    # kill read as the hitpoints, every kill pins its individual. The floor is the tenth
+    # percentile rather than the minimum because a total can only read LOW (damage nobody
+    # saw - a fight begun before the log, a creature carted off hurt), never high.
+    pin_n = len(kills)
+    if kills:
+        ks = sorted(kills)
+        pin_lo, pin_hi = ks[len(ks) // 10], ks[-1]
     pinned_vs_wiki = None
     if (stated is not None) and (pin_n >= PIN_MIN_N):
         if pin_lo > stated:
@@ -6562,6 +6603,7 @@ def write_characters(paths=None):
         out.append(d)
 
     doc = {"source": "tools/combat/estimate.py over the logged corpus",
+           "format": PACK_FORMAT,
            "note": "The newest reading per character. A deck is built for ONE of these.",
            "characters": out}
     with open(CHARS, "w", encoding="utf8") as f:
@@ -6810,6 +6852,7 @@ def write_pack(per, moves):
         out.append(entry)
 
     doc = {"source": "tools/combat/estimate.py over the logged corpus",
+           "format": PACK_FORMAT,
            "note": "Every value is an interval or null. Nothing here is a point estimate.",
            "opponents": out}
     with open(PACK, "w", encoding="utf8") as f:
@@ -6829,6 +6872,7 @@ def write_pack(per, moves):
             joint[nm] = rows
     with open(INDIVIDUALS, "w", encoding="utf8") as f:
         json.dump({"source": "one row per creature measured on two or more axes",
+                   "format": PACK_FORMAT,
                    "species": joint}, f, indent=1, sort_keys=True)
         f.write("\n")
     print("wrote %s  (%d creature(s) across %d species)"
@@ -6844,6 +6888,7 @@ def write_pack(per, moves):
     if seen:
         with open(SEEN, "w", encoding="utf8") as f:
             json.dump({"source": "the client's own WeaponInfo, over the corpus",
+                       "format": PACK_FORMAT,
                        "note": "Damage is QUALITY-SCALED, as the tooltip gives it. "
                                "recovered_base divides sqrt(ql/10) back out.",
                        "weapons": seen}, f, indent=1, sort_keys=True)

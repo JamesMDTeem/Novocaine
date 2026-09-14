@@ -269,7 +269,15 @@ $executor = {
         if ($ant) {
             [void]$lines.Add("using $ant")
             $build = & $ant jar 2>&1
-            $ok = ($build | Select-String -Quiet 'BUILD SUCCESSFUL')
+            $antExit = $LASTEXITCODE
+            # JUDGED ON THREE THINGS, NOT ONE. A match on the success line alone reported a
+            # corrupt build/hafen.jar ("zip END header not found", BUILD FAILED) as ok on
+            # 2026-09-14. So the exit code must be zero, the success line must be present
+            # as text, and no failure line may appear anywhere in the output.
+            $text = @($build | ForEach-Object { [string]$_ })
+            $sawOk = @($text | Where-Object { $_ -match 'BUILD SUCCESSFUL' }).Count -gt 0
+            $sawFail = @($text | Where-Object { $_ -match 'BUILD FAILED' }).Count -gt 0
+            $ok = ($antExit -eq 0) -and $sawOk -and (-not $sawFail)
             foreach ($l in ($build | Select-String 'error|BUILD')) { [void]$lines.Add([string]$l) }
             $detail = "$($build | Select-String 'BUILD' | Select-Object -Last 1)"
         } else {

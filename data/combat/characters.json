@@ -725,6 +725,10 @@
    "unarmed": 1
   }
  ],
+ "format": {
+  "generated": "tools/combat/estimate.py --write-pack",
+  "version": 1
+ },
  "note": "The newest reading per character. A deck is built for ONE of these.",
  "source": "tools/combat/estimate.py over the logged corpus"
 }
