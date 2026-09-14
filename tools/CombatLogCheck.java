@@ -37,6 +37,7 @@ public class CombatLogCheck {
         openings();
         events();
         writer();
+        playerDecks();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED" : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
     }
@@ -175,7 +176,17 @@ public class CombatLogCheck {
         /* 20 adds each relation's initiative, both sides, to the foes event as two more
          * parallel arrays. The game keeps initiative per relation, and only the sampled
          * relation's pair was ever written. Older foes forms are byte-identical. */
-        check("schema constant", CombatEvent.SCHEMA, 20);
+        /* 21 names a PLAYER opponent by kin name on a foe row, where the client knows it.
+         * A player's resource is the same for everybody and their gob changes per login,
+         * so without the name no two fights against one person can be joined. */
+        check("schema constant", CombatEvent.SCHEMA, 21);
+        check("foe names a player by kin name",
+              CombatEvent.foe(9L, 55L, "gfx/borka/body", "kin", "Some \"One\""),
+              "{\"ev\":\"foe\",\"t\":9,\"gob\":55,\"res\":\"gfx/borka/body\","
+              + "\"how\":\"kin\",\"kin\":\"Some \\\"One\\\"\"}");
+        check("  and without a name the row is the old one",
+              CombatEvent.foe(9L, 55L, "gfx/borka/body", "new", null),
+              CombatEvent.foe(9L, 55L, "gfx/borka/body", "new"));
         check("foes carries each relation's initiative, ours and theirs",
               CombatEvent.foes(7L, new long[] {11L, 1, 2, 3, 4, 22L, 5, 6, 7, 8},
                                new int[] {0, 2}, new int[] {12, 30},
@@ -335,6 +346,50 @@ public class CombatLogCheck {
               CombatEvent.weapon(4200, 6, null, null),
               "{\"ev\":\"wpn\",\"t\":4200,\"slot\":6,"
               + "\"res\":null,\"v\":{}}");
+    }
+
+    /* A player's deck is learned by watching and remembered by kin name. The known answers:
+     * cards accumulate per player, a gob-keyed player is never written down, the file round-
+     * trips, and a damaged line costs that line and nothing else. */
+    static void playerDecks() {
+        System.out.println("\nPlayerDecks");
+        try {
+            Path dir = Files.createTempDirectory("playerdecks");
+            Path f = dir.resolve("player-decks.tsv");
+            haven.combat.log.PlayerDecks d = new haven.combat.log.PlayerDecks();
+            String named = haven.combat.log.PlayerDecks.keyFor("Some Body", 11L);
+            String bare = haven.combat.log.PlayerDecks.keyFor(null, 22L);
+            check("a named player is keyed by name", named, "kin:Some Body");
+            check("  and an unnamed one by gob", bare, "gob:22");
+            d.observe(named, "paginae/atk/cleave");
+            d.observe(named, "paginae/atk/cleave");
+            d.observe(named, "paginae/atk/sting");
+            d.observe(bare, "paginae/atk/punch");
+            check("cards accumulate per player", d.deck(named).get("paginae/atk/cleave"), 2);
+            haven.combat.log.PlayerDecks later = new haven.combat.log.PlayerDecks();
+            String gobKey = haven.combat.log.PlayerDecks.keyFor(null, 77L);
+            String kinKey = haven.combat.log.PlayerDecks.keyFor("Named Later", 77L);
+            later.observe(gobKey, "paginae/atk/cleave");
+            later.observe(kinKey, "paginae/atk/cleave");
+            later.adopt(gobKey, kinKey);
+            check("a player named after their first cards keeps those cards",
+                  later.deck(kinKey).get("paginae/atk/cleave"), 2);
+            check("  and the gob key is emptied", later.deck(gobKey).isEmpty(), true);
+            check("  and the deck holds every card seen", d.deck(named).size(), 2);
+            d.save(f);
+            haven.combat.log.PlayerDecks back = haven.combat.log.PlayerDecks.load(f);
+            check("a named deck survives a save and a load", back.deck(named), d.deck(named));
+            check("  and a gob-keyed one is never written", back.deck(bare).isEmpty(), true);
+            Files.write(f, java.util.Arrays.asList("kin:A\tpaginae/atk/x\t3", "broken line",
+                                                   "kin:A\tpaginae/atk/y\tnot-a-number"));
+            haven.combat.log.PlayerDecks damaged = haven.combat.log.PlayerDecks.load(f);
+            check("a damaged line costs that line and nothing else",
+                  damaged.deck("kin:A").toString(), "{paginae/atk/x=3}");
+            check("  and a missing file is an empty memory",
+                  haven.combat.log.PlayerDecks.load(dir.resolve("absent.tsv")).players().isEmpty(), true);
+        } catch(IOException e) {
+            check("player decks raised no IOException", e.toString(), "none");
+        }
     }
 
     static void writer() {

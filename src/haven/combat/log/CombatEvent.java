@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 20;
+    public static final int SCHEMA = 21;
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about
@@ -118,6 +118,22 @@ public final class CombatEvent {
                .put("res", res)
                .put("how", how)
                .end());
+    }
+
+    /**
+     * The same, naming a PLAYER opponent by kin name (schema 21, `how` "kin").
+     *
+     * A player's resource is gfx/borka/body for everybody, and their gob id changes at every
+     * login, so without a name no two fights against the same person can be joined. The
+     * client knows the name only for someone we have memorised, and that is the only name
+     * written. The key is added only when a name is known, so every other foe row stays
+     * byte-identical.
+     */
+    public static String foe(long t, long gob, String res, String how, String kin) {
+        String base = foe(t, gob, res, how);
+        if(kin == null)
+            return(base);
+        return(base.substring(0, base.length() - 1) + ",\"kin\":\"" + JsonObj.esc(kin) + "\"}");
     }
 
     /**

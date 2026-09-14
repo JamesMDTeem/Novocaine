@@ -375,6 +375,20 @@ public class Fightview extends Widget {
 	}
     }
 
+    /* An opponent's kin name, or null when it is not a memorised player. Read the same way the
+     * map uploader reads it (MappingClient), and never throws, for the same reason as resOf. */
+    private String kinOf(long gobid) {
+	try {
+	    Gob g = ui.sess.glob.oc.getgob(gobid);
+	    if(g == null)
+		return(null);
+	    haven.res.ui.obj.buddy.Buddy b = g.getattr(haven.res.ui.obj.buddy.Buddy.class);
+	    return(((b == null) || (b.rgrp == -1)) ? null : b.rnm);
+	} catch(Exception e) {
+	    return(null);
+	}
+    }
+
     private void setcur(Relation rel) {
 	if(current == rel)
 	    return;
@@ -516,6 +530,10 @@ public class Fightview extends Widget {
 	     * a relation can arrive before its gob does, and a null res there is what left one
 	     * three-opponent fight identifying none of them. */
 	    haven.automated.combat.CombatRecorder.nameFoe(rel.gobid, resOf(rel.gobid));
+	    /* A PLAYER, named where we have memorised them. Everybody's resource is the same
+	     * and a gob id lasts one login, so the kin name is the only thing that joins two
+	     * fights against one person. See CombatRecorder.kinFoe. */
+	    haven.automated.combat.CombatRecorder.kinFoe(rel.gobid, kinOf(rel.gobid));
 	    /* The bracket Fightsess has narrowed for this opponent from its attack
 	     * cooldowns - an estimate of the same quantity the offline estimators
 	     * recover, arrived at a different way. Two methods that agree are a

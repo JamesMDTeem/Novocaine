@@ -103,6 +103,13 @@ public final class CombatRecorder {
      * which is the one-opponent question in every fight including the ones with five
      * animals in them.
      */
+    /* Per player gob, the kin name the client knows them by, where it knows one. */
+    private static final java.util.Map<Long, String> kinById =
+        new java.util.concurrent.ConcurrentHashMap<Long, String>();
+    /* Every player's deck as SEEN thrown, learned across fights and, for a named player,
+     * across sessions - see PlayerDecks. Loaded on first use; written when a fight ends. */
+    private static volatile haven.combat.log.PlayerDecks decks = null;
+    private static volatile boolean decksDirty = false;
     private static final java.util.Map<Long, String> foeResById =
         new java.util.concurrent.ConcurrentHashMap<Long, String>();
 
@@ -269,6 +276,7 @@ public final class CombatRecorder {
             lastBuffs.clear();
             named.clear();
             foeResById.clear();
+            kinById.clear();
             lastCrowd = null;
             lastCrowdDist = null;
             lastCrowdIp = null;
@@ -808,6 +816,15 @@ public final class CombatRecorder {
      * inventing one would be worse than planning against fewer.
      */
     private static Prediction.Advised advise(Prediction.Me m, long gobId, int[] open) {
+        /* Against a PLAYER the pack has nothing - there is no species - so the advice is built
+         * from the cards we have seen that person throw, and there is no advice until we have
+         * seen one. */
+        if(isPlayer(gobId)) {
+            java.util.Map<String, Integer> seen = seenDeck(gobId);
+            return(seen.isEmpty() ? null
+                   : Prediction.adviseAgainstPlayer(m, seen, open, lastMyIp,
+                                                    ADVICE_BEAM, ADVICE_HORIZON));
+        }
         long[] crowd = lastCrowd;
         String mine = foeResById.get(Long.valueOf(gobId));
         if((crowd == null) || (crowd.length <= 5) || (mine == null)) {
@@ -929,6 +946,59 @@ public final class CombatRecorder {
         onFoe(gobId, res, "name");
     }
 
+    /**
+     * Names a PLAYER opponent by kin name, once per fight, and files the cards they threw
+     * before the name arrived under it.
+     *
+     * A player's gob id is issued per login - one character in this corpus has 32 of them over
+     * 13 days - so it identifies a person for one session and no longer. The kin name is the
+     * client's only stable handle on a person, and it exists only for someone we memorised.
+     */
+    public static void kinFoe(long gobId, String kin) {
+        if(!active() || (kin == null) || kin.isEmpty())
+            return;
+        String had = kinById.put(Long.valueOf(gobId), kin);
+        if(kin.equals(had))
+            return;
+        try {
+            haven.combat.log.PlayerDecks d = decks();
+            if(d != null)
+                d.adopt(haven.combat.log.PlayerDecks.keyFor(null, gobId),
+                        haven.combat.log.PlayerDecks.keyFor(kin, gobId));
+            log(CombatEvent.foe(now(), gobId, foeResById.get(Long.valueOf(gobId)), "kin", kin));
+        } catch(Exception e) {
+            /* never propagate into the tick loop */
+        }
+    }
+
+    private static haven.combat.log.PlayerDecks decks() {
+        haven.combat.log.PlayerDecks d = decks;
+        if((d == null) && (Client.gameDir != null)) {
+            d = haven.combat.log.PlayerDecks.load(decksPath());
+            decks = d;
+        }
+        return(d);
+    }
+
+    /* Beside the logs, NOT among them: CombatLogSync uploads and then deletes what is in
+     * CombatLogs, and a memory of decks must never be sent away and removed. */
+    private static Path decksPath() {
+        return(Paths.get(Client.gameDir, "CombatData", "player-decks.tsv"));
+    }
+
+    private static boolean isPlayer(long gobId) {
+        String r = foeResById.get(Long.valueOf(gobId));
+        return((r != null) && (r.indexOf("borka/body") >= 0));
+    }
+
+    /** Every card seen from the player behind this gob - by name where known - or empty. */
+    static java.util.Map<String, Integer> seenDeck(long gobId) {
+        haven.combat.log.PlayerDecks d = decks();
+        if(d == null)
+            return(java.util.Collections.<String, Integer>emptyMap());
+        return(d.deck(haven.combat.log.PlayerDecks.keyFor(kinById.get(Long.valueOf(gobId)), gobId)));
+    }
+
     public static void onMove(String actor, String moveRes, String moveName,
                               double cooldownTicks, long gobId) {
         if(!active())
@@ -937,6 +1007,16 @@ public final class CombatRecorder {
             restate();
             log(CombatEvent.move(now(), actor, moveRes, moveName, cooldownTicks, gobId));
             stateSinceMove = false;
+            /* A PLAYER'S CARD IS ADDED TO THAT PLAYER'S DECK as it is seen - by name where we
+             * know them, by gob for the rest of this session where we do not. */
+            if(!"me".equals(actor) && (gobId >= 0) && isPlayer(gobId)) {
+                haven.combat.log.PlayerDecks d = decks();
+                if(d != null) {
+                    d.observe(haven.combat.log.PlayerDecks.keyFor(kinById.get(Long.valueOf(gobId)),
+                                                                  gobId), moveRes);
+                    decksDirty = true;
+                }
+            }
             predict(actor, moveRes, gobId);
         } catch(Exception e) {
             /* never propagate into the message loop */
@@ -1388,6 +1468,16 @@ public final class CombatRecorder {
                 CombatLogSync.enqueue(path);
         } catch(Exception e) {
             /* never propagate — upload is best-effort */
+        }
+        /* The decks learned this fight, written once it is over rather than per card. */
+        try {
+            haven.combat.log.PlayerDecks d = decks;
+            if(decksDirty && (d != null) && (Client.gameDir != null)) {
+                d.save(decksPath());
+                decksDirty = false;
+            }
+        } catch(Exception e) {
+            /* never propagate - a deck that fails to save is relearned next fight */
         }
     }
 }

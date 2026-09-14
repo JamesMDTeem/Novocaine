@@ -411,7 +411,8 @@ $specs = @(
     [pscustomobject]@{ Kind = 'java'; Name = 'CombatLogCheck'; Section = 'the log schema'; MainClass = 'CombatLogCheck'; SourcePath = $null;
         Sources = @('src\haven\combat\log\JsonObj.java',
             'src\haven\combat\log\Openings.java', 'src\haven\combat\log\CombatEvent.java',
-            'src\haven\combat\log\CombatLogWriter.java', 'tools\CombatLogCheck.java') }
+            'src\haven\combat\log\CombatLogWriter.java', 'src\haven\combat\log\PlayerDecks.java',
+            'tools\CombatLogCheck.java') }
     [pscustomobject]@{ Kind = 'java'; Name = 'CombatFormulaCheck'; Section = "the model's arithmetic"; MainClass = 'CombatFormulaCheck'; SourcePath = $null;
         Sources = @('src\haven\combat\Formulas.java', 'tools\CombatFormulaCheck.java') }
     [pscustomobject]@{ Kind = 'java'; Name = 'CombatSimCheck'; Section = 'the state machine'; MainClass = 'CombatSimCheck'; SourcePath = $null;

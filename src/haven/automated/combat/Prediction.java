@@ -436,46 +436,10 @@ public final class Prediction {
         if((o == null) || !o.simulable() || (o.threat == null))
             return(null);
 
-        /* The deck AS HELD: the cards at a level above zero, each at its own weighting. A
-         * card the sheet does not know costs that card, not the deck. */
-        List<Move> deck = new ArrayList<Move>();
-        if(me.levels != null) {
-            for(Map.Entry<String, Integer> e : me.levels.entrySet()) {
-                if((e.getValue() == null) || (e.getValue() <= 0))
-                    continue;
-                Move m = byRes.get(e.getKey());
-                if(m == null)
-                    continue;
-                /* A STANCE IS HELD, NOT THROWN (Move.stance). The offline tools apply the
-                 * stance as a Combatant property and skip it in every deck walk
-                 * (CombatDeckSearch.withStance; Duel.java:138-139 and :192-193;
-                 * FoeModel.java:478-479); leaving it in the live deck let Optimizer and Sim
-                 * plan to throw one, which no fight can do. It is applied to `a` instead, by
-                 * applyStance below. */
-                if(m.stance)
-                    continue;
-                if((m.weight == Move.Weight.WEAPON) && !me.armed)
-                    continue;
-                deck.add((e.getValue() > 1) ? m.withMu(muAt(e.getValue())) : m);
-            }
-        }
-        if(deck.isEmpty())
+        List<Move> deck = ourDeck(me);
+        if(deck == null)
             return(null);
-
-        Combatant a = new Combatant("me");
-        a.str = me.str;
-        a.agi = me.agi;
-        a.unarmed = me.unarmed;
-        a.melee = me.melee;
-        a.armHard = me.armHard;
-        a.armSoft = me.armSoft;
-        a.weaponDamage = me.weaponDamage;
-        a.weaponQl = me.weaponQl;
-        a.weaponPen = me.weaponPen;
-        a.weaponRange = me.weaponRange;
-        a.hp = a.maxHp = 100;
-        a.ip = myIp;
-        applyStance(a, me);
+        Combatant a = ourSide(me, myIp);
 
         List<Combatant> bs = new ArrayList<Combatant>();
         List<FoeModel> ms = new ArrayList<FoeModel>();
@@ -513,6 +477,102 @@ public final class Prediction {
             return(null);
         return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,
                            front.size(), stamp));
+    }
+
+    /**
+     * The deck AS HELD: the cards at a level above zero, each at its own weighting, or null when
+     * none resolves. A card the sheet does not know costs that card, not the deck.
+     */
+    private static List<Move> ourDeck(Me me) {
+        List<Move> deck = new ArrayList<Move>();
+        if(me.levels != null) {
+            for(Map.Entry<String, Integer> e : me.levels.entrySet()) {
+                if((e.getValue() == null) || (e.getValue() <= 0))
+                    continue;
+                Move m = byRes.get(e.getKey());
+                if(m == null)
+                    continue;
+                /* A STANCE IS HELD, NOT THROWN (Move.stance). The offline tools apply the
+                 * stance as a Combatant property and skip it in every deck walk
+                 * (CombatDeckSearch.withStance; Duel.java:138-139 and :192-193;
+                 * FoeModel.java:478-479); leaving it in the live deck let Optimizer and Sim
+                 * plan to throw one, which no fight can do. It is applied to our side
+                 * instead, by applyStance. */
+                if(m.stance)
+                    continue;
+                if((m.weight == Move.Weight.WEAPON) && !me.armed)
+                    continue;
+                deck.add((e.getValue() > 1) ? m.withMu(muAt(e.getValue())) : m);
+            }
+        }
+        return(deck.isEmpty() ? null : deck);
+    }
+
+    /** Our side of a live plan, from the snapshot the recorder took, with the held stance. */
+    private static Combatant ourSide(Me me, int myIp) {
+        Combatant a = new Combatant("me");
+        a.str = me.str;
+        a.agi = me.agi;
+        a.unarmed = me.unarmed;
+        a.melee = me.melee;
+        a.armHard = me.armHard;
+        a.armSoft = me.armSoft;
+        a.weaponDamage = me.weaponDamage;
+        a.weaponQl = me.weaponQl;
+        a.weaponPen = me.weaponPen;
+        a.weaponRange = me.weaponRange;
+        a.hp = a.maxHp = 100;
+        a.ip = myIp;
+        applyStance(a, me);
+        return(a);
+    }
+
+    /**
+     * What to throw against a PLAYER, from the cards we have SEEN them throw.
+     *
+     * A player's deck is never shown to us, and the pack holds no species for a person, so the
+     * opponent's side is built from what they have actually thrown - in this fight and, for a
+     * memorised player, in every fight before it (CombatRecorder.seenDeck).
+     *
+     * THEIR BODY IS PRICED AS OURS, and that is an assumption, stated rather than hidden. The
+     * client shows us a person's cards as they throw them but never their skills, strength or
+     * gear, so the opponent is modelled as a copy of our own character holding the cards seen.
+     * The advice is therefore "against someone like us who fights with these cards", and the
+     * pack stamp carries the number of cards it was built from so a log can say how thin that
+     * was. Null until at least one of their cards resolves in the sheet.
+     */
+    public static Advised adviseAgainstPlayer(Me me, Map<String, Integer> seen, int[] foeOpen,
+                                              int myIp, int beam, long horizon) {
+        load();
+        if((me == null) || !me.usable() || (byRes == null) || (seen == null) || seen.isEmpty()
+           || (foeOpen == null) || (foeOpen.length < 4))
+            return(null);
+        List<Move> deck = ourDeck(me);
+        if(deck == null)
+            return(null);
+        List<Move> theirs = new ArrayList<Move>();
+        for(String res : seen.keySet()) {
+            Move mv = byRes.get(res);
+            if((mv != null) && !mv.stance)
+                theirs.add(mv);
+        }
+        if(theirs.isEmpty())
+            return(null);
+        Combatant a = ourSide(me, myIp);
+        Combatant b = ourSide(me, 0);
+        a.penetrable = true;
+        b.penetrable = true;
+        for(int c = 0; c < 4; c++) {
+            if(foeOpen[c] > 0)
+                b.open(c, foeOpen[c]);
+        }
+        FoeModel model = FoeModel.fromDeck(theirs, b, a.defenceWeight());
+        List<Optimizer.Plan> front = Optimizer.search(a, b, deck, model, beam, horizon);
+        Advisor.Advice adv = Advisor.next(a, b, deck, model, Advisor.Aim.FASTEST, 0, beam, horizon);
+        if((adv == null) || (adv.move == null) || (adv.plan == null))
+            return(null);
+        return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,
+                           front.size(), stamp + "/seen" + theirs.size()));
     }
 
     /**
