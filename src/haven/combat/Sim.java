@@ -176,6 +176,15 @@ public final class Sim {
              * matchup is asked. */
             grievous = Math.min(dealt, Math.max(0, target.hp)) * m.grievous;
             target.hp -= dealt;
+            /* AND THE WOUND IS TAKEN, where the pool is known. Grievous damage comes off the
+             * hard hitpoints, and soft hitpoints can never stand above what is left of them -
+             * which is how a wound shortens every later fight, not only this one. Unknown
+             * (NaN) leaves both untouched, so a creature fight is unchanged. */
+            if(!Double.isNaN(target.hhp)) {
+                target.hhp -= grievous;
+                if(target.hp > target.hhp)
+                    target.hp = target.hhp;
+            }
         }
 
         return(new double[] {raw, dealt, grievous});

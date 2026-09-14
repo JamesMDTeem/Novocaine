@@ -46,13 +46,35 @@ public final class Optimizer {
         public final boolean killed;
         /** What the opponent had left when we stopped. */
         public final double foeHp;
+        /**
+         * The hard hitpoints this plan takes off the opponents - the lasting wound, as
+         * opposed to the soft hitpoints a fight knocks down. Zero for a plan with no
+         * grievous card in it.
+         */
+        public final double wounds;
+        /**
+         * What is left of the opponents' HARD hitpoints, summed over those whose pool is
+         * known, or NaN when no opponent's is. Against a creature it is NaN; against a
+         * person it says how close the plan came to more than a knockdown.
+         */
+        public final double foeHhp;
+        /** Every opponent whose hard pool is known ended with none of it - a kill, not a knockdown. */
+        public final boolean lethal;
 
         Plan(List<Move> moves, long ticks, double hpLost, boolean killed, double foeHp) {
+            this(moves, ticks, hpLost, killed, foeHp, 0, Double.NaN, false);
+        }
+
+        Plan(List<Move> moves, long ticks, double hpLost, boolean killed, double foeHp,
+             double wounds, double foeHhp, boolean lethal) {
             this.moves = Collections.unmodifiableList(new ArrayList<Move>(moves));
             this.ticks = ticks;
             this.hpLost = hpLost;
             this.killed = killed;
             this.foeHp = foeHp;
+            this.wounds = wounds;
+            this.foeHhp = foeHhp;
+            this.lethal = lethal;
         }
 
         public String toString() {
@@ -135,11 +157,14 @@ public final class Optimizer {
          */
         final int[] myIp;
         final double hpLost;
+        /** Hard hitpoints taken off the opponents along this line. See Plan.wounds. */
+        final double wounds;
 
         Node(Combatant me, Combatant[] foes, List<Move> path, long tick, long[] foeNext,
-             double hpLost, int[] foeActs, int[][] foeThrown, int[] myIp) {
+             double hpLost, int[] foeActs, int[][] foeThrown, int[] myIp, double wounds) {
             this.me = me;
             this.myIp = myIp;
+            this.wounds = wounds;
             this.foes = foes;
             this.path = path;
             this.tick = tick;
@@ -167,6 +192,25 @@ public final class Optimizer {
             for(Combatant f : foes)
                 hp += Math.max(0, f.hp);
             return(hp);
+        }
+
+        /** Hard hitpoints left over the opponents whose pool is known, or NaN if none is. */
+        double foeHhp() {
+            double h = 0;
+            boolean any = false;
+            for(Combatant f : foes) {
+                if(Double.isNaN(f.hhp))
+                    continue;
+                any = true;
+                h += Math.max(0, f.hhp);
+            }
+            return(any ? h : Double.NaN);
+        }
+
+        Plan plan(boolean killed) {
+            double h = foeHhp();
+            return(new Plan(path, tick, hpLost, killed, foeHp(), wounds, h,
+                            !Double.isNaN(h) && (h <= 0)));
         }
     }
 
@@ -262,7 +306,7 @@ public final class Optimizer {
         for(int i = 0; i < foes.length; i++)
             ip0[i] = ((myIp0 != null) && (myIp0.length == foes.length)) ? myIp0[i] : me.ip;
         live.add(new Node(me.copy(), f0, new ArrayList<Move>(), 0, next0, 0,
-                          new int[foes.length], thrown0, ip0));
+                          new int[foes.length], thrown0, ip0, 0));
         List<Plan> done = new ArrayList<Plan>();
 
         while(!live.isEmpty()) {
@@ -273,9 +317,9 @@ public final class Optimizer {
                     if(s == null)
                         continue;
                     if(!s.anyAlive()) {
-                        done.add(new Plan(s.path, s.tick, s.hpLost, true, s.foeHp()));
+                        done.add(s.plan(true));
                     } else if(!s.me.alive() || (s.tick >= maxTicks)) {
-                        done.add(new Plan(s.path, s.tick, s.hpLost, false, s.foeHp()));
+                        done.add(s.plan(false));
                     } else {
                         next.add(s);
                     }
@@ -403,6 +447,7 @@ public final class Optimizer {
         long tick = n.tick;
         double hpLost = n.hpLost;
         int[] myIp = n.myIp.clone();
+        double wounds = n.wounds;
 
         /* Wait until we may act, and let the opponents act on their own clocks meanwhile.
          * A long cooldown is not merely slow, it is a window they get to swing in, and a
@@ -475,7 +520,8 @@ public final class Optimizer {
          * So the node comes back with the path it arrived with - the move was never thrown
          * - and the caller records it as a plan that did not kill. */
         if(!me.alive())
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp));
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp,
+                            wounds));
 
         int main = -1;
         for(int i = 0; i < foes.length; i++) {
@@ -485,7 +531,8 @@ public final class Optimizer {
             }
         }
         if(main < 0)
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp));
+            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp,
+                            wounds));
 
         Sim sim = new Sim(me, foes[main]);
         sim.advanceTo(tick);
@@ -496,6 +543,7 @@ public final class Optimizer {
         if(!r.ok)
             return(null);
         myIp[main] = me.ip;
+        wounds += r.grievous;
         /* AND EVERYONE ELSE IT REACHES. Three cards hit more than the one in front of us -
          * see Move.targets - and what they do to the rest is the reason to hold one: the
          * damage, and openings that are still standing on the next animal when this one
@@ -549,13 +597,15 @@ public final class Optimizer {
                  * the model has nothing that distinguishes them. */
                 if(positions && !(foes[i].distance <= sweep))
                     continue;
-                sim.splash(me, m, foes[i], idx, (idx <= whole) ? 1.0 : part);
+                Sim.Result sr = sim.splash(me, m, foes[i], idx, (idx <= whole) ? 1.0 : part);
+                if(sr.ok)
+                    wounds += sr.grievous;
                 idx++;
             }
         }
         List<Move> path = new ArrayList<Move>(n.path);
         path.add(m);
-        return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown, myIp));
+        return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown, myIp, wounds));
     }
 
     /**
@@ -582,8 +632,15 @@ public final class Optimizer {
                     continue;
                 boolean faster = q.ticks <= p.ticks;
                 boolean cheaper = !(q.hpLost > p.hpLost);
-                boolean better = (q.ticks < p.ticks) || (q.hpLost < p.hpLost);
-                if(faster && cheaper && better) {
+                /* AND WOUNDS AT LEAST AS DEEPLY. A plan that is slower or costlier but takes
+                 * more of the opponent's HARD hitpoints is a different answer - the one that
+                 * kills a person rather than knocking them down - so it must not be pruned by
+                 * the two axes that cannot see it. Where no plan wounds, every plan ties on
+                 * this axis and the frontier is exactly the two-axis one it always was. */
+                boolean deeper = q.wounds >= p.wounds - 1e-9;
+                boolean better = (q.ticks < p.ticks) || (q.hpLost < p.hpLost)
+                    || (q.wounds > p.wounds + 1e-9);
+                if(faster && cheaper && deeper && better) {
                     dominated = true;
                     break;
                 }
@@ -597,7 +654,8 @@ public final class Optimizer {
         for(Plan p : out) {
             boolean seen = false;
             for(Plan q : uniq) {
-                if((q.ticks == p.ticks) && (Math.abs(q.hpLost - p.hpLost) < 1e-9)) {
+                if((q.ticks == p.ticks) && (Math.abs(q.hpLost - p.hpLost) < 1e-9)
+                   && (Math.abs(q.wounds - p.wounds) < 1e-9)) {
                     seen = true;
                     break;
                 }

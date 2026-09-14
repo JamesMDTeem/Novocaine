@@ -160,6 +160,50 @@ public class CombatOptimizerCheck {
         check("  six against the first only: the second cannot be Cleaved", control, false);
     }
 
+    /**
+     * A WOUND IS THE HARD POOL, AND A PLAN SAYS HOW MUCH OF IT IT TOOK.
+     *
+     * Known answers by construction. A grievous blow on a target whose hard pool is known
+     * takes from it, and soft hitpoints never stand above what is left. A deck holding a
+     * plain card and a grievous one: the plan the WOUNDING aim picks wounds at least as deeply
+     * as the fastest plan and more than nothing, and a creature with no known pool reports no
+     * hard hitpoints at all rather than a zero that reads as a kill.
+     */
+    static void woundsAreCounted() {
+        System.out.println("\na wound comes off the hard pool, and the plan counts it");
+        Move gouge = Move.of("Gouge").kind(Move.Kind.ATTACK).weight(Move.Weight.WEAPON)
+            .school(Formulas.RED).opens(Formulas.RED, 20).damageShare(0.8).grievous(0.5)
+            .cooldown(20).build();
+        Combatant f = foe(200, 20);
+        f.open(Formulas.RED, 60);
+        f.hhp = 120;
+        /* One fighter object for both the Sim and the swing: Sim.use finds the target as
+         * "the other one", and a second me() would be neither of its two combatants. */
+        Combatant swinger = me();
+        Sim.Result r = new Sim(swinger, f).use(swinger, gouge);
+        check("a grievous blow takes hard hitpoints", f.hhp < 120, true);
+        check("  by exactly the grievous share of what it dealt",
+              Math.abs((120 - f.hhp) - r.grievous) < 1e-9, true);
+        check("  and soft hitpoints never stand above what is left", f.hp <= f.hhp, true);
+
+        List<Move> deck = Optimizer.deck(barrage(), gouge);
+        Combatant person = foe(200, 20);
+        person.hhp = 200;
+        FoeModel still = FoeModel.inert();
+        Advisor.Advice fast = Advisor.next(me(), person, deck, still, Advisor.Aim.FASTEST,
+                                           0, 60, 2500);
+        Advisor.Advice deep = Advisor.next(me(), person, deck, still, Advisor.Aim.WOUNDING,
+                                           0, 60, 2500);
+        check("the wounding aim finds a plan", deep.plan != null, true);
+        check("  that wounds more than nothing", (deep.plan != null) && (deep.plan.wounds > 0), true);
+        check("  and at least as deeply as the fastest plan",
+              (deep.plan != null) && (fast.plan != null)
+              && (deep.plan.wounds >= fast.plan.wounds - 1e-9), true);
+        List<Optimizer.Plan> beast = Optimizer.search(me(), foe(200, 20), deck, still, 60, 2500);
+        check("a creature with no known pool reports none, not zero",
+              !beast.isEmpty() && Double.isNaN(beast.get(0).foeHhp) && !beast.get(0).lethal, true);
+    }
+
     /** Hitpoints between the fastest plan on a frontier and the cheapest. */
     static double spread(List<Optimizer.Plan> f) {
         if(f.size() < 2)
@@ -179,6 +223,7 @@ public class CombatOptimizerCheck {
         clocksAreSeparate();
         theCardThatGoesLast();
         initiativeIsPerRelation();
+        woundsAreCounted();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);

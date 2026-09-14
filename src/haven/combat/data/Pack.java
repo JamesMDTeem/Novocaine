@@ -1396,6 +1396,9 @@ public final class Pack {
              * be tested turned out immune. Against a person the weapon's penetration is
              * exactly what it says it is. */
             c.penetrable = true;
+            /* The hard pool, which the character sheet reports and grievous damage eats. */
+            if(hhp > 0)
+                c.hhp = hhp;
             return(c);
         }
     }

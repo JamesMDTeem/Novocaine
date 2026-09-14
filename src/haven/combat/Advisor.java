@@ -31,7 +31,13 @@ public final class Advisor {
         /** Take the least damage, however long it takes. */
         SAFEST,
         /** Kill soonest among the plans that stay inside a hitpoint budget. */
-        BUDGET
+        BUDGET,
+        /**
+         * Leave the deepest lasting wound among the plans that win - the hard hitpoints a
+         * plan takes, not the soft ones every win knocks down. Against a person it is the
+         * difference between a knockdown and a kill; ties go to the quicker plan.
+         */
+        WOUNDING
     }
 
     /**
@@ -97,7 +103,8 @@ public final class Advisor {
             any |= (f != null) && (f.hp > 0);
         if(!any)
             return(new Advice(null, null, "it is already dead"));
-        List<Optimizer.Plan> front = Optimizer.search(me, foes, deck, models, beam, horizon);
+        List<Optimizer.Plan> front = Optimizer.search(me, foes, deck, models, beam, horizon,
+                                                      myIp);
         if(front.isEmpty())
             return(new Advice(null, null, "no plan reached the horizon"));
         Optimizer.Plan pick = choose(front, aim, budget);
@@ -131,7 +138,11 @@ public final class Advisor {
                 best = p;
                 continue;
             }
-            if(aim == Aim.SAFEST) {
+            if(aim == Aim.WOUNDING) {
+                if((p.wounds > best.wounds + 1e-9)
+                   || ((Math.abs(p.wounds - best.wounds) <= 1e-9) && (p.ticks < best.ticks)))
+                    best = p;
+            } else if(aim == Aim.SAFEST) {
                 /* Least damage, and among equals the quicker. A NaN cost is unknown, not
                  * free, so it never beats a measured one. */
                 if(less(p.hpLost, best.hpLost)

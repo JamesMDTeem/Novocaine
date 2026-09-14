@@ -50,6 +50,17 @@ public final class Combatant {
     public double hp, maxHp;
 
     /**
+     * HARD hitpoints - the pool a grievous blow takes from - or NaN where nobody knows it.
+     *
+     * Soft hitpoints are what a fight knocks down; hard hitpoints are the lasting wound, and
+     * soft can never stand above hard. A creature's pool is not measured, so it stays NaN and
+     * nothing about a creature fight changes. A player's is the `hhp` the character sheet
+     * reports, and against a person it is the difference between knocking them down and
+     * leaving them hurt.
+     */
+    public double hhp = Double.NaN;
+
+    /**
      * The combat skill this combatant BLOCKS with, and the multiplier its stance puts on it.
      *
      * Split, because only the skill half equalizes. Two skills within a factor of two are
@@ -267,7 +278,7 @@ public final class Combatant {
         c.weaponRange = weaponRange; c.distance = distance;
         c.armHard = armHard; c.armSoft = armSoft;
         c.penetrable = penetrable;
-        c.hp = hp; c.maxHp = maxHp;
+        c.hp = hp; c.maxHp = maxHp; c.hhp = hhp;
         c.blockSkill = blockSkill; c.blockMult = blockMult;
         c.attackMult = attackMult;
         c.ip = ip;

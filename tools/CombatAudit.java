@@ -198,7 +198,7 @@ public class CombatAudit {
             "name", "str", "agi", "unarmed", "melee",
             "weaponDamage", "weaponQl", "weaponPen", "armHard", "armSoft", "penetrable",
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
-            "readyAt", "whenAttacked", "weaponRange", "distance",
+            "readyAt", "whenAttacked", "weaponRange", "distance", "hhp",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
@@ -550,6 +550,15 @@ public class CombatAudit {
         live("a killing blow is capped at the health it actually took",
              throwAt(base().grievous(0.5).build(), fighter(), open(90)).grievous,
              throwAt(base().grievous(0.5).build(), fighter(), dying).grievous, "Sim.use");
+
+        /* A wound comes off the hard pool, where the pool is known. */
+        Combatant whole = open(90);
+        whole.hhp = 300;
+        Combatant cut = open(90);
+        cut.hhp = 300;
+        throwAt(base().build(), fighter(), whole);
+        throwAt(base().grievous(0.5).build(), fighter(), cut);
+        live("a grievous blow takes hard hitpoints", whole.hhp, cut.hhp, "Sim.strike");
 
         /* The defender's block weight is the other half of every opening. */
         Combatant soft = fighter();
