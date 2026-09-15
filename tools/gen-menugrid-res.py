@@ -241,6 +241,20 @@ build("NurglingImports/AlchemyHelper.res",
       "your mapper's pooled Alchemy Book knowledge. Your inventory and belt always count, and "
       "every container you open keeps counting after you close it.")
 
+# The combat recommendation's toggle - the checkbox in Combat Settings is the state, as above.
+build("NurglingImports/CombatAdvice.res",
+      "customclient/menugrid/NurglingImports", "Combat Move Advice", 0,
+      ["@", "NurglingImports", "CombatAdvice"],
+      "Rings the combat move the combat model would use next, re-planned from the fight as it "
+      "stands: any opponents, any deck on your bar, restorations when your health runs short.")
+
+# The auto-fighter's toggle. Off at every client start; the button is how it is switched on.
+build("NurglingImports/AutoFighter.res",
+      "customclient/menugrid/NurglingImports", "Auto-Fighter", 0,
+      ["@", "NurglingImports", "AutoFighter"],
+      "Plays the recommended combat move for you in fights you are already in. It never starts a "
+      "fight, picks a target or moves you, and leaves alone anyone you have offered peace to.")
+
 build("NurglingImports/Schedules.res",
       "customclient/menugrid/NurglingImports", "Schedules", 0,
       ["@", "NurglingImports", "SchedulesWindow"],

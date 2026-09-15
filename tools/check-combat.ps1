@@ -428,6 +428,10 @@ $specs = @(
     [pscustomobject]@{ Kind = 'java'; Name = 'CombatAudit'; Section = $null; MainClass = 'CombatAudit'; SourcePath = 'src';
         Sources = ($model + @('src\haven\combat\FoeModel.java', 'src\haven\combat\Duel.java',
             'src\haven\combat\Optimizer.java', 'src\haven\combat\Advisor.java', 'tools\CombatAudit.java')) }
+    # The live advice answers in any fight - unknown creatures, players, crowds, any bar - so
+    # each of those is a case, against the real pack on the classpath.
+    [pscustomobject]@{ Kind = 'java'; Name = 'LiveAdviceCheck'; Section = 'the live advice, in any fight'; MainClass = 'LiveAdviceCheck'; SourcePath = 'src';
+        Sources = @('src\haven\automated\combat\Prediction.java', 'tools\LiveAdviceCheck.java') }
     [pscustomobject]@{ Kind = 'py'; Name = 'model_check.py'; Section = 'the Python follower, against the golden vectors'; Script = 'tools\combat\model_check.py' }
     [pscustomobject]@{ Kind = 'vec'; Name = 'golden-vectors-fresh'; Section = 'the golden vectors match the Java they were generated from' }
     [pscustomobject]@{ Kind = 'py'; Name = 'fightlog_check.py'; Section = 'what a log is allowed to measure'; Script = 'tools\combat\fightlog_check.py' }

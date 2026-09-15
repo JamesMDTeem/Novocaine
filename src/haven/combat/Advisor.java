@@ -37,7 +37,16 @@ public final class Advisor {
          * plan takes, not the soft ones every win knocks down. Against a person it is the
          * difference between a knockdown and a kill; ties go to the quicker plan.
          */
-        WOUNDING
+        WOUNDING,
+        /**
+         * Kill soonest while staying on our feet: the fastest plan whose damage fits the
+         * budget - the hitpoints we can spare - and, when no plan does, the one that costs
+         * least. This is the aim that reaches for a restoration: with hitpoints to spare it
+         * is FASTEST, and as they run short the plans that close our openings are the only
+         * ones left inside the budget. A NaN cost is an opponent whose damage is unknown, and
+         * such a plan is judged on its speed alone.
+         */
+        SURVIVE
     }
 
     /**
@@ -130,6 +139,8 @@ public final class Advisor {
                 kills.add(p);
         }
         List<Optimizer.Plan> pool = kills.isEmpty() ? front : kills;
+        if(aim == Aim.SURVIVE)
+            return(survive(pool, budget));
         Optimizer.Plan best = null;
         for(Optimizer.Plan p : pool) {
             if((aim == Aim.BUDGET) && !(p.hpLost <= budget))
@@ -155,6 +166,27 @@ public final class Advisor {
             }
         }
         return(best);
+    }
+
+    /**
+     * The fastest plan inside the budget, else the cheapest - see {@link Aim#SURVIVE}.
+     *
+     * Two passes over the same pool rather than a filter and then a fallback search, so the
+     * cheapest plan is known whether or not anything fits.
+     */
+    private static Optimizer.Plan survive(List<Optimizer.Plan> pool, double budget) {
+        Optimizer.Plan fast = null, safe = null;
+        for(Optimizer.Plan p : pool) {
+            if(Double.isNaN(p.hpLost) || (p.hpLost <= budget)) {
+                if((fast == null) || (p.ticks < fast.ticks)
+                   || ((p.ticks == fast.ticks) && less(p.hpLost, fast.hpLost)))
+                    fast = p;
+            }
+            if((safe == null) || less(p.hpLost, safe.hpLost)
+               || (eq(p.hpLost, safe.hpLost) && (p.ticks < safe.ticks)))
+                safe = p;
+        }
+        return((fast != null) ? fast : safe);
     }
 
     /** NaN is unknown and never wins, which is the difference between "free" and "unmeasured". */

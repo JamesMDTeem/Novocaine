@@ -180,6 +180,62 @@ public class Fightsess extends Widget {
         return damagePredictionTexCache.computeIfAbsent(damageValue, key -> new TexI(Utils.outline2(damageFoundry.render(key, Color.RED).img, Color.BLACK, true)));
 	}
 
+	/* The older strength-and-openings estimate, drawn paler with a ~ so it cannot be mistaken
+	 * for the combat model's number, which accounts for defence, armour, stance and card level. */
+	private static final Map<String, Tex> legacyDamageTexCache = new HashMap<>();
+	private static final Color legacyDamageColor = new Color(200, 120, 120);
+
+	private static Tex getLegacyDamagePredictionTexture(String damageValue) {
+		return legacyDamageTexCache.computeIfAbsent(damageValue, key -> new TexI(Utils.outline2(damageFoundry.render(key, legacyDamageColor).img, Color.BLACK, true)));
+	}
+
+	/* "Ability ants" around the card the combat model would use next: dashes that march
+	 * clockwise round the icon, black under green so they read on any card art. Dimmer while
+	 * our cooldown is still running, since the card cannot be used yet. */
+	private static final Color adviceAntsColor = new Color(60, 255, 90);
+	/* Amber when the plan stood a typical creature in for one the combat data does not know. */
+	private static final Color adviceAntsGuessColor = new Color(255, 190, 40);
+
+	private static void drawMarchingAnts(GOut g, Coord ul, Coord sz, double now, boolean waiting, Color antsColor) {
+		int pad = UI.scale(3);
+		Coord a = ul.sub(pad, pad);
+		int w = sz.x + (pad * 2), h = sz.y + (pad * 2);
+		int per = 2 * (w + h);
+		int dash = UI.scale(6), period = dash + UI.scale(4);
+		int shift = (int)((now * UI.scale(24)) % period);
+		int alpha = waiting ? 150 : 255;
+		for(int pass = 0; pass < 2; pass++) {
+			if(pass == 0)
+				g.chcolor(0, 0, 0, alpha);
+			else
+				g.chcolor(antsColor.getRed(), antsColor.getGreen(), antsColor.getBlue(), alpha);
+			double lw = (pass == 0) ? UI.scale(4) : UI.scale(2);
+			for(int s = shift - period; s < per; s += period)
+				antsSegment(g, a, w, h, Math.max(0, s), Math.min(per, s + dash), lw);
+		}
+		g.chcolor();
+	}
+
+	/* One dash, from d0 to d1 along the perimeter, split at the corners it crosses. */
+	private static void antsSegment(GOut g, Coord a, int w, int h, int d0, int d1, double lw) {
+		int[] edges = {0, w, w + h, (2 * w) + h, 2 * (w + h)};
+		for(int e = 0; e < 4; e++) {
+			int s = Math.max(d0, edges[e]), t = Math.min(d1, edges[e + 1]);
+			if(s < t)
+				g.line(perimeterPoint(a, w, h, s), perimeterPoint(a, w, h, t), lw);
+		}
+	}
+
+	private static Coord perimeterPoint(Coord a, int w, int h, int d) {
+		if(d <= w)
+			return(a.add(d, 0));
+		if(d <= (w + h))
+			return(a.add(w, d - w));
+		if(d <= ((2 * w) + h))
+			return(a.add(w - (d - w - h), h));
+		return(a.add(0, h - (d - (2 * w) - h)));
+	}
+
 	private void renderMyOpeningValue(GOut g, int ameteri, Coord position, Coord imageSize) {
 		if (ameteri > 0) {
 			Tex tex = openingValueTexCache[ameteri];
@@ -670,6 +726,8 @@ public class Fightsess extends Widget {
 	    } catch(Loading l) {
 	    }
 	}
+	haven.automated.combat.LiveAdvice.Now advice = (fv.current == null) ? null
+		: haven.automated.combat.LiveAdvice.get(fv.current.gobid);
 	for(int i = 0; i < actions.length; i++) {
 	    Coord ca = new Coord(x - 16, bottom - UI.scale(150)).add(actc(i)) ;
 	    Action act = actions[i];
@@ -696,7 +754,15 @@ public class Fightsess extends Widget {
 			if (OptWnd.showDamagePredictUICheckBox.a) {
 				String name = act.res.get().basename();
 				String damage = "";
-				if(Config.MapAttInfo.containsKey(name)) {	//Exists?
+				/* The combat model's number where it has one: card level, stance and weapon
+				 * against this target's openings, defence and armour. Non-attacks price at
+				 * zero and are left blank rather than labelled "0". */
+				boolean fromModel = false;
+				Double modelDealt = (advice == null) ? null : advice.dealt.get(res.name);
+				if((modelDealt != null) && (Config.MapAttInfo.containsKey(name) || (modelDealt >= 0.5))) {
+					damage = Integer.toString((int)Math.round(modelDealt));
+					fromModel = true;
+				} else if(Config.MapAttInfo.containsKey(name)) {	//Exists?
 					Config.AttackInfo attack = Config.MapAttInfo.get(name);
 					double openingMul;
 					double opening;
@@ -734,7 +800,7 @@ public class Fightsess extends Widget {
 				}
 				if(!damage.isEmpty()) {
 					infoY += 12;
-					Tex damageTex = getDamagePredictionTexture(damage);
+					Tex damageTex = fromModel ? getDamagePredictionTexture(damage) : getLegacyDamagePredictionTexture("~" + damage);
 					g.aimage(damageTex, ca.add((int)(img.sz().x/2), img.sz().y + UI.scale(infoY)), 0.5, 0.5);
 				}
 			}
@@ -745,6 +811,10 @@ public class Fightsess extends Widget {
 		    } else {
 			g.image(actframe, ca.sub(actframeo));
 		    }
+		    if((advice != null) && (advice.moveRes != null) && OptWnd.combatMoveAdviceCheckBox.a
+		       && res.name.equals(advice.moveRes))
+			drawMarchingAnts(g, ca, img.sz(), now, now < fv.atkct,
+					 (advice.proxied > 0) ? adviceAntsGuessColor : adviceAntsColor);
 		}
 	    } catch(Loading l) {}
 	}

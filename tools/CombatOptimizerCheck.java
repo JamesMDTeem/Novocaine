@@ -224,6 +224,7 @@ public class CombatOptimizerCheck {
         theCardThatGoesLast();
         initiativeIsPerRelation();
         woundsAreCounted();
+        survive();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -362,6 +363,36 @@ public class CombatOptimizerCheck {
     static long best(List<Optimizer.Plan> front) {
         Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.FASTEST, Double.MAX_VALUE);
         return((p == null) ? Long.MAX_VALUE : p.ticks);
+    }
+
+    /**
+     * SURVIVE: the fastest kill that fits the hitpoints we can spare, else the cheapest.
+     *
+     * The frontier of the one-deck defence case above has a fastest line that never dodges
+     * and a cheapest that does, so every answer here is known before the search runs: a
+     * budget above the fastest line's cost gives the fastest line, one below it must give a
+     * line that defends, and one below even the cheapest gives the cheapest.
+     */
+    static void survive() {
+        System.out.println("\nsurviving: the fastest kill that fits the hitpoints we can spare");
+        double[] press = {14, 0, 0, 0};
+        FoeModel steady = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        List<Move> deck = Optimizer.deck(barrage(), quickDodge());
+        Combatant tough = me();
+        tough.hp = tough.maxHp = 900;
+        List<Optimizer.Plan> front = Optimizer.search(tough, foe(400, 20), deck, steady, 60, 2500);
+        Optimizer.Plan fastest = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
+        Optimizer.Plan cheapest = Advisor.choose(front, Advisor.Aim.SAFEST, 0);
+        check("the case has a real trade to make", cheapest.hpLost < fastest.hpLost, true);
+        check("with hitpoints to spare it is the fastest plan",
+              Advisor.choose(front, Advisor.Aim.SURVIVE, fastest.hpLost + 1) == fastest, true);
+        Optimizer.Plan tight = Advisor.choose(front, Advisor.Aim.SURVIVE, fastest.hpLost - 1);
+        check("short of them it takes a plan that defends", dodges(tight) > 0, true);
+        check("  and that plan fits the budget", tight.hpLost <= (fastest.hpLost - 1), true);
+        check("with nothing inside the budget it is the cheapest plan",
+              Advisor.choose(front, Advisor.Aim.SURVIVE, cheapest.hpLost - 1) == cheapest, true);
+        System.out.printf("      fastest %.1f hp / %d ticks, tight budget %.1f hp / %d ticks, cheapest %.1f hp%n",
+                          fastest.hpLost, fastest.ticks, tight.hpLost, tight.ticks, cheapest.hpLost);
     }
 
     static Combatant me() {

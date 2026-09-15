@@ -43,6 +43,7 @@ public class IMeter extends LayerMeter {
 	private Tex tipTex;
 	public static String characterCurrentHealth;
 	public static double characterSoftHealthPercent;
+	public static volatile double characterShp = Double.NaN, characterMhp = Double.NaN;
 	private boolean ponyAlarmPlayed = false;
 	private boolean energyAlarmTriggered = false;
 	private boolean dangerEnergyAlarmTriggered = false;
@@ -172,6 +173,15 @@ public class IMeter extends LayerMeter {
 			String value = ((String)args[0]).split(":")[1].replaceAll("(\\(.+\\))", "");
 			if (value.contains("/")) { // ND: this part removes the HHP, so I only show the SHP and MHP
 				String[] hps = value.split("/");
+				/* Soft and maximum hitpoints as numbers - the live combat advice budgets the
+				 * damage a plan may cost against them. The last value is the maximum either way. */
+				try {
+					characterShp = Double.parseDouble(hps[0].trim());
+					characterMhp = Double.parseDouble(hps[hps.length - 1].trim());
+				} catch (NumberFormatException e) {
+					characterShp = Double.NaN;
+					characterMhp = Double.NaN;
+				}
 				if (hps.length == 4) { // ND: Sparring adds a 4th value
 					sparring = true;
 					String SHP = hps[0].trim();

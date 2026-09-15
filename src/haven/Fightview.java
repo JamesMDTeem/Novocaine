@@ -588,6 +588,12 @@ public class Fightview extends Widget {
             }
         } catch (Exception ignored) {}
 	}
+	/* The live recommendation and the auto-fighter read the fight from here, not from the
+	 * recorder, so neither needs Record Combat Telemetry. Both swallow their own failures. */
+	if(ui != null) {
+	    haven.automated.combat.LiveAdvice.observe(ui.gui, this);
+	    haven.automated.combat.AutoFighter.tick(ui.gui);
+	}
     }
 
     public void destroy() {

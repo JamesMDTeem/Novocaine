@@ -94,6 +94,16 @@ public class GobDamageInfo extends GobInfo {
         return gobDamage.containsKey(gob.id);
     }
 
+    /**
+     * Soft hitpoints drawn as taken by this gob so far, from anyone, or 0 when none were. The
+     * live combat advice takes it off a creature's health, so a half-dead wolf is planned as
+     * one. Cleared with the rest of the damage info.
+     */
+    public static int shpTaken(long gobid) {
+        DamageVO d = gobDamage.get(gobid);
+        return (d == null) ? 0 : d.shp;
+    }
+
     public static void clearAllDamage(GameUI gui) {
         if (gui != null)
             gui.ui.sess.glob.oc.gobAction(Gob::clearDmg);

@@ -1373,6 +1373,8 @@ public class OptWnd extends Window {
 
 	public static CheckBox showCombatHotkeysUICheckBox;
 	public static CheckBox showDamagePredictUICheckBox;
+	public static CheckBox combatMoveAdviceCheckBox;
+	public static CheckBox combatAutoFightCheckBox;
 	public static CheckBox combatTelemetryCheckBox;
 	public static CheckBox singleRowCombatMovesCheckBox;
 	public static CheckBox includeHHPTextHealthBarCheckBox;
@@ -1526,6 +1528,18 @@ public class OptWnd extends Window {
 				}
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
+			leftColumn = add(combatMoveAdviceCheckBox = new CheckBox("Recommend Next Combat Move (Bottom Panel)"){
+				{a = Utils.getprefb("combatMoveAdviceUI", true);}
+				public void changed(boolean val) {
+					Utils.setprefb("combatMoveAdviceUI", val);
+				}
+			}, leftColumn.pos("bl").adds(0, 2));
+			combatMoveAdviceCheckBox.tooltip = combatMoveAdviceTooltip;
+			/* Deliberately not saved: the auto-fighter is off every time the client starts. */
+			leftColumn = add(combatAutoFightCheckBox = new CheckBox("Auto-Fighter (plays the recommended move)"){
+				{a = false;}
+			}, leftColumn.pos("bl").adds(0, 2));
+			combatAutoFightCheckBox.tooltip = combatAutoFightTooltip;
 			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
 				{a = Utils.getprefb("combatTelemetry", true);}
 				public void changed(boolean val) {
@@ -5636,10 +5650,28 @@ public class OptWnd extends Window {
 	private static final Object singleRowCombatMovesTooltip = RichText.render("This makes the Bottom Panel show the combat moves in one row, rather than two.", UI.scale(300));
 	private static final Object showDamagePredictUITooltip = RichText.render("This makes the Combat Moves that can deal damage show how much damage they can potentially do, when used." +
 			"\n" +
-			"\nThis is calculated depending on the following:" +
+			"\n$col[185,185,185]{A plain number is the combat model's prediction: your card level, stance and weapon against your current target's openings, defence and armour (priced against the toughest individual of that creature on record).}" +
+			"\n" +
+			"\nA number starting with $col[218,163,0]{~} is the older estimate, used when the model has no answer (players, creatures not in the combat data). It is calculated depending on the following:" +
 			"\n$col[185,185,185]{- How high your current target's $col[218,163,0]{Openings} are (depending on the openings the combat move applies to)" +
 			"\n- How much total $col[218,163,0]{Strength} your character has" +
 			"\n- How much $col[218,163,0]{Damage} your currently equipped $col[218,163,0]{Weapon} has (if the move uses the weapon)}", UI.scale(320));
+	private static final Object combatMoveAdviceTooltip = RichText.render("Draws a moving $col[60,255,90]{green dashed border} around the combat move the combat model would use next, re-planned from the fight as it currently stands." +
+			"\n" +
+			"\n$col[185,185,185]{- It plans against your target and the nearest others on you (up to four in all), from the cards on your bar - whatever deck that is - with the initiative you hold against each one, your own openings, and the damage each opponent has already taken.}" +
+			"\n$col[185,185,185]{- It picks the fastest kill that keeps 30% of your health in hand. When that kill would cost more, it picks the plan that takes the least damage, which is when it recommends a restoration.}" +
+			"\n$col[185,185,185]{- A creature missing from the combat data is planned as a typical one, and the border turns} $col[255,190,40]{amber} $col[185,185,185]{when that happened. Against players it plans from the cards you have seen them use (or your own), assuming their stats match yours.}" +
+			"\n$col[185,185,185]{- The border is dimmer while your cooldown is still running.}" +
+			"\n" +
+			"\n$col[218,163,0]{Action Button:} $col[185,185,185]{Menu grid → Novocaine → Combat Move Advice.}", UI.scale(320));
+	private static final Object combatAutoFightTooltip = RichText.render("Throws the recommended combat move for you, in fights you are already in." +
+			"\n" +
+			"\n$col[185,185,185]{- It uses whatever the recommendation shows, including restorations when your health is running short.}" +
+			"\n$col[185,185,185]{- It never starts a fight, picks a target, moves you, or leaves: you aggro and aim, it plays the cards against your current target.}" +
+			"\n$col[185,185,185]{- It does not attack an opponent you have offered peace to.}" +
+			"\n$col[185,185,185]{- Always off when the client starts.}" +
+			"\n" +
+			"\n$col[218,163,0]{Action Button:} $col[185,185,185]{Menu grid → Novocaine → Auto-Fighter.}", UI.scale(320));
 	private static final Object damageInfoClearTooltip = RichText.render("Clears all damage info." +
 			"\n$col[218,163,0]{Action Button:} $col[185,185,185]{This setting can also be turned on/off using an action button from the menu grid (Custom Client Extras → Toggles).}", UI.scale(320));
 	private static final Object onlyShowOpeningsAbovePercentageCombatInfoTooltip = RichText.render("Only show the combat info openings if at least one of them is above the set number. If one of them is above that, show all of them." +

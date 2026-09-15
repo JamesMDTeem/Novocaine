@@ -224,7 +224,7 @@ public final class CombatRecorder {
      * multiplies every attack weight. Reading the dump file instead would mean a
      * prediction depended on a probe having fired recently enough.
      */
-    private static Map<String, Integer> readDeck(haven.GameUI gui) {
+    static Map<String, Integer> readDeck(haven.GameUI gui) {
         Map<String, Integer> out = new java.util.LinkedHashMap<String, Integer>();
         try {
             if((gui == null) || (gui.chrwdg == null) || (gui.chrwdg.fight == null))
@@ -363,20 +363,48 @@ public final class CombatRecorder {
             curGui = gui;
             lastGear = snapshotGear(eq);
             lastWpn = snapshotWeapon(eq);
-            me = Prediction.me(comp, arm[0], arm[1],
-                               new String[] {hands[0], hands[2]},
-                               new double[] {
-                                   (hands[1] == null) ? 0 : Double.parseDouble(hands[1]),
-                                   (hands[3] == null) ? 0 : Double.parseDouble(hands[3])},
-                               readDeck(gui), wstats, readWorn(eq));
-            /* Shield Up's 2.5x block weight falls to 0.5x without a shield, and only the
-             * model can apply that - see Prediction.applyStance. Read once at fight start:
-             * no corpus fight swaps a shield mid-fight (0 res=null gear-removal rows, N7 sec 4). */
-            if(me != null)
-                me.shield = hasShield(eq);
+            me = meOf(comp, arm, hands, wstats, gui, eq);
         } catch(Exception e) {
             /* a header we could not build is still better than a lost fight */
         }
+    }
+
+    /**
+     * Our own side, read fresh from the character sheet and the equipment - the assembly start()
+     * makes for the log, without a log. The live advice and the auto-fighter build theirs here, so
+     * neither needs Record Combat Telemetry on. Null when anything needed cannot be read yet.
+     */
+    static Prediction.Me buildMe(haven.GameUI gui) {
+        try {
+            if((gui == null) || (gui.ui == null) || (gui.ui.sess == null))
+                return(null);
+            Equipory eq = gui.getequipory();
+            int[] arm = readGear(eq, new ArrayList<String>());
+            List<Map<String, Double>> wstats = new ArrayList<Map<String, Double>>();
+            for(int i = 6; i <= 7; i++)
+                wstats.add(readWeaponStats(((eq == null) || (i >= eq.slots.length))
+                                           ? null : eq.slots[i]));
+            return(meOf(readAttrs(gui.ui.sess.glob, true), arm, readHands(eq), wstats, gui, eq));
+        } catch(Exception e) {
+            return(null);
+        }
+    }
+
+    private static Prediction.Me meOf(SortedMap<String, Integer> comp, int[] arm, String[] hands,
+                                      List<Map<String, Double>> wstats, haven.GameUI gui,
+                                      Equipory eq) {
+        Prediction.Me m = Prediction.me(comp, arm[0], arm[1],
+                                        new String[] {hands[0], hands[2]},
+                                        new double[] {
+                                            (hands[1] == null) ? 0 : Double.parseDouble(hands[1]),
+                                            (hands[3] == null) ? 0 : Double.parseDouble(hands[3])},
+                                        readDeck(gui), wstats, readWorn(eq));
+        /* Shield Up's 2.5x block weight falls to 0.5x without a shield, and only the model can
+         * apply that - see Prediction.applyStance. Read once at fight start: no corpus fight
+         * swaps a shield mid-fight (0 res=null gear-removal rows, N7 sec 4). */
+        if(m != null)
+            m.shield = hasShield(eq);
+        return(m);
     }
 
     /** Every attribute the server has sent, sorted so two logs diff cleanly. */

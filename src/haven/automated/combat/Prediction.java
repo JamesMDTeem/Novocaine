@@ -621,6 +621,268 @@ public final class Prediction {
                            front.size(), stamp + "/seen" + theirs.size()));
     }
 
+    /** One opponent as the live client sees it now. The first one handed to adviseLive is our target. */
+    public static final class Seen {
+        public final String res;
+        /** Its openings in percentage points, as the client shows them. */
+        public final int[] open;
+        /** The initiative we hold against it. */
+        public final int myIp;
+        /** How far away it stands, in world units, or NaN. */
+        public final double dist;
+        /** Soft hitpoints already drawn as taken off it, from anyone. */
+        public final double taken;
+        /** For a player, the cards seen from them, or null. */
+        public final Map<String, Integer> seen;
+
+        public Seen(String res, int[] open, int myIp, double dist, double taken,
+                    Map<String, Integer> seen) {
+            this.res = res;
+            this.open = open;
+            this.myIp = myIp;
+            this.dist = dist;
+            this.taken = taken;
+            this.seen = seen;
+        }
+    }
+
+    /** The live answer, and what it had to stand in for to give one. */
+    public static final class Live {
+        /** The card to throw, or null - and then {@link #why} says why not. */
+        public final String moveRes;
+        public final String why;
+        public final long ticks;
+        public final double hpLost, budget;
+        public final boolean killed;
+        /** Opponents planned against, how many of them through a stand-in, and how many were people. */
+        public final int planned, proxied, players;
+
+        Live(String moveRes, String why, long ticks, double hpLost, double budget,
+             boolean killed, int planned, int proxied, int players) {
+            this.moveRes = moveRes;
+            this.why = why;
+            this.ticks = ticks;
+            this.hpLost = hpLost;
+            this.budget = budget;
+            this.killed = killed;
+            this.planned = planned;
+            this.proxied = proxied;
+            this.players = players;
+        }
+
+        static Live none(String why) {
+            return(new Live(null, why, 0, Double.NaN, Double.NaN, false, 0, 0, 0));
+        }
+    }
+
+    /**
+     * The share of our maximum soft hitpoints a live plan keeps in hand.
+     *
+     * A plan may cost what we have above this and no more; when the fastest kill costs more,
+     * a slower plan that closes our openings is thrown instead (Advisor.Aim.SURVIVE). A policy
+     * figure, not a measured one: the model's damage taken is priced against the hardest
+     * individual on record, so the reserve is a margin on a figure that already leans cautious.
+     */
+    public static final double RESERVE = 0.30;
+
+    /**
+     * What to throw now, in ANY fight - the question the live client has to answer.
+     *
+     * {@link #advise} is the audited question and stays exactly as it is: known opponents only,
+     * fastest kill, from the deck at fight start, because its answer is logged and scored against
+     * what a person threw. A recommendation on screen and a bot cannot go quiet whenever the pack
+     * lacks a creature, so this differs in four ways, each stated rather than hidden:
+     *
+     * - AN UNKNOWN CREATURE IS PLANNED AS A STAND-IN, the median creature the pack can simulate by
+     *   hitpoints (see {@link #proxy}). The count comes back in {@link Live#proxied}, so a caller
+     *   can say the answer leaned on one.
+     * - A PLAYER is planned from the cards seen from them, as {@link #adviseAgainstPlayer} does, and
+     *   from our own deck when none have been seen - "someone like us", as before.
+     * - THE DECK IS THE BAR, whatever is on it: each card at the level the fight window holds, or
+     *   the level at fight start, or 1. A deck switched mid-session, or one nobody optimised, plans
+     *   as itself. Cards the sheet does not know and stances are left out.
+     * - OUR OWN STATE COUNTS. Our standing openings and hitpoints go into our side, the damage
+     *   already drawn on each opponent comes off its health, and the plan is the fastest kill that
+     *   keeps {@link #RESERVE} of our hitpoints (Advisor.Aim.SURVIVE) - which is what makes it
+     *   throw a restoration when the fastest line would cost too much. With our hitpoints unknown
+     *   it is the fastest kill.
+     *
+     * @param bar  card resource to level for every card on the action bar; null or empty uses
+     *             the deck at fight start
+     * @param mine our openings in percentage points
+     * @param shp  our soft hitpoints now, or NaN
+     * @param mhp  our maximum soft hitpoints, or NaN
+     * @param foes the target first, then anyone else on us
+     */
+    public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
+                                  double mhp, List<Seen> foes, int beam, long horizon) {
+        load();
+        if((me == null) || !me.usable() || (byRes == null) || (foes == null) || foes.isEmpty())
+            return(Live.none("nothing to plan with"));
+        List<Move> deck = liveDeck(me, bar);
+        if(deck == null)
+            return(Live.none("no card on the bar is in the move sheet"));
+        Seen t = foes.get(0);
+        if((t == null) || (t.open == null) || (t.open.length < 4))
+            return(Live.none("the target's openings are not known"));
+        boolean hpKnown = (shp > 0) && (mhp > 0);
+        Combatant a = ourSide(me, t.myIp);
+        if(hpKnown) {
+            a.hp = shp;
+            a.maxHp = mhp;
+        }
+        for(int c = 0; (mine != null) && (mine.length >= 4) && (c < 4); c++) {
+            if(mine[c] > 0)
+                a.open(c, shown(mine[c]));
+        }
+
+        List<Combatant> bs = new ArrayList<Combatant>();
+        List<FoeModel> ms = new ArrayList<FoeModel>();
+        List<Integer> ips = new ArrayList<Integer>();
+        int proxied = 0, players = 0;
+        String standIn = null;
+        for(int i = 0; i < foes.size(); i++) {
+            Seen s = foes.get(i);
+            if((s == null) || (s.open == null) || (s.open.length < 4))
+                continue;
+            Combatant b;
+            FoeModel model;
+            if(isPlayerRes(s.res)) {
+                b = ourSide(me, 0);
+                b.hp = b.maxHp = hpKnown ? mhp : 100;
+                b.penetrable = true;
+                a.penetrable = true;
+                List<Move> theirs = new ArrayList<Move>();
+                for(String r : (s.seen == null) ? java.util.Collections.<String>emptySet() : s.seen.keySet()) {
+                    Move mv = byRes.get(r);
+                    if((mv != null) && !mv.stance)
+                        theirs.add(mv);
+                }
+                model = FoeModel.fromDeck(theirs.isEmpty() ? deck : theirs, b, a.defenceWeight());
+                players++;
+            } else {
+                Pack.Opponent o = known(s.res);
+                if(o == null) {
+                    o = proxy();
+                    if(o == null) {
+                        if(i == 0)
+                            return(Live.none("the pack has no creature to stand in for this one"));
+                        continue;
+                    }
+                    proxied++;
+                    standIn = o.toString();
+                }
+                b = o.hardestReal();
+                model = o.threat;
+            }
+            b.distance = s.dist;
+            for(int c = 0; c < 4; c++) {
+                if(s.open[c] > 0)
+                    b.open(c, shown(s.open[c]));
+            }
+            /* What has already been taken off it. Never to zero: the relation is still there,
+             * so whatever is left of it is still standing. */
+            if((s.taken > 0) && (b.hp > 0))
+                b.hp = Math.max(1, b.hp - s.taken);
+            bs.add(b);
+            ms.add(model);
+            ips.add(Integer.valueOf(s.myIp));
+        }
+        if(bs.isEmpty())
+            return(Live.none("no opponent could be planned"));
+        Combatant[] bb = bs.toArray(new Combatant[0]);
+        FoeModel[] mm = ms.toArray(new FoeModel[0]);
+        int[] ia = new int[ips.size()];
+        for(int i = 0; i < ia.length; i++)
+            ia[i] = ips.get(i).intValue();
+        double budget = hpKnown ? (shp - (RESERVE * mhp)) : Double.POSITIVE_INFINITY;
+        List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon, ia);
+        Optimizer.Plan pick = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
+        if(pick == null)
+            return(new Live(null, "no plan reached the horizon", 0, Double.NaN, budget, false,
+                            bb.length, proxied, players));
+        if(pick.moves.isEmpty())
+            return(new Live(null, "the best plan throws nothing", pick.ticks, pick.hpLost, budget,
+                            pick.killed, bb.length, proxied, players));
+        /* Which of the three answers SURVIVE gave: the fastest kill outright, a slower one the
+         * reserve forced, or - nothing fitting - the cheapest. */
+        Optimizer.Plan fastest = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
+        StringBuilder why = new StringBuilder();
+        if(!Double.isNaN(pick.hpLost) && (pick.hpLost > budget))
+            why.append("least damage");
+        else if(pick == fastest)
+            why.append("fastest kill");
+        else
+            why.append("fastest kill that keeps the reserve");
+        if(proxied > 0)
+            why.append(", ").append(proxied).append(" unknown planned as ").append(standIn);
+        return(new Live(pick.moves.get(0).res, why.toString(), pick.ticks, pick.hpLost, budget,
+                        pick.killed, bb.length, proxied, players));
+    }
+
+    /** The bar as a deck - see {@link #adviseLive}. Null when nothing on it can be planned. */
+    private static List<Move> liveDeck(Me me, Map<String, Integer> bar) {
+        if((bar == null) || bar.isEmpty())
+            return(ourDeck(me));
+        List<Move> deck = new ArrayList<Move>();
+        for(Map.Entry<String, Integer> e : bar.entrySet()) {
+            Move m = byRes.get(e.getKey());
+            if((m == null) || m.stance)
+                continue;
+            if((m.weight == Move.Weight.WEAPON) && !me.armed)
+                continue;
+            int lvl = (e.getValue() == null) ? 0 : e.getValue().intValue();
+            if(lvl <= 0) {
+                Integer held = (me.levels == null) ? null : me.levels.get(e.getKey());
+                lvl = ((held == null) || (held.intValue() <= 0)) ? 1 : held.intValue();
+            }
+            deck.add((lvl > 1) ? m.withMu(muAt(lvl)) : m);
+        }
+        return(deck.isEmpty() ? null : deck);
+    }
+
+    static boolean isPlayerRes(String res) {
+        return((res != null) && (res.indexOf("borka/body") >= 0));
+    }
+
+    /** The pack entry for a creature, only where a fight against it can be simulated. */
+    private static Pack.Opponent known(String res) {
+        if(isPlayerRes(res))
+            return(null);
+        Pack.Opponent o = find(res);
+        return(((o != null) && !o.isPlayer() && o.simulable() && (o.threat != null)) ? o : null);
+    }
+
+    private static volatile Pack.Opponent proxy = null;
+
+    /**
+     * The creature an unknown one is planned as: the median, by the hitpoints it is planned
+     * with, of every creature the pack can simulate.
+     *
+     * A STAND-IN, NOT AN ESTIMATE. Nothing about the creature in front of us enters it except
+     * its openings, its distance and the damage already on it. The median rather than the
+     * hardest because the hardest creature on record is a mammoth-sized answer to a question
+     * that is usually about something the size of a fox, and a plan against it would defend
+     * against blows that never come. The count of opponents planned this way is reported with
+     * every answer, so nothing downstream mistakes it for a measurement.
+     */
+    static Pack.Opponent proxy() {
+        load();
+        Pack.Opponent p = proxy;
+        if((p != null) || (foes == null))
+            return(p);
+        List<Pack.Opponent> ok = new ArrayList<Pack.Opponent>();
+        for(Pack.Opponent o : foes.values()) {
+            if(!o.isPlayer() && o.simulable() && (o.threat != null) && !Double.isNaN(o.planHpHi()))
+                ok.add(o);
+        }
+        if(ok.isEmpty())
+            return(null);
+        java.util.Collections.sort(ok, (x, y) -> Double.compare(x.planHpHi(), y.planHpHi()));
+        proxy = p = ok.get(ok.size() / 2);
+        return(p);
+    }
+
     /**
      * Applies the held stance to our side of a prediction, by the rule the offline search uses.
      *

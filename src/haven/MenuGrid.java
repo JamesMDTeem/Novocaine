@@ -900,6 +900,8 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 		makeLocal("customclient/menugrid/NurglingImports/StudyHelper");
 		makeLocal("customclient/menugrid/NurglingImports/EatHelper");
 		makeLocal("customclient/menugrid/NurglingImports/AlchemyHelper");
+		makeLocal("customclient/menugrid/NurglingImports/CombatAdvice");
+		makeLocal("customclient/menugrid/NurglingImports/AutoFighter");
 
 		// Category: Combat Decks
 		makeLocal("customclient/menugrid/CombatDecks/CombatDeck1");
@@ -1058,6 +1060,15 @@ public class MenuGrid extends Widget implements KeyBinding.Bindable {
 				boolean on = !OptWnd.alchemyHelperCheckBox.a;
 				OptWnd.alchemyHelperCheckBox.set(on);
 				gui.msg("Alchemy Helper is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? Color.GREEN : Color.RED);
+			} else if (ad[2].equals("CombatAdvice")) {
+				/* Same pattern: the checkbox in Combat Settings is the state, the fight view reads it. */
+				boolean on = !OptWnd.combatMoveAdviceCheckBox.a;
+				OptWnd.combatMoveAdviceCheckBox.set(on);
+				gui.msg("Combat Move Advice is now " + (on ? "ENABLED" : "DISABLED") + "!", on ? Color.GREEN : Color.RED);
+			} else if (ad[2].equals("AutoFighter")) {
+				boolean on = !OptWnd.combatAutoFightCheckBox.a;
+				OptWnd.combatAutoFightCheckBox.set(on);
+				gui.msg("Auto-Fighter is now " + (on ? "ENABLED - it plays your cards in fights you start" : "DISABLED") + "!", on ? Color.GREEN : Color.RED);
 			} else if (ad[2].equals("NBotPlaces")) {
 				if (gui.nbotPlaces == null) {
 					gui.nbotPlaces = new haven.automated.nbots.PlacesWindow(gui);
