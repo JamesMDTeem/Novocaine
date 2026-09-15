@@ -384,7 +384,7 @@ public final class Prediction {
         Combatant b = o.hardestReal();
         for(int c = 0; c < 4; c++) {
             if(foeOpen[c] > 0)
-                b.open(c, foeOpen[c]);
+                b.open(c, shown(foeOpen[c]));
         }
 
         Sim sim = new Sim(a, b);
@@ -502,7 +502,7 @@ public final class Prediction {
                 ? foeDist[i] : Double.NaN;
             for(int c = 0; c < 4; c++) {
                 if(foeOpen[i][c] > 0)
-                    bi.open(c, foeOpen[i][c]);
+                    bi.open(c, shown(foeOpen[i][c]));
             }
             bs.add(bi);
             ms.add(oi.threat);
@@ -610,7 +610,7 @@ public final class Prediction {
         b.penetrable = true;
         for(int c = 0; c < 4; c++) {
             if(foeOpen[c] > 0)
-                b.open(c, foeOpen[c]);
+                b.open(c, shown(foeOpen[c]));
         }
         FoeModel model = FoeModel.fromDeck(theirs, b, a.defenceWeight());
         List<Optimizer.Plan> front = Optimizer.search(a, b, deck, model, beam, horizon);
@@ -702,6 +702,20 @@ public final class Prediction {
         System.err.println("combat pack: live PvP advice is UNSUPPORTED for " + res
             + " - a player is stored as body#<gob>, which this resource cannot name;"
             + " the advisor reports no prediction for it");
+    }
+
+    /**
+     * The opening a displayed percentage most likely stands at: its midpoint, not its floor.
+     *
+     * The client reads an opening as floor(fraction * 100) - CombatRecorder.readOpenings does
+     * exactly that - so a shown 55 is anywhere in [55, 56). Damage squares the opening, so the
+     * floor under-prices every blow by about 2 * 0.5 / o of it. Over the corpus the midpoint
+     * takes the replayed damage bias from +0.47 to -0.02 points and drawn killing blows from
+     * +2.15 to +0.18. A shown 0 stays 0: nothing is standing. The recorder still LOGS what the
+     * client showed; only the model reads the midpoint.
+     */
+    static double shown(int pct) {
+        return((pct > 0) ? (pct + 0.5) : 0.0);
     }
 
     /** Colour order, so a caller can build foeOpen without importing Formulas. */

@@ -223,7 +223,16 @@ def replay_damage(log, eng, moves, weapons):
         # The opening the attack reads is the combined one over ITS OWN attack types.
         cols = [t.get("colour") for t in m.get("attack_types") or []]
         idx = dict((c, i) for i, c in enumerate(fightlog.COLOURS))
-        own = [h["openings"][idx[c]] / 100.0 for c in cols if c in idx]
+        # THE MIDPOINT OF WHAT THE CLIENT SHOWED, not its floor (2026-09-15). An opening is
+        # rendered as floor(fraction * 100), so a logged 55 is anywhere in [55, 56), and damage
+        # squares it: reading the floor under-predicts by about 2 * 0.5 / o of every hit, which
+        # is the steady high reading the heavy cards carried. With +0.5 on each standing colour
+        # (a 0 stays 0 - nothing was showing) the mean error on hits before the last goes from
+        # +0.47 to -0.02 and rms 1.66 to 1.50; on drawn killing blows +2.15 to +0.18, rms 3.00
+        # to 1.97; Cleave 3.82 to 2.04, Santa Samus 1.15 to 0.83. Punch and Knock Its Teeth Out,
+        # both small, read slightly low with it (0.56 to 0.69, 0.80 to 0.92).
+        own = [(h["openings"][idx[c]] + 0.5) / 100.0 if h["openings"][idx[c]] > 0 else 0.0
+               for c in cols if c in idx]
         if not own:
             continue
         pred = model.raw_damage(base, share, ql, strength, model.combined(own))
@@ -464,6 +473,36 @@ def settled_after(eng, after, mv):
     return best
 
 
+def landed_after(eng, log, mv, t_from):
+    """The state once our blow's update has settled, timed from the blow's LANDING.
+
+    The first state after `t_from` - the later of the move row and our own landing fx - and
+    then the last within SETTLE_MS of it, as settled_after does. It stops before the next
+    thing that could carry somebody else's gain: the next move row, the next damage on the
+    target, or our own next landing fx. None when nothing settled in that window."""
+    ends = [m["t"] for m in eng.moves if (m.get("t") is not None) and (m["t"] > mv["t"])]
+    ends += [d["t"] for d in eng.damage
+             if (d.get("gob") == eng.gob) and (d.get("t") is not None) and (d["t"] > t_from + 5)]
+    ends += [o["t"] for o in eng.overlays
+             if (o.get("gob") == log.me) and (o.get("t") is not None) and (o["t"] > t_from + 5)
+             and str(o.get("res", "")).startswith("gfx/fx/fight/")]
+    stop = min(ends) if ends else None
+    first = best = None
+    for s in eng.states:
+        st = s.get("t") or 0
+        if st <= t_from:
+            continue
+        if (stop is not None) and (st >= stop):
+            break
+        if first is None:
+            first = best = s
+        elif (st - (first.get("t") or 0)) <= SETTLE_MS:
+            best = s
+        else:
+            break
+    return best
+
+
 def logged_predictions(paths, opens=None):
     """Predictions the CLIENT wrote at the time, against what actually followed.
 
@@ -517,7 +556,25 @@ def logged_predictions(paths, opens=None):
                 # so reading the first row scored a correct prediction as "observed 0". The
                 # after-state is taken once the update settles - the last row within SETTLE_MS
                 # of the first one - which a following move's own effects cannot reach.
-                after = settled_after(eng, after, mv)
+                #
+                # AND IT IS TIMED FROM THE BLOW, NOT THE ROW (2026-09-15). Our landing fx can sit
+                # before the move row by up to ~120 ms, and a state in that gap already holds the
+                # gain - so `before` read it and the observation came out 0 (381 such readings), or
+                # an `after` just past the row preceded a gain that landed after it. Anchored on OUR
+                # OWN fx only - never target damage, which in BonkiDonki-181 was a party member's
+                # Quick Barrage doubling the gain - rms 5.02 -> 3.95, zero readings 381 -> 55;
+                # 381 readings moved, 369 closer, 10 further.
+                lands = [o["t"] for o in eng.overlays
+                         if (o.get("gob") == log.me) and (o.get("t") is not None)
+                         and (fightlog.overlay_move(o.get("res") or "") == mv.get("name"))
+                         and (abs(mv["t"] - o["t"]) <= fightlog.TICK_MS)]
+                if lands and (min(lands) < mv["t"]):
+                    earlier = eng.state_before(mv, min(lands))
+                    if earlier is not None:
+                        before = earlier
+                after = landed_after(eng, log, mv, max(lands + [mv["t"]]))
+                if after is None:
+                    continue
                 opened = pr.get("opened") or []
                 for c, colour in enumerate(("green", "blue", "yellow", "red")):
                     if c >= len(opened):

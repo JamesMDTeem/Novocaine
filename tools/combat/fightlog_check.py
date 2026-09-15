@@ -313,6 +313,15 @@ def _one_hit_not_the_whole_window():
     check("  one blow's two channels stay one hit", h["clusters"], 1)
     check("    and both are counted", h["raw"], 18)
 
+    # And a few milliseconds apart, which a real blow's two halves can be: a caveangler Sting
+    # read 174 of a predicted 214.6 because its 40-point ARM row sat 2 ms from the SHP row.
+    log = load([begin(), state(1000, foe=(0, 0, 0, 40)),
+                dmg(1997, FOE, "ARM", 40), dmg(2000, FOE, "SHP", 174),
+                move(2000), end()])
+    h = fightlog.hits(log.engagements[0], ME)[0]
+    check("  a blow's halves 3 ms apart are one hit", h["clusters"], 1)
+    check("    and the armour half is counted", h["raw"], 214)
+
 
 def damage():
     print("\npairing moves with their damage")
@@ -332,6 +341,20 @@ def damage():
                 dmg(1999, OTHER, "SHP", 99), move(2000), end()])
     h = fightlog.hits(log.engagements[0], ME)[0]
     check("a stranger's damage is not credited to our move", h["raw"], 0)
+
+    # THE BLOW CAN LAND BEFORE ITS OWN MOVE ROW - BonkiDonki's often by 60-70 ms - and a state
+    # sampled in that gap already carries the blow's gain. A schema 2/3 log has no overlay to
+    # anchor on, so the damage is the anchor: read the last state before it.
+    log = load([begin(), state(1000, foe=(0, 0, 0, 50)),
+                dmg(1940, FOE, "ARM", 10), dmg(1940, FOE, "SHP", 14),
+                state(1990, foe=(0, 0, 0, 55)), move(2000), end()])
+    h = fightlog.hits(log.engagements[0], ME)[0]
+    check("a blow that lands before its move row reads the state before the blow",
+          h["openings"][3], 50)
+    log = load([begin(), state(1000, foe=(0, 0, 0, 50)), move(2000),
+                state(2003, foe=(0, 0, 0, 55)), dmg(2010, FOE, "SHP", 14), end()])
+    h = fightlog.hits(log.engagements[0], ME)[0]
+    check("  while one that lands after it reads the state before the move", h["openings"][3], 50)
 
     _one_hit_not_the_whole_window()
 

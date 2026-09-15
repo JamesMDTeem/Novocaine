@@ -1,15 +1,15 @@
 {
  "characters": [
   {
-   "agi": 183,
+   "agi": 207,
    "armour": {
     "hard": 7,
     "pieces": 23,
     "soft": 13
    },
-   "con": 157,
-   "hhp": 324,
-   "hp": 407,
+   "con": 164,
+   "hhp": 372,
+   "hp": 415,
    "known": {
     "Artful Evasion": 4,
     "Bloodlust": 1,
@@ -18,7 +18,7 @@
     "Cleave": 5,
     "Dash": 5,
     "Feigned Dodge": 5,
-    "Flex": 4,
+    "Flex": 5,
     "Full Circle": 5,
     "Go for the Jugular": 5,
     "Haymaker": 5,
@@ -51,8 +51,8 @@
     "Yield Ground": 3,
     "Zig-Zag Ruse": 5
    },
-   "logs": 1661,
-   "melee": 178,
+   "logs": 1753,
+   "melee": 183,
    "name": "BonkiDonki",
    "owned": {
     "Artful Evasion": 4,
@@ -62,7 +62,7 @@
     "Cleave": 1,
     "Dash": 0,
     "Feigned Dodge": 0,
-    "Flex": 4,
+    "Flex": 5,
     "Full Circle": 5,
     "Go for the Jugular": 0,
     "Haymaker": 0,
@@ -84,7 +84,7 @@
     "Sidestep": 0,
     "Sideswipe": 0,
     "Steal Thunder": 0,
-    "Sting": 3,
+    "Sting": 2,
     "Storm of Swords": 0,
     "Take Aim": 1,
     "Takedown": 0,
@@ -96,8 +96,8 @@
     "Zig-Zag Ruse": 5
    },
    "shield": false,
-   "str": 166,
-   "unarmed": 185,
+   "str": 182,
+   "unarmed": 174,
    "weapon": {
     "armour_pen": 0.1,
     "base_damage": 100,
@@ -134,7 +134,7 @@
    "unarmed": 1
   },
   {
-   "agi": 42,
+   "agi": 44,
    "armour": {
     "hard": 13,
     "pieces": 23,
@@ -144,7 +144,7 @@
    "hhp": 138,
    "hp": 138,
    "known": {
-    "Artful Evasion": 2,
+    "Artful Evasion": 3,
     "Chin Up": 1,
     "Chop": 5,
     "Cleave": 3,
@@ -185,8 +185,8 @@
     "Yield Ground": 2,
     "Zig-Zag Ruse": 2
    },
-   "logs": 133,
-   "melee": 70,
+   "logs": 157,
+   "melee": 80,
    "name": "Japcek",
    "owned": {
     "Artful Evasion": 0,
@@ -231,8 +231,8 @@
     "Zig-Zag Ruse": 2
    },
    "shield": false,
-   "str": 39,
-   "unarmed": 70,
+   "str": 41,
+   "unarmed": 80,
    "weapon": {
     "armour_pen": 0.1,
     "base_damage": 100,
@@ -242,14 +242,14 @@
    }
   },
   {
-   "agi": 32,
+   "agi": 33,
    "armour": {
     "hard": 3,
     "pieces": 21,
     "soft": 3
    },
    "con": 49,
-   "hhp": 220,
+   "hhp": 221,
    "hp": 221,
    "known": {
     "Artful Evasion": 5,
@@ -293,13 +293,13 @@
     "Yield Ground": 3,
     "Zig-Zag Ruse": 5
    },
-   "logs": 779,
-   "melee": 1,
+   "logs": 797,
+   "melee": 55,
    "name": "Pikapolonica",
    "owned": {},
    "shield": false,
-   "str": 65,
-   "unarmed": 2,
+   "str": 67,
+   "unarmed": 55,
    "weapon": {
     "armour_pen": 0.2,
     "base_damage": 30,
@@ -315,9 +315,9 @@
     "pieces": 22,
     "soft": 67
    },
-   "con": 116,
-   "hhp": 352,
-   "hp": 357,
+   "con": 117,
+   "hhp": 356,
+   "hp": 358,
    "known": {
     "Artful Evasion": 5,
     "Bloodlust": 1,
@@ -360,8 +360,8 @@
     "Yield Ground": 2,
     "Zig-Zag Ruse": 5
    },
-   "logs": 2229,
-   "melee": 177,
+   "logs": 2320,
+   "melee": 183,
    "name": "Santa Samus",
    "owned": {
     "Artful Evasion": 0,
@@ -406,7 +406,7 @@
     "Zig-Zag Ruse": 4
    },
    "shield": true,
-   "str": 541,
+   "str": 559,
    "unarmed": 65,
    "weapon": {
     "armour_pen": 0.1,
@@ -417,15 +417,15 @@
    }
   },
   {
-   "agi": 362,
+   "agi": 379,
    "armour": {
     "hard": 105,
     "pieces": 23,
     "soft": 77
    },
-   "con": 176,
-   "hhp": 437,
-   "hp": 439,
+   "con": 185,
+   "hhp": 448,
+   "hp": 450,
    "known": {
     "Artful Evasion": 5,
     "Bloodlust": 1,
@@ -452,7 +452,7 @@
     "Quick Dodge": 5,
     "Raven's Bite": 5,
     "Regain Composure": 5,
-    "Rip Apart": 3,
+    "Rip Apart": 4,
     "Shield Up": 1,
     "Sidestep": 5,
     "Sideswipe": 5,
@@ -468,8 +468,8 @@
     "Yield Ground": 4,
     "Zig-Zag Ruse": 5
    },
-   "logs": 2229,
-   "melee": 328,
+   "logs": 2334,
+   "melee": 391,
    "name": "Shade",
    "owned": {
     "Artful Evasion": 0,
@@ -514,7 +514,7 @@
     "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 291,
+   "str": 298,
    "unarmed": 172,
    "weapon": {
     "armour_pen": 0.1,
@@ -588,15 +588,15 @@
    }
   },
   {
-   "agi": 173,
+   "agi": 190,
    "armour": {
     "hard": 85,
     "pieces": 23,
     "soft": 68
    },
-   "con": 117,
-   "hhp": 313,
-   "hp": 342,
+   "con": 129,
+   "hhp": 350,
+   "hp": 359,
    "known": {
     "Artful Evasion": 2,
     "Bloodlust": 1,
@@ -640,8 +640,8 @@
     "Yield Ground": 1,
     "Zig-Zag Ruse": 3
    },
-   "logs": 872,
-   "melee": 184,
+   "logs": 876,
+   "melee": 189,
    "name": "ZzxcuV3",
    "owned": {
     "Artful Evasion": 0,
@@ -687,8 +687,8 @@
     "Zig-Zag Ruse": 1
    },
    "shield": true,
-   "str": 192,
-   "unarmed": 128,
+   "str": 202,
+   "unarmed": 133,
    "weapon": {
     "armour_pen": 0.125,
     "base_damage": 90,

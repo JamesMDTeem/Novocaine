@@ -25,11 +25,15 @@ import os
 
 COLOURS = ("green", "blue", "yellow", "red")
 
-# One server tick, in milliseconds. "One tick is 0.06 seconds" (Sim.java). It is the
-# outside limit on how far a card's announcement can sit from its own `move` row - every
-# effect of one action lands on one tick - and measuring the two across 651 files gives
-# p50 3 ms, p90 57 ms, max 60 ms, which is that limit exactly.
-TICK_MS = 60
+# How far a card's announcement can sit before its own `move` row. It was one server tick
+# (60 ms, "one tick is 0.06 seconds" in Sim.java), measured across 651 files as p50 3 ms, p90
+# 57 ms, max 60. The corpus has since outgrown that: across 23,000 of our moves with a landing
+# fx, 75.3% of move rows trail it by under 60 ms, 92.9% under 70, 98.8% under 100 and 99.7%
+# under 130, and BonkiDonki's log carries a Quick Barrage whose row came 68 ms after its blow.
+# Missing the announcement reads the opening the blow itself made - the squared term - and a
+# 120 ms window moves 22 replayed hits, 21 of them closer and none further; nothing moves past it.
+# A card's own previous throw is a cooldown away, so the wider window cannot anchor on it.
+TICK_MS = 120
 GREEN, BLUE, YELLOW, RED = 0, 1, 2, 3
 
 BOW_RES = frozenset({"huntersbow", "rangersbow"})
@@ -78,6 +82,9 @@ def is_ranged(rows):
 # A move and the damage it caused arrive as separate messages a few milliseconds apart,
 # in either order, so the pairing window is symmetric.
 PAIR_MS = 150
+
+# How close two damage rows on one victim must be to be one blow - see _cluster.
+CLUSTER_MS = 5
 
 # A state event usually fires two to six milliseconds AFTER the move it follows and already
 # carries that move's effect. So the state at or before a move's timestamp is normally the
@@ -300,6 +307,25 @@ class Engagement(object):
                 return None
             if (ev == "state") and ((self.seq[j].get("t") or 0) < anchor):
                 return self.seq[j]
+        return None
+
+    def state_before(self, move, t):
+        """The last state stamped before `t`, walking back from this move's place in the file.
+
+        For a read anchored on something other than the move row - the blow's own damage, in
+        hits(). None when another move lies between, for the same reason announced_before stops
+        there: past it, the state describes the world before that move too.
+        """
+        i = self.order.get(id(move))
+        if i is None:
+            return None
+        for j in range(i - 1, -1, -1):
+            r = self.seq[j]
+            ev = r.get("ev")
+            if ev == "move":
+                return None
+            if (ev == "state") and ((r.get("t") or 0) < t):
+                return r
         return None
 
     def __repr__(self):
@@ -1421,10 +1447,17 @@ def _cluster(rows):
     soak_pairs uses. Two attackers whose floats land in the same millisecond are one
     group and cannot be separated; that is a real limit, not this function's choice.
     """
+    # FIVE MILLISECONDS, NOT ONE (2026-09-15). One blow's ARM and SHP rows can land 2-3 ms
+    # apart, and a 1 ms rule left the armour half in a cluster of its own, so the hit was
+    # scored on SHP alone - short by exactly the soak. Six such blows carried the damage fit's
+    # worst species: caveangler 3.98 -> 0.94 rms (its two short by ~40, its hard soak), wolf
+    # 2.24 -> 1.02, red deer 1.57 -> 0.68, boar 2.08 -> 1.60. Joining within 5 ms catches all
+    # six, all six read closer, and none is on a species never seen soaking; 10 and 20 ms
+    # join nothing more. Two different attackers' blows sit a median 71 ms apart.
     out = []
     cur = None
     for d in sorted(rows, key=lambda r: r["t"]):
-        if (cur is None) or ((d["t"] - cur[-1]["t"]) > 1):
+        if (cur is None) or ((d["t"] - cur[-1]["t"]) > CLUSTER_MS):
             cur = [d]
             out.append(cur)
         else:
@@ -1506,6 +1539,21 @@ def hits(eng, me_gob):
         before = eng.announced_before(m, me_gob)
         if before is None:
             continue
+        # AND BY THE BLOW ITSELF, when the damage lands before the `move` row (2026-09-15).
+        # The announcement fixes this only in logs that record overlays - none at schema 2 or
+        # 3 - and a character whose `move` row trails the blow (BonkiDonki's often by 60-70 ms)
+        # gets a state carrying the blow's own gain in between. The damage cluster is in every
+        # schema and sits within 5 ms of the landing fx 18,775 times. Reading the last state
+        # before it took BonkiDonki's schema 2/3 hits from rms 12.48 to 2.51 and the whole
+        # replayed corpus from 2.47 to 1.66: 47 reads moved, 44 closer, 1 further by half a
+        # point. Where another move lies between, the read is left as it was. OUR blows only:
+        # that is where it was measured, against replay's fit-free damage half. A creature's
+        # blow on us has no such control, so its read is left alone until one exists.
+        if (m.get("actor") == "me") and chosen and (chosen[0]["t"] < m["t"]) \
+                and ((before.get("t") or 0) >= chosen[0]["t"]):
+            earlier = eng.state_before(m, chosen[0]["t"])
+            if earlier is not None:
+                before = earlier
         key = "foe" if m.get("actor") == "me" else "mine"
         out.append({
             "t": m["t"],
