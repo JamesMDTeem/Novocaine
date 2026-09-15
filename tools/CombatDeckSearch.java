@@ -1105,8 +1105,17 @@ public class CombatDeckSearch {
                 }
             }
             chosen.add(take);
-            System.out.printf("  %d. the %s deck - best against %d of %d%n",
-                              pick + 1, take, won.size(), owners.size());
+            /* THE FIRST PICK IMPROVES ON NOTHING, so every opponent it kills counts as "won" and
+             * it read "best against 44 of 44" - which says it kills them, not that it is the deck
+             * to take. And one non-kill outweighs any number of ticks in the total it is chosen on,
+             * so the first pick is whichever deck kills the most, however slowly. Say that. */
+            if(pick == 0)
+                System.out.printf("  %d. the %s deck - kills %d of %d (first pick: the deck that kills"
+                                  + " the most, not the best against each)%n",
+                                  pick + 1, take, won.size(), owners.size());
+            else
+                System.out.printf("  %d. the %s deck - better than the picks above against %d of %d%n",
+                                  pick + 1, take, won.size(), owners.size());
             System.out.printf("     %s%n", shorten(best.get(take), sheet));
             System.out.printf("     carries: %s%n", join(won, 10));
         }
