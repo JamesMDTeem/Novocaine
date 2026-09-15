@@ -6,7 +6,7 @@ import haven.GameUI;
 import haven.Utils;
 
 /**
- * Acts on the live advice, in the fight we are already in: selects its card and aims at the
+ * Acts on the live advice, in the fight we are already in: presses its card and aims at the
  * target it picks.
  *
  * STILL NOT A HUNTER. It does not start fights, look for things to fight, move us, or leave. A
@@ -19,50 +19,58 @@ import haven.Utils;
  * is only what lets the openings decay on their own. Walking away buys nothing an animal will
  * allow, so defence here is cards alone.
  *
- * SELECT DURING THE COOLDOWN, NOT AFTER IT. The game keeps a SELECTED card - the one the bar draws
- * with the selection frame (Fightsess.use, which the server sends back) - and swings it again
- * each time the cooldown ends. The first version waited for the cooldown to end before sending
- * the planned card, so whenever the plan changed card the server had already swung the old one,
- * or swung the new one a round trip late: the lag James saw when the bot swapped moves. Now the
- * planned card is selected as soon as the plan names it, and the server swings it the instant the
- * cooldown is up. When the planned card is already the selected one nothing is sent at all.
+ * ONE PRESS PER SWING, DURING THE COOLDOWN. The game swings a card again at the end of a
+ * cooldown only while it is held down or pressed again - a "use" followed by its "rel" is one
+ * press. Two versions got that wrong, and the logs measured both (the gap between one cooldown
+ * ending and the next swing):
+ *  - the first sent the card only once the cooldown was over: every swing a round trip late,
+ *    about 180 ms;
+ *  - the second pressed a new card during the cooldown but treated a card already selected as
+ *    one the game would repeat by itself. It would not, so every repeat of the same card waited
+ *    for the stall fallback - 540 ms late, where a person holding the key is 1 ms late and a
+ *    change of card was already 4 ms.
+ * So every swing that begins gets the planned card pressed during its cooldown, whether or not
+ * it is the same card, and a plan that changes its mind before the cooldown ends presses the new
+ * one. The game swings it the instant the cooldown is up.
  *
- * WHICH PLAN. Selecting early means selecting from a plan made during the cooldown, so the plan
- * is made for the moment the cooldown ends (Prediction.adviseLive's readyIn) - the opponents'
- * swings before then are in it. A plan made before our last swing began is not trusted for the
- * next one unless the cooldown is nearly up and nothing newer has arrived.
+ * WHICH PLAN. Pressing during the cooldown means pressing from a plan made during it, so the plan
+ * is made for the moment the cooldown ends (Prediction.adviseLive's readyIn). A plan made before
+ * the current swing began is not trusted unless the cooldown is nearly up and nothing newer has
+ * arrived.
  *
- * WHEN NOTHING SWINGS. A movement command cancels the repeat, and an opponent out of reach needs
- * the use re-sent to walk us in, so if the cooldown has been over for a moment and no new one has
- * begun, the selected card is sent again.
+ * WHEN NOTHING SWINGS. A movement command cancels a queued card, and an opponent out of reach needs
+ * the use re-sent to walk us in, so if a cooldown has been over for a moment and no new one has
+ * begun, the card is pressed again.
  *
  * AIMING. When the advice wants another opponent first, it is bumped to the front of the fight
  * view - the message the relation-cycling key sends - at most once every few seconds, and nothing
- * is selected until an answer planned with the new target arrives.
+ * is pressed until an answer planned with the new target arrives.
  *
- * Never against an opponent we offered peace. A "use" is followed by a "rel" on the next frame -
- * the pair a key press and release send. Off whenever the client starts.
+ * PEACE. Never against an opponent we offered peace to - unless the offer was Auto-Reaggro's or
+ * Auto Peace Animals' (see {@link #peaceIsTactic}). Off whenever the client starts.
  */
 public final class AutoFighter {
     private AutoFighter() {}
 
     /* The shortest time between two target switches. */
     private static final long SWITCH_MS = 3000;
-    /* The shortest time between two selections of the same slot, while the server has not yet
-     * echoed the first - a round trip, with room. */
-    private static final double RESELECT_S = 0.4;
-    /* A plan older than our last swing's start may still be used this close to the cooldown's end. */
+    /* The shortest time between two presses of different cards within one cooldown, so a plan
+     * wavering between two near-equal cards cannot turn into a stream of messages. */
+    private static final double CHANGE_S = 0.25;
+    /* The shortest time between two presses in the stall fallback - a round trip, with room. */
+    private static final double RESEND_S = 0.4;
+    /* A plan older than the current swing's start may still be used this close to the cooldown's end. */
     private static final double STALE_OK_S = 0.15;
-    /* How long after the cooldown ends without a new one before the selection is re-sent. */
+    /* How long after the cooldown ends without a new one before the card is pressed again. */
     private static final double STALL_S = 0.35;
 
-    /* Tick thread only. */
+    /* Tick thread only. The card last pressed and when; the swing (Fightview.atkcs) it was pressed
+     * for; the slot awaiting its release; the last reason shown. */
     private static int held = -1;
     private static Fightsess heldOn = null;
-    private static int picked = -1;
-    /* Fightsess.use at the moment we last sent, to tell "not echoed yet" from "changed by someone". */
-    private static int useAtPick = -1;
-    private static double pickedAt = -1;
+    private static int pressed = -1;
+    private static double pressedAt = -1;
+    private static double pressedFor = -1;
     private static String said = null;
     private static long lastSwitch = 0;
 
@@ -70,6 +78,11 @@ public final class AutoFighter {
     public static boolean on() {
         haven.CheckBox c = haven.OptWnd.combatAutoFightCheckBox;
         return((c != null) && c.a);
+    }
+
+    /** Whether our peace offer to this relation came from Auto-Reaggro or Auto Peace Animals. */
+    public static boolean peaceIsTactic(Fightview.Relation rel) {
+        return(rel.autopeaced || ((rel.autogive != null) && (rel.autogive.state == 1)));
     }
 
     /** One frame of the bot. Called from Fightview.tick after LiveAdvice.observe. */
@@ -120,7 +133,7 @@ public final class AutoFighter {
             }
             double now = Utils.rtime();
             boolean cooling = now < fv.atkct;
-            /* A plan from before our last swing began describes openings that swing has since
+            /* A plan from before the current swing began describes openings that swing has since
              * changed. Wait for a newer one, unless the cooldown is about to end without it. */
             boolean stale = (fv.atkcs > 0) && (n.observedRt < fv.atkcs);
             if(stale && cooling && ((fv.atkct - now) > STALE_OK_S))
@@ -131,48 +144,40 @@ public final class AutoFighter {
                 return;
             }
             said = null;
-            /* Selected is what the server echoes - or, while no new echo has come since we sent,
-             * what we sent. Trusting only the echo re-sent every RESELECT_S whenever the echo was
-             * slow or absent. A selection that changes to something else (the player's own key)
-             * clears ours. */
-            if((picked >= 0) && (fs.use != useAtPick) && (fs.use != picked))
-                picked = -1;
-            boolean selected = (slot == fs.use) || ((slot == picked) && (fs.use == useAtPick));
-            if(!selected) {
-                /* A different card: select it now, so it is the one swung at the cooldown's end. */
-                if((slot != picked) || ((now - pickedAt) >= RESELECT_S))
-                    send(fs, slot, now);
+            /* A swing has begun since our last press: press for the next one. */
+            if(fv.atkcs > pressedFor) {
+                send(fs, slot, now, fv.atkcs);
                 return;
             }
-            /* Already selected. The server swings it by itself - unless the repeat was cancelled
-             * or we are out of reach, which shows as a cooldown that ended and nothing after it. */
-            if(!cooling && ((now - fv.atkct) >= STALL_S) && ((now - pickedAt) >= RESELECT_S)) {
+            /* The plan changed its mind within this cooldown: press the new card instead. */
+            if((slot != pressed) && ((now - pressedAt) >= CHANGE_S)) {
+                send(fs, slot, now, fv.atkcs);
+                return;
+            }
+            /* Nothing has swung since the cooldown ended - a cancelled queue, or out of reach. */
+            if(!cooling && ((now - fv.atkct) >= STALL_S) && ((now - pressedAt) >= RESEND_S)) {
                 Fightsess.Action a = fs.actions[slot];
                 if((a == null) || (now >= a.ct))
-                    send(fs, slot, now);
+                    send(fs, slot, now, fv.atkcs);
             }
         } catch(Exception e) {
             /* the bot must never break the tick loop */
         }
     }
 
-    /** Whether our peace offer to this relation came from Auto-Reaggro or Auto Peace Animals. */
-    public static boolean peaceIsTactic(Fightview.Relation rel) {
-        return(rel.autopeaced || ((rel.autogive != null) && (rel.autogive.state == 1)));
-    }
-
-    private static void send(Fightsess fs, int slot, double now) {
-        useAtPick = fs.use;
+    private static void send(Fightsess fs, int slot, double now, double swing) {
         fs.wdgmsg("use", slot, 1, 0);
         held = slot;
         heldOn = fs;
-        picked = slot;
-        pickedAt = now;
+        pressed = slot;
+        pressedAt = now;
+        pressedFor = swing;
     }
 
     private static void reset() {
-        picked = -1;
-        pickedAt = -1;
+        pressed = -1;
+        pressedAt = -1;
+        pressedFor = -1;
         said = null;
     }
 
