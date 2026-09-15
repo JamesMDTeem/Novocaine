@@ -577,7 +577,10 @@ public class Fightview extends Widget {
 		}
 	    }
         try {
-            if (OptWnd.autoPeaceAnimalsWhenCombatStartsCheckBox.a && !rel.autopeaced && curdisp != null && curdisp.give != null && curdisp.give.state != 1) {
+            /* Not while the Auto-Fighter is on: it reads our peace offer as the player calling the
+             * fight off and stops, so auto-peace silently turned it off a second into every
+             * animal fight (seen in the logs as the peace bit rising with no move behind it). */
+            if (OptWnd.autoPeaceAnimalsWhenCombatStartsCheckBox.a && !haven.automated.combat.AutoFighter.on() && !rel.autopeaced && curdisp != null && curdisp.give != null && curdisp.give.state != 1) {
                 synchronized (ui.sess.glob) {
                     Gob curgob = ui.sess.glob.oc.getgob(rel.gobid);
                     if (curgob != null && !curgob.getres().name.contains("gfx/borka")) {

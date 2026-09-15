@@ -289,6 +289,21 @@ public final class Optimizer {
                 }
             }
         }
+        /* OR FROM THE STANCE WE HOLD, when the deck carries none. A stance is held, not thrown,
+         * and a caller that leaves it out of the deck - which it should, because a stance in the
+         * deck is a card the search keeps trying and never throws, and it crowded Shield Up decks
+         * out of their best line (a bear at 725 ticks with it, 515 without) - puts Parry's answer on
+         * the fighter instead (Combatant.whenAttacked, set by CombatDeckSearch.withStance and
+         * Prediction.applyStance). Read only when the deck has none, so a deck still carrying the
+         * card is not counted twice. */
+        if(!anyTrigger) {
+            for(int c = 0; c < 4; c++) {
+                if(me.whenAttacked[c] > 0) {
+                    trigger[c] += me.whenAttacked[c];
+                    anyTrigger = true;
+                }
+            }
+        }
         if(!anyTrigger)
             trigger = null;
         Combatant[] f0 = new Combatant[foes.length];

@@ -60,6 +60,8 @@ public final class AutoFighter {
     private static int held = -1;
     private static Fightsess heldOn = null;
     private static int picked = -1;
+    /* Fightsess.use at the moment we last sent, to tell "not echoed yet" from "changed by someone". */
+    private static int useAtPick = -1;
     private static double pickedAt = -1;
     private static String said = null;
     private static long lastSwitch = 0;
@@ -102,7 +104,13 @@ public final class AutoFighter {
                 }
                 return;
             }
-            if((rel.gst & 1) != 0) {
+            /* A peace offer the player made to end the fight. Two client features offer peace as a
+             * TACTIC, and those are fought through: Auto-Reaggro (P, Relation.autogive) offers peace
+             * so a fleeing animal is re-aggroed the moment the relation drops, and Auto Peace Animals
+             * (Relation.autopeaced) offers it at the start. Reading either as "fight over" stopped the
+             * bot a second or two into James's reaggro fights. A peace offer made by hand while one
+             * of those is active cannot be told apart, and is fought through too. */
+            if(((rel.gst & 1) != 0) && !peaceIsTactic(rel)) {
                 say(gui, "you offered peace to this one, so it is not attacked");
                 return;
             }
@@ -123,7 +131,14 @@ public final class AutoFighter {
                 return;
             }
             said = null;
-            if(slot != fs.use) {
+            /* Selected is what the server echoes - or, while no new echo has come since we sent,
+             * what we sent. Trusting only the echo re-sent every RESELECT_S whenever the echo was
+             * slow or absent. A selection that changes to something else (the player's own key)
+             * clears ours. */
+            if((picked >= 0) && (fs.use != useAtPick) && (fs.use != picked))
+                picked = -1;
+            boolean selected = (slot == fs.use) || ((slot == picked) && (fs.use == useAtPick));
+            if(!selected) {
                 /* A different card: select it now, so it is the one swung at the cooldown's end. */
                 if((slot != picked) || ((now - pickedAt) >= RESELECT_S))
                     send(fs, slot, now);
@@ -141,7 +156,13 @@ public final class AutoFighter {
         }
     }
 
+    /** Whether our peace offer to this relation came from Auto-Reaggro or Auto Peace Animals. */
+    public static boolean peaceIsTactic(Fightview.Relation rel) {
+        return(rel.autopeaced || ((rel.autogive != null) && (rel.autogive.state == 1)));
+    }
+
     private static void send(Fightsess fs, int slot, double now) {
+        useAtPick = fs.use;
         fs.wdgmsg("use", slot, 1, 0);
         held = slot;
         heldOn = fs;

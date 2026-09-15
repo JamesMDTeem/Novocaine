@@ -350,9 +350,13 @@ public final class LiveAdvice {
             haven.combat.log.Openings o =
                 CombatRecorder.readOpenings(rel.buffs.children(haven.Buff.class));
             double dist = (self == null) ? Double.NaN : self.getc().dist(g.getc());
+            /* A peace offer Auto-Reaggro or Auto Peace Animals made is a tactic, not the player
+             * ending the fight, so it does not take the opponent out of the targets - see
+             * AutoFighter.peaceIsTactic. */
+            int gst = AutoFighter.peaceIsTactic(rel) ? (rel.gst & ~1) : rel.gst;
             return(new Foe(rel.gobid, g.getres().name,
                            new int[] {o.green, o.blue, o.yellow, o.red}, rel.ip, rel.oip,
-                           rel.gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid)));
+                           gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid)));
         } catch(Exception e) {
             /* an opponent whose gob or resource has not arrived is left out of this plan */
             return(null);
@@ -464,7 +468,7 @@ public final class LiveAdvice {
         Iterable<String> cards = ((job.bar != null) && !job.bar.isEmpty())
             ? job.bar.keySet() : job.me.levels.keySet();
         for(String c : cards) {
-            Prediction.Expect x = Prediction.of(job.me, t.res, c, t.open, t.ip);
+            Prediction.Expect x = Prediction.of(job.me, t.res, c, t.open, t.ip, true);
             if(x != null)
                 dealt.put(c, Double.valueOf(x.dealt));
         }

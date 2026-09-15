@@ -5671,7 +5671,7 @@ public class OptWnd extends Window {
 			"\n" +
 			"\n$col[185,185,185]{- It does whatever the recommendation shows: throws the ringed card, including restorations, and switches to the target it names.}" +
 			"\n$col[185,185,185]{- It never starts a fight, moves you, or leaves: you aggro and walk, it plays the cards.}" +
-			"\n$col[185,185,185]{- It does not attack an opponent you have offered peace to.}" +
+			"\n$col[185,185,185]{- It does not attack an opponent you have offered peace to - except when Auto-Reaggro (P) or Auto Peace Animals made the offer, which it fights through. While it is on, Auto Peace Animals When Combat Starts does nothing.}" +
 			"\n$col[185,185,185]{- Always off when the client starts.}" +
 			"\n" +
 			"\n$col[218,163,0]{Action Button:} $col[185,185,185]{Menu grid → Novocaine → Auto-Fighter.}", UI.scale(320));

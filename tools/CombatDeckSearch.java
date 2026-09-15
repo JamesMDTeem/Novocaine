@@ -152,7 +152,15 @@ public class CombatDeckSearch {
      */
     static double score(Deck d, Map<String, Move> sheet, Combatant me, Combatant[] foes,
                         FoeModel[] models, Advisor.Aim aim) {
-        List<Move> deck = d.moves(sheet);
+        /* The stance is applied to our side by withStance - block weight, attack factor and
+         * Parry's answer to a blow - and is never thrown, so it is not handed to the search as a
+         * card. Left in, the search kept trying it: a Shield Up swarm deck planned a bear at 725
+         * ticks against 515 without it, and each search took ten times as long. */
+        List<Move> deck = new ArrayList<Move>();
+        for(Move m : d.moves(sheet)) {
+            if(!m.stance)
+                deck.add(m);
+        }
         if(deck.isEmpty())
             return(Double.POSITIVE_INFINITY);
         /* A deck with no stance is not a legal deck - one is always up - so it is scored
@@ -288,7 +296,12 @@ public class CombatDeckSearch {
 
             public java.util.Set<String> played(Deck d) {
                 java.util.Set<String> out = new java.util.LinkedHashSet<String>();
-                List<Move> deck = d.moves(sh);
+                /* Without the stance, as score() plans - see there. */
+                List<Move> deck = new ArrayList<Move>();
+                for(Move mv : d.moves(sh)) {
+                    if(!mv.stance)
+                        deck.add(mv);
+                }
                 if(deck.isEmpty() || !hasStance(d, sh))
                     return(out);
                 List<Optimizer.Plan> front = Optimizer.search(withStance(m, d, sh), f,

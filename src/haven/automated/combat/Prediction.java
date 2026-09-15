@@ -337,6 +337,16 @@ public final class Prediction {
      * @return null whenever anything needed is unknown
      */
     public static Expect of(Me me, String foeRes, String moveRes, int[] foeOpen, int myIp) {
+        return(of(me, foeRes, moveRes, foeOpen, myIp, false));
+    }
+
+    /**
+     * @param live for the fight view's damage numbers rather than the log: a creature whose skill is
+     *             only bounded is priced at the hard end of its band, the way the live advice plans
+     *             it. The logged prediction keeps refusing it - a bound is not a measurement.
+     */
+    public static Expect of(Me me, String foeRes, String moveRes, int[] foeOpen, int myIp,
+                            boolean live) {
         load();
         if((me == null) || !me.usable() || (byRes == null) || (foes == null))
             return(null);
@@ -356,7 +366,7 @@ public final class Prediction {
             return(null);
 
         Pack.Opponent o = find(foeRes);
-        if((o == null) || !o.simulable())
+        if((o == null) || !(o.simulable() || (live && !o.isPlayer() && bounded(o))))
             return(null);
 
         Combatant a = new Combatant("me");
@@ -514,12 +524,13 @@ public final class Prediction {
         int[] ia = new int[ips.size()];
         for(int i = 0; i < ia.length; i++)
             ia[i] = ips.get(i).intValue();
+        /* ONE SEARCH. This used to search, and then ask Advisor.next - which searches the same
+         * thing again - on the message loop, once per card thrown. The pick is the same. */
         List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon, ia);
-        Advisor.Advice adv = Advisor.next(a, bb, deck, mm, Advisor.Aim.FASTEST,
-                                          0, beam, horizon, ia);
-        if((adv == null) || (adv.move == null) || (adv.plan == null))
+        Optimizer.Plan pick = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
+        if((pick == null) || pick.moves.isEmpty())
             return(null);
-        return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,
+        return(new Advised(pick.moves.get(0).res, pick.ticks, pick.hpLost, pick.killed,
                            front.size(), stamp));
     }
 
@@ -614,10 +625,10 @@ public final class Prediction {
         }
         FoeModel model = FoeModel.fromDeck(theirs, b, a.defenceWeight());
         List<Optimizer.Plan> front = Optimizer.search(a, b, deck, model, beam, horizon);
-        Advisor.Advice adv = Advisor.next(a, b, deck, model, Advisor.Aim.FASTEST, 0, beam, horizon);
-        if((adv == null) || (adv.move == null) || (adv.plan == null))
+        Optimizer.Plan pick = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
+        if((pick == null) || pick.moves.isEmpty())
             return(null);
-        return(new Advised(adv.move.res, adv.plan.ticks, adv.plan.hpLost, adv.plan.killed,
+        return(new Advised(pick.moves.get(0).res, pick.ticks, pick.hpLost, pick.killed,
                            front.size(), stamp + "/seen" + theirs.size()));
     }
 
@@ -1330,12 +1341,11 @@ public final class Prediction {
      * two of the stances carry. See {@link Me#buffs} for why the stance is read from the buffs
      * the recorder sampled rather than from the deck.
      *
-     * PARRY'S COUNTER-OPENING IS NOT APPLIED HERE. Parry "when attacked" opens whoever swung,
-     * and Optimizer sources that from the cards in the THROWN deck (Optimizer.search's trigger
-     * array). A stance is never thrown and is now filtered out of the deck, so after this change
-     * there is no path for it. Pricing it would mean Optimizer reading the held stance as well
-     * as the deck, which is outside this fix. The cost: a held Parry gets its 0.8x block weight
-     * but not the openings it would answer a swing with.
+     * AND PARRY'S ANSWER TO A BLOW, on the fighter. Parry "when attacked" opens whoever swung.
+     * Optimizer used to source that only from the cards in the thrown deck, and a stance is
+     * filtered out of the deck, so a held Parry got its 0.8x block weight and none of the openings
+     * it answers a swing with. Optimizer.search now reads Combatant.whenAttacked when the deck
+     * carries no such card, so it is set here, as CombatDeckSearch.withStance sets it.
      */
     private static void applyStance(Combatant a, Me me) {
         String[] names = me.buffs;
@@ -1357,6 +1367,8 @@ public final class Prediction {
         if(st.blockSkill != null)
             a.blockSkill = a.skill(st.blockSkill);
         a.attackMult = st.attackMult;
+        for(int c = 0; c < 4; c++)
+            a.whenAttacked[c] = st.whenAttackedOpens[c];
     }
 
     /**

@@ -355,6 +355,16 @@ public class CombatOptimizerCheck {
         check("holding it shortens the fight", b < a, true);
         System.out.printf("      without %d ticks, with %d%n", a, b);
 
+        /* HELD, NOT THROWN. A stance belongs on the fighter, not in the deck the search tries
+         * cards from - so the same answer has to come from Combatant.whenAttacked with the card
+         * left out of the deck, and a deck that still carries the card must not count it twice. */
+        Combatant holding = me();
+        holding.whenAttacked[Formulas.BLUE] = 10.0;
+        long c = best(Optimizer.search(holding, foe(400, 20), without, model, 60, 2500));
+        check("  the same answer held on the fighter as carried in the deck", c, b);
+        long d = best(Optimizer.search(holding, foe(400, 20), with, model, 60, 2500));
+        check("  and not counted twice when both", d, b);
+
         /* Without a sword it does nothing, which is the card's own condition. */
         Combatant bare = me();
         bare.weaponDamage = 0;
