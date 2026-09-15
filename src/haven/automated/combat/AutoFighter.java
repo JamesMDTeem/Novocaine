@@ -1,23 +1,23 @@
 package haven.automated.combat;
 
-import haven.Coord;
-import haven.Coord2d;
 import haven.Fightsess;
 import haven.Fightview;
 import haven.GameUI;
-import haven.Gob;
 import haven.Utils;
 
-import static haven.OCache.posres;
-
 /**
- * Acts on the live advice, in the fight we are already in: throws its card, aims at the target
- * it picks, and backs off when it says to.
+ * Acts on the live advice, in the fight we are already in: throws its card and aims at the
+ * target it picks.
  *
- * STILL NOT A HUNTER. It does not start fights, look for things to fight, or leave one. A person
- * aggroes; this plays the fight out. Everything it does is what {@link LiveAdvice} decided - the
- * card the fight view rings, the "switch target" and "back off" lines drawn above the bar - so
- * what it is about to do is on screen before it does it.
+ * STILL NOT A HUNTER. It does not start fights, look for things to fight, move us, or leave. A
+ * person aggroes and walks; this plays the cards. Everything it does is what {@link LiveAdvice}
+ * decided - the card the fight view rings, the "switch target" line drawn above the bar - so what
+ * it is about to do is on screen before it does it.
+ *
+ * IT NEVER MOVES US. A version that backed off out of reach to let openings fall was built and
+ * taken out (James, 2026-09-15): a creature keeps tracking us wherever we go, and standing still
+ * is only what lets the openings decay on their own. Walking away buys nothing an animal will
+ * allow, so defence here is cards alone.
  *
  * ON THE TICK, NOT A THREAD. It reads the fight view's cooldown and relations, which the message
  * loop writes and the tick loop reads, so it runs in Fightview.tick beside the advice it consumes.
@@ -36,14 +36,6 @@ import static haven.OCache.posres;
  * view - the message the relation-cycling key sends - at most once every few seconds, and nothing
  * is thrown until an answer planned with the new target arrives.
  *
- * BACKING OFF. The advice says so only against a creature we outrun, when the next blow could take
- * more than its cap and no restoration on the bar answers it. Standing still lets openings fall
- * and moving stops them ("Being in Combat and Moving halts this restoration"), so this walks
- * straight away to just outside the creature's reach and then HOLDS STILL. It comes back when our
- * openings are down, when the blow is back under the cap, after a time limit, or at once if the
- * creature keeps closing - that means we did not outrun it after all, and running only hands it
- * our back. Coming back needs no walking of its own: the next card thrown walks us into range.
- *
  * Off whenever the client starts, whatever it was when it closed.
  */
 public final class AutoFighter {
@@ -56,13 +48,6 @@ public final class AutoFighter {
     private static final long FRESH_MS = 1500;
     /* The shortest time between two target switches. */
     private static final long SWITCH_MS = 3000;
-    /* Back in once the largest of our openings is down to this, or the blow is this share of its cap. */
-    private static final int RESUME_OPEN = 8;
-    private static final double RESUME_SHARE = 0.6;
-    /* The longest a retreat holds, how often a step away may be re-sent, how many re-sends mean
-     * it is keeping up with us, and how long not to try again after that. */
-    private static final long RETREAT_MAX_MS = 25000, STEP_MS = 1500, NO_RETREAT_MS = 20000;
-    private static final int CHASED_LIMIT = 2;
 
     /* Tick thread only. */
     private static double sentAt = -1;
@@ -71,11 +56,6 @@ public final class AutoFighter {
     private static Fightsess heldOn = null;
     private static String said = null;
     private static long lastSwitch = 0;
-    private static boolean retreating = false;
-    private static long retreatSince = 0, lastStep = 0, noRetreatUntil = 0;
-    private static long retreatFrom = 0;
-    private static double retreatTo = 0;
-    private static int chased = 0;
 
     /** Whether the auto-fighter is switched on. */
     public static boolean on() {
@@ -105,11 +85,6 @@ public final class AutoFighter {
             Fightview.Relation rel = fv.current;
             long wall = System.currentTimeMillis();
             LiveAdvice.Now n = LiveAdvice.get(rel.gobid);
-
-            if(retreating) {
-                if(!holdRetreat(gui, fv, n, wall))
-                    return;
-            }
             if(n == null)
                 return;
             if(n.wantsSwitch()) {
@@ -122,18 +97,6 @@ public final class AutoFighter {
             }
             if((rel.gst & 1) != 0) {
                 say(gui, "you offered peace to this one, so it is not attacked");
-                return;
-            }
-            if(n.retreat) {
-                if((wall >= noRetreatUntil) && (n.threatGob != 0)) {
-                    retreating = true;
-                    retreatSince = wall;
-                    retreatFrom = n.threatGob;
-                    retreatTo = n.standOff;
-                    chased = 0;
-                    stepAway(gui);
-                    say(gui, n.why);
-                }
                 return;
             }
             double now = Utils.rtime();
@@ -166,68 +129,9 @@ public final class AutoFighter {
         }
     }
 
-    /**
-     * One frame of a retreat. Returns true when it has ended and the fight carries on this frame,
-     * false while it holds.
-     */
-    private static boolean holdRetreat(GameUI gui, Fightview fv, LiveAdvice.Now n, long wall) {
-        String done = null;
-        int widest = 0;
-        haven.combat.log.Openings o =
-            CombatRecorder.readOpenings(fv.buffs.children(haven.Buff.class));
-        widest = Math.max(Math.max(o.green, o.blue), Math.max(o.yellow, o.red));
-        Gob threat = gob(gui, retreatFrom);
-        Gob me = (gui.map == null) ? null : gui.map.player();
-        if(widest <= RESUME_OPEN)
-            done = "openings are down - back in";
-        else if((n != null) && !Double.isNaN(n.danger) && (n.danger <= (RESUME_SHARE * n.dangerCap)))
-            done = "the big blow is off the table - back in";
-        else if((wall - retreatSince) > RETREAT_MAX_MS)
-            done = "held off long enough - back in";
-        else if((threat == null) || (me == null))
-            done = "lost sight of it - back in";
-        else if((me.rc.dist(threat.rc) < (retreatTo - 2.0)) && ((wall - lastStep) >= STEP_MS)) {
-            if(++chased > CHASED_LIMIT) {
-                done = "it keeps up with us - fighting on";
-                noRetreatUntil = wall + NO_RETREAT_MS;
-            } else {
-                stepAway(gui);
-            }
-        }
-        if(done == null)
-            return(false);
-        retreating = false;
-        say(gui, done);
-        return(true);
-    }
-
-    /* Walks straight away from the threat to the stand-off distance - the map click the
-     * client's own combat distancing tool sends. */
-    private static void stepAway(GameUI gui) {
-        Gob threat = gob(gui, retreatFrom);
-        Gob me = (gui.map == null) ? null : gui.map.player();
-        if((threat == null) || (me == null))
-            return;
-        double angle = threat.rc.angle(me.rc);
-        Coord2d to = new Coord2d(threat.rc.x + (retreatTo * Math.cos(angle)),
-                                 threat.rc.y + (retreatTo * Math.sin(angle)));
-        gui.map.wdgmsg("click", Coord.z, to.floor(posres), 1, 0);
-        lastStep = System.currentTimeMillis();
-    }
-
-    private static Gob gob(GameUI gui, long id) {
-        try {
-            return(gui.ui.sess.glob.oc.getgob(id));
-        } catch(Exception e) {
-            return(null);
-        }
-    }
-
     private static void reset() {
         sentAt = -1;
         said = null;
-        retreating = false;
-        chased = 0;
     }
 
     private static int slotOf(Fightsess fs, String res) {

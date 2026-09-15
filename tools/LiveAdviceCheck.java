@@ -15,7 +15,6 @@
  */
 
 import haven.automated.combat.Prediction;
-import haven.combat.data.Pack;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -153,10 +152,14 @@ public class LiveAdviceCheck {
                                             seen("gfx/borka/body", FRESH, 0));
         check("  and once a person is in the fight, the PvP one", pvpReserve.reserve, Prediction.RESERVE_PVP);
         check("short of health, the plan costs no more than the one with health to spare",
-              !(low.hpLost > full.hpLost + 1e-9), true);
-        /* Unless the next-blow guard spoke first, which with every colour at 60 it may. */
-        check("  and it is the least-damage plan once nothing fits, or the guard's answer",
-              low.why.startsWith("least damage") || low.why.startsWith("a "), true);
+              !(low.hpLost > full.hpLost + Prediction.NEGLIGIBLE_HP + 1e-9), true);
+        /* AN ORDINARY FIGHT IS NOT DEFENDED. Against the fox with our guard shut the safest plan
+         * saves a fraction of a hitpoint, so even with no budget left it is the fastest kill. */
+        Prediction.Live lowCheap = advise(me, null, FRESH, 40, 300, seen(known, foeOpen, 0));
+        System.out.printf("      low health, guard shut: %s (%s), defending would save %.1f hp%n",
+                          lowCheap.moveRes, lowCheap.why, lowCheap.trade);
+        check("where defending saves under the negligible amount", lowCheap.trade <= Prediction.NEGLIGIBLE_HP, true);
+        check("  low health still plays the fastest kill", lowCheap.why, "fastest kill");
         Prediction.Live blind = advise(me, null, wide, Double.NaN, Double.NaN, seen(known, foeOpen, 0));
         check("with our hitpoints unknown it is the fastest kill", blind.why, "fastest kill");
 
@@ -234,28 +237,32 @@ public class LiveAdviceCheck {
 
         /* THE NEXT BLOW. A total over a fight cannot see one swing, so the worst card each
          * opponent could throw next is priced against our openings - at the top of its damage
-         * once it holds initiative - and past the cap the advice must do something about it:
-         * restore, back off, or say that nothing on the bar answers it. Backing off only ever
-         * against a creature we outrun. */
+         * once it holds initiative - and past the cap, where defending saves more than a
+         * negligible amount, the advice must restore or say that nothing on the bar answers it.
+         * Where defending saves nothing worth having it must stay quiet. It never backs off. */
         System.out.println("\nthe next blow is watched");
-        Map<String, Pack.Opponent> pack = Pack.opponentsFromJar();
         Map<String, Integer> noRestore = new LinkedHashMap<String, Integer>();
         noRestore.put("paginae/atk/barrage", 1);
         noRestore.put("paginae/atk/cleave", 1);
         noRestore.put("paginae/atk/fullcircle", 1);
         noRestore.put("paginae/atk/sting", 4);
-        int past = 0, answered = 0, retreats = 0, retreatsOutrun = 0, restores = 0;
-        for(String h : hard) {
-            Prediction.Seen quiet = new Prediction.Seen(1, h, new int[] {20, 0, 0, 20}, 0, 0, 10, 0, null, true);
+        int past = 0, answered = 0, quiet = 0, quietOk = 0, restores = 0;
+        /* The hard creatures, and the two where a sweep of the pack found the guard acting:
+         * a vulture bee against one colour wide open, an adder against every colour open. */
+        List<String> guarded = new java.util.ArrayList<String>(Arrays.asList(hard));
+        guarded.add("gfx/kritter/vulturebee/vulturebee");
+        guarded.add("gfx/kritter/adder/adder");
+        for(String h : guarded) {
+            Prediction.Seen noIp = new Prediction.Seen(1, h, new int[] {20, 0, 0, 20}, 0, 0, 10, 0, null, true);
             Prediction.Seen armed = new Prediction.Seen(1, h, new int[] {20, 0, 0, 20}, 0, 5, 10, 0, null, true);
-            Prediction.Live shut = advise(me, null, FRESH, 300, 300, quiet);
-            Prediction.Live open = advise(me, null, wide, 300, 300, quiet);
+            Prediction.Live shut = advise(me, null, FRESH, 300, 300, noIp);
+            Prediction.Live open = advise(me, null, wide, 300, 300, noIp);
             Prediction.Live openIp = advise(me, null, wide, 300, 300, armed);
             if(open.proxied > 0)
                 continue;
-            System.out.printf("      %-36s worst blow: shut %5.1f, open %5.1f, open+ip %5.1f (cap %.0f) -> %s%n",
-                              h, shut.danger, open.danger, openIp.danger, open.dangerCap,
-                              (openIp.moveRes == null) ? (openIp.retreat ? "back off" : "-") : openIp.moveRes);
+            System.out.printf("      %-36s worst blow: shut %5.1f, open %5.1f, open+ip %5.1f (cap %.0f, trade %.1f) -> %s%n",
+                              h, shut.danger, open.danger, openIp.danger, open.dangerCap, openIp.trade,
+                              (openIp.moveRes == null) ? "-" : openIp.moveRes);
             check("  " + Prediction.shortName(h) + ": an open guard is hit harder than a shut one",
                   open.danger >= shut.danger, true);
             check("  " + Prediction.shortName(h) + ": initiative never makes the blow smaller",
@@ -267,26 +274,27 @@ public class LiveAdviceCheck {
                      advise(me, null, greenOnly, 300, 300, armed)}) {
                 if(!(l.danger > l.dangerCap))
                     continue;
-                past++;
                 boolean restoring = (l.moveRes != null) && l.why.contains(" first");
                 boolean nothing = l.why.contains("nothing on the bar answers it");
-                if(restoring || l.retreat || nothing)
+                if(!(l.trade > Prediction.NEGLIGIBLE_HP)) {
+                    quiet++;
+                    if(!restoring && !nothing)
+                        quietOk++;
+                    continue;
+                }
+                past++;
+                if(restoring || nothing)
                     answered++;
                 if(restoring)
                     restores++;
-                if(l.retreat) {
-                    retreats++;
-                    Pack.Opponent o = pack.get(Prediction.shortName(h));
-                    if((o != null) && o.canDisengage())
-                        retreatsOutrun++;
-                }
             }
         }
-        System.out.printf("      %d case(s) past the cap: %d restored, %d backed off%n", past, restores, retreats);
-        check("some hard creature threatens a blow past the cap", past > 0, true);
-        check("  every one of them is answered or said to be unanswerable", answered, past);
-        check("  and backing off only ever from a creature we outrun", retreatsOutrun, retreats);
-        check("  and with restorations on the bar, one of them is thrown into the blow", restores > 0, true);
+        System.out.printf("      %d case(s) past the cap worth defending: %d restored; %d past it with nothing to save%n",
+                          past, restores, quiet);
+        check("some hard creature threatens a blow past the cap", (past + quiet) > 0, true);
+        check("  every one worth defending is answered or said to be unanswerable", answered, past);
+        check("  and where defending saves nothing, the guard stays quiet", quietOk, quiet);
+        check("  and somewhere worth defending, a restoration is thrown into the blow", restores > 0, true);
 
         finish();
     }

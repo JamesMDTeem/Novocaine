@@ -679,14 +679,18 @@ public final class Prediction {
          */
         public final double danger, dangerCap;
         public final int threat;
-        /** Step out of reach and let our openings fall, rather than throw anything. */
-        public final boolean retreat;
+        /**
+         * Hitpoints the cheapest plan saves over the fastest against the chosen target, or NaN.
+         * At or under {@link #NEGLIGIBLE_HP} there is nothing to defend for, and the advice plays
+         * the fastest kill whatever the reserve or the next blow say.
+         */
+        public final double trade;
         /** The share of our maximum hitpoints the plan kept in hand. */
         public final double reserve;
 
         Live(String moveRes, String why, Optimizer.Plan plan, double budget, int planned,
              int proxied, int players, int target, double danger, double dangerCap, int threat,
-             boolean retreat, double reserve) {
+             double trade, double reserve) {
             this.moveRes = moveRes;
             this.why = why;
             this.ticks = (plan == null) ? 0 : plan.ticks;
@@ -700,13 +704,13 @@ public final class Prediction {
             this.danger = danger;
             this.dangerCap = dangerCap;
             this.threat = threat;
-            this.retreat = retreat;
+            this.trade = trade;
             this.reserve = reserve;
         }
 
         static Live none(String why) {
             return(new Live(null, why, null, Double.NaN, 0, 0, 0, 0, Double.NaN, Double.NaN, -1,
-                            false, Double.NaN));
+                            Double.NaN, Double.NaN));
         }
     }
 
@@ -732,9 +736,21 @@ public final class Prediction {
      * fifth of the bar, and a plan that averages it over a long fight calls that fine. So the
      * worst card each opponent could throw next is priced against our openings as they stand -
      * at the top of its measured damage when it holds initiative - and past this share the
-     * advice restores first, or backs off out of reach.
+     * advice restores first.
      */
     public static final double HIT_CAP_PVE = 0.12, HIT_CAP_PVP = 0.25;
+
+    /**
+     * Hitpoints not worth slowing a kill down for.
+     *
+     * The reserve and the next-blow guard exist for fights where the fastest line and the
+     * cheapest line really differ - a cave angler, where they are 155 hitpoints apart. In an
+     * ordinary fight they are a hitpoint or so apart, and "taking 1~ damage on regular fights is
+     * acceptable" (James, 2026-09-15): defending there buys nothing but time. So when the
+     * cheapest plan saves this much or less over the fastest, the fastest is thrown, whatever
+     * the reserve or the next blow say.
+     */
+    public static final double NEGLIGIBLE_HP = 2.0;
 
     /* How much better another target has to be before the advice changes who we are hitting:
      * a plan 15% quicker, or one that costs 5% of our bar less. Switching is not free - openings
@@ -754,15 +770,13 @@ public final class Prediction {
         final Seen s;
         final Combatant b;
         final FoeModel model, hard;
-        final boolean canRun;
 
-        Built(int at, Seen s, Combatant b, FoeModel model, FoeModel hard, boolean canRun) {
+        Built(int at, Seen s, Combatant b, FoeModel model, FoeModel hard) {
             this.at = at;
             this.s = s;
             this.b = b;
             this.model = model;
             this.hard = hard;
-            this.canRun = canRun;
         }
     }
 
@@ -785,7 +799,9 @@ public final class Prediction {
      * - IT PICKS THE TARGET: the plan is searched with each opponent we may aim at taken first,
      *   and another target wins only when it is clearly better (SWITCH_TICKS, SWITCH_HP_SHARE).
      * - IT WATCHES THE NEXT BLOW: past {@link #HIT_CAP_PVE} it throws the restoration that shrinks
-     *   that blow most, and with none that helps enough, against creatures we outrun, it backs off.
+     *   that blow most. It never moves us: a creature follows wherever we go.
+     * - AND ONLY WHERE IT PAYS: when the cheapest plan saves {@link #NEGLIGIBLE_HP} or less over the
+     *   fastest, the fastest is thrown and neither the reserve nor the guard is consulted.
      *
      * @param bar  card resource to level for every card on the action bar; null or empty uses
      *             the deck at fight start
@@ -825,7 +841,6 @@ public final class Prediction {
                 continue;
             Combatant b;
             FoeModel model, hard;
-            boolean canRun = false;
             if(isPlayerRes(s.res)) {
                 b = ourSide(me, 0);
                 b.hp = b.maxHp = hpKnown ? mhp : 100;
@@ -857,7 +872,6 @@ public final class Prediction {
                     /* The top of its measured damage, for the one blow that has to be survived.
                      * The plan prices the fight at the median; one swing is priced at the worst. */
                     hard = (o.threatHi != null) ? o.threatHi : o.threat;
-                    canRun = o.canDisengage();
                 }
                 b = o.hardestReal();
             }
@@ -870,7 +884,7 @@ public final class Prediction {
              * so whatever is left of it is still standing. */
             if((s.taken > 0) && (b.hp > 0))
                 b.hp = Math.max(1, b.hp - s.taken);
-            built.add(new Built(i, s, b, model, hard, canRun));
+            built.add(new Built(i, s, b, model, hard));
         }
         if(built.isEmpty() || (built.get(0).at != 0))
             return(Live.none("the target could not be planned"));
@@ -905,6 +919,10 @@ public final class Prediction {
             Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
             if(p == null)
                 continue;
+            /* Nothing worth defending for against this order: the fastest line, whatever the
+             * reserve said. */
+            if(tradeOf(front) <= NEGLIGIBLE_HP)
+                p = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
             picks.add(p);
             fronts.add(front);
             pickAt.add(Integer.valueOf(k));
@@ -913,7 +931,7 @@ public final class Prediction {
         }
         if(picks.isEmpty())
             return(new Live(null, "no plan reached the horizon", null, budget, built.size(),
-                            proxied, players, 0, Double.NaN, Double.NaN, -1, false, reserve));
+                            proxied, players, 0, Double.NaN, Double.NaN, -1, Double.NaN, reserve));
         Optimizer.Plan best = Advisor.choose(picks, Advisor.Aim.SURVIVE, budget);
         int bi = picks.indexOf(best);
         int bestK = pickAt.get(bi).intValue();
@@ -924,18 +942,19 @@ public final class Prediction {
             bestK = 0;
         }
         List<Optimizer.Plan> front = fronts.get(bi);
+        double trade = tradeOf(front);
 
         String move = best.moves.isEmpty() ? null : best.moves.get(0).res;
-        /* Which of the three answers SURVIVE gave: the fastest kill outright, a slower one the
-         * reserve forced, or - nothing fitting - the cheapest. */
+        /* Which answer this is: the fastest kill outright, a slower one the reserve forced, or -
+         * nothing fitting - the cheapest. */
         Optimizer.Plan fastest = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
         String why;
         if(move == null)
             why = "the best plan throws nothing";
-        else if(!Double.isNaN(best.hpLost) && (best.hpLost > budget))
-            why = "least damage";
         else if(best == fastest)
             why = "fastest kill";
+        else if(!Double.isNaN(best.hpLost) && (best.hpLost > budget))
+            why = "least damage";
         else
             why = "fastest kill that keeps the reserve";
         if(bestK != 0)
@@ -943,10 +962,10 @@ public final class Prediction {
         if(proxied > 0)
             why = why + ", " + proxied + " unknown planned as " + standIn;
 
-        /* THE NEXT BLOW. Only with our hitpoints known - a cap is a share of them. */
+        /* THE NEXT BLOW. Only with our hitpoints known - a cap is a share of them - and only
+         * acted on where defending saves more than a negligible amount. */
         double danger = Double.NaN, cap = Double.NaN;
         int threat = -1;
-        boolean retreat = false;
         if(hpKnown) {
             cap = (pvp ? HIT_CAP_PVP : HIT_CAP_PVE) * mhp;
             double[] w = worstHits(a, built);
@@ -957,7 +976,7 @@ public final class Prediction {
                     threat = built.get(i).at;
                 }
             }
-            if(danger > cap) {
+            if((danger > cap) && (trade > NEGLIGIBLE_HP)) {
                 Built tb = built.get(bestK);
                 Move fix = null;
                 double fixed = danger;
@@ -976,22 +995,14 @@ public final class Prediction {
                     }
                 }
                 String big = "a " + Math.round(danger) + " hp blow is possible";
-                /* In order: a restoration that brings the blow under the cap; backing off, where
-                 * we outrun everything that threatens it; a restoration that at least takes a
-                 * tenth off it; and only then the plan, said to be unanswered. Openings spread
-                 * over every colour are the case the middle rungs exist for - no one card closes
-                 * four colours, but the best of them still beats swinging into the blow. */
-                boolean canRun = allCanRun(built, w, cap);
-                boolean fixes = (fix != null) && (fixed <= cap);
-                boolean helps = (fix != null) && (fixed <= (RESTORE_HELPS * danger));
-                if(fixes || (helps && !canRun)) {
+                /* A restoration that takes at least a tenth off the blow, the best of them. It
+                 * need not bring the blow under the cap: openings spread over every colour are
+                 * closed by no one card, and the best of them still beats swinging into it. The
+                 * advice never moves us - a creature follows wherever we go, and moving only
+                 * stops our openings falling. */
+                if((fix != null) && (fixed <= (RESTORE_HELPS * danger))) {
                     move = fix.res;
                     why = big + " - " + fix.name + " first";
-                    bestK = 0;
-                } else if(canRun) {
-                    retreat = true;
-                    move = null;
-                    why = big + " - back off and let the openings fall";
                     bestK = 0;
                 } else {
                     why = why + "; " + big + " and nothing on the bar answers it";
@@ -999,7 +1010,17 @@ public final class Prediction {
             }
         }
         return(new Live(move, why, best, budget, built.size(), proxied, players,
-                        built.get(bestK).at, danger, cap, threat, retreat, reserve));
+                        built.get(bestK).at, danger, cap, threat, trade, reserve));
+    }
+
+    /** Hitpoints the cheapest plan on this frontier saves over the fastest; 0 when unknown. */
+    private static double tradeOf(List<Optimizer.Plan> front) {
+        Optimizer.Plan fastest = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
+        Optimizer.Plan cheapest = Advisor.choose(front, Advisor.Aim.SAFEST, 0);
+        if((fastest == null) || (cheapest == null) || Double.isNaN(fastest.hpLost)
+           || Double.isNaN(cheapest.hpLost))
+            return(0);
+        return(Math.max(0, fastest.hpLost - cheapest.hpLost));
     }
 
     /** Whether another target's plan is worth leaving the current one for. */
@@ -1043,20 +1064,6 @@ public final class Prediction {
         for(double d : v)
             out = Math.max(out, d);
         return(out);
-    }
-
-    /* Backing off only works against what we outrun: anything faster keeps swinging at our back,
-     * and moving stops our openings falling. Every opponent over the cap has to be one we outrun. */
-    private static boolean allCanRun(List<Built> built, double[] w, double cap) {
-        boolean any = false;
-        for(int i = 0; i < w.length; i++) {
-            if(w[i] <= cap)
-                continue;
-            if(!built.get(i).canRun)
-                return(false);
-            any = true;
-        }
-        return(any);
     }
 
     /** Whether a card closes any of our own openings - a restoration. */

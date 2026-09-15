@@ -60,17 +60,12 @@ public final class LiveAdvice {
         /** The opponent the plan attacks first - {@link #gobId} unless it wants a switch - and its name. */
         public final long targetGob;
         public final String targetName;
-        /** Back off out of reach of {@link #threatGob}, to {@link #standOff} world units from it. */
-        public final boolean retreat;
-        public final long threatGob;
-        public final double standOff;
         /** The worst blow that could land on our openings as they stood, and its cap; NaN when unknown. */
         public final double danger, dangerCap;
 
         Now(long gobId, String moveRes, Map<String, Double> dealt, long at, long observedAt,
             String why, int planned, int proxied, double hpLost, double budget, long targetGob,
-            String targetName, boolean retreat, long threatGob, double standOff, double danger,
-            double dangerCap) {
+            String targetName, double danger, double dangerCap) {
             this.gobId = gobId;
             this.moveRes = moveRes;
             this.dealt = dealt;
@@ -83,9 +78,6 @@ public final class LiveAdvice {
             this.budget = budget;
             this.targetGob = targetGob;
             this.targetName = targetName;
-            this.retreat = retreat;
-            this.threatGob = threatGob;
-            this.standOff = standOff;
             this.danger = danger;
             this.dangerCap = dangerCap;
         }
@@ -107,9 +99,6 @@ public final class LiveAdvice {
     private static final int CROWD = 4;
     private static final int BEAM = 60;
     private static final long HORIZON = 2500;
-    /* How far outside a creature's reach to stand when backing off, on top of the client's own
-     * per-species distancing figure (CombatDistanceTool), and the figure for a creature it lacks. */
-    private static final double STANDOFF_MARGIN = 4.0, STANDOFF_DEFAULT = 28.0;
 
     private static final class Foe {
         final long gob;
@@ -425,19 +414,11 @@ public final class LiveAdvice {
         }
         Foe aim = ((live.target >= 0) && (live.target < job.foes.size()))
             ? job.foes.get(live.target) : t;
-        Foe threat = ((live.threat >= 0) && (live.threat < job.foes.size()))
-            ? job.foes.get(live.threat) : null;
-        double standOff = STANDOFF_DEFAULT;
-        if(threat != null) {
-            Double d = haven.automated.CombatDistanceTool.animalDistances.get(threat.res);
-            standOff = ((d == null) ? STANDOFF_DEFAULT : d.doubleValue()) + STANDOFF_MARGIN;
-        }
         /* A card planned against another target is not a card to throw at this one. */
         String move = (aim == t) ? live.moveRes : null;
         return(new Now(t.gob, move, Collections.unmodifiableMap(dealt),
                        System.currentTimeMillis(), job.observedAt, live.why, live.planned,
                        live.proxied, live.hpLost, live.budget, aim.gob,
-                       Prediction.shortName(aim.res), live.retreat,
-                       (threat == null) ? 0 : threat.gob, standOff, live.danger, live.dangerCap));
+                       Prediction.shortName(aim.res), live.danger, live.dangerCap));
     }
 }
