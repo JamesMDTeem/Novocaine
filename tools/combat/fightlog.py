@@ -294,7 +294,7 @@ class Engagement(object):
             return before
         anchor = None
         for o in self.overlays:
-            if (o.get("gob") != actor) or (overlay_move(o.get("res") or "") != card):
+            if (o.get("gob") != actor) or not overlay_announces(o.get("res") or "", card):
                 continue
             ot = o.get("t") or 0
             if 0 <= (t - ot) <= TICK_MS:
@@ -791,17 +791,33 @@ OUT_OF_REACH = 70.0
 #
 # Animals may use cards with no icon of their own, or share one. That is a question for
 # the first corpus recorded after the change, not something to assume either way here.
+#
+# AN ICON CAN BELONG TO MORE THAN ONE CARD (2026-09-15), so the table names every card an icon
+# announces. Re-derived over the whole corpus - the nearest icon on our own body within
+# TICK_MS before each of our move rows - the one-to-one claim above holds for nine icons and
+# fails for two: `flex` precedes Take Aim 1,219 times and Flex 685, `slide` Quick Dodge 3,319
+# and Sidestep 848. Six icons were missing outright - artevade (Artful Evasion 719),
+# load-punch (Punch 103), sideswipe (61), knockteeth (31), uppercut (27), haymaker (1) - so
+# none of those cards could anchor on its own announcement. A one-name table read Flex's icon
+# as Take Aim, and every Flex whose gain landed before its row scored "observed 0". Compare
+# with overlay_announces(); overlay_move() returns the tuple, or None.
 OVERLAY_MOVE = {
-    "gfx/fx/fight/barrage": "Quick Barrage",
-    "gfx/fx/fight/fullcircle": "Full Circle",
-    "gfx/fx/fight/cleave": "Cleave",
-    "gfx/fx/fight/sting": "Sting",
-    "gfx/fx/fight/oppknock": "Opportunity Knocks",
-    "gfx/fx/fight/flex": "Take Aim",
-    "gfx/fx/fight/slide": "Quick Dodge",
-    "gfx/fx/fight/dash": "Dash",
-    "gfx/fx/fight/jump": "Jump",
-    "gfx/fx/fight/zigzag": "Zig-Zag Ruse",
+    "gfx/fx/fight/barrage": ("Quick Barrage",),
+    "gfx/fx/fight/fullcircle": ("Full Circle",),
+    "gfx/fx/fight/cleave": ("Cleave",),
+    "gfx/fx/fight/sting": ("Sting",),
+    "gfx/fx/fight/oppknock": ("Opportunity Knocks",),
+    "gfx/fx/fight/flex": ("Take Aim", "Flex"),
+    "gfx/fx/fight/slide": ("Quick Dodge", "Sidestep"),
+    "gfx/fx/fight/dash": ("Dash",),
+    "gfx/fx/fight/jump": ("Jump",),
+    "gfx/fx/fight/zigzag": ("Zig-Zag Ruse",),
+    "gfx/fx/fight/artevade": ("Artful Evasion",),
+    "gfx/fx/fight/load-punch": ("Punch",),
+    "gfx/fx/fight/sideswipe": ("Sideswipe",),
+    "gfx/fx/fight/knockteeth": ("Knock Its Teeth Out",),
+    "gfx/fx/fight/uppercut": ("Uppercut",),
+    "gfx/fx/fight/haymaker": ("Haymaker",),
 }
 
 # Outcome sounds, which arrive by the same path and are NOT move announcements. They follow
@@ -841,8 +857,13 @@ OVERLAY_OUTCOME = {
 
 
 def overlay_move(res):
-    """The card an overlay resource announces, or None if it announces no card."""
+    """The cards an overlay resource can announce, as a tuple, or None if it announces none."""
     return OVERLAY_MOVE.get(res)
+
+
+def overlay_announces(res, card):
+    """Whether this overlay is an announcement of this card - one of the cards its icon names."""
+    return card in (OVERLAY_MOVE.get(res) or ())
 
 
 def overlay_outcome(res):
@@ -1371,7 +1392,7 @@ def attributed_gains(eng, opens, me_gob=None):
             if len(inwin) > 1:
                 continue
             named = [overlay_move(o.get("res")) for o in inwin]
-            if [n for n in named if (n is not None) and (n != name)]:
+            if [n for n in named if (n is not None) and (name not in n)]:
                 continue
 
         # Out of reach for the whole bracket. Only for our own moves: how far away we

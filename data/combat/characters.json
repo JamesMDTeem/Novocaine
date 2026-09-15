@@ -588,15 +588,15 @@
    }
   },
   {
-   "agi": 190,
+   "agi": 207,
    "armour": {
     "hard": 85,
     "pieces": 23,
     "soft": 68
    },
-   "con": 129,
-   "hhp": 350,
-   "hp": 359,
+   "con": 148,
+   "hhp": 376,
+   "hp": 385,
    "known": {
     "Artful Evasion": 2,
     "Bloodlust": 1,
@@ -640,8 +640,8 @@
     "Yield Ground": 1,
     "Zig-Zag Ruse": 3
    },
-   "logs": 876,
-   "melee": 189,
+   "logs": 877,
+   "melee": 194,
    "name": "ZzxcuV3",
    "owned": {
     "Artful Evasion": 0,
@@ -687,8 +687,8 @@
     "Zig-Zag Ruse": 1
    },
    "shield": true,
-   "str": 202,
-   "unarmed": 133,
+   "str": 210,
+   "unarmed": 138,
    "weapon": {
     "armour_pen": 0.125,
     "base_damage": 90,

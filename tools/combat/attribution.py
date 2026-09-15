@@ -349,9 +349,13 @@ def actions_of(enc):
         f = enc.fighters.get(me)
         ann = defaultdict(list)
         for o in (g.overlays or []):
-            card = fightlog.overlay_move(o.get("res") or "")
-            if card:
-                ann[o.get("gob")].append((o.get("t") or 0, card))
+            # An icon can announce more than one card (fightlog.OVERLAY_MOVE). Our own moves
+            # match by membership below. A stranger's shared icon is genuinely ambiguous, and
+            # the shared pairs - Take Aim/Flex, Quick Dodge/Sidestep - deal no damage, so the
+            # candidate carries the first name; it can never be priced as the hitter either way.
+            cards = fightlog.overlay_move(o.get("res") or "")
+            if cards:
+                ann[o.get("gob")].append((o.get("t") or 0, cards))
         for k in ann:
             ann[k].sort()
         if f is not None:
@@ -365,7 +369,7 @@ def actions_of(enc):
                     t = m.get("t") or 0
                     anchor = t
                     for at, ac in ann.get(me, ()):
-                        if (ac == card) and (0 <= (t - at) <= ANNOUNCE_MS):
+                        if (card in ac) and (0 <= (t - at) <= ANNOUNCE_MS):
                             anchor = min(anchor, at)
                     raw.append(Candidate(f, card, enc.wall_of(g, anchor),
                                          m.get("gob"), "move"))
@@ -373,8 +377,8 @@ def actions_of(enc):
             if gob == me:
                 continue           # our own announcement; the move row above is better
             other = enc.fighters.get(gob)
-            for t, card in rows:
-                raw.append(Candidate(other or _Stranger(gob), card,
+            for t, cards in rows:
+                raw.append(Candidate(other or _Stranger(gob), cards[0],
                                      enc.wall_of(g, t), None, "overlay"))
     return _dedupe(raw, enc)
 

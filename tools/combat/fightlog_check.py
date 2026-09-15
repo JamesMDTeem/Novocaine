@@ -356,6 +356,15 @@ def damage():
     h = fightlog.hits(log.engagements[0], ME)[0]
     check("  while one that lands after it reads the state before the move", h["openings"][3], 50)
 
+    # AN ICON CAN BELONG TO TWO CARDS. Flex shows Take Aim's icon and Sidestep shows Quick
+    # Dodge's; a one-name table read every Flex as Take Aim and its landing was never found.
+    check("the flex icon announces Take Aim", fightlog.overlay_announces("gfx/fx/fight/flex", "Take Aim"), True)
+    check("  and Flex", fightlog.overlay_announces("gfx/fx/fight/flex", "Flex"), True)
+    check("  and not Quick Barrage", fightlog.overlay_announces("gfx/fx/fight/flex", "Quick Barrage"), False)
+    check("the slide icon announces Sidestep too", fightlog.overlay_announces("gfx/fx/fight/slide", "Sidestep"), True)
+    check("Punch's icon is known", fightlog.overlay_announces("gfx/fx/fight/load-punch", "Punch"), True)
+    check("an outcome sound announces no card", fightlog.overlay_move("sfx/fight/hit1"), None)
+
     _one_hit_not_the_whole_window()
 
     print("\nsoak pairs, which do not go through the move list at all")
