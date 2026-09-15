@@ -5,6 +5,8 @@
  *   java -cp %TEMP%\decksearch CombatDeckSearch                 (every opponent, one deck each)
  *   java -cp %TEMP%\decksearch CombatDeckSearch -n 5            (five of each at once)
  *   java -cp %TEMP%\decksearch CombatDeckSearch -aim safest
+ *   java -cp %TEMP%\decksearch CombatDeckSearch -aim survive -reserve 0.75 -hi
+ *                                       (fastest kill that keeps 75% of hp, damage at its top)
  *
  * NOT part of the client build.
  *
@@ -121,6 +123,20 @@ public class CombatDeckSearch {
 
     /* Not killing is worse than any kill, and among non-kills getting closer is better. */
     static final double NO_KILL = 1e9;
+    /* SURVIVE's second layer: a kill that keeps the reserve beats every kill that does not, and
+     * among those that do not, the one that costs least comes first. */
+    static final double OVER_BUDGET = 1e8;
+    /**
+     * The share of our hitpoints a SURVIVE deck keeps in hand - the live advice's own figure for
+     * creatures, Prediction.RESERVE_PVE. A fight may cost the rest and no more.
+     */
+    static double RESERVE = 0.75;
+    /**
+     * Price each creature at the TOP of its measured damage (the pack's threatHi) rather than
+     * the median. The defensive question: a deck that keeps the reserve against the hardest
+     * hitting reading the corpus allows keeps it against the rest.
+     */
+    static boolean HI = false;
 
     /**
      * How good a deck is against one opponent. Lower is better.
@@ -145,12 +161,18 @@ public class CombatDeckSearch {
             return(NO_KILL * 2);
         List<Optimizer.Plan> front = Optimizer.search(withStance(me, d, sheet), foes, deck,
                                                       models, BEAM, HORIZON);
-        Optimizer.Plan best = Advisor.choose(front, aim, Double.MAX_VALUE);
+        double budget = (aim == Advisor.Aim.SURVIVE) ? ((1.0 - RESERVE) * me.maxHp)
+                                                     : Double.MAX_VALUE;
+        Optimizer.Plan best = Advisor.choose(front, aim, budget);
         if(best == null)
             return(Double.POSITIVE_INFINITY);
         if(!best.killed)
             return(NO_KILL + Math.max(0, best.foeHp));
         double hp = Double.isNaN(best.hpLost) ? 0 : best.hpLost;
+        if(aim == Advisor.Aim.SURVIVE) {
+            return((hp <= budget) ? ((best.ticks * 1000.0) + hp)
+                                  : (OVER_BUDGET + (hp * 10000.0) + best.ticks));
+        }
         return((aim == Advisor.Aim.SAFEST) ? ((hp * 1000.0) + best.ticks)
                                            : ((best.ticks * 1000.0) + hp));
     }
@@ -159,6 +181,10 @@ public class CombatDeckSearch {
     static double headline(double score, Advisor.Aim aim) {
         if(score >= NO_KILL)
             return(Double.NaN);
+        /* A SURVIVE deck that cannot keep the reserve is ranked by what it costs, so that is
+         * the number shown - the table marks the row. */
+        if((aim == Advisor.Aim.SURVIVE) && (score >= OVER_BUDGET))
+            return(Math.floor((score - OVER_BUDGET) / 10000.0));
         return(Math.floor(score / 1000.0));
     }
 
@@ -664,6 +690,10 @@ public class CombatDeckSearch {
                 slotOverride = Integer.parseInt(argv[++i]);
             else if("-aim".equals(argv[i]) && ((i + 1) < argv.length))
                 aim = Advisor.Aim.valueOf(argv[++i].toUpperCase());
+            else if("-reserve".equals(argv[i]) && ((i + 1) < argv.length))
+                RESERVE = Double.parseDouble(argv[++i]);
+            else if("-hi".equals(argv[i]))
+                HI = true;
             else
                 only = argv[i];
         }
@@ -749,6 +779,11 @@ public class CombatDeckSearch {
                           (who.weapon == null) ? "bare-handed"
                               : String.format("%s q%.1f", who.weapon, who.weaponQl));
         System.out.printf("against: %ss%n", kind);
+        if(aim == Advisor.Aim.SURVIVE)
+            System.out.printf("survive: a fight may cost %.0f%% of %.0f hp (reserve %.2f)%n",
+                              100.0 * (1.0 - RESERVE), me.maxHp, RESERVE);
+        System.out.printf("damage priced at: %s%n", HI ? "the TOP of each creature's measured range"
+                                                        : "each creature's median");
         System.out.printf("aim: %s   opponents at once: %d%n%n", aim, copies);
         beamNote();
         if(copies > 1)
@@ -864,6 +899,8 @@ public class CombatDeckSearch {
             String thin = (aim != Advisor.Aim.SAFEST) ? ""
                 : ((dn == 0) ? "<- never seen landing a blow; health column is a guess"
                    : ((dn <= 3) ? ("<- health from " + dn + " observation(s)") : ""));
+            if((aim == Advisor.Aim.SURVIVE) && (d.score >= OVER_BUDGET))
+                thin = thin + "<- keeps no reserve; the number is hp lost, not ticks";
             System.out.printf("  %-16s %-8.0f %-8d %-52s %s%s%n",
                               n.substring(0, Math.min(16, n.length())),
                               headline(d.score, aim), d.points(),
@@ -1014,7 +1051,7 @@ public class CombatDeckSearch {
     static FoeModel[] models(Pack.Opponent o, int copies) {
         FoeModel[] out = new FoeModel[Math.max(1, copies)];
         for(int i = 0; i < out.length; i++)
-            out[i] = o.threat;
+            out[i] = (HI && (o.threatHi != null)) ? o.threatHi : o.threat;
         return(out);
     }
 

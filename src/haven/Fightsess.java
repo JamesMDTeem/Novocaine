@@ -195,6 +195,13 @@ public class Fightsess extends Widget {
 	private static final Color adviceAntsColor = new Color(60, 255, 90);
 	/* Amber when the plan stood a typical creature in for one the combat data does not know. */
 	private static final Color adviceAntsGuessColor = new Color(255, 190, 40);
+	private static final Color adviceRetreatColor = new Color(255, 110, 70);
+	private static final Map<String, Tex> adviceHintTexCache = new HashMap<>();
+
+	/* White text with a black outline, tinted by the caller. */
+	private static Tex getAdviceHintTexture(String hint) {
+		return adviceHintTexCache.computeIfAbsent(hint, key -> Text.renderstroked(key, Text.num12boldFnd).tex());
+	}
 
 	private static void drawMarchingAnts(GOut g, Coord ul, Coord sz, double now, boolean waiting, Color antsColor) {
 		int pad = UI.scale(3);
@@ -728,6 +735,16 @@ public class Fightsess extends Widget {
 	}
 	haven.automated.combat.LiveAdvice.Now advice = (fv.current == null) ? null
 		: haven.automated.combat.LiveAdvice.get(fv.current.gobid);
+	/* What the advice wants done before any card: aim at someone else, or step out of reach. */
+	if((advice != null) && OptWnd.combatMoveAdviceCheckBox.a) {
+		String hint = advice.retreat ? "Back off - let your openings fall"
+			: (advice.wantsSwitch() ? ("Switch target: " + advice.targetName) : null);
+		if(hint != null) {
+			g.chcolor(advice.retreat ? adviceRetreatColor : adviceAntsGuessColor);
+			g.aimage(getAdviceHintTexture(hint), new Coord(x, bottom - UI.scale(150) + UI.scale(125) - UI.scale(8)), 0.5, 1.0);
+			g.chcolor();
+		}
+	}
 	for(int i = 0; i < actions.length; i++) {
 	    Coord ca = new Coord(x - 16, bottom - UI.scale(150)).add(actc(i)) ;
 	    Action act = actions[i];

@@ -5659,15 +5659,17 @@ public class OptWnd extends Window {
 	private static final Object combatMoveAdviceTooltip = RichText.render("Draws a moving $col[60,255,90]{green dashed border} around the combat move the combat model would use next, re-planned from the fight as it currently stands." +
 			"\n" +
 			"\n$col[185,185,185]{- It plans against your target and the nearest others on you (up to four in all), from the cards on your bar - whatever deck that is - with the initiative you hold against each one, your own openings, and the damage each opponent has already taken.}" +
-			"\n$col[185,185,185]{- It picks the fastest kill that keeps 30% of your health in hand. When that kill would cost more, it picks the plan that takes the least damage, which is when it recommends a restoration.}" +
+			"\n$col[185,185,185]{- It picks the fastest kill that keeps 75% of your health in hand against creatures (30% once a player is in the fight). When that kill would cost more, it picks the plan that takes the least damage, which is when it recommends a restoration.}" +
+			"\n$col[185,185,185]{- It watches the next blow: if one swing against your openings as they stand could take more than 12% of your health (25% against players), it recommends the restoration that shrinks it most, or - against a creature you outrun - shows} $col[255,110,70]{Back off} $col[185,185,185]{above the bar.}" +
+			"\n$col[185,185,185]{- It picks who to hit. When another opponent is clearly the better target it shows} $col[255,190,40]{Switch target} $col[185,185,185]{above the bar and rings no card until you do.}" +
 			"\n$col[185,185,185]{- A creature missing from the combat data is planned as a typical one, and the border turns} $col[255,190,40]{amber} $col[185,185,185]{when that happened. Against players it plans from the cards you have seen them use (or your own), assuming their stats match yours.}" +
 			"\n$col[185,185,185]{- The border is dimmer while your cooldown is still running.}" +
 			"\n" +
 			"\n$col[218,163,0]{Action Button:} $col[185,185,185]{Menu grid → Novocaine → Combat Move Advice.}", UI.scale(320));
 	private static final Object combatAutoFightTooltip = RichText.render("Throws the recommended combat move for you, in fights you are already in." +
 			"\n" +
-			"\n$col[185,185,185]{- It uses whatever the recommendation shows, including restorations when your health is running short.}" +
-			"\n$col[185,185,185]{- It never starts a fight, picks a target, moves you, or leaves: you aggro and aim, it plays the cards against your current target.}" +
+			"\n$col[185,185,185]{- It does whatever the recommendation shows: throws the ringed card, switches to the target it names, and backs off out of reach when it says to, holding still until your openings fall.}" +
+			"\n$col[185,185,185]{- It never starts a fight or leaves one: you aggro, it plays the fight out.}" +
 			"\n$col[185,185,185]{- It does not attack an opponent you have offered peace to.}" +
 			"\n$col[185,185,185]{- Always off when the client starts.}" +
 			"\n" +

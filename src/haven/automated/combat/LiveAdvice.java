@@ -7,42 +7,45 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The advisor's answer, kept current for the fight view to draw and the auto-fighter to throw.
+ * The advisor's answer, kept current for the fight view to draw and the auto-fighter to act on.
  *
  * READ FROM THE FIGHT VIEW, NOT FROM THE RECORDER. The first version planned from the recorder's
  * samples, and those exist only while Record Combat Telemetry is on and describe the one relation
  * the client samples. {@link #observe} reads the fight itself every frame instead - our openings
- * and hitpoints, every opponent's openings, initiative, distance and the damage already drawn on
- * it, and the cards actually on the bar - so advice needs no logging and a crowd plans as a crowd.
+ * and hitpoints, every opponent's openings, initiative on both sides, distance and the damage
+ * already drawn on it, and the cards actually on the bar - so advice needs no logging and a crowd
+ * plans as a crowd.
  *
- * WHY A WORKER. The search is a beam over the whole deck, 4 ms at beam 60 against one wolf and
- * more against a crowd, and observe() runs on the tick loop. Requests are coalesced - only the
- * newest state is ever planned - so a slow search skips states rather than queueing them, and the
- * fight view reads a finished answer without waiting on anything.
+ * WHY A WORKER. The search is a beam over the whole deck, run once per opponent we might aim at,
+ * and observe() runs on the tick loop. Requests are coalesced - only the newest state is ever
+ * planned - so a slow search skips states rather than queueing them, and the fight view reads a
+ * finished answer without waiting on anything.
  *
  * NOT THE AUDITED ADVICE, DELIBERATELY. The log's advice ({@link CombatRecorder}'s advise) stays the
  * pure question - fastest kill, known opponents only - because it is scored against what a person
- * threw. This one has to answer in every fight, so it goes through
- * {@link Prediction#adviseLive}: a stand-in for a creature the pack does not know, whatever deck
- * is on the bar, and our hitpoints in the question, so it throws the fastest kill that keeps a
- * reserve and reaches for a restoration when that kill costs too much. An answer that leaned on a
- * stand-in says so in {@link Now#proxied}, and the fight view draws it amber rather than green.
+ * threw. This one has to answer in every fight and keep us standing, so it goes through
+ * {@link Prediction#adviseLive}: a stand-in for a creature the pack does not know, whatever deck is
+ * on the bar, a reserve of our hitpoints, the target worth hitting, and the next blow. An answer
+ * that leaned on a stand-in says so in {@link Now#proxied}, and the fight view draws it amber.
  *
  * Nothing here is written to the log and nothing here acts - {@link AutoFighter} does that.
  */
 public final class LiveAdvice {
     private LiveAdvice() {}
 
-    /** One finished answer, for one opponent. */
+    /** One finished answer, planned while one opponent was the fight view's target. */
     public static final class Now {
-        /** The relation the plan was made against - the fight view's current target. */
+        /** The relation that was the target when the fight was read. */
         public final long gobId;
-        /** The card to throw next, or null when there is no plan - {@link #why} then says why. */
+        /**
+         * The card to throw at that target next, or null - when there is no plan, when the plan
+         * is to back off, or when it wants a different target first. {@link #why} says which.
+         */
         public final String moveRes;
         /**
-         * Soft hitpoints the model expects each card on the bar to take off this target from
-         * the state planned, keyed by card resource. Priced only against a creature the pack
-         * knows - never through the stand-in - so an absent card means "no answer", not zero.
+         * Soft hitpoints the model expects each card on the bar to take off the target from the
+         * state planned, keyed by card resource. Priced only against a creature the pack knows -
+         * never through the stand-in - so an absent card means "no answer", not zero.
          */
         public final Map<String, Double> dealt;
         /** Wall time the answer was finished, for staleness. */
@@ -54,9 +57,20 @@ public final class LiveAdvice {
         public final int planned, proxied;
         /** What the chosen plan expects to cost us, and what it was allowed to. */
         public final double hpLost, budget;
+        /** The opponent the plan attacks first - {@link #gobId} unless it wants a switch - and its name. */
+        public final long targetGob;
+        public final String targetName;
+        /** Back off out of reach of {@link #threatGob}, to {@link #standOff} world units from it. */
+        public final boolean retreat;
+        public final long threatGob;
+        public final double standOff;
+        /** The worst blow that could land on our openings as they stood, and its cap; NaN when unknown. */
+        public final double danger, dangerCap;
 
         Now(long gobId, String moveRes, Map<String, Double> dealt, long at, long observedAt,
-            String why, int planned, int proxied, double hpLost, double budget) {
+            String why, int planned, int proxied, double hpLost, double budget, long targetGob,
+            String targetName, boolean retreat, long threatGob, double standOff, double danger,
+            double dangerCap) {
             this.gobId = gobId;
             this.moveRes = moveRes;
             this.dealt = dealt;
@@ -67,6 +81,18 @@ public final class LiveAdvice {
             this.proxied = proxied;
             this.hpLost = hpLost;
             this.budget = budget;
+            this.targetGob = targetGob;
+            this.targetName = targetName;
+            this.retreat = retreat;
+            this.threatGob = threatGob;
+            this.standOff = standOff;
+            this.danger = danger;
+            this.dangerCap = dangerCap;
+        }
+
+        /** Whether the plan wants a different opponent aimed at before anything is thrown. */
+        public boolean wantsSwitch() {
+            return((targetGob != 0) && (targetGob != gobId));
         }
     }
 
@@ -76,24 +102,30 @@ public final class LiveAdvice {
      * the answer can be when the auto-fighter's cooldown ends in a fight where nothing moved. */
     private static final long HEARTBEAT_MS = 250;
     /* Opponents planned against at most: the target and the nearest others. A cost cap, the same
-     * one the logged advice carries - the search walks every opponent at every step. */
+     * one the logged advice carries - the search walks every opponent at every step, and it now
+     * runs once per opponent we might aim at. */
     private static final int CROWD = 4;
     private static final int BEAM = 60;
     private static final long HORIZON = 2500;
+    /* How far outside a creature's reach to stand when backing off, on top of the client's own
+     * per-species distancing figure (CombatDistanceTool), and the figure for a creature it lacks. */
+    private static final double STANDOFF_MARGIN = 4.0, STANDOFF_DEFAULT = 28.0;
 
     private static final class Foe {
         final long gob;
         final String res;
         final int[] open;
-        final int ip;
+        final int ip, oip, gst;
         final double dist;
         final double taken;
 
-        Foe(long gob, String res, int[] open, int ip, double dist, double taken) {
+        Foe(long gob, String res, int[] open, int ip, int oip, int gst, double dist, double taken) {
             this.gob = gob;
             this.res = res;
             this.open = open;
             this.ip = ip;
+            this.oip = oip;
+            this.gst = gst;
             this.dist = dist;
             this.taken = taken;
         }
@@ -139,8 +171,8 @@ public final class LiveAdvice {
     private static Map<String, Integer> barDeck = null;
 
     /**
-     * The answer for this opponent, or null when there is none, it is stale, or it was made
-     * against someone else.
+     * The answer for this target, or null when there is none, it is stale, or it was made while
+     * someone else was the target.
      */
     public static Now get(long gobId) {
         Now n = current;
@@ -245,7 +277,8 @@ public final class LiveAdvice {
             for(Foe f : foes) {
                 k.append('|').append(f.gob).append(':').append(f.open[0]).append(',')
                     .append(f.open[1]).append(',').append(f.open[2]).append(',')
-                    .append(f.open[3]).append(':').append(f.ip).append(':')
+                    .append(f.open[3]).append(':').append(f.ip).append('/').append(f.oip)
+                    .append(':').append(f.gst).append(':')
                     .append(Double.isNaN(f.dist) ? -1 : (long)f.dist).append(':')
                     .append((long)f.taken);
             }
@@ -315,8 +348,8 @@ public final class LiveAdvice {
                 CombatRecorder.readOpenings(rel.buffs.children(haven.Buff.class));
             double dist = (self == null) ? Double.NaN : self.getc().dist(g.getc());
             return(new Foe(rel.gobid, g.getres().name,
-                           new int[] {o.green, o.blue, o.yellow, o.red}, rel.ip, dist,
-                           haven.GobDamageInfo.shpTaken(rel.gobid)));
+                           new int[] {o.green, o.blue, o.yellow, o.red}, rel.ip, rel.oip,
+                           rel.gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid)));
         } catch(Exception e) {
             /* an opponent whose gob or resource has not arrived is left out of this plan */
             return(null);
@@ -375,7 +408,9 @@ public final class LiveAdvice {
              * the first lookup reads the remembered decks from disk. */
             Map<String, Integer> deck = Prediction.isPlayerRes(f.res)
                 ? CombatRecorder.seenDeck(f.gob) : null;
-            seen.add(new Prediction.Seen(f.res, f.open, f.ip, f.dist, f.taken, deck));
+            /* Bit 1 of the relation state is OUR olive branch: offered peace, so not a target. */
+            seen.add(new Prediction.Seen(f.gob, f.res, f.open, f.ip, f.oip, f.dist, f.taken, deck,
+                                         (f.gst & 1) == 0));
         }
         Prediction.Live live = Prediction.adviseLive(job.me, job.bar, job.mine, job.shp, job.mhp,
                                                      seen, BEAM, HORIZON);
@@ -388,8 +423,21 @@ public final class LiveAdvice {
             if(x != null)
                 dealt.put(c, Double.valueOf(x.dealt));
         }
-        return(new Now(t.gob, live.moveRes, Collections.unmodifiableMap(dealt),
+        Foe aim = ((live.target >= 0) && (live.target < job.foes.size()))
+            ? job.foes.get(live.target) : t;
+        Foe threat = ((live.threat >= 0) && (live.threat < job.foes.size()))
+            ? job.foes.get(live.threat) : null;
+        double standOff = STANDOFF_DEFAULT;
+        if(threat != null) {
+            Double d = haven.automated.CombatDistanceTool.animalDistances.get(threat.res);
+            standOff = ((d == null) ? STANDOFF_DEFAULT : d.doubleValue()) + STANDOFF_MARGIN;
+        }
+        /* A card planned against another target is not a card to throw at this one. */
+        String move = (aim == t) ? live.moveRes : null;
+        return(new Now(t.gob, move, Collections.unmodifiableMap(dealt),
                        System.currentTimeMillis(), job.observedAt, live.why, live.planned,
-                       live.proxied, live.hpLost, live.budget));
+                       live.proxied, live.hpLost, live.budget, aim.gob,
+                       Prediction.shortName(aim.res), live.retreat,
+                       (threat == null) ? 0 : threat.gob, standOff, live.danger, live.dangerCap));
     }
 }

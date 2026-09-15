@@ -623,26 +623,40 @@ public final class Prediction {
 
     /** One opponent as the live client sees it now. The first one handed to adviseLive is our target. */
     public static final class Seen {
+        /** Its gob, which the caller aims at; 0 when the caller has none. */
+        public final long gob;
         public final String res;
         /** Its openings in percentage points, as the client shows them. */
         public final int[] open;
         /** The initiative we hold against it. */
         public final int myIp;
+        /** The initiative it holds against us - what a big blow of its own is paid with. */
+        public final int foeIp;
         /** How far away it stands, in world units, or NaN. */
         public final double dist;
         /** Soft hitpoints already drawn as taken off it, from anyone. */
         public final double taken;
         /** For a player, the cards seen from them, or null. */
         public final Map<String, Integer> seen;
+        /** Whether it may be aimed at - false once we have offered it peace. */
+        public final boolean targetable;
 
         public Seen(String res, int[] open, int myIp, double dist, double taken,
                     Map<String, Integer> seen) {
+            this(0, res, open, myIp, 0, dist, taken, seen, true);
+        }
+
+        public Seen(long gob, String res, int[] open, int myIp, int foeIp, double dist,
+                    double taken, Map<String, Integer> seen, boolean targetable) {
+            this.gob = gob;
             this.res = res;
             this.open = open;
             this.myIp = myIp;
+            this.foeIp = foeIp;
             this.dist = dist;
             this.taken = taken;
             this.seen = seen;
+            this.targetable = targetable;
         }
     }
 
@@ -656,34 +670,101 @@ public final class Prediction {
         public final boolean killed;
         /** Opponents planned against, how many of them through a stand-in, and how many were people. */
         public final int planned, proxied, players;
+        /** Index, into the opponents handed in, of the one to aim at. 0 keeps the current target. */
+        public final int target;
+        /**
+         * The worst single blow any opponent could land on our openings as they stand, the cap
+         * it is held to, and the index of the opponent it comes from. NaN and -1 when our
+         * hitpoints are unknown.
+         */
+        public final double danger, dangerCap;
+        public final int threat;
+        /** Step out of reach and let our openings fall, rather than throw anything. */
+        public final boolean retreat;
+        /** The share of our maximum hitpoints the plan kept in hand. */
+        public final double reserve;
 
-        Live(String moveRes, String why, long ticks, double hpLost, double budget,
-             boolean killed, int planned, int proxied, int players) {
+        Live(String moveRes, String why, Optimizer.Plan plan, double budget, int planned,
+             int proxied, int players, int target, double danger, double dangerCap, int threat,
+             boolean retreat, double reserve) {
             this.moveRes = moveRes;
             this.why = why;
-            this.ticks = ticks;
-            this.hpLost = hpLost;
+            this.ticks = (plan == null) ? 0 : plan.ticks;
+            this.hpLost = (plan == null) ? Double.NaN : plan.hpLost;
+            this.killed = (plan != null) && plan.killed;
             this.budget = budget;
-            this.killed = killed;
             this.planned = planned;
             this.proxied = proxied;
             this.players = players;
+            this.target = target;
+            this.danger = danger;
+            this.dangerCap = dangerCap;
+            this.threat = threat;
+            this.retreat = retreat;
+            this.reserve = reserve;
         }
 
         static Live none(String why) {
-            return(new Live(null, why, 0, Double.NaN, Double.NaN, false, 0, 0, 0));
+            return(new Live(null, why, null, Double.NaN, 0, 0, 0, 0, Double.NaN, Double.NaN, -1,
+                            false, Double.NaN));
         }
     }
 
     /**
-     * The share of our maximum soft hitpoints a live plan keeps in hand.
+     * The share of our maximum soft hitpoints a live plan keeps in hand, against creatures and
+     * against people.
      *
-     * A plan may cost what we have above this and no more; when the fastest kill costs more,
-     * a slower plan that closes our openings is thrown instead (Advisor.Aim.SURVIVE). A policy
-     * figure, not a measured one: the model's damage taken is priced against the hardest
-     * individual on record, so the reserve is a margin on a figure that already leans cautious.
+     * A plan may cost what we have above the reserve and no more; when the fastest kill costs
+     * more, a slower plan that closes our openings is thrown instead (Advisor.Aim.SURVIVE).
+     * POLICY FIGURES, NOT MEASURED ONES, and they differ on purpose (James, 2026-09-15): a
+     * hunt that ends at 30% health has gone badly in a game where the next thing can be along
+     * any moment, while a fight with a person is expected to be traded down. So a creature fight
+     * spends a quarter of the bar at most and a player fight can spend most of it.
      */
-    public static final double RESERVE = 0.30;
+    public static final double RESERVE_PVE = 0.75, RESERVE_PVP = 0.30;
+
+    /**
+     * The largest single blow, as a share of maximum soft hitpoints, the live advice lets stand
+     * without answering it.
+     *
+     * The plan's budget is a TOTAL over the fight and cannot see one blow: thirty points open in
+     * several colours against a strong creature holding initiative is a single swing that takes a
+     * fifth of the bar, and a plan that averages it over a long fight calls that fine. So the
+     * worst card each opponent could throw next is priced against our openings as they stand -
+     * at the top of its measured damage when it holds initiative - and past this share the
+     * advice restores first, or backs off out of reach.
+     */
+    public static final double HIT_CAP_PVE = 0.12, HIT_CAP_PVP = 0.25;
+
+    /* How much better another target has to be before the advice changes who we are hitting:
+     * a plan 15% quicker, or one that costs 5% of our bar less. Switching is not free - openings
+     * built on the current target stay there, and a recommendation that flickered between two
+     * near-equal targets would be useless to follow and worse for a bot to act on. */
+    static final double SWITCH_TICKS = 0.85, SWITCH_HP_SHARE = 0.05;
+
+    /* A restoration worth throwing into a threatened blow when nothing better is available
+     * takes at least this share off it (0.90 = a tenth). */
+    static final double RESTORE_HELPS = 0.90;
+
+    /* An opponent further away than this cannot swing at us before we act again. */
+    static final double THREAT_RANGE = 45.0;
+
+    private static final class Built {
+        final int at;
+        final Seen s;
+        final Combatant b;
+        final FoeModel model, hard;
+        final boolean canRun;
+
+        Built(int at, Seen s, Combatant b, FoeModel model, FoeModel hard, boolean canRun) {
+            this.at = at;
+            this.s = s;
+            this.b = b;
+            this.model = model;
+            this.hard = hard;
+            this.canRun = canRun;
+        }
+    }
 
     /**
      * What to throw now, in ANY fight - the question the live client has to answer.
@@ -691,28 +772,27 @@ public final class Prediction {
      * {@link #advise} is the audited question and stays exactly as it is: known opponents only,
      * fastest kill, from the deck at fight start, because its answer is logged and scored against
      * what a person threw. A recommendation on screen and a bot cannot go quiet whenever the pack
-     * lacks a creature, so this differs in four ways, each stated rather than hidden:
+     * lacks a creature, and cannot ignore the state we are in, so this differs, each way stated:
      *
      * - AN UNKNOWN CREATURE IS PLANNED AS A STAND-IN, the median creature the pack can simulate by
-     *   hitpoints (see {@link #proxy}). The count comes back in {@link Live#proxied}, so a caller
-     *   can say the answer leaned on one.
+     *   hitpoints (see {@link #proxy}), counted in {@link Live#proxied}.
      * - A PLAYER is planned from the cards seen from them, as {@link #adviseAgainstPlayer} does, and
      *   from our own deck when none have been seen - "someone like us", as before.
-     * - THE DECK IS THE BAR, whatever is on it: each card at the level the fight window holds, or
-     *   the level at fight start, or 1. A deck switched mid-session, or one nobody optimised, plans
-     *   as itself. Cards the sheet does not know and stances are left out.
-     * - OUR OWN STATE COUNTS. Our standing openings and hitpoints go into our side, the damage
-     *   already drawn on each opponent comes off its health, and the plan is the fastest kill that
-     *   keeps {@link #RESERVE} of our hitpoints (Advisor.Aim.SURVIVE) - which is what makes it
-     *   throw a restoration when the fastest line would cost too much. With our hitpoints unknown
-     *   it is the fastest kill.
+     * - THE DECK IS THE BAR, whatever is on it, each card at the level the fight window holds.
+     * - OUR OWN STATE COUNTS: our openings and hitpoints, the damage already on each opponent.
+     * - IT KEEPS A RESERVE: the fastest kill that leaves {@link #RESERVE_PVE} of our bar against
+     *   creatures, {@link #RESERVE_PVP} once a person is in the fight (Advisor.Aim.SURVIVE).
+     * - IT PICKS THE TARGET: the plan is searched with each opponent we may aim at taken first,
+     *   and another target wins only when it is clearly better (SWITCH_TICKS, SWITCH_HP_SHARE).
+     * - IT WATCHES THE NEXT BLOW: past {@link #HIT_CAP_PVE} it throws the restoration that shrinks
+     *   that blow most, and with none that helps enough, against creatures we outrun, it backs off.
      *
      * @param bar  card resource to level for every card on the action bar; null or empty uses
      *             the deck at fight start
      * @param mine our openings in percentage points
      * @param shp  our soft hitpoints now, or NaN
      * @param mhp  our maximum soft hitpoints, or NaN
-     * @param foes the target first, then anyone else on us
+     * @param foes the current target first, then anyone else on us
      */
     public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
                                   double mhp, List<Seen> foes, int beam, long horizon) {
@@ -736,9 +816,7 @@ public final class Prediction {
                 a.open(c, shown(mine[c]));
         }
 
-        List<Combatant> bs = new ArrayList<Combatant>();
-        List<FoeModel> ms = new ArrayList<FoeModel>();
-        List<Integer> ips = new ArrayList<Integer>();
+        List<Built> built = new ArrayList<Built>();
         int proxied = 0, players = 0;
         String standIn = null;
         for(int i = 0; i < foes.size(); i++) {
@@ -746,7 +824,8 @@ public final class Prediction {
             if((s == null) || (s.open == null) || (s.open.length < 4))
                 continue;
             Combatant b;
-            FoeModel model;
+            FoeModel model, hard;
+            boolean canRun = false;
             if(isPlayerRes(s.res)) {
                 b = ourSide(me, 0);
                 b.hp = b.maxHp = hpKnown ? mhp : 100;
@@ -758,7 +837,8 @@ public final class Prediction {
                     if((mv != null) && !mv.stance)
                         theirs.add(mv);
                 }
-                model = FoeModel.fromDeck(theirs.isEmpty() ? deck : theirs, b, a.defenceWeight());
+                model = hard = FoeModel.fromDeck(theirs.isEmpty() ? deck : theirs, b,
+                                                 a.defenceWeight());
                 players++;
             } else {
                 Pack.Opponent o = known(s.res);
@@ -771,9 +851,15 @@ public final class Prediction {
                     }
                     proxied++;
                     standIn = o.toString();
+                    model = hard = o.threat;
+                } else {
+                    model = o.threat;
+                    /* The top of its measured damage, for the one blow that has to be survived.
+                     * The plan prices the fight at the median; one swing is priced at the worst. */
+                    hard = (o.threatHi != null) ? o.threatHi : o.threat;
+                    canRun = o.canDisengage();
                 }
                 b = o.hardestReal();
-                model = o.threat;
             }
             b.distance = s.dist;
             for(int c = 0; c < 4; c++) {
@@ -784,40 +870,211 @@ public final class Prediction {
              * so whatever is left of it is still standing. */
             if((s.taken > 0) && (b.hp > 0))
                 b.hp = Math.max(1, b.hp - s.taken);
-            bs.add(b);
-            ms.add(model);
-            ips.add(Integer.valueOf(s.myIp));
+            built.add(new Built(i, s, b, model, hard, canRun));
         }
-        if(bs.isEmpty())
-            return(Live.none("no opponent could be planned"));
-        Combatant[] bb = bs.toArray(new Combatant[0]);
-        FoeModel[] mm = ms.toArray(new FoeModel[0]);
-        int[] ia = new int[ips.size()];
-        for(int i = 0; i < ia.length; i++)
-            ia[i] = ips.get(i).intValue();
-        double budget = hpKnown ? (shp - (RESERVE * mhp)) : Double.POSITIVE_INFINITY;
-        List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon, ia);
-        Optimizer.Plan pick = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
-        if(pick == null)
-            return(new Live(null, "no plan reached the horizon", 0, Double.NaN, budget, false,
-                            bb.length, proxied, players));
-        if(pick.moves.isEmpty())
-            return(new Live(null, "the best plan throws nothing", pick.ticks, pick.hpLost, budget,
-                            pick.killed, bb.length, proxied, players));
+        if(built.isEmpty() || (built.get(0).at != 0))
+            return(Live.none("the target could not be planned"));
+        boolean pvp = players > 0;
+        double reserve = pvp ? RESERVE_PVP : RESERVE_PVE;
+        double budget = hpKnown ? (shp - (reserve * mhp)) : Double.POSITIVE_INFINITY;
+
+        /* WHO TO HIT FIRST. The search kills down the array in order, so each opponent we may aim
+         * at is tried at the front and the plans compared on the same aim. */
+        List<Optimizer.Plan> picks = new ArrayList<Optimizer.Plan>();
+        List<List<Optimizer.Plan>> fronts = new ArrayList<List<Optimizer.Plan>>();
+        List<Integer> pickAt = new ArrayList<Integer>();
+        Optimizer.Plan cur = null;
+        for(int k = 0; k < built.size(); k++) {
+            if((k > 0) && !built.get(k).s.targetable)
+                continue;
+            List<Built> order = new ArrayList<Built>(built.size());
+            order.add(built.get(k));
+            for(int j = 0; j < built.size(); j++) {
+                if(j != k)
+                    order.add(built.get(j));
+            }
+            Combatant[] bb = new Combatant[order.size()];
+            FoeModel[] mm = new FoeModel[order.size()];
+            int[] ia = new int[order.size()];
+            for(int j = 0; j < order.size(); j++) {
+                bb[j] = order.get(j).b;
+                mm[j] = order.get(j).model;
+                ia[j] = order.get(j).s.myIp;
+            }
+            List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon, ia);
+            Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
+            if(p == null)
+                continue;
+            picks.add(p);
+            fronts.add(front);
+            pickAt.add(Integer.valueOf(k));
+            if(k == 0)
+                cur = p;
+        }
+        if(picks.isEmpty())
+            return(new Live(null, "no plan reached the horizon", null, budget, built.size(),
+                            proxied, players, 0, Double.NaN, Double.NaN, -1, false, reserve));
+        Optimizer.Plan best = Advisor.choose(picks, Advisor.Aim.SURVIVE, budget);
+        int bi = picks.indexOf(best);
+        int bestK = pickAt.get(bi).intValue();
+        if((bestK != 0) && (cur != null) && t.targetable
+           && !clearlyBetter(best, cur, hpKnown ? mhp : 100)) {
+            bi = pickAt.indexOf(Integer.valueOf(0));
+            best = cur;
+            bestK = 0;
+        }
+        List<Optimizer.Plan> front = fronts.get(bi);
+
+        String move = best.moves.isEmpty() ? null : best.moves.get(0).res;
         /* Which of the three answers SURVIVE gave: the fastest kill outright, a slower one the
          * reserve forced, or - nothing fitting - the cheapest. */
         Optimizer.Plan fastest = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
-        StringBuilder why = new StringBuilder();
-        if(!Double.isNaN(pick.hpLost) && (pick.hpLost > budget))
-            why.append("least damage");
-        else if(pick == fastest)
-            why.append("fastest kill");
+        String why;
+        if(move == null)
+            why = "the best plan throws nothing";
+        else if(!Double.isNaN(best.hpLost) && (best.hpLost > budget))
+            why = "least damage";
+        else if(best == fastest)
+            why = "fastest kill";
         else
-            why.append("fastest kill that keeps the reserve");
+            why = "fastest kill that keeps the reserve";
+        if(bestK != 0)
+            why = "switch to " + shortName(built.get(bestK).s.res) + ": " + why;
         if(proxied > 0)
-            why.append(", ").append(proxied).append(" unknown planned as ").append(standIn);
-        return(new Live(pick.moves.get(0).res, why.toString(), pick.ticks, pick.hpLost, budget,
-                        pick.killed, bb.length, proxied, players));
+            why = why + ", " + proxied + " unknown planned as " + standIn;
+
+        /* THE NEXT BLOW. Only with our hitpoints known - a cap is a share of them. */
+        double danger = Double.NaN, cap = Double.NaN;
+        int threat = -1;
+        boolean retreat = false;
+        if(hpKnown) {
+            cap = (pvp ? HIT_CAP_PVP : HIT_CAP_PVE) * mhp;
+            double[] w = worstHits(a, built);
+            danger = 0;
+            for(int i = 0; i < w.length; i++) {
+                if(w[i] > danger) {
+                    danger = w[i];
+                    threat = built.get(i).at;
+                }
+            }
+            if(danger > cap) {
+                Built tb = built.get(bestK);
+                Move fix = null;
+                double fixed = danger;
+                for(Move m : deck) {
+                    if(!reducesOurs(m))
+                        continue;
+                    Combatant ac = a.copy();
+                    ac.ip = tb.s.myIp;
+                    Sim sim = new Sim(ac, tb.b.copy());
+                    if(!sim.use(ac, m).ok)
+                        continue;
+                    double d2 = max(worstHits(ac, built));
+                    if(d2 < fixed) {
+                        fixed = d2;
+                        fix = m;
+                    }
+                }
+                String big = "a " + Math.round(danger) + " hp blow is possible";
+                /* In order: a restoration that brings the blow under the cap; backing off, where
+                 * we outrun everything that threatens it; a restoration that at least takes a
+                 * tenth off it; and only then the plan, said to be unanswered. Openings spread
+                 * over every colour are the case the middle rungs exist for - no one card closes
+                 * four colours, but the best of them still beats swinging into the blow. */
+                boolean canRun = allCanRun(built, w, cap);
+                boolean fixes = (fix != null) && (fixed <= cap);
+                boolean helps = (fix != null) && (fixed <= (RESTORE_HELPS * danger));
+                if(fixes || (helps && !canRun)) {
+                    move = fix.res;
+                    why = big + " - " + fix.name + " first";
+                    bestK = 0;
+                } else if(canRun) {
+                    retreat = true;
+                    move = null;
+                    why = big + " - back off and let the openings fall";
+                    bestK = 0;
+                } else {
+                    why = why + "; " + big + " and nothing on the bar answers it";
+                }
+            }
+        }
+        return(new Live(move, why, best, budget, built.size(), proxied, players,
+                        built.get(bestK).at, danger, cap, threat, retreat, reserve));
+    }
+
+    /** Whether another target's plan is worth leaving the current one for. */
+    private static boolean clearlyBetter(Optimizer.Plan other, Optimizer.Plan cur, double scale) {
+        if(other.killed && !cur.killed)
+            return(true);
+        if(!other.killed)
+            return(false);
+        if(other.ticks <= (SWITCH_TICKS * cur.ticks))
+            return(true);
+        /* NO SLOWER AND CHEAPER is no trade at all, so it needs no margin beyond a hitpoint. A
+         * nearly dead heavy hitter beside a fresh fox is exactly this: the whole crowd dies in
+         * the same time either way, and the order that drops the hitter first stops its swings. */
+        if((other.ticks <= cur.ticks) && !Double.isNaN(other.hpLost) && !Double.isNaN(cur.hpLost)
+           && (other.hpLost < (cur.hpLost - 1.0)))
+            return(true);
+        return(!Double.isNaN(other.hpLost) && !Double.isNaN(cur.hpLost)
+               && (other.hpLost <= (cur.hpLost - Math.max(3.0, SWITCH_HP_SHARE * scale))));
+    }
+
+    /**
+     * The worst blow each opponent could land next on this version of us - at the top of its
+     * measured damage when it holds initiative against us, and nothing from one out of reach.
+     */
+    private static double[] worstHits(Combatant us, List<Built> built) {
+        double[] out = new double[built.size()];
+        for(int i = 0; i < out.length; i++) {
+            Built x = built.get(i);
+            if(!Double.isNaN(x.s.dist) && (x.s.dist > THREAT_RANGE))
+                continue;
+            FoeModel m = (x.s.foeIp > 0) ? x.hard : x.model;
+            if(m == null)
+                continue;
+            out[i] = m.worstHit(us, us.defenceWeight(), x.b);
+        }
+        return(out);
+    }
+
+    private static double max(double[] v) {
+        double out = 0;
+        for(double d : v)
+            out = Math.max(out, d);
+        return(out);
+    }
+
+    /* Backing off only works against what we outrun: anything faster keeps swinging at our back,
+     * and moving stops our openings falling. Every opponent over the cap has to be one we outrun. */
+    private static boolean allCanRun(List<Built> built, double[] w, double cap) {
+        boolean any = false;
+        for(int i = 0; i < w.length; i++) {
+            if(w[i] <= cap)
+                continue;
+            if(!built.get(i).canRun)
+                return(false);
+            any = true;
+        }
+        return(any);
+    }
+
+    /** Whether a card closes any of our own openings - a restoration. */
+    static boolean reducesOurs(Move m) {
+        for(int c = 0; c < 4; c++) {
+            if(m.reduces[c] > 0)
+                return(true);
+        }
+        return(false);
+    }
+
+    /** "gfx/kritter/wolf/wolf" as "wolf", for a reason a person reads. */
+    public static String shortName(String res) {
+        if(res == null)
+            return("?");
+        if(isPlayerRes(res))
+            return("the player");
+        return(res.substring(res.lastIndexOf('/') + 1));
     }
 
     /** The bar as a deck - see {@link #adviseLive}. Null when nothing on it can be planned. */

@@ -225,6 +225,7 @@ public class CombatOptimizerCheck {
         initiativeIsPerRelation();
         woundsAreCounted();
         survive();
+        worstHit();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -393,6 +394,30 @@ public class CombatOptimizerCheck {
               Advisor.choose(front, Advisor.Aim.SURVIVE, cheapest.hpLost - 1) == cheapest, true);
         System.out.printf("      fastest %.1f hp / %d ticks, tight budget %.1f hp / %d ticks, cheapest %.1f hp%n",
                           fastest.hpLost, fastest.ticks, tight.hpLost, tight.ticks, cheapest.hpLost);
+    }
+
+    /** The worst next blow, priced without being taken - see FoeModel.worstHit. */
+    static void worstHit() {
+        System.out.println("\nthe worst next blow, priced without being taken");
+        double[] press = {14, 0, 0, 0};
+        FoeModel steady = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        Combatant us = me();
+        us.open(Formulas.GREEN, 50);
+        Combatant them = foe(400, 20);
+        double hp0 = us.hp, green0 = us.openings[Formulas.GREEN];
+        double hit = steady.worstHit(us, us.defenceWeight(), them);
+        check("an open guard can be hit", hit > 0, true);
+        check("  and asking changes nothing on our side",
+              (us.hp == hp0) && (us.openings[Formulas.GREEN] == green0), true);
+        Combatant shut = me();
+        check("a shut guard is hit for less", steady.worstHit(shut, shut.defenceWeight(), them) < hit, true);
+        FoeModel runs = new FoeModel(45, press, 312.5, 90.0, 20, 20, 0.60);
+        Combatant beaten = foe(400, 20);
+        beaten.hp = 100;
+        check("one that is running swings at nothing",
+              runs.worstHit(us, us.defenceWeight(), beaten), 0.0);
+        System.out.printf("      open green 50: %.1f hp, shut: %.1f hp%n", hit,
+                          steady.worstHit(shut, shut.defenceWeight(), them));
     }
 
     static Combatant me() {

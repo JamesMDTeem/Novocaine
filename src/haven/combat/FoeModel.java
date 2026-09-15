@@ -432,6 +432,35 @@ public final class FoeModel {
             self.close(c, share);
     }
 
+    /**
+     * The most one action of this opponent could take off us right now, without taking it.
+     *
+     * Every card it is currently throwing, each played on copies against our openings as they
+     * stand, and the worst of them; the averaged action where it has no cards. A fleeing one
+     * swings at nothing. Nothing passed in is changed.
+     *
+     * A plan's hitpoints are a total over a fight, and a total cannot see one blow: thirty
+     * points open in two colours against a heavy hitter is a single swing worth a fifth of a
+     * bar, spread across a long plan as though it were a drizzle. This is the one-blow view
+     * the live advice holds that against.
+     */
+    public double worstHit(Combatant me, double myBlockWeight, Combatant self) {
+        if((me == null) || ((self != null) && fleeing(self)))
+            return(0);
+        if((cards != null) && cards.usable()) {
+            double[] mix = cards.mixNow(me, self);
+            double worst = 0;
+            for(int i = 0; i < cards.cards.length; i++) {
+                if((i < mix.length) && !(mix[i] > 0))
+                    continue;
+                worst = Math.max(worst, play(cards.cards[i], me.copy(), myBlockWeight,
+                                             (self == null) ? null : self.copy()));
+            }
+            return(worst);
+        }
+        return(act(me.copy(), myBlockWeight, pressureNow(me, self)));
+    }
+
     public double act(Combatant me, double myBlockWeight) {
         return(act(me, myBlockWeight, pressure));
     }

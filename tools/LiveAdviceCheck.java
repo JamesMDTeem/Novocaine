@@ -15,6 +15,7 @@
  */
 
 import haven.automated.combat.Prediction;
+import haven.combat.data.Pack;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -146,10 +147,16 @@ public class LiveAdviceCheck {
                           full.moveRes, full.hpLost, full.ticks, full.budget);
         System.out.printf("      low health:  %s, %.1f hp over %d ticks (budget %.0f)%n",
                           low.moveRes, low.hpLost, low.ticks, low.budget);
-        check("the budget is what we have above the reserve", low.budget, 40 - (Prediction.RESERVE * 300));
+        check("the budget is what we have above the reserve", low.budget, 40 - (Prediction.RESERVE_PVE * 300));
+        check("against creatures the reserve is the PvE one", low.reserve, Prediction.RESERVE_PVE);
+        Prediction.Live pvpReserve = advise(me, null, wide, 300, 300, seen(known, foeOpen, 0),
+                                            seen("gfx/borka/body", FRESH, 0));
+        check("  and once a person is in the fight, the PvP one", pvpReserve.reserve, Prediction.RESERVE_PVP);
         check("short of health, the plan costs no more than the one with health to spare",
               !(low.hpLost > full.hpLost + 1e-9), true);
-        check("  and it is the least-damage plan once nothing fits", low.why, "least damage");
+        /* Unless the next-blow guard spoke first, which with every colour at 60 it may. */
+        check("  and it is the least-damage plan once nothing fits, or the guard's answer",
+              low.why.startsWith("least damage") || low.why.startsWith("a "), true);
         Prediction.Live blind = advise(me, null, wide, Double.NaN, Double.NaN, seen(known, foeOpen, 0));
         check("with our hitpoints unknown it is the fastest kill", blind.why, "fastest kill");
 
@@ -190,6 +197,96 @@ public class LiveAdviceCheck {
         System.out.printf("      fresh: %d ticks, nearly dead: %d ticks%n", fresh.ticks, hurt.ticks);
         check("a nearly dead opponent dies no later than a fresh one", hurt.ticks <= fresh.ticks, true);
         check("  and dies", hurt.killed, true);
+
+        /* WHO TO HIT. Against a crowd the plan is searched with each target first. A second
+         * copy of the target is no reason to leave it; a nearly dead heavy hitter beside a
+         * fresh weak one is, because every tick it stays up it swings. And never one we have
+         * offered peace. */
+        System.out.println("\nwho to hit: another target only when it is clearly better");
+        String heavy = null;
+        for(String h : hard) {
+            Prediction.Live l = advise(me, null, FRESH, 300, 300, seen(h, new int[] {20, 0, 0, 20}, 0));
+            if((l.moveRes != null) && (l.proxied == 0)) {
+                heavy = h;
+                break;
+            }
+        }
+        check("one of the hard creatures is known to the pack", heavy != null, true);
+        Prediction.Seen cur = new Prediction.Seen(1, known, foeOpen, 0, 0, 10, 0, null, true);
+        Prediction.Seen twin = new Prediction.Seen(2, known, foeOpen, 0, 0, 10, 0, null, true);
+        Prediction.Live same = advise(me, null, FRESH, 300, 300, cur, twin);
+        check("an identical second opponent keeps the current target", same.target, 0);
+        /* NOT A NEARLY DEAD ONE. That was the first version of this case and the model is right to
+         * refuse it: a creature that low has already fled (FoeModel.fleesBelow) and swings at
+         * nothing, so no order saves a hitpoint. The case that pays is a FRESH heavy hitter beside
+         * the fox - every tick it stays up it swings - and dropping it first costs fewer. */
+        if(heavy != null) {
+            Prediction.Seen hitter = new Prediction.Seen(2, heavy, foeOpen, 0, 0, 10, 0, null, true);
+            Prediction.Seen hitterPeaced = new Prediction.Seen(2, heavy, foeOpen, 0, 0, 10, 0, null, false);
+            Prediction.Live sw = advise(me, null, FRESH, 300, 300, cur, hitter);
+            System.out.printf("      %s beside a fresh %s -> target %d (%s)%n",
+                              known, heavy, sw.target, sw.why);
+            check("a fresh heavy hitter beside it is the better target", sw.target, 1);
+            check("  and the reason says to switch", sw.why.startsWith("switch to"), true);
+            Prediction.Live pe = advise(me, null, FRESH, 300, 300, cur, hitterPeaced);
+            check("but never one we offered peace", pe.target, 0);
+        }
+
+        /* THE NEXT BLOW. A total over a fight cannot see one swing, so the worst card each
+         * opponent could throw next is priced against our openings - at the top of its damage
+         * once it holds initiative - and past the cap the advice must do something about it:
+         * restore, back off, or say that nothing on the bar answers it. Backing off only ever
+         * against a creature we outrun. */
+        System.out.println("\nthe next blow is watched");
+        Map<String, Pack.Opponent> pack = Pack.opponentsFromJar();
+        Map<String, Integer> noRestore = new LinkedHashMap<String, Integer>();
+        noRestore.put("paginae/atk/barrage", 1);
+        noRestore.put("paginae/atk/cleave", 1);
+        noRestore.put("paginae/atk/fullcircle", 1);
+        noRestore.put("paginae/atk/sting", 4);
+        int past = 0, answered = 0, retreats = 0, retreatsOutrun = 0, restores = 0;
+        for(String h : hard) {
+            Prediction.Seen quiet = new Prediction.Seen(1, h, new int[] {20, 0, 0, 20}, 0, 0, 10, 0, null, true);
+            Prediction.Seen armed = new Prediction.Seen(1, h, new int[] {20, 0, 0, 20}, 0, 5, 10, 0, null, true);
+            Prediction.Live shut = advise(me, null, FRESH, 300, 300, quiet);
+            Prediction.Live open = advise(me, null, wide, 300, 300, quiet);
+            Prediction.Live openIp = advise(me, null, wide, 300, 300, armed);
+            if(open.proxied > 0)
+                continue;
+            System.out.printf("      %-36s worst blow: shut %5.1f, open %5.1f, open+ip %5.1f (cap %.0f) -> %s%n",
+                              h, shut.danger, open.danger, openIp.danger, open.dangerCap,
+                              (openIp.moveRes == null) ? (openIp.retreat ? "back off" : "-") : openIp.moveRes);
+            check("  " + Prediction.shortName(h) + ": an open guard is hit harder than a shut one",
+                  open.danger >= shut.danger, true);
+            check("  " + Prediction.shortName(h) + ": initiative never makes the blow smaller",
+                  openIp.danger >= open.danger - 1e-9, true);
+            /* And one colour wide open, which a single restoration can actually close. */
+            int[] greenOnly = {80, 0, 0, 0};
+            for(Prediction.Live l : new Prediction.Live[] {openIp,
+                     advise(me, noRestore, wide, 300, 300, armed),
+                     advise(me, null, greenOnly, 300, 300, armed)}) {
+                if(!(l.danger > l.dangerCap))
+                    continue;
+                past++;
+                boolean restoring = (l.moveRes != null) && l.why.contains(" first");
+                boolean nothing = l.why.contains("nothing on the bar answers it");
+                if(restoring || l.retreat || nothing)
+                    answered++;
+                if(restoring)
+                    restores++;
+                if(l.retreat) {
+                    retreats++;
+                    Pack.Opponent o = pack.get(Prediction.shortName(h));
+                    if((o != null) && o.canDisengage())
+                        retreatsOutrun++;
+                }
+            }
+        }
+        System.out.printf("      %d case(s) past the cap: %d restored, %d backed off%n", past, restores, retreats);
+        check("some hard creature threatens a blow past the cap", past > 0, true);
+        check("  every one of them is answered or said to be unanswerable", answered, past);
+        check("  and backing off only ever from a creature we outrun", retreatsOutrun, retreats);
+        check("  and with restorations on the bar, one of them is thrown into the blow", restores > 0, true);
 
         finish();
     }
