@@ -588,15 +588,15 @@
    }
   },
   {
-   "agi": 207,
+   "agi": 190,
    "armour": {
     "hard": 85,
     "pieces": 23,
     "soft": 68
    },
-   "con": 148,
-   "hhp": 376,
-   "hp": 385,
+   "con": 129,
+   "hhp": 350,
+   "hp": 359,
    "known": {
     "Artful Evasion": 2,
     "Bloodlust": 1,
@@ -620,14 +620,14 @@
     "Parry": 1,
     "Punch": 5,
     "Punch 'em Both": 5,
-    "Quick Barrage": 4,
+    "Quick Barrage": 5,
     "Quick Dodge": 5,
     "Raven's Bite": 2,
     "Regain Composure": 5,
     "Rip Apart": 2,
     "Shield Up": 1,
     "Sidestep": 5,
-    "Sideswipe": 3,
+    "Sideswipe": 4,
     "Steal Thunder": 2,
     "Sting": 5,
     "Storm of Swords": 2,
@@ -640,8 +640,8 @@
     "Yield Ground": 1,
     "Zig-Zag Ruse": 3
    },
-   "logs": 877,
-   "melee": 194,
+   "logs": 876,
+   "melee": 189,
    "name": "ZzxcuV3",
    "owned": {
     "Artful Evasion": 0,
@@ -666,7 +666,7 @@
     "Parry": 0,
     "Punch": 0,
     "Punch 'em Both": 0,
-    "Quick Barrage": 4,
+    "Quick Barrage": 5,
     "Quick Dodge": 4,
     "Raven's Bite": 0,
     "Regain Composure": 0,
@@ -687,8 +687,8 @@
     "Zig-Zag Ruse": 1
    },
    "shield": true,
-   "str": 210,
-   "unarmed": 138,
+   "str": 202,
+   "unarmed": 133,
    "weapon": {
     "armour_pen": 0.125,
     "base_damage": 90,
