@@ -50,8 +50,9 @@ public final class LiveAdvice {
         public final Map<String, Double> dealt;
         /** Wall time the answer was finished, for staleness. */
         public final long at;
-        /** Wall time of the fight state it was planned from. */
+        /** Wall time of the fight state it was planned from, and the same moment on the client's render clock. */
         public final long observedAt;
+        public final double observedRt;
         public final String why;
         /** Opponents planned against, and how many of them through a stand-in. */
         public final int planned, proxied;
@@ -64,13 +65,14 @@ public final class LiveAdvice {
         public final double danger, dangerCap;
 
         Now(long gobId, String moveRes, Map<String, Double> dealt, long at, long observedAt,
-            String why, int planned, int proxied, double hpLost, double budget, long targetGob,
-            String targetName, double danger, double dangerCap) {
+            double observedRt, String why, int planned, int proxied, double hpLost, double budget,
+            long targetGob, String targetName, double danger, double dangerCap) {
             this.gobId = gobId;
             this.moveRes = moveRes;
             this.dealt = dealt;
             this.at = at;
             this.observedAt = observedAt;
+            this.observedRt = observedRt;
             this.why = why;
             this.planned = planned;
             this.proxied = proxied;
@@ -127,10 +129,13 @@ public final class LiveAdvice {
         final double shp, mhp;
         final List<Foe> foes;
         final long observedAt;
+        final double observedRt;
+        /* Ticks until our cooldown ends, as the fight view had it. */
+        final long readyIn;
         final long generation;
 
         Job(Prediction.Me me, Map<String, Integer> bar, int[] mine, double shp, double mhp,
-            List<Foe> foes, long observedAt, long generation) {
+            List<Foe> foes, long observedAt, double observedRt, long readyIn, long generation) {
             this.me = me;
             this.bar = bar;
             this.mine = mine;
@@ -138,6 +143,8 @@ public final class LiveAdvice {
             this.mhp = mhp;
             this.foes = foes;
             this.observedAt = observedAt;
+            this.observedRt = observedRt;
+            this.readyIn = readyIn;
             this.generation = generation;
         }
     }
@@ -187,6 +194,8 @@ public final class LiveAdvice {
         lastKey = null;
         barKey = null;
         barDeck = null;
+        distillKey = null;
+        distilled = null;
         synchronized(lock) {
             generation++;
             pending = null;
@@ -276,7 +285,12 @@ public final class LiveAdvice {
                 return;
             lastKey = key;
             lastRequest = wall;
-            request(new Job(fightMe, bar, mine, shp, mhp, foes, wall, generation));
+            /* Planned for when our cooldown ends - the auto-fighter picks the card during it. Left
+             * out of the key: it changes every frame, and the heartbeat carries it forward. */
+            double rt = haven.Utils.rtime();
+            double left = fv.atkct - rt;
+            long readyIn = (left > 0) ? (long)Math.ceil(left / 0.06) : 0;
+            request(new Job(fightMe, bar, mine, shp, mhp, foes, wall, rt, readyIn, generation));
         } catch(Exception e) {
             /* advice must never break the tick loop */
         }
@@ -384,13 +398,16 @@ public final class LiveAdvice {
                     if(job.generation == generation)
                         current = n;
                 }
+                /* After the answer is out, not before it: choosing the cards for a new matchup
+                 * costs a few tenths of a second once, and the first answer should not wait. */
+                refine(job);
             } catch(Throwable t) {
                 /* a plan that fails costs this answer, never the client */
             }
         }
     }
 
-    private static Now plan(Job job) {
+    private static List<Prediction.Seen> seen(Job job) {
         List<Prediction.Seen> seen = new ArrayList<Prediction.Seen>();
         for(Foe f : job.foes) {
             /* A person's cards as seen, looked up here rather than on the tick thread because
@@ -401,8 +418,47 @@ public final class LiveAdvice {
             seen.add(new Prediction.Seen(f.gob, f.res, f.open, f.ip, f.oip, f.dist, f.taken, deck,
                                          (f.gst & 1) == 0));
         }
+        return(seen);
+    }
+
+    /* The cards chosen for the current matchup (Prediction.distill), and the matchup they were
+     * chosen for. Written by the worker; cleared by forget(). */
+    private static volatile String distillKey = null;
+    private static volatile java.util.Set<String> distilled = null;
+
+    /* A matchup is the bar and who is in the fight - the target, then the rest by kind. Openings,
+     * health and distance move every second and do not change which cards are worth holding. */
+    private static String matchup(Job job) {
+        StringBuilder k = new StringBuilder(String.valueOf(job.bar)).append('|');
+        List<String> rest = new ArrayList<String>();
+        for(int i = 0; i < job.foes.size(); i++) {
+            if(i == 0)
+                k.append(job.foes.get(0).res);
+            else
+                rest.add(job.foes.get(i).res);
+        }
+        Collections.sort(rest);
+        return(k.append('|').append(rest).toString());
+    }
+
+    /** Chooses the cards for this matchup once, when it is new. Worker thread. */
+    private static void refine(Job job) {
+        String key = matchup(job);
+        if(key.equals(distillKey) || (job.generation != generation))
+            return;
+        java.util.Set<String> cards = Prediction.distill(job.me, job.bar, job.mine, job.shp,
+                                                         job.mhp, seen(job), BEAM, HORIZON);
+        if(job.generation != generation)
+            return;
+        distilled = cards;
+        distillKey = key;
+    }
+
+    private static Now plan(Job job) {
+        List<Prediction.Seen> seen = seen(job);
+        java.util.Set<String> planCards = matchup(job).equals(distillKey) ? distilled : null;
         Prediction.Live live = Prediction.adviseLive(job.me, job.bar, job.mine, job.shp, job.mhp,
-                                                     seen, BEAM, HORIZON);
+                                                     seen, BEAM, HORIZON, job.readyIn, planCards);
         Foe t = job.foes.get(0);
         Map<String, Double> dealt = new LinkedHashMap<String, Double>();
         Iterable<String> cards = ((job.bar != null) && !job.bar.isEmpty())
@@ -417,7 +473,8 @@ public final class LiveAdvice {
         /* A card planned against another target is not a card to throw at this one. */
         String move = (aim == t) ? live.moveRes : null;
         return(new Now(t.gob, move, Collections.unmodifiableMap(dealt),
-                       System.currentTimeMillis(), job.observedAt, live.why, live.planned,
+                       System.currentTimeMillis(), job.observedAt, job.observedRt, live.why,
+                       live.planned,
                        live.proxied, live.hpLost, live.budget, aim.gob,
                        Prediction.shortName(aim.res), live.danger, live.dangerCap));
     }

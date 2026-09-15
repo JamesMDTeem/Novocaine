@@ -812,82 +812,44 @@ public final class Prediction {
      */
     public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
                                   double mhp, List<Seen> foes, int beam, long horizon) {
-        load();
-        if((me == null) || !me.usable() || (byRes == null) || (foes == null) || foes.isEmpty())
-            return(Live.none("nothing to plan with"));
-        List<Move> deck = liveDeck(me, bar);
-        if(deck == null)
-            return(Live.none("no card on the bar is in the move sheet"));
-        Seen t = foes.get(0);
-        if((t == null) || (t.open == null) || (t.open.length < 4))
-            return(Live.none("the target's openings are not known"));
-        boolean hpKnown = (shp > 0) && (mhp > 0);
-        Combatant a = ourSide(me, t.myIp);
-        if(hpKnown) {
-            a.hp = shp;
-            a.maxHp = mhp;
-        }
-        for(int c = 0; (mine != null) && (mine.length >= 4) && (c < 4); c++) {
-            if(mine[c] > 0)
-                a.open(c, shown(mine[c]));
-        }
+        return(adviseLive(me, bar, mine, shp, mhp, foes, beam, horizon, 0));
+    }
 
-        List<Built> built = new ArrayList<Built>();
-        int proxied = 0, players = 0;
-        String standIn = null;
-        for(int i = 0; i < foes.size(); i++) {
-            Seen s = foes.get(i);
-            if((s == null) || (s.open == null) || (s.open.length < 4))
-                continue;
-            Combatant b;
-            FoeModel model, hard;
-            if(isPlayerRes(s.res)) {
-                b = ourSide(me, 0);
-                b.hp = b.maxHp = hpKnown ? mhp : 100;
-                b.penetrable = true;
-                a.penetrable = true;
-                List<Move> theirs = new ArrayList<Move>();
-                for(String r : (s.seen == null) ? java.util.Collections.<String>emptySet() : s.seen.keySet()) {
-                    Move mv = byRes.get(r);
-                    if((mv != null) && !mv.stance)
-                        theirs.add(mv);
-                }
-                model = hard = FoeModel.fromDeck(theirs.isEmpty() ? deck : theirs, b,
-                                                 a.defenceWeight());
-                players++;
-            } else {
-                Pack.Opponent o = known(s.res);
-                if(o == null) {
-                    o = proxy();
-                    if(o == null) {
-                        if(i == 0)
-                            return(Live.none("the pack has no creature to stand in for this one"));
-                        continue;
-                    }
-                    proxied++;
-                    standIn = o.toString();
-                    model = hard = o.threat;
-                } else {
-                    model = o.threat;
-                    /* The top of its measured damage, for the one blow that has to be survived.
-                     * The plan prices the fight at the median; one swing is priced at the worst. */
-                    hard = (o.threatHi != null) ? o.threatHi : o.threat;
-                }
-                b = o.hardestReal();
-            }
-            b.distance = s.dist;
-            for(int c = 0; c < 4; c++) {
-                if(s.open[c] > 0)
-                    b.open(c, shown(s.open[c]));
-            }
-            /* What has already been taken off it. Never to zero: the relation is still there,
-             * so whatever is left of it is still standing. */
-            if((s.taken > 0) && (b.hp > 0))
-                b.hp = Math.max(1, b.hp - s.taken);
-            built.add(new Built(i, s, b, model, hard));
-        }
-        if(built.isEmpty() || (built.get(0).at != 0))
-            return(Live.none("the target could not be planned"));
+    /**
+     * The same, planned for the moment our cooldown ends rather than for now.
+     *
+     * The auto-fighter picks the next card WHILE the cooldown runs, so the game swings it the
+     * instant the cooldown ends. A plan that assumed we could act at once would leave out every
+     * swing the opponents get in before then - and those swings are what decide whether the next
+     * card should be a restoration. With our side not ready for {@code readyIn} ticks the search
+     * lets the opponents act first, exactly as it does between any two of our cards.
+     */
+    public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
+                                  double mhp, List<Seen> foes, int beam, long horizon,
+                                  long readyIn) {
+        return(adviseLive(me, bar, mine, shp, mhp, foes, beam, horizon, readyIn, null));
+    }
+
+    /**
+     * The same, planning with only {@code planCards} of the bar - see {@link #distill} - and every
+     * restoration on it. Null plans with the whole bar. The next-blow guard always looks at the
+     * whole bar's restorations.
+     */
+    public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
+                                  double mhp, List<Seen> foes, int beam, long horizon,
+                                  long readyIn, java.util.Set<String> planCards) {
+        Setup su = new Setup();
+        Live fail = prepare(su, me, bar, mine, shp, mhp, foes, readyIn);
+        if(fail != null)
+            return(fail);
+        Seen t = foes.get(0);
+        Combatant a = su.a;
+        List<Built> built = su.built;
+        List<Move> deck = su.deck;
+        List<Move> planDeck = narrowed(deck, planCards);
+        boolean hpKnown = su.hpKnown;
+        int proxied = su.proxied, players = su.players;
+        String standIn = su.standIn;
         boolean pvp = players > 0;
         double reserve = pvp ? RESERVE_PVP : RESERVE_PVE;
         double budget = hpKnown ? (shp - (reserve * mhp)) : Double.POSITIVE_INFINITY;
@@ -915,7 +877,7 @@ public final class Prediction {
                 mm[j] = order.get(j).model;
                 ia[j] = order.get(j).s.myIp;
             }
-            List<Optimizer.Plan> front = Optimizer.search(a, bb, deck, mm, beam, horizon, ia);
+            List<Optimizer.Plan> front = Optimizer.search(a, bb, planDeck, mm, beam, horizon, ia);
             Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
             if(p == null)
                 continue;
@@ -985,6 +947,7 @@ public final class Prediction {
                         continue;
                     Combatant ac = a.copy();
                     ac.ip = tb.s.myIp;
+                    ac.readyAt = 0;
                     Sim sim = new Sim(ac, tb.b.copy());
                     if(!sim.use(ac, m).ok)
                         continue;
@@ -1011,6 +974,204 @@ public final class Prediction {
         }
         return(new Live(move, why, best, budget, built.size(), proxied, players,
                         built.get(bestK).at, danger, cap, threat, trade, reserve));
+    }
+
+    /** Our side, every opponent as the model sees it, and the bar as a deck - built once per ask. */
+    private static final class Setup {
+        Combatant a;
+        List<Built> built;
+        List<Move> deck;
+        boolean hpKnown;
+        int proxied, players;
+        String standIn;
+    }
+
+    /** Fills {@code su} for this fight; returns the refusal when it cannot be planned, else null. */
+    private static Live prepare(Setup su, Me me, Map<String, Integer> bar, int[] mine, double shp,
+                                double mhp, List<Seen> foes, long readyIn) {
+        load();
+        if((me == null) || !me.usable() || (byRes == null) || (foes == null) || foes.isEmpty())
+            return(Live.none("nothing to plan with"));
+        List<Move> deck = liveDeck(me, bar);
+        if(deck == null)
+            return(Live.none("no card on the bar is in the move sheet"));
+        Seen t = foes.get(0);
+        if((t == null) || (t.open == null) || (t.open.length < 4))
+            return(Live.none("the target's openings are not known"));
+        boolean hpKnown = (shp > 0) && (mhp > 0);
+        Combatant a = ourSide(me, t.myIp);
+        a.readyAt = Math.max(0, readyIn);
+        if(hpKnown) {
+            a.hp = shp;
+            a.maxHp = mhp;
+        }
+        for(int c = 0; (mine != null) && (mine.length >= 4) && (c < 4); c++) {
+            if(mine[c] > 0)
+                a.open(c, shown(mine[c]));
+        }
+
+        List<Built> built = new ArrayList<Built>();
+        int proxied = 0, players = 0;
+        String standIn = null;
+        for(int i = 0; i < foes.size(); i++) {
+            Seen s = foes.get(i);
+            if((s == null) || (s.open == null) || (s.open.length < 4))
+                continue;
+            Combatant b;
+            FoeModel model, hard;
+            if(isPlayerRes(s.res)) {
+                b = ourSide(me, 0);
+                b.hp = b.maxHp = hpKnown ? mhp : 100;
+                b.penetrable = true;
+                a.penetrable = true;
+                List<Move> theirs = new ArrayList<Move>();
+                for(String r : (s.seen == null) ? java.util.Collections.<String>emptySet() : s.seen.keySet()) {
+                    Move mv = byRes.get(r);
+                    if((mv != null) && !mv.stance)
+                        theirs.add(mv);
+                }
+                model = hard = FoeModel.fromDeck(theirs.isEmpty() ? deck : theirs, b,
+                                                 a.defenceWeight());
+                players++;
+            } else {
+                Pack.Opponent o = known(s.res);
+                if(o == null) {
+                    o = proxy();
+                    if(o == null) {
+                        if(i == 0)
+                            return(Live.none("the pack has no creature to stand in for this one"));
+                        continue;
+                    }
+                    proxied++;
+                    standIn = o.toString();
+                    model = hard = o.threat;
+                } else {
+                    model = o.threat;
+                    /* The top of its measured damage, for the one blow that has to be survived.
+                     * The plan prices the fight at the median; one swing is priced at the worst. */
+                    hard = (o.threatHi != null) ? o.threatHi : o.threat;
+                }
+                b = o.hardestReal();
+            }
+            b.distance = s.dist;
+            for(int c = 0; c < 4; c++) {
+                if(s.open[c] > 0)
+                    b.open(c, shown(s.open[c]));
+            }
+            /* What has already been taken off it. Never to zero: the relation is still there,
+             * so whatever is left of it is still standing. */
+            if((s.taken > 0) && (b.hp > 0))
+                b.hp = Math.max(1, b.hp - s.taken);
+            built.add(new Built(i, s, b, model, hard));
+        }
+        if(built.isEmpty() || (built.get(0).at != 0))
+            return(Live.none("the target could not be planned"));
+        su.a = a;
+        su.built = built;
+        su.deck = deck;
+        su.hpKnown = hpKnown;
+        su.proxied = proxied;
+        su.players = players;
+        su.standIn = standIn;
+        return(null);
+    }
+
+    /** The beam distill() searches its candidate subsets at. */
+    static final int DISTILL_BEAM = 20;
+
+    /**
+     * The cards of the bar worth planning this fight with, or null when the whole bar plans as well.
+     *
+     * A BIG BAR PLANS WORSE THAN A SMALL ONE IN A LONG FIGHT, and the search is the reason, not the
+     * cards. A deck holding every card cannot truly do worse than one holding three of them, yet
+     * with Full Circle added to Shield Up, Sideswipe and Uppercut a bear plans at 832 ticks against
+     * 510 at beam 20 and 728 at beam 60, and only a beam of 1000 finds its way back to 510. Full
+     * Circle's lines look good early and fill the beam; the line that wins is pruned before it pays.
+     * Tuning the ranking was tried (charging a card's cooldown to the rate) and moved nothing.
+     *
+     * So the cards are chosen per fight, by FORWARD SELECTION: start from none, add whichever card
+     * gives the quickest kill (fewer hitpoints on a tie), and stop when no card improves it. The
+     * subsets searched are small, so this is cheap - 0.1 to 0.25 s once per matchup - and over ten
+     * matchups it recovered the specialist deck's plan every time (bear 688 -> 510 ticks with a
+     * ten-card bar, moose 646 -> 484, wolf 618 -> 489, cave angler 1050 -> 822). The subset is kept
+     * only if it plans no worse than the whole bar at the planning beam; the planner adds every
+     * restoration back, so the reserve and the guard still have them.
+     */
+    public static java.util.Set<String> distill(Me me, Map<String, Integer> bar, int[] mine,
+                                                double shp, double mhp, List<Seen> foes, int beam,
+                                                long horizon) {
+        Setup su = new Setup();
+        if(prepare(su, me, bar, mine, shp, mhp, foes, 0) != null)
+            return(null);
+        int n = su.built.size();
+        Combatant[] bb = new Combatant[n];
+        FoeModel[] mm = new FoeModel[n];
+        int[] ia = new int[n];
+        for(int j = 0; j < n; j++) {
+            bb[j] = su.built.get(j).b;
+            mm[j] = su.built.get(j).model;
+            ia[j] = su.built.get(j).s.myIp;
+        }
+        List<Move> chosen = new ArrayList<Move>();
+        Optimizer.Plan have = null;
+        while(chosen.size() < su.deck.size()) {
+            Move add = null;
+            Optimizer.Plan addPlan = have;
+            for(Move m : su.deck) {
+                if(chosen.contains(m))
+                    continue;
+                List<Move> trial = new ArrayList<Move>(chosen);
+                trial.add(m);
+                Optimizer.Plan p = Advisor.choose(Optimizer.search(su.a, bb, trial, mm, DISTILL_BEAM,
+                                                                   horizon, ia),
+                                                  Advisor.Aim.FASTEST, 0);
+                if(quicker(p, addPlan)) {
+                    add = m;
+                    addPlan = p;
+                }
+            }
+            if(add == null)
+                break;
+            chosen.add(add);
+            have = addPlan;
+        }
+        if(chosen.isEmpty() || (chosen.size() == su.deck.size()))
+            return(null);
+        java.util.Set<String> cards = new java.util.LinkedHashSet<String>();
+        for(Move m : chosen)
+            cards.add(m.res);
+        Optimizer.Plan sub = Advisor.choose(Optimizer.search(su.a, bb, narrowed(su.deck, cards), mm,
+                                                             beam, horizon, ia),
+                                            Advisor.Aim.FASTEST, 0);
+        Optimizer.Plan whole = Advisor.choose(Optimizer.search(su.a, bb, su.deck, mm, beam, horizon,
+                                                               ia),
+                                              Advisor.Aim.FASTEST, 0);
+        return(quicker(whole, sub) ? null : cards);
+    }
+
+    /** The bar narrowed to these cards and every restoration on it; the whole bar for null or nothing. */
+    private static List<Move> narrowed(List<Move> deck, java.util.Set<String> cards) {
+        if((cards == null) || cards.isEmpty())
+            return(deck);
+        List<Move> out = new ArrayList<Move>();
+        for(Move m : deck) {
+            if(cards.contains(m.res) || reducesOurs(m))
+                out.add(m);
+        }
+        return(out.isEmpty() ? deck : out);
+    }
+
+    /** A kill beats no kill; then fewer ticks; then fewer hitpoints. */
+    private static boolean quicker(Optimizer.Plan a, Optimizer.Plan b) {
+        if(a == null)
+            return(false);
+        if(b == null)
+            return(true);
+        if(a.killed != b.killed)
+            return(a.killed);
+        if(a.ticks != b.ticks)
+            return(a.ticks < b.ticks);
+        return(!Double.isNaN(a.hpLost) && !Double.isNaN(b.hpLost) && (a.hpLost < (b.hpLost - 1e-9)));
     }
 
     /** Hitpoints the cheapest plan on this frontier saves over the fastest; 0 when unknown. */
@@ -1114,7 +1275,21 @@ public final class Prediction {
         if(isPlayerRes(res))
             return(null);
         Pack.Opponent o = find(res);
-        return(((o != null) && !o.isPlayer() && o.simulable() && (o.threat != null)) ? o : null);
+        if((o == null) || o.isPlayer() || (o.threat == null))
+            return(null);
+        return((o.simulable() || bounded(o)) ? o : null);
+    }
+
+    /**
+     * A creature whose skill the corpus bounds on both sides without naming - bear, wolf, moose,
+     * lynx, narwhal and more. Pack.simulable() refuses them, and that is right for a logged
+     * prediction; the live advice used to plan them as the stand-in beaver instead, which is far
+     * worse than planning them as themselves at the HARD end of the band. hardestReal() already
+     * builds that end (the skill's upper bound), which is what CombatDeckSearch -bounded runs.
+     */
+    static boolean bounded(Pack.Opponent o) {
+        return(o.hasSkill && o.hpBounded() && !Double.isNaN(o.skillLo) && !Double.isNaN(o.skillHi)
+               && (o.skillLo > 0) && (o.skillHi >= o.skillLo));
     }
 
     private static volatile Pack.Opponent proxy = null;

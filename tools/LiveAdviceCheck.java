@@ -296,6 +296,42 @@ public class LiveAdviceCheck {
         check("  and where defending saves nothing, the guard stays quiet", quietOk, quiet);
         check("  and somewhere worth defending, a restoration is thrown into the blow", restores > 0, true);
 
+        /* A BIG BAR IN A LONG FIGHT. The beam loses the winning line once Full Circle is on a bar
+         * against one heavy creature; distill() chooses the cards per matchup. The plan it makes
+         * must be no slower than the whole bar's, and against at least one of these it must be a
+         * real subset that is strictly quicker - the case the selection exists for. */
+        System.out.println("\na big bar plans with the cards the matchup wants");
+        Map<String, Integer> bigBar = new LinkedHashMap<String, Integer>();
+        bigBar.put("paginae/atk/shield", 1);
+        bigBar.put("paginae/atk/sideswipe", 3);
+        bigBar.put("paginae/atk/uppercut", 3);
+        bigBar.put("paginae/atk/fullcircle", 2);
+        bigBar.put("paginae/atk/barrage", 5);
+        bigBar.put("paginae/atk/cleave", 1);
+        bigBar.put("paginae/atk/knockteeth", 2);
+        bigBar.put("paginae/atk/oppknock", 2);
+        bigBar.put("paginae/atk/punchboth", 5);
+        bigBar.put("paginae/atk/qdodge", 5);
+        int noSlower = 0, tried = 0, quicker = 0;
+        for(String big : new String[] {"gfx/kritter/bear/bear", "gfx/kritter/moose/moose",
+                                        "gfx/kritter/wolf/wolf", "gfx/kritter/caveangler/caveangler"}) {
+            List<Prediction.Seen> one = Arrays.asList(seen(big, new int[] {10, 0, 0, 10}, 0));
+            Prediction.Live whole = Prediction.adviseLive(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON);
+            if((whole.moveRes == null) || (whole.proxied > 0))
+                continue;
+            tried++;
+            java.util.Set<String> cards = Prediction.distill(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON);
+            Prediction.Live sub = Prediction.adviseLive(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON, 0, cards);
+            System.out.printf("      %-36s whole bar %4d ticks | chosen %s -> %4d ticks%n", big, whole.ticks, cards, sub.ticks);
+            if(sub.ticks <= whole.ticks)
+                noSlower++;
+            if((cards != null) && (sub.ticks < whole.ticks))
+                quicker++;
+        }
+        check("the heavy creatures are all planned as themselves", tried, 4);
+        check("  the chosen cards never plan slower than the whole bar", noSlower, tried);
+        check("  and against at least one they plan strictly quicker", quicker > 0, true);
+
         finish();
     }
 
