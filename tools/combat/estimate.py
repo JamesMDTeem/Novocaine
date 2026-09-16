@@ -3315,7 +3315,8 @@ def collect(paths):
                 rec["soak_clean"].extend(max(byc.values(), key=len))
         rec["wiki"] = wiki_for(wiki, rec["res"])
         rec["hp"] = summarise_hp(rec["dealt"], rec["killed"], rec["last_hit"],
-                                 wiki_for(wiki, rec["res"]), rec["killed_floor"])
+                                 wiki_for(wiki, rec["res"]), rec["killed_floor"],
+                                 is_depth_scaled(rec["res"], (rec["wiki"] or {}).get("name")))
     return per, moves
 
 
@@ -3947,7 +3948,7 @@ def write_animal_moves(per, paths=None):
     return doc
 
 
-def summarise_hp(dealt, killed, last_hit, wiki_entry, killed_floor=()):
+def summarise_hp(dealt, killed, last_hit, wiki_entry, killed_floor=(), depth=False):
     """Hitpoints, as the range a fresh one of these could have.
 
     The wiki's stated figure is the baseline and it is a good one. Its boar died three
@@ -4039,10 +4040,22 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry, killed_floor=()):
     # toughest() reads pick(planHpHi(), hpLo). A scorpion that had taken 33 was then modelled
     # as a corpse, every plan tied at "kills in 0 ticks for 0 damage", and the live advice sat
     # on Uppercut for ten swings while its yellow climbed to 90 (2026-09-15).
-    contradicted = (sur is not None) and (stated is not None) and (stated < sur)
+    #
+    # NOT FOR A CREATURE THAT SCALES WITH DEPTH. There the stated figure is one mine floor, the
+    # shallow one, and a bigger individual is a deeper one rather than evidence against it - a
+    # floor-1 cave angler really has the wiki's 1200 while one from further down held 1253 and
+    # more. Nothing in a log says which floor a fight was on, so the stated size stays in the
+    # range as the smallest a fresh one can be.
+    contradicted = ((not depth) and (sur is not None) and (stated is not None)
+                    and (stated < sur))
     if (stated is not None) and not contradicted:
         use_lo = stated if use_lo is None else min(use_lo, stated)
-        use_hi = stated if use_hi is None else max(use_hi, stated)
+        if use_hi is not None:
+            use_hi = max(use_hi, stated)
+        elif not (depth and (sur is not None)):
+            # A depth-scaled creature's stated size is its smallest, so it can open a range
+            # but never close one: an angler that outlasted it keeps "this much or more".
+            use_hi = stated
 
     verdict = None
     if stated is not None and per:

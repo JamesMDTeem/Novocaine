@@ -123,6 +123,14 @@ def hitpoints():
     hp = summarise_hp({1: 85}, set(), {}, WIKI(90), {1})
     check("  a stated figure above the floor still widens the range", (hp["lo"], hp["hi"]),
           (86, 90))
+    # Except where size scales with depth. The stated figure is the shallow floor's, so a
+    # bigger one is a deeper one, not a contradiction: the cave angler's wiki 1200 is a real
+    # floor-1 angler, and it stays the bottom of the range however large the deep ones were.
+    hp = summarise_hp({1: 1252}, set(), {}, WIKI(1200), {1}, depth=True)
+    check("  a depth-scaled creature keeps the shallow floor's stated size",
+          (hp["lo"], hp["hi"]), (1200, None))
+    hp = summarise_hp({1: 1754}, {1}, {}, WIKI(1200), (), depth=True)
+    check("  and a kill from deeper still caps it", (hp["lo"], hp["hi"]), (1200, 1754))
     kill_kinds()
 
 
