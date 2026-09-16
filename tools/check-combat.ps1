@@ -419,7 +419,7 @@ $specs = @(
         Sources = ($model + @('src\haven\combat\FoeModel.java', 'src\haven\combat\Duel.java', 'tools\CombatSimCheck.java')) }
     [pscustomobject]@{ Kind = 'java'; Name = 'CombatOptimizerCheck'; Section = 'the plan search'; MainClass = 'CombatOptimizerCheck'; SourcePath = $null;
         Sources = ($model + @('src\haven\combat\FoeModel.java', 'src\haven\combat\Optimizer.java',
-            'src\haven\combat\Advisor.java', 'tools\CombatOptimizerCheck.java')) }
+            'src\haven\combat\Advisor.java', 'src\haven\combat\PartyPlanner.java', 'tools\CombatOptimizerCheck.java')) }
     [pscustomobject]@{ Kind = 'java'; Name = 'CombatPackCheck'; Section = 'the data pack, loaded the way the bot will load it'; MainClass = 'CombatPackCheck'; SourcePath = 'src';
         Sources = ($model + @('src\haven\combat\data\Pack.java', 'tools\CombatPackCheck.java')) }
     # The audit: not whether a number is right, but whether anything reads it at all.

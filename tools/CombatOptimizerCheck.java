@@ -24,6 +24,7 @@ import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Optimizer;
+import haven.combat.PartyPlanner;
 import haven.combat.Sim;
 
 public class CombatOptimizerCheck {
@@ -226,6 +227,7 @@ public class CombatOptimizerCheck {
         woundsAreCounted();
         survive();
         worstHit();
+        party();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -428,6 +430,50 @@ public class CombatOptimizerCheck {
               runs.worstHit(us, us.defenceWeight(), beaten), 0.0);
         System.out.printf("      open green 50: %.1f hp, shut: %.1f hp%n", hit,
                           steady.worstHit(shut, shut.defenceWeight(), them));
+    }
+
+    /**
+     * PartyPlanner, the several-of-us search, against the one it was built beside.
+     *
+     * A party of ONE is exactly the fight Optimizer plans: same clocks, same beam, same
+     * ranking, the creature's action taken the same way. So the two must agree to the tick
+     * and the hitpoint, or the party search is not the search it claims to extend. And a
+     * second fighter behind the same person in front can only add blows to the creature,
+     * so the fastest kill cannot get slower.
+     */
+    static void party() {
+        System.out.println("\na party of one plans what the optimizer plans");
+        double[] press = {14, 0, 0, 0};
+        FoeModel steady = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        List<Move> deck = java.util.Arrays.asList(barrage(), fullCircle(), quickDodge());
+        List<Optimizer.Plan> solo = Optimizer.search(me(), foe(400, 20), deck, steady, 60, 2500);
+        PartyPlanner.Member[] one = {new PartyPlanner.Member("ZzxcuV3", me(), deck)};
+        List<PartyPlanner.Plan> party = PartyPlanner.search(one, foe(400, 20), steady, 0, null,
+                                                            60, 2500);
+        Optimizer.Plan sFast = solo.get(0), sSafe = solo.get(0);
+        for(Optimizer.Plan p : solo) {
+            if(p.hpLost < sSafe.hpLost)
+                sSafe = p;
+        }
+        PartyPlanner.Plan pFast = party.get(0), pSafe = party.get(0);
+        for(PartyPlanner.Plan p : party) {
+            if(p.totalLost < pSafe.totalLost)
+                pSafe = p;
+        }
+        check("  the fastest kill takes the same ticks", pFast.ticks, sFast.ticks);
+        near("  and costs the same hitpoints", pFast.totalLost, sFast.hpLost, 1e-9);
+        near("  and the cheapest kill costs the same", pSafe.totalLost, sSafe.hpLost, 1e-9);
+        check("  and throws the same cards", pFast.movesOf(0).toString(), sFast.moves.toString());
+
+        PartyPlanner.Member[] two = {new PartyPlanner.Member("ZzxcuV3", me(), deck),
+                                     new PartyPlanner.Member("friend", me(), deck)};
+        List<PartyPlanner.Plan> pair = PartyPlanner.search(two, foe(400, 20), steady, 0, null,
+                                                           60, 2500);
+        check("a second fighter behind the same front never slows the kill",
+              pair.get(0).killed && (pair.get(0).ticks <= pFast.ticks), true);
+        check("  and the creature swings only at the one in front", pair.get(0).hpLost[1], 0.0);
+        System.out.printf("      one: %d ticks, %.1f hp; two: %d ticks, %.1f hp on the front%n",
+                          pFast.ticks, pFast.totalLost, pair.get(0).ticks, pair.get(0).hpLost[0]);
     }
 
     static Combatant me() {

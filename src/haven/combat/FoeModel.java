@@ -316,6 +316,59 @@ public final class FoeModel {
         return(act(me, myBlockWeight, pressureNow(me, self)));
     }
 
+    /**
+     * One action against a PARTY - several of us fighting this one creature together.
+     *
+     * The creature still has one clock and throws one card. What a party changes is who it
+     * lands on. It swings at whoever is in FRONT of it (James: animals attack whoever is
+     * closest or in front, so a party can choose who that is), and a card named in
+     * {@code area} lands on everyone still standing. Nothing in the corpus measures a card
+     * hitting two people: across about a thousand hits in group fights every card landed on
+     * exactly one, and Trumpeting Fury's 2 throws hitting 3 people is the only exception - so
+     * the area set is a question a caller asks, not a fact this model holds.
+     *
+     * The card is dealt as {@link #act} deals it, against the one in front, since that is
+     * the relation whose state a learned rule reads. Its restoration lands once.
+     *
+     * @param dealtOut damage added per party member, indexed like {@code party}; may be null
+     * @return the index of the card thrown, or -1 for the averaged action or when fleeing
+     */
+    public int actParty(Combatant[] party, double[] blockWeights, int front,
+                        java.util.Set<String> area, Combatant self, int step, int[] thrown,
+                        long[] gapOut, double[] dealtOut) {
+        if((self != null) && fleeing(self)) {
+            if((gapOut != null) && (gapOut.length > 0))
+                gapOut[0] = period;
+            return(-1);
+        }
+        Combatant t = party[front];
+        if((cards != null) && cards.usable()) {
+            int i = cards.pick(t, self, step, thrown);
+            if((thrown != null) && (i < thrown.length))
+                thrown[i]++;
+            if((gapOut != null) && (gapOut.length > 0))
+                gapOut[0] = gapFor(i);
+            BeastMove m = cards.cards[i];
+            restoreFrom(m, self);
+            boolean wide = (area != null) && area.contains(m.name);
+            for(int k = 0; k < party.length; k++) {
+                if(!party[k].alive() || ((k != front) && !wide))
+                    continue;
+                double d = strike(m, party[k], blockWeights[k]);
+                if(dealtOut != null)
+                    dealtOut[k] += d;
+            }
+            return(i);
+        }
+        if((gapOut != null) && (gapOut.length > 0))
+            gapOut[0] = period;
+        restore(self);
+        double d = act(t, blockWeights[front], pressureNow(t, self));
+        if(dealtOut != null)
+            dealtOut[front] += d;
+        return(-1);
+    }
+
     /** The thrown card's own measured cooldown, or the creature's single period otherwise. */
     private long gapFor(int i) {
         if((cards != null) && (i >= 0) && (i < cards.cards.length)) {
@@ -335,6 +388,12 @@ public final class FoeModel {
      * never happens.
      */
     private double play(BeastMove m, Combatant me, double myBlockWeight, Combatant self) {
+        restoreFrom(m, self);
+        return(strike(m, me, myBlockWeight));
+    }
+
+    /** The card's own restoration, on the creature that threw it. Once per throw. */
+    private static void restoreFrom(BeastMove m, Combatant self) {
         /* AIMED, AND ONLY WHERE THE CARD AIMS. Roar of the Wild takes back yellow and red
          * and leaves green and blue exactly where they were. */
         if(self != null) {
@@ -343,6 +402,13 @@ public final class FoeModel {
                     self.close(c, (m.restores[c] > 1.0) ? 1.0 : m.restores[c]);
             }
         }
+    }
+
+    /**
+     * The card's openings and damage, on one person it lands on. Split from the restoration
+     * so a card that hits several people restores its thrower once, not once per victim.
+     */
+    private double strike(BeastMove m, Combatant me, double myBlockWeight) {
         double scale = ((pressureAgainst > 0) && (myBlockWeight > 0))
             ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0;
         for(int c = 0; c < 4; c++) {
