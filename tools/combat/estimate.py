@@ -3787,7 +3787,13 @@ def animal_move_damage(per):
         if len(v) < DMG_MIN_OBS:
             continue
         v.sort()
+        # p90 is the card's PESSIMISTIC figure, which the pack's threatHi reads. hi is one
+        # hit - Ant Spit's median 33.8 sits under a single 286 - and planning every blow at the
+        # one worst ever seen answers a question nobody asks; the tenth-worst of a hundred is
+        # a blow worth defending against. Before this the pessimistic model read "coef" card
+        # for card, so it was the median model for all 39 animals with a measured card.
         out[nm] = {"coef": round(v[len(v) // 2], 1), "lo": round(v[0], 1),
+                   "p90": round(v[int(0.9 * (len(v) - 1))], 1),
                    "hi": round(v[-1], 1), "n": len(v), "before_armour": True}
     return out
 

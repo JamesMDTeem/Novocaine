@@ -27,6 +27,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import haven.combat.BeastMove;
 import haven.combat.Combatant;
 import haven.combat.Formulas;
 import haven.combat.Move;
@@ -836,6 +837,43 @@ public class CombatPackCheck {
         }
         check("some opponent carries the top of its measured damage", withHi > 0, true);
         check("  and the pessimistic model is never the weaker one", ordered, withHi);
+
+        /* AND ON THE CARDS, WHICH IS WHERE IT IS READ. A creature that throws real cards prices
+         * each blow off the card's own coefficient, and the averaged figure above is not read
+         * at all - so the pessimistic model was the median model card for card, for every
+         * creature with a repertoire, and "price it at the top" changed nothing (audited
+         * 2026-09-15). The hi repertoire reads each card's 90th-percentile coefficient. */
+        int cardPath = 0, cardsHigher = 0, cardsLower = 0;
+        for(Pack.Opponent o : foes.values()) {
+            /* ANIMALS whose cards carry a measured blow. A person's cards take their damage
+             * from the person's own measured interval, which the averaged check above covers. */
+            if(o.isPlayer() || (o.threat == null) || (o.threatHi == null) || (o.threat.cards == null)
+               || (o.threatHi.cards == null) || !o.threat.cards.usable())
+                continue;
+            BeastMove[] mid = o.threat.cards.cards, top = o.threatHi.cards.cards;
+            boolean measured = false;
+            for(BeastMove b : mid)
+                measured |= !Double.isNaN(b.damageCoef);
+            if(!measured)
+                continue;
+            cardPath++;
+            boolean higher = false;
+            for(int i = 0; (i < mid.length) && (i < top.length); i++) {
+                if(Double.isNaN(mid[i].damageCoef) || Double.isNaN(top[i].damageCoef))
+                    continue;
+                if(top[i].damageCoef > mid[i].damageCoef)
+                    higher = true;
+                if(top[i].damageCoef < mid[i].damageCoef)
+                    cardsLower++;
+            }
+            if(higher)
+                cardsHigher++;
+        }
+        check("every animal with a measured card prices a blow higher at the top",
+              (cardPath > 0) && (cardsHigher == cardPath), true);
+        check("  and no card of it is priced lower there", cardsLower, 0);
+        System.out.printf("      %d of %d animals with a measured card carry a higher one at the top%n",
+                          cardsHigher, cardPath);
 
         /* WHETHER WE CAN LEAVE. The estimator has measured relative speed all along and
          * nothing read it back out, so the matchup answered "can I take this" without

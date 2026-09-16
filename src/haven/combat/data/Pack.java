@@ -1592,6 +1592,15 @@ public final class Pack {
          * in. Everything else is already in its own units and is taken as it stands.
          */
         public BeastMove move(String name, String species) {
+            return(move(name, species, "coef"));
+        }
+
+        /**
+         * @param end "coef" for the card's median blow; "hi" for its pessimistic one, the 90th
+         *            percentile the estimator publishes as p90 - never the single worst hit, and
+         *            the median where a pack predates p90.
+         */
+        public BeastMove move(String name, String species, String end) {
             JSONObject m = byName.get(name);
             if(m == null)
                 return(null);
@@ -1605,6 +1614,8 @@ public final class Pack {
             }
             JSONObject d = m.optJSONObject("damage");
             double coef = (d == null) ? Double.NaN : d.optDouble("coef", Double.NaN);
+            if("hi".equals(end) && (d != null) && d.has("p90"))
+                coef = d.optDouble("p90", coef);
             JSONObject c = m.optJSONObject("cooldown");
             long cd = (c == null) ? 0 : Math.round(c.optDouble("ticks", 0));
             double[] rest = new double[4];
@@ -1733,7 +1744,7 @@ public final class Pack {
              * sheet, so it falls through to the measured file as before. */
             BeastMove m = (ours == null) ? null : fromOurCard(ours.get(nm), coef, norm);
             if((m == null) && (lib != null))
-                m = lib.move(nm, species);
+                m = lib.move(nm, species, coefKey);
             if((m == null) || !m.acts())
                 continue;               /* a card we know the name of and nothing else */
             cards.add(m);
