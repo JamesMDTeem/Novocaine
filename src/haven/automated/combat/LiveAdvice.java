@@ -165,6 +165,9 @@ public final class LiveAdvice {
     private static long lastRequest = 0;
     private static String barKey = null;
     private static Map<String, Integer> barDeck = null;
+    /* The advice's inputs as last written to the log, so the row goes in on a change and not
+     * every frame - see CombatEvent.advin. */
+    private static String lastInputs = null;
 
     /**
      * The answer for this target, or null when there is none, it is stale, or it was made while
@@ -194,6 +197,7 @@ public final class LiveAdvice {
         lastKey = null;
         barKey = null;
         barDeck = null;
+        lastInputs = null;
         distillKey = null;
         distilled = null;
         synchronized(lock) {
@@ -217,15 +221,22 @@ public final class LiveAdvice {
                 return;
             }
             long wall = System.currentTimeMillis();
-            if(fightMe == null) {
-                if(wall < nextMeTry)
-                    return;
-                Prediction.Me m = CombatRecorder.buildMe(gui);
-                if((m == null) || !m.usable()) {
+            /* OUR SIDE IS NOT BUILT ONCE AND KEPT. It was, and a snapshot taken in a frame where
+             * the hands did not read - an item still loading, the equipment widget not there yet -
+             * left us BARE-HANDED for the whole fight. Every card whose damage comes from the
+             * weapon is then dropped from the deck (Prediction.needsWeapon), which leaves the
+             * unarmed cards, and the advice spends the fight on one of those. So while no weapon
+             * has resolved it is rebuilt each second, and a weapon swapped mid-fight is picked up
+             * the same way. */
+            if((fightMe == null) || !fightMe.armed) {
+                if(wall >= nextMeTry) {
+                    Prediction.Me m = CombatRecorder.buildMe(gui);
                     nextMeTry = wall + 1000;
-                    return;
+                    if((m != null) && m.usable() && ((fightMe == null) || m.armed))
+                        fightMe = m;
                 }
-                fightMe = m;
+                if(fightMe == null)
+                    return;
             }
 
             List<haven.Buff> ours = new ArrayList<haven.Buff>(fv.buffs.children(haven.Buff.class));
@@ -235,6 +246,14 @@ public final class LiveAdvice {
             haven.combat.log.Openings mo = CombatRecorder.readOpenings(ours);
             int[] mine = {mo.green, mo.blue, mo.yellow, mo.red};
             Map<String, Integer> bar = bar(gui);
+            /* What the advice is planning from, into the fight's own log, when any of it changes
+             * - see CombatEvent.advin for why a log that could not say this was a problem. */
+            String inputs = fightMe.armed + "|" + fightMe.weaponDamage + "|" + barKey + "|" + distilled;
+            if(!inputs.equals(lastInputs)) {
+                lastInputs = inputs;
+                CombatRecorder.logAdviceInputs(fightMe.armed, fightMe.weapon(), fightMe.weaponDamage,
+                                               (bar == null) ? null : bar.keySet(), distilled);
+            }
 
             haven.Gob self = null;
             try {

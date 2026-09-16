@@ -374,6 +374,22 @@ public final class CombatRecorder {
      * makes for the log, without a log. The live advice and the auto-fighter build theirs here, so
      * neither needs Record Combat Telemetry on. Null when anything needed cannot be read yet.
      */
+    /**
+     * What the live advice is planning from, into the fight's own log - see CombatEvent.advin.
+     * Silent when nothing is recording, like everything else here.
+     */
+    static void logAdviceInputs(boolean armed, String weapon, double weaponDamage,
+                                java.util.Collection<String> bar,
+                                java.util.Collection<String> chosen) {
+        if(!active())
+            return;
+        try {
+            log(CombatEvent.advin(now(), armed, weapon, weaponDamage, bar, chosen));
+        } catch(Exception e) {
+            /* never propagate into the tick loop */
+        }
+    }
+
     static Prediction.Me buildMe(haven.GameUI gui) {
         try {
             if((gui == null) || (gui.ui == null) || (gui.ui.sess == null))

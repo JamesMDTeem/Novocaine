@@ -223,13 +223,37 @@ public class LiveAdviceCheck {
          * refuse it: a creature that low has already fled (FoeModel.fleesBelow) and swings at
          * nothing, so no order saves a hitpoint. The case that pays is a FRESH heavy hitter beside
          * the fox - every tick it stays up it swings - and dropping it first costs fewer. */
-        if(heavy != null) {
-            Prediction.Seen hitter = new Prediction.Seen(2, heavy, foeOpen, 0, 0, 10, 0, null, true);
-            Prediction.Seen hitterPeaced = new Prediction.Seen(2, heavy, foeOpen, 0, 0, 10, 0, null, false);
+        /* WHICH heavy hitter is MEASURED, not assumed. This named the cave angler and then went red
+         * when the pack was regenerated: against today's reading of it, killing the fox first really
+         * is cheaper (1268 ticks / 105 hp against 1372 / 136), so the case's premise had died while
+         * the code was fine. So the creature is chosen by the property the case needs - killing it
+         * first is clearly quicker AND cheaper, measured by planning each order on its own - and the
+         * switch is asserted there. */
+        String first = null;
+        for(String h : hard) {
+            Prediction.Seen heavyOnly = new Prediction.Seen(2, h, foeOpen, 0, 0, 10, 0, null, true);
+            Prediction.Seen heavyPassed = new Prediction.Seen(2, h, foeOpen, 0, 0, 10, 0, null, false);
+            Prediction.Seen foxPassed = new Prediction.Seen(1, known, foeOpen, 0, 0, 10, 0, null, false);
+            Prediction.Live foxFirst = advise(me, null, FRESH, 300, 300, cur, heavyPassed);
+            Prediction.Live heavyFirst = advise(me, null, FRESH, 300, 300, heavyOnly, foxPassed);
+            if((foxFirst.moveRes == null) || (heavyFirst.moveRes == null) || (foxFirst.proxied > 0))
+                continue;
+            boolean better = (heavyFirst.ticks < foxFirst.ticks)
+                && (heavyFirst.hpLost < foxFirst.hpLost);
+            System.out.printf("      %-36s fox first %5d t %6.1f hp | it first %5d t %6.1f hp%s%n",
+                              h, foxFirst.ticks, foxFirst.hpLost, heavyFirst.ticks, heavyFirst.hpLost,
+                              better ? "  <- killing it first is better on both" : "");
+            if(better && (first == null))
+                first = h;
+        }
+        check("some opponent is worth killing before the one we are on", first != null, true);
+        if(first != null) {
+            Prediction.Seen hitter = new Prediction.Seen(2, first, foeOpen, 0, 0, 10, 0, null, true);
+            Prediction.Seen hitterPeaced = new Prediction.Seen(2, first, foeOpen, 0, 0, 10, 0, null, false);
             Prediction.Live sw = advise(me, null, FRESH, 300, 300, cur, hitter);
             System.out.printf("      %s beside a fresh %s -> target %d (%s)%n",
-                              known, heavy, sw.target, sw.why);
-            check("a fresh heavy hitter beside it is the better target", sw.target, 1);
+                              known, first, sw.target, sw.why);
+            check("  and that one is the target the advice picks", sw.target, 1);
             check("  and the reason says to switch", sw.why.startsWith("switch to"), true);
             Prediction.Live pe = advise(me, null, FRESH, 300, 300, cur, hitterPeaced);
             check("but never one we offered peace", pe.target, 0);

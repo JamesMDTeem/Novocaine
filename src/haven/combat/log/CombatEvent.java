@@ -14,7 +14,45 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 21;
+    public static final int SCHEMA = 22;
+
+    /**
+     * What the LIVE ADVICE was working from - not what the fight contained.
+     *
+     * A fight where the advice looked wrong could not be diagnosed from a log: the log records
+     * the cards a person threw and the state they were thrown in, and says nothing about the
+     * inputs the advisor had. One fight against a wood scorpion was spent throwing Uppercut, a
+     * card that attacks colours the creature was not open in, and the only reconstruction that
+     * reproduced it was an advisor that believed we were bare-handed - which the log could
+     * neither confirm nor rule out. So the inputs go in: whether a weapon resolved, which one,
+     * the cards on the bar, and the subset chosen to plan with. Written when the advisor first
+     * builds our side and whenever any of it changes.
+     */
+    public static String advin(long t, boolean armed, String weapon, double weaponDamage,
+                               java.util.Collection<String> bar,
+                               java.util.Collection<String> chosen) {
+        JsonObj o = new JsonObj()
+            .put("ev", "advin")
+            .put("t", t)
+            .put("armed", armed)
+            .put("weapon", weapon)
+            .put("wdmg", weaponDamage);
+        return(o.raw("bar", list(bar)).raw("chosen", list(chosen)).toString());
+    }
+
+    private static String list(java.util.Collection<String> xs) {
+        if(xs == null)
+            return("null");
+        StringBuilder b = new StringBuilder("[");
+        boolean first = true;
+        for(String x : xs) {
+            if(!first)
+                b.append(',');
+            first = false;
+            b.append('"').append(x).append('"');
+        }
+        return(b.append(']').toString());
+    }
 
     /**
      * The header line, first in every file. Without it a log is unlabelled: it says nothing about

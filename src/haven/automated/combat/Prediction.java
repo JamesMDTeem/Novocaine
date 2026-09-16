@@ -145,6 +145,14 @@ public final class Prediction {
         /* Damage-dealing gloves worn at fight start, as a base and a quality - see
          * Combatant.gloveDamage. 0 when none are, or when the recorder did not say. */
         double gloveDamage = 0, gloveQl = 0;
+        /* The resource of whatever resolved as the weapon, for the log to name it - null when
+         * nothing did, which is the case that plans every weapon card away. */
+        String weaponRes = null;
+
+        /** What resolved in hand, or null bare-handed. */
+        public String weapon() {
+            return(weaponRes);
+        }
 
         Me(double str, double agi, double unarmed, double melee,
            double armHard, double armSoft,
@@ -206,6 +214,7 @@ public final class Prediction {
         double str = num(attrs, "str"), agi = num(attrs, "agi");
         double ua = num(attrs, "unarmed"), mc = num(attrs, "melee");
         double dmg = 0, pen = 0, weaponQl = 0, range = Double.NaN;
+        String wres = null;
         boolean armed = false;
         /* Both hands, and whichever one resolves to a weapon wins. A shield or a tool in
          * the off hand finds nothing and is simply passed over - which is the point, since
@@ -257,14 +266,17 @@ public final class Prediction {
             dmg = w[0];
             pen = p;
             weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
+            wres = handRes[i];
             armed = true;
             break;
         }
         /* Armour of -1 means the equipment widget could not be read, which is not the same
          * fact as wearing none. */
-        return(new Me(str, agi, ua, mc, Math.max(0, armHard), Math.max(0, armSoft),
-                      dmg, weaponQl, pen, range, armed,
-                      (levels == null) ? new LinkedHashMap<String, Integer>() : levels));
+        Me out = new Me(str, agi, ua, mc, Math.max(0, armHard), Math.max(0, armSoft),
+                        dmg, weaponQl, pen, range, armed,
+                        (levels == null) ? new LinkedHashMap<String, Integer>() : levels);
+        out.weaponRes = wres;
+        return(out);
     }
 
     /** Glove resources whose damage adds to an unarmed blow; each has a row in the weapon table. */
@@ -362,7 +374,7 @@ public final class Prediction {
             m = m.withMu(muAt(lvl));
         /* A weapon move with no resolved weapon has no damage and no attack weight. Predicting
          * it as if unarmed would be a different move. */
-        if((m.weight == Move.Weight.WEAPON) && !me.armed)
+        if(needsWeapon(m) && !me.armed)
             return(null);
 
         Pack.Opponent o = find(foeRes);
@@ -555,7 +567,7 @@ public final class Prediction {
                  * instead, by applyStance. */
                 if(m.stance)
                     continue;
-                if((m.weight == Move.Weight.WEAPON) && !me.armed)
+                if(needsWeapon(m) && !me.armed)
                     continue;
                 deck.add((e.getValue() > 1) ? m.withMu(muAt(e.getValue())) : m);
             }
@@ -934,6 +946,11 @@ public final class Prediction {
             why = "switch to " + shortName(built.get(bestK).s.res) + ": " + why;
         if(proxied > 0)
             why = why + ", " + proxied + " unknown planned as " + standIn;
+        /* SAID, NOT SILENT. With nothing resolved in hand every weapon card is out of the deck and
+         * the plan is built from the unarmed ones alone - which is a different fight, and used to
+         * look like the advice simply preferring a weak card. */
+        if(!me.armed)
+            why = why + " (planning unarmed)";
 
         /* THE NEXT BLOW. Only with our hitpoints known - a cap is a share of them - and only
          * acted on where defending saves more than a negligible amount. */
@@ -1265,7 +1282,7 @@ public final class Prediction {
             Move m = byRes.get(e.getKey());
             if((m == null) || m.stance)
                 continue;
-            if((m.weight == Move.Weight.WEAPON) && !me.armed)
+            if(needsWeapon(m) && !me.armed)
                 continue;
             int lvl = (e.getValue() == null) ? 0 : e.getValue().intValue();
             if(lvl <= 0) {
@@ -1275,6 +1292,22 @@ public final class Prediction {
             deck.add((lvl > 1) ? m.withMu(muAt(lvl)) : m);
         }
         return(deck.isEmpty() ? null : deck);
+    }
+
+    /**
+     * Whether this card cannot be thrown with nothing in hand.
+     *
+     * NOT {@code weight == WEAPON}, which is what the three gates here tested and which misses
+     * the weapon cards that name a skill. The sheet says "Damage: According to weapon x N" for
+     * exactly the cards that need one - Chop, Cleave, Full Circle, Quick Barrage, Raven's Bite,
+     * Sideswipe, Sting, Storm of Swords - and every unarmed card prints a flat number instead, so
+     * the damage share IS the requirement. Full Circle is the one the old test let through: it
+     * names the melee skill, so it read as an unarmed-legal card and was planned bare-handed with
+     * a zero-damage weapon. Found while replaying a fight where the advice looked wrong; it is a
+     * separate fault from that one.
+     */
+    static boolean needsWeapon(Move m) {
+        return(m.damageShare > 0);
     }
 
     static boolean isPlayerRes(String res) {

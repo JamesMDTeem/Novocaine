@@ -179,7 +179,12 @@ public class CombatLogCheck {
         /* 21 names a PLAYER opponent by kin name on a foe row, where the client knows it.
          * A player's resource is the same for everybody and their gob changes per login,
          * so without the name no two fights against one person can be joined. */
-        check("schema constant", CombatEvent.SCHEMA, 21);
+        /* 22 adds the advin row: what the LIVE advice was planning from - armed or not, which
+         * weapon resolved, the bar, and the cards chosen to plan with. A fight where the advice
+         * looked wrong could not be diagnosed from its own log, and one that was spent throwing
+         * a card that attacked colours the creature was not open in took a session of guessing
+         * to trace to an advisor that believed it was bare-handed. */
+        check("schema constant", CombatEvent.SCHEMA, 22);
         check("foe names a player by kin name",
               CombatEvent.foe(9L, 55L, "gfx/borka/body", "kin", "Some \"One\""),
               "{\"ev\":\"foe\",\"t\":9,\"gob\":55,\"res\":\"gfx/borka/body\","

@@ -421,9 +421,16 @@ def read(path, opens=None):
                 continue
             log.rows.append(obj)
 
+    # NO PARENTHESES INSIDE THIS TUPLE. estimate_check._reader_known reads it out of this file
+    # by slicing from "known = (" to the first ")", so a comment holding one truncates the list
+    # and every name after it reads as unknown to the reader.
+    #
+    # advin is what the LIVE advice was planning from - armed or not, which weapon, the bar, the
+    # cards chosen. Nothing here measures it; it exists so a fight where the advice looked wrong
+    # can be diagnosed from its own log.
     known = ("begin", "gear", "end", "foe", "hp", "overlay", "party", "agi", "wpn",
              "atkres", "buffs", "foes", "state", "predict", "advice", "move", "dmg",
-             "card", "foeact", "mvfx")
+             "card", "foeact", "mvfx", "advin")
     for r in log.rows:
         ev = r.get("ev")
         if ev not in known:
