@@ -2608,7 +2608,7 @@
     "capped": true,
     "hi": 380.9,
     "lo": null,
-    "members": 570,
+    "members": 578,
     "n": 133,
     "our_agility": 383,
     "self_contradictory_gobs": [
@@ -2620,7 +2620,7 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 1781,
+    "n": 1798,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -2630,24 +2630,24 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 1696
+    "n": 1729
    },
    "defence_weight_late": {
     "against": 39.3,
     "agrees": false,
-    "depth": 226,
+    "depth": 233,
     "hi": 56.5,
     "lo": 42.9,
-    "n": 227
+    "n": 234
    },
-   "engagements": 807,
+   "engagements": 815,
    "fought_in": {
-    "inside": 564,
+    "inside": 572,
     "outside": 236
    },
    "hitpoints": {
-    "floor_kills": 499,
-    "from": "died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 28, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 24, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; survived taking 19, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 81, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 24, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 12, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 16, so that one had more than that; survived taking 67, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 20, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 33, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 70, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 36, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 29, so that one had more than that; died to an undrawn blow after taking 38, so that one had more than that; survived taking 17, so that one had more than that; survived taking 71, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 53, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 71, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 34, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 19, so that one had more than that; survived taking 65, so that one had more than that; died to an undrawn blow after taking 53, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 59, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 80, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; survived taking 76, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 20, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 29, so that one had more than that; survived taking 24, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; survived taking 24, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 55, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 53, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 13, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 49, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 46, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; survived taking 20, so that one had more than that; survived taking 46, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 37, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 72, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 74, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 16, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 73, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 17, so that one had more than that; survived taking 32, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 13, so that one had more than that; died to an undrawn blow after taking 32, so that one had more than that; died to an undrawn blow after taking 57, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 68, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 11, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 80, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 78, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 46, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 43, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 28, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 81, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 39, so that one had more than that; died to an undrawn blow after taking 33, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; survived taking 16, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 17, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 19, so that one had more than that; survived taking 33, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 55, so that one had more than that; died to an undrawn blow after taking 68, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 31, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; survived taking 77, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 58, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 74, so that one had more than that; survived taking 23, so that one had more than that; survived taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 35, so that one had more than that; survived taking 69, so that one had more than that; survived taking 16, so that one had more than that; survived taking 33, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 61, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 10, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; survived taking 16, so that one had more than that; survived taking 23, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; survived taking 53, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 45, so that one had more than that; died to an undrawn blow after taking 13, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; survived taking 21, so that one had more than that; died to an undrawn blow after taking 68, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 67, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 57, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 16, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 22, so that one had more than that; survived taking 16, so that one had more than that; survived taking 25, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 36, so that one had more than that; survived taking 70, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 36, so that one had more than that; survived taking 63, so that one had more than that; survived taking 22, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 20, so that one had more than that; survived taking 81, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 73, so that one had more than that; died to an undrawn blow after taking 58, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 78, so that one had more than that; survived taking 77, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 49, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 28, so that one had more than that; died to an undrawn blow after taking 46, so that one had more than that; died to an undrawn blow after taking 34, so that one had more than that; died to an undrawn blow after taking 80, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 10, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 37, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; survived taking 16, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 83, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 83, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 71, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; survived taking 68, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; survived taking 17, so that one had more than that; survived taking 73, so that one had more than that; survived taking 53, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 24, so that one had more than that; survived taking 84, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 67, so that one had more than that; survived taking 69, so that one had more than that; survived taking 32, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 17, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 54, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 38, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 37, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 75, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 76, so that one had more than that; survived taking 41, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 21, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 45, so that one had more than that; survived taking 21, so that one had more than that; survived taking 51, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 72, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 17, so that one had more than that; survived taking 16, so that one had more than that; survived taking 78, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 71, so that one had more than that; died to an undrawn blow after taking 31, so that one had more than that; survived taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 56, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 68, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 65, so that one had more than that; survived taking 76, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 82, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 66, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; survived taking 77, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 32, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 14, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 34, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 73, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 71, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 57, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 65, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 32, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 29, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 49, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 15, so that one had more than that; survived taking 73, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 77, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 31, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 46, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 84, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 80, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 76, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 36, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 33, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 37, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 73, so that one had more than that; survived taking 22, so that one had more than that; survived taking 65, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 15, so that one had more than that; survived taking 31, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 70, so that one had more than that; survived taking 68, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 16, so that one had more than that; survived taking 24, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 14, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that",
+    "floor_kills": 506,
+    "from": "died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 28, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 24, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; survived taking 19, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 81, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 24, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 12, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 16, so that one had more than that; survived taking 67, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 20, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 33, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 70, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 36, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 29, so that one had more than that; died to an undrawn blow after taking 38, so that one had more than that; survived taking 17, so that one had more than that; survived taking 71, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 53, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 71, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 34, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 19, so that one had more than that; survived taking 65, so that one had more than that; died to an undrawn blow after taking 53, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 59, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 80, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; survived taking 76, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 20, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 29, so that one had more than that; survived taking 24, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; survived taking 24, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 55, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 53, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 13, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 49, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 46, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; survived taking 20, so that one had more than that; survived taking 46, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 82, so that one had more than that; died to an undrawn blow after taking 37, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 72, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 74, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 16, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 73, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 17, so that one had more than that; survived taking 32, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 13, so that one had more than that; died to an undrawn blow after taking 32, so that one had more than that; died to an undrawn blow after taking 57, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 68, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 11, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 80, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 78, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 46, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 43, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 28, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 81, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 39, so that one had more than that; died to an undrawn blow after taking 33, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; survived taking 16, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 17, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 19, so that one had more than that; survived taking 33, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 55, so that one had more than that; died to an undrawn blow after taking 68, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 31, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; survived taking 77, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 58, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 74, so that one had more than that; survived taking 23, so that one had more than that; survived taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 35, so that one had more than that; survived taking 69, so that one had more than that; survived taking 16, so that one had more than that; survived taking 33, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 61, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 10, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 58, so that one had more than that; survived taking 16, so that one had more than that; survived taking 23, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; survived taking 53, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 45, so that one had more than that; died to an undrawn blow after taking 13, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; survived taking 21, so that one had more than that; died to an undrawn blow after taking 68, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 67, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 57, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 16, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 22, so that one had more than that; survived taking 16, so that one had more than that; survived taking 25, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 36, so that one had more than that; survived taking 70, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; survived taking 36, so that one had more than that; survived taking 63, so that one had more than that; survived taking 22, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 20, so that one had more than that; survived taking 81, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 73, so that one had more than that; died to an undrawn blow after taking 58, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 78, so that one had more than that; survived taking 77, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 49, so that one had more than that; died to an undrawn blow after taking 65, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 47, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 28, so that one had more than that; died to an undrawn blow after taking 46, so that one had more than that; died to an undrawn blow after taking 34, so that one had more than that; died to an undrawn blow after taking 80, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 10, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 37, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; survived taking 16, so that one had more than that; survived taking 37, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 83, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 83, so that one had more than that; died to an undrawn blow after taking 52, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 71, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; survived taking 68, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; survived taking 17, so that one had more than that; survived taking 73, so that one had more than that; survived taking 53, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 24, so that one had more than that; survived taking 84, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 67, so that one had more than that; survived taking 69, so that one had more than that; survived taking 32, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 17, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 54, so that one had more than that; survived taking 72, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 38, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 51, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 37, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 75, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 21, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 76, so that one had more than that; survived taking 41, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 21, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 45, so that one had more than that; survived taking 21, so that one had more than that; survived taking 51, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 72, so that one had more than that; survived taking 15, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 17, so that one had more than that; survived taking 16, so that one had more than that; survived taking 78, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 71, so that one had more than that; died to an undrawn blow after taking 31, so that one had more than that; survived taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 56, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; survived taking 68, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 65, so that one had more than that; survived taking 76, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 25, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 82, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 66, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 20, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; survived taking 77, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 32, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 14, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 34, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 73, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 36, so that one had more than that; died to an undrawn blow after taking 50, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 71, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 57, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 65, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 32, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 29, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 49, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 15, so that one had more than that; survived taking 73, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; survived taking 77, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 17, so that one had more than that; died to an undrawn blow after taking 31, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; survived taking 46, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 16, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; survived taking 84, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 80, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 18, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; survived taking 19, so that one had more than that; died to an undrawn blow after taking 25, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 76, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 36, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 33, so that one had more than that; died to an undrawn blow after taking 21, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; survived taking 37, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 17, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; survived taking 15, so that one had more than that; died to an undrawn blow after taking 35, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 19, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 73, so that one had more than that; survived taking 22, so that one had more than that; survived taking 65, so that one had more than that; survived taking 13, so that one had more than that; died to an undrawn blow after taking 69, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; died to an undrawn blow after taking 22, so that one had more than that; survived taking 15, so that one had more than that; survived taking 31, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 18, so that one had more than that; survived taking 14, so that one had more than that; died to an undrawn blow after taking 23, so that one had more than that; died to an undrawn blow after taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 24, so that one had more than that; died to an undrawn blow after taking 70, so that one had more than that; survived taking 68, so that one had more than that; survived taking 20, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 15, so that one had more than that; died to an undrawn blow after taking 14, so that one had more than that; survived taking 16, so that one had more than that; survived taking 24, so that one had more than that; survived taking 69, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that; died to an undrawn blow after taking 26, so that one had more than that; survived taking 14, so that one had more than that; survived taking 23, so that one had more than that; died to an undrawn blow after taking 16, so that one had more than that",
     "hi": 90,
     "lo": 85,
     "observed_hi": null,
@@ -2673,17 +2673,17 @@
     "ip_conditioned": false,
     "ip_group_contaminated": false,
     "ip_n": [
-     709,
-     747
+     717,
+     753
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.596
+      0.597
      ],
      [
       "Wingbeat",
-      0.255
+      0.254
      ],
      [
       "Vampirism",
@@ -2694,27 +2694,27 @@
       0.001
      ]
     ],
-    "n": 1603,
-    "solo_n": 1234
+    "n": 1617,
+    "solo_n": 1248
    },
    "policy_model": {
     "confidence": {
-     "base_bits": 1.359,
+     "base_bits": 1.356,
      "cut": 0.5,
      "feature": "their initiative",
-     "held_out_gain_bits": 0.075,
-     "n": 1365,
+     "held_out_gain_bits": 0.079,
+     "n": 1379,
      "of": "policy_rule's single split, fitted on foe_state (greatest opening a side)",
-     "train_gain_bits": 0.087
+     "train_gain_bits": 0.085
     },
     "fallback_mix": [
      [
       "Fell Scratch",
-      0.596
+      0.597
      ],
      [
       "Wingbeat",
-      0.255
+      0.254
      ],
      [
       "Vampirism",
@@ -2730,7 +2730,7 @@
       "median_standing": 1,
       "min_standing": 0,
       "move": "Fell Scratch",
-      "n": 808,
+      "n": 818,
       "on": "target",
       "opened_colour": "green"
      },
@@ -2738,7 +2738,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Fell Scratch",
-      "n": 808,
+      "n": 818,
       "on": "self",
       "opened_colour": "green"
      },
@@ -2746,7 +2746,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Wingbeat",
-      "n": 359,
+      "n": 362,
       "on": "target",
       "opened_colour": "yellow"
      },
@@ -2754,15 +2754,15 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Wingbeat",
-      "n": 359,
+      "n": 362,
       "on": "self",
       "opened_colour": "yellow"
      },
      {
-      "median_standing": 6,
+      "median_standing": 5,
       "min_standing": 0,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "target",
       "opened_colour": "blue"
      },
@@ -2770,7 +2770,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "self",
       "opened_colour": "blue"
      },
@@ -2778,7 +2778,7 @@
       "median_standing": 8,
       "min_standing": 0,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "target",
       "opened_colour": "yellow"
      },
@@ -2786,7 +2786,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "self",
       "opened_colour": "yellow"
      }
@@ -2796,19 +2796,19 @@
      "bat_wingbeat_green_40": {
       "colour": "green",
       "cut": 40.0,
-      "lift": 0.963,
+      "lift": 0.973,
       "move": "Wingbeat",
-      "n": 359,
+      "n": 362,
       "on": "target",
       "reproduces": false,
       "share_above": 0.014,
       "source": "wiki/forum claim, not dev-stated: bat throws Wingbeat once our green passes 40",
-      "z": -0.06
+      "z": -0.04
      }
     },
     "min_n": 60,
-    "n": 1365,
-    "n_clean": 1123,
+    "n": 1379,
+    "n_clean": 1137,
     "n_from_foeact": 6,
     "source": "state-conditioned choice contexts from the row before each foe move",
     "thresholds": [
@@ -2816,105 +2816,105 @@
       "claimed": null,
       "colour": "green",
       "cut": 20.0,
-      "lift": 0.609,
+      "lift": 0.606,
       "move": "Fell Scratch",
-      "n": 808,
+      "n": 818,
       "on": "target",
       "reproduces": false,
       "share_above": 0.027,
       "test_k": 10,
-      "test_n": 415,
+      "test_n": 421,
       "train_lift": 0.772,
-      "z": -2.59
+      "z": -2.61
      },
      {
       "claimed": null,
       "colour": "green",
       "cut": 40.0,
-      "lift": 0.822,
+      "lift": 0.818,
       "move": "Fell Scratch",
-      "n": 808,
+      "n": 818,
       "on": "self",
       "reproduces": false,
       "share_above": 0.002,
       "test_k": 1,
-      "test_n": 415,
+      "test_n": 421,
       "train_lift": 0.869,
-      "z": -0.31
+      "z": -0.32
      },
      {
       "claimed": null,
       "colour": "yellow",
       "cut": 40.0,
-      "lift": 1.284,
+      "lift": 1.298,
       "move": "Wingbeat",
-      "n": 359,
+      "n": 362,
       "on": "target",
       "reproduces": false,
       "share_above": 0.014,
       "test_k": 2,
       "test_n": 177,
-      "train_lift": 1.407,
-      "z": 0.41
+      "train_lift": 1.399,
+      "z": 0.43
      },
      {
       "claimed": null,
       "colour": "yellow",
       "cut": 20.0,
-      "lift": 1.284,
+      "lift": 1.298,
       "move": "Wingbeat",
-      "n": 359,
+      "n": 362,
       "on": "self",
       "reproduces": false,
       "share_above": 0.003,
       "test_k": 1,
       "test_n": 177,
       "train_lift": 0.0,
-      "z": 0.29
+      "z": 0.3
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 40.0,
-      "lift": 1.894,
+      "lift": 1.893,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "target",
       "reproduces": false,
       "share_above": 0.015,
       "test_k": 1,
-      "test_n": 90,
-      "train_lift": 3.162,
+      "test_n": 91,
+      "train_lift": 3.194,
       "z": 0.7
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 20.0,
-      "lift": 1.894,
+      "lift": 1.893,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "self",
       "reproduces": false,
-      "share_above": 0.066,
+      "share_above": 0.065,
       "test_k": 7,
-      "test_n": 90,
-      "train_lift": 1.355,
+      "test_n": 91,
+      "train_lift": 1.369,
       "z": 1.88
      },
      {
       "claimed": null,
       "colour": "yellow",
       "cut": 20.0,
-      "lift": 3.157,
+      "lift": 3.155,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "target",
       "reproduces": true,
       "share_above": 0.121,
       "test_k": 10,
-      "test_n": 90,
-      "train_lift": 3.162,
+      "test_n": 91,
+      "train_lift": 3.194,
       "z": 4.19
      },
      {
@@ -2923,12 +2923,12 @@
       "cut": 20.0,
       "lift": 0.0,
       "move": "Vampirism",
-      "n": 198,
+      "n": 199,
       "on": "self",
       "reproduces": false,
       "share_above": 0.0,
       "test_k": 0,
-      "test_n": 90,
+      "test_n": 91,
       "train_lift": 0.0,
       "z": -0.68
      }
@@ -2936,7 +2936,7 @@
     "weights": [
      [
       "Fell Scratch",
-      0.592
+      0.593
      ],
      [
       "Wingbeat",
@@ -2944,18 +2944,18 @@
      ],
      [
       "Vampirism",
-      0.145
+      0.144
      ]
     ]
    },
    "policy_rule": {
     "cut": 0.5,
     "feature": "their initiative",
-    "n": 1365,
+    "n": 1379,
     "otherwise": [
      [
       "Fell Scratch",
-      232
+      238
      ],
      [
       "Vampirism",
@@ -2963,24 +2963,24 @@
      ],
      [
       "Wingbeat",
-      52
+      51
      ]
     ],
     "otherwise_pressure": {
      "blue": 0.0,
-     "green": 5.88,
+     "green": 5.87,
      "red": 0.0,
-     "yellow": 1.5
+     "yellow": 1.48
     },
     "pooled_pressure": {
      "blue": 0.0,
-     "green": 4.85,
+     "green": 4.83,
      "red": 0.0,
-     "yellow": 2.88
+     "yellow": 2.87
     },
     "sim_feature": "foe_ip",
-    "test_bits": 0.075,
-    "train_bits": 0.087,
+    "test_bits": 0.079,
+    "train_bits": 0.085,
     "when": [
      [
       "Fell Scratch",
@@ -2988,7 +2988,7 @@
      ],
      [
       "Wingbeat",
-      131
+      133
      ],
      [
       "Vampirism",
@@ -2997,7 +2997,7 @@
     ],
     "when_pressure": {
      "blue": 0.0,
-     "green": 3.95,
+     "green": 3.93,
      "red": 0.0,
      "yellow": 4.08
     },
@@ -3008,7 +3008,7 @@
     "lo": 54.2,
     "measured": true,
     "median": 57.2,
-    "n": 50986,
+    "n": 51561,
     "our_top": 58.8,
     "we_outrun_it": false
    },
@@ -3026,14 +3026,14 @@
      "Sideswipe"
     ],
     "n": 13,
-    "obs": 1962,
+    "obs": 1988,
     "slope": 0.98,
     "value": 20.2
    },
    "skill_slope": {
     "flat": 5.9,
     "measurable": true,
-    "n": 2054,
+    "n": 2080,
     "slope": 0.98
    },
    "threat": {
@@ -3056,17 +3056,17 @@
       50,
       22
      ],
-     "n": 839,
+     "n": 845,
      "ticks": 44.1
     },
     "pressure": {
      "blue": 0.0,
-     "green": 4.9,
+     "green": 4.89,
      "red": 0.0,
-     "yellow": 2.8
+     "yellow": 2.79
     },
     "pressure_against": 370.3970588235294,
-    "pressure_n": 575,
+    "pressure_n": 581,
     "restores": 0.0,
     "restores_by_colour": {
      "by_colour": {
@@ -3077,7 +3077,7 @@
      "n": {
       "blue": 143,
       "green": 101,
-      "red": 1192
+      "red": 1205
      }
     }
    }
@@ -7236,8 +7236,8 @@
     "capped": true,
     "hi": null,
     "lo": null,
-    "members": 20,
-    "n": 24,
+    "members": 23,
+    "n": 26,
     "our_agility": 383,
     "self_contradictory_gobs": [],
     "union": true
@@ -7245,7 +7245,7 @@
    "armour": {
     "hard": null,
     "identified": false,
-    "n": 560,
+    "n": 739,
     "soft": null,
     "total_hi": 41,
     "total_lo": 40,
@@ -7258,33 +7258,33 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 227
+    "n": 364
    },
    "defence_weight_late": {
-    "against": 224.1,
+    "against": 231.4,
     "agrees": false,
-    "depth": 632,
-    "hi": 248.4,
-    "lo": 243.2,
-    "n": 644
+    "depth": 738,
+    "hi": 287.5,
+    "lo": 286.8,
+    "n": 753
    },
-   "engagements": 144,
+   "engagements": 152,
    "fought_in": {
-    "inside": 125,
-    "outside": 73
+    "inside": 128,
+    "outside": 78
    },
    "hitpoints": {
     "floor_kills": 0,
-    "from": "died having taken 1584, so that one had 1584; died having taken 1647, so that one had 1647; died having taken 1583, so that one had 1583; died having taken 1597, so that one had 1597; survived taking 124, so that one had more than that; died having taken 1545, so that one had 1545; died having taken 1626, so that one had 1626; died having taken 1632, so that one had 1632; died having taken 1677, so that one had 1677; died having taken 1633, so that one had 1633; died having taken 1628, so that one had 1628; died having taken 1536, so that one had 1536; died having taken 1521, so that one had 1521; died having taken 1528, so that one had 1528; died having taken 1636, so that one had 1636; died having taken 1519, so that one had 1519; died having taken 1548, so that one had 1548; died having taken 1618, so that one had 1618; died having taken 1506, so that one had 1506; survived taking 1252, so that one had more than that; died having taken 1502, so that one had 1502; died having taken 1467, so that one had 1467; died having taken 1561, so that one had 1561; died having taken 1598, so that one had 1598; died having taken 1555, so that one had 1555; died having taken 1734, so that one had 1734; died having taken 1565, so that one had 1565; died having taken 1537, so that one had 1537; died having taken 1533, so that one had 1533; survived taking 97, so that one had more than that; died having taken 1536, so that one had 1536; died having taken 1710, so that one had 1710; died having taken 1531, so that one had 1531; died having taken 1670, so that one had 1670; died having taken 1520, so that one had 1520; died having taken 1501, so that one had 1501; died having taken 1528, so that one had 1528; died having taken 1544, so that one had 1544; died having taken 1506, so that one had 1506; died having taken 1593, so that one had 1593; died having taken 1674, so that one had 1674; died having taken 1754, so that one had 1754; died having taken 1598, so that one had 1598; died having taken 1595, so that one had 1595; died having taken 1663, so that one had 1663; died having taken 1600, so that one had 1600; died having taken 1534, so that one had 1534",
+    "from": "died having taken 1584, so that one had 1584; died having taken 1647, so that one had 1647; died having taken 1583, so that one had 1583; died having taken 1597, so that one had 1597; survived taking 124, so that one had more than that; died having taken 1545, so that one had 1545; died having taken 1626, so that one had 1626; died having taken 1632, so that one had 1632; died having taken 1677, so that one had 1677; died having taken 1633, so that one had 1633; died having taken 1628, so that one had 1628; died having taken 1536, so that one had 1536; died having taken 1521, so that one had 1521; died having taken 1528, so that one had 1528; died having taken 1636, so that one had 1636; died having taken 1519, so that one had 1519; died having taken 1548, so that one had 1548; died having taken 1618, so that one had 1618; died having taken 1506, so that one had 1506; survived taking 1252, so that one had more than that; died having taken 1502, so that one had 1502; died having taken 1467, so that one had 1467; died having taken 1561, so that one had 1561; died having taken 1598, so that one had 1598; died having taken 1555, so that one had 1555; died having taken 1734, so that one had 1734; died having taken 1565, so that one had 1565; died having taken 1537, so that one had 1537; died having taken 1533, so that one had 1533; survived taking 97, so that one had more than that; died having taken 1536, so that one had 1536; died having taken 1710, so that one had 1710; died having taken 1531, so that one had 1531; died having taken 1670, so that one had 1670; died having taken 1520, so that one had 1520; died having taken 1501, so that one had 1501; died having taken 1528, so that one had 1528; died having taken 1544, so that one had 1544; died having taken 1574, so that one had 1574; died having taken 1506, so that one had 1506; died having taken 1593, so that one had 1593; died having taken 1674, so that one had 1674; died having taken 1754, so that one had 1754; died having taken 1615, so that one had 1615; died having taken 1598, so that one had 1598; died having taken 1595, so that one had 1595; died having taken 1663, so that one had 1663; died having taken 1600, so that one had 1600; died having taken 1598, so that one had 1598; died having taken 1534, so that one had 1534",
     "hi": 1754,
-    "lo": 1467,
+    "lo": 1200,
     "observed_hi": 1754,
     "observed_lo": 1467,
     "pinned_hi": 1754,
     "pinned_lo": 1506,
-    "pinned_n": 44,
+    "pinned_n": 47,
     "pinned_vs_wiki": "above",
-    "verdict": "45 of these held out past the wiki's 1200, so they were above its base quality",
+    "verdict": "48 of these held out past the wiki's 1200, so they were above its base quality",
     "wiki": 1200
    },
    "kind": "creature",
@@ -7304,125 +7304,125 @@
    ],
    "name": "caveangler",
    "policy": {
-    "attack_share_above_0_ip": 0.4,
-    "attack_share_at_0_ip": 0.532,
+    "attack_share_above_0_ip": 0.384,
+    "attack_share_at_0_ip": 0.492,
     "ip_conditioned": true,
     "ip_group_contaminated": false,
     "ip_n": [
-     267,
-     1200
+     307,
+     1392
     ],
     "mix": [
      [
       "Fell Scratch",
-      0.249
+      0.247
      ],
      [
       "Roar of the Wild",
-      0.228
+      0.246
      ],
      [
       "Careful Approach",
-      0.139
-     ],
-     [
-      "Bear Down",
-      0.121
+      0.144
      ],
      [
       "Bristle",
+      0.115
+     ],
+     [
+      "Bear Down",
       0.111
      ],
      [
       "Tail Splash",
-      0.056
+      0.053
      ],
      [
       "Shredding Paw",
-      0.034
+      0.03
      ],
      [
       "Unstoppable",
-      0.022
+      0.02
      ],
      [
       "Maddening Roar",
-      0.016
+      0.014
      ],
      [
       "Chomp",
-      0.015
+      0.013
      ],
      [
       "Rampant Rage",
-      0.006
+      0.005
      ],
      [
       "Dive & Hide",
-      0.003
+      0.002
      ]
     ],
-    "n": 1520,
-    "solo_n": 882
+    "n": 1752,
+    "solo_n": 1114
    },
    "policy_model": {
     "confidence": {
-     "base_bits": 2.881,
+     "base_bits": 2.826,
      "cut": 0.5,
      "feature": "their initiative",
-     "held_out_gain_bits": 0.11,
-     "n": 1492,
+     "held_out_gain_bits": 0.121,
+     "n": 1724,
      "of": "policy_rule's single split, fitted on foe_state (greatest opening a side)",
-     "train_gain_bits": 0.128
+     "train_gain_bits": 0.116
     },
     "fallback_mix": [
      [
       "Fell Scratch",
-      0.249
+      0.247
      ],
      [
       "Roar of the Wild",
-      0.228
+      0.246
      ],
      [
       "Careful Approach",
-      0.139
-     ],
-     [
-      "Bear Down",
-      0.121
+      0.144
      ],
      [
       "Bristle",
+      0.115
+     ],
+     [
+      "Bear Down",
       0.111
      ],
      [
       "Tail Splash",
-      0.056
+      0.053
      ],
      [
       "Shredding Paw",
-      0.034
+      0.03
      ],
      [
       "Unstoppable",
-      0.022
+      0.02
      ],
      [
       "Maddening Roar",
-      0.016
+      0.014
      ],
      [
       "Chomp",
-      0.015
+      0.013
      ],
      [
       "Rampant Rage",
-      0.006
+      0.005
      ],
      [
       "Dive & Hide",
-      0.003
+      0.002
      ]
     ],
     "gates": [
@@ -7430,23 +7430,23 @@
       "median_standing": 15,
       "min_standing": 0,
       "move": "Bear Down",
-      "n": 178,
+      "n": 188,
       "on": "target",
       "opened_colour": "blue"
      },
      {
-      "median_standing": 15,
+      "median_standing": 6,
       "min_standing": 0,
       "move": "Bear Down",
-      "n": 178,
+      "n": 188,
       "on": "self",
       "opened_colour": "blue"
      },
      {
-      "median_standing": 15,
+      "median_standing": 12,
       "min_standing": 0,
       "move": "Fell Scratch",
-      "n": 370,
+      "n": 424,
       "on": "target",
       "opened_colour": "green"
      },
@@ -7454,7 +7454,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Fell Scratch",
-      "n": 370,
+      "n": 424,
       "on": "self",
       "opened_colour": "green"
      },
@@ -7510,7 +7510,7 @@
       "median_standing": 5,
       "min_standing": 0,
       "move": "Tail Splash",
-      "n": 83,
+      "n": 90,
       "on": "target",
       "opened_colour": "blue"
      },
@@ -7518,7 +7518,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Tail Splash",
-      "n": 83,
+      "n": 90,
       "on": "self",
       "opened_colour": "blue"
      },
@@ -7571,8 +7571,8 @@
      }
     },
     "min_n": 60,
-    "n": 1492,
-    "n_clean": 863,
+    "n": 1724,
+    "n_clean": 1095,
     "n_from_foeact": 7,
     "source": "state-conditioned choice contexts from the row before each foe move",
     "thresholds": [
@@ -7580,61 +7580,61 @@
       "claimed": null,
       "colour": "blue",
       "cut": 50.0,
-      "lift": 1.522,
+      "lift": 1.658,
       "move": "Bear Down",
-      "n": 178,
+      "n": 188,
       "on": "target",
       "reproduces": false,
-      "share_above": 0.017,
+      "share_above": 0.016,
       "test_k": 1,
-      "test_n": 98,
-      "train_lift": 3.73,
-      "z": 0.46
+      "test_n": 104,
+      "train_lift": 4.105,
+      "z": 0.55
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 20.0,
-      "lift": 1.065,
+      "lift": 1.16,
       "move": "Bear Down",
-      "n": 178,
+      "n": 188,
       "on": "self",
       "reproduces": false,
-      "share_above": 0.421,
+      "share_above": 0.399,
       "test_k": 41,
-      "test_n": 98,
-      "train_lift": 1.124,
-      "z": 0.56
+      "test_n": 104,
+      "train_lift": 1.237,
+      "z": 1.25
      },
      {
       "claimed": null,
       "colour": "green",
       "cut": 20.0,
-      "lift": 1.386,
+      "lift": 1.394,
       "move": "Fell Scratch",
-      "n": 370,
+      "n": 424,
       "on": "target",
       "reproduces": true,
-      "share_above": 0.335,
-      "test_k": 68,
-      "test_n": 183,
-      "train_lift": 1.164,
-      "z": 3.64
+      "share_above": 0.302,
+      "test_k": 71,
+      "test_n": 209,
+      "train_lift": 1.126,
+      "z": 3.72
      },
      {
       "claimed": null,
       "colour": "green",
       "cut": 40.0,
-      "lift": 1.087,
+      "lift": 1.146,
       "move": "Fell Scratch",
-      "n": 370,
+      "n": 424,
       "on": "self",
       "reproduces": false,
-      "share_above": 0.027,
-      "test_k": 4,
-      "test_n": 183,
-      "train_lift": 1.408,
-      "z": 0.19
+      "share_above": 0.026,
+      "test_k": 5,
+      "test_n": 209,
+      "train_lift": 1.336,
+      "z": 0.35
      },
      {
       "claimed": null,
@@ -7648,14 +7648,14 @@
       "share_above": 0.02,
       "test_k": 0,
       "test_n": 27,
-      "train_lift": 6.217,
-      "z": -0.43
+      "train_lift": 7.183,
+      "z": -0.4
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 50.0,
-      "lift": 2.98,
+      "lift": 3.443,
       "move": "Shredding Paw",
       "n": 51,
       "on": "self",
@@ -7663,14 +7663,14 @@
       "share_above": 0.353,
       "test_k": 11,
       "test_n": 27,
-      "train_lift": 2.154,
-      "z": 4.17
+      "train_lift": 2.489,
+      "z": 4.72
      },
      {
       "claimed": null,
       "colour": "red",
       "cut": 20.0,
-      "lift": 2.939,
+      "lift": 3.396,
       "move": "Shredding Paw",
       "n": 51,
       "on": "target",
@@ -7678,29 +7678,29 @@
       "share_above": 0.157,
       "test_k": 5,
       "test_n": 27,
-      "train_lift": 1.943,
-      "z": 2.66
+      "train_lift": 2.245,
+      "z": 3.04
      },
      {
       "claimed": null,
       "colour": "red",
-      "cut": 20.0,
-      "lift": 0.862,
+      "cut": 40.0,
+      "lift": 0.781,
       "move": "Shredding Paw",
       "n": 51,
       "on": "self",
       "reproduces": false,
-      "share_above": 0.647,
-      "test_k": 15,
+      "share_above": 0.392,
+      "test_k": 9,
       "test_n": 27,
-      "train_lift": 1.144,
-      "z": -0.99
+      "train_lift": 1.094,
+      "z": -1.0
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 20.0,
-      "lift": 1.101,
+      "lift": 1.251,
       "move": "Chomp",
       "n": 23,
       "on": "target",
@@ -7708,14 +7708,14 @@
       "share_above": 0.391,
       "test_k": 5,
       "test_n": 14,
-      "train_lift": 1.332,
-      "z": 0.26
+      "train_lift": 1.526,
+      "z": 0.6
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 50.0,
-      "lift": 3.134,
+      "lift": 3.622,
       "move": "Chomp",
       "n": 23,
       "on": "self",
@@ -7723,44 +7723,44 @@
       "share_above": 0.435,
       "test_k": 6,
       "test_n": 14,
-      "train_lift": 3.283,
-      "z": 3.21
+      "train_lift": 3.793,
+      "z": 3.62
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 20.0,
-      "lift": 0.771,
+      "lift": 0.788,
       "move": "Tail Splash",
-      "n": 83,
+      "n": 90,
       "on": "target",
       "reproduces": false,
-      "share_above": 0.265,
+      "share_above": 0.244,
       "test_k": 9,
-      "test_n": 36,
-      "train_lift": 0.829,
-      "z": -0.98
+      "test_n": 40,
+      "train_lift": 0.893,
+      "z": -0.87
      },
      {
       "claimed": null,
       "colour": "blue",
       "cut": 40.0,
-      "lift": 0.256,
+      "lift": 0.266,
       "move": "Tail Splash",
-      "n": 83,
+      "n": 90,
       "on": "self",
       "reproduces": false,
-      "share_above": 0.12,
+      "share_above": 0.111,
       "test_k": 2,
-      "test_n": 36,
-      "train_lift": 0.835,
-      "z": -2.41
+      "test_n": 40,
+      "train_lift": 0.907,
+      "z": -2.29
      },
      {
       "claimed": null,
       "colour": "yellow",
       "cut": 20.0,
-      "lift": 6.661,
+      "lift": 7.696,
       "move": "Maddening Roar",
       "n": 25,
       "on": "target",
@@ -7769,13 +7769,13 @@
       "test_k": 1,
       "test_n": 14,
       "train_lift": 0.0,
-      "z": 2.22
+      "z": 2.44
      },
      {
       "claimed": null,
       "colour": "yellow",
       "cut": 20.0,
-      "lift": 1.817,
+      "lift": 2.099,
       "move": "Maddening Roar",
       "n": 25,
       "on": "self",
@@ -7784,7 +7784,7 @@
       "test_k": 3,
       "test_n": 14,
       "train_lift": 0.0,
-      "z": 1.13
+      "z": 1.4
      },
      {
       "claimed": null,
@@ -7799,13 +7799,13 @@
       "test_k": 0,
       "test_n": 4,
       "train_lift": 0.0,
-      "z": -0.21
+      "z": -0.19
      },
      {
       "claimed": null,
       "colour": "yellow",
       "cut": 50.0,
-      "lift": 55.95,
+      "lift": 64.65,
       "move": "Rampant Rage",
       "n": 9,
       "on": "self",
@@ -7813,123 +7813,123 @@
       "share_above": 0.556,
       "test_k": 3,
       "test_n": 4,
-      "train_lift": 37.3,
-      "z": 12.84
+      "train_lift": 43.1,
+      "z": 13.82
      }
     ],
     "weights": [
      [
-      "Fell Scratch",
+      "Roar of the Wild",
       0.248
      ],
      [
-      "Roar of the Wild",
-      0.229
+      "Fell Scratch",
+      0.246
      ],
      [
       "Careful Approach",
-      0.139
-     ],
-     [
-      "Bear Down",
-      0.119
+      0.145
      ],
      [
       "Bristle",
-      0.111
+      0.115
+     ],
+     [
+      "Bear Down",
+      0.109
      ],
      [
       "Tail Splash",
-      0.056
+      0.052
      ],
      [
       "Shredding Paw",
-      0.034
+      0.03
      ],
      [
       "Unstoppable",
-      0.023
+      0.02
      ],
      [
       "Maddening Roar",
-      0.017
-     ],
-     [
-      "Chomp",
       0.015
      ],
      [
+      "Chomp",
+      0.013
+     ],
+     [
       "Rampant Rage",
-      0.006
+      0.005
      ],
      [
       "Dive & Hide",
-      0.003
+      0.002
      ]
     ]
    },
    "policy_rule": {
     "cut": 0.5,
     "feature": "their initiative",
-    "n": 1492,
+    "n": 1724,
     "otherwise": [
      [
       "Bear Down",
-      55
+      62
+     ],
+     [
+      "Roar of the Wild",
+      43
      ],
      [
       "Fell Scratch",
       30
-     ],
-     [
-      "Roar of the Wild",
-      25
      ]
     ],
     "otherwise_pressure": {
-     "blue": 5.25,
-     "green": 2.06,
-     "red": 0.18,
+     "blue": 4.86,
+     "green": 1.73,
+     "red": 0.16,
      "yellow": 0.0
     },
     "pooled_pressure": {
-     "blue": 2.06,
-     "green": 3.63,
-     "red": 0.86,
+     "blue": 1.83,
+     "green": 3.46,
+     "red": 0.74,
      "yellow": 0.0
     },
     "sim_feature": "foe_ip",
-    "test_bits": 0.11,
-    "train_bits": 0.128,
+    "test_bits": 0.121,
+    "train_bits": 0.116,
     "when": [
      [
       "Roar of the Wild",
-      190
+      246
      ],
      [
       "Fell Scratch",
-      153
+      182
      ],
      [
-      "Careful Approach",
-      61
+      "Bristle",
+      77
      ]
     ],
     "when_pressure": {
-     "blue": 1.34,
-     "green": 3.98,
-     "red": 1.02,
+     "blue": 1.14,
+     "green": 3.85,
+     "red": 0.87,
      "yellow": 0.0
     },
     "wording": "it holds a point of initiative"
    },
    "relative_speed": {
     "hi": 59.9,
-    "lo": 53.0,
+    "lo": 53.1,
     "measured": true,
-    "median": 57.8,
-    "n": 296,
-    "our_top": 58.7,
+    "median": 58.0,
+    "n": 344,
+    "our_top": 58.6,
     "we_outrun_it": false
    },
    "res": "gfx/kritter/caveangler/caveangler",
@@ -7947,58 +7947,58 @@
      "Knock Its Teeth Out",
      "Uppercut"
     ],
-    "n": 10,
-    "obs": 127,
+    "n": 9,
+    "obs": 130,
     "value": 400.4
    },
    "skill_slope": {
-    "flat": 1.03,
+    "flat": 1.1,
     "measurable": null,
-    "n": 391,
-    "slope": 0.6
+    "n": 448,
+    "slope": 0.52
    },
    "threat": {
     "damage": {
      "before_armour": true,
-     "coef": 50.5,
+     "coef": 51.2,
      "hi": 392.6,
      "lo": 2.3,
-     "n": 273,
-     "soaked_n": 193,
+     "n": 309,
+     "soaked_n": 196,
      "soaked_share": 0.833
     },
     "flees_below": 0.175,
     "period": {
-     "dropped": 18,
-     "hi": 115.1,
+     "dropped": 22,
+     "hi": 107.0,
      "lo": 22.0,
-     "median": 38.4,
+     "median": 36.0,
      "modes": [
       30
      ],
-     "n": 1433,
-     "ticks": 39.6
+     "n": 1654,
+     "ticks": 39.0
     },
     "pressure": {
-     "blue": 2.08,
-     "green": 3.65,
-     "red": 0.86,
+     "blue": 1.85,
+     "green": 3.47,
+     "red": 0.74,
      "yellow": 0.0
     },
     "pressure_against": 411.4894736842105,
-    "pressure_n": 173,
+    "pressure_n": 200,
     "restores": 0.08,
     "restores_by_colour": {
      "by_colour": {
       "blue": 0.069,
-      "green": 0.065,
-      "red": 0.07,
+      "green": 0.067,
+      "red": 0.072,
       "yellow": 0.043
      },
      "n": {
       "blue": 769,
-      "green": 479,
-      "red": 1128,
+      "green": 694,
+      "red": 1358,
       "yellow": 454
      }
     }
@@ -15546,7 +15546,7 @@
     "capped": true,
     "hi": null,
     "lo": null,
-    "members": 36,
+    "members": 38,
     "n": 15,
     "our_agility": 383,
     "self_contradictory_gobs": [],
@@ -15555,7 +15555,7 @@
    "armour": {
     "hard": 0,
     "identified": true,
-    "n": 411,
+    "n": 428,
     "soft": 0,
     "total_hi": 0,
     "total_lo": 0,
@@ -15565,23 +15565,23 @@
     "contradictory": true,
     "hi": null,
     "lo": null,
-    "n": 173
+    "n": 186
    },
    "defence_weight_late": {
     "against": 200.2,
     "agrees": false,
-    "depth": 141,
+    "depth": 149,
     "hi": 197.4,
     "lo": 141.7,
-    "n": 141
+    "n": 149
    },
-   "engagements": 116,
+   "engagements": 118,
    "fought_in": {
-    "outside": 163
+    "outside": 165
    },
    "hitpoints": {
     "floor_kills": 0,
-    "from": "died having taken 169, so that one had 169; died having taken 283, so that one had 283; died having taken 162, so that one had 162; died having taken 162, so that one had 162; died having taken 196, so that one had 196; survived taking 124, so that one had more than that; died having taken 215, so that one had 215; died having taken 287, so that one had 287; died having taken 179, so that one had 179; died having taken 189, so that one had 189; died having taken 193, so that one had 193; died having taken 169, so that one had 169; died having taken 158, so that one had 158; died having taken 159, so that one had 159; died having taken 155, so that one had 155; died having taken 172, so that one had 172; died having taken 159, so that one had 159; died having taken 164, so that one had 164; died having taken 153, so that one had 153; survived taking 129, so that one had more than that; died having taken 153, so that one had 153; survived taking 163, so that one had more than that; died having taken 169, so that one had 169; died having taken 171, so that one had 171; survived taking 108, so that one had more than that; died having taken 181, so that one had 181; died having taken 271, so that one had 271; died having taken 189, so that one had 189; died having taken 213, so that one had 213; died having taken 206, so that one had 206; survived taking 120, so that one had more than that; died having taken 166, so that one had 166; died having taken 154, so that one had 154; died having taken 199, so that one had 199; survived taking 130, so that one had more than that; survived taking 125, so that one had more than that; died having taken 162, so that one had 162; died having taken 205, so that one had 205; died having taken 167, so that one had 167; died having taken 199, so that one had 199; died having taken 167, so that one had 167; died having taken 152, so that one had 152; died having taken 174, so that one had 174; died having taken 155, so that one had 155; died having taken 169, so that one had 169; died having taken 173, so that one had 173; died having taken 164, so that one had 164; survived taking 124, so that one had more than that; survived taking 248, so that one had more than that; died having taken 184, so that one had 184; died having taken 231, so that one had 231; died having taken 150, so that one had 150; died having taken 199, so that one had 199; died having taken 226, so that one had 226; died having taken 141, so that one had 141; died having taken 203, so that one had 203; died having taken 185, so that one had 185; died having taken 161, so that one had 161; died having taken 174, so that one had 174; died having taken 222, so that one had 222; died having taken 249, so that one had 249; died having taken 164, so that one had 164; died having taken 209, so that one had 209; died having taken 163, so that one had 163; died having taken 196, so that one had 196; died having taken 164, so that one had 164; died having taken 218, so that one had 218; died having taken 155, so that one had 155",
+    "from": "died having taken 169, so that one had 169; died having taken 283, so that one had 283; died having taken 162, so that one had 162; died having taken 162, so that one had 162; died having taken 196, so that one had 196; survived taking 124, so that one had more than that; died having taken 215, so that one had 215; died having taken 287, so that one had 287; died having taken 179, so that one had 179; died having taken 189, so that one had 189; died having taken 193, so that one had 193; died having taken 169, so that one had 169; died having taken 158, so that one had 158; died having taken 159, so that one had 159; died having taken 155, so that one had 155; died having taken 172, so that one had 172; died having taken 159, so that one had 159; died having taken 164, so that one had 164; died having taken 153, so that one had 153; survived taking 129, so that one had more than that; died having taken 153, so that one had 153; survived taking 163, so that one had more than that; died having taken 169, so that one had 169; died having taken 171, so that one had 171; survived taking 108, so that one had more than that; died having taken 181, so that one had 181; died having taken 271, so that one had 271; died having taken 189, so that one had 189; died having taken 213, so that one had 213; died having taken 206, so that one had 206; survived taking 120, so that one had more than that; died having taken 166, so that one had 166; died having taken 154, so that one had 154; survived taking 120, so that one had more than that; died having taken 199, so that one had 199; survived taking 130, so that one had more than that; survived taking 125, so that one had more than that; died having taken 162, so that one had 162; died having taken 205, so that one had 205; died having taken 167, so that one had 167; died having taken 199, so that one had 199; died having taken 167, so that one had 167; died having taken 152, so that one had 152; died having taken 174, so that one had 174; died having taken 155, so that one had 155; died having taken 169, so that one had 169; died having taken 173, so that one had 173; died having taken 164, so that one had 164; survived taking 124, so that one had more than that; survived taking 248, so that one had more than that; died having taken 184, so that one had 184; died having taken 231, so that one had 231; died having taken 150, so that one had 150; died having taken 199, so that one had 199; died having taken 226, so that one had 226; died having taken 141, so that one had 141; died having taken 203, so that one had 203; died having taken 185, so that one had 185; died having taken 161, so that one had 161; died having taken 174, so that one had 174; died having taken 222, so that one had 222; died having taken 249, so that one had 249; died having taken 164, so that one had 164; died having taken 209, so that one had 209; died having taken 163, so that one had 163; died having taken 196, so that one had 196; died having taken 164, so that one had 164; died having taken 218, so that one had 218; died having taken 155, so that one had 155; survived taking 116, so that one had more than that",
     "hi": 287,
     "lo": 141,
     "observed_hi": 287,
@@ -15604,77 +15604,77 @@
    ],
    "name": "reindeer",
    "policy": {
-    "attack_share_above_0_ip": 0.838,
-    "attack_share_at_0_ip": 0.93,
+    "attack_share_above_0_ip": 0.831,
+    "attack_share_at_0_ip": 0.914,
     "ip_conditioned": false,
     "ip_group_contaminated": false,
     "ip_n": [
-     129,
-     197
+     139,
+     207
     ],
     "mix": [
      [
       "Low Horn Swipe",
-      0.522
+      0.512
      ],
      [
       "Mule Kick",
-      0.336
+      0.334
      ],
      [
       "Roar of the Wild",
-      0.075
+      0.071
      ],
      [
       "Careful Approach",
-      0.046
+      0.058
      ],
      [
       "Bristle",
-      0.012
+      0.014
      ],
      [
       "Heavy Antlers",
-      0.009
+      0.011
      ]
     ],
-    "n": 345,
-    "solo_n": 243
+    "n": 365,
+    "solo_n": 263
    },
    "policy_model": {
     "confidence": {
-     "base_bits": 1.614,
+     "base_bits": 1.667,
      "cut": 0.5,
      "feature": "their initiative",
-     "held_out_gain_bits": 0.117,
-     "n": 330,
+     "held_out_gain_bits": 0.148,
+     "n": 350,
      "of": "policy_rule's single split, fitted on foe_state (greatest opening a side)",
-     "train_gain_bits": 0.269
+     "train_gain_bits": 0.251
     },
     "fallback_mix": [
      [
       "Low Horn Swipe",
-      0.522
+      0.512
      ],
      [
       "Mule Kick",
-      0.336
+      0.334
      ],
      [
       "Roar of the Wild",
-      0.075
+      0.071
      ],
      [
       "Careful Approach",
-      0.046
+      0.058
      ],
      [
       "Bristle",
-      0.012
+      0.014
      ],
      [
       "Heavy Antlers",
-      0.009
+      0.011
      ]
     ],
     "gates": [
@@ -15682,7 +15682,7 @@
       "median_standing": 2,
       "min_standing": 0,
       "move": "Mule Kick",
-      "n": 111,
+      "n": 117,
       "on": "target",
       "opened_colour": "yellow"
      },
@@ -15690,7 +15690,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Mule Kick",
-      "n": 111,
+      "n": 117,
       "on": "self",
       "opened_colour": "yellow"
      },
@@ -15698,7 +15698,7 @@
       "median_standing": 10,
       "min_standing": 0,
       "move": "Low Horn Swipe",
-      "n": 175,
+      "n": 182,
       "on": "target",
       "opened_colour": "green"
      },
@@ -15706,7 +15706,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Low Horn Swipe",
-      "n": 175,
+      "n": 182,
       "on": "self",
       "opened_colour": "green"
      },
@@ -15714,7 +15714,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Heavy Antlers",
-      "n": 3,
+      "n": 4,
       "on": "target",
       "opened_colour": "yellow"
      },
@@ -15722,7 +15722,7 @@
       "median_standing": 0,
       "min_standing": 0,
       "move": "Heavy Antlers",
-      "n": 3,
+      "n": 4,
       "on": "self",
       "opened_colour": "yellow"
      }
@@ -15743,8 +15743,8 @@
      }
     },
     "min_n": 60,
-    "n": 330,
-    "n_clean": 230,
+    "n": 350,
+    "n_clean": 250,
     "n_from_foeact": 0,
     "source": "state-conditioned choice contexts from the row before each foe move",
     "thresholds": [
@@ -15752,108 +15752,108 @@
       "claimed": null,
       "colour": "yellow",
       "cut": 20.0,
-      "lift": 0.94,
+      "lift": 0.928,
       "move": "Mule Kick",
-      "n": 111,
+      "n": 117,
       "on": "target",
       "reproduces": false,
-      "share_above": 0.063,
+      "share_above": 0.06,
       "test_k": 4,
-      "test_n": 54,
-      "train_lift": 0.789,
-      "z": -0.16
+      "test_n": 58,
+      "train_lift": 0.809,
+      "z": -0.19
      },
      {
       "claimed": null,
       "colour": "green",
       "cut": 20.0,
-      "lift": 1.042,
+      "lift": 1.061,
       "move": "Low Horn Swipe",
-      "n": 175,
+      "n": 182,
       "on": "target",
       "reproduces": false,
-      "share_above": 0.171,
-      "test_k": 15,
-      "test_n": 88,
-      "train_lift": 1.293,
-      "z": 0.25
+      "share_above": 0.17,
+      "test_k": 16,
+      "test_n": 91,
+      "train_lift": 1.254,
+      "z": 0.37
      },
      {
       "claimed": null,
       "colour": "green",
-      "cut": 40.0,
-      "lift": 1.339,
+      "cut": 50.0,
+      "lift": 1.231,
       "move": "Low Horn Swipe",
-      "n": 175,
+      "n": 182,
       "on": "self",
       "reproduces": false,
-      "share_above": 0.297,
-      "test_k": 25,
-      "test_n": 88,
-      "train_lift": 1.463,
-      "z": 2.41
+      "share_above": 0.192,
+      "test_k": 16,
+      "test_n": 91,
+      "train_lift": 1.405,
+      "z": 1.29
      }
     ],
     "weights": [
      [
       "Low Horn Swipe",
-      0.53
+      0.52
      ],
      [
       "Mule Kick",
-      0.336
+      0.334
      ],
      [
       "Roar of the Wild",
-      0.07
+      0.066
      ],
      [
       "Careful Approach",
-      0.042
+      0.054
      ],
      [
       "Bristle",
-      0.012
+      0.014
      ],
      [
       "Heavy Antlers",
-      0.009
+      0.011
      ]
     ]
    },
    "policy_rule": {
     "cut": 0.5,
     "feature": "their initiative",
-    "n": 330,
+    "n": 350,
     "otherwise": [
      [
       "Mule Kick",
-      35
+      40
      ],
      [
       "Low Horn Swipe",
       22
      ],
      [
-      "Roar of the Wild",
+      "Careful Approach",
       4
      ]
     ],
     "otherwise_pressure": {
      "blue": 0.0,
-     "green": 3.32,
+     "green": 3.14,
      "red": 0.0,
-     "yellow": 6.02
+     "yellow": 5.94
     },
     "pooled_pressure": {
      "blue": 0.0,
-     "green": 5.17,
+     "green": 5.03,
      "red": 0.0,
-     "yellow": 3.59
+     "yellow": 3.55
     },
     "sim_feature": "foe_ip",
-    "test_bits": 0.117,
-    "train_bits": 0.269,
+    "test_bits": 0.148,
+    "train_bits": 0.251,
     "when": [
      [
       "Low Horn Swipe",
@@ -15861,7 +15861,7 @@
      ],
      [
       "Mule Kick",
-      19
+      17
      ],
      [
       "Roar of the Wild",
@@ -15870,18 +15870,18 @@
     ],
     "when_pressure": {
      "blue": 0.0,
-     "green": 6.5,
+     "green": 6.42,
      "red": 0.0,
-     "yellow": 1.84
+     "yellow": 1.81
     },
     "wording": "it holds a point of initiative"
    },
    "relative_speed": {
     "hi": 59.7,
-    "lo": 52.3,
+    "lo": 51.7,
     "measured": true,
-    "median": 56.2,
-    "n": 8014,
+    "median": 55.7,
+    "n": 8604,
     "our_top": 58.7,
     "we_outrun_it": false
    },
@@ -15897,7 +15897,7 @@
      "Punch"
     ],
     "n": 6,
-    "obs": 108,
+    "obs": 113,
     "value": 100.1
    },
    "skill_slope": {
@@ -15905,48 +15905,48 @@
     "band_lo": 234.3,
     "flat": 1.47,
     "measurable": null,
-    "n": 167,
+    "n": 176,
     "slope": 0.37
    },
    "threat": {
     "damage": {
      "before_armour": true,
-     "coef": 25.5,
+     "coef": 26.0,
      "hi": 156.3,
      "lo": 6.2,
-     "n": 101,
-     "soaked_n": 7,
+     "n": 107,
+     "soaked_n": 8,
      "soaked_share": null
     },
     "flees_below": null,
     "period": {
-     "dropped": 22,
-     "hi": 71.9,
+     "dropped": 20,
+     "hi": 76.0,
      "lo": 18.0,
-     "median": 24.0,
+     "median": 28.1,
      "modes": [
       22,
       37
      ],
-     "n": 240,
-     "ticks": 28.0
+     "n": 260,
+     "ticks": 28.8
     },
     "pressure": {
      "blue": 0.0,
-     "green": 5.09,
+     "green": 4.96,
      "red": 0.0,
-     "yellow": 3.58
+     "yellow": 3.55
     },
     "pressure_against": 605.25,
-    "pressure_n": 115,
+    "pressure_n": 125,
     "restores": 0.02,
     "restores_by_colour": {
      "by_colour": {
-      "green": 0.027,
+      "green": 0.032,
       "red": 0.015
      },
      "n": {
-      "green": 116,
+      "green": 136,
       "red": 180
      }
     }
