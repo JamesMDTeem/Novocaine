@@ -63,9 +63,17 @@ _CTX = None
 _POOL = None
 _POOL_WORKERS = None
 # True while the parent is building the context itself. The context needs measured_mu,
-# and building measured_mu is a corpus sweep of its own, so map_chunks must stay
-# in-process during that window or it would recurse into context() forever.
+# and building measured_mu is a corpus sweep of its own, so map_chunks must not ask for
+# context() during that window or it would recurse into it forever.
 _BUILDING = False
+# THE POOL THE CONTEXT IS BUILT WITH. The context used to be built entirely in this process -
+# gob_species and every sweep measured_mu makes - because the workers need its result. On
+# 8514 logs that was 136 of a 285-second regeneration on one core of sixteen (profiled
+# 2026-09-16), and it grows with the corpus. None of those sweeps reads the context: the
+# gob map is what they build, and measure_mu/ok_boost reach nothing that reads mu or the gob
+# map. So they run in a bootstrap pool seeded with the moves alone, which is closed before
+# the real pool is made with the finished context.
+_BOOT = None
 
 
 def _in_worker():
@@ -121,22 +129,52 @@ def context():
     gob_species() belongs here for the same reason it is seeded in the initializer:
     bucket() and theirs() would each trigger a full raw pass in every worker otherwise.
     """
-    global _CTX, _BUILDING
+    global _CTX, _BUILDING, _BOOT
     if _CTX is None:
         import estimate
         moves = estimate.load_moves()
         opens = estimate.opens_map(moves)
-        gob_res = estimate.gob_species()
-        # measured_mu() must be computed before the pool exists, because workers need it
-        # in mu_bounds() and must not recompute it. Its own sweeps run in-process here.
-        _BUILDING = True
+        if enabled() and not _in_worker():
+            _BOOT = _get_pool({"moves": moves, "opens": opens, "gob_res": None,
+                               "mu_state": None}, worker_count())
         try:
-            mu_state = estimate.measured_mu()
+            gob_res = _gob_species_parallel() if (_BOOT is not None) else estimate.gob_species()
+            # measured_mu() must be computed before the real pool exists, because its workers
+            # need it in mu_bounds() and must not recompute it. Its sweeps run in the
+            # bootstrap pool where there is one, in this process otherwise.
+            _BUILDING = True
+            try:
+                mu_state = estimate.measured_mu()
+            finally:
+                _BUILDING = False
         finally:
-            _BUILDING = False
+            if _BOOT is not None:
+                _BOOT = None
+                close()
         _CTX = {"moves": moves, "opens": opens, "gob_res": gob_res,
                 "mu_state": mu_state}
     return _CTX
+
+
+def _gob_species_parallel():
+    """gob_species over the whole corpus in the bootstrap pool, merged as the serial loop reads.
+
+    The serial version keeps the FIRST resource any log names for a gob, visiting files in
+    default_logs order; the ordered map hands chunks back in that order and setdefault keeps
+    the first again, so the map is identical.
+    """
+    import estimate
+    import fightlog
+    if estimate._GOB_RES is not None:
+        return estimate._GOB_RES
+    paths = list(fightlog.default_logs(estimate.ROOT)[0])
+    out = {}
+    tasks = [("gob_species", c) for c in _chunks(paths, worker_count())]
+    for part in _BOOT.imap(_run_chunk, tasks, chunksize=1):
+        for gob, res in part.items():
+            out.setdefault(gob, res)
+    estimate._GOB_RES = out
+    return out
 
 
 def _moves():
@@ -163,6 +201,9 @@ def map_chunks(sweep_id, paths):
     every merge.
     """
     paths = list(paths)
+    if _BUILDING and (_BOOT is not None) and not _in_worker() and (len(paths) > 1):
+        tasks = [(sweep_id, c) for c in _chunks(paths, worker_count())]
+        return list(_BOOT.imap(_run_chunk, tasks, chunksize=1))
     if not enabled() or len(paths) <= 1 or _BUILDING or _in_worker():
         return [_run_chunk((sweep_id, paths))]
     workers = worker_count()
@@ -859,7 +900,13 @@ def _write_characters_chunk(paths):
     return out
 
 
+def _gob_species_chunk(paths):
+    import estimate
+    return estimate.gob_species(paths)
+
+
 _SWEEPS = {
+    "gob_species": _gob_species_chunk,
     "ok_boost": _ok_boost_chunk,
     "measure_mu": _measure_mu_chunk,
     "write_characters": _write_characters_chunk,
