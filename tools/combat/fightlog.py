@@ -562,6 +562,35 @@ def _diagnose(log, opens=None):
                 "opponent - someone else was fighting here"
                 % (sum(strangers.values()), len(strangers)))
 
+        # A FRIEND HITTING THE SAME ANIMAL leaves no stranger's number: their blow lands on
+        # the opponent, whose gob is known, and the animal swings at one of us at a time. It
+        # does leave its card - the client draws a fight overlay on the body that threw it -
+        # and openings on a creature are the creature's, shared by everyone hitting it, so a
+        # friend's Quick Barrage raises the red we are credited with. A party of four fought
+        # bee swarms and a bear on 2026-09-16 and every file read one relation and "solo":
+        # replay found our Quick Barrage opening 36 and 38 against a model saying 24-30, and
+        # 122 of the day's 188 party fights carried a teammate's card overlay in view. So a
+        # card overlay on a party member other than us, inside this engagement, is somebody
+        # else fighting here - the party row is what names them.
+        mates = set()
+        for p in log.party:
+            mates.update(p.get("gobs") or ())
+        mates.discard(me)
+        if mates and not eng.others_present:
+            ts = [x.get("t") for x in list(eng.moves) + list(eng.damage) if x.get("t") is not None]
+            if ts:
+                lo, hi = min(ts) - 2000, max(ts) + 2000
+                cards = [o for o in log.overlays
+                         if (o.get("gob") in mates) and (o.get("t") is not None)
+                         and (lo <= o["t"] <= hi)
+                         and str(o.get("res", "")).startswith("gfx/fx/fight/")]
+                if cards:
+                    eng.others_present = True
+                    eng.problems.append(
+                        "%d card(s) thrown by %d party member(s) while this fight ran - a friend "
+                        "was hitting it, and its openings are shared"
+                        % (len(cards), len(set(o["gob"] for o in cards))))
+
         rises = unattributed_rises(eng, opens)
         if rises:
             eng.third_party_rises = len(rises)

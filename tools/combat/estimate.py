@@ -2185,6 +2185,32 @@ def stance_of(log, gob, who=None):
     return best
 
 
+def holds_charged_stance(log):
+    """Whether we held a stance whose attack weight rides a charge the log does not record.
+
+    Bloodlust: "When attacked, Bloodlust is charged by 25%. When you attack an opponent, your
+    attack weight will be increased by four times the amount that Bloodlust is charged." The
+    charge builds from the blows we take and is spent by the ones we throw, and nothing in the
+    recorder writes it down - so an opening gain made under it has an attack weight somewhere
+    between the card's and several times that, and inverting it for the opponent's defence reads
+    a creature that is not there. First held on 2026-09-16, in eleven of Shade's fights against
+    swarms of bees: Quick Barrage opened 38 where 24-30 was the widest the inputs allowed, in
+    a fight nobody else touched. Unlike Oak Stance this is not a fixed multiplier that can be
+    priced, so the gain is not read at all until the charge is logged.
+    """
+    for r in log.buffs:
+        if r.get("who") != "me":
+            continue
+        for res in r.get("res") or []:
+            if (res or "").rsplit("/", 1)[-1] in CHARGED_STANCES:
+                return True
+    return False
+
+
+# Stance buffs whose effect on our attack weight depends on an unlogged charge.
+CHARGED_STANCES = frozenset(("bloodlust",))
+
+
 # Move name by the resource basename its stance buff uses. Only the cards whose sheet
 # carries a Block weight line are stances; an opening pagina is not one.
 STANCE_RES = {
@@ -3137,10 +3163,16 @@ def _collect_file(p, moves, opens):
                 rec["pressure"][(name, colour)].append(gain / (1.0 - oc))
                 rec["my_wd"].add(round(my_wd, 1))
 
+        # Under Bloodlust our attack weight carries a charge nobody recorded - see
+        # holds_charged_stance - so no gain of ours in this fight measures the opponent.
+        charged = holds_charged_stance(log)
         for actor, name, colour, standing, gain in attributed:
             # Only our own attacks measure the opponent's defence. Theirs measure
             # ours, against an attack weight the log does not record.
             if actor != "me":
+                continue
+            if charged:
+                rec["charged_skipped"] = rec.get("charged_skipped", 0) + 1
                 continue
             m = moves.get(name)
             if m is None:

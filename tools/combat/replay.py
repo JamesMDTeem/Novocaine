@@ -409,9 +409,15 @@ def replay(paths):
                 skipped["opponent not pinned"] += 1
                 continue
             foe_lo, foe_hi = bounds
+            charged = estimate.holds_charged_stance(log)
             for actor, mv, colour, standing, gain in fightlog.attributed_gains(
                     eng, opens, log.me):
                 if actor != "me":
+                    continue
+                # Our weight under Bloodlust rides an unlogged charge - not a prediction
+                # the inputs can make, so not scored against one.
+                if charged:
+                    skipped["gain made under Bloodlust, whose charge is not logged"] += 1
                     continue
                 m = moves.get(mv)
                 if m is None:
@@ -1082,7 +1088,7 @@ def main(argv):
         for mrow in sorted(real, key=lambda m: -abs(m[5] - m[7]))[:8]:
             off, nm, mv_, col_, standing_, gain_, lo_, hi_ = mrow[:8]
             print("        our %-18s %-7s vs %-12s standing %-4s observed %-5s"
-                  " predicted %.1f-%.1f" % (mv_, col_, nm, standing_, gain_, lo_, hi_))
+                  " predicted %.1f-%.1f   %s" % (mv_, col_, nm, standing_, gain_, lo_, hi_, mrow[8]))
         ok = False
     flexn = sum(1 for m in misses if m[1] and m[2] == "Flex") + FLEX_AGREEING
     if flexn and (len(exempt) > 0.15 * flexn):

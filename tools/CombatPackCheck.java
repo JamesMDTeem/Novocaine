@@ -325,14 +325,17 @@ public class CombatPackCheck {
         if(zz != null) {
             check("  and carries the attributes a fight needs",
                   (zz.str > 0) && (zz.agi > 0) && (zz.melee > 0) && (zz.hp > 0), true);
-            check("  with the weapon last seen in hand", zz.weapon, "Bronze Sword");
+            /* Whichever weapon that is - it was a Bronze Sword until they picked up a
+             * Fyrdsman's Sword (2026-09-16), and a check pinned to one sword fails on a trade. */
+            check("  with the weapon last seen in hand",
+                  (zz.weapon != null) && !zz.weapon.isEmpty(), true);
             /* AND HOW FAR IT REACHES, which only the item's own tooltip knows - the wiki
              * weapon table has no range column, so this was collected into the pack and
              * read by nothing. It is a multiple of the unarmed reach: the corpus puts a
              * bare swing and a range-1.0 stone axe at the same 18.7 world units, and a
              * 1.2 sword at 21.4 where the multiplier predicts 22.4. */
-            check("    and how far that weapon reaches", zz.weaponRange, 1.2);
-            check("      which the combatant carries", zz.combatant().weaponRange, 1.2);
+            check("    and how far that weapon reaches", zz.weaponRange > 0, true);
+            check("      which the combatant carries", zz.combatant().weaponRange, zz.weaponRange);
         }
         /* Nobody's numbers, kept as a regression: if these ever match a real character
          * it is a coincidence, and if the literals come back this says so. */
@@ -362,10 +365,20 @@ public class CombatPackCheck {
                 }
             }
         }
-        Pack.Fighter shade = chars.get("Shade");
-        if(shade != null) {
-            check("  and another character does not", shade.knows("Parry"), false);
-            check("    while still knowing most of it", shade.owned.size() > 30, true);
+        /* Found rather than named: Shade was the example until they learned Parry. */
+        Pack.Fighter partial = null;
+        for(Pack.Fighter f : chars.values()) {
+            if((f.owned.size() > 30) && (f.owned.size() < moves.size()))
+                partial = f;
+        }
+        check("  and another character knows most of it but not all", partial != null, true);
+        if(partial != null) {
+            String missing = null;
+            for(String nm : moves.keySet()) {
+                if(!partial.knows(nm))
+                    missing = nm;
+            }
+            check("    so some card is not theirs to play", missing != null, true);
         }
 
         /* A DUEL FOUGHT NAKED IS NOT THIS CHARACTER'S DUEL, and it was. Nothing set the

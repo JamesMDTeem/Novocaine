@@ -195,6 +195,13 @@ public class LiveAdviceCheck {
                               hl.killed ? "" : " no kill", hl.why, hl.trade);
             if(hf.moveRes.equals(hl.moveRes))
                 continue;
+            /* A line that loses all 120 is a death whatever is thrown: every plan dies, the pick
+             * among them is not a reserve decision, and it is not this case. */
+            if(hl.hpLost >= 120 - 1e-9) {
+                System.out.printf("        standing %s: no line survives at 120, not judged%n",
+                                  java.util.Arrays.toString(standing));
+                continue;
+            }
             System.out.printf("        standing %s: %s -> %s%n", java.util.Arrays.toString(standing),
                               hf.moveRes, hl.moveRes);
             changed++;

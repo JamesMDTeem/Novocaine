@@ -916,6 +916,16 @@ def a_stance_scales_every_attack():
           estimate.attack_weight_bounds(qb, at, 1, {"Combat Meditation": 5}), (50.0, 50.0))
     check("  and a stance at level 0 is not held",
           estimate.attack_weight_bounds(qb, at, 1, {"Oak Stance": 0}), (200.0, 200.0))
+    # Bloodlust is not a multiplier at all - it rides a charge the log does not write - so a
+    # fight under it is recognised and its gains left unread rather than priced.
+    class _L(object):
+        def __init__(self, buffs):
+            self.buffs = buffs
+    check("  Bloodlust held by us marks the fight as unreadable",
+          estimate.holds_charged_stance(_L([{"who": "me", "res": ["paginae/atk/bloodlust"]}])), True)
+    check("    but not on the foe, nor under Shield Up",
+          estimate.holds_charged_stance(_L([{"who": "foe", "res": ["paginae/atk/bloodlust"]},
+                                            {"who": "me", "res": ["paginae/atk/shieldup"]}])), False)
 
     # How many fights the multiplier is actually doing something to. Counted in the
     # shared corpus pass - see _corpus_sweep.
