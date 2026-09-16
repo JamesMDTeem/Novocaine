@@ -44,9 +44,24 @@ public final class BeastMove {
     public final double grievous;
     /** The share of its swing our armour stopped, where the corpus could match it. */
     public final double soaked;
+    /**
+     * The colours of ours its damage reads, or null where nobody knows - then all four are read.
+     *
+     * An attack's damage comes off the opening in ITS colours only. Of 1886 animal hits in the
+     * corpus none landed with nothing open in the card's colours, and read against all four a
+     * card's blow scatters: the cave angler's Shredding Paw sits at a 90th percentile 1.65 times
+     * its median on all four colours and 1.04 on blue alone (2026-09-16).
+     */
+    public final boolean[] attackColours;
 
     public BeastMove(String name, double[] openings, double damageCoef, long cooldown,
                      double[] restores, double grievous, double soaked) {
+        this(name, openings, damageCoef, cooldown, restores, grievous, soaked, null);
+    }
+
+    public BeastMove(String name, double[] openings, double damageCoef, long cooldown,
+                     double[] restores, double grievous, double soaked, boolean[] attackColours) {
+        this.attackColours = attackColours;
         this.name = name;
         this.openings = (openings == null) ? new double[4] : openings;
         this.damageCoef = damageCoef;

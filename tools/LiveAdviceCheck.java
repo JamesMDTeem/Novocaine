@@ -171,19 +171,32 @@ public class LiveAdviceCheck {
         System.out.println("\nagainst something that hurts, low health throws a restoration");
         List<String> restorations = Arrays.asList("paginae/atk/qdodge", "paginae/atk/sidestep",
                                                   "paginae/atk/jump", "paginae/atk/zigzag");
+        /* SWEPT RATHER THAN NAMED, over creatures and over where we stand open. Four named
+         * creatures at one state stopped holding the case once each animal's blow was read per
+         * species on its card's own colours (2026-09-16): the cave angler that had carried it
+         * attacks green, blue, yellow and red with different cards, and at {30, 0, 30, 0} its
+         * cheapest line saved nothing. Whether some hard fight changes the pick is the question,
+         * not which one. */
         String[] hard = {"gfx/kritter/caveangler/caveangler", "gfx/kritter/horse/horse",
-                         "gfx/kritter/badger/badger", "gfx/kritter/wolverine/wolverine"};
-        int[] standing = {30, 0, 30, 0};
+                         "gfx/kritter/badger/badger", "gfx/kritter/wolverine/wolverine",
+                         "gfx/kritter/vulturebee/vulturebee", "gfx/kritter/bear/bear",
+                         "gfx/kritter/moose/moose", "gfx/kritter/boar/boar", "gfx/kritter/wolf/wolf",
+                         "gfx/kritter/lynx/lynx"};
+        int[][] states = {{30, 0, 30, 0}, {0, 30, 0, 30}, {30, 30, 30, 30}, {50, 50, 0, 0}};
         int changed = 0, restored = 0, cheaper = 0;
+        for(int[] standing : states)
         for(String h : hard) {
             Prediction.Live hf = advise(me, null, standing, 300, 300, seen(h, new int[] {20, 0, 0, 20}, 0));
             Prediction.Live hl = advise(me, null, standing, 120, 300, seen(h, new int[] {20, 0, 0, 20}, 0));
             if((hf.proxied > 0) || (hf.moveRes == null) || (hl.moveRes == null))
                 continue;
-            System.out.printf("      %-36s full: %-22s %6.1f hp | at 120: %-22s %6.1f hp (%s)%n", h,
-                              hf.moveRes, hf.hpLost, hl.moveRes, hl.hpLost, hl.why);
+            System.out.printf("      %-36s full: %-22s %6.1f hp%s | at 120: %-22s %6.1f hp%s (%s, trade %.1f)%n", h,
+                              hf.moveRes, hf.hpLost, hf.killed ? "" : " no kill", hl.moveRes, hl.hpLost,
+                              hl.killed ? "" : " no kill", hl.why, hl.trade);
             if(hf.moveRes.equals(hl.moveRes))
                 continue;
+            System.out.printf("        standing %s: %s -> %s%n", java.util.Arrays.toString(standing),
+                              hf.moveRes, hl.moveRes);
             changed++;
             if(restorations.contains(hl.moveRes))
                 restored++;
@@ -346,15 +359,22 @@ public class LiveAdviceCheck {
             tried++;
             java.util.Set<String> cards = Prediction.distill(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON);
             Prediction.Live sub = Prediction.adviseLive(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON, 0, cards);
-            System.out.printf("      %-36s whole bar %4d ticks | chosen %s -> %4d ticks%n", big, whole.ticks, cards, sub.ticks);
-            if(sub.ticks <= whole.ticks)
+            System.out.printf("      %-36s whole bar %4d ticks%s | chosen %s -> %4d ticks%s%n", big, whole.ticks,
+                              whole.killed ? "" : " (no kill)", cards, sub.ticks, sub.killed ? "" : " (no kill)");
+            /* RANKED AS THE PLANNER RANKS: a kill before no kill, then fewer ticks. Compared on
+             * ticks alone this called the cave angler's chosen cards slower, at 1218 against 1157,
+             * when the whole bar's 1157 was a line that never killed it (2026-09-16, once the
+             * angler was planned with the cards it throws in reach rather than half restoring). */
+            boolean better = (sub.killed && !whole.killed)
+                || ((sub.killed == whole.killed) && (sub.ticks < whole.ticks));
+            if(better || ((sub.killed == whole.killed) && (sub.ticks == whole.ticks)))
                 noSlower++;
-            if((cards != null) && (sub.ticks < whole.ticks))
+            if((cards != null) && better)
                 quicker++;
         }
         check("the heavy creatures are all planned as themselves", tried, 4);
-        check("  the chosen cards never plan slower than the whole bar", noSlower, tried);
-        check("  and against at least one they plan strictly quicker", quicker > 0, true);
+        check("  the chosen cards never plan worse than the whole bar", noSlower, tried);
+        check("  and against at least one they plan strictly better", quicker > 0, true);
 
         finish();
     }

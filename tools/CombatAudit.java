@@ -763,6 +763,26 @@ public class CombatAudit {
         live("  and the deal moves on rather than repeating the first card",
              v0.opening(Formulas.RED), v1.opening(Formulas.RED), "Repertoire.pick");
 
+        /* A CARD'S BLOW READS ONLY THE COLOURS IT ATTACKS - BeastMove.attackColours. The same
+         * card, the same fighter open in red alone: aimed at green it takes nothing, and with
+         * its colours unknown it reads all four and hits. */
+        BeastMove greenOnly = new BeastMove("green", new double[4], 90, 60, new double[4], 0, 0.8,
+                                            new boolean[] {true, false, false, false});
+        BeastMove anyColour = new BeastMove("green", new double[4], 90, 60, new double[4], 0, 0.8);
+        double[] blows = new double[2];
+        BeastMove[] pair = {greenOnly, anyColour};
+        for(int i = 0; i < 2; i++) {
+            FoeModel one = new FoeModel(40, press, 100, 2.0, 10, 10, Double.NaN, new int[0], 0, null,
+                                        0, null, null, null,
+                                        new Repertoire(new BeastMove[] {pair[i]}, new double[] {1.0},
+                                                       null, 0, null, null));
+            Combatant redOpen = fighter();
+            redOpen.openings[Formulas.RED] = 60;
+            blows[i] = one.worstHit(redOpen, redOpen.defenceWeight(), fighter());
+        }
+        live("a blow reads only the colours its card attacks", blows[0], blows[1],
+             "FoeModel.strike");
+
         /* A repertoire beats the average: with cards present the pooled pressure must not
          * be what lands, or the restructure is decorative. */
         Combatant avgd = fighter();

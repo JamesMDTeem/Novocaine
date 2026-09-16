@@ -843,7 +843,17 @@ public class CombatPackCheck {
          * at all - so the pessimistic model was the median model card for card, for every
          * creature with a repertoire, and "price it at the top" changed nothing (audited
          * 2026-09-15). The hi repertoire reads each card's 90th-percentile coefficient. */
-        int cardPath = 0, cardsHigher = 0, cardsLower = 0;
+        org.json.JSONObject libDoc = new org.json.JSONObject(
+            new String(java.nio.file.Files.readAllBytes(
+                java.nio.file.Paths.get("data", "combat", "animal_moves_measured.json")), "UTF-8"));
+        java.util.Map<String, org.json.JSONObject> libDamage = new java.util.HashMap<String, org.json.JSONObject>();
+        org.json.JSONArray libMoves = libDoc.getJSONArray("moves");
+        for(int i = 0; i < libMoves.length(); i++) {
+            org.json.JSONObject dm = libMoves.getJSONObject(i).optJSONObject("damage");
+            if(dm != null)
+                libDamage.put(libMoves.getJSONObject(i).getString("name"), dm);
+        }
+        int cardPath = 0, cardsHigher = 0, cardsLower = 0, even = 0, missed = 0;
         for(Pack.Opponent o : foes.values()) {
             /* ANIMALS whose cards carry a measured blow. A person's cards take their damage
              * from the person's own measured interval, which the averaged check above covers. */
@@ -866,14 +876,62 @@ public class CombatPackCheck {
                 if(top[i].damageCoef < mid[i].damageCoef)
                     cardsLower++;
             }
-            if(higher)
+            if(higher) {
                 cardsHigher++;
+                continue;
+            }
+            /* NO HARDER BLOW IS RIGHT ONLY WHERE ITS BLOWS NEVER VARY. With damage read per
+             * species on the card's own colours a thrower can land one number every time - a
+             * goshawk's six Fell Scratches all at 30.9 - and then its top IS its median. What must
+             * not happen is the old defect: a thrower whose blows do vary priced at the median. */
+            boolean varies = false;
+            for(BeastMove b : mid) {
+                org.json.JSONObject dm = libDamage.get(b.name);
+                if(dm == null)
+                    continue;
+                org.json.JSONObject own = (dm.optJSONObject("by_species") == null) ? null
+                    : dm.optJSONObject("by_species").optJSONObject(o.name);
+                org.json.JSONObject src = (own != null) ? own : dm;
+                if(src.optDouble("p90", 0) > src.optDouble("coef", 0))
+                    varies = true;
+            }
+            if(varies)
+                missed++;
+            else
+                even++;
         }
-        check("every animal with a measured card prices a blow higher at the top",
-              (cardPath > 0) && (cardsHigher == cardPath), true);
+        check("every animal whose blows vary prices a harder one at the top",
+              (cardPath > 0) && (cardsHigher > 0) && (missed == 0), true);
         check("  and no card of it is priced lower there", cardsLower, 0);
-        System.out.printf("      %d of %d animals with a measured card carry a higher one at the top%n",
-                          cardsHigher, cardPath);
+        System.out.printf("      %d of %d animals with a measured card carry a higher one at the top;"
+                          + " %d land every blow alike%n", cardsHigher, cardPath, even);
+
+        /* EACH THROWER'S OWN BLOW, ON ITS CARD'S OWN COLOURS. The card library publishes a
+         * coefficient per species that landed enough of a card, and the colours the blow reads;
+         * a creature loaded from the pack must carry both, not the pooled figure. Found by shape:
+         * any animal card whose library entry has a per-species coefficient for the creature. */
+        Pack.Cards lib = Pack.cards(java.nio.file.Paths.get("data", "combat", "animal_moves_measured.json"));
+        int ownChecked = 0, ownMatched = 0, coloured = 0;
+        for(int i = 0; i < libMoves.length(); i++) {
+            org.json.JSONObject mv = libMoves.getJSONObject(i);
+            org.json.JSONObject dm = mv.optJSONObject("damage");
+            org.json.JSONObject bys = (dm == null) ? null : dm.optJSONObject("by_species");
+            if(bys == null)
+                continue;
+            for(String sp : bys.keySet()) {
+                BeastMove b = lib.move(mv.getString("name"), sp);
+                if(b == null)
+                    continue;
+                ownChecked++;
+                if(Math.abs(b.damageCoef - bys.getJSONObject(sp).getDouble("coef")) < 1e-9)
+                    ownMatched++;
+                if(b.attackColours != null)
+                    coloured++;
+            }
+        }
+        check("a species' card carries that species' own blow", (ownChecked > 0) && (ownMatched == ownChecked), true);
+        check("  and the colours its blow reads", coloured, ownChecked);
+        System.out.printf("      %d species-card pairs carry their own coefficient%n", ownChecked);
 
         /* WHETHER WE CAN LEAVE. The estimator has measured relative speed all along and
          * nothing read it back out, so the matchup answered "can I take this" without

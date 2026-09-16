@@ -2170,6 +2170,63 @@ def foe_policy():
     check("one seen in solo fights is not flagged",
           estimate.foe_policy({"foe_moves": atk + non})["ip_group_contaminated"], False)
 
+    # IN REACH AND OUT OF IT ARE TWO ANIMALS. A made-up species that attacks only up close
+    # and restores near and far: its reach is where its attacks are, the mix a standing fight
+    # throws is the near one, and the pooled mix is kept beside it rather than lost.
+    def choice(card, dist, alone=True):
+        return (card, 0, 0, dist, None, 0, 0, 0, 0, 0, 0, 0, 0, None, alone, True, "bracket")
+    close = [choice("Fell Scratch", 10)] * 45 + [choice("Roar of the Wild", 10)] * 20
+    distant = [choice("Roar of the Wild", 200)] * 50
+    moves = [("Fell Scratch", 0, True)] * 45 + [("Roar of the Wild", 0, True)] * 70
+    rec = {"foe_moves": moves, "foe_choice": close + distant}
+    check("reach is where its attacks are thrown", estimate.attack_reach(rec), (10, True))
+    pol = estimate.foe_policy(rec)
+    check("  the mix a standing fight throws is the near one",
+          dict(map(tuple, pol["mix"])), {"Fell Scratch": 0.692, "Roar of the Wild": 0.308})
+    check("  the pooled mix is kept beside it",
+          dict(map(tuple, pol["mix_all"])), {"Roar of the Wild": 0.609, "Fell Scratch": 0.391})
+    check("  and out of reach it attacks on none of its turns",
+          (pol["attack_share_in_reach"], pol["attack_share_beyond_reach"]), (0.692, 0.0))
+    # A group fight's attacks do not set the reach while enough solo ones exist.
+    crowd = [choice("Fell Scratch", 90, alone=False)] * 30
+    check("  and a friend's fight does not stretch it",
+          estimate.attack_reach({"foe_choice": close + distant + crowd}), (10, True))
+    check("a species with too few attacks has no reach, and keeps its pooled mix",
+          ("mix_all" in estimate.foe_policy({"foe_moves": moves,
+                                             "foe_choice": close[:10] + distant}),
+           estimate.attack_reach({"foe_choice": close[:10] + distant})), (False, None))
+
+
+def attack_colours():
+    """A card's blow reads its own colours, and each thrower lands its own blow."""
+    print("\nwhose blow, and on which colours")
+    # A card that attacks yellow and red, thrown by two species. The fighter stands open in
+    # green too, which the blow must ignore: read on all four colours the same swings scatter.
+    def hit(sp, g, y, r, coef):
+        o = (g, 0.0, y, r)
+        c = estimate._combined((y, r))
+        return (sp, o, coef * c * c)
+    hits = ([hit("boar", 0.4, 0.3, 0.2, 100.0), hit("boar", 0.0, 0.5, 0.1, 100.0),
+             hit("boar", 0.7, 0.2, 0.3, 100.0), hit("boar", 0.1, 0.6, 0.0, 100.0)] * 2
+            + [hit("caveangler", 0.5, 0.4, 0.1, 25.0), hit("caveangler", 0.0, 0.2, 0.3, 25.0),
+               hit("caveangler", 0.6, 0.1, 0.5, 25.0), hit("caveangler", 0.2, 0.3, 0.2, 25.0)] * 2)
+    check("the wiki's colours stand where they fit", estimate.animal_attack_colours(hits, [2, 3]),
+          ((2, 3), "wiki"))
+    # A hit landed with nothing open in green, so a green-only claim cannot be its colours.
+    check("  and are replaced where a blow landed with nothing open in them",
+          estimate.animal_attack_colours(hits, [0]), ((2, 3), "corpus"))
+    rec = lambda sp: {"took": [{"move": "Bear Down", "openings": [round(o[0] * 100), 0,
+                                                                  round(o[1 + 1] * 100), round(o[3] * 100)],
+                                "shp": sw, "soaked": 0}
+                               for s2, o, sw in hits if s2 == sp]}
+    per = {"boar": rec("boar"), "caveangler": rec("caveangler")}
+    dmg = estimate.animal_move_damage(per).get("Bear Down") or {}
+    by = dmg.get("by_species") or {}
+    check("  each thrower carries its own blow",
+          (round((by.get("boar") or {}).get("coef", 0)), round((by.get("caveangler") or {}).get("coef", 0))),
+          (100, 25))
+    check("  and the card carries the colours it was read on", dmg.get("colours"), "yr")
+
 
 def tactics():
     """Re-aggro's price, and whether a speed reading means anything.
@@ -2630,6 +2687,7 @@ def main():
     equalization()
     foe_skill()
     foe_policy()
+    attack_colours()
     tactics()
     armour()
     buckets()

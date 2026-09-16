@@ -3755,46 +3755,133 @@ def animal_move_cooldowns(paths=None):
     return out
 
 
-def animal_move_damage(per):
-    """Each creature move's damage coefficient, over the whole swing.
+# Colour order in a card's attack colours, as the game's attack types name them.
+ATTACK_TYPE_COLOUR = {"striking": 0, "backhanded": 1, "sweeping": 2, "oppressive": 3}
+# How much looser the wiki's colours may fit than the best the corpus finds before the corpus
+# is taken instead. A tie means colours that were never open when the card landed, which no
+# number of hits can separate - the wiki is kept there.
+COLOUR_TIE = 0.05
+# Hits one species needs before its own coefficient replaces the pooled one.
+DMG_SPECIES_MIN = 5
 
-    Per MOVE rather than per creature, which is the shape the thing actually has: against
-    the same opening, Shredding Paw comes in at 143 and Vampirism at 9, a spread of sixteen
-    times that a per-creature average flattens into one number. A creature throwing both is
-    not described by their mean.
 
-    Possible only since the fit began counting armour soak. On soft hitpoints alone there
-    were 408 usable observations in the whole corpus and most moves had too few to separate;
-    over the whole swing there are 850, and fourteen moves carry five or more.
+def _combined(os):
+    p = 1.0
+    for x in os:
+        p *= (1.0 - x)
+    return 1.0 - p
+
+
+def animal_attack_colours(hits, wiki):
+    """Which of our colours a card's damage reads: (colours, source), or (wiki, "wiki").
+
+    DAMAGE READS ONLY THE CARD'S OWN ATTACK COLOURS (the guide: an attack on green alone does
+    damage from the green opening alone), and the corpus agrees without exception: of 1886
+    animal hits, not one of Fell Scratch's 771, Low Horn Swipe's 245 or Mule Kick's 213 landed
+    with nothing open in the card's colours. Reading all four colours instead was why a card's
+    coefficient spread so wide - the cave angler's Shredding Paw sits at a 90th percentile 1.65
+    times its median on all four, and 1.04 on blue alone.
+
+    The wiki's table names the colours and is right for every well-observed card, but it is
+    incomplete and in places wrong (Tail Splash and Maddening Roar have none, Vampirism is
+    listed yellow). So every subset is tried: one is VALID only if no hit landed with nothing
+    open in it, and the fit is the per-species spread of log coefficients. The wiki's colours
+    stand unless they are invalid or looser than the best by more than COLOUR_TIE.
+
+    hits: [(species, (g, b, y, r) as 0..1, whole swing)].
     """
-    obs = defaultdict(list)
-    for rec in per.values():
+    import itertools
+    scores = []
+    for sub in [c for k in (1, 2, 3, 4) for c in itertools.combinations(range(4), k)]:
+        if any(_combined([o[i] for i in sub]) == 0 for _sp, o, _sw in hits):
+            continue
+        g = defaultdict(list)
+        for sp, o, sw in hits:
+            c = _combined([o[i] for i in sub])
+            if c >= 0.05:
+                g[sp].append(math.log(sw / (c * c)))
+        groups = [v for v in g.values() if len(v) >= 4]
+        tot = sum(len(v) for v in groups)
+        if tot < 8:
+            continue
+        mean = lambda v: sum(v) / len(v)
+        sd = lambda v: math.sqrt(sum((x - mean(v)) ** 2 for x in v) / len(v))
+        scores.append((sum(sd(v) * len(v) for v in groups) / tot, sub))
+    w = tuple(sorted(wiki)) if wiki else None
+    if not scores:
+        return (w, "wiki") if w else (None, None)
+    # FEWEST COLOURS ON A TIE. A colour that was never open when the card landed changes no
+    # coefficient, so a subset with it and one without fit identically; the data supports only
+    # the colours it saw matter.
+    scores.sort(key=lambda sc: (round(sc[0], 6), len(sc[1]), sc[1]))
+    best_sd, best = scores[0]
+    wsd = next((sd for sd, sub in scores if sub == w), None)
+    if (wsd is not None) and (wsd <= best_sd + COLOUR_TIE):
+        return (w, "wiki")
+    return (best, "corpus")
+
+
+def animal_move_damage(per):
+    """Each creature move's damage coefficient, over the whole swing - per species that throws it.
+
+    swing = coef * combined(opening in the card's ATTACK colours)^2. See animal_attack_colours
+    for why the colours, and note what the per-species split buys: the same card is not the
+    same blow from a different animal. Bear Down is 63 from a boar and 25 from a cave angler,
+    Thunder Over 101 from a moose and 27 from a sheep, and a pooled figure is their average -
+    which describes neither. With both, a species' card lands close to one number: Chomp from
+    a lynx and from a cave angler at a 90th percentile 1.04 and 1.03 times the median.
+
+    Per MOVE rather than per creature for the reason it always was (Shredding Paw 143 against
+    Vampirism 9 from creatures that throw both). `coef`, `p90`, `lo` and `hi` stay as the card's
+    pooled figures for a species that has too few hits of its own; `by_species` carries each
+    thrower with DMG_SPECIES_MIN or more.
+    """
+    wiki = {}
+    for r in animal_move_rows():
+        cs = [ATTACK_TYPE_COLOUR[t] for t in (r.get("attack_types") or []) if t in ATTACK_TYPE_COLOUR]
+        if cs:
+            wiki[r["name"]] = cs
+    hits = defaultdict(list)
+    for sp, rec in per.items():
         for h in (rec.get("took") or ()):
             o = [min(x, 100) / 100.0 for x in (h.get("openings") or [])]
             if len(o) != 4:
                 continue
             swing = (h.get("shp") or 0) + (h.get("soaked") or 0)
-            if swing <= 0:
-                continue
-            c = model.combined(o)
+            if (swing > 0) and h.get("move"):
+                hits[h["move"]].append((sp, tuple(o), swing))
+    out = {}
+    for nm, hs in hits.items():
+        cols, source = animal_attack_colours(hs, wiki.get(nm))
+        idx = cols if cols else (0, 1, 2, 3)
+        v, by = [], defaultdict(list)
+        for sp, o, sw in hs:
+            c = _combined([o[i] for i in idx])
             if c < 0.05:
                 continue
-            nm = h.get("move")
-            if nm:
-                obs[nm].append(swing / (c * c))
-    out = {}
-    for nm, v in obs.items():
+            v.append(sw / (c * c))
+            by[sp].append(sw / (c * c))
         if len(v) < DMG_MIN_OBS:
             continue
         v.sort()
-        # p90 is the card's PESSIMISTIC figure, which the pack's threatHi reads. hi is one
-        # hit - Ant Spit's median 33.8 sits under a single 286 - and planning every blow at the
-        # one worst ever seen answers a question nobody asks; the tenth-worst of a hundred is
-        # a blow worth defending against. Before this the pessimistic model read "coef" card
-        # for card, so it was the median model for all 39 animals with a measured card.
-        out[nm] = {"coef": round(v[len(v) // 2], 1), "lo": round(v[0], 1),
-                   "p90": round(v[int(0.9 * (len(v) - 1))], 1),
-                   "hi": round(v[-1], 1), "n": len(v), "before_armour": True}
+        entry = {"coef": round(v[len(v) // 2], 1), "lo": round(v[0], 1),
+                 # p90 is the card's PESSIMISTIC figure, which the pack's threatHi reads. hi is
+                 # one hit, and planning every blow at the one worst ever seen answers a
+                 # question nobody asks.
+                 "p90": round(v[int(0.9 * (len(v) - 1))], 1),
+                 "hi": round(v[-1], 1), "n": len(v), "before_armour": True,
+                 "colours": "".join("gbyr"[i] for i in idx),
+                 "colours_from": source if cols else "none known - all four read"}
+        species = {}
+        for sp in sorted(by):
+            sv = sorted(by[sp])
+            if len(sv) < DMG_SPECIES_MIN:
+                continue
+            species[sp] = {"coef": round(sv[len(sv) // 2], 1),
+                           "p90": round(sv[int(0.9 * (len(sv) - 1))], 1), "n": len(sv)}
+        if species:
+            entry["by_species"] = species
+        out[nm] = entry
     return out
 
 
@@ -4270,17 +4357,21 @@ def report_mu_reductions():
 ANIMAL_MOVES = os.path.join(ROOT, "data", "combat", "animal_moves.json")
 
 
-def animal_move_kinds():
-    """Animal move name -> True when it is an attack, from the wiki's own table."""
+def animal_move_rows():
+    """The wiki's animal move table, as a list of rows; empty where it cannot be read."""
     try:
         with open(ANIMAL_MOVES, "r", encoding="utf8") as f:
             doc = json.load(f)
     except (OSError, ValueError):
-        return {}
+        return []
     rows = doc if isinstance(doc, list) else sum(
         (v for v in doc.values() if isinstance(v, list)), [])
-    return dict((r["name"], bool(r.get("attack_types")))
-                for r in rows if isinstance(r, dict) and r.get("name"))
+    return [r for r in rows if isinstance(r, dict) and r.get("name")]
+
+
+def animal_move_kinds():
+    """Animal move name -> True when it is an attack, from the wiki's own table."""
+    return dict((r["name"], bool(r.get("attack_types"))) for r in animal_move_rows())
 
 
 # A hearthling on foot does not exceed this, so a faster reading is the distance jumping
@@ -4469,6 +4560,43 @@ def _bits(counter):
 # policy_model fires only past this many foe card choices that carried a before-state.
 # Below it the pack reports null and the consumer must fall back to policy.mix.
 POLICY_MODEL_MIN_N = 60
+
+# AN ANIMAL IN REACH AND ONE OUT OF IT ARE TWO DIFFERENT ANIMALS (2026-09-16). Measured on
+# solo fights - one relation, no party - so a creature far from us cannot be fighting
+# somebody else: the cave angler throws an attack on 71% of its 557 turns inside its reach
+# and 5% of its 457 outside it, the boreworm 74% and 7%, green ooze 95% and 10%, cattle 95%
+# and 12%, bear 75% and 21%. Out of reach it restores. The planners simulate a standing
+# fight in reach, so a mix pooled over both describes a creature that spends half a melee
+# restoring, which none of them do. The withdrawn distance finding in foe_policy fell on 66
+# solo observations; this is the same question asked of thousands.
+#
+# Reach is the 95th percentile of the distance at which it throws cards the wiki marks as
+# attacks, from solo decisions where there are enough - group fights inflate it, since a
+# creature swinging at a friend can stand anywhere relative to us (moose 105 pooled, 44 solo).
+REACH_Q = 0.95
+REACH_MIN_ATTACKS = 20
+
+
+def attack_reach(rec):
+    """How close this species stands when it attacks, or None where too few attacks say.
+
+    Returns (reach, from_solo). See REACH_Q.
+    """
+    kinds = animal_move_kinds()
+    rows = [r for r in (rec.get("foe_choice") or ())
+            if r and r[0] and kinds.get(r[0]) and (r[3] is not None)]
+    solo = sorted(r[3] for r in rows if r[14])
+    pool = solo if len(solo) >= REACH_MIN_ATTACKS else sorted(r[3] for r in rows)
+    if len(pool) < REACH_MIN_ATTACKS:
+        return None
+    return (pool[int(REACH_Q * (len(pool) - 1))], pool is solo)
+
+
+def in_reach(rows, reach, dist_index):
+    """Decisions taken inside reach; a row with no distance is kept, since nothing says otherwise."""
+    if reach is None:
+        return list(rows)
+    return [r for r in rows if (r[dist_index] is None) or (r[dist_index] <= reach[0])]
 # The coarse cuts a threshold row is tried at, once per opened colour and per side.
 POLICY_MODEL_CUTS = (20.0, 40.0, 50.0)
 # A threshold becomes a GATE only when it survives rows it was not chosen on: at least this
@@ -4550,7 +4678,8 @@ def policy_model(rec):
     POLICY_MODEL_MIN_N choices, which is the signal to fall back to policy.mix - see
     PACK-ADDITIONS.md for the schema and reading rules.
     """
-    rows = [r for r in (rec.get("foe_choice") or ()) if r and r[0]]
+    rows = in_reach([r for r in (rec.get("foe_choice") or ()) if r and r[0]],
+                    attack_reach(rec), 3)
     pol = foe_policy(rec)
     if (len(rows) < POLICY_MODEL_MIN_N) or (not pol) or (not pol.get("mix")):
         return None
@@ -4648,7 +4777,7 @@ def foe_policy_rule(rec):
 
     Returns {feature, wording, train_bits, test_bits, n, when, otherwise} or None.
     """
-    rows = [r for r in (rec.get("foe_state") or ()) if r and r[0]]
+    rows = in_reach([r for r in (rec.get("foe_state") or ()) if r and r[0]], attack_reach(rec), 3)
     if len(rows) < (POLICY_MIN_SIDE * 3):
         return None
     half = len(rows) // 2
@@ -4787,6 +4916,29 @@ def foe_policy(rec):
         # swing is large and repeats across species, and flagged because it cannot be
         # cleaned up without solo fights that do not exist yet.
         out["ip_group_contaminated"] = (solo < (0.2 * total))
+    # THE MIX IN REACH, which is the one a standing fight is thrown from - see REACH_Q. The
+    # pooled one stays beside it as mix_all. Only where enough decisions carry a distance to
+    # fit it on; otherwise the pooled mix stands as the mix.
+    reach = attack_reach(rec)
+    if reach is not None:
+        rows = [r for r in (rec.get("foe_choice") or ()) if r and r[0] and (r[3] is not None)]
+        near = Counter(r[0] for r in rows if r[3] <= reach[0])
+        far = [r[0] for r in rows if r[3] > reach[0]]
+        n_near = sum(near.values())
+        out["reach"] = round(reach[0], 1)
+        out["reach_from_solo"] = reach[1]
+        out["n_in_reach"] = n_near
+        out["n_beyond_reach"] = len(far)
+        known_near = [kinds.get(k) for k in near.elements() if kinds.get(k) is not None]
+        known_far = [kinds.get(k) for k in far if kinds.get(k) is not None]
+        if len(known_near) >= 10:
+            out["attack_share_in_reach"] = round(sum(known_near) / float(len(known_near)), 3)
+        if len(known_far) >= 10:
+            out["attack_share_beyond_reach"] = round(sum(known_far) / float(len(known_far)), 3)
+        if n_near >= POLICY_MODEL_MIN_N:
+            out["mix_all"] = out["mix"]
+            out["mix"] = [[k, round(v / float(n_near), 3)] for k, v in
+                          sorted(near.items(), key=lambda kv: (-kv[1], kv[0]))]
     return out
 
 

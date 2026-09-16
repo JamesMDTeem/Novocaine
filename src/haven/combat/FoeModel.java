@@ -417,9 +417,11 @@ public final class FoeModel {
         }
         if(Double.isNaN(m.damageCoef) || (m.damageCoef <= 0))
             return(0);
+        /* ONLY THE COLOURS IT ATTACKS - see BeastMove.attackColours. A colour it does not attack
+         * adds nothing to the blow, however open it stands. */
         double[] o = new double[4];
         for(int c = 0; c < 4; c++)
-            o[c] = me.opening(c);
+            o[c] = ((m.attackColours == null) || m.attackColours[c]) ? me.opening(c) : 0.0;
         double combined = Formulas.combined(o);
         double raw = m.damageCoef * combined * combined;
         /* PER-CARD PENETRATION, MEASURED AND NOW READ. {@link BeastMove#soaked} is the share

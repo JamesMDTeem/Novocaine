@@ -1616,6 +1616,26 @@ public final class Pack {
             double coef = (d == null) ? Double.NaN : d.optDouble("coef", Double.NaN);
             if("hi".equals(end) && (d != null) && d.has("p90"))
                 coef = d.optDouble("p90", coef);
+            /* THIS THROWER'S OWN BLOW where it landed enough of them. The same card is not the
+             * same blow from another animal - Bear Down 63 from a boar, 25 from a cave angler -
+             * and the pooled figure above is their average, kept for a thrower too rarely seen. */
+            JSONObject bys = (d == null) ? null : d.optJSONObject("by_species");
+            JSONObject mine = (bys == null) ? null : bys.optJSONObject(species);
+            if(mine != null) {
+                double own = mine.optDouble("hi".equals(end) ? "p90" : "coef", Double.NaN);
+                if(!Double.isNaN(own))
+                    coef = own;
+            }
+            boolean[] attack = null;
+            String cols = (d == null) ? null : d.optString("colours", null);
+            if((cols != null) && !cols.isEmpty()) {
+                attack = new boolean[4];
+                for(int i = 0; i < cols.length(); i++) {
+                    int ix = "gbyr".indexOf(cols.charAt(i));
+                    if(ix >= 0)
+                        attack[ix] = true;
+                }
+            }
             JSONObject c = m.optJSONObject("cooldown");
             long cd = (c == null) ? 0 : Math.round(c.optDouble("ticks", 0));
             double[] rest = new double[4];
@@ -1630,7 +1650,7 @@ public final class Pack {
             double grev = (g == null) ? 0 : g.optDouble("per_soft", 0);
             JSONObject a = m.optJSONObject("armour");
             double soak = (a == null) ? Double.NaN : a.optDouble("soaked_share", Double.NaN);
-            return(new BeastMove(name, op, coef, cd, rest, grev, soak));
+            return(new BeastMove(name, op, coef, cd, rest, grev, soak, attack));
         }
     }
 
@@ -1672,8 +1692,17 @@ public final class Pack {
             if(share > 0)
                 mine = coef * (share / norm);
         }
+        /* A player's card names its attack colours on the sheet, and its blow reads only those. */
+        boolean[] attack = null;
+        if((m.schools != null) && (m.schools.length > 0)) {
+            attack = new boolean[4];
+            for(int c : m.schools) {
+                if((c >= 0) && (c < 4))
+                    attack[c] = true;
+            }
+        }
         return(new BeastMove(m.name, op, mine, Math.round(m.cooldownBase), rest,
-                             m.grievous, Double.NaN));
+                             m.grievous, Double.NaN, attack));
     }
 
     /**
