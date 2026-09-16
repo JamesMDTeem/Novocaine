@@ -16,6 +16,8 @@
  */
 
 import haven.combat.Advisor;
+import haven.combat.BeastMove;
+import haven.combat.Repertoire;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -229,6 +231,7 @@ public class CombatOptimizerCheck {
         worstHit();
         party();
         decay();
+        dealing();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -521,6 +524,74 @@ public class CombatOptimizerCheck {
         System.out.printf("      with decay: %d ticks, %.1f hp; without: %d ticks, %.1f hp%n",
                           with.get(0).ticks, with.get(0).hpLost, without.get(0).ticks,
                           without.get(0).hpLost);
+    }
+
+    /**
+     * The deal when what a creature throws depends on the state - Repertoire.pick and StateTree.
+     *
+     * A fixed mix must deal exactly as it always did. A mix that moves with the state must not
+     * deal a debt from before it moved: owed "today's share times every action so far", a card
+     * that was 0% while we stood shut and is 50% once green opens would be thrown on every action
+     * until it caught up.
+     */
+    static void dealing() {
+        System.out.println("\nwhat a creature throws, given the state it is in");
+        BeastMove a = new BeastMove("a", new double[] {5, 0, 0, 0}, 10, 30, new double[4], 0, 0.8);
+        BeastMove b = new BeastMove("b", new double[] {0, 5, 0, 0}, 10, 30, new double[4], 0, 0.8);
+        BeastMove c = new BeastMove("c", new double[] {0, 0, 5, 0}, 10, 30, new double[4], 0, 0.8);
+        Repertoire fixed = new Repertoire(new BeastMove[] {a, b, c}, new double[] {0.25, 0.5, 0.25},
+                                          null, 0, null, null);
+        int[] plain = new int[3], owed = new int[fixed.tallySize()];
+        boolean same = true;
+        for(int step = 0; step < 200; step++) {
+            int p = fixed.pick(null, null, step, plain), q = fixed.pick(null, null, step, owed);
+            plain[p]++;
+            owed[q]++;
+            same &= (p == q);
+        }
+        check("a fixed mix deals the same whether owed is carried or not", same, true);
+
+        /* A tree on our green: shut, the creature throws only card a; open past 30, a and b alike. */
+        Repertoire.StateTree tree = new Repertoire.StateTree(
+            new int[] {0, -1, -1}, new double[] {30, 0, 0}, new int[] {1, 0, 0}, new int[] {2, 0, 0},
+            new double[][] {null, {0.5, 0.5}, {1.0, 0.0}});
+        Repertoire split = new Repertoire(new BeastMove[] {a, b}, new double[] {0.5, 0.5}, null, 0,
+                                          null, null, null, tree);
+        Combatant shut = me(), open = me(), them = foe(400, 20);
+        open.openings[Formulas.GREEN] = 50;
+        check("the tree reads our green shut", split.mixNow(shut, them)[0], 1.0);
+        check("  and open", split.mixNow(open, them)[1], 0.5);
+        int[] tally = new int[split.tallySize()];
+        for(int step = 0; step < 20; step++)
+            tally[split.pick(shut, them, step, tally)]++;
+        int bAfter = 0;
+        for(int step = 20; step < 30; step++) {
+            int k = split.pick(open, them, step, tally);
+            tally[k]++;
+            if(k == 1)
+                bAfter++;
+        }
+        check("  once green opens, b takes its share and not the debt of twenty shut actions",
+              (bAfter >= 4) && (bAfter <= 6), true);
+        System.out.printf("      b thrown %d of the first 10 actions after green opened%n", bAfter);
+
+        /* The whole side at once: its_open counts ITS colours standing at 20 or more. One colour at
+         * 60 is one; red at 60 and green at 30 are two. */
+        Repertoire.StateTree twoOpen = new Repertoire.StateTree(
+            new int[] {15, -1, -1}, new double[] {1, 0, 0}, new int[] {1, 0, 0}, new int[] {2, 0, 0},
+            new double[][] {null, {0.6, 0.4}, {1.0, 0.0}});
+        Repertoire wolfish = new Repertoire(new BeastMove[] {a, b}, new double[] {0.9, 0.1}, null, 0,
+                                            null, null, null, twoOpen);
+        Combatant oneColour = foe(400, 20), twoColours = foe(400, 20);
+        oneColour.openings[Formulas.RED] = 60;
+        twoColours.openings[Formulas.RED] = 60;
+        twoColours.openings[Formulas.GREEN] = 30;
+        check("one colour standing is one", wolfish.mixNow(me(), oneColour)[1], 0.0);
+        check("  and a second makes two, whichever it is", wolfish.mixNow(me(), twoColours)[1], 0.4);
+        Combatant yellowInstead = foe(400, 20);
+        yellowInstead.openings[Formulas.RED] = 60;
+        yellowInstead.openings[Formulas.YELLOW] = 30;
+        check("  yellow counts as green does", wolfish.mixNow(me(), yellowInstead)[1], 0.4);
     }
 
     /* EVERY FIXTURE HERE HAS DECAY OFF, and on purpose. These cases test the SEARCH - that the

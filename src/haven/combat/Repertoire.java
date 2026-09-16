@@ -45,6 +45,79 @@ public final class Repertoire {
      */
     public final Gate[] gates;
 
+    /**
+     * What it throws given the fight as it stands, where the corpus supports it; null otherwise.
+     *
+     * A small decision tree over both sides' openings and initiative, published by the estimator
+     * only where it beat the in-reach mix on decisions it was not grown on. Read through
+     * {@link #mixNow}, which falls back to the learned split and the mix when it is absent.
+     */
+    public final StateTree tree;
+
+    /**
+     * A decision tree over the state a simulated fight carries.
+     *
+     * Nodes are flat arrays: an interior node tests one feature against a cut and goes to
+     * {@code above} or {@code below}; a leaf carries a mix over this repertoire's cards. The
+     * features are the estimator's STATE_FEATURES, in points for openings and in points of
+     * initiative - OUR initiative against the creature and ITS against us, per relation.
+     */
+    public static final class StateTree {
+        public static final String[] FEATURES = {"our_g", "our_b", "our_y", "our_r",
+                                                 "its_g", "its_b", "its_y", "its_r",
+                                                 "our_ip", "its_ip",
+                                                 "our_max", "our_sum", "our_open",
+                                                 "its_max", "its_sum", "its_open"};
+        /** An opening counted as standing for our_open / its_open - the estimator's STATE_OPEN. */
+        public static final double OPEN = 20.0;
+        /** Feature index per node, or -1 for a leaf. */
+        public final int[] feature;
+        public final double[] cut;
+        public final int[] above, below;
+        /** A leaf's mix over the repertoire's cards, null on an interior node. */
+        public final double[][] leafMix;
+
+        public StateTree(int[] feature, double[] cut, int[] above, int[] below, double[][] leafMix) {
+            this.feature = feature;
+            this.cut = cut;
+            this.above = above;
+            this.below = below;
+            this.leafMix = leafMix;
+        }
+
+        /** The leaf's mix for this state, or null when a side is missing. Node 0 is the root. */
+        public double[] eval(Combatant me, Combatant self) {
+            if((me == null) || (self == null))
+                return(null);
+            int n = 0;
+            while(feature[n] >= 0) {
+                n = (value(feature[n], me, self) > cut[n]) ? above[n] : below[n];
+            }
+            return(leafMix[n]);
+        }
+
+        static double value(int f, Combatant me, Combatant self) {
+            if(f < 4)
+                return(me.openings[f]);
+            if(f < 8)
+                return(self.openings[f - 4]);
+            if(f < 10)
+                return((f == 8) ? me.ip : self.ip);
+            /* The whole side at once - greatest, total, how many colours stand. See the estimator's
+             * STATE_FEATURES for why these are offered beside the colours. */
+            double[] o = (f < 13) ? me.openings : self.openings;
+            double max = 0, sum = 0, open = 0;
+            for(int c = 0; c < 4; c++) {
+                max = Math.max(max, o[c]);
+                sum += o[c];
+                if(o[c] >= OPEN)
+                    open++;
+            }
+            int k = (f - 10) % 3;
+            return((k == 0) ? max : ((k == 1) ? sum : open));
+        }
+    }
+
     /** A reproduced threshold: boost {@code card}'s share by {@code lift} once past the cut. */
     public static final class Gate {
         public final int card, colour;
@@ -67,6 +140,12 @@ public final class Repertoire {
 
     public Repertoire(BeastMove[] cards, double[] mix, String condFeature, double condCut,
                       double[] whenMix, double[] elseMix, Gate[] gates) {
+        this(cards, mix, condFeature, condCut, whenMix, elseMix, gates, null);
+    }
+
+    public Repertoire(BeastMove[] cards, double[] mix, String condFeature, double condCut,
+                      double[] whenMix, double[] elseMix, Gate[] gates, StateTree tree) {
+        this.tree = tree;
         this.cards = cards;
         this.mix = mix;
         this.condFeature = condFeature;
@@ -118,8 +197,13 @@ public final class Repertoire {
         return(out);
     }
 
-    /** The unconditional or learned split, before any reproduced threshold gate. */
+    /** The state tree, else the unconditional or learned split, before any reproduced gate. */
     private double[] baseMix(Combatant me, Combatant self) {
+        if(tree != null) {
+            double[] t = tree.eval(me, self);
+            if((t != null) && (t.length == mix.length))
+                return(t);
+        }
         if((condFeature == null) || (whenMix == null) || (elseMix == null))
             return(mix);
         double v;
@@ -162,6 +246,29 @@ public final class Repertoire {
      */
     public int pick(Combatant me, Combatant self, int step, int[] thrown) {
         double[] m = mixNow(me, self);
+        /* OWED ACTION BY ACTION, WHEN THE CALLER CARRIES IT. A tally twice the card count holds,
+         * past the counts, what each card is owed so far in fixed point - each action adds the
+         * share of the mix IN FORCE AT THAT ACTION. The plain rule below owes a card
+         * mix * (step + 1), today's share applied to every action already taken, and once the mix
+         * moves with the state that is a debt nobody ran up: a bat that threw no Wingbeat while we
+         * stood shut would owe it 35% of the whole fight the moment green opened, and throw
+         * nothing else until it caught up. For a mix that never moves the two are the same deal. */
+        if((thrown != null) && (thrown.length >= 2 * m.length)) {
+            int n = m.length;
+            int best = -1;
+            double bestDeficit = 0;
+            for(int i = 0; (i < cards.length) && (i < n); i++) {
+                thrown[n + i] += (int)Math.round(m[i] * OWED_SCALE);
+                if(m[i] <= 0)
+                    continue;
+                double deficit = (thrown[n + i] / OWED_SCALE) - thrown[i];
+                if((best < 0) || (deficit > bestDeficit)) {
+                    best = i;
+                    bestDeficit = deficit;
+                }
+            }
+            return((best < 0) ? 0 : best);
+        }
         int[] counts = ((thrown != null) && (thrown.length >= m.length))
             ? thrown : replay(m, step);
         int best = -1;
@@ -204,6 +311,14 @@ public final class Repertoire {
             counts[best]++;
         }
         return(counts);
+    }
+
+    /** Fixed-point scale for what a card is owed; a fight of 20000 actions still fits an int. */
+    static final double OWED_SCALE = 100000.0;
+
+    /** The tally a planner carries for this repertoire: counts, then what each card is owed. */
+    public int tallySize() {
+        return(usable() ? (2 * cards.length) : 0);
     }
 
     private static double biggest(Combatant c) {

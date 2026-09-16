@@ -1810,7 +1810,64 @@ public final class Pack {
             }
         }
         return(new Repertoire(cards.toArray(new BeastMove[0]), mix, feat, cut, when, other,
-                              gates));
+                              gates, stateTree(j.optJSONObject("state_model"), cards)));
+    }
+
+    /**
+     * The estimator's state tree, flattened onto this repertoire's cards; null where there is none.
+     *
+     * A leaf's mix is keyed by card name and was smoothed over every card the species threw; the
+     * repertoire keeps only the cards known to do something, so each leaf is renormalised over
+     * those. A leaf left with nothing - every card it names dropped - makes the tree unusable
+     * rather than silently empty.
+     */
+    static Repertoire.StateTree stateTree(JSONObject sm, List<BeastMove> cards) {
+        JSONObject root = (sm == null) ? null : sm.optJSONObject("tree");
+        if(root == null)
+            return(null);
+        List<JSONObject> nodes = new ArrayList<JSONObject>();
+        nodes.add(root);
+        for(int i = 0; i < nodes.size(); i++) {
+            JSONObject nd = nodes.get(i);
+            if(nd.has("feature")) {
+                nodes.add(nd.getJSONObject("above"));
+                nodes.add(nd.getJSONObject("below"));
+            }
+        }
+        int n = nodes.size();
+        int[] feature = new int[n], above = new int[n], below = new int[n];
+        double[] cut = new double[n];
+        double[][] leaf = new double[n][];
+        java.util.Map<JSONObject, Integer> at = new java.util.IdentityHashMap<JSONObject, Integer>();
+        for(int i = 0; i < n; i++)
+            at.put(nodes.get(i), Integer.valueOf(i));
+        List<String> names = java.util.Arrays.asList(Repertoire.StateTree.FEATURES);
+        for(int i = 0; i < n; i++) {
+            JSONObject nd = nodes.get(i);
+            if(nd.has("feature")) {
+                feature[i] = names.indexOf(nd.getString("feature"));
+                if(feature[i] < 0)
+                    return(null);
+                cut[i] = nd.getDouble("cut");
+                above[i] = at.get(nd.getJSONObject("above")).intValue();
+                below[i] = at.get(nd.getJSONObject("below")).intValue();
+            } else {
+                feature[i] = -1;
+                JSONObject mx = nd.optJSONObject("mix");
+                double[] m = new double[cards.size()];
+                double tot = 0;
+                for(int c = 0; c < m.length; c++) {
+                    m[c] = (mx == null) ? 0 : mx.optDouble(cards.get(c).name, 0);
+                    tot += m[c];
+                }
+                if(!(tot > 0))
+                    return(null);
+                for(int c = 0; c < m.length; c++)
+                    m[c] /= tot;
+                leaf[i] = m;
+            }
+        }
+        return(new Repertoire.StateTree(feature, cut, above, below, leaf));
     }
 
     /** A [[card, count], ...] side of a rule, as shares over the cards we kept. */

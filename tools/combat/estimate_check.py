@@ -2228,6 +2228,45 @@ def attack_colours():
     check("  and the card carries the colours it was read on", dmg.get("colours"), "yr")
 
 
+def state_models():
+    """A tree for what a species throws given the state, published only where it earns its place."""
+    print("\nwhat it throws, given the state")
+    import random
+    rnd = random.Random(1)
+
+    def row(card, our_g, our_y, alone=True):
+        return (card, 0, 0, 10, None, our_g, 0, our_y, 0, 0, 0, 0, 0, None, alone, True, "bracket")
+    planted = []
+    for _ in range(600):
+        g, y = rnd.choice([0, 0, 10, 40, 60]), rnd.choice([0, 20, 50])
+        card = ("Wingbeat" if rnd.random() < 0.7 else "Fell Scratch") if g > 30 else "Fell Scratch"
+        planted.append(row(card, g, y))
+    m = estimate.state_model({"foe_choice": planted})
+    check("a rule in the decisions is found", (m is not None) and (m["tree"].get("feature") == "our_g"), True)
+    check("  and it earns its place on decisions it was not grown on",
+          (m is not None) and (m["held_out_gain_bits"] > 0.3), True)
+    noise = [row(rnd.choice(["Wingbeat", "Fell Scratch"]), rnd.choice([0, 40]), 0) for _ in range(600)]
+    check("no rule, no model", estimate.state_model({"foe_choice": noise}), None)
+    # Openings in context: a wolf restores once TWO of its colours stand. In the decisions red is
+    # always open and green is the second colour, so "its green" and "two colours open" fit alike;
+    # the whole-state reading must be the one taken, or a deck opening yellow would never see it.
+    def wolf(card, its_g, its_r):
+        return (card, 0, 0, 10, None, 0, 0, 0, 0, its_g, 0, 0, its_r, None, True, True, "bracket")
+    ctx = []
+    for _ in range(600):
+        g = rnd.choice([0, 0, 0, 30, 45])
+        restore = (g >= 20) and (rnd.random() < 0.5)
+        ctx.append(wolf("Bristle" if restore else "Fell Scratch", g, rnd.choice([55, 60, 70])))
+    wm = estimate.state_model({"foe_choice": ctx})
+    # "Two colours at 20" and "a total over 70" separate these decisions alike - red never falls
+    # below 55 here - and either reads a yellow opening as it reads a green one. What must not be
+    # taken is one colour.
+    check("  a rule on two colours standing is read on the whole side, not one colour",
+          (wm is not None) and (wm["tree"].get("feature") in ("its_open", "its_sum", "its_max")), True)
+    check("  and a party fight's decisions are not learned from",
+          estimate.state_model({"foe_choice": [r[:14] + (False,) + r[15:] for r in planted]}), None)
+
+
 def tactics():
     """Re-aggro's price, and whether a speed reading means anything.
 
@@ -2688,6 +2727,7 @@ def main():
     foe_skill()
     foe_policy()
     attack_colours()
+    state_models()
     tactics()
     armour()
     buckets()

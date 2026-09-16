@@ -930,6 +930,31 @@ public class CombatPackCheck {
             }
         }
         check("a species' card carries that species' own blow", (ownChecked > 0) && (ownMatched == ownChecked), true);
+
+        /* AND WHAT IT THROWS, GIVEN THE FIGHT AS IT STANDS - Repertoire.StateTree, published per
+         * species only where it beat the in-reach mix on decisions it was not grown on. Found by shape
+         * rather than named: some creature carries one, and its mix must move with our openings. */
+        int trees = 0, moves = 0;
+        for(Pack.Opponent o : foes.values()) {
+            if((o.threat == null) || (o.threat.cards == null) || (o.threat.cards.tree == null))
+                continue;
+            trees++;
+            Combatant shutUs = new Combatant("us"), creature = new Combatant("it");
+            double[] closed = o.threat.cards.mixNow(shutUs, creature);
+            boolean moved = false;
+            for(int colour = 0; colour < 4; colour++) {
+                Combatant openUs = new Combatant("us");
+                openUs.openings[colour] = 60;
+                double[] m = o.threat.cards.mixNow(openUs, creature);
+                for(int i = 0; i < m.length; i++)
+                    moved |= Math.abs(m[i] - closed[i]) > 1e-9;
+            }
+            if(moved)
+                moves++;
+        }
+        check("some creature carries a state model", trees > 0, true);
+        check("  and what it throws moves with our openings in some of them", moves > 0, true);
+        System.out.printf("      %d creature(s) carry a state model; %d answer our openings%n", trees, moves);
         check("  and the colours its blow reads", coloured, ownChecked);
         System.out.printf("      %d species-card pairs carry their own coefficient%n", ownChecked);
 

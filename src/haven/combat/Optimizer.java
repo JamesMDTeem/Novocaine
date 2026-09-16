@@ -437,7 +437,7 @@ public final class Optimizer {
     /** How many cards this opponent's repertoire holds, or 0 when it throws an average. */
     private static int cardCount(FoeModel m) {
         return(((m == null) || (m.cards == null) || !m.cards.usable())
-               ? 0 : m.cards.cards.length);
+               ? 0 : m.cards.tallySize());
     }
 
     /**

@@ -3082,8 +3082,13 @@ def _collect_file(p, moves, opens):
                 _m4 = _mine if (_mine is not None) else (None, None, None, None)
                 _since = _act.get("since")
                 rec["foe_choice_by"][eng.gob][(log.header or {}).get("char")].append(
+                    # THEIR INITIATIVE FIRST, as the bracket rows write it. The foeact row
+                    # carries the client relation's own pair, where `ip` is OURS against the
+                    # creature and `oip` is ITS against us; copied straight across, every
+                    # foeact decision read our points as its own (2026-09-16: 48 of 111
+                    # foeact rows beside a state sample match ip=myip, oip=foeip).
                     (_act.get("name") or fm.get("name") or fm.get("move"),
-                     _act.get("ip"), _act.get("oip"), _act.get("dist"), None,
+                     _act.get("oip"), _act.get("ip"), _act.get("dist"), None,
                      _m4[0], _m4[1], _m4[2], _m4[3],
                      _o[0], _o[1], _o[2], _o[3],
                      None if (_since is None or _since < 0)
@@ -4824,6 +4829,172 @@ def foe_policy_rule(rec):
             "otherwise_pressure": branch_pressure(rec, Counter(
                 r[0] for r in rows if (r[idx] is not None) and (r[idx] <= cut))),
             "pooled_pressure": branch_pressure(rec, whole)}
+
+
+# THE STATE-AWARE BEHAVIOUR MODEL (2026-09-16). What a creature throws depends on the fight as it
+# stands, and a mix - even the in-reach one - averages that away. Held out with scikit-learn on
+# solo in-reach decisions, the exact state still explained 0.52 bits of a bat's choice (on OUR green
+# and yellow), 0.54 of a cave angler's and 0.20 of a boar's. A small decision tree over what a
+# simulated fight carries - both sides' four openings and both sides' initiative - is what the pack
+# publishes: it reads like the hand-written logic animal AI is, it matched boosting where it mattered,
+# and the simulator can walk it without a library. Written here in plain Python so regenerating the
+# pack needs nothing beyond what it always did.
+#
+# Distance is left out on purpose: the planners simulate a standing fight inside reach, and the
+# decisions are already restricted to inside it.
+#
+# AND THE OPENINGS IN CONTEXT, NOT ONE COLOUR AT A TIME (James, 2026-09-16: "what colours are dropped,
+# and what are the other colours at at that point?"). The first trees split the wolf on "its green over
+# 20", and its decisions say what that stood for: it throws Fell Scratch at a median of 0/0/0/59 open,
+# Bristle at 32/0/0/72 and Rampant Rage at 44/0/0/59 - red is always open, because our Quick Barrage
+# opens red, and it restores once a SECOND colour stands. Held out, "its green > 20" gains 0.239 bits and
+# "two of its colours at 20 or more" 0.229: the corpus cannot tell them apart, because nobody has opened
+# a wolf's blue or yellow, and a planner that opened yellow instead would never see the restore coming
+# under the first reading. So the whole state is offered - greatest, total and how many colours stand
+# at STATE_OPEN or more, on each side - and a single colour has to beat the best of those by
+# STATE_COLOUR_MARGIN to be the split. Where it does it is real: a bat's choice turns on OUR yellow,
+# 0.191 bits against 0.153 for our greatest opening, because Vampirism attacks yellow.
+STATE_FEATURES = ("our_g", "our_b", "our_y", "our_r", "its_g", "its_b", "its_y", "its_r",
+                  "our_ip", "its_ip", "our_max", "our_sum", "our_open", "its_max", "its_sum",
+                  "its_open")
+# The colour-specific features, which must earn their place over the whole-state ones.
+_STATE_COLOUR = frozenset(range(8))
+STATE_OPEN = 20
+STATE_COLOUR_MARGIN = 0.01
+# Where each raw feature sits in a foe_choice row: ours at 5-8, its at 9-12, its initiative at 1, ours at 2.
+_STATE_INDEX = (5, 6, 7, 8, 9, 10, 11, 12, 2, 1)
+
+
+def _state_vector(r):
+    """A decision's features, in STATE_FEATURES order, from its foe_choice row."""
+    raw = [float(r[i]) for i in _STATE_INDEX]
+    ours, its = raw[0:4], raw[4:8]
+    return tuple(raw + [max(ours), sum(ours), float(sum(1 for x in ours if x >= STATE_OPEN)),
+                        max(its), sum(its), float(sum(1 for x in its if x >= STATE_OPEN))])
+STATE_DEPTH = 3
+STATE_FOLDS = 5
+STATE_MIN_LEAF = 30
+STATE_MIN_ROWS = 200
+# Held-out bits a tree must gain over the in-reach mix before the pack carries it.
+STATE_MIN_GAIN = 0.05
+# Pseudo-counts pulling a leaf toward its parent, so a leaf of thirty is not certain of anything.
+STATE_PRIOR = 5.0
+
+
+def _entropy_bits(counts):
+    n = float(sum(counts.values()))
+    return -sum((c / n) * math.log(c / n, 2) for c in counts.values() if c) if n else 0.0
+
+
+def _smoothed(counts, prior, cards):
+    n = float(sum(counts.values()))
+    return dict((c, (counts.get(c, 0) + STATE_PRIOR * prior.get(c, 0.0)) / (n + STATE_PRIOR))
+                for c in cards)
+
+
+def _fit_tree(X, y, idx, cards, prior, depth):
+    counts = Counter(y[i] for i in idx)
+    here = _smoothed(counts, prior, cards)
+    if depth == 0 or len(idx) < 2 * STATE_MIN_LEAF:
+        return {"mix": here, "n": len(idx)}
+    base = _entropy_bits(counts)
+    best = None
+    best_whole = None
+    for f in range(len(STATE_FEATURES)):
+        vals = sorted(set(X[i][f] for i in idx))
+        if len(vals) < 2:
+            continue
+        cuts = set()
+        for q in (0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9):
+            cuts.add(vals[int(q * (len(vals) - 1))])
+        for cut in sorted(cuts):
+            hi = [i for i in idx if X[i][f] > cut]
+            lo = [i for i in idx if X[i][f] <= cut]
+            if len(hi) < STATE_MIN_LEAF or len(lo) < STATE_MIN_LEAF:
+                continue
+            g = base - (len(hi) * _entropy_bits(Counter(y[i] for i in hi))
+                        + len(lo) * _entropy_bits(Counter(y[i] for i in lo))) / float(len(idx))
+            if (best is None) or (g > best[0] + 1e-12):
+                best = (g, f, cut, hi, lo)
+            if (f not in _STATE_COLOUR) and ((best_whole is None) or (g > best_whole[0] + 1e-12)):
+                best_whole = (g, f, cut, hi, lo)
+    # A colour of its own only where it clearly beats the whole-state reading - see STATE_FEATURES.
+    if (best is not None) and (best[1] in _STATE_COLOUR) and (best_whole is not None) \
+            and (best[0] < best_whole[0] + STATE_COLOUR_MARGIN):
+        best = best_whole
+    if (best is None) or (best[0] <= 1e-9):
+        return {"mix": here, "n": len(idx)}
+    _g, f, cut, hi, lo = best
+    return {"feature": STATE_FEATURES[f], "cut": cut, "n": len(idx),
+            "above": _fit_tree(X, y, hi, cards, here, depth - 1),
+            "below": _fit_tree(X, y, lo, cards, here, depth - 1)}
+
+
+def _walk(tree, x):
+    while "feature" in tree:
+        tree = tree["above"] if x[STATE_FEATURES.index(tree["feature"])] > tree["cut"] else tree["below"]
+    return tree["mix"]
+
+
+def state_model(rec):
+    """A small decision tree for what this species throws, given the fight as it stands, or None.
+
+    Fit on SOLO decisions inside its reach (a creature in a party fight may be answering somebody
+    else's openings).
+
+    CROSS-VALIDATED, NOT ONE SPLIT. The first version grew on the older 60% and scored the newer 40%,
+    and on a couple of hundred decisions that is one noisy draw: it published a reindeer tree at 0.226
+    bits that five contiguous folds put at -0.009 to +0.033, and rejected a cave angler that the same
+    folds put at +0.28 in all five. So every depth from 1 to STATE_DEPTH is scored over STATE_FOLDS
+    contiguous folds against the in-reach mix of the other four; the best mean wins, and it is
+    published only if that mean is at least STATE_MIN_GAIN AND more than one standard error above
+    zero. Not "most folds positive": a rule about a rare state - a wolf restores once two of its
+    colours stand, and some stretches of fights never open two - loses a little in the folds without
+    that state and is still the rule. The tree the pack carries is regrown on every decision.
+    """
+    rows = in_reach([r for r in (rec.get("foe_choice") or ()) if r and r[0] and r[14]],
+                    attack_reach(rec), 3)
+    rows = [r for r in rows if all(r[i] is not None for i in _STATE_INDEX)]
+    if len(rows) < STATE_MIN_ROWS:
+        return None
+    X = [_state_vector(r) for r in rows]
+    y = [r[0] for r in rows]
+    cards = sorted(set(y))
+    uniform = dict((c, 1.0 / len(cards)) for c in cards)
+    n = len(rows)
+    best = None
+    for depth in range(1, STATE_DEPTH + 1):
+        gains = []
+        for k in range(STATE_FOLDS):
+            lo, hi = k * n // STATE_FOLDS, (k + 1) * n // STATE_FOLDS
+            test = list(range(lo, hi))
+            train = [i for i in range(n) if (i < lo) or (i >= hi)]
+            prior = _smoothed(Counter(y[i] for i in train), uniform, cards)
+            tree = _fit_tree(X, y, train, cards, prior, depth)
+            bits = lambda model: sum(-math.log(max(model(X[i]).get(y[i], 0.0), 1e-6), 2)
+                                     for i in test) / float(len(test))
+            gains.append(bits(lambda x: prior) - bits(lambda x: _walk(tree, x)))
+        mean = sum(gains) / len(gains)
+        sd = math.sqrt(sum((g - mean) ** 2 for g in gains) / (len(gains) - 1))
+        if (best is None) or (mean > best[0]):
+            best = (mean, sd / math.sqrt(len(gains)), depth, gains)
+    mean, se, depth, gains = best
+    if (mean < STATE_MIN_GAIN) or (mean - se <= 0):
+        return None
+    base = _entropy_bits(Counter(y))
+    full = _fit_tree(X, y, list(range(n)), cards, _smoothed(Counter(y), uniform, cards), depth)
+
+    def rounded(node):
+        if "feature" in node:
+            return {"feature": node["feature"], "cut": node["cut"], "n": node["n"],
+                    "above": rounded(node["above"]), "below": rounded(node["below"])}
+        return {"mix": dict((c, round(p, 4)) for c, p in node["mix"].items()), "n": node["n"]}
+    return {"features": list(STATE_FEATURES), "tree": rounded(full), "n": n, "depth": depth,
+            "base_bits": round(base, 3),
+            "held_out_gain_bits": round(mean, 3), "held_out_se_bits": round(se, 3),
+            "fold_gains_bits": [round(g, 3) for g in gains],
+            "source": "solo decisions inside reach; %d contiguous folds; depth %d, leaves of %d or more"
+                      % (STATE_FOLDS, depth, STATE_MIN_LEAF)}
 
 
 def foe_policy(rec):
@@ -7062,6 +7233,7 @@ def write_pack(per, moves):
         entry["defence_weight_late"] = wd_consensus(rec)
         entry["policy"] = foe_policy(rec)
         entry["policy_model"] = policy_model(rec)
+        entry["state_model"] = state_model(rec)
         entry["policy_rule"] = foe_policy_rule(rec)
         entry["relative_speed"] = relative_speed(rec)
         # What it does to us. Everything else in this entry is our attacks on it.

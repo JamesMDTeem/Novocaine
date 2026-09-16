@@ -186,7 +186,7 @@ public final class PartyPlanner {
             us0[i] = party[i].fighter.copy();
             ip0[i] = us0[i].ip;
         }
-        int cards = ((model.cards == null) || !model.cards.usable()) ? 0 : model.cards.cards.length;
+        int cards = ((model.cards == null) || !model.cards.usable()) ? 0 : model.cards.tallySize();
         long next0 = (model.period == Long.MAX_VALUE) ? Long.MAX_VALUE : model.period;
         Combatant f0 = foe.copy();
         double foeHp0 = f0.hp;
