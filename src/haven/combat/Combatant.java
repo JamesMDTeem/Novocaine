@@ -104,19 +104,35 @@ public final class Combatant {
     /**
      * Openings standing on this combatant, 0..100, indexed by {@link Formulas#GREEN} and friends.
      *
-     * Not decayed here, and that is a gap rather than a finding. Openings plainly do decay: the
-     * bee-swarm log drops 43 to 42 and 67 to 66 mid-fight, and drops the attacker's own 7 to 6,
-     * 12 to 11 and 18 to 17. But the rate will not resolve. Those five drops imply anything from
-     * 0.9 to 4.1 points per second with no consistent dependence on the standing value, and the
-     * badger log flatly contradicts all of them by holding 75 and 42 unchanged for 6.1 seconds
-     * and a boar log by holding 25, 24 and 17 for 3.7.
-     *
-     * So there is a rule here that this corpus cannot see - most likely a condition on when the
-     * timer runs at all rather than a rate. Simulating no decay is wrong in a knowable direction:
-     * it overstates a long fight's accumulated openings, and therefore overstates damage late in
-     * one. Guessing a constant would be wrong in an unknowable direction, which is worse.
+     * They fade while nothing lands - see {@link #decay} and Formulas.OPENING_DECAY_PER_TICK,
+     * where the rate that would not resolve here was finally measured. It would not resolve
+     * because it was being fitted as a time constant, and it is a rate.
      */
     public final double[] openings = new double[4];
+
+    /**
+     * How fast this combatant's openings fade, in points per tick.
+     *
+     * The measured rate by default. A field rather than the constant because it is a property of
+     * what this combatant is doing: a combatant on the move does not decay at all (0.006 points a
+     * second theirs and 0.069 ours while moving, against 0.48 standing), and a check that isolates
+     * the search from decay says so here rather than in a global.
+     */
+    public double decayPerTick = Formulas.OPENING_DECAY_PER_TICK;
+
+    /**
+     * Openings fading over this many ticks in which nothing landed on this combatant.
+     *
+     * Linear and per colour, stopping at zero - see Formulas.OPENING_DECAY_PER_TICK. A caller
+     * advances this across the gaps it simulates; nothing here knows what time it is.
+     */
+    public void decay(long ticks) {
+        if((ticks <= 0) || !(decayPerTick > 0))
+            return;
+        double d = decayPerTick * ticks;
+        for(int c = 0; c < 4; c++)
+            openings[c] = (openings[c] > d) ? (openings[c] - d) : 0.0;
+    }
 
     /**
      * What this combatant's held stance opens on whoever attacks it.
@@ -309,6 +325,7 @@ public final class Combatant {
         c.attackMult = attackMult;
         c.ip = ip;
         c.readyAt = readyAt;
+        c.decayPerTick = decayPerTick;
         System.arraycopy(openings, 0, c.openings, 0, 4);
         System.arraycopy(whenAttacked, 0, c.whenAttacked, 0, 4);
         return(c);

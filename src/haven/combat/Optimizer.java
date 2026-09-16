@@ -480,6 +480,10 @@ public final class Optimizer {
          * serialisation is deliberately left in place; this records the hypothesis and its
          * direction rather than changing behaviour. */
         long ready = Math.max(tick, me.readyAt);
+        /* OPENINGS FADE ACROSS EVERY GAP the clock crosses - before each of their actions and
+         * before ours - on everybody, since each standing opening decays on its own. See
+         * Formulas.OPENING_DECAY_PER_TICK. */
+        long clock = tick;
         while(me.alive()) {
             /* Whichever of them is due first. A dead one is due never, which is the whole
              * of why a crowd gets quieter as it dies - the old pooled model kept swinging
@@ -499,6 +503,8 @@ public final class Optimizer {
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
             long[] gap = new long[1];
+            decay(me, foes, foeNext[who] - clock);
+            clock = Math.max(clock, foeNext[who]);
             /* The relation that is acting is the one whose initiative a rule on ours reads. */
             me.ip = myIp[who];
             hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who],
@@ -522,6 +528,7 @@ public final class Optimizer {
         tick = ready;
         if(tick > maxTicks)
             return(null);
+        decay(me, foes, ready - clock);
 
         /* WE DIED WAITING, AND THAT IS A RESULT RATHER THAN A DEAD END.
          *
@@ -621,6 +628,15 @@ public final class Optimizer {
         List<Move> path = new ArrayList<Move>(n.path);
         path.add(m);
         return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown, myIp, wounds));
+    }
+
+    /** Everyone's openings, faded across a gap of this many ticks. */
+    static void decay(Combatant me, Combatant[] foes, long ticks) {
+        if(ticks <= 0)
+            return;
+        me.decay(ticks);
+        for(Combatant f : foes)
+            f.decay(ticks);
     }
 
     /**

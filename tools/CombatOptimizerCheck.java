@@ -228,6 +228,7 @@ public class CombatOptimizerCheck {
         survive();
         worstHit();
         party();
+        decay();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -476,8 +477,61 @@ public class CombatOptimizerCheck {
                           pFast.ticks, pFast.totalLost, pair.get(0).ticks, pair.get(0).hpLost[0]);
     }
 
+    /**
+     * Openings fade while nothing lands - see Formulas.OPENING_DECAY_PER_TICK.
+     *
+     * The rule on one combatant, and then the searches with it switched ON: every other case in
+     * this file switches it off (see me() and foe()), so this is where a planner that stopped
+     * applying it, or applied it twice, would show.
+     */
+    static void decay() {
+        System.out.println("\nopenings fade while nothing lands");
+        Combatant c = new Combatant("still");
+        c.openings[Formulas.GREEN] = 60;
+        c.openings[Formulas.BLUE] = 10;
+        c.openings[Formulas.RED] = 2;
+        c.decay(100);
+        double d = 0.49 * 0.06 * 100;
+        near("  a high opening loses a fixed number of points", c.openings[Formulas.GREEN], 60 - d, 1e-9);
+        near("  and a low one loses the same, not a share", c.openings[Formulas.BLUE], 10 - d, 1e-9);
+        check("  and none goes below nothing", c.openings[Formulas.RED], 0.0);
+        Combatant moving = new Combatant("moving");
+        moving.decayPerTick = 0;
+        moving.openings[Formulas.GREEN] = 60;
+        moving.decay(100);
+        check("one on the move does not decay", moving.openings[Formulas.GREEN], 60.0);
+        check("  and a copy keeps its rate", moving.copy().decayPerTick, 0.0);
+
+        double[] press = {14, 0, 0, 0};
+        FoeModel steady = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        List<Move> deck = java.util.Arrays.asList(barrage(), fullCircle(), quickDodge());
+        Combatant us = me(), them = foe(400, 20);
+        us.decayPerTick = them.decayPerTick = Formulas.OPENING_DECAY_PER_TICK;
+        List<Optimizer.Plan> with = Optimizer.search(us, them, deck, steady, 60, 2500);
+        List<Optimizer.Plan> without = Optimizer.search(me(), foe(400, 20), deck, steady, 60, 2500);
+        List<PartyPlanner.Plan> party = PartyPlanner.search(
+            new PartyPlanner.Member[] {new PartyPlanner.Member("ZzxcuV3", us, deck)}, them, steady, 0,
+            null, 60, 2500);
+        check("with it on, a party of one still plans what the optimizer plans",
+              (party.get(0).ticks == with.get(0).ticks)
+              && (Math.abs(party.get(0).totalLost - with.get(0).hpLost) < 1e-9), true);
+        check("  and the fight is not the one planned without it",
+              (with.get(0).ticks != without.get(0).ticks)
+              || (Math.abs(with.get(0).hpLost - without.get(0).hpLost) > 1e-9), true);
+        System.out.printf("      with decay: %d ticks, %.1f hp; without: %d ticks, %.1f hp%n",
+                          with.get(0).ticks, with.get(0).hpLost, without.get(0).ticks,
+                          without.get(0).hpLost);
+    }
+
+    /* EVERY FIXTURE HERE HAS DECAY OFF, and on purpose. These cases test the SEARCH - that the
+     * frontier keeps a defensive line, that initiative's value flattens, that a narrow beam is
+     * caught - against a made-up creature whose numbers were chosen to make each trade exist.
+     * Measured decay is real and it shrinks exactly those trades: against this creature one
+     * Quick Dodge saved 20 hitpoints without it, and with it the undodged line already costs
+     * what the dodge used to buy. decay() tests the rule and the searches with it on. */
     static Combatant me() {
         Combatant c = new Combatant("ZzxcuV3");
+        c.decayPerTick = 0;
         c.str = 94; c.agi = 111; c.unarmed = 81; c.melee = 125;
         c.weaponDamage = 90; c.weaponQl = 28.68; c.weaponPen = 0.125;
         c.hp = c.maxHp = 300;
@@ -487,6 +541,7 @@ public class CombatOptimizerCheck {
 
     static Combatant foe(double hp, double skill) {
         Combatant c = new Combatant("target");
+        c.decayPerTick = 0;
         c.agi = 111;
         c.hp = c.maxHp = hp;
         c.blockSkill = skill;

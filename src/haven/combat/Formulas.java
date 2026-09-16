@@ -397,6 +397,31 @@ public final class Formulas {
         return(base / (observedTicks / ipf));
     }
 
+    /**
+     * Points a standing opening loses per server tick while nobody lands anything on it.
+     *
+     * MEASURED 2026-09-16 over 1464 solo fights at schema 12 and later: 49970 still, card-free
+     * sample pairs. Decay is LINEAR, not exponential - the rate is flat across levels (ours
+     * 0.52-0.60 points a second from 5 open to 49, theirs 0.34-0.74 from 5 to 100), and on the
+     * one-point drops a constant rate beats a proportional one by 319 AIC on our side and 187
+     * on theirs. That is why no time constant ever survived the brackets in issue #47: the
+     * implied tau rose with the opening because there was no tau. Both sides agree - 0.492
+     * points a second ours, 0.482 theirs - so one constant serves.
+     *
+     * Each colour on its own: when two or more stood open they all fell on the same sample 12%
+     * of the time ours and 1% theirs, which is what a continuous rate reads like through a
+     * display that truncates each colour to whole points at its own moment. No pause after a
+     * blow - drops arrive 120 ms after one. And NOT while moving: 0.069 points a second ours and
+     * 0.006 theirs with the holder in motion, so a planner of a standing fight applies it
+     * throughout.
+     *
+     * What this does not cover: a still lull longer than about three seconds, which ordinary
+     * fights almost never contain. Older logs show a badger holding 75 for 6.1 s and a boar
+     * holding for 3.7 s; they predate the speed fields, so whether the holder was moving cannot
+     * be told. The planner's gaps are one to three seconds, inside what was measured.
+     */
+    public static final double OPENING_DECAY_PER_TICK = 0.49 * 0.06;
+
     /** Server ticks are 0.06 seconds. Confirmed against observed gaps between repeated moves. */
     public static double ticksToSeconds(double ticks) {
         return(ticks * 0.06);

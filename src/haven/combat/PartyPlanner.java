@@ -260,6 +260,8 @@ public final class PartyPlanner {
         double[] weights = new double[us.length];
         long[] gap = new long[1];
         long lastAct = n.tick;
+        /* Openings fade across every gap, as in Optimizer.step. */
+        long clock = n.tick;
         while(us[who].alive() && foe.alive() && (foeNext <= ready) && (foeNext < maxTicks)) {
             int t = target(us, front);
             if(t < 0)
@@ -267,6 +269,8 @@ public final class PartyPlanner {
             for(int i = 0; i < us.length; i++)
                 weights[i] = us[i].defenceWeight();
             /* The relation that is acting is the one a rule on OUR initiative reads. */
+            fade(us, foe, foeNext - clock);
+            clock = Math.max(clock, foeNext);
             us[t].ip = ip[t];
             double[] before = new double[us.length];
             for(int i = 0; i < us.length; i++)
@@ -283,6 +287,7 @@ public final class PartyPlanner {
         }
         if(ready > maxTicks)
             return(null);
+        fade(us, foe, ready - clock);
         /* Whoever was waiting went down in the wait: the line goes on without them from the
          * blow that dropped them, and the card was never thrown. Resuming at the time they
          * WOULD have acted would cost everyone else the gap. */
@@ -299,6 +304,14 @@ public final class PartyPlanner {
         List<Step> path = new ArrayList<Step>(n.path);
         path.add(new Step(who, m, ready));
         return(new Node(us, foe, path, ready, foeNext, acts, thrown, ip, lost));
+    }
+
+    private static void fade(Combatant[] us, Combatant foe, long ticks) {
+        if(ticks <= 0)
+            return;
+        for(Combatant c : us)
+            c.decay(ticks);
+        foe.decay(ticks);
     }
 
     /** Optimizer.prune's three ends, over the party's total. */

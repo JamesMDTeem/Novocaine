@@ -199,7 +199,7 @@ public class CombatAudit {
             "weaponDamage", "weaponQl", "weaponPen", "armHard", "armSoft", "penetrable",
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
             "readyAt", "whenAttacked", "weaponRange", "distance", "hhp",
-            "gloveDamage", "gloveQl",
+            "gloveDamage", "gloveQl", "decayPerTick",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
@@ -827,6 +827,28 @@ public class CombatAudit {
                               fast.ticks, fast.hpLost, safe.ticks, safe.hpLost);
         }
         live("the aim picks a different plan off the frontier", differ, "Advisor.choose");
+
+        /* OPENINGS FADE WHILE NOTHING LANDS - Combatant.decayPerTick, measured 2026-09-16. The
+         * rate has to move a standing opening, and it has to reach the plan: the optimizer
+         * advances it across every gap it simulates, so a fight planned with it off is not the
+         * fight planned with it on. */
+        Combatant fades = fighter(), holds = fighter();
+        holds.decayPerTick = 0;
+        fades.openings[Formulas.RED] = holds.openings[Formulas.RED] = 50;
+        fades.decay(100);
+        holds.decay(100);
+        live("a standing opening fades while nothing lands",
+             holds.openings[Formulas.RED], fades.openings[Formulas.RED], "Combatant.decay");
+        Combatant stillUs = fighter(), stillThem = fighter();
+        stillThem.hp = stillThem.maxHp = 900;
+        stillUs.decayPerTick = stillThem.decayPerTick = 0;
+        Optimizer.Plan noFade = Advisor.choose(
+            Optimizer.search(stillUs, stillThem, deck, foe, 200, 4000), Advisor.Aim.FASTEST,
+            Double.MAX_VALUE);
+        live("  and the planner applies it across the gaps it simulates",
+             (noFade != null) && (fast != null)
+             && ((noFade.ticks != fast.ticks) || (noFade.hpLost != fast.hpLost)),
+             "Optimizer.step");
 
         /* A CROWD IS SEVERAL OPPONENTS AND NOT ONE BIG ONE. Two animals with half the
          * health each is the same total health as one with all of it, and it is not the
