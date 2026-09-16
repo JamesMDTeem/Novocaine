@@ -7,9 +7,9 @@
     "pieces": 23,
     "soft": 79
    },
-   "con": 189,
-   "hhp": 436,
-   "hp": 445,
+   "con": 191,
+   "hhp": 443,
+   "hp": 447,
    "known": {
     "Artful Evasion": 4,
     "Bloodlust": 1,
@@ -51,8 +51,8 @@
     "Yield Ground": 3,
     "Zig-Zag Ruse": 5
    },
-   "logs": 1844,
-   "melee": 302,
+   "logs": 1906,
+   "melee": 312,
    "name": "BonkiDonki",
    "owned": {
     "Artful Evasion": 4,
@@ -96,8 +96,8 @@
     "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 265,
-   "unarmed": 253,
+   "str": 267,
+   "unarmed": 263,
    "weapon": {
     "armour_pen": 0.1,
     "base_damage": 100,
@@ -315,9 +315,9 @@
     "pieces": 22,
     "soft": 67
    },
-   "con": 117,
-   "hhp": 353,
-   "hp": 358,
+   "con": 122,
+   "hhp": 364,
+   "hp": 366,
    "known": {
     "Artful Evasion": 5,
     "Bloodlust": 1,
@@ -360,7 +360,7 @@
     "Yield Ground": 2,
     "Zig-Zag Ruse": 5
    },
-   "logs": 2341,
+   "logs": 2364,
    "melee": 183,
    "name": "Santa Samus",
    "owned": {
@@ -406,25 +406,25 @@
     "Zig-Zag Ruse": 4
    },
    "shield": true,
-   "str": 573,
+   "str": 583,
    "unarmed": 65,
    "weapon": {
-    "armour_pen": 0.1,
-    "base_damage": 100,
-    "name": "Fyrdsman's Sword",
-    "ql": 88.7368,
+    "armour_pen": 0.3,
+    "base_damage": 65,
+    "name": "Pickaxe",
+    "ql": 146.5576,
     "range": 1.2
    }
   },
   {
-   "agi": 383,
+   "agi": 376,
    "armour": {
-    "hard": 105,
+    "hard": 104,
     "pieces": 23,
-    "soft": 77
+    "soft": 89
    },
    "con": 193,
-   "hhp": 454,
+   "hhp": 451,
    "hp": 459,
    "known": {
     "Artful Evasion": 5,
@@ -446,6 +446,7 @@
     "Low Blow": 5,
     "Oak Stance": 1,
     "Opportunity Knocks": 5,
+    "Parry": 1,
     "Punch": 5,
     "Punch 'em Both": 5,
     "Quick Barrage": 5,
@@ -468,60 +469,61 @@
     "Yield Ground": 4,
     "Zig-Zag Ruse": 5
    },
-   "logs": 2426,
-   "melee": 391,
+   "logs": 2530,
+   "melee": 408,
    "name": "Shade",
    "owned": {
     "Artful Evasion": 0,
     "Bloodlust": 0,
     "Chin Up": 0,
     "Chop": 0,
-    "Cleave": 0,
+    "Cleave": 2,
     "Combat Meditation": 0,
     "Dash": 0,
     "Feigned Dodge": 0,
     "Flex": 0,
-    "Full Circle": 0,
+    "Full Circle": 4,
     "Go for the Jugular": 0,
     "Haymaker": 0,
-    "Jump": 4,
+    "Jump": 0,
     "Kick": 0,
     "Knock Its Teeth Out": 0,
     "Left Hook": 0,
     "Low Blow": 0,
     "Oak Stance": 0,
-    "Opportunity Knocks": 0,
-    "Punch": 5,
+    "Opportunity Knocks": 1,
+    "Parry": 0,
+    "Punch": 0,
     "Punch 'em Both": 0,
-    "Quick Barrage": 0,
-    "Quick Dodge": 4,
+    "Quick Barrage": 5,
+    "Quick Dodge": 5,
     "Raven's Bite": 0,
     "Regain Composure": 0,
     "Rip Apart": 0,
     "Shield Up": 1,
-    "Sidestep": 3,
+    "Sidestep": 5,
     "Sideswipe": 0,
     "Steal Thunder": 0,
-    "Sting": 0,
+    "Sting": 1,
     "Storm of Swords": 0,
-    "Take Aim": 0,
+    "Take Aim": 1,
     "Takedown": 0,
     "Think": 0,
     "To Arms": 0,
     "Uppercut": 0,
     "Watch Its Moves": 0,
     "Yield Ground": 0,
-    "Zig-Zag Ruse": 0
+    "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 338,
+   "str": 355,
    "unarmed": 172,
    "weapon": {
-    "armour_pen": 0.1,
-    "base_damage": 100,
-    "name": "Fyrdsman's Sword",
-    "ql": 94.2772,
-    "range": 1.2
+    "armour_pen": 0.2,
+    "base_damage": 45,
+    "name": "Butcher's Cleaver",
+    "ql": 93.407,
+    "range": 1.0
    }
   },
   {
@@ -588,14 +590,14 @@
    }
   },
   {
-   "agi": 212,
+   "agi": 224,
    "armour": {
     "hard": 85,
     "pieces": 23,
     "soft": 68
    },
    "con": 159,
-   "hhp": 388,
+   "hhp": 384,
    "hp": 399,
    "known": {
     "Artful Evasion": 3,
@@ -612,11 +614,11 @@
     "Haymaker": 5,
     "Jump": 5,
     "Kick": 5,
-    "Knock Its Teeth Out": 3,
+    "Knock Its Teeth Out": 4,
     "Left Hook": 5,
     "Low Blow": 5,
     "Oak Stance": 1,
-    "Opportunity Knocks": 2,
+    "Opportunity Knocks": 4,
     "Parry": 1,
     "Punch": 5,
     "Punch 'em Both": 5,
@@ -635,13 +637,13 @@
     "Takedown": 5,
     "Think": 2,
     "To Arms": 1,
-    "Uppercut": 3,
+    "Uppercut": 5,
     "Watch Its Moves": 5,
     "Yield Ground": 1,
     "Zig-Zag Ruse": 5
    },
-   "logs": 928,
-   "melee": 194,
+   "logs": 1011,
+   "melee": 199,
    "name": "ZzxcuV3",
    "owned": {
     "Artful Evasion": 0,
@@ -672,7 +674,7 @@
     "Regain Composure": 0,
     "Rip Apart": 0,
     "Shield Up": 1,
-    "Sidestep": 1,
+    "Sidestep": 2,
     "Sideswipe": 5,
     "Steal Thunder": 0,
     "Sting": 0,
@@ -681,19 +683,19 @@
     "Takedown": 0,
     "Think": 0,
     "To Arms": 0,
-    "Uppercut": 3,
+    "Uppercut": 5,
     "Watch Its Moves": 0,
     "Yield Ground": 0,
-    "Zig-Zag Ruse": 5
+    "Zig-Zag Ruse": 2
    },
    "shield": true,
    "str": 229,
-   "unarmed": 138,
+   "unarmed": 143,
    "weapon": {
-    "armour_pen": 0.125,
-    "base_damage": 90,
-    "name": "Bronze Sword",
-    "ql": 68.65,
+    "armour_pen": 0.1,
+    "base_damage": 100,
+    "name": "Fyrdsman's Sword",
+    "ql": 88.7368,
     "range": 1.2
    }
   },

@@ -654,6 +654,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 123.5,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 680221005,
+    "hitpoints": {
+     "killed": true,
+     "value": 276
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 106.3,
      "lo": 0.0,
      "n": 2
@@ -1564,6 +1577,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 122.1,
+     "lo": 0.0,
+     "n": 5
+    },
+    "gob": 1986072866,
+    "hitpoints": {
+     "killed": true,
+     "value": 374
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 51.4,
      "lo": 0.0,
      "n": 3
@@ -1730,6 +1756,19 @@
     "hitpoints": {
      "killed": true,
      "value": 907
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 230.5,
+     "lo": 223.6,
+     "n": 6
+    },
+    "gob": 640662491,
+    "hitpoints": {
+     "killed": true,
+     "value": 1020
     }
    },
    {
@@ -2200,6 +2239,19 @@
     "hitpoints": {
      "killed": true,
      "value": 172
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 132.4,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1025110953,
+    "hitpoints": {
+     "killed": true,
+     "value": 123
     }
    },
    {
@@ -4120,6 +4172,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 122.1,
+     "lo": 0.0,
+     "n": 4
+    },
+    "gob": 301807627,
+    "hitpoints": {
+     "killed": true,
+     "value": 506
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 57.1,
      "lo": 48.0,
      "n": 6
@@ -4523,6 +4588,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 122.1,
+     "lo": 0.0,
+     "n": 6
+    },
+    "gob": 769673586,
+    "hitpoints": {
+     "killed": true,
+     "value": 557
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 57.1,
      "lo": 48.0,
      "n": 4
@@ -4661,6 +4739,19 @@
     "hitpoints": {
      "killed": true,
      "value": 504
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 129.0,
+     "lo": 0.0,
+     "n": 4
+    },
+    "gob": 1098722437,
+    "hitpoints": {
+     "killed": true,
+     "value": 508
     }
    },
    {
@@ -4990,6 +5081,19 @@
    },
    {
     "agility": {
+     "capped": true,
+     "hi": 125.7,
+     "lo": 0.0,
+     "n": 5
+    },
+    "gob": 1593580728,
+    "hitpoints": {
+     "killed": true,
+     "value": 614
+    }
+   },
+   {
+    "agility": {
      "capped": false,
      "hi": 52.4,
      "lo": 48.1,
@@ -5186,6 +5290,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 125.7,
+     "lo": 0.0,
+     "n": 5
+    },
+    "gob": 1945905443,
+    "hitpoints": {
+     "killed": true,
+     "value": 642
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 55.2,
      "lo": 50.6,
      "n": 3
@@ -5246,6 +5363,19 @@
     "hitpoints": {
      "killed": true,
      "value": 573
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 125.7,
+     "lo": 0.0,
+     "n": 6
+    },
+    "gob": 2004511537,
+    "hitpoints": {
+     "killed": true,
+     "value": 460
     }
    },
    {
@@ -5788,6 +5918,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 122.1,
+     "lo": 0.0,
+     "n": 5
+    },
+    "gob": 356157348,
+    "hitpoints": {
+     "killed": true,
+     "value": 498
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 55.2,
      "lo": 50.6,
      "n": 2
@@ -5853,6 +5996,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 125.7,
+     "lo": 0.0,
+     "n": 6
+    },
+    "gob": 706299681,
+    "hitpoints": {
+     "killed": true,
+     "value": 355
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 54.6,
      "lo": 50.1,
      "n": 3
@@ -5900,6 +6056,19 @@
     "hitpoints": {
      "killed": true,
      "value": 441
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 129.0,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1040643542,
+    "hitpoints": {
+     "killed": true,
+     "value": 444
     }
    },
    {
@@ -6139,6 +6308,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 122.1,
+     "lo": 0.0,
+     "n": 6
+    },
+    "gob": 2092252402,
+    "hitpoints": {
+     "killed": true,
+     "value": 403
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 62.2,
      "lo": 0.0,
      "n": 3
@@ -6219,6 +6401,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 155.6,
+     "lo": 145.1,
+     "n": 6
+    },
+    "gob": 208625419,
+    "hitpoints": {
+     "killed": true,
+     "value": 1658
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 154.6,
      "lo": 141.8,
      "n": 6
@@ -6253,6 +6448,19 @@
     "hitpoints": {
      "killed": true,
      "value": 1632
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 208.8,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 376566601,
+    "hitpoints": {
+     "killed": true,
+     "value": 1529
     }
    },
    {
@@ -6305,6 +6513,19 @@
     "hitpoints": {
      "killed": true,
      "value": 1536
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 165.0,
+     "lo": 138.8,
+     "n": 4
+    },
+    "gob": 522674436,
+    "hitpoints": {
+     "killed": true,
+     "value": 1591
     }
    },
    {
@@ -6491,6 +6712,19 @@
    },
    {
     "agility": {
+     "capped": true,
+     "hi": 165.0,
+     "lo": 138.8,
+     "n": 4
+    },
+    "gob": 988463307,
+    "hitpoints": {
+     "killed": true,
+     "value": 1526
+    }
+   },
+   {
+    "agility": {
      "capped": false,
      "hi": 153.9,
      "lo": 148.6,
@@ -6513,6 +6747,19 @@
     "hitpoints": {
      "killed": true,
      "value": 1710
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 155.6,
+     "lo": 145.1,
+     "n": 4
+    },
+    "gob": 1107489926,
+    "hitpoints": {
+     "killed": true,
+     "value": 1506
     }
    },
    {
@@ -6595,6 +6842,19 @@
    },
    {
     "agility": {
+     "capped": true,
+     "hi": 208.8,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1313772330,
+    "hitpoints": {
+     "killed": true,
+     "value": 1504
+    }
+   },
+   {
+    "agility": {
      "capped": false,
      "hi": 156.2,
      "lo": 149.8,
@@ -6604,6 +6864,45 @@
     "hitpoints": {
      "killed": true,
      "value": 1506
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 200.0,
+     "lo": 0.0,
+     "n": 3
+    },
+    "gob": 1396755841,
+    "hitpoints": {
+     "killed": true,
+     "value": 1450
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 208.8,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1418121542,
+    "hitpoints": {
+     "killed": true,
+     "value": 1544
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 208.8,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1487950114,
+    "hitpoints": {
+     "killed": true,
+     "value": 1555
     }
    },
    {
@@ -6630,6 +6929,19 @@
     "hitpoints": {
      "killed": true,
      "value": 1674
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 200.0,
+     "lo": 0.0,
+     "n": 3
+    },
+    "gob": 1558290783,
+    "hitpoints": {
+     "killed": true,
+     "value": 1574
     }
    },
    {
@@ -6721,6 +7033,19 @@
     "hitpoints": {
      "killed": true,
      "value": 1598
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 200.0,
+     "lo": 0.0,
+     "n": 3
+    },
+    "gob": 2010013448,
+    "hitpoints": {
+     "killed": true,
+     "value": 1513
     }
    },
    {
@@ -8735,6 +9060,19 @@
    },
    {
     "agility": {
+     "capped": true,
+     "hi": 116.7,
+     "lo": 98.1,
+     "n": 3
+    },
+    "gob": 636963057,
+    "hitpoints": {
+     "killed": true,
+     "value": 210
+    }
+   },
+   {
+    "agility": {
      "capped": false,
      "hi": 102.5,
      "lo": 86.2,
@@ -8770,6 +9108,19 @@
     "hitpoints": {
      "killed": true,
      "value": 54
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 116.7,
+     "lo": 98.1,
+     "n": 4
+    },
+    "gob": 931211476,
+    "hitpoints": {
+     "killed": true,
+     "value": 390
     }
    },
    {
@@ -8835,6 +9186,19 @@
     "hitpoints": {
      "killed": true,
      "value": 195
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 116.7,
+     "lo": 98.1,
+     "n": 2
+    },
+    "gob": 1036552880,
+    "hitpoints": {
+     "killed": true,
+     "value": 224
     }
    },
    {
@@ -8965,6 +9329,19 @@
     "hitpoints": {
      "killed": true,
      "value": 75
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 58.3,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1324995098,
+    "hitpoints": {
+     "killed": true,
+     "value": 57
     }
    },
    {
@@ -9255,6 +9632,19 @@
    },
    {
     "agility": {
+     "capped": true,
+     "hi": 58.3,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1738521406,
+    "hitpoints": {
+     "killed": true,
+     "value": 57
+    }
+   },
+   {
+    "agility": {
      "capped": false,
      "hi": 104.9,
      "lo": 88.2,
@@ -9264,6 +9654,19 @@
     "hitpoints": {
      "killed": true,
      "value": 229
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 116.7,
+     "lo": 98.1,
+     "n": 2
+    },
+    "gob": 1807104150,
+    "hitpoints": {
+     "killed": true,
+     "value": 223
     }
    },
    {
@@ -9329,6 +9732,19 @@
     "hitpoints": {
      "killed": true,
      "value": 184
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 116.7,
+     "lo": 98.1,
+     "n": 3
+    },
+    "gob": 1948690944,
+    "hitpoints": {
+     "killed": true,
+     "value": 287
     }
    },
    {
@@ -11501,6 +11917,19 @@
    },
    {
     "agility": {
+     "capped": false,
+     "hi": 226.5,
+     "lo": 223.6,
+     "n": 6
+    },
+    "gob": 1025011755,
+    "hitpoints": {
+     "killed": true,
+     "value": 881
+    }
+   },
+   {
+    "agility": {
      "capped": true,
      "hi": 227.9,
      "lo": 218.2,
@@ -11553,6 +11982,19 @@
    },
    {
     "agility": {
+     "capped": false,
+     "hi": 226.5,
+     "lo": 223.6,
+     "n": 6
+    },
+    "gob": 1329954505,
+    "hitpoints": {
+     "killed": true,
+     "value": 930
+    }
+   },
+   {
+    "agility": {
      "capped": true,
      "hi": 227.8,
      "lo": 210.1,
@@ -11588,6 +12030,19 @@
     "hitpoints": {
      "killed": true,
      "value": 874
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 226.5,
+     "lo": 223.6,
+     "n": 6
+    },
+    "gob": 1543008634,
+    "hitpoints": {
+     "killed": true,
+     "value": 804
     }
    },
    {
@@ -13831,6 +14286,19 @@
    }
   ],
   "roedeer": [
+   {
+    "agility": {
+     "capped": true,
+     "hi": 205.0,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 785373266,
+    "hitpoints": {
+     "killed": true,
+     "value": 301
+    }
+   },
    {
     "agility": {
      "capped": true,
@@ -20532,6 +21000,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 133.2,
+     "lo": 125.7,
+     "n": 5
+    },
+    "gob": 67154703,
+    "hitpoints": {
+     "killed": true,
+     "value": 338
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 128.0,
      "lo": 119.4,
      "n": 4
@@ -20662,6 +21143,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 133.2,
+     "lo": 122.1,
+     "n": 5
+    },
+    "gob": 752194306,
+    "hitpoints": {
+     "killed": true,
+     "value": 360
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 128.0,
      "lo": 126.5,
      "n": 5
@@ -20696,6 +21190,19 @@
     "hitpoints": {
      "killed": true,
      "value": 336
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 133.2,
+     "lo": 122.1,
+     "n": 4
+    },
+    "gob": 996268961,
+    "hitpoints": {
+     "killed": true,
+     "value": 348
     }
    },
    {
@@ -20909,6 +21416,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 133.2,
+     "lo": 122.1,
+     "n": 6
+    },
+    "gob": 1973513584,
+    "hitpoints": {
+     "killed": true,
+     "value": 337
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 147.8,
      "lo": 120.1,
      "n": 4
@@ -20917,6 +21437,19 @@
     "hitpoints": {
      "killed": true,
      "value": 324
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 133.2,
+     "lo": 122.1,
+     "n": 5
+    },
+    "gob": 2035852896,
+    "hitpoints": {
+     "killed": true,
+     "value": 341
     }
    },
    {
@@ -21231,6 +21764,19 @@
     "hitpoints": {
      "killed": true,
      "value": 564
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 251.4,
+     "lo": 243.8,
+     "n": 5
+    },
+    "gob": 224358131,
+    "hitpoints": {
+     "killed": true,
+     "value": 532
     }
    },
    {
@@ -21595,6 +22141,19 @@
     "hitpoints": {
      "killed": true,
      "value": 401
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 264.7,
+     "lo": 244.3,
+     "n": 6
+    },
+    "gob": 456691976,
+    "hitpoints": {
+     "killed": true,
+     "value": 470
     }
    },
    {
@@ -22574,6 +23133,19 @@
    },
    {
     "agility": {
+     "capped": false,
+     "hi": 251.4,
+     "lo": 244.3,
+     "n": 6
+    },
+    "gob": 1231258169,
+    "hitpoints": {
+     "killed": true,
+     "value": 641
+    }
+   },
+   {
+    "agility": {
      "capped": true,
      "hi": 279.1,
      "lo": 234.7,
@@ -22817,6 +23389,19 @@
     "hitpoints": {
      "killed": true,
      "value": 510
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 251.4,
+     "lo": 243.8,
+     "n": 5
+    },
+    "gob": 1417027657,
+    "hitpoints": {
+     "killed": true,
+     "value": 716
     }
    },
    {
@@ -23068,6 +23653,19 @@
    },
    {
     "agility": {
+     "capped": false,
+     "hi": 251.4,
+     "lo": 243.8,
+     "n": 5
+    },
+    "gob": 1593170114,
+    "hitpoints": {
+     "killed": true,
+     "value": 579
+    }
+   },
+   {
+    "agility": {
      "capped": true,
      "hi": 295.5,
      "lo": 248.5,
@@ -23259,6 +23857,19 @@
     "hitpoints": {
      "killed": true,
      "value": 348
+    }
+   },
+   {
+    "agility": {
+     "capped": false,
+     "hi": 266.4,
+     "lo": 247.3,
+     "n": 6
+    },
+    "gob": 1739980064,
+    "hitpoints": {
+     "killed": true,
+     "value": 481
     }
    },
    {
@@ -23885,6 +24496,19 @@
     "hitpoints": {
      "killed": true,
      "value": 236
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 205.0,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 1142911356,
+    "hitpoints": {
+     "killed": true,
+     "value": 296
     }
    },
    {
