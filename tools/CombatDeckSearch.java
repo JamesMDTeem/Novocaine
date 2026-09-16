@@ -836,18 +836,47 @@ public class CombatDeckSearch {
         System.out.printf("  %-16s %-8s %-8s %s%n", "opponent",
                           (aim == Advisor.Aim.SAFEST) ? "hp lost" : "ticks",
                           "points", "deck");
+        /* ONE OPPONENT'S DECK DOES NOT DEPEND ON ANOTHER'S, so they are built at once, one per
+         * core, and reported in the same order as before. The greedy and the search hold no
+         * shared state - the run's settings above are fixed before this and only read - so each
+         * opponent's answer is what the serial loop gave. Serial, the three PVE runs took about
+         * an hour each on a sixteen-core machine (2026-09-16). */
+        java.util.concurrent.ExecutorService workers = java.util.concurrent.Executors.newFixedThreadPool(
+            Math.max(1, Runtime.getRuntime().availableProcessors()));
+        Map<String, java.util.concurrent.Future<Object[]>> built =
+            new LinkedHashMap<String, java.util.concurrent.Future<Object[]>>();
+        {
+            final Map<String, Move> fsheet = sheet;
+            final Combatant fme = me;
+            final Advisor.Aim faim = aim;
+            final int fcopies = copies;
+            for(String n : names) {
+                final Pack.Opponent fo = foes.get(n);
+                built.put(n, workers.submit(() -> {
+                    FoeModel[] fm = models(fo, fcopies);
+                    Deck hardEnd = build(fsheet, fme, crowd(fo, fcopies), fm, faim);
+                    Deck easyEnd = (BOUNDED && !fo.simulable())
+                        ? build(fsheet, fme, crowd(fo, fcopies, true), fm, faim) : null;
+                    Boolean heldUp = ((easyEnd == null) && (hardEnd.score < NO_KILL))
+                        ? Boolean.valueOf(beamHeld(hardEnd, fsheet, fme, crowd(fo, fcopies), fm, faim,
+                                                   hardEnd.score))
+                        : null;
+                    return(new Object[] {hardEnd, easyEnd, heldUp});
+                }));
+            }
+        }
         for(String n : names) {
             Pack.Opponent o = foes.get(n);
-            Combatant[] mob = crowd(o, copies);
             FoeModel[] mods = models(o, copies);
-            Deck d = build(sheet, me, mob, mods, aim);
+            Object[] done = get(built.get(n));
+            Deck d = (Deck)done[0];
             /* BOTH ENDS FOR A BOUNDED OPPONENT, and the cards have to agree or there is no
              * answer. The row above is the hard end - toughest() already takes skillHi -
              * and this is the same greedy at skillLo. Two different card sets mean the deck
              * depends on where in the band the creature really sits, which the corpus does
              * not say, so nothing is recommended. */
             if(BOUNDED && !o.simulable()) {
-                Deck easy = build(sheet, me, crowd(o, copies, true), mods, aim);
+                Deck easy = (Deck)done[1];
                 java.util.Set<String> hardSet = cards(d, sheet), easySet = cards(easy, sheet);
                 boolean both = (easy.score < NO_KILL) && (d.score < NO_KILL);
                 boolean same = both && hardSet.equals(easySet);
@@ -892,7 +921,7 @@ public class CombatDeckSearch {
             }
             if(d.score >= NO_KILL)
                 continue;
-            boolean held = beamHeld(d, sheet, me, crowd(o, copies), mods, aim, d.score);
+            boolean held = ((Boolean)done[2]).booleanValue();
             if(held)
                 best.put(n, d);
             else
@@ -920,6 +949,7 @@ public class CombatDeckSearch {
                               shorten(d, sheet),
                               held ? "" : "<- beam lost the line; not counted", thin);
         }
+        workers.shutdown();
         System.out.println();
         System.out.printf("  %d opponent(s) had a deck the search can stand behind;"
                           + " %d did not.%n", best.size(), unsure);
@@ -932,6 +962,18 @@ public class CombatDeckSearch {
             return;
         }
         cover(best, sheet, me, foes, aim, copies);
+    }
+
+    /** A worker's answer, with its failure rethrown here rather than swallowed. */
+    static <T> T get(java.util.concurrent.Future<T> f) {
+        try {
+            return(f.get());
+        } catch(InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw(new RuntimeException(e));
+        } catch(java.util.concurrent.ExecutionException e) {
+            throw(new RuntimeException(e.getCause()));
+        }
     }
 
     static void beamNote() {
@@ -1072,16 +1114,28 @@ public class CombatDeckSearch {
     static void cover(Map<String, Deck> best, Map<String, Move> sheet, Combatant me,
                       Map<String, Pack.Opponent> foes, Advisor.Aim aim, int copies) {
         List<String> owners = new ArrayList<String>(best.keySet());
+        /* Every deck against every opponent, a row at a time on its own core - see the loop in
+         * main for why that answers what the serial one did. */
         Map<String, Map<String, Double>> grid = new LinkedHashMap<String, Map<String, Double>>();
+        java.util.concurrent.ExecutorService workers = java.util.concurrent.Executors.newFixedThreadPool(
+            Math.max(1, Runtime.getRuntime().availableProcessors()));
+        Map<String, java.util.concurrent.Future<Map<String, Double>>> rows =
+            new LinkedHashMap<String, java.util.concurrent.Future<Map<String, Double>>>();
         for(String owner : owners) {
-            Map<String, Double> row = new LinkedHashMap<String, Double>();
-            for(String against : owners) {
-                Pack.Opponent o = foes.get(against);
-                row.put(against, score(best.get(owner), sheet, me, crowd(o, copies),
-                                       models(o, copies), aim));
-            }
-            grid.put(owner, row);
+            final String fowner = owner;
+            rows.put(owner, workers.submit(() -> {
+                Map<String, Double> row = new LinkedHashMap<String, Double>();
+                for(String against : owners) {
+                    Pack.Opponent o = foes.get(against);
+                    row.put(against, score(best.get(fowner), sheet, me, crowd(o, copies),
+                                           models(o, copies), aim));
+                }
+                return(row);
+            }));
         }
+        for(String owner : owners)
+            grid.put(owner, get(rows.get(owner)));
+        workers.shutdown();
         System.out.println();
         System.out.printf("%d DECKS, CHOSEN FOR WHAT THEY COVER BETWEEN THEM%n",
                           SAVED_DECKS);
