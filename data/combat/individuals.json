@@ -472,6 +472,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 119.0,
+     "lo": 0.0,
+     "n": 2
+    },
+    "gob": 496110482,
+    "hitpoints": {
+     "killed": true,
+     "value": 241
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 110.1,
      "lo": 0.0,
      "n": 4
@@ -6453,6 +6466,19 @@
    {
     "agility": {
      "capped": true,
+     "hi": 163.5,
+     "lo": 149.9,
+     "n": 5
+    },
+    "gob": 899764809,
+    "hitpoints": {
+     "killed": true,
+     "value": 1565
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
      "hi": 154.0,
      "lo": 150.4,
      "n": 6
@@ -6656,6 +6682,19 @@
     "hitpoints": {
      "killed": true,
      "value": 1600
+    }
+   },
+   {
+    "agility": {
+     "capped": true,
+     "hi": 163.5,
+     "lo": 149.9,
+     "n": 5
+    },
+    "gob": 2032570245,
+    "hitpoints": {
+     "killed": true,
+     "value": 1534
     }
    }
   ],

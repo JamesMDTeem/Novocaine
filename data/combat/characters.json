@@ -468,7 +468,7 @@
     "Yield Ground": 4,
     "Zig-Zag Ruse": 5
    },
-   "logs": 2400,
+   "logs": 2408,
    "melee": 391,
    "name": "Shade",
    "owned": {
@@ -514,7 +514,7 @@
     "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 337,
+   "str": 338,
    "unarmed": 172,
    "weapon": {
     "armour_pen": 0.1,
@@ -595,7 +595,7 @@
     "soft": 68
    },
    "con": 159,
-   "hhp": 386,
+   "hhp": 388,
    "hp": 399,
    "known": {
     "Artful Evasion": 2,
@@ -622,7 +622,7 @@
     "Punch 'em Both": 5,
     "Quick Barrage": 5,
     "Quick Dodge": 5,
-    "Raven's Bite": 2,
+    "Raven's Bite": 3,
     "Regain Composure": 5,
     "Rip Apart": 2,
     "Shield Up": 1,
@@ -640,7 +640,7 @@
     "Yield Ground": 1,
     "Zig-Zag Ruse": 3
    },
-   "logs": 920,
+   "logs": 928,
    "melee": 194,
    "name": "ZzxcuV3",
    "owned": {
