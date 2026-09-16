@@ -37,7 +37,7 @@ public final class CombatEvent {
             .put("armed", armed)
             .put("weapon", weapon)
             .put("wdmg", weaponDamage);
-        return(o.raw("bar", list(bar)).raw("chosen", list(chosen)).toString());
+        return(o.raw("bar", list(bar)).raw("chosen", list(chosen)).end());
     }
 
     private static String list(java.util.Collection<String> xs) {

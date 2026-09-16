@@ -198,6 +198,28 @@ public class CombatLogCheck {
                                new int[] {6, 0}, new int[] {1, 3}),
               "{\"ev\":\"foes\",\"t\":7,\"o\":[[11,1,2,3,4],[22,5,6,7,8]],"
               + "\"g\":[0,2],\"d\":[12,30],\"ip\":[6,0],\"oip\":[1,3]}");
+        /* THE ROW THE SCHEMA BUMP ADDED HAD NO CASE HERE, and it shipped broken. advin was the
+         * one factory that finished with toString() rather than end(), and JsonObj does not
+         * override toString(), so every advin row written into a live fight was the builder's
+         * object identity - "haven.combat.log.JsonObj@12b06f5f". Seventeen of them across eight
+         * of James's fights, unparseable to every reader, which is why the row added to answer
+         * "what was the advice planning from" answered nothing and pool_check.py failed on
+         * files with unparseable lines (2026-09-15). An exact-string case cannot miss that: an
+         * object identity fails it on the first character. Every factory needs one.
+         */
+        check("advin is JSON, not the builder's identity",
+              CombatEvent.advin(5L, true, "gfx/invobjs/small/bronzesword", 236.0,
+                                java.util.Arrays.asList("paginae/atk/uppercut",
+                                                        "paginae/atk/sideswipe"),
+                                java.util.Arrays.asList("paginae/atk/sideswipe")),
+              "{\"ev\":\"advin\",\"t\":5,\"armed\":true,"
+              + "\"weapon\":\"gfx/invobjs/small/bronzesword\",\"wdmg\":236.0000,"
+              + "\"bar\":[\"paginae/atk/uppercut\",\"paginae/atk/sideswipe\"],"
+              + "\"chosen\":[\"paginae/atk/sideswipe\"]}");
+        check("  and an unresolved weapon writes nulls, not an empty bar",
+              CombatEvent.advin(5L, false, null, 0.0, null, null),
+              "{\"ev\":\"advin\",\"t\":5,\"armed\":false,\"weapon\":null,\"wdmg\":0.0000,"
+              + "\"bar\":null,\"chosen\":null}");
 
         check("foeact",
               CombatEvent.foeact(100, 77L, "paginae/atk/bite", "Bite",
