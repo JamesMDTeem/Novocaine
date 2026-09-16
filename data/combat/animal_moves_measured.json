@@ -10,50 +10,51 @@
   "ants": 0.751,
   "badger": 1.0,
   "bat": 1.0,
-  "bear": 1.024,
-  "beaver": 1.029,
-  "beelarva": 0.543,
+  "bear": 1.065,
+  "beaver": 1.03,
+  "beelarva": 0.544,
   "boar": 1.053,
-  "boreworm": 1.192,
+  "boreworm": 1.194,
   "cattle": 1.021,
   "caveangler": 1.21,
-  "cavelouse": 1.194,
-  "caverat": 0.95,
-  "crane": 0.817,
-  "eagleowl": 1.086,
-  "fox": 0.749,
-  "goldeneagle": 1.192,
-  "greenooze": 1.114,
-  "greyseal": 1.192,
-  "honeybee": 0.794,
-  "lynx": 1.192,
+  "cavelouse": 1.196,
+  "caverat": 0.946,
+  "crane": 0.819,
+  "eagleowl": 1.088,
+  "fox": 0.75,
+  "goldeneagle": 1.194,
+  "greenooze": 1.121,
+  "greyseal": 1.194,
+  "honeybee": 0.796,
+  "lynx": 1.194,
   "mammoth": 1.0,
   "moose": 1.076,
-  "narwhal": 1.024,
-  "orca": 1.371,
-  "pelican": 0.927,
+  "narwhal": 1.065,
+  "orca": 1.374,
+  "pelican": 0.926,
   "queenant": 0.911,
-  "queenbee": 1.163,
+  "queenbee": 1.165,
   "redants": 1.0,
   "reddeer": 1.1,
   "reindeer": 1.0,
   "royalguardant": 1.44,
-  "sentinelbee": 0.877,
+  "sentinelbee": 0.879,
   "sheep": 0.706,
-  "swan": 0.977,
-  "vulturebee": 0.914,
-  "walrus": 1.024,
+  "swan": 0.979,
+  "vulturebee": 0.916,
+  "walrus": 1.065,
   "warriorant": 1.187,
-  "warriordrone": 0.884,
+  "warriordrone": 0.885,
   "wildgoat": 1.0,
   "wolf": 1.0,
-  "wolverine": 1.0
+  "wolverine": 1.002,
+  "woodscorpion": 0.801
  },
  "moves": [
   {
    "name": "'Rus Tusk",
    "openings": {
-    "red": 10.74
+    "red": 10.33
    },
    "damage": null,
    "cooldown": null,
@@ -78,7 +79,7 @@
     "ticks": 6.1,
     "floor": 1.9,
     "rotation": 44.0,
-    "n": 94
+    "n": 95
    },
    "armour": {
     "soaked_share": 0.5,
@@ -121,7 +122,7 @@
   {
    "name": "Bear Down",
    "openings": {
-    "blue": 10.74
+    "blue": 10.33
    },
    "damage": {
     "coef": 47.8,
@@ -138,12 +139,12 @@
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 42
+    "n": 43
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 102
+    "n": 105
    }
   },
   {
@@ -196,7 +197,7 @@
     "ticks": 29.0,
     "floor": 2.1,
     "rotation": 109.0,
-    "n": 216
+    "n": 218
    },
    "armour": null,
    "restores": {
@@ -207,10 +208,10 @@
      "red": 0.2
     },
     "n": {
-     "red": 766,
-     "green": 744,
-     "blue": 287,
-     "yellow": 1175
+     "red": 856,
+     "green": 813,
+     "blue": 342,
+     "yellow": 1274
     }
    },
    "grievous": null
@@ -223,19 +224,19 @@
     "ticks": 28.9,
     "floor": 2.0,
     "rotation": 45.9,
-    "n": 220
+    "n": 232
    },
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.192,
+     "green": 0.188,
      "blue": 0.2
     },
     "n": {
-     "red": 522,
-     "green": 589,
-     "blue": 250,
-     "yellow": 633
+     "red": 576,
+     "green": 631,
+     "blue": 259,
+     "yellow": 705
     }
    },
    "grievous": null
@@ -249,14 +250,14 @@
     "coef": 105.6,
     "lo": 27.4,
     "hi": 164.4,
-    "n": 60,
+    "n": 61,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 81.2,
     "floor": 81.0,
     "rotation": 266.9,
-    "n": 38
+    "n": 39
    },
    "armour": {
     "soaked_share": 0.86,
@@ -265,7 +266,7 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.167,
-    "n": 171
+    "n": 173
    }
   },
   {
@@ -299,29 +300,29 @@
   {
    "name": "Fell Scratch",
    "openings": {
-    "green": 9.21
+    "green": 9.2
    },
    "damage": {
     "coef": 34.6,
     "lo": 2.6,
     "hi": 400.0,
-    "n": 692,
+    "n": 730,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 41.7,
+    "ticks": 41.9,
     "floor": 1.9,
-    "rotation": 49.5,
-    "n": 1641
+    "rotation": 49.6,
+    "n": 1719
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 439
+    "n": 455
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 983
+    "n": 1016
    }
   },
   {
@@ -378,26 +379,26 @@
     "green": 10.23
    },
    "damage": {
-    "coef": 27.2,
+    "coef": 27.4,
     "lo": 3.4,
     "hi": 204.1,
-    "n": 208,
+    "n": 240,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 19.7,
+    "ticks": 19.8,
     "floor": 17.8,
     "rotation": 22.0,
-    "n": 261
+    "n": 297
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 64
+    "n": 70
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 140
+    "n": 155
    }
   },
   {
@@ -415,7 +416,7 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 24
+    "n": 25
    }
   },
   {
@@ -424,17 +425,17 @@
     "yellow": 10.0
    },
    "damage": {
-    "coef": 28.0,
+    "coef": 27.7,
     "lo": 2.9,
     "hi": 277.8,
-    "n": 205,
+    "n": 212,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 35.0,
     "floor": 17.0,
     "rotation": 40.0,
-    "n": 386
+    "n": 401
    },
    "armour": {
     "soaked_share": 0.8,
@@ -443,7 +444,7 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 95
+    "n": 96
    }
   },
   {
@@ -477,14 +478,14 @@
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.2,
+     "green": 0.197,
      "yellow": 0.19
     },
     "n": {
-     "red": 246,
-     "green": 32,
-     "blue": 23,
-     "yellow": 244
+     "red": 259,
+     "green": 37,
+     "blue": 31,
+     "yellow": 256
     }
    },
    "grievous": null
@@ -496,20 +497,20 @@
    "cooldown": {
     "ticks": 28.9,
     "floor": 8.0,
-    "rotation": 35.1,
-    "n": 684
+    "rotation": 35.2,
+    "n": 695
    },
    "armour": null,
    "restores": {
     "by_colour": {
-     "yellow": 0.152,
-     "red": 0.149
+     "yellow": 0.154,
+     "red": 0.148
     },
     "n": {
-     "red": 624,
-     "green": 531,
-     "blue": 181,
-     "yellow": 1740
+     "red": 691,
+     "green": 577,
+     "blue": 186,
+     "yellow": 1855
     }
    },
    "grievous": null
@@ -553,7 +554,7 @@
    "restores": null,
    "grievous": {
     "per_soft": 0.333,
-    "n": 93
+    "n": 101
    }
   },
   {
@@ -618,12 +619,12 @@
    },
    "armour": {
     "soaked_share": 0.8,
-    "n": 23
+    "n": 27
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 66
+    "n": 75
    }
   },
   {
@@ -679,14 +680,14 @@
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.303,
+     "green": 0.306,
      "red": 0.303
     },
     "n": {
-     "red": 159,
-     "green": 210,
-     "blue": 17,
-     "yellow": 391
+     "red": 176,
+     "green": 222,
+     "blue": 23,
+     "yellow": 408
     }
    },
    "grievous": null
@@ -695,17 +696,17 @@
    "name": "Vampirism",
    "openings": null,
    "damage": {
-    "coef": 9.6,
+    "coef": 10.3,
     "lo": 3.9,
     "hi": 62.0,
-    "n": 25,
+    "n": 27,
     "before_armour": true
    },
    "cooldown": {
-    "ticks": 18.0,
+    "ticks": 19.7,
     "floor": 3.1,
     "rotation": 22.1,
-    "n": 110
+    "n": 124
    },
    "armour": null,
    "restores": null,
@@ -720,23 +721,23 @@
     "yellow": 9.0
    },
    "damage": {
-    "coef": 30.3,
+    "coef": 37.2,
     "lo": 3.3,
     "hi": 400.0,
-    "n": 45,
+    "n": 46,
     "before_armour": true
    },
    "cooldown": {
     "ticks": 36.0,
     "floor": 15.0,
-    "rotation": 43.9,
-    "n": 88
+    "rotation": 43.8,
+    "n": 95
    },
    "armour": null,
    "restores": null,
    "grievous": {
-    "per_soft": 0.111,
-    "n": 10
+    "per_soft": 0.0,
+    "n": 11
    }
   },
   {
