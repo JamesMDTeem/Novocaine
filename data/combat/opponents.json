@@ -22,6 +22,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -59,6 +60,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -99,6 +101,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -204,6 +207,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -311,6 +315,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -354,6 +359,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -436,6 +442,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -528,6 +535,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -609,6 +617,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -693,6 +702,7 @@
     "value": 22.4
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -794,6 +804,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -871,6 +882,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -983,6 +995,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1081,6 +1094,7 @@
     "value": 15.6
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -1139,6 +1153,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1234,6 +1249,7 @@
     "value": 15.6
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -1294,6 +1310,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1338,6 +1355,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -1441,6 +1459,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1550,6 +1569,7 @@
    "res": null,
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -1852,6 +1872,60 @@
     "measurable": true,
     "n": 416,
     "slope": 0.75
+   },
+   "state_model": {
+    "base_bits": 0.779,
+    "depth": 1,
+    "features": [
+     "our_g",
+     "our_b",
+     "our_y",
+     "our_r",
+     "its_g",
+     "its_b",
+     "its_y",
+     "its_r",
+     "our_ip",
+     "its_ip",
+     "our_max",
+     "our_sum",
+     "our_open",
+     "its_max",
+     "its_sum",
+     "its_open"
+    ],
+    "fold_gains_bits": [
+     0.372,
+     0.182,
+     0.064,
+     0.322,
+     0.324
+    ],
+    "held_out_gain_bits": 0.253,
+    "held_out_se_bits": 0.057,
+    "n": 217,
+    "source": "solo decisions inside reach; 5 contiguous folds; depth 1, leaves of 30 or more",
+    "tree": {
+     "above": {
+      "mix": {
+       "Careful Approach": 0.0787,
+       "Roar of the Wild": 0.3813,
+       "Serpent's Strike": 0.54
+      },
+      "n": 73
+     },
+     "below": {
+      "mix": {
+       "Careful Approach": 0.0009,
+       "Roar of the Wild": 0.0251,
+       "Serpent's Strike": 0.974
+      },
+      "n": 144
+     },
+     "cut": 8.0,
+     "feature": "its_b",
+     "n": 217
+    }
    },
    "threat": {
     "damage": {
@@ -2156,6 +2230,7 @@
     "n": 1699,
     "slope": 0.86
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -2563,6 +2638,7 @@
     "n": 412,
     "slope": 0.91
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -3056,6 +3132,125 @@
     "measurable": true,
     "n": 2080,
     "slope": 0.98
+   },
+   "state_model": {
+    "base_bits": 1.336,
+    "depth": 3,
+    "features": [
+     "our_g",
+     "our_b",
+     "our_y",
+     "our_r",
+     "its_g",
+     "its_b",
+     "its_y",
+     "its_r",
+     "our_ip",
+     "its_ip",
+     "our_max",
+     "our_sum",
+     "our_open",
+     "its_max",
+     "its_sum",
+     "its_open"
+    ],
+    "fold_gains_bits": [
+     0.47,
+     0.453,
+     0.355,
+     0.503,
+     0.338
+    ],
+    "held_out_gain_bits": 0.424,
+    "held_out_se_bits": 0.033,
+    "n": 1080,
+    "source": "solo decisions inside reach; 5 contiguous folds; depth 3, leaves of 30 or more",
+    "tree": {
+     "above": {
+      "above": {
+       "above": {
+        "mix": {
+         "Fell Scratch": 0.3483,
+         "Vampirism": 0.2692,
+         "Wingbeat": 0.3825
+        },
+        "n": 63
+       },
+       "below": {
+        "mix": {
+         "Fell Scratch": 0.3302,
+         "Vampirism": 0.5303,
+         "Wingbeat": 0.1395
+        },
+        "n": 203
+       },
+       "cut": 10.0,
+       "feature": "our_g",
+       "n": 266
+      },
+      "below": {
+       "above": {
+        "mix": {
+         "Fell Scratch": 0.5766,
+         "Vampirism": 0.267,
+         "Wingbeat": 0.1564
+        },
+        "n": 48
+       },
+       "below": {
+        "mix": {
+         "Fell Scratch": 0.5046,
+         "Vampirism": 0.0003,
+         "Wingbeat": 0.4951
+        },
+        "n": 442
+       },
+       "cut": 3.0,
+       "feature": "our_b",
+       "n": 490
+      },
+      "cut": 3.0,
+      "feature": "our_y",
+      "n": 756
+     },
+     "below": {
+      "above": {
+       "mix": {
+        "Fell Scratch": 0.8457,
+        "Vampirism": 0.0348,
+        "Wingbeat": 0.1195
+       },
+       "n": 55
+      },
+      "below": {
+       "above": {
+        "mix": {
+         "Fell Scratch": 0.9838,
+         "Vampirism": 0.0003,
+         "Wingbeat": 0.0159
+        },
+        "n": 187
+       },
+       "below": {
+        "mix": {
+         "Fell Scratch": 0.9642,
+         "Vampirism": 0.0351,
+         "Wingbeat": 0.0007
+        },
+        "n": 82
+       },
+       "cut": 15.0,
+       "feature": "its_max",
+       "n": 269
+      },
+      "cut": 22.0,
+      "feature": "its_max",
+      "n": 324
+     },
+     "cut": 3.0,
+     "feature": "our_max",
+     "n": 1080
+    }
    },
    "threat": {
     "damage": {
@@ -3685,6 +3880,7 @@
     "n": 78,
     "slope": 0.15
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -3856,6 +4052,7 @@
     "n": 104,
     "slope": 1.07
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -4129,6 +4326,7 @@
     "n": 177,
     "slope": 1.07
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -4254,6 +4452,7 @@
     "n": 524,
     "slope": 0.94
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -4715,6 +4914,7 @@
     "n": 386,
     "slope": 0.43
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -4790,6 +4990,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -5330,6 +5531,7 @@
     "value": 875.7
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -5478,6 +5680,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -5552,6 +5755,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -5608,6 +5812,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -5686,6 +5891,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -5750,6 +5956,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -5806,6 +6013,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -5887,6 +6095,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -5952,6 +6161,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -6069,6 +6279,7 @@
     "value": 2.1
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -6188,6 +6399,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -6287,6 +6499,7 @@
    "res": "gfx/borka/body",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -6705,6 +6918,7 @@
     "n": 248,
     "slope": 0.19
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -7232,6 +7446,7 @@
     "n": 150,
     "slope": 0.66
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -8060,6 +8275,181 @@
     "n": 448,
     "slope": 0.52
    },
+   "state_model": {
+    "base_bits": 2.456,
+    "depth": 3,
+    "features": [
+     "our_g",
+     "our_b",
+     "our_y",
+     "our_r",
+     "its_g",
+     "its_b",
+     "its_y",
+     "its_r",
+     "our_ip",
+     "its_ip",
+     "our_max",
+     "our_sum",
+     "our_open",
+     "its_max",
+     "its_sum",
+     "its_open"
+    ],
+    "fold_gains_bits": [
+     0.313,
+     0.266,
+     0.278,
+     0.311,
+     0.218
+    ],
+    "held_out_gain_bits": 0.277,
+    "held_out_se_bits": 0.017,
+    "n": 446,
+    "source": "solo decisions inside reach; 5 contiguous folds; depth 3, leaves of 30 or more",
+    "tree": {
+     "above": {
+      "above": {
+       "above": {
+        "mix": {
+         "Bear Down": 0.1244,
+         "Bristle": 0.0676,
+         "Careful Approach": 0.0004,
+         "Chomp": 0.0775,
+         "Fell Scratch": 0.4515,
+         "Maddening Roar": 0.0099,
+         "Rampant Rage": 0.0002,
+         "Roar of the Wild": 0.0099,
+         "Shredding Paw": 0.1906,
+         "Tail Splash": 0.0585,
+         "Unstoppable": 0.0095
+        },
+        "n": 102
+       },
+       "below": {
+        "mix": {
+         "Bear Down": 0.0208,
+         "Bristle": 0.0329,
+         "Careful Approach": 0.0128,
+         "Chomp": 0.0459,
+         "Fell Scratch": 0.807,
+         "Maddening Roar": 0.0129,
+         "Rampant Rage": 0.0064,
+         "Roar of the Wild": 0.013,
+         "Shredding Paw": 0.0025,
+         "Tail Splash": 0.0456,
+         "Unstoppable": 0.0001
+        },
+        "n": 154
+       },
+       "cut": 17.0,
+       "feature": "our_b",
+       "n": 256
+      },
+      "below": {
+       "mix": {
+        "Bear Down": 0.02,
+        "Bristle": 0.0506,
+        "Careful Approach": 0.1275,
+        "Chomp": 0.0037,
+        "Fell Scratch": 0.3119,
+        "Maddening Roar": 0.0007,
+        "Rampant Rage": 0.0003,
+        "Roar of the Wild": 0.2547,
+        "Shredding Paw": 0.0367,
+        "Tail Splash": 0.1937,
+        "Unstoppable": 0.0002
+       },
+       "n": 59
+      },
+      "cut": 27.0,
+      "feature": "its_max",
+      "n": 315
+     },
+     "below": {
+      "above": {
+       "above": {
+        "mix": {
+         "Bear Down": 0.2704,
+         "Bristle": 0.0,
+         "Careful Approach": 0.0765,
+         "Chomp": 0.0,
+         "Fell Scratch": 0.3981,
+         "Maddening Roar": 0.0291,
+         "Rampant Rage": 0.0292,
+         "Roar of the Wild": 0.0144,
+         "Shredding Paw": 0.1241,
+         "Tail Splash": 0.029,
+         "Unstoppable": 0.029
+        },
+        "n": 32
+       },
+       "below": {
+        "mix": {
+         "Bear Down": 0.1054,
+         "Bristle": 0.0,
+         "Careful Approach": 0.2587,
+         "Chomp": 0.0,
+         "Fell Scratch": 0.3086,
+         "Maddening Roar": 0.002,
+         "Rampant Rage": 0.0022,
+         "Roar of the Wild": 0.1982,
+         "Shredding Paw": 0.1209,
+         "Tail Splash": 0.002,
+         "Unstoppable": 0.002
+        },
+        "n": 33
+       },
+       "cut": 41.0,
+       "feature": "its_max",
+       "n": 65
+      },
+      "below": {
+       "above": {
+        "mix": {
+         "Bear Down": 0.6986,
+         "Bristle": 0.0,
+         "Careful Approach": 0.1658,
+         "Chomp": 0.0,
+         "Fell Scratch": 0.0404,
+         "Maddening Roar": 0.0276,
+         "Rampant Rage": 0.0057,
+         "Roar of the Wild": 0.0611,
+         "Shredding Paw": 0.0006,
+         "Tail Splash": 0.0001,
+         "Unstoppable": 0.0001
+        },
+        "n": 34
+       },
+       "below": {
+        "mix": {
+         "Bear Down": 0.6283,
+         "Bristle": 0.0,
+         "Careful Approach": 0.0126,
+         "Chomp": 0.0,
+         "Fell Scratch": 0.1778,
+         "Maddening Roar": 0.002,
+         "Rampant Rage": 0.0871,
+         "Roar of the Wild": 0.0915,
+         "Shredding Paw": 0.0006,
+         "Tail Splash": 0.0001,
+         "Unstoppable": 0.0001
+        },
+        "n": 32
+       },
+       "cut": 14.0,
+       "feature": "our_b",
+       "n": 66
+      },
+      "cut": 0.0,
+      "feature": "its_ip",
+      "n": 131
+     },
+     "cut": 1.0,
+     "feature": "its_ip",
+     "n": 446
+    }
+   },
    "threat": {
     "damage": {
      "before_armour": true,
@@ -8245,6 +8635,7 @@
     "value": 83.7
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -8558,6 +8949,7 @@
     "n": 130,
     "slope": 0.96
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -8641,6 +9033,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -8844,6 +9237,7 @@
     "n": 152,
     "slope": 0.9
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -8999,6 +9393,7 @@
     "n": 35,
     "slope": -0.01
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -9354,6 +9749,7 @@
     "n": 303,
     "slope": 0.99
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -9652,6 +10048,7 @@
     "n": 68,
     "slope": 0.1
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -9779,6 +10176,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -10184,6 +10582,7 @@
     "n": 404,
     "slope": 0.24
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -10525,6 +10924,7 @@
     "n": 77,
     "slope": 0.6
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -10843,6 +11243,7 @@
     "n": 194,
     "slope": 0.86
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -11013,6 +11414,7 @@
     "n": 28,
     "slope": 0.48
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -11486,6 +11888,7 @@
     "n": 97,
     "slope": 0.25
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -11912,6 +12315,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -11979,6 +12383,7 @@
    "res": "gfx/kritter/horse/mare",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -12971,6 +13376,7 @@
     "n": 105,
     "slope": 0.05
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -13766,6 +14172,7 @@
     "n": 65,
     "slope": 0.26
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -14463,6 +14870,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -14617,6 +15025,7 @@
     "n": 36,
     "slope": 1.02
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -14767,6 +15176,7 @@
     "n": 86,
     "slope": 0.85
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -14851,6 +15261,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -14941,6 +15352,7 @@
    "res": "gfx/kritter/ants/queenant",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -15069,6 +15481,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -15146,6 +15559,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -15386,6 +15800,7 @@
     "n": 207,
     "slope": 0.92
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -15869,6 +16284,7 @@
     "n": 215,
     "slope": 0.5
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -16328,6 +16744,7 @@
     "n": 176,
     "slope": 0.37
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -16413,6 +16830,7 @@
    "res": "gfx/kritter/rockdove/rockdove",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": null
   },
   {
@@ -16495,6 +16913,7 @@
     "value": 57.2
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -17030,6 +17449,7 @@
     "n": 194,
     "slope": 0.92
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -17482,6 +17902,7 @@
     "n": 173,
     "slope": 0.68
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -17930,6 +18351,7 @@
     "n": 75,
     "slope": 0.91
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -18047,6 +18469,7 @@
     "value": null
    },
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -18298,6 +18721,7 @@
     "n": 142,
     "slope": 1.0
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -18425,6 +18849,7 @@
    "res": "gfx/kritter/troll/troll",
    "skill": null,
    "skill_slope": null,
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -18823,6 +19248,7 @@
     "n": 143,
     "slope": 1.0
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -19507,6 +19933,7 @@
     "n": 40,
     "slope": 0.07
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": 0.186,
@@ -19962,6 +20389,7 @@
     "n": 224,
     "slope": 0.69
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -20573,6 +21001,7 @@
     "n": 209,
     "slope": 1.0
    },
+   "state_model": null,
    "threat": {
     "damage": null,
     "flees_below": null,
@@ -21013,6 +21442,7 @@
     "n": 89,
     "slope": 0.36
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -21678,6 +22108,64 @@
     "n": 526,
     "slope": 0.19
    },
+   "state_model": {
+    "base_bits": 0.551,
+    "depth": 1,
+    "features": [
+     "our_g",
+     "our_b",
+     "our_y",
+     "our_r",
+     "its_g",
+     "its_b",
+     "its_y",
+     "its_r",
+     "our_ip",
+     "its_ip",
+     "our_max",
+     "our_sum",
+     "our_open",
+     "its_max",
+     "its_sum",
+     "its_open"
+    ],
+    "fold_gains_bits": [
+     -0.051,
+     0.091,
+     0.463,
+     0.368,
+     -0.078
+    ],
+    "held_out_gain_bits": 0.159,
+    "held_out_se_bits": 0.11,
+    "n": 263,
+    "source": "solo decisions inside reach; 5 contiguous folds; depth 1, leaves of 30 or more",
+    "tree": {
+     "above": {
+      "mix": {
+       "Bristle": 0.2265,
+       "Fell Scratch": 0.603,
+       "Rampant Rage": 0.1698,
+       "Roar of the Wild": 0.0004,
+       "Swift Evasion": 0.0004
+      },
+      "n": 49
+     },
+     "below": {
+      "mix": {
+       "Bristle": 0.001,
+       "Fell Scratch": 0.9889,
+       "Rampant Rage": 0.0008,
+       "Roar of the Wild": 0.0047,
+       "Swift Evasion": 0.0047
+      },
+      "n": 214
+     },
+     "cut": 1.0,
+     "feature": "its_open",
+     "n": 263
+    }
+   },
    "threat": {
     "damage": {
      "before_armour": true,
@@ -22009,6 +22497,7 @@
     "n": 95,
     "slope": 0.96
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
@@ -22155,6 +22644,7 @@
     "n": 25,
     "slope": 0.89
    },
+   "state_model": null,
    "threat": {
     "damage": {
      "before_armour": true,
