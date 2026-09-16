@@ -4031,7 +4031,16 @@ def summarise_hp(dealt, killed, last_hit, wiki_entry, killed_floor=()):
         use_lo = sur if use_lo is None else use_lo
         if use_hi is not None:
             use_hi = max(use_hi, sur)
-    if stated is not None:
+    # THE WIKI WIDENS A RANGE; IT NEVER CONTRADICTS ONE. Its figure is the base quality of a
+    # nominal individual, so where our own fights PROVE one was bigger than it, a smaller
+    # stated figure is evidence about the baseline and not about the creature we met. Taking
+    # it anyway published the wood scorpion at 30-30 while its own row said one had held out
+    # past 88, and 30 is what the simulation opened with - hpPinned() is false for it, so
+    # toughest() reads pick(planHpHi(), hpLo). A scorpion that had taken 33 was then modelled
+    # as a corpse, every plan tied at "kills in 0 ticks for 0 damage", and the live advice sat
+    # on Uppercut for ten swings while its yellow climbed to 90 (2026-09-15).
+    contradicted = (sur is not None) and (stated is not None) and (stated < sur)
+    if (stated is not None) and not contradicted:
         use_lo = stated if use_lo is None else min(use_lo, stated)
         use_hi = stated if use_hi is None else max(use_hi, stated)
 

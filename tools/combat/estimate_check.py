@@ -108,6 +108,21 @@ def hitpoints():
     check("  and is counted as one", (hp["floor_kills"], hp["pinned_n"]), (1, 0))
     hp = summarise_hp({1: 52}, {1}, {}, None, {1})
     check("  a drawn kill of the same gob wins", (hp["lo"], hp["hi"]), (52, 52))
+
+    # THE WIKI MAY WIDEN A RANGE, NEVER CONTRADICT ONE. Its figure is a base quality and a
+    # good baseline, but it is a nominal individual: where our own fights PROVE one was
+    # bigger, a smaller stated figure is evidence about the baseline, not about the creature
+    # we met. Taking it anyway published a wood scorpion at 30-30 while its own row said one
+    # had held out past 88, and 30 is what the simulation then opened with - so a scorpion
+    # that had taken 33 was modelled as a corpse, every plan tied at "kills in 0 ticks", and
+    # the live advice sat on Uppercut for ten swings (2026-09-15).
+    hp = summarise_hp({1: 88}, set(), {}, WIKI(30), {1})
+    check("the wiki cannot cap a creature below what it survived", hp["hi"], None)
+    check("  nor drag the floor under it", hp["lo"], 89)
+    # Above the floor it still does both jobs, which is the case that must not regress.
+    hp = summarise_hp({1: 85}, set(), {}, WIKI(90), {1})
+    check("  a stated figure above the floor still widens the range", (hp["lo"], hp["hi"]),
+          (86, 90))
     kill_kinds()
 
 
