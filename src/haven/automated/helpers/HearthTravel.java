@@ -42,6 +42,20 @@ public class HearthTravel {
     /** Settle time after the position first moves, so the recorded rc is the final one. */
     private static final long SETTLE_MS = 500L;
 
+    /*
+     * Stillness before the act. The 2026-08-12 19:28 run logged both shift-end homes as
+     * "travel: elapsed=12060ms landed=? (no position move seen)" while a mid-shift home fired from
+     * idle landed in 5224ms: the act went in while the character was still sliding the last few
+     * units of the walk home, and the server ate it. Waiting for the Moving attribute to clear did
+     * not help, because the server clears it once the leg is "arrived enough". So stillness is
+     * judged on the position itself: two samples STILL_SAMPLE_MS apart that differ by less than
+     * STILL_MOVE_U, bounded by STILL_WAIT_MS so an emergency home is only ever delayed, never
+     * refused. Written 2026-08-13 and lost before it was committed; re-landed 2026-09-17.
+     */
+    private static final long STILL_SAMPLE_MS = 500L;
+    private static final double STILL_MOVE_U = 1.0;
+    private static final long STILL_WAIT_MS = 10_000L;
+
     /** A position change this large within one watch sample is a teleport, not walking. */
     private static final double JUMP_TILES = 3.0;
 
@@ -313,6 +327,9 @@ public class HearthTravel {
             return -1;
         botInFlight = true;
         try {
+            before = waitStill(gui, before);
+            /* Timed from the act, so a slide-to-stop wait does not read as a slow channel. */
+            started = System.currentTimeMillis();
             gui.act("travel", "hearth");
             long deadline = started + ARRIVAL_TIMEOUT_MS;
             boolean landed = false;
@@ -434,6 +451,26 @@ public class HearthTravel {
             }
             prev = rc;
         }
+    }
+
+    /**
+     * Waits until the character has stopped moving - see {@link #STILL_SAMPLE_MS} - and returns the
+     * position it came to rest at, or the last position read if {@link #STILL_WAIT_MS} runs out.
+     */
+    private static Coord2d waitStill(GameUI gui, Coord2d from) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + STILL_WAIT_MS;
+        Coord2d prev = from;
+        while (System.currentTimeMillis() < deadline) {
+            Thread.sleep(STILL_SAMPLE_MS);
+            Coord2d now = playerRc(gui);
+            if (now == null)
+                return prev;
+            if (now.dist(prev) < STILL_MOVE_U)
+                return now;
+            prev = now;
+        }
+        NLog.log(LOG, String.format("travel: still moving after %dms - acting anyway", STILL_WAIT_MS));
+        return prev;
     }
 
     private static Coord2d playerRc(GameUI gui) {
