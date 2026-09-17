@@ -1452,8 +1452,8 @@
    "res": null,
    "skill": {
     "equalized": true,
-    "hi": 428.9,
-    "lo": 62.4,
+    "hi": 386.0,
+    "lo": 96.5,
     "moves": [],
     "n": 0,
     "value": null
@@ -1861,15 +1861,17 @@
      "Quick Barrage"
     ],
     "n": 8,
-    "obs": 353,
-    "slope": 0.75,
+    "obs": 347,
+    "slope": 0.78,
     "value": 52.0
    },
    "skill_slope": {
-    "flat": 2.92,
+    "band_hi": 208.0,
+    "band_lo": 204.0,
+    "flat": 2.72,
     "measurable": true,
     "n": 420,
-    "slope": 0.75
+    "slope": 0.78
    },
    "state_model": {
     "base_bits": 0.775,
@@ -2219,14 +2221,16 @@
     "n": 10,
     "obs": 1681,
     "resolved": "slope: the inversion measures this species",
-    "slope": 0.87,
+    "slope": 0.95,
     "value": 5.1
    },
    "skill_slope": {
-    "flat": 28.04,
+    "band_hi": 208.0,
+    "band_lo": 204.0,
+    "flat": 22.69,
     "measurable": true,
     "n": 1705,
-    "slope": 0.87
+    "slope": 0.95
    },
    "state_model": null,
    "threat": {
@@ -2611,7 +2615,7 @@
    "skill": {
     "equalized": false,
     "hi": 57.6,
-    "lo": 36.6,
+    "lo": 35.3,
     "moves": [
      "Flex",
      "Full Circle",
@@ -2621,16 +2625,16 @@
      "Punch",
      "Uppercut"
     ],
-    "n": 13,
-    "obs": 316,
-    "slope": 0.91,
-    "value": 48.0
+    "n": 11,
+    "obs": 286,
+    "slope": 0.9,
+    "value": 49.2
    },
    "skill_slope": {
-    "flat": 2.74,
+    "flat": 2.26,
     "measurable": true,
     "n": 414,
-    "slope": 0.91
+    "slope": 0.9
    },
    "state_model": null,
    "threat": {
@@ -3120,14 +3124,14 @@
     ],
     "n": 15,
     "obs": 2070,
-    "slope": 0.98,
+    "slope": 0.99,
     "value": 20.4
    },
    "skill_slope": {
-    "flat": 5.9,
+    "flat": 4.28,
     "measurable": true,
     "n": 2169,
-    "slope": 0.98
+    "slope": 0.99
    },
    "state_model": {
     "base_bits": 1.338,
@@ -3850,24 +3854,31 @@
    },
    "res": "gfx/kritter/bear/bear",
    "skill": {
-    "equalized": false,
-    "hi": 176.0,
-    "lo": 48.7,
+    "equalized": true,
+    "hi": 208.0,
+    "lo": 204.0,
     "moves": [
      "Flex",
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 5,
-    "obs": 35,
-    "slope": 0.15,
-    "value": 111.2
+    "n": 0,
+    "naive": 66.9,
+    "naive_hi": 584.0,
+    "naive_lo": 48.7,
+    "obs": 8,
+    "resolved": "slope: the inversion reads the band, not the creature",
+    "slope": 0.03,
+    "slope_n": 80,
+    "value": null
    },
    "skill_slope": {
-    "flat": 1.33,
+    "band_hi": 208.0,
+    "band_lo": 204.0,
+    "flat": 0.97,
     "measurable": false,
     "n": 80,
-    "slope": 0.15
+    "slope": 0.03
    },
    "state_model": null,
    "threat": {
@@ -4020,7 +4031,7 @@
    "res": "gfx/kritter/beaver/beaver",
    "skill": {
     "equalized": false,
-    "hi": 48.3,
+    "hi": 47.0,
     "lo": 23.3,
     "moves": [
      "Flex",
@@ -4029,17 +4040,17 @@
      "Sting"
     ],
     "n": 7,
-    "obs": 80,
-    "slope": 1.06,
-    "value": 40.1
+    "obs": 78,
+    "slope": 1.13,
+    "value": 38.2
    },
    "skill_slope": {
-    "band_hi": 249.6,
-    "band_lo": 234.3,
-    "flat": 2.2,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 2.18,
     "measurable": true,
     "n": 107,
-    "slope": 1.06
+    "slope": 1.13
    },
    "state_model": null,
    "threat": {
@@ -4304,16 +4315,16 @@
     ],
     "n": 5,
     "obs": 175,
-    "slope": 1.07,
+    "slope": 1.08,
     "value": 10.2
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 16.78,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 11.85,
     "measurable": true,
     "n": 177,
-    "slope": 1.07
+    "slope": 1.08
    },
    "state_model": null,
    "threat": {
@@ -4432,14 +4443,14 @@
     ],
     "n": 10,
     "obs": 527,
-    "slope": 0.94,
+    "slope": 0.95,
     "value": 15.3
    },
    "skill_slope": {
-    "flat": 9.63,
+    "flat": 7.45,
     "measurable": true,
     "n": 539,
-    "slope": 0.94
+    "slope": 0.95
    },
    "state_model": null,
    "threat": {
@@ -4883,7 +4894,7 @@
    "skill": {
     "disputed": true,
     "equalized": false,
-    "hi": 146.1,
+    "hi": 343.2,
     "lo": 18.4,
     "moves": [
      "Flex",
@@ -4894,15 +4905,15 @@
      "Knock Its Teeth Out",
      "Uppercut"
     ],
-    "n": 13,
-    "obs": 215,
-    "value": 94.0
+    "n": 8,
+    "obs": 125,
+    "value": 104.5
    },
    "skill_slope": {
-    "flat": 1.47,
+    "flat": 1.09,
     "measurable": null,
     "n": 402,
-    "slope": 0.45
+    "slope": 0.3
    },
    "state_model": null,
    "threat": {
@@ -6882,8 +6893,8 @@
    "res": "gfx/kritter/boreworm/boreworm",
    "skill": {
     "equalized": true,
-    "hi": 249.6,
-    "lo": 245.0,
+    "hi": 208.0,
+    "lo": 171.5,
     "moves": [
      "Flex",
      "Full Circle",
@@ -6891,22 +6902,22 @@
      "Sting"
     ],
     "n": 0,
-    "naive": 103.6,
-    "naive_hi": 184.1,
-    "naive_lo": 57.1,
-    "obs": 100,
+    "naive": 103.5,
+    "naive_hi": 406.0,
+    "naive_lo": 78.0,
+    "obs": 3,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.19,
+    "slope": 0.0,
     "slope_n": 248,
     "value": null
    },
    "skill_slope": {
-    "band_hi": 249.6,
-    "band_lo": 245.0,
-    "flat": 1.35,
+    "band_hi": 208.0,
+    "band_lo": 171.5,
+    "flat": 1.02,
     "measurable": false,
     "n": 248,
-    "slope": 0.19
+    "slope": 0.0
    },
    "state_model": null,
    "threat": {
@@ -7414,27 +7425,24 @@
    },
    "res": "gfx/kritter/cattle/cattle",
    "skill": {
-    "bound_hi": 250.0,
-    "bound_lo": 87.8,
-    "disputed": true,
     "equalized": false,
-    "hi": 250.0,
-    "lo": 53.3,
+    "hi": 300.0,
+    "lo": 66.7,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 5,
-    "obs": 95,
-    "value": 87.4
+    "n": 4,
+    "obs": 75,
+    "value": 89.8
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 1.73,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 1.35,
     "measurable": null,
     "n": 158,
-    "slope": 0.68
+    "slope": 0.61
    },
    "state_model": null,
    "threat": {
@@ -8242,10 +8250,12 @@
    },
    "res": "gfx/kritter/caveangler/caveangler",
    "skill": {
+    "bound_hi": 344.0,
+    "bound_lo": 195.5,
     "disputed": true,
     "equalized": false,
     "hi": 551.1,
-    "lo": 65.2,
+    "lo": 195.5,
     "moves": [
      "Cleave",
      "Flex",
@@ -8255,15 +8265,15 @@
      "Knock Its Teeth Out",
      "Uppercut"
     ],
-    "n": 10,
-    "obs": 161,
-    "value": 393.6
+    "n": 5,
+    "obs": 61,
+    "value": 402.5
    },
    "skill_slope": {
-    "flat": 1.18,
+    "flat": 0.96,
     "measurable": null,
     "n": 661,
-    "slope": 0.47
+    "slope": 0.4
    },
    "state_model": {
     "base_bits": 2.262,
@@ -8630,20 +8640,16 @@
    },
    "res": "gfx/kritter/cavelouse/cavelouse",
    "skill": {
-    "bound_hi": 76.4,
-    "bound_lo": 72.7,
-    "disputed": true,
-    "equalized": false,
-    "hi": 93.8,
-    "lo": 57.8,
+    "equalized": true,
+    "hi": 312.0,
+    "lo": 88.5,
     "moves": [
      "Full Circle",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 2,
-    "obs": 19,
-    "value": 83.7
+    "n": 0,
+    "value": null
    },
    "skill_slope": null,
    "state_model": null,
@@ -8948,17 +8954,17 @@
      "Full Circle"
     ],
     "n": 6,
-    "obs": 109,
-    "slope": 0.96,
+    "obs": 107,
+    "slope": 1.0,
     "value": 41.0
    },
    "skill_slope": {
-    "band_hi": 297.1,
-    "band_lo": 279.3,
-    "flat": 2.92,
+    "band_hi": 208.0,
+    "band_lo": 195.5,
+    "flat": 2.04,
     "measurable": true,
     "n": 130,
-    "slope": 0.96
+    "slope": 1.0
    },
    "state_model": null,
    "threat": {
@@ -9237,16 +9243,16 @@
     ],
     "n": 4,
     "obs": 138,
-    "slope": 0.9,
+    "slope": 1.04,
     "value": 40.1
    },
    "skill_slope": {
     "band_hi": 284.0,
-    "band_lo": 208.6,
-    "flat": 2.2,
+    "band_lo": 146.0,
+    "flat": 2.18,
     "measurable": true,
     "n": 152,
-    "slope": 0.9
+    "slope": 1.04
    },
    "state_model": null,
    "threat": {
@@ -9385,29 +9391,29 @@
    "res": "gfx/kritter/eagleowl/eagleowl",
    "skill": {
     "equalized": true,
-    "hi": 314.3,
-    "lo": 291.4,
+    "hi": 220.0,
+    "lo": 204.0,
     "moves": [
      "Quick Barrage",
      "Full Circle"
     ],
     "n": 0,
-    "naive": 143.7,
-    "naive_hi": 176.0,
+    "naive": 124.1,
+    "naive_hi": 398.0,
     "naive_lo": 43.0,
-    "obs": 13,
+    "obs": 10,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.02,
+    "slope": -0.18,
     "slope_n": 37,
     "value": null
    },
    "skill_slope": {
-    "band_hi": 314.3,
-    "band_lo": 291.4,
-    "flat": 1.48,
+    "band_hi": 220.0,
+    "band_lo": 204.0,
+    "flat": 1.28,
     "measurable": false,
     "n": 37,
-    "slope": 0.02
+    "slope": -0.18
    },
    "state_model": null,
    "threat": {
@@ -9756,14 +9762,14 @@
     ],
     "n": 9,
     "obs": 256,
-    "slope": 0.99,
+    "slope": 1.04,
     "value": 31.7
    },
    "skill_slope": {
-    "flat": 4.01,
+    "flat": 3.28,
     "measurable": true,
     "n": 303,
-    "slope": 0.99
+    "slope": 1.04
    },
    "state_model": null,
    "threat": {
@@ -10040,29 +10046,29 @@
    "res": "gfx/kritter/goldeneagle/goldeneagle",
    "skill": {
     "equalized": true,
-    "hi": 314.3,
-    "lo": 234.3,
+    "hi": 220.0,
+    "lo": 164.0,
     "moves": [
      "Flex",
      "Quick Barrage"
     ],
     "n": 0,
-    "naive": 136.0,
-    "naive_hi": 408.9,
+    "naive": 51.2,
+    "naive_hi": 576.0,
     "naive_lo": 50.1,
-    "obs": 25,
+    "obs": 7,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.1,
+    "slope": -0.38,
     "slope_n": 68,
     "value": null
    },
    "skill_slope": {
-    "band_hi": 314.3,
-    "band_lo": 234.3,
-    "flat": 1.48,
+    "band_hi": 220.0,
+    "band_lo": 164.0,
+    "flat": 1.08,
     "measurable": false,
     "n": 68,
-    "slope": 0.1
+    "slope": -0.38
    },
    "state_model": null,
    "threat": {
@@ -10185,7 +10191,7 @@
    "res": "gfx/kritter/goshawk/goshawk",
    "skill": {
     "equalized": true,
-    "hi": 132.4,
+    "hi": 500.0,
     "lo": 102.1,
     "moves": [],
     "n": 0,
@@ -10574,8 +10580,8 @@
    "res": "gfx/kritter/ooze/greenooze",
    "skill": {
     "equalized": true,
-    "hi": 249.6,
-    "lo": 215.7,
+    "hi": 208.0,
+    "lo": 151.0,
     "moves": [
      "Flex",
      "Full Circle",
@@ -10585,22 +10591,22 @@
      "Uppercut"
     ],
     "n": 0,
-    "naive": 94.3,
-    "naive_hi": 131.4,
-    "naive_lo": 27.3,
-    "obs": 216,
+    "naive": 432.7,
+    "naive_hi": 432.7,
+    "naive_lo": 21.7,
+    "obs": 77,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.24,
+    "slope": 0.21,
     "slope_n": 425,
     "value": null
    },
    "skill_slope": {
-    "band_hi": 249.6,
-    "band_lo": 215.7,
-    "flat": 1.49,
+    "band_hi": 208.0,
+    "band_lo": 151.0,
+    "flat": 1.14,
     "measurable": false,
     "n": 425,
-    "slope": 0.24
+    "slope": 0.21
    },
    "state_model": null,
    "threat": {
@@ -10925,24 +10931,25 @@
    },
    "res": "gfx/kritter/greyseal/greyseal",
    "skill": {
+    "disputed": true,
     "equalized": false,
-    "hi": 90.1,
-    "lo": 40.7,
+    "hi": 300.0,
+    "lo": 68.0,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 4,
-    "obs": 43,
+    "n": 3,
+    "obs": 31,
     "value": 79.7
    },
    "skill_slope": {
-    "band_hi": 297.1,
-    "band_lo": 208.6,
-    "flat": 1.86,
+    "band_hi": 208.0,
+    "band_lo": 146.0,
+    "flat": 1.32,
     "measurable": null,
     "n": 77,
-    "slope": 0.6
+    "slope": 0.58
    },
    "state_model": null,
    "threat": {
@@ -11251,16 +11258,16 @@
     ],
     "n": 6,
     "obs": 186,
-    "slope": 0.86,
+    "slope": 0.9,
     "value": 27.0
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 5.32,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 4.08,
     "measurable": true,
     "n": 194,
-    "slope": 0.86
+    "slope": 0.9
    },
    "state_model": null,
    "threat": {
@@ -11413,26 +11420,22 @@
    },
    "res": "gfx/kritter/horse/horse",
    "skill": {
+    "bound_hi": 250.0,
+    "bound_lo": 109.0,
+    "disputed": true,
     "equalized": false,
-    "hi": 250.0,
+    "hi": 436.0,
     "lo": 50.9,
     "moves": [
      "Flex",
      "Quick Barrage",
      "Sting"
     ],
-    "n": 3,
-    "obs": 12,
-    "value": 117.0
+    "n": 2,
+    "obs": 6,
+    "value": 87.8
    },
-   "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 171.4,
-    "flat": 1.37,
-    "measurable": null,
-    "n": 28,
-    "slope": 0.48
-   },
+   "skill_slope": null,
    "state_model": null,
    "threat": {
     "damage": {
@@ -11883,12 +11886,12 @@
    },
    "res": "gfx/kritter/lynx/lynx",
    "skill": {
-    "bound_hi": 157.1,
-    "bound_lo": 122.4,
+    "bound_hi": 220.0,
+    "bound_lo": 156.0,
     "disputed": true,
     "equalized": false,
-    "hi": 222.0,
-    "lo": 43.0,
+    "hi": 624.0,
+    "lo": 44.3,
     "moves": [
      "Cleave",
      "Flex",
@@ -11896,16 +11899,16 @@
      "Quick Barrage",
      "Sting"
     ],
-    "n": 4,
-    "obs": 33,
-    "slope": 0.25,
-    "value": 91.9
+    "n": 2,
+    "obs": 19,
+    "slope": 0.09,
+    "value": 70.6
    },
    "skill_slope": {
-    "flat": 1.33,
+    "flat": 1.01,
     "measurable": false,
     "n": 97,
-    "slope": 0.25
+    "slope": 0.09
    },
    "state_model": null,
    "threat": {
@@ -12324,14 +12327,15 @@
     "also_seen": [
      "Knock Its Teeth Out"
     ],
-    "equalized": true,
+    "equalized": false,
     "hi": 711.4,
-    "lo": 177.9,
+    "lo": 128.3,
     "moves": [
      "Quick Barrage"
     ],
-    "n": 0,
-    "value": null
+    "n": 1,
+    "obs": 5,
+    "value": 711.4
    },
    "skill_slope": null,
    "state_model": null,
@@ -13367,10 +13371,9 @@
    },
    "res": "gfx/kritter/moose/moose",
    "skill": {
-    "disputed": true,
-    "equalized": false,
-    "hi": 316.0,
-    "lo": 46.8,
+    "equalized": true,
+    "hi": 208.0,
+    "lo": 204.0,
     "moves": [
      "Flex",
      "Quick Barrage",
@@ -13378,16 +13381,23 @@
      "Cleave",
      "Full Circle"
     ],
-    "n": 4,
-    "obs": 40,
-    "slope": 0.05,
-    "value": 111.3
+    "n": 0,
+    "naive": 62.4,
+    "naive_hi": 584.0,
+    "naive_lo": 46.8,
+    "obs": 4,
+    "resolved": "slope: the inversion reads the band, not the creature",
+    "slope": -0.12,
+    "slope_n": 110,
+    "value": null
    },
    "skill_slope": {
-    "flat": 1.33,
+    "band_hi": 208.0,
+    "band_lo": 204.0,
+    "flat": 1.0,
     "measurable": false,
     "n": 110,
-    "slope": 0.05
+    "slope": -0.12
    },
    "state_model": null,
    "threat": {
@@ -14163,29 +14173,29 @@
    "skill": {
     "equalized": true,
     "hi": 296.0,
-    "lo": 279.3,
+    "lo": 195.5,
     "moves": [
      "Flex",
      "Full Circle",
      "Quick Barrage"
     ],
     "n": 0,
-    "naive": 127.1,
-    "naive_hi": 189.9,
-    "naive_lo": 63.4,
-    "obs": 31,
+    "naive": 959.7,
+    "naive_hi": 959.7,
+    "naive_lo": 81.0,
+    "obs": 2,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.26,
+    "slope": 0.05,
     "slope_n": 65,
     "value": null
    },
    "skill_slope": {
     "band_hi": 296.0,
-    "band_lo": 279.3,
-    "flat": 1.33,
+    "band_lo": 195.5,
+    "flat": 0.99,
     "measurable": false,
     "n": 65,
-    "slope": 0.26
+    "slope": 0.05
    },
    "state_model": null,
    "threat": {
@@ -15029,16 +15039,16 @@
     "n": 4,
     "obs": 29,
     "resolved": "slope: the inversion measures this species",
-    "slope": 1.02,
+    "slope": 1.04,
     "value": 49.9
    },
    "skill_slope": {
     "band_hi": 300.0,
-    "band_lo": 234.3,
-    "flat": 2.74,
+    "band_lo": 164.0,
+    "flat": 2.14,
     "measurable": true,
     "n": 36,
-    "slope": 1.02
+    "slope": 1.04
    },
    "state_model": null,
    "threat": {
@@ -15180,16 +15190,16 @@
     "n": 6,
     "obs": 74,
     "resolved": "slope: the inversion measures this species",
-    "slope": 0.85,
+    "slope": 0.84,
     "value": 46.9
    },
    "skill_slope": {
     "band_hi": 294.0,
-    "band_lo": 279.3,
-    "flat": 2.62,
+    "band_lo": 195.5,
+    "flat": 2.2,
     "measurable": true,
     "n": 86,
-    "slope": 0.85
+    "slope": 0.84
    },
    "state_model": null,
    "threat": {
@@ -15489,8 +15499,8 @@
    "res": "gfx/kritter/bees/queenbee",
    "skill": {
     "equalized": true,
-    "hi": 159.7,
-    "lo": 52.4,
+    "hi": 656.0,
+    "lo": 52.0,
     "moves": [],
     "n": 0,
     "value": null
@@ -15804,16 +15814,16 @@
     "n": 6,
     "obs": 202,
     "resolved": "slope: the inversion measures this species",
-    "slope": 0.92,
+    "slope": 1.02,
     "value": 10.2
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 155.7,
-    "flat": 14.16,
+    "band_hi": 208.0,
+    "band_lo": 109.0,
+    "flat": 10.37,
     "measurable": true,
     "n": 207,
-    "slope": 0.92
+    "slope": 1.02
    },
    "state_model": null,
    "threat": {
@@ -16278,10 +16288,12 @@
    },
    "res": "gfx/kritter/reddeer/reddeer",
    "skill": {
+    "bound_hi": 220.0,
+    "bound_lo": 79.0,
     "disputed": true,
     "equalized": false,
-    "hi": 351.1,
-    "lo": 43.0,
+    "hi": 632.2,
+    "lo": 55.0,
     "moves": [
      "Cleave",
      "Flex",
@@ -16289,15 +16301,17 @@
      "Quick Barrage",
      "Sting"
     ],
-    "n": 6,
-    "obs": 111,
-    "value": 127.1
+    "n": 3,
+    "obs": 34,
+    "value": 632.2
    },
    "skill_slope": {
-    "flat": 1.42,
+    "band_hi": 208.0,
+    "band_lo": 195.5,
+    "flat": 1.04,
     "measurable": null,
     "n": 215,
-    "slope": 0.5
+    "slope": 0.35
    },
    "state_model": null,
    "threat": {
@@ -16738,26 +16752,31 @@
    },
    "res": "gfx/kritter/reindeer/reindeer",
    "skill": {
-    "disputed": true,
-    "equalized": false,
-    "hi": 316.0,
-    "lo": 43.0,
+    "equalized": true,
+    "hi": 220.0,
+    "lo": 164.0,
     "moves": [
      "Full Circle",
      "Quick Barrage",
      "Punch"
     ],
-    "n": 6,
-    "obs": 119,
-    "value": 100.1
+    "n": 0,
+    "naive": 100.4,
+    "naive_hi": 316.0,
+    "naive_lo": 48.7,
+    "obs": 51,
+    "resolved": "slope: the inversion reads the band, not the creature",
+    "slope": 0.27,
+    "slope_n": 187,
+    "value": null
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 1.47,
-    "measurable": null,
+    "band_hi": 220.0,
+    "band_lo": 164.0,
+    "flat": 1.09,
+    "measurable": false,
     "n": 187,
-    "slope": 0.36
+    "slope": 0.27
    },
    "state_model": null,
    "threat": {
@@ -17465,16 +17484,16 @@
     ],
     "n": 8,
     "obs": 154,
-    "slope": 0.92,
+    "slope": 1.1,
     "value": 32.0
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 155.7,
-    "flat": 2.65,
+    "band_hi": 208.0,
+    "band_lo": 109.0,
+    "flat": 2.04,
     "measurable": true,
     "n": 194,
-    "slope": 0.92
+    "slope": 1.1
    },
    "state_model": null,
    "threat": {
@@ -17917,17 +17936,17 @@
      "Quick Barrage",
      "Full Circle"
     ],
-    "n": 6,
-    "obs": 143,
-    "value": 55.1
+    "n": 5,
+    "obs": 123,
+    "value": 51.4
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 2.74,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 2.18,
     "measurable": null,
     "n": 173,
-    "slope": 0.68
+    "slope": 0.69
    },
    "state_model": null,
    "threat": {
@@ -18359,16 +18378,16 @@
     "n": 5,
     "obs": 53,
     "resolved": "slope: the inversion measures this species",
-    "slope": 0.91,
+    "slope": 1.03,
     "value": 30.5
    },
    "skill_slope": {
-    "band_hi": 249.6,
-    "band_lo": 177.9,
-    "flat": 3.57,
+    "band_hi": 200.0,
+    "band_lo": 124.5,
+    "flat": 2.55,
     "measurable": true,
     "n": 75,
-    "slope": 0.91
+    "slope": 1.03
    },
    "state_model": null,
    "threat": {
@@ -18743,17 +18762,17 @@
      "Full Circle"
     ],
     "n": 7,
-    "obs": 124,
-    "slope": 1.0,
+    "obs": 122,
+    "slope": 1.03,
     "value": 51.4
    },
    "skill_slope": {
-    "band_hi": 283.6,
-    "band_lo": 234.3,
-    "flat": 2.22,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 1.75,
     "measurable": true,
     "n": 142,
-    "slope": 1.0
+    "slope": 1.03
    },
    "state_model": null,
    "threat": {
@@ -19270,17 +19289,17 @@
      "Full Circle"
     ],
     "n": 6,
-    "obs": 123,
-    "slope": 1.0,
+    "obs": 105,
+    "slope": 1.05,
     "value": 50.3
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 2.33,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 1.84,
     "measurable": true,
     "n": 143,
-    "slope": 1.0
+    "slope": 1.05
    },
    "state_model": null,
    "threat": {
@@ -19943,29 +19962,25 @@
    "res": "gfx/kritter/walrus/walrus",
    "skill": {
     "equalized": true,
-    "hi": 297.1,
-    "lo": 279.3,
+    "hi": 208.0,
+    "lo": 195.5,
     "moves": [
      "Quick Barrage",
      "Full Circle"
     ],
     "n": 0,
-    "naive": 118.6,
-    "naive_hi": 210.7,
-    "naive_lo": 14.1,
-    "obs": 26,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.07,
+    "slope": -0.09,
     "slope_n": 40,
     "value": null
    },
    "skill_slope": {
-    "band_hi": 297.1,
-    "band_lo": 279.3,
-    "flat": 1.35,
+    "band_hi": 208.0,
+    "band_lo": 195.5,
+    "flat": 0.99,
     "measurable": false,
     "n": 40,
-    "slope": 0.07
+    "slope": -0.09
    },
    "state_model": null,
    "threat": {
@@ -20402,7 +20417,6 @@
    },
    "res": "gfx/kritter/ants/warriorant",
    "skill": {
-    "disputed": true,
     "equalized": false,
     "hi": 26.8,
     "lo": 6.6,
@@ -20413,15 +20427,17 @@
     ],
     "n": 8,
     "obs": 204,
+    "resolved": "slope: the inversion measures this species",
+    "slope": 0.91,
     "value": 21.2
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 155.7,
-    "flat": 6.29,
-    "measurable": null,
+    "band_hi": 208.0,
+    "band_lo": 109.0,
+    "flat": 5.36,
+    "measurable": true,
     "n": 224,
-    "slope": 0.69
+    "slope": 0.91
    },
    "state_model": null,
    "threat": {
@@ -21024,16 +21040,16 @@
     ],
     "n": 6,
     "obs": 190,
-    "slope": 1.0,
+    "slope": 0.99,
     "value": 36.2
    },
    "skill_slope": {
-    "band_hi": 250.0,
-    "band_lo": 234.3,
-    "flat": 3.68,
+    "band_hi": 208.0,
+    "band_lo": 164.0,
+    "flat": 2.98,
     "measurable": true,
     "n": 209,
-    "slope": 1.0
+    "slope": 0.99
    },
    "state_model": null,
    "threat": {
@@ -21574,27 +21590,24 @@
    },
    "res": "gfx/kritter/goat/wildgoat",
    "skill": {
-    "bound_hi": 351.1,
-    "bound_lo": 102.2,
-    "disputed": true,
     "equalized": false,
-    "hi": 351.1,
-    "lo": 53.5,
+    "hi": 316.0,
+    "lo": 66.9,
     "moves": [
      "Full Circle",
      "Quick Barrage"
     ],
-    "n": 5,
-    "obs": 64,
+    "n": 3,
+    "obs": 37,
     "value": 101.8
    },
    "skill_slope": {
-    "band_hi": 314.3,
-    "band_lo": 291.4,
-    "flat": 1.47,
+    "band_hi": 220.0,
+    "band_lo": 204.0,
+    "flat": 1.2,
     "measurable": null,
     "n": 101,
-    "slope": 0.52
+    "slope": 0.41
    },
    "state_model": null,
    "threat": {
@@ -22252,8 +22265,8 @@
    "res": "gfx/kritter/wolf/wolf",
    "skill": {
     "equalized": true,
-    "hi": 297.1,
-    "lo": 291.4,
+    "hi": 208.0,
+    "lo": 204.0,
     "moves": [
      "Full Circle",
      "Quick Barrage",
@@ -22261,22 +22274,22 @@
      "Uppercut"
     ],
     "n": 0,
-    "naive": 86.9,
-    "naive_hi": 351.1,
+    "naive": 367.1,
+    "naive_hi": 520.8,
     "naive_lo": 49.1,
-    "obs": 230,
+    "obs": 39,
     "resolved": "slope: the inversion reads the band, not the creature",
-    "slope": 0.18,
+    "slope": 0.02,
     "slope_n": 539,
     "value": null
    },
    "skill_slope": {
-    "band_hi": 297.1,
-    "band_lo": 291.4,
-    "flat": 1.33,
+    "band_hi": 208.0,
+    "band_lo": 204.0,
+    "flat": 0.99,
     "measurable": false,
     "n": 539,
-    "slope": 0.18
+    "slope": 0.02
    },
    "state_model": {
     "base_bits": 0.536,
@@ -22648,7 +22661,7 @@
    "res": "gfx/kritter/wolverine/wolverine",
    "skill": {
     "equalized": false,
-    "hi": 66.7,
+    "hi": 67.0,
     "lo": 38.9,
     "moves": [
      "Flex",
@@ -22656,15 +22669,17 @@
      "Full Circle"
     ],
     "n": 5,
-    "obs": 64,
-    "slope": 0.95,
+    "obs": 59,
+    "slope": 0.89,
     "value": 61.8
    },
    "skill_slope": {
-    "flat": 2.26,
+    "band_hi": 208.0,
+    "band_lo": 204.0,
+    "flat": 1.89,
     "measurable": true,
     "n": 100,
-    "slope": 0.95
+    "slope": 0.89
    },
    "state_model": null,
    "threat": {
@@ -22802,16 +22817,16 @@
     "n": 3,
     "obs": 26,
     "resolved": "slope: the inversion measures this species",
-    "slope": 0.88,
+    "slope": 1.23,
     "value": 30.5
    },
    "skill_slope": {
-    "band_hi": 366.0,
-    "band_lo": 279.3,
-    "flat": 4.1,
+    "band_hi": 276.0,
+    "band_lo": 195.5,
+    "flat": 3.85,
     "measurable": true,
     "n": 27,
-    "slope": 0.88
+    "slope": 1.23
    },
    "state_model": null,
    "threat": {
