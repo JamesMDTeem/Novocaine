@@ -436,14 +436,18 @@ def replay(paths):
                     continue
                 wa_lo, wa_hi = wa
                 # The SKILL and the multipliers go in separately, because only the skills
-                # equalize. Our skill is the attack weight with the move's own multiplier
-                # divided back out.
-                mult = m.get("weight_mult") or 1.0
+                # equalize. Our skill is the raw attribute the card names; everything else in
+                # the attack weight - the card's multiplier, mu, a stance - rides outside the
+                # comparison, as Sim does it. This used to divide only the card's multiplier
+                # back out, which left mu inside the skill (see estimate.our_skill).
+                skill = attrs.get(m.get("attack_skill") or "melee")
+                if not skill:
+                    continue
                 oc = standing / 100.0
                 # Widest prediction the inputs allow: our biggest weight against the
                 # weakest opponent, and the reverse.
-                hi = model.opening_gain_eq(wa_hi / mult, mult, foe_lo, 1.0, ob, oc) + SLOP
-                lo = model.opening_gain_eq(wa_lo / mult, mult, foe_hi, 1.0, ob, oc) - SLOP
+                hi = model.opening_gain_eq(skill, wa_hi / skill, foe_lo, 1.0, ob, oc) + SLOP
+                lo = model.opening_gain_eq(skill, wa_lo / skill, foe_hi, 1.0, ob, oc) - SLOP
                 s = stats[name]
                 s["n"] += 1
                 if lo <= gain <= hi:

@@ -807,8 +807,8 @@ def the_slope_says_what_is_measurable():
     Beaver, bat, caverat, fox, otter and swan come out near 1 and their skills are real
     measurements. Moose and goldeneagle come out at zero, bear and wolf near 0.2, and for
     those the band holds across every observation, which bounds bear and moose at 209-250
-    where the published value is 62-67. Their k**3 is flat at 1.33, and a constant that does
-    not move with our skill belongs to the model rather than to the creature.
+    where the published value is 62-67. Their k**3 read flat at 1.33, which was mu left inside
+    our skill; with our raw skill (estimate.our_skill) it reads 1, as the band says it must.
 
     What is asserted is the separation and the flatness, not any species' number: that some
     species are measurable and some are not, that no species sits ambiguously between the
@@ -843,13 +843,17 @@ def the_slope_says_what_is_measurable():
           [n for n in flat
            if ("band_lo" in slopes[n]) and not (slopes[n]["band_lo"] <= slopes[n]["band_hi"])],
           [])
-    # AND THE FLAT CONSTANT IS THE SAME FOR ALL OF THEM, which is what makes it a term the
-    # model is missing rather than a property of any one creature.
+    # AND THE FLAT CONSTANT IS THE SAME FOR ALL OF THEM - and it is 1. It read 1.33 until
+    # 2026-09-17, and that was mu left inside our skill: grouped by card level the ratio was
+    # the measured mu at each level. Inside the band equalize is exactly 1, so a median far
+    # from 1 now means something is priced on the wrong side of the comparison again.
     flats = sorted(slopes[n]["flat"] for n in flat)
     if flats:
         print("    the flat k^3 across those: %s" % ", ".join("%.2f" % f for f in flats))
         check("    and it is one constant, not a spread",
               (flats[-1] / flats[0]) < 1.5, True)
+        check("    and that constant is 1, with mu kept out of our skill",
+              0.9 <= flats[len(flats) // 2] <= 1.15, True)
 
     # AND THE PUBLISHED ENTRY NOW OBEYS IT. The slope used to be reported beside the skill
     # and ignored by it, so the pack carried a value for bear that the row below it called
@@ -870,8 +874,12 @@ def the_slope_says_what_is_measurable():
           [n for n in subbed if entries[n].get("value") is not None], [])
     check("    and says it is equalized",
           [n for n in subbed if not entries[n].get("equalized")], [])
+    # Only where there was a number to displace: a per-card reading that was itself only a
+    # bound (the walrus, once mu stopped reading its in-band rows as weaker than us) has no
+    # value to keep.
     check("    and keeps the per-card reading it displaced",
-          [n for n in subbed if "naive" not in entries[n]], [])
+          [n for n in subbed if ("naive" not in entries[n])
+           and ((estimate._foe_skill_percard(per[n]) or {}).get("value") is not None)], [])
     check("    and the band it publishes is the slope's own",
           [n for n in subbed
            if (entries[n]["lo"], entries[n]["hi"]) != (slopes[n]["band_lo"], slopes[n]["band_hi"])],
@@ -2035,15 +2043,19 @@ def attribution_provenance():
     # Eleven fields: (move, colour, standing, gain, wa, wd, lo, hi, clean, char, gob).
     # The ninth is provenance, the tenth is whose reading it is - which _wd_rows needs to
     # keep the skill frames apart - and the eleventh is WHICH CREATURE, which is what lets
-    # a per-animal reading be taken at all. Pinned as an exact width on purpose: every
+    # a per-animal reading be taken at all. The twelfth is our raw SKILL, because mu rides on
+    # the multiplier and not inside the skill that equalizes (estimate.our_skill). Pinned as
+    # an exact width on purpose: every
     # other consumer unpacks this row by position, so a field appearing or moving is a
     # silent mis-read everywhere rather than an error anywhere.
     check("  and every wd row records which kind it is, whose, and which creature",
-          all(len(w) == 11 for rec in per.values() for w in rec["wd"]), True)
+          all(len(w) == 12 for rec in per.values() for w in rec["wd"]), True)
     check("  and every wd row names a character",
           all(w[9] for rec in per.values() for w in rec["wd"]), True)
     check("    and a creature",
           all(w[10] is not None for rec in per.values() for w in rec["wd"]), True)
+    check("    and our skill, with mu kept out of it",
+          all((w[11] or 0) > 0 for rec in per.values() for w in rec["wd"]), True)
     # The converse: anything measured only from contaminated evidence must say so.
     for name, rec in per.items():
         if rec["wd"] and not [w for w in rec["wd"] if w[8]]:

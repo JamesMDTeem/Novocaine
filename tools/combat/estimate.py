@@ -3238,9 +3238,11 @@ def _collect_file(p, moves, opens):
                 # produces the species value can be run over one animal - see
                 # individuals(). Appended rather than inserted because several
                 # readers unpack this tuple by position.
+                # The twelfth is OUR RAW SKILL - see our_skill. It is what equalizes, and
+                # the attack weight cannot give it back without also knowing mu.
                 rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi,
                                   eng.offence_ok, (log.header or {}).get("char"),
-                                  eng.gob))
+                                  eng.gob, attrs.get(m.get("attack_skill") or "melee")))
                 rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
                 # Per individual AND per move. mu can only be read between two moves
                 # thrown at the same creature - see report_mu.
@@ -5350,9 +5352,7 @@ def foe_skill_joint(rec):
         return None
     obs, moves = [], []
     for r in rows:
-        m = load_moves().get(r[0]) or {}
-        mult = m.get("weight_mult") or 1.0
-        our = (r[4] / mult) if mult else r[4]
+        our = our_skill(r)
         if our > 0:
             sigma = GAIN_SIGMA / float(r[3])
             obs.append((our, r[5], 1.0 / (sigma * sigma)))
@@ -5497,9 +5497,8 @@ def foe_skill_slope(rec):
 
     For the flat ones the band holds across every observation, which BOUNDS them instead:
     F is in [max(S)/2, 2*min(S)], giving 209-250 for bear and moose and 209-297 for wolf -
-    two to four times the value the inversion publishes. Their k**3 is flat at 1.33, and a
-    constant that does not move with our skill is a term the model is missing rather than
-    anything about the creature.
+    two to four times the value the inversion publishes. Their k**3 read flat at 1.33, which
+    was mu left inside our skill (see our_skill); with the raw skill it reads 1.
 
     Returns {slope, flat, n, band_lo, band_hi, measurable} or None. `measurable` is the
     reading a consumer wants and it has three states: True where the inversion measures the
@@ -5511,10 +5510,10 @@ def foe_skill_slope(rec):
     for r in (rec.get("wd") or ()):
         if (len(r) < 10) or not r[4] or not (r[5] > 0) or (r[3] < SLOPE_MIN_GAIN):
             continue
-        m = load_moves().get(r[0]) or {}
-        mult = m.get("weight_mult") or 1.0
-        our = (r[4] / mult) if mult else r[4]
-        eq = ((r[4] / r[5]) / mult) if mult else (r[4] / r[5])
+        our = our_skill(r)
+        # Skill over the inverted weight, which inside the band is 1 - not the attack weight
+        # over it, which inside the band is mu (see our_skill).
+        eq = our / r[5]
         if (our > 0) and (eq > 0):
             pts.append((math.log(our), math.log(eq), our, eq))
     if len(pts) < SLOPE_MIN_ROWS:
@@ -5614,6 +5613,16 @@ def foe_skill_entry(rec):
     slope in the middle of the continuum settles nothing. The per-card numbers are kept
     under `naive`/`naive_lo`/`naive_hi` wherever they are displaced, so nothing is lost and
     the substitution is visible in the pack rather than implied by it.
+
+    THE 1.33 IS NAMED, 2026-09-17: it was mu. Every reader here took our skill as the attack
+    weight over the card's own multiplier, leaving mu inside it, while Sim keeps mu on the
+    multiplier outside equalization. Inside the band the ratio therefore read the card's mu -
+    1.00 at level 1, 1.111 at level 2, 1.375 at level 4, 1.43-1.5 at level 5, to the third
+    decimal - and the corpus is mostly level-4 and level-5 Quick Barrage. With our raw skill
+    (see our_skill) the flat constant reads 0.97-1.28 across the in-band species, which is 1,
+    and the branch guess stops halving level-4 and level-5 in-band rows into "weaker than
+    us". The bear's collapsed band (Shade's mu-inflated 583 against a floor of 250) was the
+    same fault.
     """
     out = _foe_skill_percard(rec)
     if out is None:
@@ -5637,10 +5646,11 @@ def foe_skill_entry(rec):
         # Flat, and yet NO SINGLE SKILL FITS IN THE BAND THROUGHOUT. The band closes only
         # while our own skill stays inside a factor of four; wider than that and
         # [max(S)/2, 2*min(S)] is empty, so a creature cannot have been equalized with all
-        # of it. The lynx is the case - flat at 1.33 over 65 rows spanning more than
-        # fourfold - and it is the sharpest evidence yet that the 1.33 is a term the model
-        # is missing rather than equalization, because for this one species equalization
-        # cannot produce it. Nothing is published in place of the value: the per-card
+        # of it. The lynx was the case - flat at 1.33 over 65 rows spanning more than
+        # fourfold - and was taken as evidence of a term the model was missing. Both halves
+        # were mu left inside our skill (see our_skill): it inflated the spread of S past a
+        # factor of four and put the 1.33 on the ratio. Measured on our raw skill the case
+        # may still arise, and then nothing is published in place of the value: the per-card
         # reading stays, disputed as it was, which is the honest state.
         return out
     if out.get("value") is not None:
@@ -5748,7 +5758,7 @@ def _foe_skill_percard(rec):
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
-            bymove[row[0]].append((row[4], row[5]))
+            bymove[row[0]].append((our_skill(row), row[5]))
     ests, spread, lo_b, hi_b, used = [], [], 0.0, float("inf"), []
     thin = []
     for mv, obs in sorted(bymove.items()):
@@ -5763,11 +5773,8 @@ def _foe_skill_percard(rec):
             # So the rows widen the SPREAD, which is what the interval is built from, while
             # contributing no median to `ests` and no bound. A card seen twice should make
             # the answer less certain, never more.
-            m = load_moves().get(mv) or {}
-            mult = m.get("weight_mult") or 1.0
             got_t, bounds_t = [], []
-            for wa, wd in obs:
-                our = (wa / mult) if mult else wa
+            for our, wd in obs:
                 skill, blo, bhi, _branch = foe_skill_from(our, wd)
                 if skill is not None:
                     got_t.append(skill)
@@ -5789,11 +5796,8 @@ def _foe_skill_percard(rec):
             else:
                 spread.extend(got_t)
             continue
-        m = load_moves().get(mv) or {}
-        mult = m.get("weight_mult") or 1.0
         got, bounds = [], []
-        for wa, wd in obs:
-            our = (wa / mult) if mult else wa
+        for our, wd in obs:
             skill, lo, hi, _branch = foe_skill_from(our, wd)
             if skill is not None:
                 got.append(skill)
@@ -5861,6 +5865,34 @@ def _foe_skill_percard(rec):
     return None
 
 
+def our_skill(row):
+    """Our combat SKILL for one `wd` row - the number that equalizes, and nothing else.
+
+    MU IS A MULTIPLIER, NOT PART OF THE SKILL. The attack weight is skill x the card's own
+    multiplier x mu x any stance, and Sim passes exactly that split to openingGainEq: the skill
+    goes through equalize, and mu rides on the multiplier outside it. Every Python reader took
+    "our skill" as the attack weight over the card's multiplier alone, which leaves mu inside -
+    so a levelled card's skill read up to half again too high. Two things followed, both found
+    2026-09-17:
+
+    - Inside the band the inverted Wd comes back as our RAW skill, so against the mu-inflated
+      figure a level-4 or level-5 card (mu 1.36-1.5) read every equalized gain as "weaker than
+      us" and halved it into the creature's skill. The bear read 48.7-176 where its band
+      supports 204-250, and replay missed a Cleave on it.
+    - The "flat k^3 of 1.33" the slope test called a term the model is missing, for the lynx,
+      bear, moose, wolf and narwhal, was mu itself: grouped by card and level, the in-band
+      ratio reads 1.00 at level 1, 1.111 for Full Circle at level 2, 1.375 at level 4 and
+      1.43-1.5 at level 5 - the measured mu at each, to the third decimal.
+
+    Rows written before this carry no skill; for those the old reading is the fallback.
+    """
+    if (len(row) > 11) and row[11]:
+        return float(row[11])
+    m = load_moves().get(row[0]) or {}
+    mult = m.get("weight_mult") or 1.0
+    return (row[4] / mult) if mult else row[4]
+
+
 def foe_skill_from(our_skill, wd_naive):
     """The opponent's combat SKILL, recovered from a naively-inverted defence weight.
 
@@ -5906,7 +5938,7 @@ def report_foe_skill(rec):
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
-            bymove[row[0]].append((row[4], row[5]))
+            bymove[row[0]].append((our_skill(row), row[5]))
     rows = []
     for mv, obs in sorted(bymove.items()):
         if len(obs) < 3:
@@ -5920,9 +5952,7 @@ def report_foe_skill(rec):
     lo_b, hi_b = 0.0, float("inf")
     ests = []
     for mv, wa, wd, n in rows:
-        m = load_moves().get(mv) or {}
-        mult = m.get("weight_mult") or 1.0
-        our = wa / mult if mult else wa
+        our = wa
         skill, lo, hi, branch = foe_skill_from(our, wd)
         if skill is not None:
             ests.append(skill)
@@ -5965,11 +5995,12 @@ def equalization_verdict(rec):
 
     Returns (verdict, detail).
     """
-    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi, clean, char).
+    # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi, clean, char, gob, skill).
+    # Compared on our SKILL, not our attack weight - see our_skill.
     bymove = defaultdict(list)
     for row in rec.get("wd") or ():
         if row[3] >= MIN_GAIN and row[4] and row[5] > 0:
-            bymove[row[0]].append((row[4], row[5]))
+            bymove[row[0]].append((our_skill(row), row[5]))
     pairs = []
     for mv, rows in bymove.items():
         if len(rows) < 2:
