@@ -57,6 +57,13 @@ public final class CombatRecorder {
      * neither the gate nor the reader could see. Per combatant, it is one thing. */
     private static final java.util.Map<String, String> lastBuffs =
         new java.util.concurrent.ConcurrentHashMap<String, String>();
+    /* A charged buff's meter as last written, per combatant and buff - see CombatEvent.charge. */
+    private static final java.util.Map<String, Integer> lastCharge =
+        new java.util.concurrent.ConcurrentHashMap<String, Integer>();
+    /* The four opening buffs, whose meters the state row already carries. */
+    private static final java.util.Set<String> OPENING_BUFFS = new java.util.HashSet<String>(
+        java.util.Arrays.asList("paginae/atk/offbalance", "paginae/atk/dizzy",
+                                "paginae/atk/reeling", "paginae/atk/cornered"));
     /* Our own side of the fight, built once from the same numbers the header is built from,
      * so a prediction can never describe a different character than the log says fought. */
     private static volatile Prediction.Me me = null;
@@ -274,6 +281,7 @@ public final class CombatRecorder {
             lastFoes = null;
             lastFoesBeat = 0;
             lastBuffs.clear();
+            lastCharge.clear();
             named.clear();
             foeResById.clear();
             kinById.clear();
@@ -1463,8 +1471,20 @@ public final class CombatRecorder {
             java.util.List<String> names = new java.util.ArrayList<String>();
             for(haven.Buff b : buffs) {
                 try {
-                    if((b.res != null) && (b.res.get() != null))
-                        names.add(b.res.get().name);
+                    if((b.res != null) && (b.res.get() != null)) {
+                        String nm = b.res.get().name;
+                        names.add(nm);
+                        /* A meter on anything but an opening is a charge - Bloodlust's - and
+                         * goes in whenever it moves by a whole percent. */
+                        Double v = OPENING_BUFFS.contains(nm) ? null : b.ameteri.get();
+                        if(v != null) {
+                            int pct = (int)Math.round(v * 100);
+                            String cid = who + gobId + "|" + nm;
+                            Integer was = lastCharge.put(cid, Integer.valueOf(pct));
+                            if((was == null) || (was.intValue() != pct))
+                                log(CombatEvent.charge(now(), gobId, who, nm, v));
+                        }
+                    }
                 } catch(Exception e) {
                     /* a still-loading resource is skipped, not fatal */
                 }

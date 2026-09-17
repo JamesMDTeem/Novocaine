@@ -184,7 +184,13 @@ public class CombatLogCheck {
          * looked wrong could not be diagnosed from its own log, and one that was spent throwing
          * a card that attacked colours the creature was not open in took a session of guessing
          * to trace to an advisor that believed it was bare-handed. */
-        check("schema constant", CombatEvent.SCHEMA, 22);
+        /* 23 adds the charge row: a non-opening buff's meter. Bloodlust raises our attack weight
+         * by four times its charge, and without the charge a gain made under it cannot be priced. */
+        check("schema constant", CombatEvent.SCHEMA, 23);
+        check("charge carries the meter of a held buff",
+              CombatEvent.charge(12L, -1L, "me", "paginae/atk/bloodlust", 0.25),
+              "{\"ev\":\"charge\",\"t\":12,\"gob\":-1,\"who\":\"me\","
+              + "\"res\":\"paginae/atk/bloodlust\",\"v\":0.2500}");
         check("foe names a player by kin name",
               CombatEvent.foe(9L, 55L, "gfx/borka/body", "kin", "Some \"One\""),
               "{\"ev\":\"foe\",\"t\":9,\"gob\":55,\"res\":\"gfx/borka/body\","

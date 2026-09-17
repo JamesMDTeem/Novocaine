@@ -373,6 +373,8 @@ class Log(object):
         self.foes = []
         # Schema 5 "buffs" samples: what each side is holding, stance included.
         self.buffs = []
+        # Schema 23 "charge" rows: a non-opening buff's meter over time.
+        self.charges = []
 
     @property
     def me(self):
@@ -430,7 +432,7 @@ def read(path, opens=None):
     # can be diagnosed from its own log.
     known = ("begin", "gear", "end", "foe", "hp", "overlay", "party", "agi", "wpn",
              "atkres", "buffs", "foes", "state", "predict", "advice", "move", "dmg",
-             "card", "foeact", "mvfx", "advin")
+             "card", "foeact", "mvfx", "advin", "charge")
     for r in log.rows:
         ev = r.get("ev")
         if ev not in known:
@@ -459,6 +461,10 @@ def read(path, opens=None):
             log.weapons.append(r)
         elif ev == "atkres":
             log.atkres.append(r)
+        elif ev == "charge":
+            # Schema 23. A held buff's meter - Bloodlust's charge, which raises our attack weight
+            # by four times itself. See estimate.holds_charged_stance.
+            log.charges.append(r)
         elif ev == "buffs":
             # Schema 5. The buff resources standing on a combatant, which is where a
             # STANCE lives - the missing term in an opponent's defence weight.

@@ -14,7 +14,28 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 22;
+    public static final int SCHEMA = 23;
+
+    /**
+     * A buff's meter, when it is not one of the four openings (schema 23).
+     *
+     * Bloodlust is the case: "When attacked, Bloodlust is charged by 25%. When you attack an
+     * opponent, your attack weight will be increased by four times the amount that Bloodlust is
+     * charged." The buffs row says it is held and nothing said how charged it was, so every
+     * opening gain made under it had an attack weight the log could not price - eleven of Shade's
+     * fights on 2026-09-16 read a bee swarm 1.3 times weaker than it is. `v` is the meter as the
+     * client draws it, 0 to 1. Written when it moves, per combatant and buff.
+     */
+    public static String charge(long t, long gobId, String who, String res, double v) {
+        return(new JsonObj()
+               .put("ev", "charge")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("who", who)
+               .put("res", res)
+               .put("v", v)
+               .end());
+    }
 
     /**
      * What the LIVE ADVICE was working from - not what the fight contained.
