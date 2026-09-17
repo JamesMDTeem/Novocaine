@@ -480,9 +480,14 @@ public final class LiveAdvice {
     private static Now plan(Job job) {
         List<Prediction.Seen> seen = seen(job);
         java.util.Set<String> planCards = matchup(job).equals(distillKey) ? distilled : null;
-        Prediction.Live live = Prediction.adviseLive(job.me, job.bar, job.mine, job.shp, job.mhp,
-                                                     seen, BEAM, HORIZON, job.readyIn, planCards);
         Foe t = job.foes.get(0);
+        /* The card on screen for this target, held unless another is clearly better - see
+         * Prediction.adviseLive. Only a fresh answer for the same target counts. */
+        Now last = current;
+        String held = ((last != null) && (last.gobId == t.gob) && (last.moveRes != null)
+                       && ((System.currentTimeMillis() - last.at) <= STALE_MS)) ? last.moveRes : null;
+        Prediction.Live live = Prediction.adviseLive(job.me, job.bar, job.mine, job.shp, job.mhp,
+                                                     seen, BEAM, HORIZON, job.readyIn, planCards, held);
         Map<String, Double> dealt = new LinkedHashMap<String, Double>();
         Iterable<String> cards = ((job.bar != null) && !job.bar.isEmpty())
             ? job.bar.keySet() : job.me.levels.keySet();

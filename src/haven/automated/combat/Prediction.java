@@ -861,6 +861,28 @@ public final class Prediction {
     public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
                                   double mhp, List<Seen> foes, int beam, long horizon,
                                   long readyIn, java.util.Set<String> planCards) {
+        return(adviseLive(me, bar, mine, shp, mhp, foes, beam, horizon, readyIn, planCards, null));
+    }
+
+    /**
+     * The same, holding {@code held} - the card the last answer showed against this target - unless
+     * another is clearly better from the state as it now stands.
+     *
+     * WHY A HELD CARD. Every answer was chosen from scratch, and the best two first cards are often
+     * a tick or two apart. In a party the target's openings move several times a second under
+     * other people's cards, so each re-plan landed on the other side of that tie: replayed through
+     * this method, three of James's party fights on 2026-09-16 changed the pick 20-29 times each,
+     * a third of those changes went straight back within a second and a half, and one pick in five
+     * flipped when a single colour of the target moved by one point. Nothing better was found by
+     * any of that - the two cards were worth the same to the model - but a recommendation that
+     * cannot be read is not followed, a combo whose second card keeps changing is not a combo, and
+     * the bot re-presses on every change. So the card on screen stays unless the new best is
+     * clearly better by the rule a target switch already has to meet (clearlyBetter), and the
+     * next-blow guard below still overrides it, because a blow about to land is not a tie.
+     */
+    public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
+                                  double mhp, List<Seen> foes, int beam, long horizon,
+                                  long readyIn, java.util.Set<String> planCards, String held) {
         Setup su = new Setup();
         Live fail = prepare(su, me, bar, mine, shp, mhp, foes, readyIn);
         if(fail != null)
@@ -881,6 +903,7 @@ public final class Prediction {
          * at is tried at the front and the plans compared on the same aim. */
         List<Optimizer.Plan> picks = new ArrayList<Optimizer.Plan>();
         List<List<Optimizer.Plan>> fronts = new ArrayList<List<Optimizer.Plan>>();
+        List<List<Optimizer.Plan>> everys = new ArrayList<List<Optimizer.Plan>>();
         List<Integer> pickAt = new ArrayList<Integer>();
         Optimizer.Plan cur = null;
         for(int k = 0; k < built.size(); k++) {
@@ -900,7 +923,8 @@ public final class Prediction {
                 mm[j] = order.get(j).model;
                 ia[j] = order.get(j).s.myIp;
             }
-            List<Optimizer.Plan> front = Optimizer.search(a, bb, planDeck, mm, beam, horizon, ia);
+            List<Optimizer.Plan> every = (held == null) ? null : new ArrayList<Optimizer.Plan>();
+            List<Optimizer.Plan> front = Optimizer.search(a, bb, planDeck, mm, beam, horizon, ia, every);
             Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
             if(p == null)
                 continue;
@@ -910,6 +934,7 @@ public final class Prediction {
                 p = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
             picks.add(p);
             fronts.add(front);
+            everys.add(every);
             pickAt.add(Integer.valueOf(k));
             if(k == 0)
                 cur = p;
@@ -929,6 +954,30 @@ public final class Prediction {
         List<Optimizer.Plan> front = fronts.get(bi);
         double trade = tradeOf(front);
 
+        /* THE HELD CARD - see the javadoc. Its best line is chosen exactly as the pick was, from the
+         * plans that open with it, and it stays unless the pick is clearly better. */
+        Optimizer.Plan pick = best;
+        boolean kept = false;
+        if((held != null) && !best.moves.isEmpty() && !held.equals(best.moves.get(0).res)
+           && (everys.get(bi) != null)) {
+
+            List<Optimizer.Plan> opens = new ArrayList<Optimizer.Plan>();
+            for(Optimizer.Plan q : everys.get(bi)) {
+                if(!q.moves.isEmpty() && held.equals(q.moves.get(0).res))
+                    opens.add(q);
+            }
+            if(!opens.isEmpty()) {
+                List<Optimizer.Plan> hf = Optimizer.frontier(opens);
+                Optimizer.Plan keep = (trade <= NEGLIGIBLE_HP)
+                    ? Advisor.choose(hf, Advisor.Aim.FASTEST, 0)
+                    : Advisor.choose(hf, Advisor.Aim.SURVIVE, budget);
+                if((keep != null) && !cardClearlyBetter(best, keep, hpKnown ? mhp : 100)) {
+                    best = keep;
+                    kept = true;
+                }
+            }
+        }
+
         String move = best.moves.isEmpty() ? null : best.moves.get(0).res;
         /* Which answer this is: the fastest kill outright, a slower one the reserve forced, or -
          * nothing fitting - the cheapest. */
@@ -936,12 +985,14 @@ public final class Prediction {
         String why;
         if(move == null)
             why = "the best plan throws nothing";
-        else if(best == fastest)
+        else if((best == fastest) || (kept && (fastest != null) && (best.ticks <= fastest.ticks)))
             why = "fastest kill";
         else if(!Double.isNaN(best.hpLost) && (best.hpLost > budget))
             why = "least damage";
         else
             why = "fastest kill that keeps the reserve";
+        if(kept && (move != null))
+            why = why + " (held: " + pick.moves.get(0).name + " is not clearly better)";
         if(bestK != 0)
             why = "switch to " + shortName(built.get(bestK).s.res) + ": " + why;
         if(proxied > 0)
@@ -1210,6 +1261,22 @@ public final class Prediction {
            || Double.isNaN(cheapest.hpLost))
             return(0);
         return(Math.max(0, fastest.hpLost - cheapest.hpLost));
+    }
+
+    /**
+     * Whether a plan opening with another card is worth leaving the held card for: the target
+     * rule, and where neither line kills inside the horizon - a cave angler, often - the one that
+     * leaves the opponent clearly lower, or costs us clearly less. The target rule alone calls two
+     * unkilled lines equal, which would hold a card forever where nothing kills.
+     */
+    private static boolean cardClearlyBetter(Optimizer.Plan other, Optimizer.Plan cur, double scale) {
+        if(!other.killed && !cur.killed) {
+            if(other.foeHp <= (SWITCH_TICKS * cur.foeHp))
+                return(true);
+            return(!Double.isNaN(other.hpLost) && !Double.isNaN(cur.hpLost)
+                   && (other.hpLost <= (cur.hpLost - Math.max(3.0, SWITCH_HP_SHARE * scale))));
+        }
+        return(clearlyBetter(other, cur, scale));
     }
 
     /** Whether another target's plan is worth leaving the current one for. */

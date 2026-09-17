@@ -36,6 +36,10 @@ public class LiveAdviceCheck {
     static final int BEAM = 60;
     static final long HORIZON = 2500;
     static final int[] FRESH = {0, 0, 0, 0};
+    /* The cards me() holds, for sweeps that try each of them. */
+    static final String[] BAR = {"paginae/atk/barrage", "paginae/atk/cleave", "paginae/atk/fullcircle",
+                                 "paginae/atk/sting", "paginae/atk/takeaim", "paginae/atk/qdodge",
+                                 "paginae/atk/sidestep", "paginae/atk/jump", "paginae/atk/zigzag"};
 
     /* A character like the corpus's: sword in hand, a deck with attacks and restorations. */
     static Prediction.Me me() {
@@ -213,6 +217,48 @@ public class LiveAdviceCheck {
         check("at least one hard creature changes the pick at low health", changed > 0, true);
         check("  every changed pick is a restoration", restored, changed);
         check("  and every one costs fewer hitpoints", cheaper, changed);
+
+        /* THE CARD ON SCREEN IS HELD across re-plans unless another is clearly better - replayed
+         * party fights changed the pick 20-29 times each, a third of them straight back. Swept
+         * over the same hard creatures and states, three of each at once - a lone creature almost
+         * always has one clearly best card, and the ties are in crowds: holding the card just
+         * picked changes nothing, a card that is not on the bar is not held, and somewhere a
+         * different card is held. */
+        System.out.println("\na re-plan keeps the card on screen unless another is clearly better");
+        int holdSame = 0, sameOf = 0, heldOther = 0, offBar = 0;
+        /* Few, because a crowd of three is planned once per target and once per held card. */
+        for(int[] standing : new int[][] {{30, 0, 30, 0}, {0, 30, 0, 30}})
+        for(String h : new String[] {"gfx/kritter/wolf/wolf", "gfx/kritter/boar/boar"}) {
+            List<Prediction.Seen> pack = Arrays.asList(seen(h, new int[] {20, 0, 0, 20}, 0),
+                                                       seen(h, new int[] {0, 0, 0, 30}, 0),
+                                                       seen(h, new int[] {10, 0, 10, 0}, 0));
+            Prediction.Live free = Prediction.adviseLive(me, null, standing, 300, 300, pack, BEAM, HORIZON);
+            if((free.proxied > 0) || (free.moveRes == null))
+                continue;
+            sameOf++;
+            Prediction.Live again = Prediction.adviseLive(me, null, standing, 300, 300, pack,
+                                                          BEAM, HORIZON, 0, null, free.moveRes);
+            if(free.moveRes.equals(again.moveRes))
+                holdSame++;
+            Prediction.Live ghost = Prediction.adviseLive(me, null, standing, 300, 300, pack,
+                                                          BEAM, HORIZON, 0, null, "paginae/atk/nosuchcard");
+            if(free.moveRes.equals(ghost.moveRes))
+                offBar++;
+            for(String c : BAR) {
+                if(c.equals(free.moveRes))
+                    continue;
+                Prediction.Live h2 = Prediction.adviseLive(me, null, standing, 300, 300, pack,
+                                                           BEAM, HORIZON, 0, null, c);
+                if(c.equals(h2.moveRes) && (h2.why != null) && h2.why.contains("held:")) {
+                    heldOther++;
+                    break;
+                }
+            }
+        }
+        System.out.printf("      %d situations, %d held a different card%n", sameOf, heldOther);
+        check("  holding the card just picked keeps it", holdSame, sameOf);
+        check("  a card not on the bar is not held", offBar, sameOf);
+        check("  and some near-tie holds a different card, and says so", heldOther > 0, true);
 
         System.out.println("\ndamage already dealt comes off the opponent");
         Prediction.Live fresh = advise(me, null, FRESH, 300, 300, seen(known, foeOpen, 0));

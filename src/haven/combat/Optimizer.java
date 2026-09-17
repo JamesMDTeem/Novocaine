@@ -276,6 +276,19 @@ public final class Optimizer {
     public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
                                     FoeModel[] models, int beam, long maxTicks,
                                     int[] myIp0) {
+        return(search(me, foes, deck, models, beam, maxTicks, myIp0, null));
+    }
+
+    /**
+     * The same, also handing back EVERY finished plan in {@code all}, dominated ones included.
+     *
+     * The frontier keeps one plan per trade-off, so a card a hair slower than the best is not on
+     * it at all - and "how much worse is the card we are already showing?" is a question about
+     * exactly those plans. See Prediction's HELD card. Null skips the copy.
+     */
+    public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
+                                    FoeModel[] models, int beam, long maxTicks,
+                                    int[] myIp0, List<Plan> all) {
         /* Everything the deck opens when the OPPONENT swings, summed once. A deck holds
          * at most one such card in the corpus - Parry - but summing costs nothing and
          * assumes nothing about that staying true. */
@@ -344,6 +357,8 @@ public final class Optimizer {
                 break;
             live = prune(next, hp0, beam);
         }
+        if(all != null)
+            all.addAll(done);
         return(frontier(done));
     }
 
