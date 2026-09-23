@@ -165,7 +165,44 @@ public class Config {
 	}
     }
 
+    /* Portable mode (after brodgar-io-client's): with an empty "portable" (or "portable.txt")
+     * file beside hafen.jar, or -Dhaven.portable=true, everything the client keeps outside its
+     * own folder - settings, the resource cache, the recorded map - lives in savedata/ beside the
+     * jar instead of %APPDATA%. Each install then has its own settings, and a copied folder
+     * carries them. Opt-in only: a client run from the Steam launcher's cache has no marker there
+     * and behaves exactly as before. The first portable start copies the settings file across
+     * so it does not open with defaults; the map and resource cache start fresh. */
+    private static Path portabledir() {
+	try {
+	    Path jar = Utils.srcpath(Config.class);
+	    if((jar == null) || !Files.isRegularFile(jar))
+		return(null);
+	    Path dir = jar.getParent();
+	    if(!Boolean.getBoolean("haven.portable") &&
+	       !Files.exists(dir.resolve("portable")) && !Files.exists(dir.resolve("portable.txt")))
+		return(null);
+	    Path base = dir.resolve("savedata");
+	    Files.createDirectories(base);
+	    if(!Files.isWritable(base))
+		return(null);
+	    Path prefs = base.resolve("Hurricane-prefs.xml");
+	    String appdata = System.getenv("APPDATA");
+	    if(!Files.exists(prefs) && (appdata != null)) {
+		Path old = Utils.pj(Utils.path(appdata), "Haven and Hearth", "Hurricane-prefs.xml");
+		if(Files.isRegularFile(old))
+		    Files.copy(old, prefs);
+	    }
+	    return(base);
+	} catch(Exception e) {
+	    new Warning(e, "portable mode requested but its folder could not be used; using the usual one").issue();
+	    return(null);
+	}
+    }
+
     private static Path findlocaldir() {
+	Path portable = portabledir();
+	if(portable != null)
+	    return(portable);
 	try {
 	    windows: {
 		String path = System.getenv("APPDATA");

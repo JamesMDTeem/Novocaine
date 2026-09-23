@@ -88,6 +88,7 @@ $statePatterns = @(
     'manifest.json'             # regenerated over the stage below, never copied
     '_premerge-backup*', '.pre-update-backup*'
     '*.log', '*.tmp', 'Hurricane-prefs.xml'
+    'savedata', 'portable', 'portable.txt'   # portable mode: one install's settings, caches and map
 )
 
 function Matches-Any($name, $patterns) {
