@@ -5,18 +5,15 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * One character's LP-discovery log: which products (per resource) this character has been seen
@@ -54,9 +51,9 @@ public class LpLog {
         return t;
     });
 
-    /** Uniquifies the scratch file each write uses, so a background flush and a synchronous
-     *  Reset writing the same log at once cannot tear each other's half-written temp file. */
-    private static final AtomicLong writeSeq = new AtomicLong();
+    /** Serialises writes, so a background flush and a synchronous Reset writing the same log at
+     *  once cannot tear each other's half-written temp file (SharedFile uses one temp name). */
+    private static final Object WRITE_LOCK = new Object();
 
     private final Path file;
     /** Where clearLpExplorer() parks the log it is about to wipe, so a reset can be undone. */
@@ -241,12 +238,12 @@ public class LpLog {
             // that fails to parse on next load - silently costing the character its entire
             // discovery history. The rename is atomic, so the log is always either the old
             // complete version or the new one.
-            Path tmp = target.resolveSibling(target.getFileName() + "." + writeSeq.incrementAndGet() + ".tmp");
-            Files.write(tmp, root.toString(2).getBytes(StandardCharsets.UTF_8));
-            try {
-                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
-                Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
+            // SharedFile also forces the bytes to disk before the rename, and retries a rename
+            // Windows refuses while a scanner holds the file - which used to fail the write and
+            // strand a numbered .tmp beside the log every time.
+            byte[] data = root.toString(2).getBytes(StandardCharsets.UTF_8);
+            synchronized (WRITE_LOCK) {
+                haven.automated.nbots.core.SharedFile.writeAtomic(target, data);
             }
             return true;
         } catch (Exception e) {
