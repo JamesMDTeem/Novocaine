@@ -540,6 +540,10 @@ public class FoodService {
                 String jsonPayload = new JSONArray(toSend.toArray()).toString();
 
                 connection = (HttpURLConnection) apiBase.toURL().openConnection();
+                /* Bounded, like every other uploader here: without a timeout a server that
+                 * accepts the connection and never answers holds this thread for good. */
+                connection.setConnectTimeout(10_000);
+                connection.setReadTimeout(20_000);
                 connection.setRequestMethod("POST");
                 connection.setRequestProperty("Content-Type", "application/json");
                 connection.setRequestProperty("User-Agent", "H&H Client");
