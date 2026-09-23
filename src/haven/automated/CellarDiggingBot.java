@@ -63,7 +63,7 @@ public class CellarDiggingBot extends Window implements Runnable, Stoppable {
                 if (!checkVitals()) { sleep(200); continue; }
                 if (active) {
                     if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
-                        try { AUtils.drinkTillFull(gui, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
+                        try { AUtils.drinkTillFull(gui, DRINK_TARGET_STAM); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
                         sleep(200);
                         continue;
                     }
@@ -96,7 +96,7 @@ public class CellarDiggingBot extends Window implements Runnable, Stoppable {
             double hp = gui.getmeters("hp").get(1).a;
             if (hp < LOW_HP_THRESHOLD) {
                 System.out.println("HP IS " + hp + " .. PORTING HOME!");
-                try { haven.automated.helpers.HearthTravel.travel(gui); } catch (InterruptedException ignored) {}
+                try { haven.automated.helpers.HearthTravel.travel(gui); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
                 active = false;
                 activeButton.change("Start");
                 return false;
@@ -170,7 +170,7 @@ public class CellarDiggingBot extends Window implements Runnable, Stoppable {
         while (active && !stop && bumlingExists(bumling)) {
             if (!checkVitals()) break;
             if (gui.getmeter("stam", 0).a < LOW_STAMINA_THRESHOLD) {
-                try { AUtils.drinkTillFull(gui, DRINK_TARGET_STAM); } catch (InterruptedException ignored) {}
+                try { AUtils.drinkTillFull(gui, DRINK_TARGET_STAM); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             }
             if (isMiningOrRunning()) {
                 idleTicks = 0;

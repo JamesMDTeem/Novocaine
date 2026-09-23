@@ -252,7 +252,9 @@ public class Pathfinder implements Runnable {
             mv.wdgmsg("click", Coord.z, mc, 1, 0);
             try {
                 Thread.sleep(30);
-            } catch (InterruptedException ignored) {}
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();   // the caller decides; don't lose a stop
+            }
             moveinterupted = true;
             m.dbgdump();
             return;

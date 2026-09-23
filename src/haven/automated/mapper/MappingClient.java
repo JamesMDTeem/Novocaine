@@ -530,10 +530,10 @@ public class MappingClient {
      * Schedules marker extraction and upload from a map file.
      *
      * Currently disabled - the extraction workflow is commented out. Markers are now handled
-     * through the direct upload path in {@link #UploadMarker(MapFile.SMarker)} instead.
+     * one at a time, as they are placed, by {@link #uploadSMarker(Gob, MapFile.SMarker)}.
      */
     public void ProcessMap(MapFile mapfile, Predicate<MapFile.Marker> uploadCheck) {
-	// Extraction workflow disabled - markers uploaded directly via UploadMarker
+	// Extraction workflow disabled - markers uploaded directly via uploadSMarker
 	// scheduler.schedule(new ExtractMapper(mapfile, uploadCheck), 5, TimeUnit.SECONDS);
     }
 
