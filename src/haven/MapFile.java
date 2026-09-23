@@ -101,7 +101,21 @@ public class MapFile {
 		for(int i = 0, no = data.int32(); i < no; i++)
 		    file.knownsegs.add(data.int64());
 		for(int i = 0, no = data.int32(); i < no; i++) {
-		    Marker mark = file.loadmarker(data);
+		    /* An interrupted write leaves the index truncated
+		     * mid-marker, and throwing here kills the map widget
+		     * and with it the game, over what is usually one
+		     * unreadable marker at the tail. Markers are not
+		     * framed, so there is no resynchronising past the
+		     * damage: keep what parsed and stop (from KamiClient
+		     * 9e18d5943). */
+		    Marker mark;
+		    try {
+			mark = file.loadmarker(data);
+		    } catch(Message.BinError e) {
+			file.damagedindex = String.format("recovered %d of %d markers (%s)", i, no, e);
+			warn(e, "mapfile index damaged: %s", file.damagedindex);
+			break;
+		    }
 		    file.markers.add(mark);
 		}
 	    } else {
@@ -110,7 +124,25 @@ public class MapFile {
 	} catch(Message.BinError e) {
 	    throw(new IOException(String.format("error when loading index: %s", e), e));
 	}
+	if(file.damagedindex != null)
+	    file.backupindex();
 	return(file);
+    }
+
+    /* Set when load() stopped early on a damaged index; GameUI reports
+     * it once there is a UI to report to. */
+    public String damagedindex = null;
+
+    /* The next save() rewrites the index from memory, which would drop
+     * the unreadable tail for good, so keep the original bytes. */
+    private void backupindex() {
+	try(InputStream in = sfetch("index"); OutputStream out = sstore("index.bak")) {
+	    byte[] buf = new byte[8192];
+	    for(int n = in.read(buf); n >= 0; n = in.read(buf))
+		out.write(buf, 0, n);
+	} catch(IOException e) {
+	    warn(e, "could not back up damaged mapfile index");
+	}
     }
 
     private void save() {

@@ -1186,6 +1186,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 		     * existing mapfile with a new one is better. */
 		    throw(new RuntimeException("failed to load mapfile", e));
 		}
+		if(file.damagedindex != null)
+		    error("Your map index was damaged: " + file.damagedindex + ". The original is kept as index.bak.");
 //		mmap = blpanel.add(new CornerMap(UI.scale(new Coord(133, 133)), file), minimapc);
 //		mmap.lower();
 		mapfile = new MapWnd(file, map, Utils.getprefc("smallmapsz", new Coord(300,300)), "Map");

@@ -897,6 +897,14 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		setupmods.add((SetupMod)a);
 	    attr.put(ac, a);
 	}
+	/* Cleared again now the map has changed: a reader that rebuilt the
+	 * snapshot between the clear above and the put would otherwise have
+	 * cached the old set until the next setattr, and the new attribute
+	 * would not be ticked. Under the lock getAttrSnapshot builds under,
+	 * so a build that read the old map cannot land after this. */
+	synchronized(attr) {
+	    attrSnapshot = null;
+	}
 	if (ac == Drawable.class) {
 		if (a != prev) {
 			updateDrawableStuff();
@@ -994,9 +1002,13 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	    if(setupmods.isEmpty()) {
 		this.mods = null;
 	    } else {
-		Pipe.Op[] mods = new Pipe.Op[setupmods.size()];
+		/* One snapshot for both the size and the walk: setupmods is
+		 * copy-on-write, and another thread can add to it between
+		 * a size() and a later iteration. */
+		SetupMod[] sm = setupmods.toArray(new SetupMod[0]);
+		Pipe.Op[] mods = new Pipe.Op[sm.length];
 		int n = 0;
-		for(SetupMod mod : setupmods) {
+		for(SetupMod mod : sm) {
 		    if((mods[n] = mod.gobstate()) != null)
 			n++;
 		}
@@ -1189,9 +1201,13 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		    if(setupmods.isEmpty()) {
 			this.mods = null;
 		    } else {
-			Pipe.Op[] mods = new Pipe.Op[setupmods.size()];
+			/* One snapshot for both the size and the walk: setupmods is
+			 * copy-on-write, and another thread can add to it between
+			 * a size() and a later iteration. */
+			SetupMod[] sm = setupmods.toArray(new SetupMod[0]);
+			Pipe.Op[] mods = new Pipe.Op[sm.length];
 			int n = 0;
-			for(SetupMod mod : setupmods) {
+			for(SetupMod mod : sm) {
 			    if((mods[n] = mod.placestate()) != null)
 				n++;
 			}
