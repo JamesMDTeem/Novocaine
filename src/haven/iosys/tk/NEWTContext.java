@@ -188,6 +188,17 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	    public int hashCode() {return(code);}
 	}
 
+	public static class NEWTKeyCode implements Key.Loc {
+	    public final int code;
+
+	    public NEWTKeyCode(int code) {
+		this.code = code;
+	    }
+
+	    public String id() {return(("newt:" + code).intern());}
+	    public String toString() {return("<" + code + ">");}
+	}
+
 	public static class NEWTKey implements Key {
 	    public final int code, sym;
 	    public final char ch;
@@ -206,6 +217,8 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	    public String id() {
 		return(("newt:" + code).intern());
 	    }
+
+	    public Loc location() {return(new NEWTKeyCode(code));}
 
 	    public Sym primary() {
 		if(sstd != null)
@@ -474,12 +487,11 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 	    private void process(GL gl) {
 		GLContext ctx = gl.getContext();
 		GLEnvironment env;
-		Area shape = Area.sized(size);
 		synchronized(this) {
 		    if((this.env == null) || (this.env.ctx != ctx)) {
 			if(this.env != null)
 			    this.env.dispose();
-			this.env = new JOGLEnvironment(gl, ctx, shape) {
+			this.env = new JOGLEnvironment(gl, ctx) {
 				public void submit(Render cmd) {
 				    super.submit(cmd);
 				    bk.invoke(false, NEWTWindow.this::process);
@@ -489,8 +501,6 @@ public class NEWTContext implements Providers.Factory<Toolkit> {
 			initgl(gl);
 		    }
 		    env = this.env;
-		    if(!env.shape().equals(shape))
-			env.reshape(shape);
 		}
 		GL3 gl3 = gl.getGL3();
 		if(false) {

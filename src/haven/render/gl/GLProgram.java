@@ -262,10 +262,12 @@ public class GLProgram implements Disposable {
 		}
 		throw(new ShaderException("Failed to compile shader", this, info));
 	    }
+	    setmem(GLEnvironment.MemStats.SHADERS, 0);
 	}
 
 	protected void delete(GL gl) {
 	    gl.glDeleteShader(id);
+	    setmem(null, 0);
 	}
 
 	public int glid() {
@@ -400,6 +402,7 @@ public class GLProgram implements Disposable {
 	    if(ckey != null) {
 		ProgramCache.Entry ent = cache.get(ckey);
 		if((ent != null) && loadbin(gl, ent)) {
+		    setmem(GLEnvironment.MemStats.PROGRAMS, 0);
 		    if(dbg)
 			shaderLog(String.format("SHADERDBG load id=%d prog=%d in %.1fms cached=%d bytes", id, System.identityHashCode(GLProgram.this), (Utils.rtime() - start) * 1000, ent.binary.length));
 		    return;
@@ -438,6 +441,7 @@ public class GLProgram implements Disposable {
 		}
 		throw(new LinkException("Failed to link GL program", GLProgram.this, info));
 	    }
+	    setmem(GLEnvironment.MemStats.PROGRAMS, 0);
 	    if(ckey != null)
 		savebin(gl, cache, ckey);
 	}
@@ -496,6 +500,7 @@ public class GLProgram implements Disposable {
 
 	protected void delete(GL gl) {
 	    gl.glDeleteProgram(id);
+	    setmem(null, 0);
 	}
 
 	public void dispose() {

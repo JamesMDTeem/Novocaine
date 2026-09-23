@@ -137,6 +137,17 @@ public abstract class AWTToolkit implements Toolkit {
 	}
     }
 
+    public static class AWTKeyCode implements Key.Loc {
+	public final int code;
+
+	public AWTKeyCode(int code) {
+	    this.code = code;
+	}
+
+	public String id() {return(("awt:" + code).intern());}
+	public String toString() {return("<" + code + ">");}
+    }
+
     public static class AWTKey implements Key {
 	public final int pc, ec;
 	public final char ch;
@@ -154,6 +165,8 @@ public abstract class AWTToolkit implements Toolkit {
 	public String id() {
 	    return(String.format("awt:%x", ec).intern());
 	}
+
+	public Loc location() {return(new AWTKeyCode(ec));}
 
 	private AWTSym extended() {
 	    if(ec == java.awt.event.KeyEvent.VK_UNDEFINED)
@@ -209,7 +222,7 @@ public abstract class AWTToolkit implements Toolkit {
 	public Set<Key.Mod> mods() {return(mods);}
 
 	public String toString() {
-	    return(String.format("#<%s %s str=\"%s\" %s>", getClass().getSimpleName(), key, (string() == null) ? "" : Utils.bprint.enc(string().getBytes(Utils.utf8)), awt));
+	    return(String.format("#<%s %s str=\"%s\" %s>", getClass().getSimpleName(), key, (string() == null) ? "" : Utils.strsafe(string()), awt));
 	}
     }
     public static class AWTKeyDownEvent extends AWTKeyEvent implements KeyDownEvent {
