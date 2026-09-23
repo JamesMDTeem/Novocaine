@@ -217,22 +217,29 @@ public abstract class UILoop implements Console.Directory {
 	Tex tex = (tt == null) ? null : tt.get();
 	if(tex != null) {
 	    Coord sz = tex.sz();
+	    Coord m = UI.scale(3, 3);
+	    /* The whole box, border included, stays inside the window: e is how far the drawn
+	     * frame reaches past the text. Where the tip would run off the left or top edge it
+	     * stands on the other side of the pointer instead of sliding under it, and one that
+	     * fits neither way is held at the edge (after brodgar-io-client a63cdfd54). */
+	    Coord e = m.add(1, 1);
 	    Coord pos = ui.mc.sub(sz).sub(curshotspot);
-	    /* Right and bottom edges before the left and top ones below: a tooltip wider than
-	     * the cursor position allows was drawn off the side of the window entirely. */
+	    if(pos.x < e.x)
+		pos.x = ui.mc.x + UI.scale(16);
+	    if(pos.y < e.y)
+		pos.y = ui.mc.y + UI.scale(16);
 	    Coord lim = (ui.root == null) ? null : ui.root.sz;
 	    if(lim != null) {
-		if(pos.x + sz.x > lim.x)
-		    pos.x = lim.x - sz.x;
-		if(pos.y + sz.y > lim.y)
-		    pos.y = lim.y - sz.y;
+		if(pos.x + sz.x + e.x > lim.x)
+		    pos.x = lim.x - sz.x - e.x;
+		if(pos.y + sz.y + e.y > lim.y)
+		    pos.y = lim.y - sz.y - e.y;
 	    }
-	    if(pos.x < 0)
-		pos.x = 0;
-	    if(pos.y < 0)
-		pos.y = 0;
+	    if(pos.x < e.x)
+		pos.x = e.x;
+	    if(pos.y < e.y)
+		pos.y = e.y;
 	    Coord br = pos.add(sz);
-	    Coord m = UI.scale(3, 3);
 	    g.chcolor(255, 195, 0, 210); // ND: This is the tooltip border color
 	    g.rect2(pos.sub(m).sub(1, 1), br.add(m));
 	    g.chcolor(5, 5, 5, 230);
