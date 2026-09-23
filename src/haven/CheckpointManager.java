@@ -587,7 +587,7 @@ public class CheckpointManager extends Window implements Runnable {
                 setLastPlayerCoord(gui.map.player().rc);
             } else {
                 notMovingCounter = 0;
-                if (!estimatedArrivalTime.text.equals("")) {
+                if (!"".equals(estimatedArrivalTime.texts)) {
                     estimatedArrivalTime.settext("");
                 }
             }

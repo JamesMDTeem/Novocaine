@@ -31,7 +31,7 @@ import java.awt.Graphics;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.*;
-import java.util.stream.IntStream;
+import java.util.Collection;
 
 import static haven.PUtils.*;
 
@@ -434,20 +434,29 @@ public class CharWnd extends Window {
 	}
     }
 
-	public int battrIndex(Resource res) {
-		if (battr != null && battr.attrs != null) {
-			return IntStream.range(0, battr.attrs.size())
-					.filter(i -> battr.attrs.stream().equals(res))
-					.findFirst().orElse(Integer.MAX_VALUE);
+	/* Where res sits in the character sheet, for sorting bonuses into sheet order.
+	 * This used to filter on attrs.stream().equals(res) - a Stream never equals a
+	 * Resource - so every index was MAX_VALUE and every list sorted by name. */
+	private static int attrIndex(Collection<? extends Object> attrs, Resource res) {
+		int i = 0;
+		for(Object a : attrs) {
+			Resource ar = (a instanceof BAttrWnd.Attr) ? ((BAttrWnd.Attr)a).res
+				: (a instanceof SAttrWnd.SAttr) ? ((SAttrWnd.SAttr)a).res : null;
+			if(res.equals(ar))
+				return(i);
+			i++;
 		}
+		return(Integer.MAX_VALUE);
+	}
+
+	public int battrIndex(Resource res) {
+		if (battr != null && battr.attrs != null)
+			return attrIndex(battr.attrs, res);
 		return Integer.MAX_VALUE;
 	}
 	public int sattrIndex(Resource res) {
-		if (sattr != null && sattr.attrs != null) {
-			return IntStream.range(0, sattr.attrs.size())
-					.filter(i -> sattr.attrs.stream().equals(res))
-					.findFirst().orElse(Integer.MAX_VALUE);
-		}
+		if (sattr != null && sattr.attrs != null)
+			return attrIndex(sattr.attrs, res);
 		return Integer.MAX_VALUE;
 	}
 	public int BY_PRIORITY(Resource r1, Resource r2) {
