@@ -908,6 +908,7 @@ public class UI {
 	
     public void keyup(KeyEvent ev) {
 	setmods(ev);
+	haven.automated.WasdWalk.keyup(ev);   // a held walk key is let go of whichever widget has focus
 	dispatch(root, new KeyUpEvent(ev));
     }
 

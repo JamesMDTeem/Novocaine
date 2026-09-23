@@ -439,6 +439,38 @@ public class CamFollowCheck {
 	}
 
 
+	System.out.println("6c. WASD walks by the screen, whichever camera is up");
+	{
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    java.lang.reflect.Method up = haven.automated.WasdWalk.class.getDeclaredMethod("unproject",
+		MapView.class, Coord2d.class, double.class, double.class);
+	    up.setAccessible(true);
+	    MapView.Camera[] cams = {mv.new FreeCam(), mv.new SOrthoCam(new String[0])};
+	    double[][] keys = {{0, -1}, {0, 1}, {-1, 0}, {1, 0}};
+	    String[] names = {"forward goes up", "back goes down", "left goes left", "right goes right"};
+	    for(MapView.Camera cam : cams) {
+		mv.camera = cam;
+		settle(mv);
+		regcam(mv);
+		Coord3f s0 = mv.screenxf(pl.rc);
+		for(int k = 0; k < keys.length; k++) {
+		    Coord2d d = (Coord2d)up.invoke(null, mv, pl.rc, keys[k][0], keys[k][1]);
+		    double len = Math.hypot(d.x, d.y);
+		    Coord3f s1 = mv.screenxf(pl.rc.add(d.x * 20 / len, d.y * 20 / len));
+		    double ex = s1.x - s0.x, ey = s1.y - s0.y;
+		    /* Same direction on screen: the dot product with the key's screen vector is most of
+		     * the screen move's length. */
+		    double cos = ((ex * keys[k][0]) + (ey * keys[k][1])) / Math.max(1e-9, Math.hypot(ex, ey));
+		    check(cam.getClass().getSimpleName() + ": " + names[k], cos > 0.99,
+			  String.format("screen move (%.1f, %.1f)", ex, ey));
+		}
+	    }
+	}
+
+
 	System.out.println("7. the follow detector fires when the camera is pinned, and not before");
 	{
 	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");

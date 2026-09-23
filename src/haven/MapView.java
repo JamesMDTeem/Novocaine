@@ -2807,6 +2807,8 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		if(checkpointManager != null && checkpointManagerThread != null && clickb == 1){
 			checkpointManager.pauseIt();
 		}
+		if(clickb == 1)
+			haven.automated.WasdWalk.cancel();   // the player has taken over the walk
 		if (OptWnd.walkWithPathFinderCheckBox.a && clickb == 1 && ui.modctrl && ui.modshift && !ui.modmeta && !ui.modsuper) {
 			pfLeftClick(mc.floor(), null);
 		} else {

@@ -3261,6 +3261,12 @@ public class OptWnd extends Window {
 		y = addbtn(cont, "Snap East", MapView.kb_camSnapEast, y);
 		y = addbtn(cont, "Snap West", MapView.kb_camSnapWest, y);
 
+	    y = cont.adda(new Label("WASD Movement (walks by the screen)"), cont.sz.x / 2, y + UI.scale(10), 0.5, 0.0).pos("bl").adds(0, 5).y;
+		y = addbtn(cont, "Walk Forward (up the screen)", haven.automated.WasdWalk.kb_fwd, y);
+		y = addbtn(cont, "Walk Left", haven.automated.WasdWalk.kb_left, y);
+		y = addbtn(cont, "Walk Back", haven.automated.WasdWalk.kb_back, y);
+		y = addbtn(cont, "Walk Right", haven.automated.WasdWalk.kb_right, y);
+
 
 	    y = cont.adda(new Label("Walking speed"), cont.sz.x / 2, y + UI.scale(10), 0.5, 0.0).pos("bl").adds(0, 5).y;
 	    y = addbtn(cont, "Increase speed", Speedget.kb_speedup, y);

@@ -1624,6 +1624,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     private double lastwndsave = 0;
     public void tick(double dt) {
 	super.tick(dt);
+	haven.automated.WasdWalk.tick(this);
 	haven.automated.alchemy.AlchemyService.poll(ui, dt);
 	haven.automated.lp.LpContext.tick();
 	haven.automated.nbots.world.PlaceOverlay.tick(this);
@@ -1941,6 +1942,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public static KeyBinding kb_craft = KeyBinding.get("craft", KeyMatch.forchar('C', KeyMatch.M));
 
     public boolean globtype(GlobKeyEvent ev) {
+	if(haven.automated.WasdWalk.keydown(this, ev))
+	    return(true);
 	if(ev.c == ':') {
 	    entercmd();
 	    return(true);
