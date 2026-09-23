@@ -391,6 +391,7 @@ public class CamFollowCheck {
 	     * camera preference as a side effect. */
 	    MapView.Camera[] cams = {
 		mv.new FollowCam(), mv.new SimpleCam(), mv.new FreeCam(), mv.new SOrthoCam(new String[0]),
+		mv.new RTSCam(),
 	    };
 	    for(MapView.Camera cam : cams) {
 		mv.camera = cam;
@@ -399,6 +400,42 @@ public class CamFollowCheck {
 		check(cam.getClass().getSimpleName() + " tracks the player", d < 5.0,
 		      String.format("drift=%.1fpx", d));
 	    }
+	}
+
+
+	System.out.println("6b. the RTS camera pans the ground with the cursor, and Home follows again");
+	{
+	    Glob glob = new Glob(null);
+	    Gob pl = mkgob(glob, PLID, 100, 100);
+	    glob.oc.add(pl);
+	    MapView mv = mkview(glob);
+	    MapView.RTSCam cam = mv.new RTSCam();
+	    mv.camera = cam;
+	    settle(mv);
+	    regcam(mv);
+	    Coord2d p = cam.center();
+	    Coord3f s0 = mv.screenxf(p);
+	    Coord from = Coord.of((int)s0.x, (int)s0.y);
+	    cam.click(from);
+	    cam.drag(from.add(120, 40));
+	    cam.release();
+	    settle(mv);
+	    regcam(mv);
+	    Coord3f s1 = mv.screenxf(p);
+	    double moved = Math.hypot((s1.x - s0.x) - 120, (s1.y - s0.y) - 40);
+	    /* Within 5% of the drag: the pan solves the projection linearly at the drag's origin, and
+	     * perspective makes ground further off move a few percent more than that estimate. */
+	    check("a drag moves the ground point with the cursor", cam.panned() && (moved < 0.05 * Math.hypot(120, 40)),
+		  String.format("point moved (%.1f, %.1f)px for a (120, 40) drag", s1.x - s0.x, s1.y - s0.y));
+	    move(pl, 300, 300);
+	    settle(mv);
+	    Coord2d c = cam.center();
+	    check("a panned camera stays where it was put", c.dist(Coord2d.of(300, 300)) > 50,
+		  String.format("centre %s with the player at (300, 300)", c));
+	    cam.follow();
+	    settle(mv);
+	    check("follow() goes back to the player", !cam.panned() && (cam.center().dist(Coord2d.of(300, 300)) < 5),
+		  String.format("centre %s", cam.center()));
 	}
 
 

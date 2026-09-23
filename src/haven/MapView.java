@@ -327,9 +327,9 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     static {camtypes.put("worse", SimpleCam.class);}
 
     public class FreeCam extends Camera {
-	private float dist = 400.0f, tdist = dist; // ND: This is the camera distance.
+	protected float dist = 400.0f, tdist = dist; // ND: This is the camera distance.
 	public float elev = (float)Math.PI / 4.0f, telev = elev;
-	private float angl = (float) (3 * Math.PI / 2), tangl = angl; // ND: This is the angle. Changed it to look north by default.
+	protected float angl = (float) (3 * Math.PI / 2), tangl = angl; // ND: This is the angle. Changed it to look north by default.
 	private Coord dragorig = null;
 	private float elevorig, anglorig;
 	private final float pi2 = (float)(Math.PI * 2);
@@ -346,15 +346,26 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	    if(Math.abs(telev - elev) < 0.0001) elev = telev;
 
 	    dist = dist + ((tdist - dist) * cf);
-		if (dist > 3000) tdist = dist = 3000; // ND: Limit the zoom out distance
+		if (dist > maxdist()) tdist = dist = maxdist(); // ND: Limit the zoom out distance
 	    if(Math.abs(tdist - dist) < 0.0001) dist = tdist;
 
-	    Coord3f mc = getcc().invy();
+	    Coord3f mc = camcc();
 	    if((cc == null) || (Math.hypot(mc.x - cc.x, mc.y - cc.y) > 250))
 		cc = mc;
 	    else
 		cc = cc.add(mc.sub(cc).mul(cf));
 	    view = haven.render.Camera.pointed(cc.add(0.0f, 0.0f, (float) OptWnd.freeCamHeightSlider.val/10), dist, elev, angl);
+	}
+
+	/* Where the camera looks: the player, for this camera. Split out so RTSCam can look
+	 * somewhere else while keeping the smoothing and the controls below. */
+	protected Coord3f camcc() {
+	    return(getcc().invy());
+	}
+
+	/* How far out the camera may pull back. */
+	protected float maxdist() {
+	    return(3000);
 	}
 
 	public float angle() {
@@ -435,6 +446,170 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		}
     }
     static {camtypes.put("Free", FreeCam.class);}
+
+    /*
+     * The RTS camera (after brodgar-io-client's MapView.RTSCam): a FreeCam with a centre of its
+     * own, so it can be pushed away from the character to look over a base, a crew or a route.
+     * A middle-drag pans the ground with the cursor; Ctrl and middle-drag keeps FreeCam's rotate
+     * and tilt. The wheel zooms proportionally and much further out, with the far and near planes
+     * moving with the distance so the ground is not clipped to black. Home (cam-reset) goes back
+     * to following the character; cam-left/right/in/out turn and zoom from the keyboard, and
+     * FreeCam's snap keys still work.
+     */
+    public class RTSCam extends FreeCam {
+	private Coord2d center = null;      // null: follow the character, exactly as FreeCam does
+	private Coord2d dragorig = null;
+	private Coord dragsc = null;
+	private boolean rotating = false;
+	private float lastz = 0;
+
+	public RTSCam(String... args) {
+	    super();
+	}
+
+	protected Coord3f camcc() {
+	    Coord2d c = this.center;
+	    if(c == null)
+		return(super.camcc());
+	    /* Must not throw Loading: MapView.draw turns a camera Loading into "Waiting for map
+	     * data", which is right for a camera bolted to a character and wrong for one panned over
+	     * ground that is not loaded yet. Keep the last height instead. */
+	    try {
+		Coord3f p = glob.map.getzp(c);
+		lastz = p.z;
+		return(p.invy());
+	    } catch(Loading e) {
+		return(new Coord3f((float)c.x, -(float)c.y, lastz));
+	    }
+	}
+
+	protected float maxdist() {
+	    return(20000);
+	}
+
+	/** True while the camera has been pushed off the character. */
+	public boolean panned() {
+	    return(center != null);
+	}
+
+	/** Where the camera is looking now, panned or not. */
+	public Coord2d center() {
+	    Coord2d c = this.center;
+	    if(c != null)
+		return(c);
+	    try {
+		Coord3f p = getcc();
+		return(Coord2d.of(p.x, p.y));
+	    } catch(Loading e) {
+		return(null);
+	    }
+	}
+
+	public void focus(Coord2d c) {this.center = c;}
+	public void follow()         {this.center = null;}
+
+	public boolean click(Coord sc) {
+	    /* Read once, at the press, so letting Ctrl go mid-drag does not change the gesture. */
+	    rotating = (ui != null) && ((ui.modflags() & UI.MOD_CTRL) != 0);
+	    if(rotating)
+		return(super.click(sc));
+	    dragsc = sc;
+	    dragorig = center();
+	    return(true);
+	}
+
+	public void drag(Coord sc) {
+	    if(rotating) {
+		super.drag(sc);
+		return;
+	    }
+	    Coord2d o = dragorig;
+	    if((o == null) || (dragsc == null))
+		return;
+	    Coord2d d = unproject(o, sc.sub(dragsc));
+	    if(d != null)
+		this.center = o.sub(d);   // the ground follows the cursor, so the centre moves against it
+	}
+
+	public void release() {
+	    if(rotating)
+		super.release();
+	    rotating = false;
+	    dragorig = null;
+	    dragsc = null;
+	}
+
+	/* The world delta that moves a point at `at` by `dsc` pixels, solved through the view's own
+	 * projection (three screenxf probes and a 2x2 inverse) rather than the camera's trigonometry. */
+	private Coord2d unproject(Coord2d at, Coord dsc) {
+	    Coord3f p0 = screenxf(at), px = screenxf(at.add(1, 0)), py = screenxf(at.add(0, 1));
+	    if((p0 == null) || (px == null) || (py == null))
+		return(null);
+	    double a = px.x - p0.x, b = py.x - p0.x, c = px.y - p0.y, d = py.y - p0.y;
+	    double det = (a * d) - (b * c);
+	    if(Math.abs(det) < 1e-9)
+		return(null);
+	    return(Coord2d.of(((d * dsc.x) - (b * dsc.y)) / det,
+			      ((a * dsc.y) - (c * dsc.x)) / det));
+	}
+
+	/* The frustum follows the distance. Camera.resized() fixes the far plane at 8000, which is
+	 * not far enough for a camera that can pull back to 20000; the near plane rises too, or the
+	 * depth buffer loses its precision to the first few metres. The rectangle is given at the
+	 * near plane, so it scales with it to keep the field of view constant. */
+	private void setproj() {
+	    float aspect = ((float)sz.y) / ((float)sz.x);
+	    float near = Math.max(1f, dist / 200f);
+	    float field = 0.5f * near;
+	    float far = Math.max(8000f, (dist * 4f) + 5000f);
+	    proj = Projection.frustum(-field, field, -aspect * field, aspect * field, near, far);
+	}
+
+	public void resized() {
+	    super.resized();
+	    setproj();
+	}
+
+	public void tick(double dt) {
+	    super.tick(dt);
+	    setproj();
+	}
+
+	/* Proportional, not a fixed step: a fixed step is a shove up close and nothing far out. */
+	public boolean wheel(MouseWheelEvent ev) {
+	    zoom((float)Math.pow(1.15, ev.s));
+	    return(true);
+	}
+
+	private void zoom(float f) {
+	    tdist = Math.max(10f, Math.min(tdist * f, maxdist()));
+	}
+
+	public boolean keydown(KeyDownEvent ev) {
+	    if(kb_camreset.key().match(ev)) {
+		follow();
+		return(true);
+	    }
+	    if(kb_camleft.key().match(ev)) {
+		tangl -= (float)(Math.PI / 8);
+		return(true);
+	    }
+	    if(kb_camright.key().match(ev)) {
+		tangl += (float)(Math.PI / 8);
+		return(true);
+	    }
+	    if(kb_camin.key().match(ev)) {
+		zoom(1f / 1.4f);
+		return(true);
+	    }
+	    if(kb_camout.key().match(ev)) {
+		zoom(1.4f);
+		return(true);
+	    }
+	    return(super.keydown(ev));
+	}
+    }
+    static {camtypes.put("RTS", RTSCam.class);}
     
     public class OrthoCam extends Camera {
 	public boolean exact = true;

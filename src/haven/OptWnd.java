@@ -3885,6 +3885,17 @@ public class OptWnd extends Window {
 									ui.gui.map.setcam("Ortho");
 								}
 							}
+							if(btn==2) {
+								// The RTS camera is a Free camera that can be panned off the character,
+								// so it shares the Free camera's settings.
+								Utils.setpref("defcam", "RTS");
+								setFreeCameraSettingsVisibility(true);
+								setOrthoCameraSettingsVisibility(false);
+								MapView.currentCamera = 1;
+								if (ui != null && ui.gui != null && ui.gui.map != null) {
+									ui.gui.map.setcam("RTS");
+								}
+							}
 						} catch (Exception e) {
 							throw new RuntimeException(e);
 						}
@@ -3892,6 +3903,8 @@ public class OptWnd extends Window {
 				};
 			TopPrev = camGrp.add("Free Camera", TopPrev.pos("bl").adds(16, 2));
 			TopPrev = camGrp.add("Ortho Camera", TopPrev.pos("bl").adds(0, 1));
+			TopPrev = camGrp.add("RTS Camera", TopPrev.pos("bl").adds(0, 1));
+			TopPrev.tooltip = RichText.render("A Free camera you can push off your character.$col[185,185,185]{\n\nMiddle-drag: pan the ground\nCtrl + middle-drag: rotate and tilt\nWheel: zoom, much further out\nHome: follow the character again}", UI.scale(300));
 			TopPrev = add(new Label("Camera Dragging:"), TopPrev.pos("bl").adds(0, 6).x(0));
 				TopPrev = add(allowMouse4CamDragCheckBox = new CheckBox("Also allow Mouse 4 Button to drag the Camera"){
 					{a = (Utils.getprefb("allowMouse4CamDrag", false));}
@@ -4012,7 +4025,13 @@ public class OptWnd extends Window {
 
 			// ND: Finally, check which camera is selected and set the right options to be visible
 			String startupSelectedCamera = Utils.getpref("defcam", "Free");
-			if (startupSelectedCamera.equals("Free") || startupSelectedCamera.equals("worse") || startupSelectedCamera.equals("follow")){
+			if (startupSelectedCamera.equals("RTS")) {
+				camGrp.check(2);
+				setFreeCameraSettingsVisibility(true);
+				setOrthoCameraSettingsVisibility(false);
+				MapView.currentCamera = 1;
+			}
+			else if (startupSelectedCamera.equals("Free") || startupSelectedCamera.equals("worse") || startupSelectedCamera.equals("follow")){
 				camGrp.check(0);
 				Utils.setpref("defcam", "Free");
 				setFreeCameraSettingsVisibility(true);

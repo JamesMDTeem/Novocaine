@@ -676,6 +676,12 @@ public class PlgobWatch {
          * A camera that has actually stopped fails both at once - the player slides across the view
          * in step with their own movement while the camera goes nowhere - so requiring both is what
          * separates the real thing from someone walking in circles indoors. */
+        /* An RTS camera pushed off the character is not following it on purpose. */
+        if ((mv.camera instanceof MapView.RTSCam) && ((MapView.RTSCam) mv.camera).panned()) {
+            reset();
+            stuckreported = false;
+            return;
+        }
         boolean drifting = (drift > DRIFT_RATIO);
         boolean stuck = (keepup < KEEPUP_RATIO) && drifting;
         if (!stuck && !posfrozen && cammoved) {
