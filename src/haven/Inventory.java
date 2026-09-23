@@ -117,8 +117,9 @@ public class Inventory extends Widget implements DTarget {
     
     public boolean mousewheel(MouseWheelEvent ev) {
 	if(ui.modshift) {
-	    Inventory minv = getparent(GameUI.class).maininv;
-	    if(minv != this) {
+	    GameUI gui = getparent(GameUI.class);
+	    Inventory minv = (gui == null) ? null : gui.maininv;
+	    if((minv != null) && (minv != this)) {
 		if(ev.a < 0)
 		    wdgmsg("invxf", minv.wdgid(), 1);
 		else if(ev.a > 0)
