@@ -191,6 +191,7 @@ public class TickList implements RenderList<TickList.TickNode> {
 	} else {
 	    Collection<Render> subs = new ArrayList<>();
 	    ThreadLocal<Render> subv = new ThreadLocal<>();
+	    try {
 	    copy.parallelStream().forEach(ent -> {
 		    Render sub = subv.get();
 		    if(sub == null) {
@@ -202,6 +203,9 @@ public class TickList implements RenderList<TickList.TickNode> {
 		    }
 		    task.accept(ent, sub);
 		});
+	    } finally {
+		subv.remove();   /* as OCache.gtick: the caller's entry outlived the call */
+	    }
 	    for(Render sub : subs)
 		g.submit(sub);
 	}

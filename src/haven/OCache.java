@@ -237,6 +237,13 @@ public class OCache implements Iterable<Gob> {
 	} else {
 	    Collection<Render> subs = new ArrayList<>();
 	    ThreadLocal<Render> subv = new ThreadLocal<>();
+	    /* The ThreadLocal lives for this call alone, so the caller's entry is removed on the way
+	     * out (brodgar-io-client 2d8993c8b). The pool's workers clear their own maps after each
+	     * task; the UI thread does not, so it gained a dead entry per gtick - two a frame with
+	     * TickList's - each holding a disposed sub-Render. Under ZGC nothing cleared them: an
+	     * hour AFK packed 67k into one run next to MapFile.lock's read-hold slot, every contended
+	     * read-unlock walked it (hundreds of ms a frame), and 364 of 527 live MB hung off it. */
+	    try {
 	    copy.parallelStream().forEach(ob -> {
 		    if(ob.virtual) {
 			virtualCount.incrementAndGet();
@@ -271,6 +278,9 @@ public class OCache implements Iterable<Gob> {
 		    }
 		    renderedCount.incrementAndGet();
 		});
+	    } finally {
+		subv.remove();
+	    }
 	    for(Render sub : subs)
 		g.submit(sub);
 	}
