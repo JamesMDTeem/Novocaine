@@ -46,6 +46,7 @@ public final class Prediction {
     private static volatile Map<String, Move> moves = null;
     private static volatile Map<String, Pack.Opponent> foes = null;
     private static volatile Map<String, double[]> weapons = null;
+    private static volatile Map<String, Map<String, Boolean>> weaponClasses = null;
     private static volatile Map<String, Move> byRes = null;
     private static volatile boolean loaded = false;
     private static volatile String stamp = null;
@@ -60,6 +61,7 @@ public final class Prediction {
             moves = Pack.movesFromJar();
             foes = Pack.opponentsFromJar();
             weapons = Pack.weaponsFromJar();
+            weaponClasses = Pack.weaponClassesFromJar();
             Map<String, Move> ix = new LinkedHashMap<String, Move>();
             for(Move m : moves.values()) {
                 if(m.res != null)
@@ -142,12 +144,33 @@ public final class Prediction {
          * volatile: written from the message loop, read from wherever the advisor runs. */
         volatile String[] buffs = null;
         volatile boolean shield = false;
+        /** The tile we stand on (Fightview.tileUnder's reading), or null - see Pack's hpByTile. */
+        volatile String tile = null;
+
+        public Me at(String tile) {
+            this.tile = tile;
+            return(this);
+        }
+
+        /**
+         * The buffs held and whether a shield is carried, for a tool staging a logged fight - the
+         * client sets both from the message loop. A log's `buffs` row for us names the stance held
+         * into the fight; without it a Parry held from the last fight was invisible, and the model
+         * never opened the blue that every swing of the creature's opened (COMBAT.md §3.11).
+         */
+        public Me holding(String[] buffs, boolean shield) {
+            this.buffs = buffs;
+            this.shield = shield;
+            return(this);
+        }
         /* Damage-dealing gloves worn at fight start, as a base and a quality - see
          * Combatant.gloveDamage. 0 when none are, or when the recorder did not say. */
         double gloveDamage = 0, gloveQl = 0;
         /* The resource of whatever resolved as the weapon, for the log to name it - null when
          * nothing did, which is the case that plans every weapon card away. */
         String weaponRes = null;
+        /** The held weapon's classes (see Pack.weaponClassesFromJar), or null where unknown. */
+        Map<String, Boolean> weaponClasses = null;
 
         /** What resolved in hand, or null bare-handed. */
         public String weapon() {
@@ -276,6 +299,8 @@ public final class Prediction {
                         dmg, weaponQl, pen, range, armed,
                         (levels == null) ? new LinkedHashMap<String, Integer>() : levels);
         out.weaponRes = wres;
+        if((wres != null) && (weaponClasses != null))
+            out.weaponClasses = weaponClasses.get(Pack.key(wres.substring(wres.lastIndexOf('/') + 1)));
         return(out);
     }
 
@@ -374,36 +399,21 @@ public final class Prediction {
             m = m.withMu(muAt(lvl));
         /* A weapon move with no resolved weapon has no damage and no attack weight. Predicting
          * it as if unarmed would be a different move. */
-        if(needsWeapon(m) && !me.armed)
+        if(!canThrow(m, me))
             return(null);
 
         Pack.Opponent o = find(foeRes);
         if((o == null) || !(o.simulable() || (live && !o.isPlayer() && bounded(o))))
             return(null);
 
-        Combatant a = new Combatant("me");
-        a.str = me.str;
-        a.agi = me.agi;
-        a.unarmed = me.unarmed;
-        a.melee = me.melee;
-        a.armHard = me.armHard;
-        a.armSoft = me.armSoft;
-        a.weaponDamage = me.weaponDamage;
-        a.weaponQl = me.weaponQl;
-        a.weaponPen = me.weaponPen;
-        a.weaponRange = me.weaponRange;
-        a.gloveDamage = me.gloveDamage;
-        a.gloveQl = me.gloveQl;
-        a.hp = a.maxHp = 100;
-        a.ip = myIp;
-        applyStance(a, me);
+        Combatant a = ourSide(me, myIp);
 
         /* The hardest reading the corpus allows, and where it measured the creature, the
          * hardest REAL one: toughest() assembles an animal that is simultaneously the most
          * defended, fastest, largest and strongest ever logged, and no such creature exists.
          * hardestReal() falls back to exactly that reading when the pack ships no rows, so a
          * prediction is never silently widened. */
-        Combatant b = o.hardestReal();
+        Combatant b = planned(o);
         for(int c = 0; c < 4; c++) {
             if(foeOpen[c] > 0)
                 b.open(c, shown(foeOpen[c]));
@@ -515,7 +525,10 @@ public final class Prediction {
             if((oi == null) || !oi.simulable() || (oi.threat == null)
                || (foeOpen[i] == null) || (foeOpen[i].length < 4))
                 continue;
-            Combatant bi = oi.hardestReal();
+            /* The creature the live advice plans - Prediction.creature - so the advice written to the
+             * log is the advice drawn on screen, not an older staging of its own (seams audit,
+             * 2026-09-23). */
+            Combatant bi = creature(oi, a.agi, null, me.tile, true, false);
             /* WHERE IT IS STANDING, which decides whether a sweeping card reaches it. NaN
              * when the caller does not know, and that has to stay expressible: a model
              * that defaulted an unknown position to zero would put every animal inside
@@ -567,7 +580,7 @@ public final class Prediction {
                  * instead, by applyStance. */
                 if(m.stance)
                     continue;
-                if(needsWeapon(m) && !me.armed)
+                if(!canThrow(m, me))
                     continue;
                 deck.add((e.getValue() > 1) ? m.withMu(muAt(e.getValue())) : m);
             }
@@ -663,6 +676,25 @@ public final class Prediction {
         public final Map<String, Integer> seen;
         /** Whether it may be aimed at - false once we have offered it peace. */
         public final boolean targetable;
+        /** The client's bracket on its agility as a ratio to ours (Fightview.Relation.minAgi and
+         * maxAgi), or 0 and 2 - the client's own "unknown". */
+        public final double agiLo, agiHi;
+        /** Seconds since it last acted, -1 when it has not acted yet, NaN when unknown - see
+         * {@link #firstAct}. Not final: set by the caller that knows it, after construction. */
+        public double sinceAct = Double.NaN;
+        /** The share of its attacks that have landed on us, or NaN for all of them - see
+         * Combatant.onUs. Set by the caller that counted it. */
+        public double onUs = Double.NaN;
+
+        public Seen aimed(double share) {
+            this.onUs = share;
+            return(this);
+        }
+
+        public Seen acted(double since) {
+            this.sinceAct = since;
+            return(this);
+        }
 
         public Seen(String res, int[] open, int myIp, double dist, double taken,
                     Map<String, Integer> seen) {
@@ -671,6 +703,14 @@ public final class Prediction {
 
         public Seen(long gob, String res, int[] open, int myIp, int foeIp, double dist,
                     double taken, Map<String, Integer> seen, boolean targetable) {
+            this(gob, res, open, myIp, foeIp, dist, taken, seen, targetable, 0, 2);
+        }
+
+        public Seen(long gob, String res, int[] open, int myIp, int foeIp, double dist,
+                    double taken, Map<String, Integer> seen, boolean targetable,
+                    double agiLo, double agiHi) {
+            this.agiLo = agiLo;
+            this.agiHi = agiHi;
             this.gob = gob;
             this.res = res;
             this.open = open;
@@ -779,7 +819,230 @@ public final class Prediction {
      * a plan 15% quicker, or one that costs 5% of our bar less. Switching is not free - openings
      * built on the current target stay there, and a recommendation that flickered between two
      * near-equal targets would be useless to follow and worse for a bot to act on. */
-    static final double SWITCH_TICKS = 0.85, SWITCH_HP_SHARE = 0.05;
+    public static final double SWITCH_TICKS = 0.85, SWITCH_HP_SHARE = 0.05;
+
+    /**
+     * How many opponents are tried as the one to hit first. Every opponent on us still acts in
+     * every plan - that is the point: the bat dungeon of 2026-09-19 put up to 26 on us at once
+     * (123 in a 66 s fight), and planned against 4 the advice predicted 25 soft hitpoints lost
+     * where 361 were; against all 26 it predicted 322 and threw restorations on its own. Only
+     * the choice of target is limited, because each candidate is a whole search.
+     */
+    static final int TARGETS = 4;
+
+    /**
+     * The creature as a plan fights it: the hardest real individual the pack holds - its hitpoints
+     * and agility - at its species' MEASURED skill rather than the top of the skill band.
+     *
+     * The plan prices the fight at the median and the next-blow guard prices one swing at the worst;
+     * that is this class's rule, and staging skill at the top of its band broke it. Where the band
+     * is tight the two barely differ, but green ooze is pinned only to 27-405 (estimate 74.6) and red
+     * deer to 124-435: planned at the top, our openings grew to about 57% of what they do and our
+     * damage to a third. Held against the characters' own solo kills (COMBAT.md §3.11), staging the
+     * estimate took green ooze from 0.68 to 0.99 of the damage it really took and red deer from
+     * 0.73 to 0.95, and left every tight-band species where it was.
+     */
+    /**
+     * A creature's agility from the client's bracket on it, or NaN where the bracket says nothing.
+     *
+     * Our agility times the geometric middle of the bracket, clipped to the [0.5, 2] the cooldown
+     * factor is clamped to. planned() stages the species' agility cap - "faster than us", every
+     * card of ours at 1.1 of its base - and the bracket says otherwise for nearly every creature
+     * we fight: 694 of 714 solo bat fights read (0, 0.58), and the logged Quick Barrage ran at
+     * 0.90 of its base for all four characters. Staged from the bracket, the model's clock against
+     * the characters' own fights went from 1.06-1.22 of the logged time to 1.00 for bats, swans
+     * and adders, and no matchup got worse (tools/StrategyVsPlayer, 2026-09-21).
+     */
+    /* Where in its period a creature that has not acted yet first acts, as a share of it: a median
+     * 0.05 at the first card of 1,087 solo fights - it answers at once (Combatant.firstAct). */
+    static final double FIRST_SHARE = 0.05;
+
+    /**
+     * Ticks from now to the creature's next action, from how long ago it last acted, or NaN when
+     * nothing says - Combatant.firstAct reads NaN as a full period, the old reading.
+     *
+     * One that has not acted yet acts at once (FIRST_SHARE of its period). One that has acts a
+     * period after its last action, never sooner than now. A full period from now, which is what
+     * the planner assumed before, is right only in the instant after it acted; at our cards the
+     * true wait is a median 0.58 of a period.
+     */
+    public static double firstAct(double period, double sinceSeconds) {
+        if(Double.isNaN(sinceSeconds) || !(period > 0) || (period == Long.MAX_VALUE))
+            return(Double.NaN);
+        if(sinceSeconds < 0)
+            return(FIRST_SHARE * period);
+        return(Math.max(0.0, period - Formulas.secondsToTicks(sinceSeconds)));
+    }
+
+
+    public static double agilityFrom(double ourAgi, double lo, double hi) {
+        if(!(ourAgi > 0) || ((lo <= 0) && (hi >= 2)))
+            return(Double.NaN);
+        lo = Math.max(0.5, lo);
+        hi = Math.min(2.0, hi);
+        if(!(lo <= hi))
+            return(Double.NaN);
+        return(ourAgi * Math.sqrt(lo * hi));
+    }
+
+    /**
+     * The lines players have killed this creature's kind with, as moves on this bar - each one whose
+     * every card is on it (a line with a card swapped out is a different line, not this one). Null
+     * when there are none. See Pack.Opponent.playerLines.
+     */
+    public static List<List<Move>> shownLines(String res, List<Move> deck) {
+        if(!offerShownLines)
+            return(null);
+        Pack.Opponent o = (res == null) ? null : known(res);
+        if((o == null) || o.playerLines.isEmpty())
+            return(null);
+        Map<String, Move> byRes = new java.util.HashMap<String, Move>();
+        for(Move m : deck)
+            byRes.put(m.res, m);
+        List<List<Move>> out = new ArrayList<List<Move>>();
+        for(List<String> l : o.playerLines) {
+            List<Move> line = new ArrayList<Move>(l.size());
+            for(String r : l) {
+                Move m = byRes.get(r);
+                if(m == null) {
+                    line = null;
+                    break;
+                }
+                line.add(m);
+            }
+            if(line != null)
+                out.add(line);
+        }
+        return(out.isEmpty() ? null : out);
+    }
+
+    /**
+     * Whether the live search is offered the lines players have shown (on by default). A switch for
+     * the checks, which test the held-card rule on its own as well as with the library.
+     */
+    public static volatile boolean offerShownLines = true;
+
+    /** Whether one of {@code plans} that follows a shown line beats {@code keep} - see Advisor.beats. */
+    static boolean shownBeats(List<Optimizer.Plan> plans, Optimizer.Plan keep, List<List<Move>> shown) {
+        if((plans == null) || (shown == null))
+            return(false);
+        for(Optimizer.Plan x : plans) {
+            if(follows(x, shown) && Advisor.beats(x, keep))
+                return(true);
+        }
+        return(false);
+    }
+
+    /** Whether a plan's cards are one of the shown lines, repeated as the search repeats them. */
+    static boolean follows(Optimizer.Plan p, List<List<Move>> shown) {
+        if(p.moves.isEmpty())
+            return(false);
+        for(List<Move> l : shown) {
+            boolean all = true;
+            for(int i = 0; all && (i < p.moves.size()); i++)
+                all = p.moves.get(i) == l.get(i % l.size());
+            if(all)
+                return(true);
+        }
+        return(false);
+    }
+
+    /**
+     * THE CREATURE A PLAN IS MADE AGAINST, staged one way for every planner (seams audit, 2026-09-23).
+     *
+     * The live advice, the replay tools and the deck search each built this for themselves, and they
+     * drifted: the deck search planned the largest individual ever logged, at its own logged agility,
+     * with a full period before its first swing - three things the live advice had stopped doing -
+     * so it chose decks for a fight the advice would never plan. Everything that says what KIND of
+     * creature this is lives here; where it stands, what it holds and what it has taken are the
+     * caller's, since only a live fight knows them.
+     *
+     * @param ourAgi the agility of whoever it is fighting, which reads its own against ours
+     * @param s      what the fight shows of it; the client's agility bracket and the time since it
+     *               last acted are read from here, and a fresh Seen stands for a fight not begun
+     * @param tile   where it is fought, for its size, or null
+     * @param sized  plan at the median of the real ones still consistent with what it has taken -
+     *               false for a stand-in, which has no individuals of its own
+     * @param weak   the easiest real one instead of the hardest, for the deck search's lower bound
+     */
+    public static Combatant creature(Pack.Opponent o, double ourAgi, Seen s, String tile,
+                                     boolean sized, boolean weak) {
+        Combatant b = weak ? o.weakestReal() : planned(o);
+        double agi = (s == null) ? Double.NaN : agilityFrom(ourAgi, s.agiLo, s.agiHi);
+        /* NO BRACKET YET: its kind's own agility, read from every fight at once against
+         * the agility each character had then (Pack.Opponent.agilityAgainst, 2026-09-22) -
+         * a wolf is 250 whoever fights it. Only where the pack has no such consensus, the
+         * kind's usual SHARE of ours from the client's brackets (creature_sizes.json), which
+         * is a share of whoever happened to be fighting and moves as they train. */
+        if(Double.isNaN(agi))
+            agi = o.agilityAgainst(ourAgi);
+        if(Double.isNaN(agi) && (o.agiRatio > 0) && (ourAgi > 0))
+            agi = ourAgi * o.agiRatio;
+        if(!Double.isNaN(agi))
+            b.agi = agi;
+        if(o.threat != null)
+            b.firstAct = firstAct(o.threat.period, (s == null) ? -1 : s.sinceAct);
+        if((s != null) && !Double.isNaN(s.onUs))
+            b.onUs = Math.max(0.0, Math.min(1.0, s.onUs));
+        /* HOW BIG IT IS: the median of the real ones still consistent with what it has taken,
+         * not the largest ever logged. The class's own rule is to plan at the median and guard
+         * one blow at the worst (the hard model), and the hitpoints broke it: every bat was planned
+         * at 340 when the pack's bats run 54-340 (median 130) and the ones fought on 2026-09-22
+         * took 19-59, so the advice built openings with a fourth and fifth Quick Barrage where
+         * two and a Full Circle killed - 54 modelled ticks against 36 on every one of them.
+         * Conditioned on what it has taken, a creature that keeps soaking grows in the plan. */
+        if(sized) {
+            double med = o.medianHpAbove(Math.max(0, (s == null) ? 0 : s.taken), tile);
+            if(!Double.isNaN(med) && (med > 0))
+                b.hp = b.maxHp = med;
+        }
+        return(b);
+    }
+
+    static Combatant planned(Pack.Opponent o) {
+        Combatant b = o.hardestReal();
+        if(!Double.isNaN(o.skill) && (o.skill > 0))
+            b.blockSkill = o.skill;
+        return(b);
+    }
+
+    /* How fast we cover ground mid-fight: 50.5 world units a second, the median of our own
+     * `myspd` while moving over 130,000 samples from all four characters (2026-09-21). */
+    static final double WALK_SPEED = 50.5;
+
+    /* Creatures that bring more of their kind while they live - see adviseLive. By species, the
+     * last part of the resource. */
+    static final java.util.Set<String> SPAWNERS = new java.util.HashSet<String>(
+        java.util.Arrays.asList("denmother"));
+
+    static boolean isSpawner(String res) {
+        return((res != null) && SPAWNERS.contains(res.substring(res.lastIndexOf('/') + 1)));
+    }
+
+    /** Where the incumbent sits in the planning order, or 0 (the current relation) if not there. */
+    private static int incumbentAt(List<Built> built, List<Seen> foes, int incumbent) {
+        if((incumbent <= 0) || (incumbent >= foes.size()))
+            return(0);
+        for(int k = 0; k < built.size(); k++) {
+            if(built.get(k).at == incumbent)
+                return(k);
+        }
+        return(0);
+    }
+
+    /** How far off we fight now: the current relation's distance, or our reach if nearer or unknown. */
+    private static double standing(List<Built> built, Combatant a) {
+        double reach = a.reach();
+        double d = built.isEmpty() ? Double.NaN : built.get(0).s.dist;
+        return(Double.isNaN(d) ? reach : Math.max(d, reach));
+    }
+
+    /** Ticks of walking to reach a target at {@code dist} from where we fight now; 0 if no further. */
+    static long walkTicks(double dist, double here) {
+        if(Double.isNaN(dist) || Double.isNaN(here) || (dist <= here))
+            return(0);
+        return(Math.round(Formulas.secondsToTicks((dist - here) / WALK_SPEED)));
+    }
 
     /* A restoration worth throwing into a threatened blow when nothing better is available
      * takes at least this share off it (0.90 = a tenth). */
@@ -883,6 +1146,26 @@ public final class Prediction {
     public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
                                   double mhp, List<Seen> foes, int beam, long horizon,
                                   long readyIn, java.util.Set<String> planCards, String held) {
+        return(adviseLive(me, bar, mine, shp, mhp, foes, beam, horizon, readyIn, planCards, held, 0));
+    }
+
+    /**
+     * The same, protecting {@code foes.get(incumbent)} - the opponent WE chose - rather than
+     * whoever the fight view calls current.
+     *
+     * THE SERVER MOVES THE CURRENT RELATION ON ITS OWN. Of 2,400 relations that arrived while we
+     * already had a target, `current` moved to the newcomer within 3 s 910 times (38%), median
+     * 146 ms after it appeared (2026-09-21). The rule that another target must be clearly better
+     * before we switch was protecting index 0, which is `current` - so it defended whatever had
+     * just aggroed, and James saw the advice "prefer switching to the most freshly spawned
+     * target even if the situation is overall equal". The list stays [current, others] - the
+     * answer is still FOR the current relation, and a pick of the incumbent reads as a switch
+     * back through {@link Live#target} - and only the protection moves.
+     */
+    public static Live adviseLive(Me me, Map<String, Integer> bar, int[] mine, double shp,
+                                  double mhp, List<Seen> foes, int beam, long horizon,
+                                  long readyIn, java.util.Set<String> planCards, String held,
+                                  int incumbent) {
         Setup su = new Setup();
         Live fail = prepare(su, me, bar, mine, shp, mhp, foes, readyIn);
         if(fail != null)
@@ -906,8 +1189,15 @@ public final class Prediction {
         List<List<Optimizer.Plan>> everys = new ArrayList<List<Optimizer.Plan>>();
         List<Integer> pickAt = new ArrayList<Integer>();
         Optimizer.Plan cur = null;
+        int inc = incumbentAt(built, foes, incumbent);
+        double here = standing(built, a);
         for(int k = 0; k < built.size(); k++) {
             if((k > 0) && !built.get(k).s.targetable)
+                continue;
+            /* EVERYONE SWINGS, A FEW ARE TRIED AS TARGETS. The whole crowd goes into every plan
+             * as opponents acting on us, but only the first TARGETS - the current relation, ours,
+             * the nearest - and any spawner are searched at the front. See TARGETS. */
+            if((k >= TARGETS) && (k != inc) && !isSpawner(built.get(k).s.res))
                 continue;
             List<Built> order = new ArrayList<Built>(built.size());
             order.add(built.get(k));
@@ -924,7 +1214,18 @@ public final class Prediction {
                 ia[j] = order.get(j).s.myIp;
             }
             List<Optimizer.Plan> every = (held == null) ? null : new ArrayList<Optimizer.Plan>();
-            List<Optimizer.Plan> front = Optimizer.search(a, bb, planDeck, mm, beam, horizon, ia, every);
+            /* THE WALK. Nothing in the search moves us - every creature swings wherever we stand -
+             * so a target further off than the one we are fighting costs the walk to it as dead
+             * time on our side, with every other opponent still swinging. The same readyAt a
+             * cooldown uses, so the plan pays for it exactly as it pays for waiting. */
+            Combatant ak = a;
+            long walk = walkTicks(built.get(k).s.dist, here);
+            if(walk > 0) {
+                ak = a.copy();
+                ak.readyAt = a.readyAt + walk;
+            }
+            List<Optimizer.Plan> front = Optimizer.search(ak, bb, planDeck, mm, beam, horizon, ia, every,
+                                                          null, shownLines(order.get(0).s.res, planDeck));
             Optimizer.Plan p = Advisor.choose(front, Advisor.Aim.SURVIVE, budget);
             if(p == null)
                 continue;
@@ -936,7 +1237,7 @@ public final class Prediction {
             fronts.add(front);
             everys.add(every);
             pickAt.add(Integer.valueOf(k));
-            if(k == 0)
+            if(k == inc)
                 cur = p;
         }
         if(picks.isEmpty())
@@ -945,11 +1246,24 @@ public final class Prediction {
         Optimizer.Plan best = Advisor.choose(picks, Advisor.Aim.SURVIVE, budget);
         int bi = picks.indexOf(best);
         int bestK = pickAt.get(bi).intValue();
-        if((bestK != 0) && (cur != null) && t.targetable
+        if((bestK != inc) && (cur != null) && built.get(inc).s.targetable
            && !clearlyBetter(best, cur, hpKnown ? mhp : 100)) {
-            bi = pickAt.indexOf(Integer.valueOf(0));
+            bi = pickAt.indexOf(Integer.valueOf(inc));
             best = cur;
-            bestK = 0;
+            bestK = inc;
+        }
+        /* SPAWNERS FIRST. A creature that brings more of them is the target while it stands,
+         * whatever the arithmetic says of the ones it has already brought - the plan cannot see
+         * the adds it has not spawned yet. James, 2026-09-21: "if we see a denmother we should
+         * always prioritize it 100% as it spawns in other bats". */
+        for(int j = 0; j < picks.size(); j++) {
+            int k = pickAt.get(j).intValue();
+            if(isSpawner(built.get(k).s.res) && ((k == 0) || built.get(k).s.targetable)) {
+                bi = j;
+                best = picks.get(j);
+                bestK = k;
+                break;
+            }
         }
         List<Optimizer.Plan> front = fronts.get(bi);
         double trade = tradeOf(front);
@@ -971,7 +1285,11 @@ public final class Prediction {
                 Optimizer.Plan keep = (trade <= NEGLIGIBLE_HP)
                     ? Advisor.choose(hf, Advisor.Aim.FASTEST, 0)
                     : Advisor.choose(hf, Advisor.Aim.SURVIVE, budget);
-                if((keep != null) && !cardClearlyBetter(best, keep, hpKnown ? mhp : 100)) {
+                /* NOT PAST A LINE A PLAYER HAS SHOWN (2026-09-22). Holding trades a little speed for a
+                 * steady card, but never below a line our characters have already killed this kind
+                 * with - that is the one promise the advice keeps whatever else it weighs. */
+                if((keep != null) && !cardClearlyBetter(best, keep, hpKnown ? mhp : 100)
+                   && !shownBeats(everys.get(bi), keep, shownLines(built.get(bestK).s.res, planDeck))) {
                     best = keep;
                     kept = true;
                 }
@@ -1055,6 +1373,56 @@ public final class Prediction {
                         built.get(bestK).at, danger, cap, threat, trade, reserve));
     }
 
+    /**
+     * The fight exactly as the live advice would plan it - our side, the bar as a deck, and each
+     * opponent with its model - for tools that must judge a line on the same terms the advice
+     * does (StrategyVsPlayer). {@link Staged#refused} says why, where {@link #adviseLive} would
+     * refuse to plan at all.
+     */
+    public static final class Staged {
+        public final Combatant a;
+        public final List<Move> deck;
+        public final Combatant[] foes;
+        public final FoeModel[] models;
+        /** Opponents planned as a stand-in because the pack does not know them. */
+        public final int proxied;
+        /** Why the live advice would not plan this fight, or null when it would. */
+        public final String refused;
+
+        Staged(String refused) {
+            this(null, null, null, null, 0, refused);
+        }
+
+        Staged(Combatant a, List<Move> deck, Combatant[] foes, FoeModel[] models, int proxied) {
+            this(a, deck, foes, models, proxied, null);
+        }
+
+        private Staged(Combatant a, List<Move> deck, Combatant[] foes, FoeModel[] models, int proxied,
+                       String refused) {
+            this.refused = refused;
+            this.a = a;
+            this.deck = deck;
+            this.foes = foes;
+            this.models = models;
+            this.proxied = proxied;
+        }
+    }
+
+    public static Staged stage(Me me, Map<String, Integer> bar, int[] mine, double shp, double mhp,
+                               List<Seen> foes) {
+        Setup su = new Setup();
+        Live no = prepare(su, me, bar, mine, shp, mhp, foes, 0);
+        if(no != null)
+            return(new Staged(no.why));
+        Combatant[] bb = new Combatant[su.built.size()];
+        FoeModel[] mm = new FoeModel[su.built.size()];
+        for(int i = 0; i < bb.length; i++) {
+            bb[i] = su.built.get(i).b;
+            mm[i] = su.built.get(i).model;
+        }
+        return(new Staged(su.a, su.deck, bb, mm, su.proxied));
+    }
+
     /** Our side, every opponent as the model sees it, and the bar as a deck - built once per ask. */
     private static final class Setup {
         Combatant a;
@@ -1130,9 +1498,15 @@ public final class Prediction {
                      * The plan prices the fight at the median; one swing is priced at the worst. */
                     hard = (o.threatHi != null) ? o.threatHi : o.threat;
                 }
-                b = o.hardestReal();
+                /* A stand-in is not sized from the real kind's individuals - it has none. */
+                b = creature(o, a.agi, s, me.tile, model != null && o == known(s.res), false);
             }
             b.distance = s.dist;
+            /* ITS INITIATIVE AGAINST US, as the relation shows it. Read and used only to pick the
+             * harder damage model until 2026-09-23, while the plan started every creature at 0 - so a
+             * cave angler sitting on 4 was planned as unable to Tail Splash, and every rule on its
+             * own initiative read the wrong branch at the first step. */
+            b.ip = Math.max(0, s.foeIp);
             for(int c = 0; c < 4; c++) {
                 if(s.open[c] > 0)
                     b.open(c, shown(s.open[c]));
@@ -1250,17 +1624,18 @@ public final class Prediction {
             return(a.killed);
         if(a.ticks != b.ticks)
             return(a.ticks < b.ticks);
-        return(!Double.isNaN(a.hpLost) && !Double.isNaN(b.hpLost) && (a.hpLost < (b.hpLost - 1e-9)));
+        return(!Double.isNaN(a.cost()) && !Double.isNaN(b.cost()) && (a.cost() < (b.cost() - 1e-9)));
     }
 
-    /** Hitpoints the cheapest plan on this frontier saves over the fastest; 0 when unknown. */
+    /** What the cheapest plan on this frontier saves over the fastest, in Plan.cost() units -
+     *  hitpoints, plus armour wear at Optimizer.armourWeight; 0 when unknown. */
     private static double tradeOf(List<Optimizer.Plan> front) {
         Optimizer.Plan fastest = Advisor.choose(front, Advisor.Aim.FASTEST, 0);
         Optimizer.Plan cheapest = Advisor.choose(front, Advisor.Aim.SAFEST, 0);
-        if((fastest == null) || (cheapest == null) || Double.isNaN(fastest.hpLost)
-           || Double.isNaN(cheapest.hpLost))
+        if((fastest == null) || (cheapest == null) || Double.isNaN(fastest.cost())
+           || Double.isNaN(cheapest.cost()))
             return(0);
-        return(Math.max(0, fastest.hpLost - cheapest.hpLost));
+        return(Math.max(0, fastest.cost() - cheapest.cost()));
     }
 
     /**
@@ -1273,8 +1648,8 @@ public final class Prediction {
         if(!other.killed && !cur.killed) {
             if(other.foeHp <= (SWITCH_TICKS * cur.foeHp))
                 return(true);
-            return(!Double.isNaN(other.hpLost) && !Double.isNaN(cur.hpLost)
-                   && (other.hpLost <= (cur.hpLost - Math.max(3.0, SWITCH_HP_SHARE * scale))));
+            return(!Double.isNaN(other.cost()) && !Double.isNaN(cur.cost())
+                   && (other.cost() <= (cur.cost() - Math.max(3.0, SWITCH_HP_SHARE * scale))));
         }
         return(clearlyBetter(other, cur, scale));
     }
@@ -1290,11 +1665,11 @@ public final class Prediction {
         /* NO SLOWER AND CHEAPER is no trade at all, so it needs no margin beyond a hitpoint. A
          * nearly dead heavy hitter beside a fresh fox is exactly this: the whole crowd dies in
          * the same time either way, and the order that drops the hitter first stops its swings. */
-        if((other.ticks <= cur.ticks) && !Double.isNaN(other.hpLost) && !Double.isNaN(cur.hpLost)
-           && (other.hpLost < (cur.hpLost - 1.0)))
+        if((other.ticks <= cur.ticks) && !Double.isNaN(other.cost()) && !Double.isNaN(cur.cost())
+           && (other.cost() < (cur.cost() - 1.0)))
             return(true);
-        return(!Double.isNaN(other.hpLost) && !Double.isNaN(cur.hpLost)
-               && (other.hpLost <= (cur.hpLost - Math.max(3.0, SWITCH_HP_SHARE * scale))));
+        return(!Double.isNaN(other.cost()) && !Double.isNaN(cur.cost())
+               && (other.cost() <= (cur.cost() - Math.max(3.0, SWITCH_HP_SHARE * scale))));
     }
 
     /**
@@ -1349,7 +1724,7 @@ public final class Prediction {
             Move m = byRes.get(e.getKey());
             if((m == null) || m.stance)
                 continue;
-            if(needsWeapon(m) && !me.armed)
+            if(!canThrow(m, me))
                 continue;
             int lvl = (e.getValue() == null) ? 0 : e.getValue().intValue();
             if(lvl <= 0) {
@@ -1375,6 +1750,29 @@ public final class Prediction {
      */
     static boolean needsWeapon(Move m) {
         return(m.damageShare > 0);
+    }
+
+    /**
+     * Whether the weapon in hand can throw this card at all.
+     *
+     * A weapon card needs a weapon, and its sheet line names the CLASS - Cleave "Any heavy,
+     * edged weapon", Sting "Any pointed weapon". The server refuses the card otherwise, so a
+     * plan built on a Sting while holding an axe is a plan nobody can play. Withheld only on a
+     * known "no" from weapon_classes.json; an unlisted weapon or class keeps the card, because
+     * hiding a card the player can throw is the worse failure.
+     */
+    static boolean canThrow(Move m, Me me) {
+        if(!needsWeapon(m))
+            return(true);
+        if(!me.armed)
+            return(false);
+        if(me.weaponClasses == null)
+            return(true);
+        for(String cls : m.weaponClasses()) {
+            if(Boolean.FALSE.equals(me.weaponClasses.get(cls)))
+                return(false);
+        }
+        return(true);
     }
 
     static boolean isPlayerRes(String res) {

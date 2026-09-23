@@ -356,7 +356,12 @@ if (-not $NoRefresh) {
         # watched only the four above (2026-09-11 audit: animal_moves_measured.json lost
         # observations to the third-party veto and the stage still said "nothing moved").
         'data\combat\characters.json',
-        'data\combat\animal_moves_measured.json'
+        'data\combat\animal_moves_measured.json',
+        # creature_sizes.py - kill hitpoints by tile, agility by the client's brackets.
+        'data\combat\creature_sizes.json',
+        # player_lines.py - the lines our characters killed each creature with, which the live
+        # search is offered beside its own so it never answers worse than one of them.
+        'data\combat\player_lines.json'
     )
     $before = @{}
     foreach ($f in $derived) {
@@ -372,6 +377,16 @@ if (-not $NoRefresh) {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  estimate.py failed - the pack is whatever was on disk" -ForegroundColor Red
         if (-not $Quiet) { $gen | Select-Object -Last 20 | ForEach-Object { Write-Host "    $_" } }
+    }
+    $gen = & python 'tools\combat\creature_sizes.py' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  creature_sizes.py failed - the sizes are whatever was on disk" -ForegroundColor Red
+        if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
+    }
+    $gen = & python 'tools\combat\player_lines.py' 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "  player_lines.py failed - the player lines are whatever was on disk" -ForegroundColor Red
+        if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
     }
     $changed = @()
     foreach ($f in $derived) {
@@ -438,6 +453,7 @@ $specs = @(
     [pscustomobject]@{ Kind = 'py'; Name = 'pool_check.py'; Section = 'the pooled corpus on disk'; Script = 'tools\combat\pool_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'estimate_check.py'; Section = 'the estimators'; Script = 'tools\combat\estimate_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'replay.py'; Section = 'every logged fight, replayed through the model'; Script = 'tools\combat\replay.py' }
+    [pscustomobject]@{ Kind = 'py'; Name = 'creature_damage_check.py'; Section = 'creature blows on us, held out by creature'; Script = 'tools\combat\creature_damage_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'experiment_check.py'; Section = 'which fight would settle something'; Script = 'tools\combat\experiment_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'datapack_check.py'; Section = 'the wiki data pack'; Script = 'tools\combat\datapack_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'attribution_check.py'; Section = 'who threw the hit, across the joined logs'; Script = 'tools\combat\attribution_check.py' }

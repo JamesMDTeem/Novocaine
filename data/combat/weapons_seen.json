@@ -11,23 +11,29 @@
     0.2
    ],
    "damage": [
-    112.0
+    112.0,
+    141.0
    ],
    "grievous": [
     0.15
    ],
-   "n": 8,
+   "n": 14,
    "quality": [
-    62.1369
+    62.1369,
+    98.3017
    ],
    "range": [
     1.0
    ],
    "recovered_base": {
-    "hi": 44.931,
+    "hi": 44.972,
     "lo": 44.931
    },
-   "res": "gfx/invobjs/axe-m"
+   "res": "gfx/invobjs/axe-m",
+   "shared_base": {
+    "hi": 45.131,
+    "lo": 44.812
+   }
   },
   "bronzesword": {
    "armpen": [
@@ -63,30 +69,40 @@
     "hi": 90.213,
     "lo": 89.826
    },
-   "res": "gfx/invobjs/small/bronzesword"
+   "res": "gfx/invobjs/small/bronzesword",
+   "shared_base": {
+    "hi": 90.066,
+    "lo": 89.957
+   }
   },
   "butcherscleaver": {
    "armpen": [
     0.2
    ],
    "damage": [
-    138.0
+    138.0,
+    157.0
    ],
    "grievous": [
     0.15
    ],
-   "n": 7,
+   "n": 50,
    "quality": [
-    93.407
+    93.407,
+    121.5402
    ],
    "range": [
     1.0
    ],
    "recovered_base": {
     "hi": 45.153,
-    "lo": 45.153
+    "lo": 45.034
    },
-   "res": "gfx/invobjs/butcherscleaver"
+   "res": "gfx/invobjs/butcherscleaver",
+   "shared_base": {
+    "hi": 45.177,
+    "lo": 44.99
+   }
   },
   "fyrdsword": {
    "armpen": [
@@ -100,7 +116,7 @@
    "grievous": [
     0.4
    ],
-   "n": 3008,
+   "n": 3198,
    "quality": [
     88.0578,
     88.7368,
@@ -113,7 +129,11 @@
     "hi": 100.086,
     "lo": 99.985
    },
-   "res": "gfx/invobjs/small/fyrdsword"
+   "res": "gfx/invobjs/small/fyrdsword",
+   "shared_base": {
+    "hi": 100.148,
+    "lo": 99.917
+   }
   },
   "hirdsword": {
    "armpen": [
@@ -121,24 +141,32 @@
    ],
    "damage": [
     362.0,
-    364.0
+    364.0,
+    402.0,
+    406.0
    ],
    "grievous": [
     0.4
    ],
-   "n": 83,
+   "n": 3676,
    "quality": [
     99.0128,
-    100.4318
+    100.4318,
+    121.9722,
+    124.3656
    ],
    "range": [
     1.2
    ],
    "recovered_base": {
-    "hi": 115.044,
+    "hi": 115.127,
     "lo": 114.859
    },
-   "res": "gfx/invobjs/small/hirdsword"
+   "res": "gfx/invobjs/small/hirdsword",
+   "shared_base": {
+    "hi": 115.017,
+    "lo": 114.985
+   }
   },
   "huntersbow": {
    "damage": [
@@ -151,7 +179,7 @@
     102.0,
     107.0
    ],
-   "n": 2222,
+   "n": 2234,
    "quality": [
     23.9841,
     33.2856,
@@ -166,7 +194,11 @@
     "hi": 30.196,
     "lo": 29.703
    },
-   "res": "gfx/invobjs/small/huntersbow"
+   "res": "gfx/invobjs/small/huntersbow",
+   "shared_base": {
+    "hi": 30.026,
+    "lo": 29.963
+   }
   },
   "pickaxe": {
    "armpen": [
@@ -179,12 +211,14 @@
     216.0,
     225.0,
     235.0,
-    249.0
+    242.0,
+    249.0,
+    274.0
    ],
    "grievous": [
     0.15
    ],
-   "n": 86,
+   "n": 182,
    "quality": [
     31.7554,
     83.5113,
@@ -192,7 +226,9 @@
     110.384,
     119.9827,
     130.6682,
-    146.5576
+    138.2612,
+    146.5576,
+    177.6833
    ],
    "range": [
     1.2
@@ -201,13 +237,17 @@
     "hi": 65.095,
     "lo": 64.957
    },
-   "res": "gfx/invobjs/small/pickaxe"
+   "res": "gfx/invobjs/small/pickaxe",
+   "shared_base": {
+    "hi": 65.101,
+    "lo": 64.948
+   }
   },
   "rangersbow": {
    "damage": [
     192.0
    ],
-   "n": 16,
+   "n": 432,
    "quality": [
     102.3213
    ],
@@ -215,13 +255,19 @@
     "hi": 60.023,
     "lo": 60.023
    },
-   "res": "gfx/invobjs/small/rangersbow"
+   "res": "gfx/invobjs/small/rangersbow",
+   "shared_base": {
+    "hi": 60.179,
+    "lo": 59.867
+   }
   },
   "stoneaxe": {
    "armpen": [
     0.2
    ],
    "damage": [
+    24.0,
+    25.0,
     71.0,
     76.0,
     78.0,
@@ -234,13 +280,16 @@
     119.0,
     125.0,
     129.0,
-    135.0
+    135.0,
+    141.0
    ],
    "grievous": [
     0.1
    ],
-   "n": 95,
+   "n": 117,
    "quality": [
+    6.5811,
+    6.9311,
     56.2835,
     63.8715,
     66.932,
@@ -253,16 +302,22 @@
     158.1409,
     174.6168,
     185.3212,
-    202.1724
+    202.1724,
+    219.6506,
+    222.2476
    ],
    "range": [
     1.0
    ],
    "recovered_base": {
     "hi": 30.149,
-    "lo": 29.878
+    "lo": 29.584
    },
-   "res": "gfx/invobjs/stoneaxe"
+   "res": "gfx/invobjs/stoneaxe",
+   "shared_base": {
+    "hi": 30.015,
+    "lo": 29.979
+   }
   },
   "woodsmansaxe": {
    "armpen": [
@@ -285,7 +340,11 @@
     "hi": 55.144,
     "lo": 55.144
    },
-   "res": "gfx/invobjs/small/woodsmansaxe"
+   "res": "gfx/invobjs/small/woodsmansaxe",
+   "shared_base": {
+    "hi": 55.444,
+    "lo": 54.845
+   }
   }
  }
 }

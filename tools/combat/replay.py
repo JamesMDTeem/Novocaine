@@ -147,19 +147,28 @@ def weapon_at(log, weapons, t):
     Cleave from a bronze sword at whatever the fight opened with.
 
     Gear rows are in file order, which is time order, so the answer is the last one at or
-    before `t`. A slot emptying writes a null res and simply does not match.
+    before `t`. A slot emptying writes a null res, and THAT CLEARS THE SLOT: this used to let
+    it "simply not match", so a stone axe put away before a sword was drawn stayed in hand
+    and priced every sword blow at a third (Santa Samus, 2026-09-17).
     """
-    found = None
+    held = {}
     for g in log.gear:
         if (t is not None) and ((g.get("t") or 0) > t):
             break
         res = (g.get("res") or "").split("/")[-1]
         name = WEAPON_RES.get(res)
         if name and weapons.get(name):
-            found = (weapons[name], g.get("ql"))
+            held[g.get("slot")] = (weapons[name], g.get("ql"))
             if t is None:
-                return found
-    return found
+                return held[g.get("slot")]
+        else:
+            held.pop(g.get("slot"), None)
+    return _last_held(held)
+
+
+def _last_held(held):
+    """The weapon still in a hand after a walk over gear rows - the most recently equipped."""
+    return list(held.values())[-1] if held else None
 
 
 def replay_damage(log, eng, moves, weapons):
@@ -260,14 +269,16 @@ GLOVE_RES = {"lynxclawgloves": "Lynx Claw Gloves", "cutthroatknuckles": "Cutthro
 def weapon_name_at(log, t):
     """The weapons.json name of the weapon in hand at time `t` - the same walk as weapon_at,
     returning the name, since two weapons can share a base damage figure."""
-    found = None
+    held = {}
     for g in log.gear:
         if (t is not None) and ((g.get("t") or 0) > t):
             break
         name = WEAPON_RES.get((g.get("res") or "").split("/")[-1])
         if name:
-            found = name
-    return found
+            held[g.get("slot")] = name
+        else:
+            held.pop(g.get("slot"), None)
+    return _last_held(held)
 
 
 def gloves_at(log, weapons, t):
@@ -435,6 +446,13 @@ def replay(paths):
                 if not wa:
                     continue
                 wa_lo, wa_hi = wa
+                # WHETHER OUR OWN WEIGHT WAS A NUMBER. An undatable deck leaves mu as the
+                # whole 1.0-1.5 range (estimate.mu_bounds), so wa_lo and wa_hi are a third
+                # apart and the gain they predict is not one prediction but a range wide
+                # enough to hide a finding in. estimate.pinned refuses such a row for the
+                # same reason; here it is scored apart rather than dropped, because a miss
+                # too big for mu to explain is still worth reading - see the gate below.
+                pinned_wa = (wa_hi <= (wa_lo * 1.0001))
                 # The SKILL and the multipliers go in separately, because only the skills
                 # equalize. Our skill is the raw attribute the card names; everything else in
                 # the attack weight - the card's multiplier, mu, a stance - rides outside the
@@ -457,7 +475,7 @@ def replay(paths):
                     off = (lo - gain) if gain < lo else (gain - hi)
                     s["worst"] = max(s["worst"], off)
                     misses.append((off, name, mv, colour, standing, gain, lo, hi,
-                                   os.path.basename(p), clean))
+                                   os.path.basename(p), clean, pinned_wa))
     print("%d ranged fight(s) routed out of melee validation (%s)"
           % (ranged_skipped, ", ".join(sorted(ranged_files))))
     return stats, dmg, misses, skipped, final_dmg, by_char
@@ -1045,6 +1063,25 @@ def main(argv):
     # only ever ADD to a gain and so can only read a skill LOW; a balanced ratio is not
     # that. What group fights do add is outliers, and the estimator is median-based, which
     # is why the pack is unharmed and this file is not.
+    # AND ROWS WHERE OUR OWN WEIGHT WAS NOT A NUMBER, for the same reason and in the same
+    # way. An undatable deck leaves mu spanning 1.0-1.5, so such a row cannot fail a gate
+    # about the MODEL - what it disagrees with is partly our own unknown. estimate.pinned
+    # refuses them for the estimator; here they are counted and named. The five that led to
+    # this were konitops (unarmed 1, no deck) punching ants, every one reading about 1.25x
+    # the top of its interval - the above-band branch at a skill of 1, which 767 pinned
+    # above-band rows do NOT show (median 0.98), so it is about that character and not the
+    # branch.
+    unpinned = [m for m in misses if len(m) > 10 and not m[10]]
+    misses = [m for m in misses if not (len(m) > 10 and not m[10])]
+    if unpinned:
+        up_gross = [m for m in unpinned if _gross(m)]
+        print("  %d miss(es) where our own deck could not be dated, scored apart - %d gross"
+              % (len(unpinned), len(up_gross)))
+        for mrow in sorted(up_gross, key=lambda m: -abs(m[5] - m[7]))[:4]:
+            off, nm, mv_, col_, standing_, gain_, lo_, hi_ = mrow[:8]
+            print("        our %-18s %-7s vs %-12s standing %-4s observed %-5s"
+                  " predicted %.1f-%.1f   %s"
+                  % (mv_, col_, nm, standing_, gain_, lo_, hi_, mrow[8]))
     group = [m for m in misses if not m[9]]
     misses = [m for m in misses if m[9]]
     if group:

@@ -299,15 +299,23 @@ public final class Formulas {
     /**
      * The relative-agility multiplier applied to an attack's cooldown.
      *
-     * {@code 1 - 0.1 * clamp(log2(agiMe / agiFoe), -1, +1)} - a band of plus or minus ten
-     * percent, reaching its limit at a factor-two agility gap.
+     * {@code clamp(agiFoe / agiMe, 1/2, 2) ^ (1/7)} - 0.906 to 1.104, reaching its limit at a
+     * factor-two agility gap.
      *
-     * Measured across two sparring partners of known agility: against the slower one, Knock
-     * Its Teeth Out, Full Circle and Quick Barrage reported 33, 38 and 19 ticks against bases
-     * of 35, 40 and 20; against the faster one, 38, 43 and 22. This reproduces five of those
-     * six exactly and misses the sixth by one tick, wanting a multiplier 0.0013 higher than
-     * it produces. The shape and the cap are confirmed; the leading constant is not pinned to
-     * better than a fifth of a percent and wants a third partner at a different agility.
+     * Measured across two sparring partners of known agility (ours 81, theirs 59 and 135):
+     * against the slower one, Knock Its Teeth Out, Full Circle and Quick Barrage reported 33,
+     * 38 and 19 ticks against bases of 35, 40 and 20; against the faster one, 38, 43 and 22.
+     * This reproduces all six. The linear form it replaces, 1 - 0.1*clamp(log2(agiMe/agiFoe)),
+     * reproduced five and read Quick Barrage at 21.47 against the faster partner, a tick
+     * short.
+     *
+     * THE POWER LAW IS THE CLIENT TABLE'S, and the corpus prefers it (2026-09-17). Every bin
+     * edge of Config.attackCooldownNumbers, a hand-built table independent of this file, sits
+     * at log2(multiplier)/log2(ratio) = 0.1428-0.1431 across bases 20 to 80. The two forms
+     * agree near equal agility and part by up to 0.4% towards the clamp. Pooling each
+     * creature's cooldowns across four characters of different agility and intersecting:
+     * the linear form leaves 46 of 4,881 individuals contradicting themselves (no slope does
+     * better than 37); the power law leaves 19, and exponents either side of 1/7 do worse.
      *
      * Applies to attacks only. Zig-Zag Ruse, a maneuver, reported 50 ticks against both
      * partners and against a badger - three opponents spanning the whole range - and
@@ -316,13 +324,16 @@ public final class Formulas {
     public static double agilityCooldownFactor(double agiMe, double agiFoe) {
         if((agiMe <= 0) || (agiFoe <= 0))
             return(1.0);
-        double l = Math.log(agiMe / agiFoe) / Math.log(2.0);
-        if(l > 1.0)
-            l = 1.0;
-        else if(l < -1.0)
-            l = -1.0;
-        return(1.0 - (0.1 * l));
+        double r = agiFoe / agiMe;
+        if(r > 2.0)
+            r = 2.0;
+        else if(r < 0.5)
+            r = 0.5;
+        return(Math.pow(r, AGILITY_EXPONENT));
     }
+
+    /** See agilityCooldownFactor: the exponent of the agility ratio, 1/7. */
+    public static final double AGILITY_EXPONENT = 1.0 / 7.0;
 
     /**
      * A move's cooldown in server ticks.
@@ -422,8 +433,20 @@ public final class Formulas {
      */
     public static final double OPENING_DECAY_PER_TICK = 0.49 * 0.06;
 
-    /** Server ticks are 0.06 seconds. Confirmed against observed gaps between repeated moves. */
+    /**
+     * Server ticks are 0.06 seconds. Confirmed against observed gaps between repeated moves.
+     *
+     * THE ONE COPY (seams audit, 2026-09-23). The figure was typed out in a dozen places, and one of
+     * them had become 50 ms: Prediction.firstAct counted 20 ticks a second, so a creature's next
+     * swing was planned a sixth of the elapsed time early. Read this; do not retype it.
+     */
+    public static final double TICK_SECONDS = 0.06;
+
     public static double ticksToSeconds(double ticks) {
-        return(ticks * 0.06);
+        return(ticks * TICK_SECONDS);
+    }
+
+    public static double secondsToTicks(double seconds) {
+        return(seconds / TICK_SECONDS);
     }
 }

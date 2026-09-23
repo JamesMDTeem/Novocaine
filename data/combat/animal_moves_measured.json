@@ -7,57 +7,66 @@
  "note": "Per-CARD, not per-creature. Opening percentages are ratios: the fit has a gauge freedom that nothing here resolves.",
  "species_factor": {
   "adder": 1.0,
-  "ants": 0.751,
+  "ants": 0.768,
   "badger": 1.0,
-  "bat": 1.0,
-  "bear": 1.125,
-  "beaver": 1.053,
-  "beelarva": 0.556,
-  "boar": 1.053,
-  "boreworm": 1.22,
-  "cattle": 1.021,
-  "caveangler": 1.21,
-  "cavelouse": 1.222,
-  "caverat": 0.966,
-  "crane": 0.836,
-  "eagleowl": 1.111,
-  "fox": 0.766,
-  "goldeneagle": 1.22,
-  "greenooze": 1.149,
-  "greyseal": 1.22,
-  "honeybee": 0.813,
-  "lynx": 1.22,
+  "bat": 0.75,
+  "bear": 1.1,
+  "beaver": 1.013,
+  "beelarva": 0.544,
+  "bloodstalker": 1.083,
+  "boar": 1.0,
+  "boreworm": 1.066,
+  "cattle": 1.184,
+  "caveangler": 1.198,
+  "cavelouse": 1.198,
+  "caverat": 0.829,
+  "crane": 0.762,
+  "denmother": 1.0,
+  "eagleowl": 1.089,
+  "fatbat": 1.0,
+  "fox": 0.734,
+  "goldeneagle": 1.195,
+  "greenooze": 1.101,
+  "greyseal": 1.077,
+  "honeybee": 0.797,
+  "lynx": 1.195,
   "mammoth": 1.0,
-  "moose": 1.076,
-  "narwhal": 1.125,
-  "orca": 1.404,
-  "pelican": 0.946,
-  "queenant": 0.911,
-  "queenbee": 1.19,
+  "moose": 1.1,
+  "narwhal": 1.1,
+  "orca": 1.375,
+  "pelican": 0.871,
+  "polarbear": 1.1,
+  "queenant": 0.972,
+  "queenbee": 1.167,
   "redants": 1.0,
-  "reddeer": 1.1,
-  "reindeer": 1.0,
-  "royalguardant": 1.44,
-  "sentinelbee": 0.898,
+  "reddeer": 1.011,
+  "reindeer": 0.957,
+  "roedeer": 0.7,
+  "royalguardant": 1.344,
+  "sentinelbee": 0.88,
   "sheep": 0.706,
-  "swan": 1.0,
-  "vulturebee": 0.936,
-  "walrus": 1.125,
-  "warriorant": 1.187,
-  "warriordrone": 0.904,
+  "spermwhale": 1.346,
+  "stoat": 0.653,
+  "swan": 0.98,
+  "vampire": 1.206,
+  "vulturebee": 0.917,
+  "walrus": 1.1,
+  "warriorant": 1.213,
+  "warriordrone": 0.886,
   "wildgoat": 1.0,
-  "wolf": 1.0,
-  "wolverine": 1.0,
-  "woodscorpion": 0.819
+  "wolf": 1.075,
+  "wolverine": 0.947,
+  "woodscorpion": 0.802
  },
  "moves": [
   {
    "name": "'Rus Tusk",
    "openings": {
-    "red": 9.78
+    "red": 10.0
    },
    "damage": null,
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": null
@@ -65,183 +74,221 @@
   {
    "name": "Ant Spit",
    "openings": {
-    "blue": 5.56,
-    "green": 5.49
+    "blue": 5.21,
+    "green": 5.21
    },
    "damage": {
-    "coef": 83.1,
+    "coef": 34.1,
     "lo": 11.1,
-    "p90": 277.8,
+    "p90": 204.1,
     "hi": 400.0,
-    "n": 61,
+    "n": 81,
     "before_armour": true,
     "colours": "g",
     "colours_from": "corpus",
     "by_species": {
      "ants": {
-      "coef": 100.0,
+      "coef": 33.2,
       "p90": 204.1,
-      "n": 54
+      "n": 65
+     },
+     "redants": {
+      "coef": 34.6,
+      "p90": 204.1,
+      "n": 11
+     },
+     "royalguardant": {
+      "coef": 51.7,
+      "p90": 83.1,
+      "n": 5
      }
     }
    },
    "cooldown": {
-    "ticks": 6.1,
+    "ticks": 16.0,
     "floor": 1.9,
     "rotation": 44.0,
-    "n": 95
+    "n": 134,
+    "agility": true
    },
+   "initiative": null,
    "armour": {
     "soaked_share": 0.5,
-    "n": 32
+    "n": 43
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 280
+    "n": 351
    }
   },
   {
    "name": "Badgering",
    "openings": {
-    "red": 11.22
+    "red": 12.36
    },
    "damage": {
-    "coef": 30.3,
+    "coef": 29.2,
     "lo": 18.2,
-    "p90": 42.2,
-    "hi": 123.5,
-    "n": 55,
+    "p90": 54.5,
+    "hi": 400.0,
+    "n": 82,
     "before_armour": true,
     "colours": "gr",
     "colours_from": "wiki",
     "by_species": {
      "badger": {
-      "coef": 30.3,
-      "p90": 42.2,
-      "n": 55
+      "coef": 29.2,
+      "p90": 54.5,
+      "n": 82
      }
     }
    },
    "cooldown": {
-    "ticks": 43.0,
-    "floor": 42.9,
+    "ticks": 42.9,
+    "floor": 42.0,
     "rotation": 44.0,
-    "n": 52
+    "n": 91,
+    "base": 38.9,
+    "base_n": 91,
+    "agility": true
    },
+   "initiative": null,
    "armour": {
-    "soaked_share": 0.83,
-    "n": 12
+    "soaked_share": 0.86,
+    "n": 17
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 19
+    "n": 29
    }
   },
   {
    "name": "Bear Down",
    "openings": {
-    "blue": 9.78
+    "blue": 10.0
    },
    "damage": {
-    "coef": 102.0,
+    "coef": 120.7,
     "lo": 51.0,
-    "p90": 174.7,
+    "p90": 204.1,
     "hi": 400.0,
-    "n": 132,
+    "n": 150,
     "before_armour": true,
     "colours": "yr",
     "colours_from": "wiki",
     "by_species": {
      "boar": {
-      "coef": 100.0,
+      "coef": 90.7,
       "p90": 123.5,
-      "n": 80
+      "n": 81
      },
      "caveangler": {
-      "coef": 165.2,
-      "p90": 177.8,
-      "n": 33
+      "coef": 159.3,
+      "p90": 200.0,
+      "n": 41
      },
      "moose": {
-      "coef": 159.0,
-      "p90": 174.7,
-      "n": 7
+      "coef": 120.2,
+      "p90": 204.1,
+      "n": 8
+     },
+     "polarbear": {
+      "coef": 194.1,
+      "p90": 215.1,
+      "n": 8
      },
      "wildgoat": {
-      "coef": 83.1,
+      "coef": 73.8,
       "p90": 100.0,
       "n": 9
      }
     }
    },
    "cooldown": {
-    "ticks": 41.0,
-    "floor": 24.0,
-    "rotation": 142.2,
-    "n": 189
+    "ticks": 41.7,
+    "floor": 20.9,
+    "rotation": 151.9,
+    "n": 282,
+    "base": 43.8,
+    "base_n": 281,
+    "agility": true
+   },
+   "initiative": {
+    "n": 350,
+    "agree": 0.9,
+    "gain": 2
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 45
+    "n": 52
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 109
+    "n": 136
    }
   },
   {
    "name": "Blood & Gore",
    "openings": {
-    "red": 18.52
+    "red": 17.22
    },
    "damage": null,
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": {
     "per_soft": 0.241,
-    "n": 21
+    "n": 23
    }
   },
   {
    "name": "Breathing Rage",
    "openings": {
-    "blue": 10.23
+    "blue": 9.78
    },
    "damage": {
-    "coef": 95.1,
+    "coef": 87.5,
     "lo": 59.2,
-    "p90": 118.3,
+    "p90": 125.2,
     "hi": 277.8,
-    "n": 14,
+    "n": 23,
     "before_armour": true,
     "colours": "gyr",
     "colours_from": "wiki",
     "by_species": {
      "moose": {
-      "coef": 95.1,
-      "p90": 118.3,
-      "n": 14
+      "coef": 87.5,
+      "p90": 125.2,
+      "n": 23
      }
     }
    },
    "cooldown": {
     "ticks": 41.0,
-    "floor": 41.0,
-    "rotation": 80.5,
-    "n": 12
+    "floor": 39.0,
+    "rotation": 76.0,
+    "n": 23,
+    "base": 39.1,
+    "base_n": 23,
+    "agility": true
+   },
+   "initiative": {
+    "n": 26,
+    "agree": 1.0,
+    "gain": 1
    },
    "armour": {
     "soaked_share": 0.86,
-    "n": 13
+    "n": 19
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 16
+    "n": 36
    }
   },
   {
@@ -250,9 +297,18 @@
    "damage": null,
    "cooldown": {
     "ticks": 29.0,
-    "floor": 27.7,
-    "rotation": 153.5,
-    "n": 399
+    "floor": 7.9,
+    "rotation": 156.1,
+    "n": 701,
+    "base": 26.3,
+    "base_n": 595,
+    "agility": false
+   },
+   "initiative": {
+    "n": 758,
+    "agree": 0.967,
+    "cost": 3,
+    "before_short": 0.028
    },
    "armour": null,
    "restores": {
@@ -263,10 +319,10 @@
      "red": 0.2
     },
     "n": {
-     "red": 1040,
-     "green": 822,
-     "blue": 356,
-     "yellow": 1474
+     "red": 1724,
+     "green": 1047,
+     "blue": 631,
+     "yellow": 2216
     }
    },
    "grievous": null
@@ -278,9 +334,13 @@
    "cooldown": {
     "ticks": 29.0,
     "floor": 2.0,
-    "rotation": 64.1,
-    "n": 445
+    "rotation": 81.9,
+    "n": 813,
+    "base": 26.3,
+    "base_n": 705,
+    "agility": false
    },
+   "initiative": null,
    "armour": null,
    "restores": {
     "by_colour": {
@@ -288,10 +348,10 @@
      "blue": 0.2
     },
     "n": {
-     "red": 791,
-     "green": 633,
-     "blue": 259,
-     "yellow": 916
+     "red": 1310,
+     "green": 675,
+     "blue": 312,
+     "yellow": 1441
     }
    },
    "grievous": null
@@ -299,59 +359,73 @@
   {
    "name": "Chomp",
    "openings": {
-    "blue": 14.12
+    "blue": 13.13
    },
    "damage": {
-    "coef": 123.5,
+    "coef": 143.0,
     "lo": 70.3,
-    "p90": 184.1,
+    "p90": 222.0,
     "hi": 277.8,
-    "n": 60,
+    "n": 77,
     "before_armour": true,
     "colours": "gy",
     "colours_from": "wiki",
     "by_species": {
      "bear": {
-      "coef": 200.0,
+      "coef": 177.6,
       "p90": 277.8,
       "n": 6
      },
      "boreworm": {
-      "coef": 131.5,
-      "p90": 133.1,
-      "n": 10
+      "coef": 120.9,
+      "p90": 135.3,
+      "n": 13
      },
      "caveangler": {
-      "coef": 181.2,
-      "p90": 186.5,
-      "n": 15
+      "coef": 175.0,
+      "p90": 187.5,
+      "n": 19
      },
      "goldeneagle": {
-      "coef": 107.8,
+      "coef": 99.4,
       "p90": 108.6,
       "n": 6
      },
      "lynx": {
-      "coef": 113.6,
+      "coef": 114.3,
       "p90": 117.7,
-      "n": 14
+      "n": 15
+     },
+     "polarbear": {
+      "coef": 217.0,
+      "p90": 227.4,
+      "n": 9
      }
     }
    },
    "cooldown": {
-    "ticks": 81.2,
-    "floor": 81.0,
-    "rotation": 266.9,
-    "n": 39
+    "ticks": 46.0,
+    "floor": 40.8,
+    "rotation": 237.1,
+    "n": 61,
+    "base": 45.1,
+    "base_n": 44,
+    "agility": true
+   },
+   "initiative": {
+    "n": 103,
+    "agree": 0.893,
+    "cost": 2,
+    "before_short": 0.068
    },
    "armour": {
     "soaked_share": 0.86,
-    "n": 12
+    "n": 16
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.167,
-    "n": 173
+    "n": 239
    }
   },
   {
@@ -363,178 +437,219 @@
     "yellow": 7.07
    },
    "damage": {
-    "coef": 331.9,
-    "lo": 315.1,
+    "coef": 247.9,
+    "lo": 310.8,
     "p90": 378.1,
     "hi": 395.2,
-    "n": 6,
+    "n": 7,
     "before_armour": true,
     "colours": "gbyr",
     "colours_from": "wiki",
     "by_species": {
      "mammoth": {
-      "coef": 331.9,
+      "coef": 247.9,
       "p90": 378.1,
-      "n": 6
+      "n": 7
      }
     }
    },
    "cooldown": {
-    "ticks": 32.0,
+    "ticks": 34.1,
     "floor": 31.0,
-    "rotation": 156.0,
-    "n": 47
+    "rotation": 151.1,
+    "n": 81,
+    "base": 35.0,
+    "base_n": 81,
+    "agility": true
+   },
+   "initiative": {
+    "n": 29,
+    "agree": 0.862,
+    "gain": 1
    },
    "armour": null,
    "restores": null,
    "grievous": {
-    "per_soft": 0.333,
-    "n": 12
+    "per_soft": 0.0,
+    "n": 15
    }
+  },
+  {
+   "name": "Dive & Hide",
+   "openings": null,
+   "damage": null,
+   "cooldown": null,
+   "initiative": null,
+   "armour": null,
+   "restores": {
+    "by_colour": {
+     "blue": 0.299,
+     "red": 0.304
+    },
+    "n": {
+     "red": 19,
+     "green": 19,
+     "yellow": 23
+    }
+   },
+   "grievous": null
   },
   {
    "name": "Fell Scratch",
    "openings": {
-    "green": 9.0
+    "green": 9.18
    },
    "damage": {
-    "coef": 41.3,
+    "coef": 33.7,
     "lo": 7.2,
     "p90": 100.0,
     "hi": 400.0,
-    "n": 836,
+    "n": 1229,
     "before_armour": true,
     "colours": "gb",
     "colours_from": "wiki",
     "by_species": {
      "badger": {
-      "coef": 39.1,
-      "p90": 51.0,
-      "n": 7
+      "coef": 13.8,
+      "p90": 82.6,
+      "n": 8
      },
      "bat": {
-      "coef": 21.1,
+      "coef": 10.7,
       "p90": 123.5,
-      "n": 50
+      "n": 56
      },
      "bear": {
-      "coef": 59.2,
+      "coef": 46.4,
       "p90": 82.6,
       "n": 10
      },
      "beaver": {
-      "coef": 34.6,
+      "coef": 11.0,
       "p90": 82.6,
       "n": 12
      },
      "boreworm": {
-      "coef": 36.5,
-      "p90": 51.0,
-      "n": 79
+      "coef": 32.2,
+      "p90": 61.7,
+      "n": 144
      },
      "caveangler": {
-      "coef": 54.1,
+      "coef": 49.5,
       "p90": 100.0,
-      "n": 257
+      "n": 469
      },
      "cavelouse": {
-      "coef": 44.4,
+      "coef": 41.8,
       "p90": 55.4,
       "n": 23
      },
      "caverat": {
-      "coef": 25.5,
-      "p90": 39.1,
-      "n": 19
+      "coef": 14.7,
+      "p90": 44.4,
+      "n": 21
      },
      "crane": {
-      "coef": 17.4,
+      "coef": 14.1,
       "p90": 69.4,
-      "n": 33
+      "n": 34
      },
      "eagleowl": {
-      "coef": 29.6,
-      "p90": 30.9,
-      "n": 13
+      "coef": 23.9,
+      "p90": 44.4,
+      "n": 17
      },
      "fox": {
-      "coef": 25.0,
+      "coef": 10.6,
       "p90": 59.2,
-      "n": 13
+      "n": 15
      },
      "goldeneagle": {
-      "coef": 30.9,
-      "p90": 51.0,
-      "n": 45
+      "coef": 26.8,
+      "p90": 44.4,
+      "n": 57
      },
      "goshawk": {
-      "coef": 30.9,
+      "coef": 27.8,
       "p90": 30.9,
       "n": 6
      },
      "greenooze": {
-      "coef": 29.6,
-      "p90": 51.0,
-      "n": 68
+      "coef": 26.2,
+      "p90": 100.0,
+      "n": 101
      },
      "greyseal": {
-      "coef": 22.7,
+      "coef": 19.3,
       "p90": 59.2,
-      "n": 30
+      "n": 35
      },
      "lynx": {
-      "coef": 30.9,
-      "p90": 39.1,
-      "n": 48
+      "coef": 27.4,
+      "p90": 44.4,
+      "n": 65
      },
      "otter": {
-      "coef": 16.0,
+      "coef": 13.6,
       "p90": 18.9,
       "n": 5
      },
      "pelican": {
-      "coef": 17.4,
-      "p90": 18.9,
-      "n": 6
+      "coef": 12.6,
+      "p90": 59.2,
+      "n": 7
+     },
+     "polarbear": {
+      "coef": 55.9,
+      "p90": 125.7,
+      "n": 26
      },
      "swan": {
-      "coef": 25.0,
+      "coef": 13.4,
       "p90": 82.6,
       "n": 22
      },
      "wolf": {
-      "coef": 82.6,
+      "coef": 43.7,
       "p90": 100.0,
-      "n": 61
+      "n": 65
      },
      "wolverine": {
-      "coef": 34.6,
+      "coef": 24.1,
       "p90": 123.5,
-      "n": 22
+      "n": 24
      }
     }
    },
    "cooldown": {
     "ticks": 42.0,
     "floor": 1.9,
-    "rotation": 49.9,
-    "n": 1954
+    "rotation": 50.0,
+    "n": 2849,
+    "base": 43.9,
+    "base_n": 1603,
+    "agility": true
+   },
+   "initiative": {
+    "n": 4036,
+    "agree": 0.938,
+    "gain": 1
    },
    "armour": {
     "soaked_share": 0.83,
-    "n": 461
+    "n": 620
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 1042
+    "n": 1474
    }
   },
   {
    "name": "Full Circle",
    "openings": null,
    "damage": {
-    "coef": 128.0,
+    "coef": 194.3,
     "lo": 25.7,
     "p90": 243.2,
     "hi": 246.9,
@@ -544,6 +659,7 @@
     "colours_from": "none known - all four read"
    },
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": null
@@ -552,35 +668,36 @@
    "name": "Heavy Antlers",
    "openings": null,
    "damage": {
-    "coef": 134.1,
+    "coef": 134.6,
     "lo": 110.8,
-    "p90": 140.3,
+    "p90": 151.2,
     "hi": 220.8,
-    "n": 12,
+    "n": 13,
     "before_armour": true,
     "colours": "gbr",
     "colours_from": "wiki",
     "by_species": {
      "reddeer": {
-      "coef": 134.3,
-      "p90": 140.3,
-      "n": 7
+      "coef": 136.4,
+      "p90": 151.2,
+      "n": 8
      }
     }
    },
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": {
-    "per_soft": 0.263,
-    "n": 16
+    "per_soft": 0.25,
+    "n": 21
    }
   },
   {
    "name": "Knock Its Teeth Out",
    "openings": null,
    "damage": {
-    "coef": 112.0,
+    "coef": 54.7,
     "lo": 15.4,
     "p90": 118.3,
     "hi": 204.1,
@@ -590,13 +707,14 @@
     "colours_from": "none known - all four read",
     "by_species": {
      "body#1102883774": {
-      "coef": 113.0,
+      "coef": 82.0,
       "p90": 118.3,
       "n": 5
      }
     }
    },
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": null
@@ -604,97 +722,119 @@
   {
    "name": "Low Horn Swipe",
    "openings": {
-    "green": 10.23
+    "green": 10.0
    },
    "damage": {
-    "coef": 27.7,
-    "lo": 10.0,
-    "p90": 44.4,
-    "hi": 156.3,
-    "n": 249,
+    "coef": 25.4,
+    "lo": 9.2,
+    "p90": 49.5,
+    "hi": 277.8,
+    "n": 353,
     "before_armour": true,
     "colours": "gy",
     "colours_from": "wiki",
     "by_species": {
      "cattle": {
-      "coef": 29.1,
-      "p90": 34.6,
-      "n": 35
+      "coef": 28.9,
+      "p90": 49.5,
+      "n": 52
      },
      "moose": {
-      "coef": 43.3,
-      "p90": 59.2,
-      "n": 10
+      "coef": 30.1,
+      "p90": 87.0,
+      "n": 15
      },
      "reddeer": {
-      "coef": 27.6,
-      "p90": 37.2,
-      "n": 97
+      "coef": 26.3,
+      "p90": 39.0,
+      "n": 144
      },
      "reindeer": {
-      "coef": 26.3,
-      "p90": 53.5,
-      "n": 89
+      "coef": 22.1,
+      "p90": 54.8,
+      "n": 117
      },
      "sheep": {
-      "coef": 17.6,
-      "p90": 21.2,
-      "n": 12
+      "coef": 14.8,
+      "p90": 59.2,
+      "n": 16
      },
      "wildgoat": {
-      "coef": 28.2,
-      "p90": 30.3,
-      "n": 5
+      "coef": 23.8,
+      "p90": 39.1,
+      "n": 8
      }
     }
    },
    "cooldown": {
     "ticks": 19.9,
-    "floor": 17.8,
+    "floor": 4.9,
     "rotation": 22.0,
-    "n": 313
+    "n": 445,
+    "base": 18.9,
+    "base_n": 439,
+    "agility": true
+   },
+   "initiative": {
+    "n": 490,
+    "agree": 0.9,
+    "gain": 1
    },
    "armour": {
-    "soaked_share": 0.83,
-    "n": 72
+    "soaked_share": 0.8,
+    "n": 90
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 157
+    "n": 215
    }
   },
   {
    "name": "Maddening Roar",
    "openings": null,
    "damage": {
-    "coef": 127.6,
+    "coef": 130.7,
     "lo": 71.3,
-    "p90": 162.2,
-    "hi": 200.0,
-    "n": 22,
+    "p90": 195.3,
+    "hi": 400.0,
+    "n": 38,
     "before_armour": true,
     "colours": "gr",
     "colours_from": "corpus",
     "by_species": {
      "caveangler": {
-      "coef": 127.6,
-      "p90": 162.2,
-      "n": 21
+      "coef": 125.7,
+      "p90": 156.3,
+      "n": 27
+     },
+     "polarbear": {
+      "coef": 158.1,
+      "p90": 195.3,
+      "n": 10
      }
     }
    },
    "cooldown": {
-    "ticks": 40.9,
-    "floor": 40.9,
-    "rotation": 275.0,
-    "n": 19
+    "ticks": 21.1,
+    "floor": 20.7,
+    "rotation": 206.9,
+    "n": 44,
+    "base": 21.2,
+    "base_n": 44,
+    "agility": true
+   },
+   "initiative": {
+    "n": 56,
+    "agree": 0.875,
+    "cost": 3,
+    "before_short": 0.125
    },
    "armour": null,
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 27
+    "n": 39
    }
   },
   {
@@ -703,78 +843,82 @@
     "yellow": 10.0
    },
    "damage": {
-    "coef": 31.0,
+    "coef": 27.3,
     "lo": 12.4,
     "p90": 100.0,
     "hi": 277.8,
-    "n": 213,
+    "n": 255,
     "before_armour": true,
     "colours": "by",
     "colours_from": "wiki",
     "by_species": {
      "boar": {
-      "coef": 31.8,
+      "coef": 28.9,
       "p90": 100.0,
-      "n": 92
+      "n": 99
      },
      "cattle": {
-      "coef": 27.7,
-      "p90": 69.4,
-      "n": 12
+      "coef": 25.8,
+      "p90": 82.6,
+      "n": 20
      },
      "horse": {
-      "coef": 29.4,
+      "coef": 22.8,
       "p90": 30.5,
       "n": 5
      },
      "moose": {
-      "coef": 46.1,
-      "p90": 47.7,
-      "n": 8
+      "coef": 42.9,
+      "p90": 156.3,
+      "n": 10
      },
      "reddeer": {
-      "coef": 29.3,
-      "p90": 44.4,
-      "n": 57
+      "coef": 26.4,
+      "p90": 82.6,
+      "n": 77
      },
      "reindeer": {
-      "coef": 34.6,
+      "coef": 20.0,
       "p90": 123.5,
-      "n": 18
+      "n": 22
      },
      "sheep": {
-      "coef": 44.4,
+      "coef": 16.9,
       "p90": 123.5,
       "n": 10
      },
      "wildgoat": {
-      "coef": 29.4,
+      "coef": 28.7,
       "p90": 44.4,
-      "n": 10
+      "n": 11
      }
     }
    },
    "cooldown": {
-    "ticks": 35.0,
-    "floor": 31.9,
+    "ticks": 34.9,
+    "floor": 29.9,
     "rotation": 40.0,
-    "n": 410
+    "n": 523,
+    "base": 34.1,
+    "base_n": 520,
+    "agility": true
    },
+   "initiative": null,
    "armour": {
     "soaked_share": 0.8,
-    "n": 39
+    "n": 40
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 99
+    "n": 114
    }
   },
   {
    "name": "Quick Barrage",
    "openings": null,
    "damage": {
-    "coef": 34.6,
+    "coef": 19.5,
     "lo": 3.7,
     "p90": 69.4,
     "hi": 88.9,
@@ -784,12 +928,12 @@
     "colours_from": "corpus",
     "by_species": {
      "body#1102883774": {
-      "coef": 63.8,
+      "coef": 59.9,
       "p90": 82.6,
       "n": 8
      },
      "body#1420460144": {
-      "coef": 28.3,
+      "coef": 24.5,
       "p90": 34.6,
       "n": 9
      }
@@ -799,8 +943,10 @@
     "ticks": 18.0,
     "floor": 17.8,
     "rotation": 20.9,
-    "n": 34
+    "n": 34,
+    "agility": true
    },
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": {
@@ -812,18 +958,27 @@
    "name": "Rampant Rage",
    "openings": null,
    "damage": null,
-   "cooldown": null,
+   "cooldown": {
+    "ticks": 33.5,
+    "floor": 13.1,
+    "rotation": 38.0,
+    "n": 21,
+    "base": 33.6,
+    "base_n": 21,
+    "agility": false
+   },
+   "initiative": null,
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.197,
-     "yellow": 0.193
+     "green": 0.2,
+     "yellow": 0.2
     },
     "n": {
-     "red": 296,
-     "green": 52,
-     "blue": 55,
-     "yellow": 293
+     "red": 589,
+     "green": 178,
+     "blue": 234,
+     "yellow": 601
     }
    },
    "grievous": null
@@ -835,20 +990,28 @@
    "cooldown": {
     "ticks": 29.0,
     "floor": 8.0,
-    "rotation": 36.9,
-    "n": 1247
+    "rotation": 37.5,
+    "n": 2240,
+    "base": 26.3,
+    "base_n": 1991,
+    "agility": false
+   },
+   "initiative": {
+    "n": 2368,
+    "agree": 0.964,
+    "gain": 1
    },
    "armour": null,
    "restores": {
     "by_colour": {
-     "yellow": 0.154,
+     "yellow": 0.146,
      "red": 0.15
     },
     "n": {
-     "red": 1204,
-     "green": 588,
-     "blue": 191,
-     "yellow": 2442
+     "red": 2140,
+     "green": 644,
+     "blue": 346,
+     "yellow": 3738
     }
    },
    "grievous": null
@@ -859,7 +1022,7 @@
     "yellow": 9.78
    },
    "damage": {
-    "coef": 44.4,
+    "coef": 11.2,
     "lo": 7.3,
     "p90": 156.3,
     "hi": 204.1,
@@ -869,7 +1032,7 @@
     "colours_from": "wiki",
     "by_species": {
      "adder": {
-      "coef": 44.4,
+      "coef": 11.2,
       "p90": 156.3,
       "n": 29
      }
@@ -879,7 +1042,15 @@
     "ticks": 42.3,
     "floor": 41.0,
     "rotation": 44.0,
-    "n": 99
+    "n": 99,
+    "base": 38.6,
+    "base_n": 99,
+    "agility": true
+   },
+   "initiative": {
+    "n": 191,
+    "agree": 0.812,
+    "gain": 1
    },
    "armour": null,
    "restores": null,
@@ -888,31 +1059,50 @@
   {
    "name": "Shredding Paw",
    "openings": {
-    "red": 18.18
+    "red": 16.82
    },
    "damage": {
-    "coef": 384.1,
+    "coef": 371.3,
     "lo": 226.8,
-    "p90": 395.4,
-    "hi": 420.9,
-    "n": 33,
+    "p90": 420.9,
+    "hi": 497.4,
+    "n": 43,
     "before_armour": true,
     "colours": "b",
     "colours_from": "wiki",
     "by_species": {
      "caveangler": {
-      "coef": 384.6,
-      "p90": 399.4,
-      "n": 31
+      "coef": 367.3,
+      "p90": 395.4,
+      "n": 36
+     },
+     "polarbear": {
+      "coef": 473.1,
+      "p90": 475.2,
+      "n": 5
      }
     }
    },
-   "cooldown": null,
+   "cooldown": {
+    "ticks": 36.0,
+    "floor": 35.9,
+    "rotation": 214.1,
+    "n": 21,
+    "base": 38.8,
+    "base_n": 21,
+    "agility": true
+   },
+   "initiative": {
+    "n": 46,
+    "agree": 0.891,
+    "cost": 1,
+    "before_short": 0.0
+   },
    "armour": null,
    "restores": null,
    "grievous": {
     "per_soft": 0.333,
-    "n": 103
+    "n": 126
    }
   },
   {
@@ -920,6 +1110,7 @@
    "openings": null,
    "damage": null,
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": {
     "by_colour": {
@@ -939,10 +1130,19 @@
    "openings": null,
    "damage": null,
    "cooldown": {
-    "ticks": 29.0,
+    "ticks": 28.8,
     "floor": 8.1,
-    "rotation": 122.0,
-    "n": 40
+    "rotation": 120.8,
+    "n": 52,
+    "base": 26.4,
+    "base_n": 49,
+    "agility": false
+   },
+   "initiative": {
+    "n": 53,
+    "agree": 0.849,
+    "cost": 2,
+    "before_short": 0.094
    },
    "armour": null,
    "restores": {
@@ -952,9 +1152,9 @@
      "red": 0.303
     },
     "n": {
-     "red": 72,
-     "green": 31,
-     "yellow": 164
+     "red": 94,
+     "green": 35,
+     "yellow": 207
     }
    },
    "grievous": null
@@ -963,106 +1163,148 @@
    "name": "Tail Splash",
    "openings": null,
    "damage": {
-    "coef": 159.0,
+    "coef": 126.7,
     "lo": 10.4,
     "p90": 204.1,
     "hi": 400.0,
-    "n": 30,
+    "n": 50,
     "before_armour": true,
     "colours": "br",
     "colours_from": "corpus",
     "by_species": {
      "caveangler": {
-      "coef": 159.0,
+      "coef": 129.7,
       "p90": 204.1,
-      "n": 29
+      "n": 49
      }
     }
    },
    "cooldown": {
-    "ticks": 41.2,
+    "ticks": 41.9,
     "floor": 40.0,
-    "rotation": 238.8,
-    "n": 103
+    "rotation": 229.0,
+    "n": 178,
+    "base": 44.3,
+    "base_n": 178,
+    "agility": true
+   },
+   "initiative": {
+    "n": 177,
+    "agree": 0.955,
+    "cost": 4,
+    "before_short": 0.04
    },
    "armour": {
     "soaked_share": 0.8,
-    "n": 30
+    "n": 39
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 77
+    "n": 93
    }
   },
   {
    "name": "Thunder Over",
    "openings": {
-    "green": 3.46
+    "green": 2.85
    },
    "damage": {
-    "coef": 83.1,
+    "coef": 82.9,
     "lo": 39.1,
-    "p90": 133.3,
+    "p90": 144.6,
     "hi": 204.1,
-    "n": 53,
+    "n": 79,
     "before_armour": true,
     "colours": "gr",
     "colours_from": "wiki",
     "by_species": {
      "cattle": {
-      "coef": 83.1,
-      "p90": 89.2,
-      "n": 25
+      "coef": 84.9,
+      "p90": 92.6,
+      "n": 33
      },
      "horse": {
-      "coef": 82.6,
+      "coef": 78.9,
       "p90": 88.9,
       "n": 5
      },
      "moose": {
-      "coef": 138.5,
-      "p90": 144.6,
-      "n": 7
+      "coef": 122.3,
+      "p90": 156.3,
+      "n": 18
      },
      "sheep": {
-      "coef": 63.8,
-      "p90": 123.5,
-      "n": 12
+      "coef": 56.8,
+      "p90": 156.3,
+      "n": 18
+     },
+     "wildgoat": {
+      "coef": 81.2,
+      "p90": 88.8,
+      "n": 5
      }
     }
    },
    "cooldown": {
-    "ticks": 28.6,
+    "ticks": 29.4,
     "floor": 27.0,
     "rotation": 61.0,
-    "n": 54
+    "n": 81,
+    "base": 28.9,
+    "base_n": 80,
+    "agility": true
+   },
+   "initiative": {
+    "n": 97,
+    "agree": 0.928,
+    "gain": 2
    },
    "armour": {
     "soaked_share": 0.8,
-    "n": 32
+    "n": 50
    },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 73
+    "n": 112
    }
   },
   {
    "name": "Trunk Gunk",
    "openings": null,
-   "damage": null,
-   "cooldown": {
-    "ticks": 57.0,
-    "floor": 57.0,
-    "rotation": 81.0,
-    "n": 12
+   "damage": {
+    "coef": 1297.0,
+    "lo": 1598.5,
+    "p90": 9126.1,
+    "hi": 11946.8,
+    "n": 5,
+    "before_armour": true,
+    "colours": "gbyr",
+    "colours_from": "none known - all four read",
+    "by_species": {
+     "mammoth": {
+      "coef": 1297.0,
+      "p90": 9126.1,
+      "n": 5
+     }
+    }
    },
+   "cooldown": {
+    "ticks": 58.1,
+    "floor": 57.0,
+    "rotation": 95.8,
+    "n": 25,
+    "base": 59.7,
+    "base_n": 25,
+    "agility": true
+   },
+   "initiative": null,
    "armour": null,
    "restores": null,
    "grievous": {
     "per_soft": 0.1,
-    "n": 11
+    "n": 21
    }
   },
   {
@@ -1070,26 +1312,29 @@
    "openings": null,
    "damage": null,
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": {
     "by_colour": {
-     "green": 0.306,
+     "green": 0.3,
      "red": 0.303
     },
     "n": {
-     "red": 179,
-     "green": 222,
-     "blue": 23,
-     "yellow": 411
+     "red": 327,
+     "green": 282,
+     "blue": 89,
+     "yellow": 597
     }
    },
    "grievous": null
   },
   {
    "name": "Vampirism",
-   "openings": null,
+   "openings": {
+    "yellow": 8.33
+   },
    "damage": {
-    "coef": 10.3,
+    "coef": 6.3,
     "lo": 3.9,
     "p90": 28.5,
     "hi": 62.0,
@@ -1099,58 +1344,68 @@
     "colours_from": "corpus",
     "by_species": {
      "bat": {
-      "coef": 10.3,
+      "coef": 6.4,
       "p90": 28.5,
       "n": 27
      }
     }
    },
    "cooldown": {
-    "ticks": 19.7,
-    "floor": 3.1,
-    "rotation": 22.1,
-    "n": 131
+    "ticks": 18.0,
+    "floor": 1.9,
+    "rotation": 22.0,
+    "n": 163,
+    "agility": true
    },
-   "armour": null,
+   "initiative": null,
+   "armour": {
+    "soaked_share": 1.0,
+    "n": 47
+   },
    "restores": null,
    "grievous": {
-    "per_soft": 0.091,
-    "n": 11
+    "per_soft": 0.0,
+    "n": 90
    }
   },
   {
    "name": "Wingbeat",
    "openings": {
-    "yellow": 9.0
+    "yellow": 12.0
    },
    "damage": {
-    "coef": 44.4,
+    "coef": 18.1,
     "lo": 11.1,
     "p90": 204.1,
     "hi": 400.0,
-    "n": 46,
+    "n": 52,
     "before_armour": true,
     "colours": "g",
     "colours_from": "wiki",
     "by_species": {
      "bat": {
-      "coef": 44.4,
+      "coef": 18.1,
       "p90": 204.1,
-      "n": 46
+      "n": 52
      }
     }
    },
    "cooldown": {
-    "ticks": 36.0,
-    "floor": 15.0,
-    "rotation": 44.0,
-    "n": 99
+    "ticks": 29.0,
+    "floor": 1.1,
+    "rotation": 43.9,
+    "n": 121,
+    "agility": true
    },
-   "armour": null,
+   "initiative": null,
+   "armour": {
+    "soaked_share": 0.86,
+    "n": 49
+   },
    "restores": null,
    "grievous": {
     "per_soft": 0.0,
-    "n": 11
+    "n": 124
    }
   },
   {
@@ -1158,6 +1413,7 @@
    "openings": null,
    "damage": null,
    "cooldown": null,
+   "initiative": null,
    "armour": null,
    "restores": {
     "by_colour": {

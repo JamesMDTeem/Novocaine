@@ -61,6 +61,42 @@ public final class Combatant {
     public double hhp = Double.NaN;
 
     /**
+     * What our armour stopped, summed over every blow this combatant has taken - the part of
+     * each swing that never reached {@link #hp} and wore the armour instead.
+     *
+     * Armour takes 80-82% of every blow a creature lands on us (4,335 fights, 2026-09-21), and
+     * a plan priced on {@link #hp} alone sees a fifth of what hit us. Armour has durability,
+     * so the rest is not free: {@link Optimizer.Plan#cost()} is where it is charged.
+     */
+    public double soaked;
+
+    /**
+     * For an OPPONENT: ticks from the start of the plan to its first action, or NaN for a full
+     * period - the old reading, and the default.
+     *
+     * A full period was optimistic both ways the planner is asked. At the first card of a fight
+     * the creature's first action lands a median 0.05 of its period later (1,087 solo fights,
+     * 2026-09-21) - it answers at once, having closed in during our free phase - so a two-card bat
+     * fight was planned with no bat action in it at all, where the log has 725 across 727 fights
+     * and the model had 118. Mid-fight, at one of our cards, the wait is a median 0.58 (mean 0.68).
+     * The live advice knows how long ago the creature last acted and sets this from it
+     * (Prediction.firstAct); the offline tools set the engagement figure.
+     */
+    public double firstAct = Double.NaN;
+
+    /**
+     * For an OPPONENT: the share of its attacks that land on US, 0..1. 1 alone, and the default.
+     *
+     * In a party, a creature in our fight list is also in everyone else's, and swings at whoever
+     * it is on. Planning the whole bat-dungeon room as though every bat swung at us predicted 3-7
+     * times the soft damage that landed; planning four of them predicted half of it. The opponent
+     * acts on its own clock and only this share of its actions are aimed at us, so its gaps are
+     * divided by it (Optimizer.step). Live, LiveAdvice counts its cards that were followed by a
+     * blow on us (COMBAT.md §3.12).
+     */
+    public double onUs = 1.0;
+
+    /**
      * The combat skill this combatant BLOCKS with, and the multiplier its stance puts on it.
      *
      * Split, because only the skill half equalizes. Two skills within a factor of two are
@@ -321,6 +357,9 @@ public final class Combatant {
         c.armHard = armHard; c.armSoft = armSoft;
         c.penetrable = penetrable;
         c.hp = hp; c.maxHp = maxHp; c.hhp = hhp;
+        c.soaked = soaked;
+        c.firstAct = firstAct;
+        c.onUs = onUs;
         c.blockSkill = blockSkill; c.blockMult = blockMult;
         c.attackMult = attackMult;
         c.ip = ip;

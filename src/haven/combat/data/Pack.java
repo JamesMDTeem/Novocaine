@@ -150,7 +150,79 @@ public final class Pack {
         String ind = slurp("individuals.json");
         if(ind != null)
             attach(out, individuals(new JSONObject(ind)));
+        /* How big and how quick each really is, by where it was fought - creature_sizes.json. */
+        String sz = slurp("creature_sizes.json");
+        if(sz != null)
+            attachSizes(out, new JSONObject(sz));
+        /* The lines our characters threw to kill each - player_lines.json. */
+        String pl = slurp("player_lines.json");
+        if(pl != null)
+            attachLines(out, new JSONObject(pl));
         return(out);
+    }
+
+    /** Hands each opponent the lines players have killed it with - see Opponent.playerLines. */
+    private static void attachLines(Map<String, Opponent> foes, JSONObject doc) {
+        JSONObject sp = doc.optJSONObject("species");
+        if(sp == null)
+            return;
+        for(String name : sp.keySet()) {
+            Opponent o = foes.get(name);
+            if(o == null)
+                continue;
+            JSONArray rows = sp.getJSONArray(name);
+            for(int i = 0; i < rows.length(); i++) {
+                JSONArray l = rows.getJSONObject(i).optJSONArray("line");
+                if(l == null)
+                    continue;
+                List<String> line = new ArrayList<String>(l.length());
+                for(int k = 0; k < l.length(); k++)
+                    line.add(l.getString(k));
+                o.playerLines.add(line);
+            }
+        }
+    }
+
+    /** Hands each opponent its measured sizes - see Opponent.hpByTile and agiRatio. */
+    private static void attachSizes(Map<String, Opponent> foes, JSONObject doc) {
+        JSONObject sp = doc.optJSONObject("species");
+        if(sp == null)
+            return;
+        for(String name : sp.keySet()) {
+            Opponent o = foes.get(name);
+            if(o == null)
+                continue;
+            JSONObject row = sp.getJSONObject(name);
+            readTiles(row.optJSONObject("hp_by_tile"), o.hpByTile, o.killsByTile);
+            JSONObject ub = row.optJSONObject("undrawn_by_tile");
+            if(ub != null) {
+                for(String tile : ub.keySet()) {
+                    JSONObject u = ub.getJSONObject(tile);
+                    o.undrawnByTile.put(tile, new double[] {u.optDouble("lo", Double.NaN),
+                                                            u.optDouble("hi", Double.NaN),
+                                                            u.optInt("n", 0)});
+                }
+            }
+            JSONObject ar = row.optJSONObject("agi_ratio");
+            if(ar != null)
+                o.agiRatio = ar.optDouble("median", Double.NaN);
+        }
+    }
+
+    private static void readTiles(JSONObject hb, Map<String, double[]> into, Map<String, Integer> n) {
+        if(hb == null)
+            return;
+        for(String tile : hb.keySet()) {
+            JSONObject t = hb.getJSONObject(tile);
+            JSONArray q = t.optJSONArray("q");
+            if(q == null)
+                continue;
+            double[] v = new double[q.length()];
+            for(int i = 0; i < v.length; i++)
+                v[i] = q.getDouble(i);
+            into.put(tile, v);
+            n.put(tile, t.optInt("n", v.length));
+        }
     }
 
     /** Every measured individual the jar carries, by species name; empty when not shipped. */
@@ -210,6 +282,36 @@ public final class Pack {
     }
 
     /**
+     * Which weapon classes each item satisfies, from weapon_classes.json: key -> class -> true
+     * (satisfies) or false (known not to). A class absent from an item's map is unknown, and
+     * a card is never withheld on an unknown. Keyed through {@link #key} by both the resource
+     * basename and the wiki title, so either join finds it. Empty when the jar carries no file.
+     */
+    public static Map<String, Map<String, Boolean>> weaponClassesFromJar() {
+        Map<String, Map<String, Boolean>> out = new LinkedHashMap<String, Map<String, Boolean>>();
+        String doc = slurp("weapon_classes.json");
+        if(doc == null)
+            return(out);
+        JSONObject root = new JSONObject(doc);
+        JSONArray names = root.optJSONArray("classes");
+        JSONArray arr = root.optJSONArray("weapons");
+        for(int i = 0; (arr != null) && (names != null) && (i < arr.length()); i++) {
+            JSONObject w = arr.getJSONObject(i);
+            Map<String, Boolean> has = new LinkedHashMap<String, Boolean>();
+            for(int c = 0; c < names.length(); c++) {
+                String cls = names.getString(c);
+                if(w.has(cls) && !w.isNull(cls))
+                    has.put(cls, w.getBoolean(cls));
+            }
+            for(String k : new String[] {w.optString("res", null), w.optString("name", null)}) {
+                if(k != null)
+                    out.put(key(k), has);
+            }
+        }
+        return(out);
+    }
+
+    /**
      * What the client itself said about a weapon we have actually held, laid over the scrape.
      *
      * The wiki table can be wrong and is: it gives the stone axe 10% armour penetration and
@@ -245,9 +347,17 @@ public final class Pack {
                 : pen.getDouble(0);
             /* A weapon read at two qualities that do not agree on the base is not overlaid:
              * that would mean the quality division is wrong, and the scrape is then the more
-             * trustworthy of the two. */
-            if((rb != null) && (Math.abs(rb.optDouble("hi", dmg) - dmg) > 0.5))
+             * trustworthy of the two. "Agree" is `shared_base` where the pack carries it - the
+             * base every sighting's rounded tooltip allows, read at its middle, null when they
+             * share none (estimate_parallel.weapons_seen_merge). An older pack falls back to
+             * its two ends within half a point. */
+            if(e.has("shared_base")) {
+                JSONObject sb = e.optJSONObject("shared_base");
+                dmg = (sb == null) ? Double.NaN
+                    : (sb.optDouble("lo", Double.NaN) + sb.optDouble("hi", Double.NaN)) / 2.0;
+            } else if((rb != null) && (Math.abs(rb.optDouble("hi", dmg) - dmg) > 0.5)) {
                 dmg = Double.NaN;
+            }
             if(Double.isNaN(dmg) && Double.isNaN(p))
                 continue;
             out.put(key(base), new double[] {
@@ -413,7 +523,8 @@ public final class Pack {
              * every model so far has priced an unshielded character at five times the
              * block weight they would actually have. */
             .blockNeeds(j.optString("block_requires", null),
-                        dbl(j, "block_mult_without", Double.NaN));
+                        dbl(j, "block_mult_without", Double.NaN))
+            .weaponNeeds(j.isNull("weapon") ? null : j.optString("weapon", null));
 
         String skill = j.optString("attack_skill", null);
         b.weight("unarmed".equals(skill) ? Move.Weight.UNARMED
@@ -755,6 +866,13 @@ public final class Pack {
              * range() keeps NaN for the genuinely unconstrained cases elsewhere. */
             this.agiLo = Double.isNaN(ag[0]) ? 0.0 : ag[0];
             this.agiHi = Double.isNaN(ag[1]) ? Double.POSITIVE_INFINITY : ag[1];
+            JSONObject agc = (ago == null) ? null : ago.optJSONObject("consensus");
+            if(agc != null) {
+                this.agiConsLo = agc.optDouble("lo", 0.0);
+                this.agiConsHi = agc.isNull("hi") ? Double.POSITIVE_INFINITY
+                    : agc.optDouble("hi", Double.POSITIVE_INFINITY);
+                this.agiConsN = agc.optInt("n", 0);
+            }
             double[] hp = range(j, "hitpoints");
             this.hpLo = hp[0];
             this.hpHi = hp[1];
@@ -940,7 +1058,7 @@ public final class Pack {
                 }
             }
             Object[] rule = policyRule(j);
-            return(new FoeModel(period, pressure, against, coef,
+            FoeModel fm = new FoeModel(period, pressure, against, coef,
                                 per.optInt("n", 0), nHits, flees, modes, back,
                                 rule[0] == null ? null : (String)rule[0],
                                 (rule[1] == null) ? 0 : ((Double)rule[1]).doubleValue(),
@@ -950,8 +1068,16 @@ public final class Pack {
                                  * of the 61 modelled opponents take the card path, two
                                  * creatures (mammoth, troll) still need the average, and
                                  * six have no model at all. */
-                                repertoire(j, lib, ours, species, coefKey), soak));
+                                repertoire(j, lib, ours, species, coefKey), soak);
+            /* How much of its measured clock it keeps up over a fight - FoeModel.pace. */
+            double pace = per.optDouble("pace", 1.0);
+            fm.pace = (pace > 0) ? Math.max(PACE_FLOOR, Math.min(1.0, pace)) : 1.0;
+            return(fm);
         }
+
+        /* A creature is never read as idler than this - see FoeModel.pace. The slowest measured
+         * is below it only where a handful of fights hold one long lull. */
+        static final double PACE_FLOOR = 0.25;
 
         /**
          * The one state split the corpus can hold up for this species, as the model wants it.
@@ -1050,6 +1176,125 @@ public final class Pack {
          */
         public Combatant hardestReal() {
             return(real(true));
+        }
+
+        /**
+         * The damage that killed this kind, by the tile it was fought on (and "all"), as
+         * quantiles every 5% - creature_sizes.json. Empty when the build shipped none.
+         */
+        public final Map<String, double[]> hpByTile = new LinkedHashMap<String, double[]>();
+        /**
+         * Kills by a blow the client drew NO number for (fightlog.kill_kind "undrawn"), by tile:
+         * {lo, hi, n}, the hitpoints the most such kills agree on. Each kill brackets its creature
+         * as (what it had taken, that plus the killing blow priced from the card, weapon and the
+         * creature's openings] - creature_sizes.price_undrawn. Batcave bats die to a drawn blow
+         * every time and bats everywhere else to an undrawn one every time, as do adders, stoats,
+         * swans, cranes, eagles and scorpions, so for them this is all there is. It lands on the
+         * wiki where the wiki is sound: adder 70-73 (70), stoat 88-91 (90), swan 146-154 (150).
+         */
+        public final Map<String, double[]> undrawnByTile = new LinkedHashMap<String, double[]>();
+        /** How many drawn kills stand behind each tile's quantiles. */
+        public final Map<String, Integer> killsByTile = new LinkedHashMap<String, Integer>();
+        /** Its agility as a share of ours, from the client's own brackets, or NaN. */
+        public double agiRatio = Double.NaN;
+
+        /**
+         * Its agility from EVERY reading at once, each against our agility when it was taken -
+         * estimate.agility_consensus. 0 / +infinity for an open side; agiConsN 0 when the pack
+         * published none (fewer than 90% of its readings agreeing on one value).
+         */
+        public double agiConsLo = 0.0, agiConsHi = Double.POSITIVE_INFINITY;
+
+        /**
+         * The lines our characters have killed this kind with, most common first, as card
+         * resources - player_lines.json. The live search is offered them beside its own
+         * (Optimizer.search with lines), so it never answers worse than a line a player has shown.
+         */
+        public final List<List<String>> playerLines = new ArrayList<List<String>>();
+        public int agiConsN = 0;
+
+        /**
+         * The agility to stage it at against us, from the consensus, or NaN when there is none.
+         *
+         * THE CLAMP MAKES AN OPEN SIDE EXACT PAST IT. Our cooldowns read agility only as a ratio
+         * clamped to [1/2, 2], so "at most 31" against our 150 IS "half of us" and "at least 624"
+         * against our 250 IS "double us"; the consensus interval is cut to that band and its
+         * geometric middle staged, the way agilityFrom stages the client's own bracket. A wolf
+         * (249-251, every one of 5,574 readings) stages at 250 whoever is fighting it.
+         */
+        public double agilityAgainst(double ourAgi) {
+            if((agiConsN <= 0) || !(ourAgi > 0))
+                return(Double.NaN);
+            double lo = Math.max(agiConsLo, 0.5 * ourAgi), hi = Math.min(agiConsHi, 2.0 * ourAgi);
+            if(lo >= hi)
+                return((agiConsHi <= 0.5 * ourAgi) ? 0.5 * ourAgi : (agiConsLo >= 2.0 * ourAgi) ? 2.0 * ourAgi : hi);
+            return(Math.sqrt(lo * hi));
+        }
+
+        /**
+         * The median hitpoints of this kind, fought on this tile, among those that could still
+         * be standing after {@code taken} - from the kills on that tile where there are enough,
+         * else from every tile, else from the measured individuals. NaN when nothing says.
+         *
+         * ONLY A DRAWN KILL IS A SIZE, AND AN UNDRAWN ONE IS PRICED (2026-09-22). The first
+         * version of this read "a batcave bat takes 119 and a mine bat 16", and the tile split for
+         * wolves, moose and boar with it; that was partial intakes and other creatures' awards
+         * (COMBAT.md §3.13, corrected). Drawn kills put wolves, boar and moose at one size on every
+         * tile. A creature killed by undrawn blows is sized at the middle of what those kills agree
+         * on - a mine bat 84. The version between the two planned it one blow past its floor, 17,
+         * which James caught: a bat is not weaker than an ant, and the unseen blow is the fight's
+         * biggest, not its smallest.
+         */
+        public double medianHpAbove(double taken, String tile) {
+            String t = (tile == null) ? null : (tile.startsWith("gfx/tiles/") ? tile.substring(10) : tile);
+            double[] q = null, u = null;
+            if(t != null) {
+                q = hpByTile.get(t);
+                if(q == null)
+                    u = undrawnByTile.get(t);
+            }
+            if((q == null) && (u == null)) {
+                /* No tile of its own: the larger of the two pools. A bat anywhere but a batcave
+                 * is one of the ~1,000 undrawn kills, not one of the ~180 batcave kills. */
+                double[] ua = undrawnByTile.get("all");
+                int nk = killsByTile.getOrDefault("all", 0), nu = (ua == null) ? 0 : (int)ua[2];
+                if(nu > nk)
+                    u = ua;
+                else
+                    q = hpByTile.get("all");
+            }
+            if(u != null) {
+                double mid = (u[0] + u[1]) / 2;
+                return((mid > taken) ? mid : (taken + 1));
+            }
+            if(q == null)
+                return(medianHpAbove(taken));
+            List<Double> above = new ArrayList<Double>();
+            for(double v : q) {
+                if(v > taken)
+                    above.add(v);
+            }
+            if(above.isEmpty())
+                return(Double.NaN);
+            return(above.get(above.size() / 2));
+        }
+
+        /**
+         * The median hitpoints of the real creatures of this kind that could still be standing
+         * after {@code taken} - every individual that died having taken more than that - or NaN
+         * when none did. The plan's size of the creature in front of us: see Prediction.prepare.
+         */
+        public double medianHpAbove(double taken) {
+            List<Double> hp = new ArrayList<Double>();
+            for(Individual ind : individuals()) {
+                Combatant c = individual(ind);
+                if((c != null) && (c.hp > taken))
+                    hp.add(c.hp);
+            }
+            if(hp.isEmpty())
+                return(Double.NaN);
+            java.util.Collections.sort(hp);
+            return(hp.get(hp.size() / 2));
         }
 
         /** The easiest real creature, or the pooled weakest() when none are shipped. */
@@ -1237,6 +1482,16 @@ public final class Pack {
                 attach(out, individuals(side));
         } catch(IOException e) {
             /* Per-individual rows are an optimisation, not a requirement. */
+        }
+        try {
+            Path sz = path.resolveSibling("creature_sizes.json");
+            if(Files.exists(sz))
+                attachSizes(out, read(sz));
+            Path pl = path.resolveSibling("player_lines.json");
+            if(Files.exists(pl))
+                attachLines(out, read(pl));
+        } catch(IOException e) {
+            /* sizes are an optimisation too: without them the individuals stand in */
         }
         return(out);
     }
@@ -1486,7 +1741,7 @@ public final class Pack {
         /**
          * Whether this creature's agility ceiling is a measurement or the observer's limit.
          *
-         * The cooldown factor is 1 - 0.1*clamp(log2(agiMe/agiFoe), -1, 1), so once an animal
+         * The cooldown factor is clamp(agiFoe/agiMe, 1/2, 2)^(1/7), so once an animal
          * is slower than half our agility the cooldown stops moving and every slower animal
          * reports the same ticks. Such an observation says "at most half OUR agility" and
          * nothing about how much less - a fact about the observer.
@@ -1638,6 +1893,12 @@ public final class Pack {
             }
             JSONObject c = m.optJSONObject("cooldown");
             long cd = (c == null) ? 0 : Math.round(c.optDouble("ticks", 0));
+            /* At factor one, for an attack whose cooldown rides our agility - BeastMove.cooldownBase. */
+            double base = (c == null) ? Double.NaN : c.optDouble("base", Double.NaN);
+            boolean agile = (c != null) && c.optBoolean("agility", false);
+            JSONObject ipj = m.optJSONObject("initiative");
+            int ipGain = (ipj == null) ? 0 : ipj.optInt("gain", 0);
+            int ipCost = (ipj == null) ? 0 : ipj.optInt("cost", 0);
             double[] rest = new double[4];
             JSONObject r = m.optJSONObject("restores");
             JSONObject rb = (r == null) ? null : r.optJSONObject("by_colour");
@@ -1650,7 +1911,8 @@ public final class Pack {
             double grev = (g == null) ? 0 : g.optDouble("per_soft", 0);
             JSONObject a = m.optJSONObject("armour");
             double soak = (a == null) ? Double.NaN : a.optDouble("soaked_share", Double.NaN);
-            return(new BeastMove(name, op, coef, cd, rest, grev, soak, attack));
+            return(new BeastMove(name, op, coef, cd, rest, grev, soak, attack, base, agile,
+                                 ipGain, ipCost));
         }
     }
 
@@ -1701,8 +1963,12 @@ public final class Pack {
                     attack[c] = true;
             }
         }
+        /* A person pays for a card as we do: its cost is the gate, and a card that gains a point
+         * adds it. (A conditional gain - Quick Barrage's, above 25% red - is taken as unconditional;
+         * an "N+M" requirement as its cost N, which lets it through a little early.) */
         return(new BeastMove(m.name, op, mine, Math.round(m.cooldownBase), rest,
-                             m.grievous, Double.NaN, attack));
+                             m.grievous, Double.NaN, attack, Double.NaN, false, m.ipGain,
+                             m.ipCost));
     }
 
     /**
@@ -1809,8 +2075,17 @@ public final class Pack {
                 when = other = null;
             }
         }
-        return(new Repertoire(cards.toArray(new BeastMove[0]), mix, feat, cut, when, other,
-                              gates, stateTree(j.optJSONObject("state_model"), cards)));
+        Repertoire rep = new Repertoire(cards.toArray(new BeastMove[0]), mix, feat, cut, when,
+                                        other, gates, stateTree(j.optJSONObject("state_model"), cards));
+        /* How often it could pay for each card, at the decisions the mix came from - see
+         * Repertoire.ipAtLeast. Absent, a spender keeps its share and is only held back when poor. */
+        JSONArray ipl = (pol == null) ? null : pol.optJSONArray("its_ip_at_least");
+        if((ipl != null) && (ipl.length() > 0)) {
+            rep.ipAtLeast = new double[ipl.length()];
+            for(int i = 0; i < ipl.length(); i++)
+                rep.ipAtLeast[i] = ipl.optDouble(i, 1.0);
+        }
+        return(rep);
     }
 
     /**

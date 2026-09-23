@@ -152,6 +152,17 @@ public final class CombatRecorder {
     private static volatile haven.GameUI curGui = null;
     private static volatile java.util.Map<Integer, GearSnap> lastGear = null;
     private static volatile java.util.Map<Integer, WpnSnap> lastWpn = null;
+    /* THE EQUIPMENT READOUT BLINKS: slots empty together and the same items are back a median
+     * 8 ms later (p90 17, longest 182; 1,372 of 1,376 pooled logs with a four-slot blink). A
+     * slot that empties is held here and only written as a removal once it has stayed empty
+     * for GEAR_BLINK_MS - a blink on a log's last millisecond is what showed ZzxcuV3 fighting
+     * in no armour. fightlog.drop_gear_blinks applies the same rule to logs already written. */
+    static final long GEAR_BLINK_MS = 250;
+    private static final java.util.Map<Integer, Long> emptiedAt =
+        new java.util.concurrent.ConcurrentHashMap<Integer, Long>();
+    /* The last equipment actually seen, across fights - what start() and buildMe() fall back
+     * on when the equipment widget cannot be read at all, rather than calling it no armour. */
+    private static volatile java.util.Map<Integer, GearSnap> seenGear = null;
 
     private static final class GearSnap {
         final String res;
@@ -159,17 +170,23 @@ public final class CombatRecorder {
         final int hard;
         final int soft;
         final boolean broken;
-        GearSnap(String res, double ql, int hard, int soft, boolean broken) {
+        /* Durability: wd points of wear out of wm, -1 when the piece has no Wear. Part of the
+         * change key, so every point of wear taken in a fight is its own gear row (schema 24). */
+        final int wd, wm;
+        GearSnap(String res, double ql, int hard, int soft, boolean broken, int wd, int wm) {
             this.res = res;
             this.ql = ql;
             this.hard = hard;
             this.soft = soft;
             this.broken = broken;
+            this.wd = wd;
+            this.wm = wm;
         }
         @Override public boolean equals(Object o) {
             if (!(o instanceof GearSnap)) return false;
             GearSnap g = (GearSnap)o;
             return broken == g.broken && hard == g.hard && soft == g.soft
+                && wd == g.wd && wm == g.wm
                 && Double.doubleToLongBits(ql) == Double.doubleToLongBits(g.ql)
                 && ((res == null) ? g.res == null : res.equals(g.res));
         }
@@ -179,6 +196,8 @@ public final class CombatRecorder {
             h = 31 * h + hard;
             h = 31 * h + soft;
             h = 31 * h + (broken ? 1 : 0);
+            h = 31 * h + wd;
+            h = 31 * h + wm;
             return h;
         }
     }
@@ -303,6 +322,7 @@ public final class CombatRecorder {
             curGui = null;
             lastGear = null;
             lastWpn = null;
+            emptiedAt.clear();
             if(meGob >= 0)
                 combatants.add(meGob);
             if(foeGob >= 0)
@@ -326,7 +346,7 @@ public final class CombatRecorder {
          * records the fight, not no log at all. */
         try {
             List<String> gear = new ArrayList<String>();
-            int[] arm = readGear(eq, gear);
+            int[] arm = readGearOrSeen(eq, gear);
             SortedMap<String, Integer> comp = readAttrs(glob, true);
             /* readDeck is read again below for the predictor. Reading it twice is cheaper
              * than reordering the header, and it cannot disagree with itself in between. */
@@ -403,7 +423,7 @@ public final class CombatRecorder {
             if((gui == null) || (gui.ui == null) || (gui.ui.sess == null))
                 return(null);
             Equipory eq = gui.getequipory();
-            int[] arm = readGear(eq, new ArrayList<String>());
+            int[] arm = readGearOrSeen(eq, new ArrayList<String>());
             List<Map<String, Double>> wstats = new ArrayList<Map<String, Double>>();
             for(int i = 6; i <= 7; i++)
                 wstats.add(readWeaponStats(((eq == null) || (i >= eq.slots.length))
@@ -449,6 +469,36 @@ public final class CombatRecorder {
      * are reported with their nominal armour but excluded from the totals, matching what the
      * game actually applies (see Equipory's armour-class readout).
      */
+    /**
+     * readGear, falling back to the last equipment seen when nothing could be read now.
+     *
+     * An equipment widget that is missing or reads empty is a blind spot, not a character in
+     * no armour (James, 2026-09-17: the quick slots are not all toggled on). The fallback rows
+     * are the last snapshot's, so the log still says what was worn.
+     */
+    private static int[] readGearOrSeen(Equipory eq, List<String> out) {
+        int[] arm = readGear(eq, out);
+        if(!out.isEmpty()) {
+            java.util.Map<Integer, GearSnap> snap = snapshotGear(eq);
+            if(!snap.isEmpty())
+                seenGear = snap;
+            return(arm);
+        }
+        java.util.Map<Integer, GearSnap> seen = seenGear;
+        if((seen == null) || seen.isEmpty())
+            return(arm);
+        int hard = 0, soft = 0;
+        for(java.util.Map.Entry<Integer, GearSnap> e : seen.entrySet()) {
+            GearSnap g = e.getValue();
+            out.add(CombatEvent.gear(0, e.getKey(), g.res, g.ql, g.hard, g.soft, g.broken, g.wd, g.wm));
+            if(!g.broken) {
+                hard += g.hard;
+                soft += g.soft;
+            }
+        }
+        return(new int[] {hard, soft});
+    }
+
     private static int[] readGear(Equipory eq, List<String> out) {
         int hard = 0, soft = 0;
         /* No equipment widget means we could not look, which is not the same fact as
@@ -466,6 +516,7 @@ public final class CombatRecorder {
                 double ql = 0;
                 int h = 0, sf = 0;
                 boolean broken = false;
+                int wd = -1, wm = -1;
                 for(ItemInfo info : w.item.info()) {
                     if(info instanceof Quality)
                         ql = ((Quality)info).q;
@@ -475,13 +526,15 @@ public final class CombatRecorder {
                     } else if(info instanceof haven.res.ui.tt.wear.Wear) {
                         haven.res.ui.tt.wear.Wear wr = (haven.res.ui.tt.wear.Wear)info;
                         broken = ((wr.m - wr.d) == 0);
+                        wd = wr.d;
+                        wm = wr.m;
                     }
                 }
                 if(!broken) {
                     hard += h;
                     soft += sf;
                 }
-                out.add(CombatEvent.gear(0, i, res, ql, h, sf, broken));
+                out.add(CombatEvent.gear(0, i, res, ql, h, sf, broken, wd, wm));
             } catch(Exception e) {
             }
         }
@@ -660,6 +713,7 @@ public final class CombatRecorder {
                 double ql = 0;
                 int h = 0, sf = 0;
                 boolean broken = false;
+                int wd = -1, wm = -1;
                 for (ItemInfo info : w.item.info()) {
                     if (info instanceof Quality)
                         ql = ((Quality)info).q;
@@ -669,9 +723,11 @@ public final class CombatRecorder {
                     } else if (info instanceof haven.res.ui.tt.wear.Wear) {
                         haven.res.ui.tt.wear.Wear wr = (haven.res.ui.tt.wear.Wear)info;
                         broken = ((wr.m - wr.d) == 0);
+                        wd = wr.d;
+                        wm = wr.m;
                     }
                 }
-                out.put(i, new GearSnap(res, ql, h, sf, broken));
+                out.put(i, new GearSnap(res, ql, h, sf, broken, wd, wm));
             } catch (Exception e) {
             }
         }
@@ -709,30 +765,47 @@ public final class CombatRecorder {
             return;
         try {
             java.util.Map<Integer, GearSnap> curGear = snapshotGear(eq);
-            if (!curGear.equals(lg)) {
-                long t = now();
-                for (java.util.Map.Entry<Integer, GearSnap> e : curGear.entrySet()) {
-                    GearSnap prev = lg.get(e.getKey());
-                    if (!e.getValue().equals(prev)) {
-                        GearSnap g = e.getValue();
-                        log(CombatEvent.gear(t, e.getKey(), g.res, g.ql, g.hard, g.soft, g.broken));
-                    }
+            if (!curGear.isEmpty())
+                seenGear = curGear;
+            long t = now();
+            java.util.Map<Integer, GearSnap> next = new java.util.TreeMap<Integer, GearSnap>(lg);
+            boolean changed = false;
+            for (java.util.Map.Entry<Integer, GearSnap> e : curGear.entrySet()) {
+                emptiedAt.remove(e.getKey());
+                if (!e.getValue().equals(lg.get(e.getKey()))) {
+                    GearSnap g = e.getValue();
+                    log(CombatEvent.gear(t, e.getKey(), g.res, g.ql, g.hard, g.soft, g.broken, g.wd, g.wm));
+                    next.put(e.getKey(), g);
+                    changed = true;
                 }
-                /* AND THE SLOTS THAT EMPTIED. Only occupied slots are in the snapshot, so a
-                 * loop over the new one never visits a slot whose item has gone - taking a
-                 * shield off mid-fight emitted nothing at all, and the offline analysis went
-                 * on crediting us with its armour for the rest of the fight. A removal is a
-                 * null res, which is how the reader tells it from an item. */
-                for (Integer slot : lg.keySet()) {
-                    if (!curGear.containsKey(slot))
-                        log(CombatEvent.gear(t, slot.intValue(), null, 0.0, 0, 0, false));
-                }
-                lastGear = curGear;
             }
+            /* AND THE SLOTS THAT EMPTIED. Only occupied slots are in the snapshot, so a
+             * loop over the new one never visits a slot whose item has gone - taking a
+             * shield off mid-fight emitted nothing at all, and the offline analysis went
+             * on crediting us with its armour for the rest of the fight. A removal is a
+             * null res, which is how the reader tells it from an item - written only once
+             * the slot has stayed empty past a blink (see emptiedAt). */
+            for (Integer slot : lg.keySet()) {
+                if (curGear.containsKey(slot))
+                    continue;
+                Long since = emptiedAt.get(slot);
+                if (since == null) {
+                    emptiedAt.put(slot, t);
+                } else if ((t - since.longValue()) >= GEAR_BLINK_MS) {
+                    log(CombatEvent.gear(t, slot.intValue(), null, 0.0, 0, 0, false));
+                    next.remove(slot);
+                    emptiedAt.remove(slot);
+                    changed = true;
+                }
+            }
+            if (changed)
+                lastGear = next;
             java.util.Map<Integer, WpnSnap> curWpn = snapshotWeapon(eq);
             if (!curWpn.equals(lw)) {
-                long t = now();
                 for (java.util.Map.Entry<Integer, WpnSnap> e : curWpn.entrySet()) {
+                    /* A hand mid-blink is not a hand that let go of its weapon. */
+                    if (emptiedAt.containsKey(e.getKey()))
+                        continue;
                     WpnSnap prev = lw.get(e.getKey());
                     if (!e.getValue().equals(prev)) {
                         WpnSnap w = e.getValue();
@@ -758,7 +831,12 @@ public final class CombatRecorder {
                         }
                     }
                 }
-                lastWpn = curWpn;
+                java.util.Map<Integer, WpnSnap> nextW = new java.util.TreeMap<Integer, WpnSnap>(curWpn);
+                for (Integer slot : emptiedAt.keySet()) {
+                    if (lw.containsKey(slot))
+                        nextW.put(slot, lw.get(slot));
+                }
+                lastWpn = nextW;
             }
         } catch (Exception e) {
         }
@@ -1442,6 +1520,9 @@ public final class CombatRecorder {
      * Not value-gated: an overlay is an event, and two identical ones in a row are two moves.
      */
     public static void onGobOverlay(long gobId, String gobRes, String olRes) {
+        /* Another PERSON's card, recorded or not - see alliesFighting. */
+        if((gobRes != null) && (olRes != null) && gobRes.contains("borka") && olRes.startsWith("gfx/fx/fight/"))
+            playerCard.put(gobId, System.currentTimeMillis());
         if(!active() || (gobRes == null) || (olRes == null))
             return;
         try {
@@ -1449,6 +1530,32 @@ public final class CombatRecorder {
         } catch(Exception e) {
             /* never propagate into the object-delta path */
         }
+    }
+
+    /* When each person was last seen throwing a card - see alliesFighting. */
+    private static final java.util.concurrent.ConcurrentHashMap<Long, Long> playerCard =
+        new java.util.concurrent.ConcurrentHashMap<Long, Long>();
+
+    /**
+     * How many OTHER people have thrown a card within the last {@code windowMs} - the ones a
+     * creature in our fight list may be swinging at instead of us (Combatant.onUs).
+     *
+     * Not the party list. The 2026-09-21 bat-dungeon logs have Santa's party reading only himself
+     * while three others fought beside him; who is throwing cards is what decides whose the
+     * creatures are.
+     */
+    public static int alliesFighting(long self, long windowMs) {
+        long now = System.currentTimeMillis();
+        int n = 0;
+        for(java.util.Map.Entry<Long, Long> e : playerCard.entrySet()) {
+            if(e.getKey().longValue() == self)
+                continue;
+            if(now - e.getValue().longValue() <= windowMs)
+                n++;
+            else if(now - e.getValue().longValue() > 10 * windowMs)
+                playerCard.remove(e.getKey());
+        }
+        return(n);
     }
 
     /**
@@ -1549,6 +1656,7 @@ public final class CombatRecorder {
         curEq = null;
         lastGear = null;
         lastWpn = null;
+        emptiedAt.clear();
         try {
             w.close();
         } catch(Exception e) {

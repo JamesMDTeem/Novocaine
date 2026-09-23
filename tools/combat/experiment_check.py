@@ -203,10 +203,16 @@ def coverage():
     # cards out of the never-thrown list and the split went 17 against 19. The finding is
     # that the corpus is collapsed onto a handful of cards, not that the handful is a
     # minority by one, so the assertion is now the finding.
-    check("a large share of the deck has never been thrown",
-          len(never) > (len(owned) / 4.0), True)
-    print("    %d owned, %d thrown, %d never, %d stances held rather than thrown"
-          % (len(owned), len(thrown), len(never), len(stances)))
+    #
+    # REPORTED, NO LONGER ASSERTED (2026-09-21). This was a fact about the corpus, not about
+    # the code, and the corpus moved on: 28 of 41 owned cards have now been thrown and 10 have
+    # not, 24% against the quarter it asked for. That is the group trying more of the deck -
+    # the outcome this report exists to encourage - and a check that fails when it happens
+    # can only be kept green by lowering its line each time. The join guards above are the
+    # checks; this is the reading.
+    print("    %d owned, %d thrown, %d never (%.0f%% of the deck), %d stances held rather than thrown"
+          % (len(owned), len(thrown), len(never), 100.0 * len(never) / max(1, len(owned)),
+             len(stances)))
 
     # A stance is not a card you throw - one sits on the bar and is on continuously - so
     # it must not appear in either list. Counting it as never used is miscounting, and it
@@ -324,13 +330,13 @@ def what_to_do():
     # a card. It threw away 450 brackets against 69 genuine third-party ones, and the
     # survivors were a biased remnant that did not agree with itself.
     #
-    # Boar is now bounded by equalization instead: its skill is within a factor of two of
-    # ours, which no further boar will fix either, but it is a different fact and it wants
-    # a different answer.
+    # Boar was then bounded by equalization instead. Since 2026-09-17 it is not bounded
+    # either: foe_skill_profile scores every row, in band or out, against equalize(S, F),
+    # and rows at our skills from 50 to 408 pin it near 100.
     check("boar is no longer contradicting itself", "boar" in named("contradictory"),
           False)
-    check("  it is bounded by equalization, which is a different problem",
-          "boar" in named("equalized"), True)
+    check("  nor merely bounded by equalization - the profile measures it",
+          "boar" in named("equalized"), False)
 
 
 def main():

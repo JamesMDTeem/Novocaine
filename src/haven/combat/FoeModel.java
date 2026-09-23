@@ -151,6 +151,33 @@ public final class FoeModel {
     public final Repertoire cards;
 
     /**
+     * The share of its measured rate this creature keeps up over a whole fight, 0..1; every gap
+     * it reports is divided by it. 1 reads the measured clock as the whole story, the old default.
+     *
+     * The period and the per-card cooldowns are gaps with LULLS TRIMMED - three times the median
+     * and beyond: it withdrew, we withdrew, it ran. That is the right clock for "how soon after a
+     * card does the next come", and the wrong one for how often it hits us over a fight, because
+     * the lulls are part of the fight. Wolves run off and come back: over their solo fights the
+     * model gave them 114 actions where the logs have 43, and a party's wolf pack read four times
+     * the armour damage that landed. Set from the pack's period.pace (estimate.period_of).
+     */
+    public double pace = 1.0;
+
+    /**
+     * The creature as it was modelled before 2026-09-23 - card cooldowns blended over whoever fought
+     * it, and no initiative bought or spent - for the checks and tools that measure what the change
+     * did. Never set in the client.
+     */
+    public static volatile boolean legacy = false;
+
+    /* A gap at this creature's own pace - see pace. */
+    private long paced(long gap) {
+        if((pace >= 1.0) || !(pace > 0) || (gap == Long.MAX_VALUE))
+            return(gap);
+        return(Math.round(gap / pace));
+    }
+
+    /**
      * What it does depends on the state, and this is the one split the corpus can hold up.
      *
      * A creature is not a fixed mix. Fitting one split per species - chosen on the first
@@ -299,7 +326,7 @@ public final class FoeModel {
                       int[] thrown, long[] gapOut) {
         if((self != null) && fleeing(self)) {
             if((gapOut != null) && (gapOut.length > 0))
-                gapOut[0] = period;
+                gapOut[0] = paced(period);
             return(0);
         }
         if((cards != null) && cards.usable()) {
@@ -307,11 +334,11 @@ public final class FoeModel {
             if((thrown != null) && (i < thrown.length))
                 thrown[i]++;
             if((gapOut != null) && (gapOut.length > 0))
-                gapOut[0] = gapFor(i);
+                gapOut[0] = paced(gapFor(i, me, self));
             return(play(cards.cards[i], me, myBlockWeight, self));
         }
         if((gapOut != null) && (gapOut.length > 0))
-            gapOut[0] = period;
+            gapOut[0] = paced(period);
         restore(self);
         return(act(me, myBlockWeight, pressureNow(me, self)));
     }
@@ -338,7 +365,7 @@ public final class FoeModel {
                         long[] gapOut, double[] dealtOut) {
         if((self != null) && fleeing(self)) {
             if((gapOut != null) && (gapOut.length > 0))
-                gapOut[0] = period;
+                gapOut[0] = paced(period);
             return(-1);
         }
         Combatant t = party[front];
@@ -347,9 +374,10 @@ public final class FoeModel {
             if((thrown != null) && (i < thrown.length))
                 thrown[i]++;
             if((gapOut != null) && (gapOut.length > 0))
-                gapOut[0] = gapFor(i);
+                gapOut[0] = paced(gapFor(i, t, self));
             BeastMove m = cards.cards[i];
             restoreFrom(m, self);
+            pay(m, self);
             boolean wide = (area != null) && area.contains(m.name);
             for(int k = 0; k < party.length; k++) {
                 if(!party[k].alive() || ((k != front) && !wide))
@@ -361,7 +389,7 @@ public final class FoeModel {
             return(i);
         }
         if((gapOut != null) && (gapOut.length > 0))
-            gapOut[0] = period;
+            gapOut[0] = paced(period);
         restore(self);
         double d = act(t, blockWeights[front], pressureNow(t, self));
         if(dealtOut != null)
@@ -369,10 +397,18 @@ public final class FoeModel {
         return(-1);
     }
 
-    /** The thrown card's own measured cooldown, or the creature's single period otherwise. */
-    private long gapFor(int i) {
+    /**
+     * The thrown card's own cooldown against this one of us, or the creature's single period.
+     *
+     * An attack's is its base scaled by OUR agility against its own, as ours are by its
+     * (BeastMove.cooldownAgainst): the blended figure it replaces made a wolf swing 12% too often at
+     * our fastest character and 7% too seldom at our slowest.
+     */
+    private long gapFor(int i, Combatant us, Combatant self) {
         if((cards != null) && (i >= 0) && (i < cards.cards.length)) {
-            long cd = cards.cards[i].cooldown;
+            long cd = legacy ? cards.cards[i].cooldown
+                : cards.cards[i].cooldownAgainst((us == null) ? Double.NaN : us.agi,
+                                                 (self == null) ? Double.NaN : self.agi);
             if(cd > 0)
                 return(cd);
         }
@@ -389,7 +425,22 @@ public final class FoeModel {
      */
     private double play(BeastMove m, Combatant me, double myBlockWeight, Combatant self) {
         restoreFrom(m, self);
+        pay(m, self);
         return(strike(m, me, myBlockWeight));
+    }
+
+    /**
+     * The card's initiative, on the creature that threw it: its cost comes off, its gain goes on.
+     *
+     * Nothing moved a creature's pool before 2026-09-23, so every learned rule that reads it -
+     * bat, bear, cattle, polar bear, red deer, reindeer and vampire split on "it holds a point" -
+     * stayed on one branch for the whole of a simulated fight, and Chomp or Bristle were dealt with
+     * nothing to pay for them. Once per throw, like the restoration.
+     */
+    private static void pay(BeastMove m, Combatant self) {
+        if((self == null) || legacy)
+            return;
+        self.ip = Math.max(0, self.ip - m.ipCost) + m.ipGain;
     }
 
     /** The card's own restoration, on the creature that threw it. Once per throw. */
@@ -435,6 +486,7 @@ public final class FoeModel {
         double armpen = ((m.soaked > 0) && (m.soaked <= 1.0)) ? (1.0 - m.soaked) : 0.0;
         double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, armpen);
         me.hp -= dealt;
+        me.soaked += Math.max(0, raw - dealt);
         return(dealt);
     }
 
@@ -449,27 +501,10 @@ public final class FoeModel {
     public double[] pressureNow(Combatant me, Combatant self) {
         if((condFeature == null) || (whenPressure == null) || (elsePressure == null))
             return(pressure);
-        double v;
-        if("foe_ip".equals(condFeature))
-            v = (self == null) ? -1 : self.ip;
-        else if("my_ip".equals(condFeature))
-            v = (me == null) ? -1 : me.ip;
-        else if("my_open".equals(condFeature))
-            v = (me == null) ? -1 : (biggest(me) * 100.0);
-        else if("foe_open".equals(condFeature))
-            v = (self == null) ? -1 : (biggest(self) * 100.0);
-        else
-            return(pressure);
+        double v = Repertoire.ruleValue(condFeature, me, self);
         if(v < 0)
             return(pressure);
         return((v > condCut) ? whenPressure : elsePressure);
-    }
-
-    private static double biggest(Combatant c) {
-        double out = 0;
-        for(int i = 0; i < 4; i++)
-            out = Math.max(out, c.opening(i));
-        return(out);
     }
 
     /** Its own openings, after the card it just threw took some of them back. */
@@ -562,6 +597,7 @@ public final class FoeModel {
         double raw = damageCoef * combined * combined;
         double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, armpen);
         me.hp -= dealt;
+        me.soaked += Math.max(0, raw - dealt);
         return(dealt);
     }
 
@@ -608,7 +644,7 @@ public final class FoeModel {
                 continue;               /* held, not thrown - it is not in the rotation */
             acts++;
             cd += Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale, 0,
-                                         m.isAttack(), owner.agi, owner.agi);
+                                         m.takesAgility(), owner.agi, owner.agi);
             for(int c = 0; c < 4; c++) {
                 if(m.openings[c] > 0) {
                     press[c] += Formulas.openingGainEq(

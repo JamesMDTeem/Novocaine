@@ -120,11 +120,13 @@ public class CombatFormulaCheck {
         System.out.println("\nagilityCooldownFactor");
         // Our agility 81 against partners at 59 and 135, both computed values.
         near("faster than the opponent shortens", Formulas.agilityCooldownFactor(81, 59),
-             0.9543, 0.0005);
+             0.9557, 0.0005);
         near("slower than the opponent lengthens", Formulas.agilityCooldownFactor(81, 135),
-             1.0737, 0.0005);
-        near("caps at a factor-two gap", Formulas.agilityCooldownFactor(81, 20), 0.9, 1e-9);
-        near("caps the other way", Formulas.agilityCooldownFactor(20, 81), 1.1, 1e-9);
+             1.0757, 0.0005);
+        near("caps at a factor-two gap", Formulas.agilityCooldownFactor(81, 20),
+             Math.pow(0.5, 1.0 / 7.0), 1e-9);
+        near("caps the other way", Formulas.agilityCooldownFactor(20, 81),
+             Math.pow(2.0, 1.0 / 7.0), 1e-9);
         near("equal agility is neutral", Formulas.agilityCooldownFactor(70, 70), 1.0, 1e-9);
 
         System.out.println("\ncooldownTicks");
@@ -134,14 +136,13 @@ public class CombatFormulaCheck {
               Formulas.cooldownTicks(40, false, 1, 0, 0, true, 81, 59), 38L);
         check("Quick Barrage vs agility 59",
               Formulas.cooldownTicks(20, false, 1, 0, 0, true, 81, 59), 19L);
-        // Against the faster one: 38, 43, 22. The last is the known one-tick miss, so it is
-        // asserted at what the formula actually produces, with the discrepancy named here
-        // rather than hidden by a loose tolerance.
+        // Against the faster one: 38, 43, 22. The last was the linear form's one-tick miss
+        // (it gave 21); the power law gives the game's 22 (2026-09-17).
         check("KITO vs agility 135", Formulas.cooldownTicks(35, false, 1, 0, 0, true, 81, 135), 38L);
         check("Full Circle vs agility 135",
               Formulas.cooldownTicks(40, false, 1, 0, 0, true, 81, 135), 43L);
-        check("Quick Barrage vs agility 135 (game said 22 - known one-tick miss)",
-              Formulas.cooldownTicks(20, false, 1, 0, 0, true, 81, 135), 21L);
+        check("Quick Barrage vs agility 135 (game said 22)",
+              Formulas.cooldownTicks(20, false, 1, 0, 0, true, 81, 135), 22L);
 
         // A maneuver takes no agility modifier: Zig-Zag Ruse read 50 against every opponent.
         check("Zig-Zag Ruse vs agility 59",

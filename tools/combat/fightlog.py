@@ -22,6 +22,7 @@ Stdlib only (this module). The opening-decay fitter tools/combat/decay_fit.py is
 import glob
 import json
 import os
+from collections import defaultdict
 
 COLOURS = ("green", "blue", "yellow", "red")
 
@@ -159,6 +160,9 @@ class Engagement(object):
         # this; it is reported alongside problems so a later reader can decide.
         self.outcome = "unknown"
         self.outcome_detail = ""
+        # "drawn", "undrawn" or None - see kill_kind(). Only a drawn kill's intake is its
+        # hitpoints; an undrawn one's is a floor.
+        self.kill = None
 
     @property
     def clean(self):
@@ -334,6 +338,36 @@ class Engagement(object):
             "" if self.clean else " PROBLEMS")
 
 
+# WHAT EACH LOG SCHEMA RECORDS, by the schema that first wrote it (CombatEvent.SCHEMA history).
+# The pool holds schemas 2, 3, 8, 10, 11, 12, 15, 16 and 21-24: teammates run different builds,
+# so a species' corpus is a mix, and a measurement that needs a field must be taken only from
+# logs whose schema can carry it - and must not read its absence from an older log as a fact.
+# Log.records(feature) is the question to ask.
+SPEC = {
+    "foe": 3,        # relation rows: new / current / name / del
+    "overlay": 4,    # overlays: card announcements and sfx/fight hit, miss, ip
+    "foes": 4,       # every relation's openings
+    "buffs": 5,      # stances
+    "speed": 6,      # myspd / foespd on state rows
+    "tile": 7,       # the tile underfoot, and gst (the olive branch)
+    "gst": 7,
+    "predict": 8,
+    "end_health": 9,  # the writer's dropped / failed counts in the end row
+    "agi": 10,       # the client's agility bracket
+    "wpn": 10,       # weapon tooltips (coolmod, damage)
+    "party": 10,
+    "card": 13,      # an opponent's card sheet
+    "deck": 14,      # the deck in the header
+    "advice": 15,
+    "range": 16,     # foes `d`
+    "foeact": 17,
+    "foe_ip": 20,    # per-relation IP on both sides
+    "advin": 22,
+    "charge": 23,
+    "wear": 24,
+}
+
+
 class Log(object):
     def __init__(self, path):
         self.path = path
@@ -375,6 +409,42 @@ class Log(object):
         self.buffs = []
         # Schema 23 "charge" rows: a non-opening buff's meter over time.
         self.charges = []
+        # Every damage row in the file, keyed by the gob it was drawn on. See damage_on().
+        self.damage_by_gob = {}
+
+    def damage_on(self, gob):
+        """Every damage number drawn on `gob` anywhere in this file, in file order.
+
+        NOT eng.damage. An engagement holds the damage rows that arrived while ITS gob was the
+        sampled opponent, whichever gob they landed on, so a blow on a creature while the fight
+        view was sampling a different one sits in the other engagement. Summing a creature's
+        intake from its own engagements lost 9.4% of every creature's damage in the pool,
+        and far more in a crowd: 32% for fatbats, 30% for denmothers, 27% for bats, 18% for
+        wolves - which is how kills came out at a tenth of the species' size (fatbat 8).
+        """
+        return self.damage_by_gob.get(gob, ())
+
+    def taken(self, gob, chans=("SHP",)):
+        """Total of `gob`'s damage rows on the given channels, over the whole file."""
+        return sum((d.get("v") or 0) for d in self.damage_on(gob) if d.get("ch") in chans)
+
+    def kill_time(self, eng):
+        """When this engagement's creature died, or None if it did not (eng.kill).
+
+        THE KILL, NOT THE LAST NUMBER. An undrawn kill's blow comes after the last drawn one - a mine
+        bat reads Quick Barrage x3 and dies to the Full Circle nobody sees a number for - so a fight
+        ends where the creature's relation goes, which is the kill either way; the last number
+        stands in only where the schema writes no deletion. One copy for every extractor (seams
+        audit, 2026-09-23): player_lines had it and solo_lines still ended at the last number.
+        """
+        if not eng.kill:
+            return None
+        dmg = [d["t"] for d in self.damage_on(eng.gob) if d.get("ch") == "SHP" and d.get("t") is not None]
+        t_end = max(dmg) if dmg else None
+        dels = [r["t"] for r in self.rows if r.get("ev") == "foe" and r.get("how") == "del"
+                and r.get("gob") == eng.gob and r.get("t") is not None
+                and (t_end is None or r["t"] >= t_end - AWARD_KILL_MS)]
+        return min(dels) if dels else t_end
 
     @property
     def me(self):
@@ -383,6 +453,16 @@ class Log(object):
     @property
     def schema(self):
         return (self.header or {}).get("schema", 1)
+
+    def records(self, feature):
+        """Whether this log's schema RECORDS `feature` at all - see SPEC.
+
+        Absence means two different things by schema: in a log that records relation
+        deletions, "no deletion" says the creature was still there; in one that does not, it
+        says nothing. A reader that treats both alike either throws the old logs away or reads
+        silence as evidence, so ask this instead of testing for rows.
+        """
+        return self.schema >= SPEC[feature]
 
     @property
     def complete(self):
@@ -449,6 +529,8 @@ def read(path, opens=None):
             log.end_failed = r.get("failed")
         elif ev == "foe" and r.get("res"):
             log.names[r["gob"]] = r["res"]
+        elif ev == "dmg":
+            log.damage_by_gob.setdefault(r.get("gob"), []).append(r)
         elif ev == "hp":
             log.health.append(r)
         elif ev == "overlay":
@@ -477,9 +559,44 @@ def read(path, opens=None):
             # the one we ARE fighting may not be ours.
             log.foes.append(r)
 
+    log.gear = drop_gear_blinks(log.gear, (log.end or {}).get("t"))
     _segment(log)
     _diagnose(log, opens)
     return log
+
+
+# How long an emptied equipment slot has to stay empty before it is a removal.
+GEAR_BLINK_MS = 250
+
+
+def drop_gear_blinks(gear, end_t=None):
+    """Gear rows without the removals that were the equipment widget refreshing.
+
+    THE EQUIPMENT READOUT BLINKS. Slots empty together and the same items are back a median
+    8 ms later (p90 17, longest 182) - in 1,372 of the 1,376 pooled logs where four or more
+    slots emptied in one millisecond. Nobody unequips and re-equips a helm in 8 ms. The four
+    that never came back had the blink land on the log's last millisecond, and those are
+    what put a character in "no armour": ZzxcuV3-1789611423462 lost helm, plate, shield,
+    greaves, cape and boots at 1,955 ms and ended at 1,956 (James, 2026-09-17: those fights
+    were in full kit).
+
+    So a null row is kept only when its slot stays empty for GEAR_BLINK_MS and the log runs
+    that long after it. A swap still reads as a swap - the new item's row follows - and a
+    real removal still reads as one.
+    """
+    out = []
+    for i, g in enumerate(gear):
+        if g.get("res") is None and (g.get("t") or 0) > 0:
+            t = g.get("t") or 0
+            refilled = any((h.get("slot") == g.get("slot")) and h.get("res")
+                           and (0 <= ((h.get("t") or 0) - t) <= GEAR_BLINK_MS)
+                           for h in gear[i + 1:])
+            at_end = (end_t is not None) and ((end_t - t) <= GEAR_BLINK_MS) and not any(
+                h.get("slot") == g.get("slot") for h in gear[i + 1:])
+            if refilled or at_end:
+                continue
+        out.append(g)
+    return out
 
 
 def _segment(log):
@@ -675,7 +792,8 @@ def _diagnose(log, opens=None):
     # guessing, and because a later analysis that does gate on outcome can be judged
     # on this reading rather than on a silent redefinition.
     for eng in log.engagements:
-        eng.outcome, eng.outcome_detail = _infer_outcome(eng, me, log.health)
+        eng.kill = kill_kind(eng, log)
+        eng.outcome, eng.outcome_detail = _infer_outcome(eng, me, log.health, log)
         # Where lines were shed, every signal that would have arrived as a line is
         # suspect - damage, state, overlay, and by the same token the sfx outcome
         # sounds that say whether a swing connected. A file that lost lines and still
@@ -919,8 +1037,87 @@ def overlay_outcome(res):
 # so a new sfx consumer cannot reintroduce self-veto by treating a hit sound as a move.
 PLAYER_RES = "borka"
 
+# How close the fight-end award must sit to the creature's last damage to mean it died -
+# see kill_kind(). 4,005 of 4,077 drawn kills sit at 0-2 ms and 21 more by 20 ms. It was 500,
+# and that let a drawn hit a few hundred ms BEFORE an undrawn killing blow pass as the killing
+# blow.
+AWARD_KILL_MS = 20
+# How close the award, the relation's deletion and a landing blow must sit for an undrawn
+# kill. In the corpus all three share a millisecond or two; 100 ms is slack, not a fit.
+UNDRAWN_KILL_MS = 100
+# How soon after a drawn kill's last blow the relation must go, in a log that records it. 7,501
+# of 7,623 drawn kills in schema 3+ logs lose it within 200 ms and not one is seen again; of the
+# 119 that do not, 20 are still fighting later in the same file and 16 turn up alive in another
+# character's log minutes later. A crowd makes those: an area card kills one bat and grazes
+# another in the same millisecond, so the dead one's award sits on the other's last blow.
+DRAWN_DEL_MS = 200
+AWARD_CHANNELS = ("#ffff", "C65535")
 
-def _infer_outcome(eng, me_gob, health):
+
+def kill_kind(eng, log):
+    """How this engagement's opponent died: "drawn", "undrawn", or None if it did not.
+
+    "drawn" - the killing blow has a number, so the damage summed over the creature is its
+    hitpoints. "undrawn" - the creature died to a blow the client drew no number for, so the
+    sum is short by exactly that blow and says only that it had MORE than the sum. The long
+    history of both rules is on estimate.died().
+
+    READ OVER THE WHOLE FILE, NOT THE ENGAGEMENT (2026-09-22). This used to look only at the
+    engagement's own damage rows, and an engagement holds what arrived while its gob was the
+    sampled one. When a creature dies the fight view moves to the next, so the award for the
+    kill often lands in the NEXT engagement - and the creature's own blows landed in whichever
+    engagement was sampling at the time. See Log.damage_on().
+
+    WHAT EACH SCHEMA CAN SAY. An undrawn kill is recognised by the relation's deletion and a
+    landing blow, which need `foe` rows (schema 3) and overlays (schema 8). Below schema 8 an
+    undrawn kill is not detectable and reads as no kill, which is the safe direction: its total
+    is a floor either way.
+    """
+    if PLAYER_RES in (eng.res or ""):
+        return None
+    idx = getattr(log, "_kill_index", None)
+    if idx is None:
+        awards = [d for rows in log.damage_by_gob.values() for d in rows
+                  if d.get("ch") in AWARD_CHANNELS and (d.get("t") is not None)]
+        dels_by = defaultdict(list)
+        for r in (getattr(log, "rows", None) or []):
+            if r.get("ev") == "foe" and r.get("how") == "del" and (r.get("t") is not None):
+                dels_by[r.get("gob")].append(r["t"])
+        lands = [o["t"] for o in (getattr(log, "overlays", None) or [])
+                 if str(o.get("res", "")).startswith("sfx/fight/hit") and (o.get("t") is not None)]
+        idx = (awards, dels_by, lands)
+        try:
+            log._kill_index = idx
+        except AttributeError:
+            pass
+    awards = [d["t"] for d in idx[0] if d.get("gob") != eng.gob]
+    if not awards:
+        return None
+    shp = [d["t"] for d in log.damage_on(eng.gob)
+           if (d.get("ch") == "SHP") and (d.get("t") is not None)]
+    dels, lands = idx[1].get(eng.gob, ()), idx[2]
+    if shp:
+        last = max(shp)
+        if any(abs(a - last) <= AWARD_KILL_MS for a in awards):
+            # AND IT MUST LEAVE (2026-09-22), where the schema can say so - see DRAWN_DEL_MS.
+            # A log that stops at the blow cannot show the relation go, so its end counts.
+            end = (getattr(log, "end", None) or {}).get("t")
+            if ((not log.records("foe"))
+                    or any(-AWARD_KILL_MS <= t - last <= DRAWN_DEL_MS for t in dels)
+                    or ((end is not None) and (end - last) <= DRAWN_DEL_MS)):
+                return "drawn"
+            return None
+    for a in awards:
+        if shp and (a < max(shp)):
+            # The creature took a drawn hit after this award, so it was alive past it.
+            continue
+        if (any(abs(t - a) <= UNDRAWN_KILL_MS for t in dels)
+                and any(abs(t - a) <= UNDRAWN_KILL_MS for t in lands)):
+            return "undrawn"
+    return None
+
+
+def _infer_outcome(eng, me_gob, health, log=None):
     """Explicit fight-outcome inference, players excluded.
 
     Signals, in priority order:
@@ -942,14 +1139,22 @@ def _infer_outcome(eng, me_gob, health):
         return ("player", "opponent is a player - knockout not death")
     # Killed has to be checked before fled: a creature that dies also sets gst and the
     # award is the decisive signal, not the branch.
-    has_award = any(d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
-                    for d in eng.damage)
-    if has_award:
-        return ("killed", "#ffff on non-victim")
+    #
+    # THE AWARD HAS TO BE THIS CREATURE'S (2026-09-22). "Any award inside the engagement" read
+    # a crowd as a massacre: the award for killing one bat marked whichever bat was being
+    # sampled as killed too, and creature_sizes then published that one's partial intake as a
+    # size. kill_kind() ties the award to this creature's last blow, or to its relation
+    # going at a landing blow.
+    kind = kill_kind(eng, log) if log is not None else None
+    if kind == "drawn":
+        return ("killed", "#ffff on non-victim with its last drawn blow")
+    if kind == "undrawn":
+        return ("killed", "undrawn: #ffff, relation deleted and a blow landing - total is a floor")
     # Flight needs both the bit and the trail.
     if any((s.get("gst") or 0) & 2 for s in eng.states):
-        dmg = sum(d.get("v", 0) for d in eng.damage
-                  if d.get("gob") == eng.gob and d.get("ch") == "SHP")
+        dmg = (log.taken(eng.gob) if log is not None else
+               sum(d.get("v", 0) for d in eng.damage
+                   if d.get("gob") == eng.gob and d.get("ch") == "SHP"))
         if dmg > 0:
             return ("fled", "gst bit 2 + damage trail")
         return ("unknown", "gst bit 2 but no damage trail - not a flight")
@@ -1633,7 +1838,7 @@ def hits(eng, me_gob):
     return out
 
 
-def soak_pairs(eng):
+def soak_pairs(eng, log=None):
     """Every hit this opponent took, as (absorbed, through), whoever threw it.
 
     The client draws its floating numbers over a creature for damage from ANY source, not
@@ -1651,12 +1856,21 @@ def soak_pairs(eng):
     the armour's capacity. Those are kept, because they are the only hits that land
     inside the soft-soak ramp and so the only ones that can ever separate hard from soft.
     """
-    # Collect per-gob ARM/SHP rows sorted by timestamp, then cluster by gap <= 1 ms.
+    # Collect per-gob ARM/SHP rows sorted by timestamp, then cluster by gap <= CLUSTER_MS.
     # The previous t//2 bucketing is equivalent for even/odd pairs but splits an
     # ARM at 98933 and SHP at 98934 (different buckets) while joining 98932+98933.
-    # Clustering by sorted gap is boundary-independent and matches the stated 1 ms slack.
+    # Clustering by sorted gap is boundary-independent.
+    #
+    # CLUSTER_MS, NOT 1 ms (2026-09-22). _cluster moved to 5 ms on 2026-09-15 because one blow's
+    # ARM and SHP can land 2-3 ms apart, and this was left at 1: such a blow became a fully
+    # absorbed "hit" (its ARM alone) plus an unarmoured one (its SHP alone) - the two shapes that
+    # pull an armour fit hardest. 1% of blows on armoured creatures, every schema alike.
+    #
+    # With `log`, the creature's damage over the whole FILE (Log.damage_on) - the engagement
+    # holds only what landed while it was the sampled one. The caller then reads it once per
+    # creature per file.
     rows = []
-    for d in eng.damage:
+    for d in (log.damage_on(eng.gob) if log is not None else eng.damage):
         if d.get("gob") != eng.gob:
             continue
         ch = d.get("ch")
@@ -1676,7 +1890,7 @@ def soak_pairs(eng):
     clusters = []
     cur = None
     for t, ch, v in rows:
-        if cur is None or t - cur["hi"] > 1:
+        if cur is None or t - cur["hi"] > CLUSTER_MS:
             cur = {"t": t, "hi": t, "ARM": 0, "SHP": 0}
             clusters.append(cur)
         cur["hi"] = max(cur["hi"], t)
@@ -1687,6 +1901,19 @@ def soak_pairs(eng):
             out.append({"t": c["t"], "soaked": c["ARM"], "shp": c["SHP"],
                         "raw": c["ARM"] + c["SHP"]})
     return out
+
+
+def pool_logs(pool):
+    """Every log in the pool: its top level AND the per-character folders under it.
+
+    The pool keeps ~3,000 logs in per-character folders beside ~9,900 at its top level. Five
+    readers listed only the top level with os.listdir (creature_sizes, solo_lines, party_lines,
+    crowd_lines, nvn_lines) and so worked from three quarters of the corpus without saying so.
+    """
+    out = []
+    for dirpath, _dirs, files in os.walk(pool):
+        out.extend(os.path.join(dirpath, f) for f in files if f.endswith(".jsonl"))
+    return sorted(out)
 
 
 def find_log_dirs(root=None):

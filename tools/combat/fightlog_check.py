@@ -388,6 +388,11 @@ def damage():
     # One boar hit split across two milliseconds, so the pairing tolerates that.
     check("a hit split across a millisecond is still one hit",
           (pairs[2]["soaked"], pairs[2]["shp"]), (65, 26))
+    # And across three: one blow's halves land up to 3 ms apart, the width _cluster reads hits
+    # at. At 1 ms this was a fully absorbed 30 and an unarmoured 12 - two false observations.
+    log = load([begin(), state(1000), dmg(2000, FOE, "ARM", 30), dmg(2003, FOE, "SHP", 12), end()])
+    check("a hit split across three milliseconds is still one hit",
+          [(p["soaked"], p["shp"]) for p in fightlog.soak_pairs(log.engagements[0], log)], [(30, 12)])
 
     # A stranger's numbers are excluded because they are over a different creature, not
     # because of who threw them.
@@ -680,11 +685,24 @@ def sfx_and_outcome():
           len(fightlog.attributed_gains(lg1d.engagements[0], opens, me_gob=ME)), 1)
     # Outcome inference: died #ffff on non-victim (dmg ch) + damage trail; gst HP trail for fled.
     # Surfaced as explicit field, not silent gate change; players excluded.
+    gone = {"ev": "foe", "t": 45, "gob": FOE, "res": None, "how": "del"}
     log_killed = load([begin(foeres="gfx/kritter/badger/badger"),
                        state(10), move(20), state(30, foe=(0, 0, 0, 10)),
                        dmg(32, ME, "#ffff", 1),
-                       dmg(31, FOE, "SHP", 10), end()])
+                       dmg(31, FOE, "SHP", 10), gone, end()])
     check("killed outcome from #ffff on non-victim", log_killed.engagements[0].outcome, "killed")
+    # A schema that records relations must show this one go. Without the deletion the award is
+    # another creature's that died in the same frame - 16 such "kills" were seen alive later.
+    log_stays = load([begin(foeres="gfx/kritter/badger/badger"),
+                      state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                      dmg(32, ME, "#ffff", 1), dmg(31, FOE, "SHP", 10), state(3000), end()])
+    check("  but not when its relation stays, in a schema that records relations",
+          log_stays.engagements[0].outcome, "unknown")
+    log_old = load([begin(foeres="gfx/kritter/badger/badger", schema=2),
+                    state(10), move(20), state(30, foe=(0, 0, 0, 10)),
+                    dmg(32, ME, "#ffff", 1), dmg(31, FOE, "SHP", 10), state(3000), end()])
+    check("  while a schema-2 log, which records none, is read as before",
+          log_old.engagements[0].outcome, "killed")
     # Fled needs gst bit 2 + damage trail
     log_fled = load([begin(foeres="gfx/kritter/fox/fox"),
                      state(10), move(20),
@@ -796,6 +814,36 @@ def crowd_range():
           fightlog.foe_range({"o": [[11, 0, 0, 0, 0]], "g": [0]}), {})
 
 
+def crowd_kills():
+    """A creature's intake and its kill are read over the whole file, not its own engagement.
+
+    Two bats in one fight. The view samples FOE, then OTHER, then FOE again. FOE takes blows
+    while OTHER is sampled, and OTHER dies (with its award) while FOE is sampled. Before
+    2026-09-22 FOE's intake missed the blows that landed during OTHER's engagement, and the
+    award for OTHER's death marked FOE killed because it fell inside FOE's engagement.
+    """
+    print("\ncrowd kills")
+    bat = "gfx/kritter/bat/bat"
+    rows = [begin(foeres=bat),
+            {"ev": "foe", "t": 1, "gob": OTHER, "res": bat, "how": "new"},
+            state(10), dmg(20, FOE, "SHP", 10),
+            state(30, gob=OTHER), dmg(40, FOE, "SHP", 7), dmg(50, OTHER, "SHP", 12),
+            state(60), dmg(70, OTHER, "SHP", 30), dmg(70, ME, "#ffff", 3),
+            {"ev": "foe", "t": 85, "gob": OTHER, "res": None, "how": "del"},
+            dmg(400, FOE, "SHP", 5), end()]
+    log = load(rows)
+    check("a creature's intake counts blows during another's engagement", log.taken(FOE), 22)
+    check("and the other's too", log.taken(OTHER), 42)
+    first = [e for e in log.engagements if e.gob == FOE][0]
+    check("another creature's award does not kill the sampled one",
+          (first.kill, first.outcome), (None, "unknown"))
+    other = [e for e in log.engagements if e.gob == OTHER][0]
+    check("the dead one is killed though its award fell in another engagement",
+          (other.kill, other.outcome), ("drawn", "killed"))
+    check("  its fight ends where its relation goes", log.kill_time(other), 85)
+    check("  and one that did not die has no end", log.kill_time(first), None)
+
+
 def main():
     segmentation()
     contamination()
@@ -808,6 +856,7 @@ def main():
     sfx_and_outcome()
     ranged_routing()
     crowd_range()
+    crowd_kills()
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

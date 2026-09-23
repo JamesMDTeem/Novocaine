@@ -133,7 +133,7 @@ git-dirty-flag = ${git-dirty-flag}
            reading sweeps instead of the pooled chimera. All three are read by Pack.slurp; a
            build without them loses the in-fight advice and nothing else. -->
       <fileset dir="data/combat"
-               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,constants.json,animal_moves_measured.json,individuals.json" />
+               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,constants.json,animal_moves_measured.json,individuals.json,creature_sizes.json,player_lines.json" />
     </copy>
     <copy file="local-boot.properties" tofile="build/classes/haven/boot-props" failonerror="false" quiet="true" />
   </target>

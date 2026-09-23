@@ -28,9 +28,11 @@
  * legible - every pick comes with the list of what it was picked for.
  */
 
+import haven.automated.combat.Prediction;
 import haven.combat.Advisor;
 import haven.combat.Combatant;
 import haven.combat.FoeModel;
+import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Optimizer;
 import haven.combat.data.Pack;
@@ -85,7 +87,16 @@ public class CombatDeckSearch {
     /* Beam for the inner search. 20 costs 1.5 ms against 4 at 60, and this runs it tens of
      * thousands of times; the frontier it loses is not one a deck comparison can see. */
     static final int BEAM = 20;
-    static final long HORIZON = 2500;
+    /**
+     * How long one plan may run, in ticks - 2500 is 150 seconds, and -horizon changes it.
+     *
+     * This is a SOLO search, so the horizon has to cover one character killing the creature
+     * alone. Every creature in the pack dies to one person well inside 150 seconds; a
+     * creature with tens of thousands of hitpoints does not, and every deck then scores
+     * NO_KILL and the run reports that it can stand behind nothing - which reads as "no deck
+     * works" when it means "the clock ran out".
+     */
+    static long HORIZON = 2500;
 
     static final class Deck {
         final Map<String, Integer> levels = new LinkedHashMap<String, Integer>();
@@ -116,9 +127,9 @@ public class CombatDeckSearch {
         }
     }
 
-    /** Linear across the five levels, the curve the corpus settled on. */
+    /** Linear across the five levels, the curve the corpus settled on - the live advice's own copy. */
     static double mu(int level) {
-        return(1.0 + (0.125 * (level - 1)));
+        return(Prediction.muAt(level));
     }
 
     /* Not killing is worse than any kill, and among non-kills getting closer is better. */
@@ -683,6 +694,10 @@ public class CombatDeckSearch {
          * Meditation, and the walrus deck below is built on Oak Stance. */
         boolean ownedOnly = false;
         int slotOverride = -1;
+        /* Where the pack lives. A creature the corpus has never met is planned against by
+         * pointing this at a derived pack - see tools/combat/synth_opponent.py and the
+         * -pack note in CombatPartySearch. */
+        String packDir = null;
         for(int i = 0; i < argv.length; i++) {
             if("-n".equals(argv[i]) && ((i + 1) < argv.length))
                 copies = Integer.parseInt(argv[++i]);
@@ -707,10 +722,14 @@ public class CombatDeckSearch {
                 RESERVE = Double.parseDouble(argv[++i]);
             else if("-hi".equals(argv[i]))
                 HI = true;
+            else if("-pack".equals(argv[i]) && ((i + 1) < argv.length))
+                packDir = argv[++i];
+            else if("-horizon".equals(argv[i]) && ((i + 1) < argv.length))
+                HORIZON = Math.round(Formulas.secondsToTicks(Double.parseDouble(argv[++i])));
             else
                 only = argv[i];
         }
-        Path root = Paths.get("data", "combat");
+        Path root = (packDir == null) ? Paths.get("data", "combat") : Paths.get(packDir);
         Map<String, Move> sheet = byRes(Pack.moves(root.resolve("moves_sheet.json")));
         // reassigned below when -owned narrows it to what the character has learned
         Map<String, Pack.Opponent> foes = Pack.opponents(root.resolve("opponents.json"));
@@ -729,7 +748,8 @@ public class CombatDeckSearch {
             }
         }
         System.out.printf("individuals: %d opponent(s) carry per-creature rows and are priced"
-                          + " against the hardest REAL one;%n", withRows);
+                          + " as the live advice plans them (Prediction.creature: the median real"
+                          + " one, its kind's agility, swinging at once);%n", withRows);
         System.out.printf("  %d simulable opponent(s) carry none and are priced against the"
                           + " pooled chimera%n", pooled);
 
@@ -755,6 +775,7 @@ public class CombatDeckSearch {
         HELD_SHIELD = who.shield;
         STANCE_OWNER = who.combatant();
         Combatant me = who.combatant();
+        US_AGI = me.agi;
 
         if(ownedOnly) {
             Map<String, Move> mine = new LinkedHashMap<String, Move>();
@@ -1063,17 +1084,19 @@ public class CombatDeckSearch {
         return(crowd(o, copies, false));
     }
 
+    /** Whoever the decks are for: their agility reads each creature's against it. Set in main. */
+    static double US_AGI = Double.NaN;
+
     /** @param weak run the easiest end of the bounds rather than the hardest. */
     static Combatant[] crowd(Pack.Opponent o, int copies, boolean weak) {
         Combatant[] out = new Combatant[Math.max(1, copies)];
-        /* One REAL animal per copy. The pooled toughest()/weakest() assembles four independent
-         * extremes and the corpus contains no such creature; where the pack measured this
-         * species, each copy is built from a single logged individual instead. The copies must
-         * stay distinct objects - a fight spends their hitpoints - so each is built fresh.
-         * Where the pack ships no rows, hardestReal()/weakestReal() fall back to the pooled
-         * reading, and the run prints how many opponents that affects. */
+        /* THE CREATURE THE LIVE ADVICE PLANS (seams audit, 2026-09-23): Prediction.creature, one
+         * staging for every planner. This built its own - the largest individual ever logged, at
+         * that individual's own agility, with a full period before its first swing - and so chose
+         * decks for a fight the advice never plans. Each copy is built fresh; a fight spends their
+         * hitpoints. The easy end of a bounded skill still starts from the weakest real one. */
         for(int i = 0; i < out.length; i++)
-            out[i] = weak ? o.weakestReal() : o.hardestReal();
+            out[i] = Prediction.creature(o, US_AGI, null, null, true, weak);
         return(out);
     }
 

@@ -95,10 +95,14 @@ public final class LiveAdvice {
     /* How often an unchanged fight is planned again. A change plans at once; this bounds how old
      * the answer can be when the auto-fighter's cooldown ends in a fight where nothing moved. */
     private static final long HEARTBEAT_MS = 250;
-    /* Opponents planned against at most: the target and the nearest others. A cost cap, the same
-     * one the logged advice carries - the search walks every opponent at every step, and it now
-     * runs once per opponent we might aim at. */
-    private static final int CROWD = 4;
+    /* Opponents planned against at most: the target, ours, then the nearest others. It was 4, and
+     * that was the advice's whole blind spot in a crowd: the 2026-09-19 bat dungeon put up to 26
+     * on us at once, and planned against 4 the advice expected 25 soft hitpoints where 361 went.
+     * Every one of these acts on us in every plan; only Prediction.TARGETS of them are searched as
+     * the one to hit first, which is what keeps the cost in hand (2026-09-21). */
+    private static final int CROWD = 32;
+    /* How recently another person must have thrown a card to count as fighting beside us. */
+    private static final long ON_US_WINDOW_MS = 10000;
     private static final int BEAM = 60;
     private static final long HORIZON = 2500;
 
@@ -109,8 +113,15 @@ public final class LiveAdvice {
         final int ip, oip, gst;
         final double dist;
         final double taken;
+        final double agiLo, agiHi;
+        /* Seconds since it last acted, -1 when it has not yet - see Prediction.firstAct. */
+        final double sinceAct;
 
-        Foe(long gob, String res, int[] open, int ip, int oip, int gst, double dist, double taken) {
+        Foe(long gob, String res, int[] open, int ip, int oip, int gst, double dist, double taken,
+            double agiLo, double agiHi, double sinceAct) {
+            this.sinceAct = sinceAct;
+            this.agiLo = agiLo;
+            this.agiHi = agiHi;
             this.gob = gob;
             this.res = res;
             this.open = open;
@@ -133,9 +144,16 @@ public final class LiveAdvice {
         /* Ticks until our cooldown ends, as the fight view had it. */
         final long readyIn;
         final long generation;
+        /* Where the opponent WE chose sits in `foes` - 0 unless the server moved `current`. */
+        final int incumbent;
+        /* The share of each creature's attacks aimed at us - Combatant.onUs, see ON_US_WINDOW_MS. */
+        final double onUs;
 
         Job(Prediction.Me me, Map<String, Integer> bar, int[] mine, double shp, double mhp,
-            List<Foe> foes, long observedAt, double observedRt, long readyIn, long generation) {
+            List<Foe> foes, long observedAt, double observedRt, long readyIn, long generation,
+            int incumbent, double onUs) {
+            this.onUs = onUs;
+            this.incumbent = incumbent;
             this.me = me;
             this.bar = bar;
             this.mine = mine;
@@ -163,6 +181,15 @@ public final class LiveAdvice {
     private static long nextMeTry = 0;
     private static String lastKey = null;
     private static long lastRequest = 0;
+    /* THE TARGET WE CHOSE, kept apart from the fight view's `current`, which the server moves to
+     * a new aggro on its own - 38% of arrivals, a median 146 ms after the relation appears
+     * (2026-09-21). Tick thread only; cleared with the fight. */
+    private static long chosen = 0;
+    private static long lastCurrent = 0;
+    private static final Map<Long, Long> appeared = new java.util.HashMap<Long, Long>();
+    /* A switch to a relation younger than this is the server's, not ours. The measured lag is a
+     * median 146 ms and a p90 of 2.3 s - the slow tail is creatures still pathing in. */
+    private static final long SERVER_SWITCH_MS = 2500;
     private static String barKey = null;
     private static Map<String, Integer> barDeck = null;
     /* The advice's inputs as last written to the log, so the row goes in on a change and not
@@ -192,6 +219,9 @@ public final class LiveAdvice {
 
     /* Forgets the fight, when it ends or nothing wants advice. Tick thread. */
     private static void forget() {
+        chosen = 0;
+        lastCurrent = 0;
+        appeared.clear();
         fightMe = null;
         nextMeTry = 0;
         lastKey = null;
@@ -261,6 +291,16 @@ public final class LiveAdvice {
             } catch(Exception e) {
                 self = null;
             }
+            /* Where we stand decides how big a creature is - a batcave bat against a mine bat is
+             * eight times the size (Pack.Opponent.hpByTile). Read the way Fightview.tileUnder
+             * reads it for the log; an unloaded grid leaves it as it was. */
+            try {
+                if(self != null)
+                    fightMe.at(gui.ui.sess.glob.map.tileTypeName(
+                                   gui.ui.sess.glob.map.gettile(self.rc.floor(haven.MCache.tilesz))));
+            } catch(Exception e) {
+                /* no tile: the kills over every tile stand in */
+            }
             Foe target = null;
             List<Foe> others = new ArrayList<Foe>();
             for(haven.Fightview.Relation rel : fv.lsrel) {
@@ -279,10 +319,39 @@ public final class LiveAdvice {
             Collections.sort(others, (x, y) -> Double.compare(
                                  Double.isNaN(x.dist) ? Double.MAX_VALUE : x.dist,
                                  Double.isNaN(y.dist) ? Double.MAX_VALUE : y.dist));
+            /* WHO WE ARE FIGHTING BY CHOICE. A change of `current` to a relation that appeared
+             * moments ago is the server handing us the newest aggro; anything else - our click,
+             * the auto-fighter's bump, the old target gone - is a real change of target. */
+            for(haven.Fightview.Relation rel : fv.lsrel) {
+                if(!appeared.containsKey(rel.gobid))
+                    appeared.put(rel.gobid, wall);
+            }
+            if(target.gob != lastCurrent) {
+                Long born = appeared.get(target.gob);
+                boolean servers = (chosen != 0) && (born != null)
+                    && ((wall - born.longValue()) <= SERVER_SWITCH_MS);
+                boolean stillHere = false;
+                for(Foe f : others)
+                    stillHere |= (f.gob == chosen);
+                if(!(servers && stillHere))
+                    chosen = target.gob;
+                lastCurrent = target.gob;
+            }
+            if(chosen == 0)
+                chosen = target.gob;
             List<Foe> foes = new ArrayList<Foe>();
             foes.add(target);
-            for(int i = 0; (i < others.size()) && (foes.size() < CROWD); i++)
-                foes.add(others.get(i));
+            int incumbent = 0;
+            for(int i = 0; i < others.size(); i++) {
+                if(others.get(i).gob == chosen) {
+                    foes.add(others.get(i));
+                    incumbent = 1;
+                }
+            }
+            for(int i = 0; (i < others.size()) && (foes.size() < CROWD); i++) {
+                if(others.get(i).gob != chosen)
+                    foes.add(others.get(i));
+            }
 
             double shp = haven.IMeter.characterShp, mhp = haven.IMeter.characterMhp;
             StringBuilder k = new StringBuilder();
@@ -308,8 +377,15 @@ public final class LiveAdvice {
              * out of the key: it changes every frame, and the heartbeat carries it forward. */
             double rt = haven.Utils.rtime();
             double left = fv.atkct - rt;
-            long readyIn = (left > 0) ? (long)Math.ceil(left / 0.06) : 0;
-            request(new Job(fightMe, bar, mine, shp, mhp, foes, wall, rt, readyIn, generation));
+            long readyIn = (left > 0) ? (long)Math.ceil(haven.combat.Formulas.secondsToTicks(left)) : 0;
+            /* ONE OF US AND N OTHERS FIGHTING: each creature's attacks are spread over all of us.
+             * Replaying the 2026-09-21 bat-dungeon room with every creature staged at a share of
+             * 1 predicted 3-7 times the soft damage that landed on each member; at one over the
+             * four fighting it predicted 1.07 times. Solo it is 1, which changes nothing. */
+            long selfGob = (gui.map == null) ? 0 : gui.map.plgob;
+            double onUs = 1.0 / (1 + CombatRecorder.alliesFighting(selfGob, ON_US_WINDOW_MS));
+            request(new Job(fightMe, bar, mine, shp, mhp, foes, wall, rt, readyIn, generation,
+                            incumbent, onUs));
         } catch(Exception e) {
             /* advice must never break the tick loop */
         }
@@ -375,7 +451,9 @@ public final class LiveAdvice {
             int gst = AutoFighter.peaceIsTactic(rel) ? (rel.gst & ~1) : rel.gst;
             return(new Foe(rel.gobid, g.getres().name,
                            new int[] {o.green, o.blue, o.yellow, o.red}, rel.ip, rel.oip,
-                           gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid)));
+                           gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid),
+                           rel.minAgi, rel.maxAgi,
+                           (rel.lastact == null) ? -1 : Math.max(0, haven.Utils.rtime() - rel.lastuse)));
         } catch(Exception e) {
             /* an opponent whose gob or resource has not arrived is left out of this plan */
             return(null);
@@ -439,7 +517,8 @@ public final class LiveAdvice {
                 ? CombatRecorder.seenDeck(f.gob) : null;
             /* Bit 1 of the relation state is OUR olive branch: offered peace, so not a target. */
             seen.add(new Prediction.Seen(f.gob, f.res, f.open, f.ip, f.oip, f.dist, f.taken, deck,
-                                         (f.gst & 1) == 0));
+                                         (f.gst & 1) == 0, f.agiLo, f.agiHi).acted(f.sinceAct)
+                         .aimed(job.onUs));
         }
         return(seen);
     }
@@ -450,11 +529,17 @@ public final class LiveAdvice {
     private static volatile java.util.Set<String> distilled = null;
 
     /* A matchup is the bar and who is in the fight - the target, then the rest by kind. Openings,
-     * health and distance move every second and do not change which cards are worth holding. */
+     * health and distance move every second and do not change which cards are worth holding.
+     *
+     * THE FIRST FEW, NOT THE CROWD. Which cards to hold is a question about who we are hitting,
+     * and it costs a search per candidate subset. Keyed on the whole crowd, every bat a denmother
+     * spawns would be a new matchup and a fresh distill (2026-09-21, CROWD 4 -> 32). */
+    private static final int MATCHUP = 4;
+
     private static String matchup(Job job) {
         StringBuilder k = new StringBuilder(String.valueOf(job.bar)).append('|');
         List<String> rest = new ArrayList<String>();
-        for(int i = 0; i < job.foes.size(); i++) {
+        for(int i = 0; i < Math.min(MATCHUP, job.foes.size()); i++) {
             if(i == 0)
                 k.append(job.foes.get(0).res);
             else
@@ -469,8 +554,11 @@ public final class LiveAdvice {
         String key = matchup(job);
         if(key.equals(distillKey) || (job.generation != generation))
             return;
+        List<Prediction.Seen> few = seen(job);
+        if(few.size() > MATCHUP)
+            few = new ArrayList<Prediction.Seen>(few.subList(0, MATCHUP));
         java.util.Set<String> cards = Prediction.distill(job.me, job.bar, job.mine, job.shp,
-                                                         job.mhp, seen(job), BEAM, HORIZON);
+                                                         job.mhp, few, BEAM, HORIZON);
         if(job.generation != generation)
             return;
         distilled = cards;
@@ -487,7 +575,8 @@ public final class LiveAdvice {
         String held = ((last != null) && (last.gobId == t.gob) && (last.moveRes != null)
                        && ((System.currentTimeMillis() - last.at) <= STALE_MS)) ? last.moveRes : null;
         Prediction.Live live = Prediction.adviseLive(job.me, job.bar, job.mine, job.shp, job.mhp,
-                                                     seen, BEAM, HORIZON, job.readyIn, planCards, held);
+                                                     seen, BEAM, HORIZON, job.readyIn, planCards, held,
+                                                     job.incumbent);
         Map<String, Double> dealt = new LinkedHashMap<String, Double>();
         Iterable<String> cards = ((job.bar != null) && !job.bar.isEmpty())
             ? job.bar.keySet() : job.me.levels.keySet();

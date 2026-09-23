@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 23;
+    public static final int SCHEMA = 24;
 
     /**
      * A buff's meter, when it is not one of the four openings (schema 23).
@@ -138,7 +138,23 @@ public final class CombatEvent {
     /** One per equipped item, emitted immediately after begin. Absent slots emit nothing. */
     public static String gear(long t, int slot, String res, double ql, int hard, int soft,
                               boolean broken) {
-        return(new JsonObj()
+        return(gear(t, slot, res, ql, hard, soft, broken, -1, -1));
+    }
+
+    /**
+     * The same, with the piece's durability (schema 24): {@code wd} points of wear taken out of
+     * {@code wm}, the two numbers the item's Wear tip draws as "Durability: m-d/m". Omitted when
+     * unknown (a piece with no Wear, or {@code wm} not positive), so the row is then the old one.
+     *
+     * WHY IT IS LOGGED. Armour takes 80-82% of every blow a creature lands on us, and that share
+     * wears the armour. The planner can price wear (Optimizer.armourWeight) but nothing measured
+     * what a point soaked costs in durability: the recorder read Wear and kept only "broken". With
+     * wear on the row, and the row re-sent whenever it changes, each drop in a fight sits beside
+     * the ARM damage row that caused it. COMBAT.md §3.8 D1.
+     */
+    public static String gear(long t, int slot, String res, double ql, int hard, int soft,
+                              boolean broken, int wd, int wm) {
+        JsonObj o = new JsonObj()
                .put("ev", "gear")
                .put("t", t)
                .put("slot", slot)
@@ -146,8 +162,10 @@ public final class CombatEvent {
                .put("ql", ql)
                .put("hard", hard)
                .put("soft", soft)
-               .put("broken", broken)
-               .end());
+               .put("broken", broken);
+        if(wm > 0)
+            o.put("wd", wd).put("wm", wm);
+        return(o.end());
     }
 
     /**

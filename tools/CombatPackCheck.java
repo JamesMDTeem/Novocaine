@@ -692,6 +692,22 @@ public class CombatPackCheck {
         long b = new Sim(me, even).use(me, ruse).cooldown;
         check("  so it reports the same 50 ticks against both", (a == 50) && (b == 50),
               true);
+
+        /* AND A CARD THAT GIVES OPENINGS AWAY (2026-09-21). Feigned Dodge declares neither type
+         * nor skill, but its base 35 read 32 against slow opponents and 39 against the cachalot:
+         * the two ends of the band. It rides the band without becoming an attack, since an
+         * attack also sets off a stance's "when attacked" answer and nothing says it does. */
+        Move fd = m("Feigned Dodge");
+        check("  Feigned Dodge is not an attack", fd.isAttack(), false);
+        check("    but it hands openings over, so its cooldown rides the band", fd.takesAgility(), true);
+        me.readyAt = 0;
+        check("    32 ticks against something past half our agility",
+              new Sim(me, slow).use(me, fd).cooldown, 32L);
+        Combatant fast = foe();
+        fast.agi = 170;                    /* past twice ours, so saturated the other way */
+        me.readyAt = 0;
+        check("    and 39 against something past twice it",
+              new Sim(me, fast).use(me, fd).cooldown, 39L);
     }
 
     /**

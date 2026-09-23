@@ -106,6 +106,12 @@ public final class Move {
     public final Weight blockSkill;
 
     /**
+     * The sheet's "Weapon:" line - "Any heavy, edged weapon", "Any sword" - or null where it
+     * names none. {@link #weaponClasses} reads it as the classes the weapon in hand must carry.
+     */
+    public final String weaponNeeds;
+
+    /**
      * The SHARE of a standing opening this move removes from its user, per colour, 0..1.
      *
      * A fraction, not percentage points, and the corpus is unambiguous about it. Zig-Zag
@@ -324,6 +330,7 @@ public final class Move {
         this.blockMult = b.blockMult;
         this.blockRequires = b.blockRequires;
         this.blockMultWithout = b.blockMultWithout;
+        this.weaponNeeds = b.weaponNeeds;
         this.blockSkill = b.blockSkill;
         this.reduces = b.reduces;
         this.damageShare = b.damageShare;
@@ -349,6 +356,26 @@ public final class Move {
         this.attackMult = b.attackMult;
     }
 
+    /**
+     * The weapon classes this card needs, from its sheet line: "Any heavy, edged weapon" is
+     * {heavy, edged}, "Any sword" is {sword}. Empty where the card names no weapon.
+     */
+    public java.util.Set<String> weaponClasses() {
+        java.util.Set<String> out = new java.util.LinkedHashSet<String>();
+        if(weaponNeeds == null)
+            return(out);
+        String t = weaponNeeds.trim().toLowerCase(java.util.Locale.ROOT);
+        if(t.startsWith("any "))
+            t = t.substring(4);
+        if(t.endsWith(" weapon"))
+            t = t.substring(0, t.length() - 7);
+        for(String w : t.split("[,\\s]+")) {
+            if(!w.isEmpty())
+                out.add(w);
+        }
+        return(out);
+    }
+
     /** Copy constructor for {@link #withMu}, which is the only field that varies by owner. */
     private Move(Move o, double mu) {
         this.res = o.res; this.name = o.name; this.kind = o.kind;
@@ -357,6 +384,7 @@ public final class Move {
         this.whenAttackedOpens = o.whenAttackedOpens;
         this.stance = o.stance; this.blockMult = o.blockMult;
         this.blockRequires = o.blockRequires; this.blockMultWithout = o.blockMultWithout;
+        this.weaponNeeds = o.weaponNeeds;
         this.blockSkill = o.blockSkill;
         this.reduces = o.reduces;
         this.damageShare = o.damageShare; this.flatDamage = o.flatDamage;
@@ -388,6 +416,18 @@ public final class Move {
      */
     public boolean isAttack() {
         return(kind == Kind.ATTACK);
+    }
+
+    /**
+     * Whether the move's cooldown rides the relative-agility band: every attack, and a card that
+     * hands openings to the opponent. Feigned Dodge is the second kind - no attack type, no skill,
+     * and its base-35 cooldown reads 32 against slow opponents and 39 against a fast one, which
+     * are 0.9 and 1.1 of 35 rounded half up (2026-09-21). Kept apart from {@link #isAttack()},
+     * which also decides whether a stance's "when attacked" answer fires, and nothing measured
+     * says a Parry answers a Feigned Dodge.
+     */
+    public boolean takesAgility() {
+        return(isAttack() || (reduceToFoe > 0));
     }
 
     /** Whether this attack lands on anybody but the main target. */
@@ -431,6 +471,7 @@ public final class Move {
         private boolean stance = false;
         private double blockMult = 1.0;
         private String blockRequires = null;
+        private String weaponNeeds = null;
         private double blockMultWithout = Double.NaN;
         private Weight blockSkill = null;
         private final double[] reduces = new double[4];
@@ -521,6 +562,12 @@ public final class Move {
         /** Percentage points opened on the user in one colour. */
         public Builder opensSelf(int colour, double pct) {
             this.openingsSelf[colour] = pct;
+            return(this);
+        }
+
+        /** The sheet's "Weapon:" line, verbatim. */
+        public Builder weaponNeeds(String what) {
+            this.weaponNeeds = what;
             return(this);
         }
 

@@ -174,6 +174,7 @@ public final class Sim {
              * matchup is asked. */
             grievous = Math.min(dealt, Math.max(0, target.hp)) * m.grievous;
             target.hp -= dealt;
+            target.soaked += Math.max(0, raw - dealt);
             /* AND THE WOUND IS TAKEN, where the pool is known. Grievous damage comes off the
              * hard hitpoints, and soft hitpoints can never stand above what is left of them -
              * which is how a wound shortens every later fight, not only this one. Unknown
@@ -325,7 +326,7 @@ public final class Sim {
         /* The deck weighting is the move's own, not the actor's: Take Aim's cooldown divides by
          * Take Aim's mu, which says nothing about how the rest of the deck is weighted. */
         long cd = Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale,
-                                         actor.ip, m.isAttack(), actor.agi, target.agi);
+                                         actor.ip, m.takesAgility(), actor.agi, target.agi);
         actor.readyAt = tick + cd;
 
         double[] hit = strike(actor, m, target, 1.0);

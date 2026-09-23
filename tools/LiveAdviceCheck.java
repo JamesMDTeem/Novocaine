@@ -48,6 +48,11 @@ public class LiveAdviceCheck {
         attrs.put("agi", 111);
         attrs.put("unarmed", 81);
         attrs.put("melee", 125);
+        return(Prediction.me(attrs, 30, 30, new String[] {"gfx/invobjs/bronzesword", null},
+                             new double[] {40, 0}, levels()));
+    }
+
+    static Map<String, Integer> levels() {
         Map<String, Integer> levels = new LinkedHashMap<String, Integer>();
         levels.put("paginae/atk/barrage", 1);
         levels.put("paginae/atk/cleave", 1);
@@ -58,8 +63,7 @@ public class LiveAdviceCheck {
         levels.put("paginae/atk/sidestep", 4);
         levels.put("paginae/atk/jump", 5);
         levels.put("paginae/atk/zigzag", 1);
-        return(Prediction.me(attrs, 30, 30, new String[] {"gfx/invobjs/bronzesword", null},
-                             new double[] {40, 0}, levels));
+        return(levels);
     }
 
     static Prediction.Seen seen(String res, int[] open, double taken) {
@@ -100,6 +104,81 @@ public class LiveAdviceCheck {
         System.out.printf("      %s -> %s (%s, %d ticks, %.1f hp)%n", known, k.moveRes, k.why, k.ticks, k.hpLost);
         check("  it plans one opponent", k.planned, 1);
         check("  through no stand-in", k.proxied, 0);
+
+        System.out.println("\nhow big a creature is planned, by where it stands");
+        /* Only a DRAWN kill is a size (creature_sizes.json, corrected 2026-09-22). A batcave bat
+         * dies to a drawn blow and is sized from those kills; a bat anywhere else dies to a blow
+         * with no number, and is sized where those kills agree once the unseen blow is priced.
+         * The version before planned it one blow past its floor - 17 - and James caught it: a bat
+         * is stronger than an ant (wiki 50), and the unseen blow is the fight's biggest. */
+        haven.combat.data.Pack.Opponent bat = haven.combat.data.Pack.opponentsFromJar().get("bat");
+        check("the pack knows the bat", bat != null, true);
+        if(bat != null) {
+            double cave = bat.medianHpAbove(0, "batcave"), mine = bat.medianHpAbove(0, "gfx/tiles/mine");
+            double far = bat.medianHpAbove(0, "gfx/tiles/nosuchtile");
+            System.out.printf("      batcave %.0f, mine %.0f, unknown tile %.0f%n", cave, mine, far);
+            check("  a batcave bat is sized from its drawn kills", bat.hpByTile.containsKey("batcave") && (cave > 60), true);
+            check("  a mine bat from its priced undrawn kills", bat.undrawnByTile.containsKey("mine"), true);
+            check("  and is more than an ant, and no more than a batcave bat", (mine > 50) && (mine <= cave), true);
+            check("  an unknown tile takes the larger pool - the undrawn kills", Math.abs(far - mine) < 25, true);
+            check("  a bat that took more than its size is one blow from dead",
+                  bat.medianHpAbove(10000, "mine"), 10001.0);
+        }
+
+        System.out.println("\na creature's agility is its own, not a share of whoever fights it");
+        /* estimate.agility_consensus -> Pack.Opponent.agilityAgainst (2026-09-22): every wolf reading
+         * across characters of agility 58-411 agrees on 249-251. Staged against a character at 200
+         * it is 250; against one at 111 the clamp makes it exactly double, 222. */
+        haven.combat.data.Pack.Opponent wolf = haven.combat.data.Pack.opponentsFromJar().get("wolf");
+        check("  the pack carries a wolf agility consensus", (wolf != null) && (wolf.agiConsN > 0), true);
+        if((wolf != null) && (wolf.agiConsN > 0)) {
+            double at200 = wolf.agilityAgainst(200), at111 = wolf.agilityAgainst(111);
+            System.out.printf("      wolf %.1f-%.1f from %d readings; staged %.1f against 200, %.1f against 111%n",
+                              wolf.agiConsLo, wolf.agiConsHi, wolf.agiConsN, at200, at111);
+            check("  staged near 250 against a character at 200", Math.abs(at200 - 250) <= 10, true);
+            check("  and at the clamp, double us, against one at 111", Math.abs(at111 - 222) <= 1, true);
+        }
+
+        System.out.println("\nthe lines players killed it with reach the live search");
+        /* player_lines.json -> Pack.Opponent.playerLines -> Prediction.shownLines, which the live
+         * search is offered beside its own so it never answers worse than one of them (2026-09-22). */
+        Prediction.Staged bst = Prediction.stage(me, null, new int[] {0, 0, 0, 0}, 300, 300,
+                                                 Arrays.asList(seen("gfx/kritter/bat/bat", new int[] {0, 0, 0, 0}, 0)));
+        List<List<haven.combat.Move>> shown = (bst.refused == null)
+            ? Prediction.shownLines("gfx/kritter/bat/bat", bst.deck) : null;
+        check("  a bat has lines players killed it with, on this bar", (shown != null) && !shown.isEmpty(), true);
+        if((shown != null) && !shown.isEmpty()) {
+            List<haven.combat.Move> first = shown.get(0);
+            System.out.printf("      %d line(s); most common: %s%n", shown.size(), first.toString());
+            check("  and the most common one ends on its heaviest card, as players throw it",
+                  first.get(first.size() - 1).res, "paginae/atk/fullcircle");
+        }
+
+        System.out.println("\na card the weapon in hand cannot throw is never advised");
+        /* A boar spear is not edged (weapon_classes.json, from the wiki's Giant Needle page), so
+         * Sideswipe - "Any edged weapon" - is refused by the server while Quick Barrage - "Any
+         * melee weapon" - is not. Both cost no initiative, so nothing but the weapon decides.
+         * The sword is the control: it throws both. */
+        Map<String, Integer> edgeOrPoint = new LinkedHashMap<String, Integer>();
+        edgeOrPoint.put("paginae/atk/sideswipe", 1);
+        edgeOrPoint.put("paginae/atk/barrage", 1);
+        Map<String, Integer> edgeOnly = new LinkedHashMap<String, Integer>();
+        edgeOnly.put("paginae/atk/sideswipe", 1);
+        SortedMap<String, Integer> attrs = new TreeMap<String, Integer>();
+        attrs.put("str", 94);
+        attrs.put("agi", 111);
+        attrs.put("unarmed", 81);
+        attrs.put("melee", 125);
+        Prediction.Me spear = Prediction.me(attrs, 30, 30, new String[] {"gfx/invobjs/boarspear", null},
+                                            new double[] {40, 0}, levels());
+        check("  the spear is a weapon", spear.weapon() != null, true);
+        Prediction.Live sp1 = advise(spear, edgeOrPoint, FRESH, 300, 300, seen(known, new int[] {20, 30, 0, 10}, 0));
+        check("  holding a spear, a bar of Sideswipe and Quick Barrage advises Quick Barrage",
+              sp1.moveRes, "paginae/atk/barrage");
+        Prediction.Live sp2 = advise(spear, edgeOnly, FRESH, 300, 300, seen(known, new int[] {20, 30, 0, 10}, 0));
+        check("    and a bar of Sideswipe alone advises nothing", sp2.moveRes, null);
+        Prediction.Live swordCleave = advise(me, edgeOnly, FRESH, 300, 300, seen(known, new int[] {20, 30, 0, 10}, 0));
+        check("  holding a sword, the same Sideswipe is advised", swordCleave.moveRes, "paginae/atk/sideswipe");
 
         System.out.println("\na creature the pack has never seen still gets an answer, and says how");
         Prediction.Live u = advise(me, null, FRESH, 300, 300,
@@ -226,9 +305,24 @@ public class LiveAdviceCheck {
          * different card is held. */
         System.out.println("\na re-plan keeps the card on screen unless another is clearly better");
         int holdSame = 0, sameOf = 0, heldOther = 0, offBar = 0;
+        /* THE HOLD RULE ON ITS OWN. With the players' lines offered (Prediction.shownLines) every
+         * crowd in this sweep has one clearly best line and nothing is close enough to hold, which
+         * says nothing about the rule - so it is swept with the library off, and switched back. */
+        Prediction.offerShownLines = false;
         /* Few, because a crowd of three is planned once per target and once per held card. */
-        for(int[] standing : new int[][] {{30, 0, 30, 0}, {0, 30, 0, 30}})
-        for(String h : new String[] {"gfx/kritter/wolf/wolf", "gfx/kritter/boar/boar"}) {
+        /* Wolves and boars alone used to find their ties in the sizes' low tail - kills that were
+         * really partial intakes (creature_sizes, corrected 2026-09-22). At their real size each
+         * has one clearly best card, so the sweep reaches for more crowds until one ties. */
+        sweep:
+        for(int[] standing : new int[][] {{30, 0, 30, 0}, {0, 30, 0, 30}, {0, 0, 0, 0}, {50, 50, 0, 0}})
+        for(String h : new String[] {"gfx/kritter/wolf/wolf", "gfx/kritter/boar/boar",
+                                     "gfx/kritter/badger/badger", "gfx/kritter/fox/fox",
+                                     "gfx/kritter/bat/bat", "gfx/kritter/bear/bear",
+                                     "gfx/kritter/lynx/lynx", "gfx/kritter/moose/moose",
+                                     "gfx/kritter/reddeer/reddeer", "gfx/kritter/adder/adder",
+                                     "gfx/kritter/wolverine/wolverine", "gfx/kritter/greyseal/greyseal"}) {
+            if(heldOther > 0)
+                break sweep;
             List<Prediction.Seen> pack = Arrays.asList(seen(h, new int[] {20, 0, 0, 20}, 0),
                                                        seen(h, new int[] {0, 0, 0, 30}, 0),
                                                        seen(h, new int[] {10, 0, 10, 0}, 0));
@@ -255,6 +349,7 @@ public class LiveAdviceCheck {
                 }
             }
         }
+        Prediction.offerShownLines = true;
         System.out.printf("      %d situations, %d held a different card%n", sameOf, heldOther);
         check("  holding the card just picked keeps it", holdSame, sameOf);
         check("  a card not on the bar is not held", offBar, sameOf);
@@ -304,11 +399,14 @@ public class LiveAdviceCheck {
             Prediction.Live heavyFirst = advise(me, null, FRESH, 300, 300, heavyOnly, foxPassed);
             if((foxFirst.moveRes == null) || (heavyFirst.moveRes == null) || (foxFirst.proxied > 0))
                 continue;
-            boolean better = (heavyFirst.ticks < foxFirst.ticks)
+            /* CLEARLY better, by the advice's own margin (Prediction.SWITCH_TICKS) - "better on
+             * both" picked a horse at 272 ticks against 312 once creatures' clocks rode our agility
+             * (2026-09-23), a real but small gain the advice is right not to chase. */
+            boolean better = (heavyFirst.ticks <= Prediction.SWITCH_TICKS * foxFirst.ticks)
                 && (heavyFirst.hpLost < foxFirst.hpLost);
             System.out.printf("      %-36s fox first %5d t %6.1f hp | it first %5d t %6.1f hp%s%n",
                               h, foxFirst.ticks, foxFirst.hpLost, heavyFirst.ticks, heavyFirst.hpLost,
-                              better ? "  <- killing it first is better on both" : "");
+                              better ? "  <- killing it first is clearly quicker and cheaper" : "");
             if(better && (first == null))
                 first = h;
         }
@@ -407,8 +505,14 @@ public class LiveAdviceCheck {
                                         "gfx/kritter/wolf/wolf", "gfx/kritter/caveangler/caveangler"}) {
             List<Prediction.Seen> one = Arrays.asList(seen(big, new int[] {10, 0, 0, 10}, 0));
             Prediction.Live whole = Prediction.adviseLive(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON);
-            if((whole.moveRes == null) || (whole.proxied > 0))
+            if((whole.moveRes == null) || (whole.proxied > 0)) {
+                /* SAID, NOT SKIPPED: a creature that drops out of this list is the failure the
+                 * count below reports, and a count cannot say which one or why. */
+                System.out.printf("      %-36s not planned as itself: %s%n", big,
+                                  (whole.proxied > 0) ? ("a stand-in was used (" + whole.why + ")")
+                                                      : ("no card (" + whole.why + ")"));
                 continue;
+            }
             tried++;
             java.util.Set<String> cards = Prediction.distill(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON);
             Prediction.Live sub = Prediction.adviseLive(me, bigBar, FRESH, Double.NaN, Double.NaN, one, BEAM, HORIZON, 0, cards);
@@ -429,7 +533,70 @@ public class LiveAdviceCheck {
         check("  the chosen cards never plan worse than the whole bar", noSlower, tried);
         check("  and against at least one they plan strictly better", quicker > 0, true);
 
+        targets(me);
+        System.out.println("agility from the client's bracket:");
+        check("  (0, 0.579) of 100 is staged inside it, at the clamp's floor side",
+              Math.round(Prediction.agilityFrom(100, 0, 0.579)), 54L);
+        check("  (0, 2) is the client's unknown, and stages nothing",
+              Double.isNaN(Prediction.agilityFrom(100, 0, 2)), true);
+        check("  a crossed bracket stages nothing", Double.isNaN(Prediction.agilityFrom(100, 1.2, 0.8)), true);
+        System.out.println("the creature's next action:");
+        check("  one that has not acted yet acts at once (0.05 of a 40-tick period)",
+              Math.round(Prediction.firstAct(40, -1) * 10), 20L);
+        /* A second is 16.7 ticks of 0.06 s. This asserted 20 - the 50 ms tick firstAct had, which
+         * planned a creature's next swing a sixth of the elapsed time early (seams audit, 2026-09-23). */
+        check("  one that acted a second ago acts 23 ticks later on a 40-tick period",
+              Math.round(Prediction.firstAct(40, 1.0)), 23L);
+        check("  one overdue acts now, never in the past", Prediction.firstAct(40, 5.0), 0.0);
+        check("  unknown stays a full period (NaN)", Double.isNaN(Prediction.firstAct(40, Double.NaN)), true);
         finish();
+    }
+
+    static Prediction.Seen at(long gob, String res, double dist, double taken) {
+        return(new Prediction.Seen(gob, res, new int[] {10, 0, 0, 10}, 0, 0, dist, taken, null, true));
+    }
+
+    /**
+     * WHO TO HIT, IN A CROWD (COMBAT.md §3.8 D6, 2026-09-21). Three things James saw or asked for:
+     * the advice held on to whatever the server had just made current, a switch never paid for
+     * the walk past the others, and a denmother is to be killed first because it brings more bats.
+     */
+    static void targets(Prediction.Me me) {
+        System.out.println("\nwho to hit, in a crowd");
+        String wolf = "gfx/kritter/wolf/wolf";
+        /* Small enough that two of them die inside the horizon, so the walk decides and a tie does not. */
+        String fox = "gfx/kritter/fox/fox";
+
+        /* The server made a fresh wolf current; ours is the other, and the two are identical. */
+        List<Prediction.Seen> two = Arrays.asList(at(2, wolf, 20, 0), at(1, wolf, 20, 0));
+        Prediction.Live asCurrent = Prediction.adviseLive(me, null, FRESH, Double.NaN, Double.NaN,
+                                                          two, BEAM, HORIZON, 0, null, null, 0);
+        Prediction.Live asChosen = Prediction.adviseLive(me, null, FRESH, Double.NaN, Double.NaN,
+                                                         two, BEAM, HORIZON, 0, null, null, 1);
+        System.out.printf("      protecting the current one: target %d; protecting ours: target %d%n",
+                          asCurrent.target, asChosen.target);
+        check("  with nothing to choose between them, the one we chose is kept", asChosen.target, 1);
+        check("    where protecting the current relation kept the newcomer", asCurrent.target, 0);
+
+        /* THE WALK. Ours is the second wolf; the server has put the first in front of us. Beside
+         * us, ours is kept. Far off, reaching it is dead time with the one in front still
+         * swinging, and that has to cost enough to give it up - James: switching "past other
+         * aggroed enemies" lets them "swing on us for free". */
+        Prediction.Live near = Prediction.adviseLive(me, null, FRESH, Double.NaN, Double.NaN,
+            Arrays.asList(at(2, fox, 20, 0), at(1, fox, 20, 0)), BEAM, HORIZON, 0, null, null, 1);
+        Prediction.Live far = Prediction.adviseLive(me, null, FRESH, Double.NaN, Double.NaN,
+            Arrays.asList(at(2, fox, 20, 0), at(1, fox, 1500, 0)), BEAM, HORIZON, 0, null, null, 1);
+        System.out.printf("      ours beside us:  target %d (%s)%n", near.target, near.why);
+        System.out.printf("      ours 1500 away:  target %d (%s)%n", far.target, far.why);
+        check("  our target beside us is kept", near.target, 1);
+        check("  our target far behind another is given up for the walk", far.target, 0);
+
+        /* A denmother present is the target, whatever else is on us. */
+        Prediction.Live den = Prediction.adviseLive(me, null, FRESH, Double.NaN, Double.NaN,
+            Arrays.asList(at(1, "gfx/kritter/bat/bat", 20, 0), at(2, "gfx/kritter/denmother/denmother", 60, 0)),
+            BEAM, HORIZON);
+        System.out.printf("      bat in front, denmother behind: target %d (%s)%n", den.target, den.why);
+        check("  a denmother is always the target", den.target, 1);
     }
 
     static void finish() {

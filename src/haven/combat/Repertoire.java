@@ -85,6 +85,23 @@ public final class Repertoire {
             this.leafMix = leafMix;
         }
 
+        /**
+         * The least initiative its path through this tree already says the creature holds, 0 if none:
+         * a mix read under "its_ip above 1" was measured where it held 2 or more.
+         */
+        public int itsIpFloor(Combatant me, Combatant self) {
+            if((me == null) || (self == null))
+                return(0);
+            int n = 0, floor = 0;
+            while(feature[n] >= 0) {
+                boolean up = value(feature[n], me, self) > cut[n];
+                if(up && (feature[n] == 9))
+                    floor = Math.max(floor, (int)Math.floor(cut[n]) + 1);
+                n = up ? above[n] : below[n];
+            }
+            return(floor);
+        }
+
         /** The leaf's mix for this state, or null when a side is missing. Node 0 is the root. */
         public double[] eval(Combatant me, Combatant self) {
             if((me == null) || (self == null))
@@ -169,6 +186,90 @@ public final class Repertoire {
      * behaviour and the report should say so rather than pretending the rule fired.
      */
     public double[] mixNow(Combatant me, Combatant self) {
+        return(affordable(gated(me, self), self, ipFloor(me, self)));
+    }
+
+    /**
+     * The least initiative the mix in force was read at, from a tree path or a rule on its own
+     * initiative - the cave angler's tree splits at 1 and 3, and seven species' rules at "holds a
+     * point". Such a mix is already conditioned on paying, and dividing it again would count twice.
+     */
+    private int ipFloor(Combatant me, Combatant self) {
+        if(self == null)
+            return(0);
+        if(tree != null) {
+            double[] t = tree.eval(me, self);
+            if((t != null) && (t.length == mix.length))
+                return(tree.itsIpFloor(me, self));
+        }
+        if("foe_ip".equals(condFeature) && (whenMix != null) && (elseMix != null) && (self.ip > condCut))
+            return((int)Math.floor(condCut) + 1);
+        return(0);
+    }
+
+    /**
+     * The mix with every card its thrower cannot pay for taken out - see BeastMove.ipCost.
+     *
+     * The game's own gate, not a learned one: a spender is never thrown short of its cost in the
+     * corpus. What is left keeps its proportions. Where nothing would be left the mix stands as it
+     * was, since an empty hand is a pool this model got wrong rather than a creature that stops.
+     */
+    private double[] affordable(double[] m, Combatant self, int floor) {
+        if((self == null) || (cards == null) || FoeModel.legacy)
+            return(m);
+        double[] out = m.clone();
+        boolean moved = false;
+        double tot = 0;
+        for(int i = 0; i < out.length; i++) {
+            BeastMove c = (i < cards.length) ? cards[i] : null;
+            if((c != null) && (c.ipCost > 0) && (out[i] > 0)) {
+                /* Held back when it cannot pay; when it can, its share of EVERY decision over the
+                 * share of decisions at which it could - the weight the corpus shows it thrown at. */
+                out[i] = c.affordable(self.ip) ? (out[i] / canPay(c.ipCost, floor)) : 0.0;
+                moved = true;
+            }
+            tot += Math.max(0.0, out[i]);
+        }
+        if(!moved || !(tot > 0))
+            return(m);
+        for(int i = 0; i < out.length; i++)
+            out[i] = Math.max(0.0, out[i]) / tot;
+        return(out);
+    }
+
+    /**
+     * P(its initiative >= k) at the decisions its mix was read from, per k from 1; null where the
+     * pack does not carry it. A spender's share is a share of every decision and it can be thrown
+     * only at those where the creature held its cost, so {@link #mixNow} divides by this when it
+     * can pay - a cave angler throws Bristle at 0.129 of all its actions and 0.268 of those holding
+     * 3, and that rate is flat from 3 held to 7 (2026-09-23).
+     */
+    public double[] ipAtLeast;
+
+    /**
+     * The share of decisions at which it held {@code cost}, among those at which it held at least
+     * {@code floor}; floored so a rare one is not blown up.
+     */
+    private double canPay(int cost, int floor) {
+        if((ipAtLeast == null) || (cost <= floor))
+            return(1.0);
+        double p = atLeast(cost), q = atLeast(floor);
+        if(!(q > 0))
+            return(1.0);
+        return(Math.max(CAN_PAY_FLOOR, Math.min(1.0, p / q)));
+    }
+
+    private double atLeast(int k) {
+        if(k <= 0)
+            return(1.0);
+        return(ipAtLeast[Math.min(k, ipAtLeast.length) - 1]);
+    }
+
+    /** Below this a spender's affordability is too thin to scale its share by. */
+    static final double CAN_PAY_FLOOR = 0.1;
+
+    /** The state mix with the reproduced gates applied. */
+    private double[] gated(Combatant me, Combatant self) {
         double[] base = baseMix(me, self);
         if((gates == null) || (gates.length == 0))
             return(base);
@@ -206,20 +307,27 @@ public final class Repertoire {
         }
         if((condFeature == null) || (whenMix == null) || (elseMix == null))
             return(mix);
-        double v;
-        if("foe_ip".equals(condFeature))
-            v = (self == null) ? -1 : self.ip;
-        else if("my_ip".equals(condFeature))
-            v = (me == null) ? -1 : me.ip;
-        else if("my_open".equals(condFeature))
-            v = (me == null) ? -1 : (biggest(me) * 100.0);
-        else if("foe_open".equals(condFeature))
-            v = (self == null) ? -1 : (biggest(self) * 100.0);
-        else
-            return(mix);
+        double v = ruleValue(condFeature, me, self);
         if(v < 0)
             return(mix);
         return((v > condCut) ? whenMix : elseMix);
+    }
+
+    /**
+     * What a learned rule's feature reads in this state, or -1 where it cannot be read - a feature
+     * the simulator does not carry (distance), or a side not handed in. THE ONE READER for the card
+     * mix here and the pooled pressure in FoeModel.pressureNow, which each kept a copy.
+     */
+    public static double ruleValue(String feature, Combatant me, Combatant self) {
+        if("foe_ip".equals(feature))
+            return((self == null) ? -1 : self.ip);
+        if("my_ip".equals(feature))
+            return((me == null) ? -1 : me.ip);
+        if("my_open".equals(feature))
+            return((me == null) ? -1 : (biggest(me) * 100.0));
+        if("foe_open".equals(feature))
+            return((self == null) ? -1 : (biggest(self) * 100.0));
+        return(-1);
     }
 
     /**
@@ -261,7 +369,7 @@ public final class Repertoire {
                 thrown[n + i] += (int)Math.round(m[i] * OWED_SCALE);
                 if(m[i] <= 0)
                     continue;
-                double deficit = (thrown[n + i] / OWED_SCALE) - thrown[i];
+                double deficit = claim(thrown[n + i] / OWED_SCALE, thrown[i]);
                 if((best < 0) || (deficit > bestDeficit)) {
                     best = i;
                     bestDeficit = deficit;
@@ -276,13 +384,31 @@ public final class Repertoire {
         for(int i = 0; (i < cards.length) && (i < m.length); i++) {
             if(m[i] <= 0)
                 continue;
-            double deficit = (m[i] * (step + 1)) - counts[i];
+            double deficit = claim(m[i] * (step + 1), counts[i]);
             if((best < 0) || (deficit > bestDeficit)) {
                 best = i;
                 bestDeficit = deficit;
             }
         }
         return((best < 0) ? 0 : best);
+    }
+
+    /**
+     * Deal a card by what it is owed per throw it would then have made - owed / (thrown + 1) - rather
+     * than by owed minus thrown. A quota deal (D'Hondt) and still house-monotone.
+     *
+     * WHY (2026-09-23). A creature draws its cards; a card of share p first comes up after 1/p actions
+     * on average. The deficit rule deals it once p(k) passes what the leader is owed over its count,
+     * near k = 1/(2p): a red deer at no initiative throws Low Horn Swipe 29% of the time, so the
+     * first comes at the third or fourth action, and the deficit rule dealt it at the second. That
+     * did not matter while a creature's initiative never moved. Now the swipe's point moves it onto
+     * its other, quicker mix, and a card early is a branch early. The quota rule deals that swipe at
+     * the third action; a mix that never moves comes out at the same proportions either way.
+     */
+    public static volatile boolean quotaDeal = true;
+
+    private static double claim(double owed, int thrown) {
+        return((quotaDeal && !FoeModel.legacy) ? (owed / (thrown + 1.0)) : (owed - thrown));
     }
 
     /**
@@ -300,7 +426,7 @@ public final class Repertoire {
             for(int i = 0; i < m.length; i++) {
                 if(m[i] <= 0)
                     continue;
-                double deficit = (m[i] * (s + 1)) - counts[i];
+                double deficit = claim(m[i] * (s + 1), counts[i]);
                 if((best < 0) || (deficit > bestDeficit)) {
                     best = i;
                     bestDeficit = deficit;

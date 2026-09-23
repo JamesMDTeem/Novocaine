@@ -186,7 +186,16 @@ public class CombatLogCheck {
          * to trace to an advisor that believed it was bare-handed. */
         /* 23 adds the charge row: a non-opening buff's meter. Bloodlust raises our attack weight
          * by four times its charge, and without the charge a gain made under it cannot be priced. */
-        check("schema constant", CombatEvent.SCHEMA, 23);
+        /* 24 adds durability to the gear row (wd of wm), so armour wear per point soaked can be
+         * measured rather than assumed (COMBAT.md §3.8 D1). */
+        check("schema constant", CombatEvent.SCHEMA, 24);
+        check("gear carries durability when the piece has any",
+              CombatEvent.gear(40L, 2, "gfx/invobjs/cuirass", 10.0, 8, 3, false, 120, 2000),
+              "{\"ev\":\"gear\",\"t\":40,\"slot\":2,\"res\":\"gfx/invobjs/cuirass\","
+              + "\"ql\":10.0000,\"hard\":8,\"soft\":3,\"broken\":false,\"wd\":120,\"wm\":2000}");
+        check("  and without durability the row is the old one",
+              CombatEvent.gear(40L, 2, "gfx/invobjs/cuirass", 10.0, 8, 3, false, -1, -1),
+              CombatEvent.gear(40L, 2, "gfx/invobjs/cuirass", 10.0, 8, 3, false));
         check("charge carries the meter of a held buff",
               CombatEvent.charge(12L, -1L, "me", "paginae/atk/bloodlust", 0.25),
               "{\"ev\":\"charge\",\"t\":12,\"gob\":-1,\"who\":\"me\","

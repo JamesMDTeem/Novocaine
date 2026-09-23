@@ -98,9 +98,17 @@ public final class PartyPlanner {
         public final double foeHp;
         /** Whoever went down, indexed like the party. */
         public final boolean[] down;
+        /** What each of us had soaked by armour along the plan - see Combatant.soaked. */
+        public final double[] soaked;
 
         Plan(List<Step> steps, long ticks, double[] hpLost, boolean killed, double foeHp,
              boolean[] down) {
+            this(steps, ticks, hpLost, killed, foeHp, down, new double[hpLost.length]);
+        }
+
+        Plan(List<Step> steps, long ticks, double[] hpLost, boolean killed, double foeHp,
+             boolean[] down, double[] soaked) {
+            this.soaked = soaked;
             this.steps = steps;
             this.ticks = ticks;
             this.hpLost = hpLost;
@@ -165,9 +173,12 @@ public final class PartyPlanner {
 
         Plan plan(boolean killed) {
             boolean[] down = new boolean[us.length];
-            for(int i = 0; i < us.length; i++)
+            double[] soaked = new double[us.length];
+            for(int i = 0; i < us.length; i++) {
                 down[i] = !us[i].alive();
-            return(new Plan(path, tick, hpLost.clone(), killed, Math.max(0, foe.hp), down));
+                soaked[i] = us[i].soaked;
+            }
+            return(new Plan(path, tick, hpLost.clone(), killed, Math.max(0, foe.hp), down, soaked));
         }
     }
 
@@ -180,14 +191,27 @@ public final class PartyPlanner {
      */
     public static List<Plan> search(Member[] party, Combatant foe, FoeModel model, int front,
                                     Set<String> area, int beam, long maxTicks) {
+        return(search(party, foe, model, front, area, beam, maxTicks, null, null));
+    }
+
+    /**
+     * The same, also offering a party's own logged lines - each member's queue, joining at
+     * {@code start[i]} - stepped by {@link #follow} beside the searched ones. The frontier then keeps
+     * a plan at least as fast and as cheap as that line, so the planner never answers worse than a
+     * party has already shown it (see Optimizer.search with lines). Null offers nothing.
+     */
+    public static List<Plan> search(Member[] party, Combatant foe, FoeModel model, int front,
+                                    Set<String> area, int beam, long maxTicks,
+                                    List<List<Move>> lines, long[] start) {
         Combatant[] us0 = new Combatant[party.length];
         int[] ip0 = new int[party.length];
         for(int i = 0; i < party.length; i++) {
             us0[i] = party[i].fighter.copy();
+            us0[i].soaked = 0;
             ip0[i] = us0[i].ip;
         }
         int cards = ((model.cards == null) || !model.cards.usable()) ? 0 : model.cards.tallySize();
-        long next0 = (model.period == Long.MAX_VALUE) ? Long.MAX_VALUE : model.period;
+        long next0 = Optimizer.firstAct(model, foe);
         Combatant f0 = foe.copy();
         double foeHp0 = f0.hp;
         List<Node> live = new ArrayList<Node>();
@@ -218,7 +242,167 @@ public final class PartyPlanner {
                 break;
             live = prune(next, foeHp0, beam);
         }
+        done.addAll(seeds(party, foe, model, front, area, maxTicks));
+        if(lines != null) {
+            Plan p = follow(party, foe, model, front, area, lines, start, maxTicks, null);
+            if(p.killed)
+                done.add(p);
+        }
         return(frontier(done));
+    }
+
+    /**
+     * Every combination of each member throwing one damaging card again and again - the lines the
+     * parties actually used - stepped by {@link #follow} and handed to the frontier. See
+     * Optimizer.seeds for why the beam misses them: against 2026-09-19's polar bears a
+     * Quick-Barrage party killed in 240-280 ticks where the searched Full Circle mixes took
+     * 264-352 and cost more hitpoints and armour. At most SEED_CARDS cards per member, so a party
+     * of four is at most 3^4 = 81 short walks.
+     */
+    private static List<Plan> seeds(Member[] party, Combatant foe, FoeModel model, int front,
+                                    Set<String> area, long maxTicks) {
+        List<List<Move>> per = new ArrayList<List<Move>>();
+        for(Member m : party) {
+            List<Move> cs = new ArrayList<Move>();
+            for(Move mv : m.deck) {
+                if(!mv.stance && mv.deals())
+                    cs.add(mv);
+            }
+            /* Spam is a short-cooldown strategy: the quickest cards are the ones worth repeating. */
+            Collections.sort(cs, (x, y) -> Double.compare(x.cooldownBase, y.cooldownBase));
+            if(cs.size() > SEED_CARDS)
+                cs = new ArrayList<Move>(cs.subList(0, SEED_CARDS));
+            if(cs.isEmpty())
+                return(new ArrayList<Plan>());
+            per.add(cs);
+        }
+        List<Plan> out = new ArrayList<Plan>();
+        int[] pick = new int[party.length];
+        while(true) {
+            List<List<Move>> lines = new ArrayList<List<Move>>();
+            for(int i = 0; i < party.length; i++) {
+                List<Move> line = new ArrayList<Move>(SEED_LEN);
+                for(int k = 0; k < SEED_LEN; k++)
+                    line.add(per.get(i).get(pick[i]));
+                lines.add(line);
+            }
+            Plan p = follow(party, foe, model, front, area, lines, null, maxTicks, null);
+            if(!p.steps.isEmpty())
+                out.add(p);
+            int i = 0;
+            while((i < party.length) && (++pick[i] >= per.get(i).size())) {
+                pick[i] = 0;
+                i++;
+            }
+            if(i >= party.length)
+                break;
+        }
+        /* THE RHYTHM - each member's quickest card k times then their heaviest, the same k for all
+         * (see Optimizer.seeds). This is what the parties that beat the planner on polar bears threw. */
+        Move[] quick = new Move[party.length], heavy = new Move[party.length];
+        java.util.LinkedHashSet<String> finishers = new java.util.LinkedHashSet<String>();
+        for(int i = 0; i < party.length; i++) {
+            for(Move mv : party[i].deck) {
+                if(mv.stance || !mv.deals())
+                    continue;
+                if((quick[i] == null) || (mv.cooldownBase < quick[i].cooldownBase))
+                    quick[i] = mv;
+                if((heavy[i] == null) || (mv.damageShare > heavy[i].damageShare))
+                    heavy[i] = mv;
+            }
+        }
+        /* Every damaging card anyone holds is tried as the finisher, for everyone holding it -
+         * see Optimizer.seeds for why the heaviest alone was the wrong one. A member without that
+         * card finishes with their heaviest. */
+        for(int i = 0; i < party.length; i++) {
+            for(Move mv : party[i].deck) {
+                if(!mv.stance && mv.deals() && (mv != quick[i]))
+                    finishers.add(mv.name);
+            }
+        }
+        for(String fin : finishers) {
+            Move[] with = new Move[party.length];
+            for(int i = 0; i < party.length; i++) {
+                with[i] = heavy[i];
+                for(Move mv : party[i].deck) {
+                    if(fin.equals(mv.name) && (mv != quick[i]))
+                        with[i] = mv;
+                }
+            }
+            for(int k = 1; k <= Optimizer.SEED_RHYTHM; k++) {
+                /* In step, and STAGGERED - member i building k + i before finishing. The parties
+                 * of two that still beat the planner on polar bears (2026-09-22) finished one at a
+                 * time: a second finisher on the same tick spends its long cooldown on openings the
+                 * first has just cashed. */
+                for(int stagger = 0; stagger <= ((party.length > 1) ? 1 : 0); stagger++) {
+                    /* Both shapes - the rhythm, and build-then-burst (Optimizer.burst). */
+                    for(int shape = 0; shape < 2; shape++) {
+                        List<List<Move>> lines = new ArrayList<List<Move>>();
+                        for(int i = 0; i < party.length; i++) {
+                            int ki = k + stagger * i;
+                            lines.add((shape == 0) ? Optimizer.rhythm(quick[i], with[i], ki)
+                                      : Optimizer.burst(quick[i], with[i], ki + stagger * i * 2));
+                        }
+                        Plan p = follow(party, foe, model, front, area, lines, null, maxTicks, null);
+                        if(!p.steps.isEmpty())
+                            out.add(p);
+                    }
+                }
+            }
+        }
+        return(out);
+    }
+
+    private static final int SEED_CARDS = 3, SEED_LEN = 400;
+
+    /**
+     * Where the party's LOGGED lines end up - each member's own cards, in their own order, each
+     * thrown as soon as that member's clock allows, against the same creature and the same step
+     * the search uses (COMBAT.md §3.10). A member joins at {@code start[i]} ticks, since a party
+     * does not all begin on the first blow; a card the model refuses is skipped and counted in
+     * {@code skipped[0]}; a member whose line is spent throws nothing more. It stops at the kill,
+     * when nobody stands, at {@code maxTicks}, or when every line is spent.
+     */
+    public static Plan follow(Member[] party, Combatant foe, FoeModel model, int front,
+                              Set<String> area, List<List<Move>> lines, long[] start,
+                              long maxTicks, int[] skipped) {
+        Combatant[] us0 = new Combatant[party.length];
+        int[] ip0 = new int[party.length];
+        for(int i = 0; i < party.length; i++) {
+            us0[i] = party[i].fighter.copy();
+            us0[i].soaked = 0;
+            if((start != null) && (i < start.length))
+                us0[i].readyAt = Math.max(us0[i].readyAt, start[i]);
+            ip0[i] = us0[i].ip;
+        }
+        int cards = ((model.cards == null) || !model.cards.usable()) ? 0 : model.cards.tallySize();
+        long next0 = Optimizer.firstAct(model, foe);
+        Node n = new Node(us0, foe.copy(), new ArrayList<Step>(), 0, next0, 0, new int[cards], ip0,
+                          new double[party.length]);
+        int[] at = new int[party.length];
+        while(true) {
+            int who = -1;
+            for(int i = 0; i < n.us.length; i++) {
+                if(!n.us[i].alive() || (at[i] >= lines.get(i).size()))
+                    continue;
+                if((who < 0) || (Math.max(n.tick, n.us[i].readyAt) < Math.max(n.tick, n.us[who].readyAt)))
+                    who = i;
+            }
+            if(who < 0)
+                return(n.plan(false));
+            Move m = lines.get(who).get(at[who]++);
+            Node s = step(n, who, m, party, model, front, area, maxTicks);
+            if(s == null) {
+                if(skipped != null)
+                    skipped[0]++;
+                continue;
+            }
+            n = s;
+            if(!n.foe.alive())
+                return(n.plan(true));
+            if(!n.anyStanding() || (n.tick >= maxTicks))
+                return(n.plan(false));
+        }
     }
 
     /** Whoever of us is ready soonest, lowest index on a tie; -1 when nobody stands. */
@@ -349,6 +533,13 @@ public final class PartyPlanner {
         return(Formulas.combined(all));
     }
 
+    private static double sum(double[] v) {
+        double t = 0;
+        for(double x : v)
+            t += x;
+        return(t);
+    }
+
     /** Kills beaten on neither ticks nor the party's total hitpoints; the closest tries if none kill. */
     static List<Plan> frontier(List<Plan> all) {
         List<Plan> kills = new ArrayList<Plan>();
@@ -368,8 +559,10 @@ public final class PartyPlanner {
             for(Plan q : pool) {
                 if(q == p)
                     continue;
-                if((q.ticks <= p.ticks) && (q.totalLost <= p.totalLost)
-                   && ((q.ticks < p.ticks) || (q.totalLost < p.totalLost))) {
+                /* Optimizer.dominates, the one rule: a party's own line leaves only to a plan at
+                 * least as good on time, cost AND wear. */
+                if(Optimizer.dominates(q.ticks, Optimizer.cost(q.totalLost, sum(q.soaked)), 0, sum(q.soaked),
+                                       p.ticks, Optimizer.cost(p.totalLost, sum(p.soaked)), 0, sum(p.soaked))) {
                     dominated = true;
                     break;
                 }
@@ -378,7 +571,8 @@ public final class PartyPlanner {
                 continue;
             boolean seen = false;
             for(Plan q : out) {
-                if((q.ticks == p.ticks) && (Math.abs(q.totalLost - p.totalLost) < 1e-9))
+                if((q.ticks == p.ticks) && (Math.abs(q.totalLost - p.totalLost) < 1e-9)
+                   && (Math.abs(sum(q.soaked) - sum(p.soaked)) < 1e-9))
                     seen = true;
             }
             if(!seen)

@@ -1086,8 +1086,9 @@ def agility_interval(observations, agi_me):
 
     A cooldown comes back as a whole number of ticks, so an observation of N against a
     base B says the multiplier lies in [(N-0.5)/B, (N+0.5)/B] and no tighter. The
-    multiplier is 1 - 0.1*clamp(log2(agiMe/agiFoe), -1, 1), so each observation is an
-    interval on the opponent's agility and several of them intersect.
+    multiplier is clamp(agiFoe/agiMe, 1/2, 2)^(1/7) (model.agility_cooldown_factor; the old
+    1 - 0.1*log2 form was retired 2026-09-17), so each observation is an interval on the
+    opponent's agility and several of them intersect.
 
     EVERY OBSERVATION CARRIES ITS OWN agiMe. What a cooldown constrains is the RATIO of
     the two agilities; the absolute only comes out by multiplying through by what our own
@@ -1129,8 +1130,11 @@ def agility_interval(observations, agi_me):
         if (base <= 0) or not mine:
             continue
         flo, fhi = (ticks - 0.5) / base, (ticks + 0.5) / base
-        # f = 1 - 0.1 L  ->  L = 10 (1 - f), and agiFoe = agiMe / 2^L.
-        llo, lhi = 10.0 * (1.0 - fhi), 10.0 * (1.0 - flo)
+        # f = 2^(-L/7) with L = log2(agiMe/agiFoe)  ->  L = -7 log2 f, and agiFoe = agiMe / 2^L.
+        # (Was f = 1 - 0.1 L, a linear form the client table and the corpus both reject -
+        # see Formulas.agilityCooldownFactor.)
+        llo = -math.log2(fhi) / model.AGILITY_EXPONENT
+        lhi = -math.log2(flo) / model.AGILITY_EXPONENT
         # Saturated above: L may be anything at or past the clamp, so the opponent may be
         # arbitrarily slower and there is no lower bound to take from this observation.
         #
@@ -1260,10 +1264,16 @@ def weapon_offline_join(logs=None):
         # Live values
         rb = (lv or {}).get("recovered_base") or {}
         lo, hi = rb.get("lo"), rb.get("hi")
-        # live base is only trusted when both ends agree within 0.5 (same rule as
-        # Pack.java overlaySeen). Single-quality weapons have lo==hi, so pass.
         live_base = None
-        if isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+        if (lv is not None) and ("shared_base" in lv):
+            # The base every sighting's rounding allows, read at its middle; none when the
+            # sightings share no base, which is the quality curve failing (same rule as
+            # Pack.java overlaySeen). See estimate_parallel.weapons_seen_merge.
+            sb = lv.get("shared_base")
+            if sb:
+                live_base = round((sb["lo"] + sb["hi"]) / 2.0, 3)
+        elif isinstance(lo, (int, float)) and isinstance(hi, (int, float)):
+            # A pack from before shared_base: both ends within 0.5, single-quality weapons pass.
             if abs(hi - lo) <= 0.5:
                 live_base = lo
         pen_list = (lv or {}).get("armpen") or []
@@ -1470,6 +1480,64 @@ def report_agility_band():
     print()
 
 
+# A species' agility is published as a consensus only where this share of its readings agree
+# on one value, over at least AGILITY_CONSENSUS_MIN of them.
+AGILITY_CONSENSUS_AGREE = 0.9
+AGILITY_CONSENSUS_MIN = 10
+
+
+def agility_consensus(rec):
+    """One species' agility from EVERY reading at once, each against our agility when it was taken.
+
+    James (2026-09-22): "you should be able to see our agility increase over time, and see the
+    enemy go from having more / equal / less than us at different abilities to estimate theirs."
+    A cooldown clamps at half and double our agility, so one reading is a two-sided interval only
+    while the creature sits inside that band and a one-sided bound outside it ("at most half of
+    us"). Our characters ran from agility 10 to 414 over the corpus - Pikapolonica 24-33, Japcek
+    21-66, Santa Samus 55-174, Shade 135-414 - so the same species reads in-band to a slow
+    character and capped to a fast one, and the point where the verdict turns pins it.
+
+    pooled_agility could not see that: it intersects per INDIVIDUAL and publishes the union when
+    individuals disagree, and one-sided individuals make the union open - wolves read "at least
+    183.5" while all 5,574 wolf readings agree on 249-251. Here each reading is its own interval
+    (agility_interval of that one observation, at its own agiMe) and the value the most of them
+    admit is taken, as creature_sizes.consensus does for hitpoints. The agreeing readings are then
+    intersected, so the published bounds are the tightest they jointly allow; an open side stays
+    open (lo 0 or hi null) and says only what it says - which for staging is exact whenever the
+    open bound is past the clamp (a creature "at most 31" against our 150 is at half of us).
+
+    Published only where AGILITY_CONSENSUS_AGREE of the readings agree: most species do to the
+    last reading (boar 2,290/2,290, bear 1,179/1,179), which is itself the finding that a species
+    has one agility. Depth-scaled creatures do not (green ooze 66%) and keep the pooled entry.
+    """
+    # Each individual's readings once each: a reading repeated across the creatures that gave it
+    # counts once per creature. The pooled set counts it once, and then one stray reading of a
+    # species fought at a handful of our agility values outweighs hundreds of fights (vampire:
+    # 14 distinct readings, one of them stray).
+    by_gob = rec.get("agi_obs_by_gob") or {}
+    obs = sorted(o for s in by_gob.values() for o in s) if by_gob else sorted(rec.get("agi_obs") or ())
+    if len(obs) < AGILITY_CONSENSUS_MIN:
+        return None
+    ivs = []
+    for o in obs:
+        iv = agility_interval([o], None)
+        if iv is not None:
+            ivs.append((iv[0], iv[1]))
+    if len(ivs) < AGILITY_CONSENSUS_MIN:
+        return None
+    pts = sorted(set(x for lo, hi in ivs for x in (lo, hi) if x != float("inf")))
+    count = lambda a: sum(1 for lo, hi in ivs if (lo - 1e-9) <= a <= (hi + 1e-9))
+    best = max(pts, key=count)
+    agreeing = [(lo, hi) for lo, hi in ivs if (lo - 1e-9) <= best <= (hi + 1e-9)]
+    if len(agreeing) < AGILITY_CONSENSUS_AGREE * len(ivs):
+        return None
+    lo = max(a for a, _b in agreeing)
+    hi = min(b for _a, b in agreeing)
+    return {"lo": round(lo, 1), "hi": (None if hi == float("inf") else round(hi, 1)),
+            "agree": len(agreeing), "n": len(ivs),
+            "our_agility": [min(o[2] for o in obs), max(o[2] for o in obs)]}
+
+
 def pooled_agility(rec):
     """One species' agility, and what to say when its members do not agree.
 
@@ -1609,12 +1677,16 @@ def flee_points(logs=None):
         except Exception:
             continue
         wall = (log.header or {}).get("wall") or 0
+        seen_here = set()
         for eng in log.engagements:
             if eng.res:
                 res[eng.gob] = eng.res
-            for d in eng.damage:
-                if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP"):
-                    hits[eng.gob].append((wall + d["t"], d["v"]))
+            # The creature's damage over the whole file, once (see fightlog.Log.damage_on).
+            if eng.gob not in seen_here:
+                seen_here.add(eng.gob)
+                for d in log.damage_on(eng.gob):
+                    if d.get("ch") == "SHP":
+                        hits[eng.gob].append((wall + d["t"], d["v"]))
             # The first moment this individual extended its olive branch, on the same
             # absolute clock as the damage, so the two can be compared across files.
             for st in eng.states:
@@ -1630,8 +1702,7 @@ def flee_points(logs=None):
             if kill_kind(eng, log) == "drawn":
                 tot = sum(v for _t, v in hits.get(eng.gob, []))
                 died_at[eng.gob] = tot
-                shp = [d for d in eng.damage
-                       if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP")]
+                shp = [d for d in log.damage_on(eng.gob) if d.get("ch") == "SHP"]
                 if shp:
                     last_hit[eng.gob] = shp[-1]["v"]
 
@@ -1724,6 +1795,58 @@ def agility_control(logs=None):
     return out
 
 
+# How far the client's table and our formula may sit apart at a bin edge and still agree. The
+# table (Config.attackCooldownNumbers) was built by hand at log2(mult)/log2(ratio) = 0.1428-0.1431
+# against the formula's 1/7 - up to 0.2% apart - and a fatbat read 226.39 on one route and 226.55
+# on the other: the same bin edge, not a disagreement.
+AGILITY_EDGE_TOL = 0.0025
+
+
+def stale_brackets(log, moves):
+    """Gobs whose client agility bracket was narrowed from a STALE CARD, as a set.
+
+    Fightsess narrows the bracket from `lastact1` - the card icon - and fv.lastMoveCooldown,
+    the cooldown the server just sent. When the icon has not caught up, the new cooldown is
+    read against the PREVIOUS card's base. Measured 2026-09-22 over every narrowing in the
+    pool: 9,098 fit our last card's (base, ticks), exactly one fits the card before it and
+    none fit neither. That one - ZzxcuV3-1789920144016, Uppercut's 27 ticks read against
+    Sideswipe's base of 25 - put an ant at 1.5-1.95 of our agility and was the only
+    disagreement between the two agility routes. A client race, not a formula error, so the
+    bracket is unusable rather than evidence. The client code is left alone: one in 9,099
+    does not justify changing a display nobody can test from here.
+    """
+    mine = []
+    for r in log.rows:
+        if r.get("ev") == "move" and r.get("actor") == "me" and (r.get("cd") or 0) > 0:
+            mv = moves.get(r.get("name") or r.get("move"))
+            if mv and (mv.get("cooldown") is not None) and model.takes_agility(mv):
+                mine.append((r.get("t") or 0, mv["cooldown"], r["cd"]))
+
+    def allows(base, cd, lo, hi):
+        iv = agility_interval([(base, cd)], 1.0)
+        if iv is None:
+            return True
+        a, z, _c = iv
+        a, z = max(0.5, a), min(2.0, z)
+        return (lo <= 0.5 + 0.02 or lo >= a - 0.02) and (hi >= 2.0 - 0.02 or hi <= z + 0.02)
+
+    out, prev = set(), {}
+    for a in (log.agility or ()):
+        g = a.get("gob")
+        lo, hi = (a.get("min") or 0.0), (2.0 if a.get("max") is None else a["max"])
+        plo, phi = prev.get(g, (0.0, 2.0))
+        prev[g] = (lo, hi)
+        # Only the side that moved is this narrowing's information.
+        nlo = lo if lo > plo + 1e-9 else 0.0
+        nhi = hi if hi < phi - 1e-9 else 2.0
+        before = [m for m in mine if m[0] <= (a.get("t") or 0)]
+        if len(before) < 2 or allows(before[-1][1], before[-1][2], nlo, nhi):
+            continue
+        if allows(before[-2][1], before[-1][2], nlo, nhi):
+            out.add(g)
+    return out
+
+
 def report_agility_control():
     rows = agility_control()
     if not rows:
@@ -1801,7 +1924,10 @@ def agi_species_comparison(logs=None):
                 agree = None
                 compared.append((b, agree))
                 continue
-            if clo > chi:
+            if b.get("stale"):
+                # The client read the cooldown against the wrong card - see stale_brackets.
+                agree = None
+            elif clo > chi:
                 # The bracket contradicts ITSELF - agility_interval crosses lo past hi
                 # when one creature's own observations disagree, which is how it reports
                 # a faulty individual (_pool_agility drops exactly these as `faulty`).
@@ -2829,6 +2955,9 @@ def _collect_file(p, moves, opens):
     # actually fought with rather than the strongest card the deck could have held.
     held = stance_of(log, None, who="me")
     my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv, held=held)
+    dealt_seen, fled_seen = set(), set()
+    coolmods = fightlog.coolmod_hands(log)
+    crowded = {e.gob for e in log.engagements if e.others_present}
     for eng in log.engagements:
         rec = per[bucket(eng)]
         rec["engagements_by"][eng.gob][(log.header or {}).get("char")] += 1
@@ -2878,9 +3007,11 @@ def _collect_file(p, moves, opens):
             if (st.get("gst") or 0) & 2:
                 flee_at = st.get("t")
                 break
-        if flee_at is not None:
-            hits = [d for d in eng.damage
-                    if d.get("gob") == eng.gob and d.get("ch") in ("SHP", "ARM")]
+        # Once per creature per file: its damage is read over the whole file (Log.damage_on),
+        # so a second engagement with it would add the same flight again.
+        if (flee_at is not None) and (eng.gob not in fled_seen):
+            fled_seen.add(eng.gob)
+            hits = [d for d in log.damage_on(eng.gob) if d.get("ch") in ("SHP", "ARM")]
             total = sum((d.get("v") or 0) for d in hits)
             before = sum((d.get("v") or 0) for d in hits if d["t"] <= flee_at)
             # It has to have kept taking damage afterwards, or the fight merely ended
@@ -2919,13 +3050,20 @@ def _collect_file(p, moves, opens):
         # sittings, so a group fight and an interrupted one both still measure it -
         # they are only useless for attributing openings.
         rec["res"] = rec["res"] or eng.res
-        hits = [d for d in eng.damage
-                if d.get("ch") == "SHP" and d.get("gob") == eng.gob]
-        rec["dealt_by"][eng.gob][(log.header or {}).get("char")] += sum(
-            d["v"] for d in hits)
+        # THE WHOLE FILE'S DAMAGE ON THIS CREATURE, ONCE (2026-09-22). This summed the rows in
+        # each engagement, and an engagement holds what arrived while its gob was SAMPLED - a
+        # blow on this creature while the view sampled another sat in the other engagement and
+        # was never counted. 9.4% of all creature damage in the pool; a third of a fatbat's.
+        # See fightlog.Log.damage_on. Counted at the creature's first engagement in the file.
+        first_here = eng.gob not in dealt_seen
+        dealt_seen.add(eng.gob)
+        hits = [d for d in log.damage_on(eng.gob) if d.get("ch") == "SHP"]
+        if first_here:
+            rec["dealt_by"][eng.gob][(log.header or {}).get("char")] += sum(
+                d["v"] for d in hits)
         # Armour reads off every hit the creature took, whoever threw it: the ratio
         # of absorbed to through is a property of the armour, not of the attacker.
-        pairs = fightlog.soak_pairs(eng)
+        pairs = fightlog.soak_pairs(eng, log) if first_here else []
         rec["soak_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
         # Hits from a fight nobody else was in. soak_pairs deliberately takes hits
         # from every attacker, on the argument that the absorbed/through split is a
@@ -2934,7 +3072,8 @@ def _collect_file(p, moves, opens):
         # the fit assumes zero. Worse, two hits landing inside the same two-millisecond
         # bucket merge into one synthetic hit with both their ARM and both their SHP.
         # Neither can happen when we are the only one swinging.
-        if not eng.others_present:
+        # Read over the whole file now, so clean means no engagement with it was crowded.
+        if eng.gob not in crowded:
             rec["soak_clean_by"][eng.gob][(log.header or {}).get("char")].extend(pairs)
         # The killing blow, for the overkill bound - it is the last damage this
         # opponent took, and however much of it exceeded the opponent's remaining
@@ -3240,9 +3379,11 @@ def _collect_file(p, moves, opens):
                 # readers unpack this tuple by position.
                 # The twelfth is OUR RAW SKILL - see our_skill. It is what equalizes, and
                 # the attack weight cannot give it back without also knowing mu.
+                # The THIRTEENTH is whether our attack weight was PINNED - see pinned().
                 rec["wd"].append((name, colour, standing, gain, wa, wd, lo, hi,
                                   eng.offence_ok, (log.header or {}).get("char"),
-                                  eng.gob, attrs.get(m.get("attack_skill") or "melee")))
+                                  eng.gob, attrs.get(m.get("attack_skill") or "melee"),
+                                  (not _weight_has_mu(m)) or (lv.get(name) is not None)))
                 rec["wd_by_gob"].setdefault(eng.gob, []).append((lo, hi, wd))
                 # Per individual AND per move. mu can only be read between two moves
                 # thrown at the same creature - see report_mu.
@@ -3264,9 +3405,18 @@ def _collect_file(p, moves, opens):
                     mv = moves.get(name)
                     # Maneuvers take no agility term, so they say nothing about the
                     # opponent and are not observations of it. Opportunity Knocks
-                    # declares an attack_skill and no attack_types yet rides the band.
+                    # declares an attack_skill and no attack_types yet rides the band, and
+                    # so does Feigned Dodge, which gives openings away - model.takes_agility.
+                    # NOT WITH A COOLDOWN-MODIFYING WEAPON IN HAND (2026-09-22). agility_band
+                    # has excluded these since the pickaxe was found; this path never did, and
+                    # it is the one individuals.json is built from. Two foxes fought with a
+                    # pair of pickaxes read Quick Barrage 21 against a base of 18 - the
+                    # pickaxe's 1.15, applied - and were published at agility 418-494, ten
+                    # times the species. See fightlog.held_coolmod for why it is dropped.
                     if (agi_me and mv and (mv.get("cooldown") is not None)
-                            and (mv.get("attack_types") or mv.get("attack_skill"))):
+                            and model.takes_agility(mv)
+                            and not (coolmods and (fightlog.held_coolmod(
+                                log, m.get("t") or 0, coolmods) is not None))):
                         o = (mv["cooldown"], m["cd"], agi_me)
                         rec["agi_obs"].add(o)
                         rec["agi_obs_by_gob"][eng.gob].add(o)
@@ -3407,55 +3557,15 @@ def kill_kind(eng, log):
     "drawn" - the killing blow has a number, so the damage summed over the creature is its
     hitpoints. "undrawn" - the creature died to a blow the client drew no number for, so the
     sum is short by exactly that blow and says only that it had MORE than the sum.
+
+    Lives in fightlog since 2026-09-22, where the engagement outcome reads it too; it reads
+    the creature's damage over the whole FILE, not the engagement (see Log.damage_on).
     """
-    if PLAYER in (eng.res or ""):
-        return None
-    awards = [d["t"] for d in eng.damage
-              if d.get("ch") in ("#ffff", "C65535") and d.get("gob") != eng.gob
-              and (d.get("t") is not None)]
-    if not awards:
-        return None
-    shp = [d["t"] for d in eng.damage
-           if (d.get("gob") == eng.gob) and (d.get("ch") == "SHP") and (d.get("t") is not None)]
-    if shp:
-        last = max(shp)
-        if any(abs(a - last) <= AWARD_KILL_MS for a in awards):
-            return "drawn"
-    # Indexed once per log: a long file has many engagements and scanning every row for each
-    # of them is quadratic.
-    idx = getattr(log, "_kill_index", None)
-    if idx is None:
-        dels_by = defaultdict(list)
-        for r in (getattr(log, "rows", None) or []):
-            if r.get("ev") == "foe" and r.get("how") == "del" and (r.get("t") is not None):
-                dels_by[r.get("gob")].append(r["t"])
-        idx = (dels_by, [o["t"] for o in (getattr(log, "overlays", None) or [])
-                         if str(o.get("res", "")).startswith("sfx/fight/hit")
-                         and (o.get("t") is not None)])
-        try:
-            log._kill_index = idx
-        except AttributeError:
-            pass
-    dels, lands = idx[0].get(eng.gob, ()), idx[1]
-    for a in awards:
-        if shp and (a < max(shp)):
-            # The creature took a drawn hit after this award, so it was alive past it.
-            continue
-        if (any(abs(t - a) <= UNDRAWN_KILL_MS for t in dels)
-                and any(abs(t - a) <= UNDRAWN_KILL_MS for t in lands)):
-            return "undrawn"
-    return None
+    return fightlog.kill_kind(eng, log)
 
 
-# How close the fight-end award must sit to the creature's last damage to mean it died -
-# see died(). 4,005 of 4,077 drawn kills sit at 0-2 ms and 21 more by 20 ms. It was 500, and
-# that let a drawn hit a few hundred ms BEFORE an undrawn killing blow pass as the killing
-# blow: every bat, adder, swan, pelican and golden eagle kill between 21 and 500 ms has a blow
-# landing and the relation deleted at the award, so kill_kind reads those as undrawn instead.
-AWARD_KILL_MS = 20
-# How close the award, the relation's deletion and a landing blow must sit for an undrawn
-# kill. In the corpus all three share a millisecond or two; 100 ms is slack, not a fit.
-UNDRAWN_KILL_MS = 100
+AWARD_KILL_MS = fightlog.AWARD_KILL_MS
+UNDRAWN_KILL_MS = fightlog.UNDRAWN_KILL_MS
 
 
 def norm(name):
@@ -3463,6 +3573,19 @@ def norm(name):
     if not name:
         return None
     return name.lower().replace(" ", "").replace("'", "").replace("-", "")
+
+
+# CREATURES THE WIKI HAS NO ROW FOR, THAT SIT IN ANOTHER CREATURE'S DIRECTORY (2026-09-22).
+# wiki_for's last resort is the directory, and for these the directory's row is a different
+# animal: the corpus's kills put them at 15x (vampire), 4x (bloodstalker, sentinel bee),
+# 2.5x (fatbat, warrior drone, warrior ant) and 1.6x (polar bear) the row they were handed,
+# and the borrowed figure then widened their published hitpoints - bloodstalker's `lo` was the
+# Bat's 90 against a smallest kill of 154. No baseline is better than a wrong one. The swarm
+# ("beeswarm") and the mare really are Wild Bees and Horse, and keep the fallback. Whether the
+# warrior ant is the wiki's Black Ant is James's call (COMBAT.md §3.5); until then, none.
+NO_WIKI_ROW = frozenset(("vampire", "fatbat", "bloodstalker", "polarbear", "warriorant",
+                         "honeybee", "warriordrone", "sentinelbee", "vulturebee", "beelarva",
+                         "queenbee"))
 
 
 def wiki_for(wiki, res):
@@ -3489,6 +3612,8 @@ def wiki_for(wiki, res):
     last = norm(parts[-1])
     if last and (last in wiki):
         return wiki[last]
+    if parts[-1] in NO_WIKI_ROW:
+        return None
     # The file name does not appear verbatim, so score every wiki name by how much of
     # it this path spells out and take the best. The wiki names the queen by its full
     # title "Giant Ant Queen" while the path offers "ants/queenant": both of the
@@ -3748,7 +3873,7 @@ CD_MIN_PAIRS = 12
 DMG_MIN_OBS = 5
 
 
-def animal_move_cooldowns(paths=None):
+def animal_move_cooldowns(paths=None, agility=None):
     """Each creature move's cooldown, from how soon the creature acts again after it.
 
     A COMBATANT HAS ONE COOLDOWN, and the card it throws sets how long it lasts - Fightsess
@@ -3774,23 +3899,123 @@ def animal_move_cooldowns(paths=None):
     like one creature acting impossibly fast. Restricted to a single opponent the same two
     read 40 and 41.
     """
-    if paths is None:
-        paths, _dirs = fightlog.default_logs(ROOT)
-    # Ordered map of raw gaps; the median/floor reduce below stays single-pass.
-    nxt, same = defaultdict(list), defaultdict(list)
-    for part in estimate_parallel.map_chunks("animal_cooldowns", sorted(paths)):
-        for (kind, nm), v in part.items():
-            (nxt if kind == "next" else same)[nm].extend(v)
+    parts = _animal_card_parts(paths)
+    nxt, same, agi = parts["next"], parts["same"], parts["agi"]
+    agility = agility or {}
     out = {}
     for nm, v in nxt.items():
         if len(v) < CD_MIN_PAIRS:
             continue
-        v.sort()
+        v = sorted(v)
         rot = sorted(same.get(nm) or ())
         out[nm] = {"ticks": round(v[int(len(v) * 0.05)], 1),
                    "floor": round(v[0], 1),
                    "rotation": round(rot[len(rot) // 2], 1) if rot else None,
                    "n": len(v)}
+        # ITS ATTACKS RUN ON OUR AGILITY, as ours run on its (2026-09-23). Against the same
+        # creature a slow character sees a quicker Fell Scratch than a fast one: over the corpus
+        # the low tail moves 40 -> 49 ticks across the factor bands while gap / factor holds at
+        # 44 in every band, and a maneuver (Roar of the Wild, Bristle, Careful Approach) holds
+        # 29 raw and is thrown off by the division - the game's own split, attacks scale and
+        # maneuvers do not. `ticks` above is a blend of whoever fought it, so `base` is the
+        # cooldown at factor one, divided out per gap with the species' consensus agility and
+        # ours from the log header; FoeModel scales it back for whoever is planning.
+        norm = sorted(d / model.agility_cooldown_factor(agility[res], mine)
+                      for d, mine, res in agi.get(nm, ()) if agility.get(res))
+        if len(norm) >= CD_MIN_PAIRS:
+            out[nm]["base"] = round(norm[int(len(norm) * 0.05)], 1)
+            out[nm]["base_n"] = len(norm)
+    return out
+
+
+# Gaps, same-card gaps, gaps with our agility, and initiative deltas: one pass over the logs
+# serves both the cooldowns and the initiative, cached for the paths it was run on.
+_CARD_PARTS = {}
+
+
+def _animal_card_parts(paths=None):
+    if paths is None:
+        paths, _dirs = fightlog.default_logs(ROOT)
+    key = tuple(sorted(paths))
+    if key not in _CARD_PARTS:
+        parts = defaultdict(lambda: defaultdict(list))
+        for part in estimate_parallel.map_chunks("animal_cooldowns", list(key)):
+            for (kind, nm), v in part.items():
+                parts[kind][nm].extend(v)
+        _CARD_PARTS.clear()
+        _CARD_PARTS[key] = parts
+    return _CARD_PARTS[key]
+
+
+# The agility-factor bands the cooldown control compares, and the throws each band needs.
+AGILITY_BANDS = ((0.0, 0.95), (0.95, 1.03), (1.03, 1.09), (1.09, 9.0))
+AGILITY_BAND_MIN = 12
+
+
+def agility_band_spread(paths=None, agility=None):
+    """The control for reading a creature's attack cooldowns through our agility: {card: (raw, norm, n)}.
+
+    Per card, the low tail (p05) of its gaps in each band of the agility factor clamp(ours/its,
+    1/2, 2)^(1/7), and the spread (max / min) of those tails across the bands - raw, and with each
+    gap divided by its factor. If the game runs a creature's attacks on the rule it runs ours on,
+    an attack's spread shrinks when divided and a maneuver's grows, since the rule leaves maneuvers
+    alone. Cards seen in fewer than two bands are left out: one band has no spread to compare.
+    """
+    parts = _animal_card_parts(paths)
+    agility = agility or {}
+    out = {}
+    for nm, rows in parts["agi"].items():
+        raw, norm = [], []
+        for lo, hi in AGILITY_BANDS:
+            band = [(d, model.agility_cooldown_factor(agility[res], mine))
+                    for d, mine, res in rows if agility.get(res)]
+            band = [(d, f) for d, f in band if lo <= f < hi]
+            if len(band) < AGILITY_BAND_MIN:
+                continue
+            r = sorted(d for d, _f in band)
+            q = sorted(d / f for d, f in band)
+            raw.append(r[int(len(r) * 0.05)])
+            norm.append(q[int(len(q) * 0.05)])
+        if len(raw) >= 2:
+            out[nm] = (max(raw) / min(raw), max(norm) / min(norm), len(raw))
+    return out
+
+
+# Throws of a card needed before its initiative change is published, and the share of them the
+# commonest change must hold. A delta of 0 is the usual dissent: the state after the card was
+# sampled before the server's initiative update reached us.
+IP_MIN_N = 15
+IP_AGREE = 0.7
+
+
+def animal_move_ip(paths=None):
+    """What each creature card does to ITS OWN initiative against us: {card: {gain|cost, n, agree}}.
+
+    CREATURE CARDS PAY AND EARN INITIATIVE AS OURS DO (2026-09-23). Across the one state before a
+    card and the one after, with nobody else acting in between, Fell Scratch, Roar of the Wild,
+    Low Horn Swipe and Serpent's Strike add a point, Bear Down and Thunder Over two, and Bristle
+    takes three, Tail Splash four, Chomp and Swift Evasion two, Maddening Roar three and Shredding
+    Paw one - each in 85-95% of throws. The spenders are never thrown short: Bristle below 3 in 3%
+    of 755, Tail Splash below 4 in 4% of 177, the few being the same stale state. So a cost is also
+    the card's requirement, the one gate a creature's choice is known to obey. `before_short` is
+    that share, reported so a card that breaks the rule shows it.
+    """
+    parts = _animal_card_parts(paths)
+    out = {}
+    for nm, v in parts["ip"].items():
+        if len(v) < IP_MIN_N:
+            continue
+        c = Counter(d for d, _b in v)
+        d, k = c.most_common(1)[0]
+        if (d == 0) or (k < IP_AGREE * len(v)):
+            continue
+        e = {"n": len(v), "agree": round(k / float(len(v)), 3)}
+        if d > 0:
+            e["gain"] = d
+        else:
+            e["cost"] = -d
+            e["before_short"] = round(sum(1 for _d, b in v if b < -d) / float(len(v)), 3)
+        out[nm] = e
     return out
 
 
@@ -3860,6 +4085,27 @@ def animal_attack_colours(hits, wiki):
     return (best, "corpus")
 
 
+def ratio_coef(pairs):
+    """The coefficient that predicts the damage a creature's blows actually total: sum(swing) /
+    sum(combined^2), over EVERY blow the card threw with an opening of 0.05 or more standing -
+    those that did nothing included.
+
+    THE MEDIAN OF swing / c^2 OVER BLOWS THAT LANDED WAS BIASED HIGH, and by most where a card
+    mostly does nothing. Damage is a small integer and a blow into a small opening rounds to 0
+    or 1: at c = 0.06 one point reads as a coefficient of 278, while the blows that rounded to
+    nothing were dropped. 95% of bats' Fell Scratches on us did nothing and the pack read 25.9;
+    over all 6,333 clean creature blows on us, fitted on half the creatures and scored on the
+    other half, the old coefficients predicted 1.24 times the damage that landed and this fit
+    0.97 (2026-09-21, COMBAT.md §3.12). A creature's blow on us had no fit-free control until
+    then - replay.py's damage half is ours only.
+
+    Only the MEAN coefficient changes. p90, lo and hi stay over the blows that landed: they
+    answer "how hard can one hit be", which the zeros say nothing about.
+    """
+    den = sum(c * c for _sw, c in pairs)
+    return round(sum(sw for sw, _c in pairs) / den, 1) if den > 0 else None
+
+
 def animal_move_damage(per):
     """Each creature move's damage coefficient, over the whole swing - per species that throws it.
 
@@ -3887,23 +4133,27 @@ def animal_move_damage(per):
             if len(o) != 4:
                 continue
             swing = (h.get("shp") or 0) + (h.get("soaked") or 0)
-            if (swing > 0) and h.get("move"):
+            # BLOWS THAT DID NOTHING ARE KEPT - see ratio_coef.
+            if (swing >= 0) and h.get("move"):
                 hits[h["move"]].append((sp, tuple(o), swing))
     out = {}
     for nm, hs in hits.items():
-        cols, source = animal_attack_colours(hs, wiki.get(nm))
+        cols, source = animal_attack_colours([x for x in hs if x[2] > 0], wiki.get(nm))
         idx = cols if cols else (0, 1, 2, 3)
-        v, by = [], defaultdict(list)
+        v, by, pairs, by_pairs = [], defaultdict(list), [], defaultdict(list)
         for sp, o, sw in hs:
             c = _combined([o[i] for i in idx])
             if c < 0.05:
                 continue
-            v.append(sw / (c * c))
-            by[sp].append(sw / (c * c))
+            pairs.append((sw, c))
+            by_pairs[sp].append((sw, c))
+            if sw > 0:
+                v.append(sw / (c * c))
+                by[sp].append(sw / (c * c))
         if len(v) < DMG_MIN_OBS:
             continue
         v.sort()
-        entry = {"coef": round(v[len(v) // 2], 1), "lo": round(v[0], 1),
+        entry = {"coef": ratio_coef(pairs), "lo": round(v[0], 1),
                  # p90 is the card's PESSIMISTIC figure, which the pack's threatHi reads. hi is
                  # one hit, and planning every blow at the one worst ever seen answers a
                  # question nobody asks.
@@ -3916,7 +4166,7 @@ def animal_move_damage(per):
             sv = sorted(by[sp])
             if len(sv) < DMG_SPECIES_MIN:
                 continue
-            species[sp] = {"coef": round(sv[len(sv) // 2], 1),
+            species[sp] = {"coef": ratio_coef(by_pairs[sp]),
                            "p90": round(sv[int(0.9 * (len(sv) - 1))], 1), "n": len(sv)}
         if species:
             entry["by_species"] = species
@@ -4043,7 +4293,16 @@ def write_animal_moves(per, paths=None):
     land near multiples of five, which is suggestive and is not a measurement.
     """
     pct, f, _res = animal_card_fit(per)
-    cds = animal_move_cooldowns(paths)
+    # Each species' agility, for reading its attacks' cooldowns free of ours - res -> agility,
+    # the middle of a closed consensus only (an open side says nothing about where it sits).
+    agility = {}
+    for sp, rec in per.items():
+        cons = agility_consensus(rec)
+        res = rec.get("res") if isinstance(rec, dict) else None
+        if cons and res and (cons.get("hi") is not None) and (cons["lo"] > 0):
+            agility[res] = (cons["lo"] + cons["hi"]) / 2.0
+    cds = animal_move_cooldowns(paths, agility)
+    ips = animal_move_ip(paths)
     dmg = animal_move_damage(per)
     soak = animal_move_soak(paths)
     rest = animal_move_restores(paths)
@@ -4057,10 +4316,16 @@ def write_animal_moves(per, paths=None):
     names = set(opens) | set(cds) | set(dmg) | set(soak) | set(rest) | set(grev)
     out = []
     for nm in sorted(names):
+        cd = cds.get(nm)
+        if cd is not None:
+            # Whether the agility rule applies: a card that opens us or hits us is an attack,
+            # one that only takes back its own openings is a maneuver - see animal_move_cooldowns.
+            cd["agility"] = bool(opens.get(nm) or dmg.get(nm))
         out.append({"name": nm,
                     "openings": dict(sorted(opens.get(nm, {}).items())) or None,
                     "damage": dmg.get(nm),
-                    "cooldown": cds.get(nm),
+                    "cooldown": cd,
+                    "initiative": ips.get(nm),
                     "armour": soak.get(nm),
                     "restores": rest.get(nm),
                     "grievous": grev.get(nm)})
@@ -5144,7 +5409,28 @@ def foe_policy(rec):
             out["mix_all"] = out["mix"]
             out["mix"] = [[k, round(v / float(n_near), 3)] for k, v in
                           sorted(near.items(), key=lambda kv: (-kv[1], kv[0]))]
+            ips = [r[1] for r in rows if (r[3] <= reach[0]) and (r[1] is not None)]
+        else:
+            ips = []
+    else:
+        ips = []
+    if len(ips) < POLICY_MODEL_MIN_N:
+        ips = [ip for _mv, ip, _alone in (rec.get("foe_moves") or ()) if ip is not None]
+    # HOW OFTEN IT COULD PAY, at the decisions the mix was read from: P(its initiative >= k), k =
+    # 1..IP_AT_LEAST. A spender's share of the mix is a share of EVERY decision, and it can only be
+    # thrown at those where the creature held its cost - a cave angler throws Bristle at 0.129 of
+    # all its actions and at 0.268 of those where it held 3, flat across 3, 4, 5, 6 and 7 held
+    # (2026-09-23): a choice among the cards it can pay for, at fixed weights. Repertoire divides a
+    # spender's share by this, which is what keeps its long-run share at the measured one once the
+    # simulator stops dealing it to a creature that cannot pay.
+    if len(ips) >= POLICY_MODEL_MIN_N:
+        out["its_ip_at_least"] = [round(sum(1 for x in ips if x >= k) / float(len(ips)), 3)
+                                  for k in range(1, IP_AT_LEAST + 1)]
     return out
+
+
+# How far up its initiative the policy's affordability table runs - past the dearest card's 4.
+IP_AT_LEAST = 6
 
 
 def deepest_interval(intervals):
@@ -5346,7 +5632,7 @@ def foe_skill_joint(rec):
     # weight is its inverse square. That reproduces the note's own table - 8% at a gain of
     # 20, 15% at 10, 30% at 5 - and lets a gain of 3 contribute what it is worth instead of
     # nothing or the same as a gain of 20.
-    rows = [r for r in (rec.get("wd") or ())
+    rows = [r for r in pinned_rows(rec)
             if (len(r) > 9) and (r[3] > 0) and r[4] and (r[5] > 0)]
     if len(rows) < JOINT_MIN_ROWS:
         return None
@@ -5507,7 +5793,7 @@ def foe_skill_slope(rec):
     is not a measurement, and `band_lo`/`band_hi` is what the corpus does support for it.
     """
     pts = []
-    for r in (rec.get("wd") or ()):
+    for r in pinned_rows(rec):
         if (len(r) < 10) or not r[4] or not (r[5] > 0) or (r[3] < SLOPE_MIN_GAIN):
             continue
         our = our_skill(r)
@@ -5624,6 +5910,15 @@ def foe_skill_entry(rec):
     us". The bear's collapsed band (Shade's mu-inflated 583 against a floor of 250) was the
     same fault.
     """
+    out = _resolve_by_profile(rec, _foe_skill_by_slope(rec))
+    if out is not None:
+        # Working field, not a published one - see the combine in _foe_skill_percard.
+        out.pop("spread", None)
+    return out
+
+
+def _foe_skill_by_slope(rec):
+    """The per-card reading with the slope test applied - see foe_skill_entry."""
     out = _foe_skill_percard(rec)
     if out is None:
         return None
@@ -5668,6 +5963,203 @@ def foe_skill_entry(rec):
     return out
 
 
+# A profile interval wider than this factor is flat - the corpus bounds the creature and names
+# nothing - and is not published in place of the slope's answer.
+PROFILE_IDENTIFIABLE = 4.0
+# The per-individual spread a depth-scaled species publishes needs this many individuals whose
+# own profile is narrower than PROFILE_GOB_NARROW, from at least PROFILE_GOB_ROWS rows each.
+PROFILE_GOB_MIN, PROFILE_GOB_ROWS, PROFILE_GOB_NARROW = 3, 6, 3.0
+# The profile's grid step, and the least a published interval may be wide.
+PROFILE_GRID = 1.02
+# A character needs this many CLEAN rows before their own fit is asked to agree with the
+# pooled one, and their fit has to actually fit: a reduced chi-square past this says their
+# rows agree with no single skill at all, which is not evidence of a different one.
+PROFILE_CHAR_ROWS = 15
+PROFILE_CHAR_REDCHI = 3.0
+
+
+def foe_skill_profile(rec, rows=None):
+    """The opponent's skill from the likelihood of EVERY row, in band or not.
+
+    WHY THIS EXISTS (2026-09-17). The slope test answers "is this species in our band" and
+    then publishes the band as [max(S)/2, 2*min(S)] - an interval set by the two most extreme
+    rows in the corpus. Bear, moose and wolf all came out 204-208: one row at our skill 104
+    and one at 408 decided three different animals' answers. Red deer published a value of
+    632 from two Cleave rows.
+
+    An in-band row is not uninformative. It says equalize(S, F) = 1, i.e. F lies in
+    [S/2, 2S], and rows at different S move those edges; a row just outside the band says by
+    how much. So each row is scored against every candidate F by the model itself -
+
+        eq_observed = our skill / inverted Wd,   eq_predicted = equalize(S, F)
+
+    - in log space, weighted by its gain's precision exactly as foe_skill_joint weights it,
+    and the interval is every F within 9 (three deviations) of the minimum, scaled by the
+    reduced chi-square so rows that scatter more than their rounding says widen it rather
+    than fake a precision.
+
+    THE CONTROLS. Species far below every character's band are measured the old way, and
+    the profile reproduces them (bat 20.1 against the pack's 14.9-22.3, fox 29.5 against
+    19.2-36.2, badger 45.9 against 35.3-57.6). Refitting without BonkiDonki, whose card
+    levels are undatable, moves no big creature more than a grid step (bear and wolf 262,
+    moose 207, lynx 201, red deer 125-129). And the answers sort by toughness without being
+    told to: ants 5, bat 20, fox 30, badger 46, boar 99, red deer 129, lynx 201, bear 262,
+    narwhal 304, mammoth 637, orca 882 - which estimate_check holds them to.
+
+    Returns {value, lo, hi, obs, redchi} or None when there are too few rows or the profile
+    is flat past PROFILE_IDENTIFIABLE.
+    """
+    if rows is None:
+        rows = pinned_rows(rec)
+    else:
+        rows = [r for r in rows if pinned(r)]
+    obs = []
+    for r in rows:
+        if (len(r) <= 9) or not (r[3] > 0) or not r[4] or not (r[5] > 0):
+            continue
+        s = our_skill(r)
+        if s <= 0:
+            continue
+        sigma = GAIN_SIGMA / float(r[3])
+        obs.append((s, math.log(s / r[5]), 1.0 / (sigma * sigma)))
+    if len(obs) < JOINT_MIN_ROWS:
+        return None
+    lo_g = min(o[0] for o in obs) / 64.0
+    hi_g = max(o[0] for o in obs) * 64.0
+    grid, f = [], lo_g
+    while f <= hi_g:
+        grid.append(f)
+        f *= PROFILE_GRID
+
+    def ssq(F):
+        t = 0.0
+        for s, leq, w in obs:
+            d = leq - math.log(model.equalize(s, F))
+            t += w * d * d
+        return t
+
+    scored = [(ssq(F), F) for F in grid]
+    best_ssq, best = min(scored)
+    red = max(1.0, best_ssq / max(1, len(obs) - 1))
+    # THREE deviations, not two. The interval is compared with single gains by replay, and a
+    # single animal sits further from the species fit than the fit's own precision: at two
+    # the bear published 234-291 and a solo Cleave at standing 62 fell a point outside it.
+    ok = [F for v, F in scored if v <= best_ssq + 9.0 * red]
+    # NEVER TIGHTER THAN THE GRID ITSELF. With thousands of rows the set collapses to one
+    # grid point, and an interval one step wide is a statement about the step and not about
+    # the creature: on synthetic rows drawn at a known skill the ants' interval contained the
+    # truth 0 times in 40 for exactly that reason (wolf, bear and lynx, whose intervals are
+    # wider than a step, contained it 40/40).
+    lo, hi = min(ok) / PROFILE_GRID, max(ok) * PROFILE_GRID
+    if (hi / lo) > PROFILE_IDENTIFIABLE:
+        return None
+    return {"value": round(best, 1), "lo": round(lo, 1), "hi": round(hi, 1),
+            "obs": len(obs), "redchi": round(red, 2)}
+
+
+def profile_disagreement(rec, value):
+    """Characters whose own rows exclude the pooled fit, and what they say instead.
+
+    ONE SPECIES READ BY SEVERAL CHARACTERS IS SEVERAL MEASUREMENTS - the reason
+    wd_consensus_by_char exists, and the reason a pooled median can sit where nobody
+    measured. The pooled profile can do the same: on synthetic rows it recovers a known
+    skill 40 times in 40, so its width is honest about NOISE, and what it cannot see is a
+    systematic difference between characters. BonkiDonki's 77 wolf rows fit 102 (88-115)
+    against a pooled 262; Santa Samus's 186 boar rows fit 65 (58-76) against 99; ZzxcuV3's
+    33 red deer rows fit 343 (323-353) against 129.
+
+    Returns [(char, value, lo, hi)] for the characters that exclude `value`.
+    """
+    bychar = defaultdict(list)
+    for r in pinned_rows(rec):
+        # CLEAN FIGHTS ONLY, and this is what the rule turns on. Every character who
+        # dissented about the wolf had NO clean wolf rows at all - BonkiDonki 0 of 77,
+        # ZzxcuV3 0 of 99 - because wolves come in packs, and a third party's gain inside our
+        # bracket is not evidence about the wolf. Pooled, the wolf's group rows fit with a
+        # reduced chi-square of 4.00 against 1.30 for its clean ones.
+        if (len(r) > 9) and r[9] and r[8]:
+            bychar[r[9]].append(r)
+    out = []
+    for c, sub in sorted(bychar.items()):
+        if len(sub) < PROFILE_CHAR_ROWS:
+            continue
+        got = foe_skill_profile(rec, sub)
+        # A fit that fits nothing is not a second opinion: BonkiDonki's twelve clean boar
+        # rows come back at a reduced chi-square of 20.
+        if got and (got.get("redchi") or 0) > PROFILE_CHAR_REDCHI:
+            continue
+        if got and not (got["lo"] <= value <= got["hi"]):
+            out.append((c, got["value"], got["lo"], got["hi"]))
+    return out
+
+
+def _resolve_by_profile(rec, out):
+    """Replace a band or a dispute with the profile, and widen a depth-scaled species.
+
+    Only where the slope path could not name the creature - equalized or disputed - or where
+    the species pools mine floors. A species the slope already measures keeps its per-row
+    spread, which is a range over individuals and wider than any profile of a mean.
+
+    MINE CREATURES ARE A RANGE OVER FLOORS (creature-notes.json), and no log records the
+    floor. So a single fitted F describes no individual: cave angler fits 386 pooled, while
+    its individuals' own profiles run 78 to 503 and green ooze's 27 to 397, the ooze's
+    split-offs at the bottom. One individual's rows are too few to trust alone - the same
+    fit scatters bears between 58 and 263 - so the published range is the span of the
+    individuals' best fits, joined with the pooled profile, and the entry says `blended`.
+    """
+    prof = foe_skill_profile(rec)
+    depth = is_depth_scaled(rec.get("res"), (rec.get("wiki") or {}).get("name"))
+    if prof is None:
+        return out
+    # A per-card reading resting on one card is a single inversion wearing a spread - the
+    # mammoth published 711 from one Knock Its Teeth Out row - so it is displaced too.
+    thin = (out is not None) and ((out.get("n") or 0) < 2)
+    if (out is not None) and not (out.get("equalized") or out.get("disputed") or depth or thin):
+        return out
+    new = dict(out or {})
+    if new.get("value") is not None and ("naive" not in new):
+        new["naive"] = new["value"]
+    if ("naive_lo" not in new) and (new.get("lo") is not None):
+        new["naive_lo"], new["naive_hi"] = new.get("lo"), new.get("hi")
+    lo, hi = prof["lo"], prof["hi"]
+    if depth:
+        gobs = defaultdict(list)
+        for r in rec.get("wd") or ():
+            if len(r) > 10:
+                gobs[r[10]].append(r)
+        fits = []
+        for sub in gobs.values():
+            if len(sub) < PROFILE_GOB_ROWS:
+                continue
+            g = foe_skill_profile(rec, sub)
+            if g and (g["hi"] / g["lo"]) <= PROFILE_GOB_NARROW:
+                fits.append(g["value"])
+        fits.sort()
+        if len(fits) >= PROFILE_GOB_MIN:
+            # The whole span, not p10-p90: the floors at either end are real creatures, and a
+            # solo green ooze read stronger than the p90 individual in replay.
+            lo = min(lo, fits[0])
+            hi = max(hi, fits[-1])
+            new["individuals"] = len(fits)
+        new["blended"] = "depth"
+    # AND WHERE THE CHARACTERS DISAGREE, THE RANGE ADMITS IT. See profile_disagreement: the
+    # pooled interval is honest about noise and blind to a systematic difference between
+    # characters, and this corpus has produced one three times before.
+    dis = profile_disagreement(rec, prof["value"])
+    for _c, _v, dlo, dhi in dis:
+        lo, hi = min(lo, dlo), max(hi, dhi)
+    new.update({"value": prof["value"], "lo": round(lo, 1), "hi": round(hi, 1),
+                "equalized": False, "profile_obs": prof["obs"], "redchi": prof["redchi"],
+                "resolved": "profile: every row scored against equalize(S, F)"})
+    if dis:
+        new["chars_disagree"] = [{"char": c, "value": v, "lo": l, "hi": h}
+                                 for c, v, l, h in dis]
+    new.pop("disputed", None)
+    new.pop("bound_lo", None)
+    new.pop("bound_hi", None)
+    return new
+
+
 def _foe_skill_percard(rec):
     """The per-card reading: invert each row, guess its branch, and see if the cards agree.
 
@@ -5694,7 +6186,7 @@ def _foe_skill_percard(rec):
     wd_consensus_by_char exists for the same reason). The rows are split by character and
     the per-character entries combined honestly.
     """
-    rows = [r for r in (rec.get("wd") or ()) if len(r) > 9 and r[9]]
+    rows = [r for r in pinned_rows(rec) if len(r) > 9 and r[9]]
     chars = sorted(set(r[9] for r in rows))
     if len(chars) > 1:
         parts = []
@@ -5714,14 +6206,28 @@ def _foe_skill_percard(rec):
             for mv in p.get("moves") or ():
                 if mv not in moves:
                     moves.append(mv)
-        lo = min(p["lo"] for p in parts)
-        hi = max(p["hi"] for p in parts)
+        # THE TAILS COME FROM THE POOLED ROWS, NOT FROM THE OUTERMOST PART. Taking the
+        # smallest part's `lo` lets ONE contaminated row in a thin part set the published
+        # bound: a third party's gain landing inside our bracket inflates the gain, which can
+        # only ever read the creature WEAKER, and every species has a few. ZzxcuV3's seven
+        # royal guard ant rows hold one inverting to 2.8 against a median of 32, and 2.8 was
+        # the published floor; the honeybee's was 2.8 from the same shape. Pooling the rows and
+        # taking the same tenth-percentile of all of them keeps the interval a range over
+        # ANIMALS while a handful of bad rows no longer decide its edge.
+        pooled = sorted(x for p in parts for x in (p.get("spread") or ()))
+        if len(pooled) >= 10:
+            lo = pooled[int(len(pooled) * 0.10)]
+            hi = pooled[min(len(pooled) - 1, int(len(pooled) * 0.90))]
+        else:
+            lo = min(p["lo"] for p in parts)
+            hi = max(p["hi"] for p in parts)
         n = sum(p.get("n") or 0 for p in parts)
         obs = sum(p.get("obs") or 0 for p in parts)
         if not vals:
             return {"value": None, "lo": round(lo, 1), "hi": round(hi, 1),
                     "n": 0, "moves": moves, "equalized": True}
         med = vals[len(vals) // 2]
+        lo, hi = min(lo, med), max(hi, med)
         out = {"value": round(med, 1), "lo": round(lo, 1), "hi": round(hi, 1),
                "n": n, "obs": obs, "moves": moves, "equalized": False}
         # A creature read differently by different characters is exactly the case the split
@@ -5756,7 +6262,7 @@ def _foe_skill_percard(rec):
             out["bound_lo"], out["bound_hi"] = round(blo, 1), round(bhi, 1)
         return out
     bymove = defaultdict(list)
-    for row in rec.get("wd") or ():
+    for row in pinned_rows(rec):
         if (row[3] >= MIN_GAIN) and row[4] and (row[5] > 0):
             bymove[row[0]].append((our_skill(row), row[5]))
     ests, spread, lo_b, hi_b, used = [], [], 0.0, float("inf"), []
@@ -5840,7 +6346,9 @@ def _foe_skill_percard(rec):
         disputed = (hi_b < float("inf")) and not (lo_b <= med <= hi_b)
         out = {"value": round(med, 1),
                "lo": round(lo, 1), "hi": round(hi, 1),
-               "n": len(ests), "obs": k, "moves": used, "equalized": False}
+               "n": len(ests), "obs": k, "moves": used, "equalized": False,
+               # The inversions themselves, for the combine above - see the note there.
+               "spread": spread}
         if thin:
             # Named, because a reader comparing `moves` with `obs` would otherwise find
             # more observations than the listed cards can account for.
@@ -5863,6 +6371,30 @@ def _foe_skill_percard(rec):
         return {"value": None, "lo": round(spread[0], 1), "hi": round(spread[-1], 1),
                 "n": 0, "moves": [], "also_seen": thin, "equalized": False}
     return None
+
+
+def pinned(row):
+    """Whether this row's attack weight is a number rather than an interval.
+
+    mu is an input, and an undatable deck leaves it as the whole 1.0-1.5 range (mu_bounds).
+    The row's `wa` field is the BOTTOM of that range, so an unpinned row's inverted Wd reads
+    up to a third low and the creature reads correspondingly weak. It is 16% of the corpus and
+    it is one character's: BonkiDonki, whose only deck dump postdates his fights, reads the
+    ant family 14-49% weaker than the other three (ants x0.86, warrior ant x0.55, red ants
+    x0.51) - the same direction and roughly the same size.
+
+    The interval fields (6, 7) carry the range honestly and their consumers are unaffected.
+    Everything that inverts a row to a POINT skips an unpinned row instead: see pinned_rows.
+
+    Rows written before this field are treated as pinned, which is what they were assumed to
+    be before it existed.
+    """
+    return (len(row) <= 12) or bool(row[12])
+
+
+def pinned_rows(rec):
+    """The rows whose attack weight is a number - see pinned()."""
+    return [r for r in (rec.get("wd") or ()) if pinned(r)]
 
 
 def our_skill(row):
@@ -5998,7 +6530,7 @@ def equalization_verdict(rec):
     # rec["wd"] rows are (move, colour, standing, gain, wa, wd, lo, hi, clean, char, gob, skill).
     # Compared on our SKILL, not our attack weight - see our_skill.
     bymove = defaultdict(list)
-    for row in rec.get("wd") or ():
+    for row in pinned_rows(rec):
         if row[3] >= MIN_GAIN and row[4] and row[5] > 0:
             bymove[row[0]].append((our_skill(row), row[5]))
     pairs = []
@@ -6499,6 +7031,10 @@ def report(per, moves):
         print()
 
 
+# The fewest gaps a pace is read from - see period_of.
+PACE_MIN_GAPS = 30
+
+
 def period_of(gaps_ms):
     """How often this creature acts, in ticks, from the gaps between its own actions.
 
@@ -6568,7 +7104,15 @@ def period_of(gaps_ms):
         if len(peaks) == 3:
             break
 
+    # THE PACE: how much of that clock it keeps up once the lulls are counted back in, as the
+    # trimmed mean over the whole mean - 1 for a creature that never pauses. The period answers
+    # "how soon after a card does the next come"; how often it hits us over a fight also needs
+    # the lulls, which are part of the fight. Wolves run off and return, and read the corpus's
+    # lowest pace (FoeModel.pace). Only where enough gaps say it.
+    whole = sum(ticks) / len(ticks)
+    pace = round(mean / whole, 3) if (whole > 0 and len(ticks) >= PACE_MIN_GAPS) else None
     return {"ticks": round(mean, 1), "n": len(kept), "dropped": len(ticks) - len(kept),
+            "pace": pace,
             "median": round(med, 1), "lo": round(kept[0], 1), "hi": round(kept[-1], 1),
             "modes": peaks}
 
@@ -6774,7 +7318,7 @@ def threat(rec):
     # simulator to apply it at any defence at all.
     against = (sum(wds) / len(wds)) if wds else None
 
-    coefs, soak_shares = [], []
+    coefs, soak_shares, pairs = [], [], []
     for h in (rec.get("took") or ()):
         o = [min(x, 100) / 100.0 for x in (h.get("openings") or [])]
         if len(o) != 4:
@@ -6797,7 +7341,7 @@ def threat(rec):
         # and the simulator applies our armour to it, so a change of gear is answered
         # rather than ignored. FoeModel.act does that soaking; nothing here should.
         swing = (h.get("shp") or 0) + (h.get("soaked") or 0)
-        if swing <= 0:
+        if swing < 0:
             continue
         # THE SHARE OUR ARMOUR STOPPED, over this creature's own cards - the averaged
         # action's penetration is its complement. Hits the armour touched, and of 4 points
@@ -6812,10 +7356,12 @@ def threat(rec):
         # dividing by a combined opening near zero would turn that into a huge number.
         if c < 0.05:
             continue
-        coefs.append(swing / (c * c))
+        pairs.append((swing, c))
+        if swing > 0:
+            coefs.append(swing / (c * c))
     coefs.sort()
     soak_shares.sort()
-    damage = ({"coef": round(coefs[len(coefs) // 2], 1), "n": len(coefs),
+    damage = ({"coef": ratio_coef(pairs), "n": len(coefs),
                "lo": round(coefs[0], 1), "hi": round(coefs[-1], 1),
                # So no reader mistakes this for the old figure, which meant the opposite.
                "before_armour": True,
@@ -6884,11 +7430,15 @@ WEAPON_RES = {
     "stoneaxe": "Stone Axe",
     "woodsmansaxe": "Woodsman's Axe",
     "butcherscleaver": "Butcher's Cleaver",
+    # Both confirmed by gear rows (2026-09-17). The Hirdsman's Sword was listed here as
+    # "hirdswordsman", a guess that never matched, so a fight that swapped to one kept pricing
+    # whatever the hands held before - a stone axe at 3.1x on every blow.
+    "hirdsword": "Hirdsman's Sword",
+    "axe-m": "Metal Axe",
     # Not seen in this corpus. Kept because the table has the rows and a fight with one
     # would otherwise decline silently, which is the defect above; they are unconfirmed
     # spellings and the first log carrying one will say whether they were right.
     "cutblade": "Cutblade",
-    "hirdswordsman": "Hirdsman's Sword",
     "battleaxe": "Battleaxe of the Twelfth Bay",
     "boarspear": "Boar Spear",
 }
@@ -7317,6 +7867,10 @@ def write_pack(per, moves):
                 {"lo": (round(iv[0], 1) if iv[0] > 0 else None),
                  "hi": (round(iv[1], 1) if iv[1] != float("inf") else None),
                  "capped": iv[2], "our_agility": agi_me})
+        cons = agility_consensus(rec)
+        if cons is not None:
+            entry["agility"] = entry["agility"] or {}
+            entry["agility"]["consensus"] = cons
 
         arm = fit_armour(rec["soak"], rec.get("soak_clean"))
         wiki_arm = wiki_value(rec.get("wiki"), "armor")

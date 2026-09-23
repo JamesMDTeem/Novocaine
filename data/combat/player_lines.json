@@ -1,0 +1,6106 @@
+{
+ "format": 1,
+ "note": "player_lines.py - the lines our characters threw to kill each creature, most common first; offered to the live search beside its own (Optimizer.search).",
+ "species": {
+  "adder": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 28
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 27
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/zigzag",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "ants": [
+   {
+    "line": [
+     "paginae/atk/dash",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/dash",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/sidestep"
+    ],
+    "n": 1
+   }
+  ],
+  "badger": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 36
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 28
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 24
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 17
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 13
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 12
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/zigzag",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 4
+   }
+  ],
+  "bat": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 405
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 345
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 88
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 49
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 38
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 17
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 15
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 11
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/sideswipe",
+     "paginae/atk/sideswipe",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   }
+  ],
+  "bear": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 11
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   }
+  ],
+  "beaver": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/takeaim",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   }
+  ],
+  "beelarva": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 65
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 37
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 32
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   }
+  ],
+  "beeswarm": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "bloodstalker": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 36
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 30
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 18
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 16
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 13
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge"
+    ],
+    "n": 2
+   }
+  ],
+  "boar": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 23
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 20
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   }
+  ],
+  "boreworm": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/sideswipe",
+     "paginae/atk/sideswipe",
+     "paginae/atk/sideswipe",
+     "paginae/atk/sideswipe",
+     "paginae/atk/sideswipe",
+     "paginae/atk/sideswipe"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave",
+     "paginae/atk/sting",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "cattle": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/zigzag",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   }
+  ],
+  "caveangler": [
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "cavelouse": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/oppknock",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "caverat": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 19
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 16
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/dash",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "crane": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 12
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "denmother": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 18
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 15
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   }
+  ],
+  "eagleowl": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "fatbat": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 65
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 61
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 26
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 24
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 11
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   }
+  ],
+  "fox": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 21
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 18
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 15
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 13
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   }
+  ],
+  "goldeneagle": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "goshawk": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "greenooze": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 21
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/dash",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   }
+  ],
+  "greyseal": [
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut"
+    ],
+    "n": 1
+   }
+  ],
+  "honeybee": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 56
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 41
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 40
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 19
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   }
+  ],
+  "horse": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/zigzag"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/jump",
+     "paginae/atk/sidestep",
+     "paginae/atk/sidestep"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   }
+  ],
+  "lynx": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/zigzag",
+     "paginae/atk/flex",
+     "paginae/atk/cleave",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave",
+     "paginae/atk/sting",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/artevade",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "mammoth": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "moose": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   }
+  ],
+  "narwhal": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/artevade",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/artevade",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/flex"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "otter": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   }
+  ],
+  "pelican": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   }
+  ],
+  "polarbear": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "queenant": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/oppknock",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   }
+  ],
+  "queenbee": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/oppknock"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/sidestep",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/oppknock"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "redants": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/sidestep",
+     "paginae/atk/uppercut"
+    ],
+    "n": 1
+   }
+  ],
+  "reddeer": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 25
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 15
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 12
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   }
+  ],
+  "reindeer": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 13
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 12
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 11
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   }
+  ],
+  "roedeer": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/sideswipe"
+    ],
+    "n": 1
+   }
+  ],
+  "royalguardant": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 28
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 25
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 23
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 21
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 13
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 11
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   }
+  ],
+  "sentinelbee": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 43
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 38
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 34
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 33
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 16
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 11
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/sidestep",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   }
+  ],
+  "sheep": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "spermwhale": [
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fdodge",
+     "paginae/atk/fdodge",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/sting",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut"
+    ],
+    "n": 1
+   }
+  ],
+  "stoat": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 37
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 15
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 14
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/dash",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "swan": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "vampire": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 37
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 20
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 16
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   }
+  ],
+  "vulturebee": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 60
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 35
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 32
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 19
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 13
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   }
+  ],
+  "walrus": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/artevade",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/dash",
+     "paginae/atk/dash",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/dash",
+     "paginae/atk/dash",
+     "paginae/atk/dash",
+     "paginae/atk/dash",
+     "paginae/atk/dash"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/sidestep",
+     "paginae/atk/sidestep",
+     "paginae/atk/sidestep",
+     "paginae/atk/sidestep",
+     "paginae/atk/zigzag",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "warriorant": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 38
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 35
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 24
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 20
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 9
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 8
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   }
+  ],
+  "warriordrone": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 81
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 62
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 32
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 30
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 18
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/qdodge",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/fullcircle",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   }
+  ],
+  "wildgoat": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 7
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 6
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 5
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 3
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "wolf": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 47
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 35
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 25
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 18
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 17
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 15
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 14
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 14
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 14
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 10
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 9
+   }
+  ],
+  "wolverine": [
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 4
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 2
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting",
+     "paginae/atk/sting",
+     "paginae/atk/qdodge",
+     "paginae/atk/qdodge",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ],
+  "woodscorpion": [
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/flex",
+     "paginae/atk/flex",
+     "paginae/atk/sting"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/cleave"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim",
+     "paginae/atk/takeaim"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/barrage",
+     "paginae/atk/uppercut",
+     "paginae/atk/fullcircle",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut",
+     "paginae/atk/uppercut"
+    ],
+    "n": 1
+   },
+   {
+    "line": [
+     "paginae/atk/sideswipe",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/barrage",
+     "paginae/atk/fullcircle"
+    ],
+    "n": 1
+   }
+  ]
+ }
+}

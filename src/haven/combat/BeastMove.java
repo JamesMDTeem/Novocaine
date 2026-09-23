@@ -54,6 +54,26 @@ public final class BeastMove {
      */
     public final boolean[] attackColours;
 
+    /**
+     * Its cooldown at an agility factor of one, or NaN where the corpus could not divide ours out.
+     *
+     * ITS ATTACKS RUN ON OUR AGILITY as ours run on its (2026-09-23): the same Fell Scratch comes
+     * round in 40 ticks against a slow character and 49 against a fast one, and 44 at factor one
+     * in every band. {@link #cooldown} is the blend over whoever fought it; this is the card.
+     */
+    public final double cooldownBase;
+    /** Whether {@link #cooldownBase} rides the agility rule - an attack does, a maneuver does not. */
+    public final boolean agilityScaled;
+    /**
+     * Initiative this card adds to its thrower's pool against us, and what it spends from it.
+     *
+     * CREATURES PAY FOR THEIR BIG CARDS (2026-09-23). Fell Scratch earns a point and Bear Down two;
+     * Bristle spends three, Tail Splash four, Chomp two - and a spender is never thrown short of
+     * its cost (Bristle below 3 in 3% of 755 throws, the stale state after an update). So the cost
+     * is also the requirement, and a card the creature cannot pay for is not in its hand.
+     */
+    public final int ipGain, ipCost;
+
     public BeastMove(String name, double[] openings, double damageCoef, long cooldown,
                      double[] restores, double grievous, double soaked) {
         this(name, openings, damageCoef, cooldown, restores, grievous, soaked, null);
@@ -61,6 +81,17 @@ public final class BeastMove {
 
     public BeastMove(String name, double[] openings, double damageCoef, long cooldown,
                      double[] restores, double grievous, double soaked, boolean[] attackColours) {
+        this(name, openings, damageCoef, cooldown, restores, grievous, soaked, attackColours,
+             Double.NaN, false, 0, 0);
+    }
+
+    public BeastMove(String name, double[] openings, double damageCoef, long cooldown,
+                     double[] restores, double grievous, double soaked, boolean[] attackColours,
+                     double cooldownBase, boolean agilityScaled, int ipGain, int ipCost) {
+        this.cooldownBase = cooldownBase;
+        this.agilityScaled = agilityScaled;
+        this.ipGain = Math.max(0, ipGain);
+        this.ipCost = Math.max(0, ipCost);
         this.attackColours = attackColours;
         this.name = name;
         this.openings = (openings == null) ? new double[4] : openings;
@@ -90,6 +121,24 @@ public final class BeastMove {
                 return(true);
         }
         return(!Double.isNaN(damageCoef) && (damageCoef > 0));
+    }
+
+    /**
+     * The gap this card sets when thrown by a creature of agility {@code agiIt} at us at {@code agiUs}.
+     *
+     * The measured base scaled by clamp(agiUs/agiIt, 1/2, 2)^(1/7) and rounded, as our own attacks
+     * are ({@link Formulas#cooldownTicks}); the blended {@link #cooldown} wherever either agility or
+     * the base is unknown, or the card is a maneuver. 0 means unmeasured, as for {@link #cooldown}.
+     */
+    public long cooldownAgainst(double agiUs, double agiIt) {
+        if(!agilityScaled || !(cooldownBase > 0) || !(agiUs > 0) || !(agiIt > 0))
+            return(cooldown);
+        return(Math.round(cooldownBase * Formulas.agilityCooldownFactor(agiIt, agiUs)));
+    }
+
+    /** Whether a thrower holding {@code ip} initiative against us can pay for this card. */
+    public boolean affordable(double ip) {
+        return(ipCost <= 0 || ip >= ipCost);
     }
 
     public String toString() {

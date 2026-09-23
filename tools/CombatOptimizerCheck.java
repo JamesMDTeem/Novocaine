@@ -216,6 +216,8 @@ public class CombatOptimizerCheck {
 
     public static void main(String[] args) {
         advisor();
+        creaturePurse();
+        shownLines();
         whenAttacked();
         beamAndDeckSize();
         inertFoe();
@@ -445,6 +447,101 @@ public class CombatOptimizerCheck {
      * second fighter behind the same person in front can only add blows to the creature,
      * so the fastest kill cannot get slower.
      */
+    /**
+     * A line a player has shown is never beaten by the pick (James, 2026-09-22: "it should never
+     * have a worse outcome than a player displayed one").
+     *
+     * Random lines over four cards, each stepped by Optimizer.follow, then offered to a search
+     * crippled to a beam of ONE and given only two of the cards - so it cannot find them itself -
+     * and each aim's pick is held to
+     * the line on ticks, hitpoints and armour at the aims' own resolution (Advisor.TICK_EPS,
+     * HP_EPS). The exact guarantee is the frontier's: every shown line is on it or beaten on all
+     * four axes. The control is the same search NOT offered the lines: its frontier must miss some,
+     * or this check proves nothing. (Its PICKS rarely lose here - the rhythm seeds cover random
+     * lines in a synthetic fight - which is why the corpus is the pick-level control: 18 losses
+     * unseeded, 0 seeded, StrategyVsPlayer 2026-09-22.)
+     */
+    static void shownLines() {
+        System.out.println("\nthe pick is never worse than a line it was shown");
+        double[] press = {14, 0, 0, 0};
+        FoeModel steady = new FoeModel(45, press, 312.5, 90.0, 20, 20);
+        /* A heavy blow the search is never handed. Over the same cards the rhythm seeds and even a
+         * one-wide beam already reach the best line in a synthetic fight (3,270 enumerated lines,
+         * none uncovered), so a line only a player could show has to use something the search did
+         * not explore - which is exactly the case the guarantee is for. */
+        Move heavy = Move.of("Haymaker").kind(Move.Kind.ATTACK).weight(Move.Weight.UNARMED)
+            .school(Formulas.RED).opens(Formulas.RED, 30).flatDamage(400).cooldown(20).build();
+        List<Move> cards = java.util.Arrays.asList(barrage(), fullCircle(), quickDodge(), heavy);
+        List<Move> searched = java.util.Arrays.asList(barrage(), fullCircle());
+        java.util.Random rnd = new java.util.Random(20260922L);
+        int lines = 0, worse = 0, controlWorse = 0, uncovered = 0, controlUncovered = 0;
+        Advisor.Aim[] aims = {Advisor.Aim.FASTEST, Advisor.Aim.SAFEST, Advisor.Aim.SURVIVE};
+        for(int i = 0; i < 150; i++) {
+            List<Move> l = new java.util.ArrayList<Move>();
+            int n = 2 + rnd.nextInt(11);
+            for(int k = 0; k < n; k++)
+                l.add(cards.get(rnd.nextInt(cards.size())));
+            List<Move> cyc = new java.util.ArrayList<Move>();
+            while(cyc.size() < 400)
+                cyc.addAll(l);
+            Combatant[] f = {foe(400, 20)};
+            FoeModel[] mm = {steady};
+            Optimizer.Plan p = Optimizer.follow(tough(), f, mm, cards, cyc, 2500, null, null);
+            if(!p.killed)
+                continue;
+            lines++;
+            /* The search is given only two of the cards, so a line leaning on the others is one it
+             * cannot produce itself - the case the guarantee exists for. */
+            List<Optimizer.Plan> seeded = Optimizer.search(tough(), f, searched, mm, 1, 2500, null, null, null,
+                                                           java.util.Collections.singletonList(l));
+            List<Optimizer.Plan> alone = Optimizer.search(tough(), f, searched, mm, 1, 2500);
+            if(!covered(seeded, p))
+                uncovered++;
+            if(!covered(alone, p))
+                controlUncovered++;
+            for(Advisor.Aim aim : aims) {
+                if(loses(Advisor.choose(seeded, aim, 1e9), p))
+                    worse++;
+                if(loses(Advisor.choose(alone, aim, 1e9), p))
+                    controlWorse++;
+            }
+        }
+        System.out.printf("      %d killing lines; frontier covers them: alone misses %d, seeded %d;%n"
+                          + "      aims' picks lose to them: alone %d, seeded %d%n",
+                          lines, controlUncovered, uncovered, controlWorse, worse);
+        check("  there are lines to test", lines >= 20, true);
+        check("  the control bites: the frontier alone misses some", controlUncovered > 0, true);
+        check("  shown the line, the frontier covers every one exactly", uncovered, 0);
+        check("  and no aim's pick is worse than it", worse, 0);
+    }
+
+    static Combatant tough() {
+        Combatant c = me();
+        c.hp = c.maxHp = 900;
+        return(c);
+    }
+
+    /** Whether the frontier holds a plan at least as good as {@code p} on all four axes, exactly. */
+    static boolean covered(List<Optimizer.Plan> front, Optimizer.Plan p) {
+        for(Optimizer.Plan x : front) {
+            if((x.ticks <= p.ticks) && !(x.cost() > p.cost() + 1e-9) && (x.soaked <= p.soaked + 1e-9)
+               && (x.wounds >= p.wounds - 1e-9))
+                return(true);
+        }
+        return(false);
+    }
+
+    /** Whether plan q is no better than line p on any measure and worse on one, at the aims' resolution. */
+    static boolean loses(Optimizer.Plan q, Optimizer.Plan p) {
+        if(q == null)
+            return(true);
+        boolean ge = (q.ticks >= p.ticks - Advisor.TICK_EPS) && (q.hpLost >= p.hpLost - Advisor.HP_EPS)
+            && (q.soaked >= p.soaked - Advisor.HP_EPS);
+        boolean le = (q.ticks <= p.ticks + Advisor.TICK_EPS) && (q.hpLost <= p.hpLost + Advisor.HP_EPS)
+            && (q.soaked <= p.soaked + Advisor.HP_EPS);
+        return(ge && !le);
+    }
+
     static void party() {
         System.out.println("\na party of one plans what the optimizer plans");
         double[] press = {14, 0, 0, 0};
@@ -534,6 +631,62 @@ public class CombatOptimizerCheck {
      * that was 0% while we stood shut and is 50% once green opens would be thrown on every action
      * until it caught up.
      */
+    /**
+     * A creature pays for its cards and its attacks run on our agility (2026-09-23).
+     *
+     * A card that costs 3 is never thrown holding less, and holding enough it is thrown at its
+     * share over the share of decisions at which it could pay - so over a fight it comes out at the
+     * measured mix instead of a third of it. Earning and spending move the pool. An attack's gap is
+     * its base scaled by clamp(ours/its, 1/2, 2)^(1/7), rounded; a maneuver's is its measured gap.
+     */
+    static void creaturePurse() {
+        System.out.println("\na creature pays for its cards, and swings on our agility");
+        BeastMove earn = new BeastMove("earn", new double[] {5, 0, 0, 0}, 10, 30, new double[4], 0,
+                                       0.8, null, 44, true, 1, 0);
+        BeastMove spend = new BeastMove("spend", new double[] {0, 5, 0, 0}, 40, 30, new double[4], 0,
+                                        0.8, null, 44, true, 0, 3);
+        BeastMove brace = new BeastMove("brace", new double[4], Double.NaN, 29,
+                                        new double[] {0.2, 0.2, 0.2, 0.2}, 0, Double.NaN, null, 26,
+                                        false, 1, 0);
+        Repertoire rep = new Repertoire(new BeastMove[] {earn, spend}, new double[] {0.8, 0.2},
+                                        null, 0, null, null);
+        rep.ipAtLeast = new double[] {0.9, 0.7, 0.5, 0.3};
+        Combatant poor = foe(400, 20), rich = foe(400, 20);
+        poor.ip = 2;
+        rich.ip = 3;
+        check("a card it cannot pay for is out of its hand", rep.mixNow(me(), poor)[1], 0.0);
+        near("  and holding the cost, its share over P(could pay)", rep.mixNow(me(), rich)[1],
+             (0.2 / 0.5) / (0.8 + (0.2 / 0.5)), 1e-9);
+
+        FoeModel fm = new FoeModel(30, new double[4], 0, 10, 1, 1, Double.NaN, new int[0],
+                                   Double.NaN, null, 0, null, null, null, rep);
+        Combatant self = foe(100000, 20), us = me();
+        us.hp = us.maxHp = 1e9;
+        int[] tally = new int[rep.tallySize()];
+        int spent = 0, short_ = 0, n = 400;
+        for(int k = 0; k < n; k++) {
+            int before = self.ip;
+            fm.act(us, us.defenceWeight(), self, k, tally, null);
+            if(self.ip < before) {
+                spent++;
+                if(before < 3)
+                    short_++;
+            }
+        }
+        check("  it never pays short", short_, 0);
+        near("  and over a fight it throws the card near its measured share", spent / (double)n, 0.2, 0.05);
+        System.out.printf("      spender thrown %d of %d actions%n", spent, n);
+
+        us.agi = 300;
+        check("an attack against a character twice as quick: the base at the clamp",
+              earn.cooldownAgainst(300, 100), Math.round(44 * Math.pow(2, 1.0 / 7)));
+        check("  against one much slower", earn.cooldownAgainst(50, 250),
+              Math.round(44 * Math.pow(0.5, 1.0 / 7)));
+        check("  a maneuver keeps its measured gap", brace.cooldownAgainst(300, 100), 29L);
+        check("  and an attack with no agility known does too", earn.cooldownAgainst(Double.NaN, 100),
+              30L);
+    }
+
     static void dealing() {
         System.out.println("\nwhat a creature throws, given the state it is in");
         BeastMove a = new BeastMove("a", new double[] {5, 0, 0, 0}, 10, 30, new double[4], 0, 0.8);

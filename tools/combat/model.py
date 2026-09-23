@@ -106,13 +106,17 @@ def combined(openings):
 
 
 def agility_cooldown_factor(agi_me, agi_foe):
-    """1 - 0.1 * clamp(log2(agi_me / agi_foe), -1, +1). Attacks only; maneuvers are
-    not modified by relative agility."""
+    """clamp(agi_foe / agi_me, 1/2, 2) ** (1/7). Attacks only; maneuvers are not modified
+    by relative agility. The power law is the client table's and the corpus's - see
+    Formulas.agilityCooldownFactor for the evidence against the old 1 - 0.1*log2 form."""
     if agi_me <= 0 or agi_foe <= 0:
         return 1.0
-    l = math.log2(agi_me / agi_foe)
-    l = max(-1.0, min(1.0, l))
-    return 1.0 - (0.1 * l)
+    r = max(0.5, min(2.0, agi_foe / agi_me))
+    return r ** AGILITY_EXPONENT
+
+
+# The exponent of the agility ratio in the cooldown multiplier.
+AGILITY_EXPONENT = 1.0 / 7.0
 
 
 def cooldown_scales(mv):
@@ -126,6 +130,23 @@ def cooldown_scales(mv):
     fixed (level, initiative) slice, which is what makes it usable as a control.
     """
     return bool(mv.get("ip_scale")) or bool(mv.get("cooldown_mu"))
+
+
+def takes_agility(mv):
+    """Whether a card's cooldown rides the relative-agility band - mirrors Move.takesAgility.
+
+    An attack does, by its type or by its skill alone (Opportunity Knocks has only the skill).
+    So does a card that hands openings to the opponent: Feigned Dodge declares neither, and its
+    base-35 cooldown reads 32 against slow opponents and 39 against a fast one - 0.9 x 35 and
+    1.1 x 35 rounded half up, the two ends of the band (2026-09-21). Every card that acts only
+    on us - Quick Dodge, Sidestep, Jump, Artful Evasion, Zig-Zag Ruse - holds its base across
+    hundreds of throws on land and in water.
+    """
+    if not mv:
+        return False
+    if mv.get("attack_types") or mv.get("attack_skill"):
+        return True
+    return any("given to the opponent" in (n or "") for n in (mv.get("notes") or []))
 
 
 def cooldown_ticks(base, mu_divides, mu, ip_scale, ip, is_attack, agi_me, agi_foe):

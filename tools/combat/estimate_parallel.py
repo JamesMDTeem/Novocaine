@@ -334,7 +334,7 @@ def _weapons_seen_chunk(paths):
             base = res.rsplit("/", 1)[-1]
             q = ql.get(res)
             rec = out.setdefault(base, {"res": res, "n": 0, "quality": [],
-                                        "recovered_base": []})
+                                        "recovered_base": [], "base_iv": []})
             rec["n"] += 1
             for k in ("damage", "armpen", "range", "grievous"):
                 if k in v:
@@ -342,6 +342,12 @@ def _weapons_seen_chunk(paths):
             if q and (q > 0):
                 rec["quality"].append(round(q, 4))
                 rec["recovered_base"].append(round(v["damage"] / math.sqrt(q / 10.0), 3))
+                # What this ONE sighting pins the base to. The tooltip rounds to the nearest
+                # whole point (measured 2026-09-21: under rounding every weapon's sightings
+                # share one base and it is the wiki's; floor and ceiling each break one), so a
+                # shown 24 is anything in [23.5, 24.5) and the base is that over sqrt(ql/10).
+                f = math.sqrt(q / 10.0)
+                rec["base_iv"].append(((v["damage"] - 0.5) / f, (v["damage"] + 0.5) / f))
     return out
 
 
@@ -351,13 +357,14 @@ def weapons_seen_merge(parts):
     for part in parts:
         for base, rec in part.items():
             dst = merged.setdefault(base, {"res": rec["res"], "n": 0, "quality": [],
-                                           "recovered_base": []})
+                                           "recovered_base": [], "base_iv": []})
             dst["n"] += rec["n"]
             for k in ("damage", "armpen", "range", "grievous"):
                 if k in rec:
                     dst.setdefault(k, set()).update(rec[k])
             dst["quality"].extend(rec["quality"])
             dst["recovered_base"].extend(rec["recovered_base"])
+            dst["base_iv"].extend(rec.get("base_iv") or ())
     # Sets do not serialise, and a weapon read at two qualities has two damages and one
     # base - so the tooltip figures are kept as sorted lists and the base as a range.
     for base, rec in merged.items():
@@ -367,6 +374,16 @@ def weapons_seen_merge(parts):
         rec["quality"] = sorted(set(rec["quality"]))
         b = sorted(set(rec["recovered_base"]))
         rec["recovered_base"] = {"lo": b[0], "hi": b[-1]} if b else None
+        # THE BASE EVERY SIGHTING ALLOWS: the intersection of their rounding intervals, or
+        # null when they share none. A span test on the point readings (|hi - lo| <= 0.5, or
+        # a flat percentage) cannot tell rounding from a wrong quality curve: a stone axe at
+        # quality 6.6 shows 24 for a true 24.34, 1.4% off on its own, while at damage 140 the
+        # same test is far looser than the display. This is exact at every quality.
+        iv = rec.pop("base_iv", None) or []
+        if iv:
+            lo = max(a for a, _ in iv)
+            hi = min(b for _, b in iv)
+            rec["shared_base"] = {"lo": round(lo, 3), "hi": round(hi, 3)} if lo <= hi else None
     return merged
 
 
@@ -436,7 +453,7 @@ def _agility_band_chunk(paths):
                 if before is None:
                     continue
                 ip = before.get("myip")
-                attack = bool(mv.get("attack_types") or []) or bool(mv.get("attack_skill"))
+                attack = estimate.model.takes_agility(mv)
                 if mods and (estimate.fightlog.held_coolmod(
                         log, m.get("t") or 0, mods) is not None):
                     dropped += 1
@@ -483,7 +500,7 @@ def _agility_control_chunk(paths):
                 cd = m.get("cd")
                 if (not mv) or (not cd) or (cd <= 0):
                     continue
-                if not (mv.get("attack_types") or mv.get("attack_skill")):
+                if not estimate.model.takes_agility(mv):
                     continue
                 if mv.get("cooldown") is None:
                     continue
@@ -491,6 +508,8 @@ def _agility_control_chunk(paths):
         best = {}
         for r in log.agility:
             best[r["gob"]] = (r.get("min"), r.get("max"))
+        stale = estimate.stale_brackets(log, moves)
+        tol = 1.0 + estimate.AGILITY_EDGE_TOL
         for gob, (lo_r, hi_r) in best.items():
             iv = estimate.agility_interval(obs.get(gob, []), agi_me) if obs.get(gob) else None
             clo = (lo_r or 0.0) * agi_me
@@ -499,10 +518,10 @@ def _agility_control_chunk(paths):
                 agree = None
             else:
                 olo, ohi, _capped = iv
-                if (olo > ohi) or (clo > chi):
+                if (olo > ohi) or (clo > chi) or (gob in stale):
                     agree = None
                 else:
-                    agree = (clo <= ohi) and (olo <= chi)
+                    agree = (clo <= ohi * tol) and (olo <= chi * tol)
             sp = (log.names.get(gob) or "?").split("/")[-1]
             out[sp].append((gob, clo, chi, iv[0] if iv else None,
                             iv[1] if iv else None, agree))
@@ -528,6 +547,7 @@ def _agi_records_chunk(paths):
         agi_me = ((log.header or {}).get("attr") or {}).get("agi")
         if not agi_me:
             continue
+        stale = estimate.stale_brackets(log, _moves())
         for r in log.agility:
             mn = r.get("min")
             mx = r.get("max")
@@ -548,6 +568,7 @@ def _agi_records_chunk(paths):
                 "hi": hi,
                 "file": os.path.basename(path),
                 "t": r.get("t"),
+                "stale": gob in stale,
             })
     return dict(out)
 
@@ -639,6 +660,30 @@ def _mu_from_reductions_chunk(paths):
 # animal_move_*: raw per-card observations, reduced in the parent.
 # ---------------------------------------------------------------------------------
 
+def _animal_ip_deltas(eng, me_gob, out):
+    """("ip", card) -> [(delta, before)]: the creature's initiative against us across one of its
+    own cards, from the state sampled before it to the one after, with nobody else acting in
+    between - see estimate.animal_move_ip."""
+    import bisect
+    st = [s for s in eng.states if (s.get("foeip") is not None) and (s.get("t") is not None)]
+    if len(st) < 2:
+        return
+    ts = [s["t"] for s in st]
+    ev = sorted((m["t"], m.get("actor"), m.get("name") or m.get("move")) for m in eng.moves
+                if (m.get("t") is not None) and (m.get("gob") in (None, eng.gob, me_gob)))
+    for i, (t, actor, card) in enumerate(ev):
+        if (actor != "foe") or not card:
+            continue
+        j = bisect.bisect_right(ts, t) - 1
+        if (j < 0) or (j + 1 >= len(st)):
+            continue
+        a, b = st[j], st[j + 1]
+        if (i and (a["t"] <= ev[i - 1][0])) or ((i + 1 < len(ev)) and (b["t"] >= ev[i + 1][0])) \
+                or (b["t"] - t > 400):
+            continue
+        out[("ip", card)].append((b["foeip"] - a["foeip"], a["foeip"]))
+
+
 def _animal_cooldowns_chunk(paths):
     import estimate
     gaps = defaultdict(list)
@@ -649,9 +694,12 @@ def _animal_cooldowns_chunk(paths):
             continue
         if not log.rows:
             continue
+        agi_me = ((log.header or {}).get("attr") or {}).get("agi")
+        me_gob = (log.header or {}).get("megob")
         for eng in log.engagements:
             if getattr(eng, "others_present", True):
                 continue
+            _animal_ip_deltas(eng, me_gob, gaps)
             if not getattr(eng, "offence_ok", False):
                 continue
             seq = defaultdict(list)
@@ -671,6 +719,9 @@ def _animal_cooldowns_chunk(paths):
                 d = (tb - ta) / 60.0            # milliseconds to ticks
                 if 0.5 < d < 400:
                     gaps[("next", na)].append(d)
+                    # And with who it was against: its attacks run on the agility rule ours do.
+                    if agi_me and eng.res:
+                        gaps[("agi", na)].append((d, agi_me, eng.res))
             # ("same", card): the gap between two throws of the same card - the rotation.
             for nm, ts in seq.items():
                 ts = sorted(set(ts))

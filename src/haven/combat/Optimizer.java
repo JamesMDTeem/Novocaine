@@ -37,6 +37,20 @@ public final class Optimizer {
     private Optimizer() {}
 
     /** One candidate line of play, and what it cost. */
+    /**
+     * Hitpoints one point of armour wear is worth, when plans are ranked on what they cost.
+     *
+     * ZERO REPRODUCES EVERY PLAN THIS PROJECT HAS EVER MADE, and that is the control: with it
+     * {@link Plan#cost()} is exactly {@link Plan#hpLost}, so the suite at zero checks that the
+     * change priced nothing it should not have. Above zero, the soaked share of each blow -
+     * 80-82% of what creatures land on us - stops being free.
+     *
+     * A POLICY SETTING AND NOT A MEASUREMENT. The logs do not yet say what a point soaked
+     * costs in durability (the recorder reads Wear and keeps only "broken"; COMBAT.md §3.8
+     * D1), so this is James's exchange rate until they do.
+     */
+    public static volatile double armourWeight = 0.0;
+
     public static final class Plan {
         public final List<Move> moves;
         /** Ticks from the first move to the kill, or to the horizon if there was none. */
@@ -60,13 +74,22 @@ public final class Optimizer {
         public final double foeHhp;
         /** Every opponent whose hard pool is known ended with none of it - a kill, not a knockdown. */
         public final boolean lethal;
+        /**
+         * What our armour stopped along this plan - the part of every blow that wore the armour
+         * rather than reaching {@link #hpLost}. See {@link Combatant#soaked}.
+         */
+        public final double soaked;
+        /* Fixed when the plan is made, at the weight it was searched under - see cost(). */
+        private final double cost;
 
         Plan(List<Move> moves, long ticks, double hpLost, boolean killed, double foeHp) {
-            this(moves, ticks, hpLost, killed, foeHp, 0, Double.NaN, false);
+            this(moves, ticks, hpLost, killed, foeHp, 0, Double.NaN, false, 0);
         }
 
         Plan(List<Move> moves, long ticks, double hpLost, boolean killed, double foeHp,
-             double wounds, double foeHhp, boolean lethal) {
+             double wounds, double foeHhp, boolean lethal, double soaked) {
+            this.soaked = soaked;
+            this.cost = Optimizer.cost(hpLost, soaked);
             this.moves = Collections.unmodifiableList(new ArrayList<Move>(moves));
             this.ticks = ticks;
             this.hpLost = hpLost;
@@ -75,6 +98,22 @@ public final class Optimizer {
             this.wounds = wounds;
             this.foeHhp = foeHhp;
             this.lethal = lethal;
+        }
+
+        /**
+         * What this plan costs us: the hitpoints it takes, and the armour wear it causes at
+         * {@link #armourWeight} hitpoints per point soaked. NaN where {@link #hpLost} is.
+         *
+         * Every comparison that ranks plans by what they cost reads this rather than
+         * {@link #hpLost}. Whether we SURVIVE a plan is still {@link #hpLost} alone - armour
+         * wear does not knock us down - so a budget of hitpoints is never tested against it.
+         *
+         * PRICED AT THE WEIGHT THE PLAN WAS SEARCHED UNDER, not at whatever the weight is when
+         * someone asks. Read live, a plan made at weight 0 and compared after the weight moved
+         * reported the second weight's price - CombatAudit's own probe did exactly that.
+         */
+        public double cost() {
+            return(cost);
         }
 
         public String toString() {
@@ -174,6 +213,11 @@ public final class Optimizer {
             this.foeThrown = foeThrown;
         }
 
+        /** What this line has cost so far - see {@link Plan#cost()}. */
+        double cost() {
+            return((armourWeight == 0) ? hpLost : (hpLost + (armourWeight * me.soaked)));
+        }
+
         /** The one we are hitting: the first still standing. See Optimizer.step. */
         int main() {
             for(int i = 0; i < foes.length; i++) {
@@ -210,7 +254,7 @@ public final class Optimizer {
         Plan plan(boolean killed) {
             double h = foeHhp();
             return(new Plan(path, tick, hpLost, killed, foeHp(), wounds, h,
-                            !Double.isNaN(h) && (h <= 0)));
+                            !Double.isNaN(h) && (h <= 0), me.soaked));
         }
     }
 
@@ -289,6 +333,185 @@ public final class Optimizer {
     public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
                                     FoeModel[] models, int beam, long maxTicks,
                                     int[] myIp0, List<Plan> all) {
+        return(search(me, foes, deck, models, beam, maxTicks, myIp0, all, null));
+    }
+
+    /** The same, with each opponent joining at its own tick - see {@link #follow}. */
+    public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
+                                    FoeModel[] models, int beam, long maxTicks,
+                                    int[] myIp0, List<Plan> all, long[] arrive) {
+        return(search(me, foes, deck, models, beam, maxTicks, myIp0, all, arrive, null));
+    }
+
+    /**
+     * The same, also offering each of {@code lines} - lines people have actually thrown - to the
+     * frontier beside the searched ones.
+     *
+     * THE PLANNER MUST NEVER DO WORSE THAN A LINE A PLAYER HAS SHOWN IT (James, 2026-09-22). A beam
+     * cannot promise that: it prunes by the damage done so far, and against the characters' own
+     * solo fights it lost to the player in 2% of them, in party fights 16% - each time a line the
+     * search had cut early (Quick Barrage x6 then Full Circle, into openings the barrages built).
+     * Offered here, a player's line is stepped by the same code as the searched ones, from the same
+     * state, and the frontier then keeps whichever is not dominated. So for every line given, the
+     * frontier holds a plan at least as fast, as cheap and as wounding - and the aims pick from the
+     * frontier, so none picks a plan a given line beats on its own measure. A line that runs out
+     * before the kill is repeated from its start, which is what a person does; one that still does
+     * not kill is dropped, as the rhythm seeds are.
+     */
+    public static List<Plan> search(Combatant me, Combatant[] foes, List<Move> deck,
+                                    FoeModel[] models, int beam, long maxTicks,
+                                    int[] myIp0, List<Plan> all, long[] arrive,
+                                    List<List<Move>> lines) {
+        double[] trigger = trigger(deck, me);
+        Combatant[] f0 = new Combatant[foes.length];
+        long[] next0 = new long[foes.length];
+        int[][] thrown0 = new int[foes.length][];
+        double hp0 = 0;
+        for(int i = 0; i < foes.length; i++) {
+            f0[i] = foes[i].copy();
+            next0[i] = firstAct(models[i], f0[i]);
+            if((arrive != null) && (i < arrive.length) && (next0[i] != Long.MAX_VALUE))
+                next0[i] += Math.max(0, arrive[i]);
+            thrown0[i] = new int[cardCount(models[i])];
+            hp0 += f0[i].hp;
+        }
+        List<Node> live = new ArrayList<Node>();
+        int[] ip0 = new int[foes.length];
+        for(int i = 0; i < foes.length; i++)
+            ip0[i] = ((myIp0 != null) && (myIp0.length == foes.length)) ? myIp0[i] : me.ip;
+        /* A plan's wear is what THAT plan takes, not whatever the caller's combatant carried in. */
+        Combatant root = me.copy();
+        root.soaked = 0;
+        live.add(new Node(root, f0, new ArrayList<Move>(), 0, next0, 0,
+                          new int[foes.length], thrown0, ip0, 0));
+        List<Plan> done = new ArrayList<Plan>();
+
+        while(!live.isEmpty()) {
+            List<Node> next = new ArrayList<Node>();
+            for(Node n : live) {
+                for(Move m : deck) {
+                    Node s = step(n, m, models, maxTicks, trigger);
+                    if(s == null)
+                        continue;
+                    if(!s.anyAlive()) {
+                        done.add(s.plan(true));
+                    } else if(!s.me.alive() || (s.tick >= maxTicks)) {
+                        done.add(s.plan(false));
+                    } else {
+                        next.add(s);
+                    }
+                }
+            }
+            if(next.isEmpty())
+                break;
+            live = prune(next, hp0, beam);
+        }
+        done.addAll(seeds(me, foes, models, deck, maxTicks, myIp0, arrive));
+        if(lines != null) {
+            for(List<Move> l : lines) {
+                if((l == null) || l.isEmpty())
+                    continue;
+                List<Move> line = new ArrayList<Move>(SEED_LEN);
+                while(line.size() < SEED_LEN)
+                    line.addAll(l);
+                Plan p = follow(me, foes, models, deck, line, maxTicks, myIp0, null, arrive);
+                if(p.killed)
+                    done.add(p);
+            }
+        }
+        if(all != null)
+            all.addAll(done);
+        return(frontier(done));
+    }
+
+    /**
+     * The lines players actually throw, offered to the frontier beside the searched ones.
+     *
+     * THE RHYTHM THE PARTIES USE: the quickest damaging card k times, to build openings, then the
+     * heaviest, which lands on them - damage goes as the square of the opening. Against the
+     * characters' own polar bears (COMBAT.md §3.10) a party throwing 14 Quick Barrages and 2 Full
+     * Circles killed in 242 ticks in the model, where plain Quick Barrage needs 580 and the searched
+     * lines 352-390: the searched lines threw Full Circle first, into nothing, because the beam
+     * keeps lines by the damage done so far and a big hit looks best the moment it lands. Plain
+     * repetition of every damaging card is offered too (k infinite).
+     *
+     * Seeding cannot make a plan worse - the frontier still decides, so a seed survives only if
+     * nothing searched beats it. It costs a few Optimizer.follow walks per search.
+     */
+    private static List<Plan> seeds(Combatant me, Combatant[] foes, FoeModel[] models, List<Move> deck,
+                                    long maxTicks, int[] myIp0, long[] arrive) {
+        /* ONLY SEEDS THAT KILL go to the frontier. A seed whose finisher the model refuses
+         * (Cleave short of initiative) stops a few cards in, costs almost nothing, and was picked
+         * at low health as the "least damage" line - a moose fight answered with a plan that never
+         * finished it (2026-09-22). */
+        List<Plan> out = new ArrayList<Plan>();
+        Move quick = null;
+        for(Move m : deck) {
+            if(m.stance || !m.deals())
+                continue;
+            if((quick == null) || (m.cooldownBase < quick.cooldownBase))
+                quick = m;
+            List<Move> line = new ArrayList<Move>(SEED_LEN);
+            for(int i = 0; i < SEED_LEN; i++)
+                line.add(m);
+            Plan p = follow(me, foes, models, deck, line, maxTicks, myIp0, null, arrive);
+            if(p.killed)
+                out.add(p);
+        }
+        /* EVERY DAMAGING CARD AS THE FINISHER, not only the one with the largest share. The largest
+         * is often Cleave (1.5, 80 ticks, 4 initiative), and "Quick Barrage k times then Cleave"
+         * is not the line anyone throws: parties of two beat the planner on red deer in 58% of 33
+         * fights with Quick Barrage x3-4 then Full Circle, which no seed offered (2026-09-21). */
+        if(quick != null) {
+            for(Move heavy : deck) {
+                if(heavy.stance || !heavy.deals() || (heavy == quick))
+                    continue;
+                for(int k = 1; k <= SEED_RHYTHM; k++) {
+                    Plan p = follow(me, foes, models, deck, rhythm(quick, heavy, k), maxTicks, myIp0, null, arrive);
+                    if(p.killed)
+                        out.add(p);
+                    Plan b = follow(me, foes, models, deck, burst(quick, heavy, k), maxTicks, myIp0, null, arrive);
+                    if(b.killed)
+                        out.add(b);
+                }
+            }
+        }
+        return(out);
+    }
+
+    /**
+     * {@code quick} k times, then {@code heavy} for the rest of the line - BUILD, THEN BURST. What
+     * the polar bear parties threw (2026-09-22): Quick Barrage six or nine times, then Full Circle
+     * three times running, not the build-and-cash rhythm repeated. Once the openings stand, every
+     * heavy blow cashes them, and a rebuild between them gives the decay the time it wants.
+     */
+    static List<Move> burst(Move quick, Move heavy, int k) {
+        List<Move> line = new ArrayList<Move>(SEED_LEN);
+        for(int i = 0; i < SEED_LEN; i++)
+            line.add((i < k) ? quick : heavy);
+        return(line);
+    }
+
+    /** {@code quick} k times, then {@code heavy}, repeated to SEED_LEN cards. */
+    static List<Move> rhythm(Move quick, Move heavy, int k) {
+        List<Move> line = new ArrayList<Move>(SEED_LEN);
+        while(line.size() < SEED_LEN) {
+            for(int i = 0; (i < k) && (line.size() < SEED_LEN); i++)
+                line.add(quick);
+            if(line.size() < SEED_LEN)
+                line.add(heavy);
+        }
+        return(line);
+    }
+
+    /* The longest opener run a rhythm seed tries before its finisher. */
+    static final int SEED_RHYTHM = 8;
+
+    /* Long enough for any seed to run to the kill or the horizon: a line stops at either. */
+    private static final int SEED_LEN = 400;
+
+    /** What the deck, or failing that the stance we hold, opens when the opponent swings. */
+    private static double[] trigger(List<Move> deck, Combatant me) {
         /* Everything the deck opens when the OPPONENT swings, summed once. A deck holds
          * at most one such card in the corpus - Parry - but summing costs nothing and
          * assumes nothing about that staying true. */
@@ -317,49 +540,79 @@ public final class Optimizer {
                 }
             }
         }
-        if(!anyTrigger)
-            trigger = null;
+        return(anyTrigger ? trigger : null);
+    }
+
+    /**
+     * Where a GIVEN line of cards ends up - the search's own step, walked down one sequence
+     * instead of branched.
+     *
+     * WHY. The planner's lines are only worth something against what a person actually threw,
+     * and the only fair comparison is inside the same model: the logged line and the searched
+     * line stepped by the same code against the same opponent from the same start. A card the
+     * model refuses at that point (initiative short, say) is skipped and counted in
+     * {@code skipped[0]}; the line stops at a kill, at our death or at {@code maxTicks}, and a
+     * line that runs out of cards first is reported as it stands, not killed.
+     */
+    public static Plan follow(Combatant me, Combatant[] foes, FoeModel[] models, List<Move> deck,
+                              List<Move> line, long maxTicks, int[] myIp0, int[] skipped) {
+        return(follow(me, foes, models, deck, line, maxTicks, myIp0, skipped, null));
+    }
+
+    /**
+     * The same, with each opponent joining at its own tick - {@code arrive[i]}, or at once where
+     * null. A crowd does not start on us together: the bat dungeon's adds came in for a minute,
+     * and staged all at tick zero every one of them swings from the first blow. An opponent that
+     * has not arrived does not act; we can still reach it, which is the caller's to order - the
+     * line hits the first opponent standing, so order them as they were killed.
+     */
+    public static Plan follow(Combatant me, Combatant[] foes, FoeModel[] models, List<Move> deck,
+                              List<Move> line, long maxTicks, int[] myIp0, int[] skipped,
+                              long[] arrive) {
+        return(follow(me, foes, models, deck, line, maxTicks, myIp0, skipped, arrive, null));
+    }
+
+    /**
+     * The same, with each card aimed at {@code targets[i]} - the creature the log says it hit - where
+     * that creature still stands. Null aims every card at the first standing.
+     */
+    public static Plan follow(Combatant me, Combatant[] foes, FoeModel[] models, List<Move> deck,
+                              List<Move> line, long maxTicks, int[] myIp0, int[] skipped,
+                              long[] arrive, int[] targets) {
+        double[] trigger = trigger(deck, me);
         Combatant[] f0 = new Combatant[foes.length];
         long[] next0 = new long[foes.length];
         int[][] thrown0 = new int[foes.length][];
-        double hp0 = 0;
         for(int i = 0; i < foes.length; i++) {
             f0[i] = foes[i].copy();
-            next0[i] = (models[i].period == Long.MAX_VALUE) ? Long.MAX_VALUE : models[i].period;
+            next0[i] = firstAct(models[i], f0[i]);
+            if((arrive != null) && (i < arrive.length) && (next0[i] != Long.MAX_VALUE))
+                next0[i] += Math.max(0, arrive[i]);
             thrown0[i] = new int[cardCount(models[i])];
-            hp0 += f0[i].hp;
         }
-        List<Node> live = new ArrayList<Node>();
         int[] ip0 = new int[foes.length];
         for(int i = 0; i < foes.length; i++)
             ip0[i] = ((myIp0 != null) && (myIp0.length == foes.length)) ? myIp0[i] : me.ip;
-        live.add(new Node(me.copy(), f0, new ArrayList<Move>(), 0, next0, 0,
-                          new int[foes.length], thrown0, ip0, 0));
-        List<Plan> done = new ArrayList<Plan>();
-
-        while(!live.isEmpty()) {
-            List<Node> next = new ArrayList<Node>();
-            for(Node n : live) {
-                for(Move m : deck) {
-                    Node s = step(n, m, models, maxTicks, trigger);
-                    if(s == null)
-                        continue;
-                    if(!s.anyAlive()) {
-                        done.add(s.plan(true));
-                    } else if(!s.me.alive() || (s.tick >= maxTicks)) {
-                        done.add(s.plan(false));
-                    } else {
-                        next.add(s);
-                    }
-                }
+        Combatant root = me.copy();
+        root.soaked = 0;
+        Node n = new Node(root, f0, new ArrayList<Move>(), 0, next0, 0,
+                          new int[foes.length], thrown0, ip0, 0);
+        for(int k = 0; k < line.size(); k++) {
+            Move m = line.get(k);
+            int aim = ((targets != null) && (k < targets.length)) ? targets[k] : -1;
+            Node s = step(n, m, models, maxTicks, trigger, aim);
+            if(s == null) {
+                if(skipped != null)
+                    skipped[0]++;
+                continue;
             }
-            if(next.isEmpty())
-                break;
-            live = prune(next, hp0, beam);
+            n = s;
+            if(!n.anyAlive())
+                return(n.plan(true));
+            if(!n.me.alive() || (n.tick >= maxTicks))
+                return(n.plan(false));
         }
-        if(all != null)
-            all.addAll(done);
-        return(frontier(done));
+        return(n.plan(false));
     }
 
     /**
@@ -401,7 +654,7 @@ public final class Optimizer {
         });
         List<Node> byHp = new ArrayList<Node>(next);
         Collections.sort(byHp, (a, b) -> {
-            int c = Double.compare(a.hpLost, b.hpLost);
+            int c = Double.compare(a.cost(), b.cost());
             return((c != 0) ? c : Double.compare(a.foeHp(), b.foeHp()));
         });
         List<Node> bySetup = new ArrayList<Node>(next);
@@ -463,8 +716,53 @@ public final class Optimizer {
      * own place in its own rotation, so the window our cooldown opens is filled by whichever
      * of them happens to come up in it, not by an average.
      */
+    /**
+     * Sees every card a step throws: the state it is thrown into, and what it did. For tools that
+     * set a model's forward run beside a log (tools/OpeningDrift.java); null, and never set, in the
+     * client. Not thread-safe by design - a tool sets it around a single-threaded follow().
+     */
+    public interface Trace {
+        void before(Move m, long tick, Combatant me, Combatant foe);
+        void after(Move m, long tick, Combatant me, Combatant foe, Sim.Result r);
+        /** An opponent acted, at this tick. */
+        default void foeActed(int who, long tick) {
+        }
+    }
+
+    public static volatile Trace trace = null;
+
+    /** A gap between an opponent's actions AT US - its own gap over the share aimed at us. */
+    static long onUs(long gap, Combatant foe) {
+        if((foe == null) || !(foe.onUs > 0) || (foe.onUs >= 1.0) || (gap == Long.MAX_VALUE))
+            return(gap);
+        return(Math.round(gap / Math.max(ON_US_FLOOR, foe.onUs)));
+    }
+
+    /* The least share of its attacks a creature in our fight list is read as aiming at us. */
+    static final double ON_US_FLOOR = 0.1;
+
+    /** The tick an opponent first acts: its own Combatant.firstAct where set, else a period. */
+    static long firstAct(FoeModel m, Combatant foe) {
+        if(m.period == Long.MAX_VALUE)
+            return(Long.MAX_VALUE);
+        if((foe != null) && !Double.isNaN(foe.firstAct))
+            return(Math.max(0, Math.round(foe.firstAct)));
+        return(m.period);
+    }
+
     private static Node step(Node n, Move m, FoeModel[] models, long maxTicks,
                              double[] trigger) {
+        return(step(n, m, models, maxTicks, trigger, -1));
+    }
+
+    /**
+     * The same, aimed at {@code force} while it stands, else at the first opponent standing as
+     * always. Only Optimizer.follow aims: a logged line names the creature each card hit, and
+     * "first standing" moved cards onto the wrong one - three cards at a 6 hp bat left the third
+     * landing on a fresh bat with nothing open, and crowds read a third short (2026-09-21).
+     */
+    private static Node step(Node n, Move m, FoeModel[] models, long maxTicks,
+                             double[] trigger, int force) {
         Combatant me = n.me.copy();
         Combatant[] foes = new Combatant[n.foes.length];
         for(int i = 0; i < foes.length; i++)
@@ -524,6 +822,9 @@ public final class Optimizer {
             me.ip = myIp[who];
             hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who],
                                       thrown[who], gap);
+            Trace tr0 = trace;
+            if(tr0 != null)
+                tr0.foeActed(who, clock);
             myIp[who] = me.ip;
             acts[who]++;
             /* AND WHAT WE HOLD THAT ANSWERS A SWING. Parry opens the opponent when the
@@ -537,8 +838,8 @@ public final class Optimizer {
              * thrown card's own measured cooldown, falling back to the creature's single
              * period when the card has none. Scheduling every action on the period collapsed
              * a creature that throws a fast card and a slow one onto one clock neither of
-             * them kept. */
-            foeNext[who] += gap[0];
+             * them kept. AND ONLY ITS SHARE AIMED AT US - Combatant.onUs. */
+            foeNext[who] += onUs(gap[0], foes[who]);
         }
         tick = ready;
         if(tick > maxTicks)
@@ -561,7 +862,9 @@ public final class Optimizer {
                             wounds));
 
         int main = -1;
-        for(int i = 0; i < foes.length; i++) {
+        if((force >= 0) && (force < foes.length) && foes[force].alive())
+            main = force;
+        for(int i = 0; (main < 0) && (i < foes.length); i++) {
             if(foes[i].alive()) {
                 main = i;
                 break;
@@ -576,7 +879,12 @@ public final class Optimizer {
         /* Against THIS relation, with what we hold against it: legality, the initiative-
          * scaled cooldown and the cost all read and write the one we are swinging at. */
         me.ip = myIp[main];
+        Trace tr = trace;
+        if(tr != null)
+            tr.before(m, tick, me, foes[main]);
         Sim.Result r = sim.use(me, m);
+        if((tr != null) && r.ok)
+            tr.after(m, tick, me, foes[main], r);
         if(!r.ok)
             return(null);
         myIp[main] = me.ip;
@@ -661,6 +969,31 @@ public final class Optimizer {
      * What survives is the actual choice: the fastest line, the cheapest line, and whatever
      * genuinely trades between them. Anything else is a worse version of one of those.
      */
+    /**
+     * Whether a plan at (qTicks, qCost, qWounds, qSoaked) dominates one at (p...): at least as good on
+     * every axis and better on one. THE ONE RULE for Optimizer, PartyPlanner and PartyCrowd (seams
+     * audit, 2026-09-23) - each kept its own copy, and the party pair never gained the armour weight
+     * or the wounds axis this one did.
+     *
+     * Time and cost as they always were. AND WOUNDS AT LEAST AS DEEPLY: a plan that is slower or
+     * costlier but takes more of the opponent's HARD hitpoints is a different answer - the one that
+     * kills a person rather than knocking them down. AND WEARS OUR ARMOUR NO MORE (2026-09-22): wear is
+     * what our armour pays, and cost sees it only when armourWeight is set, so without this axis a
+     * plan a tick faster that soaks twice the armour pruned a player's line that soaked half.
+     */
+    public static boolean dominates(long qTicks, double qCost, double qWounds, double qSoaked,
+                                    long pTicks, double pCost, double pWounds, double pSoaked) {
+        return((qTicks <= pTicks) && !(qCost > pCost) && (qWounds >= pWounds - 1e-9)
+               && (qSoaked <= pSoaked + 1e-9)
+               && ((qTicks < pTicks) || (qCost < pCost) || (qWounds > pWounds + 1e-9)
+                   || (qSoaked < pSoaked - 1e-9)));
+    }
+
+    /** What hitpoints and wear cost together at the armour weight in force - see Plan.cost. */
+    public static double cost(double hpLost, double soaked) {
+        return((armourWeight == 0) ? hpLost : (hpLost + (armourWeight * soaked)));
+    }
+
     public static List<Plan> frontier(List<Plan> all) {
         List<Plan> kills = new ArrayList<Plan>();
         for(Plan p : all) {
@@ -676,17 +1009,8 @@ public final class Optimizer {
             for(Plan q : pool) {
                 if(q == p)
                     continue;
-                boolean faster = q.ticks <= p.ticks;
-                boolean cheaper = !(q.hpLost > p.hpLost);
-                /* AND WOUNDS AT LEAST AS DEEPLY. A plan that is slower or costlier but takes
-                 * more of the opponent's HARD hitpoints is a different answer - the one that
-                 * kills a person rather than knocking them down - so it must not be pruned by
-                 * the two axes that cannot see it. Where no plan wounds, every plan ties on
-                 * this axis and the frontier is exactly the two-axis one it always was. */
-                boolean deeper = q.wounds >= p.wounds - 1e-9;
-                boolean better = (q.ticks < p.ticks) || (q.hpLost < p.hpLost)
-                    || (q.wounds > p.wounds + 1e-9);
-                if(faster && cheaper && deeper && better) {
+                if(dominates(q.ticks, q.cost(), q.wounds, q.soaked,
+                             p.ticks, p.cost(), p.wounds, p.soaked)) {
                     dominated = true;
                     break;
                 }
@@ -700,8 +1024,8 @@ public final class Optimizer {
         for(Plan p : out) {
             boolean seen = false;
             for(Plan q : uniq) {
-                if((q.ticks == p.ticks) && (Math.abs(q.hpLost - p.hpLost) < 1e-9)
-                   && (Math.abs(q.wounds - p.wounds) < 1e-9)) {
+                if((q.ticks == p.ticks) && (Math.abs(q.cost() - p.cost()) < 1e-9)
+                   && (Math.abs(q.wounds - p.wounds) < 1e-9) && (Math.abs(q.soaked - p.soaked) < 1e-9)) {
                     seen = true;
                     break;
                 }

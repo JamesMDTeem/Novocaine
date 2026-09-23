@@ -1,5 +1,6 @@
 import haven.combat.Combatant;
 import haven.combat.FoeModel;
+import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.PartyPlanner;
 import haven.combat.data.Pack;
@@ -33,6 +34,14 @@ import java.util.*;
  *                 corpus has seen a card hit two people, so the run is made with and without
  *   -beam N       default 20, CombatDeckSearch's
  *   -front NAME   only this one in front; by default each of the party takes a turn
+ *   -horizon SEC  how long a plan may run, default 360. A "no kill" at the default is not
+ *                 a fact about the fight until this has been raised and the answer held
+ *   -pack DIR     read the pack from DIR instead of data/combat, which is how a creature the
+ *                 corpus has never met gets planned against: tools/combat/synth_opponent.py
+ *                 writes a derived pack whose new entry is an existing creature's whole entry
+ *                 with its hitpoints and armour replaced. Borrowing one is stated in the
+ *                 header the generator writes, because every card, period, pressure and
+ *                 damage figure in that run belongs to the creature it was copied from.
  *
  * WHICH DECK EACH PERSON BRINGS: one they have actually carried, not one the search invented -
  * from their most recent fight against THIS creature, else against any big creature, else their
@@ -40,7 +49,16 @@ import java.util.*;
  * other fight. A party deck search is a larger question.
  */
 public class CombatPartySearch {
-    static final long HORIZON = 6000;
+    /**
+     * How long a plan may run, in ticks - 6000 is six minutes, and -horizon changes it.
+     *
+     * It was a constant because every creature in the corpus dies well inside six minutes.
+     * A creature with tens of thousands of hitpoints does not, and the failure is quiet in
+     * the worst way: the run reports "no kill" and a plan that simply ran out of clock is
+     * indistinguishable from a fight the party cannot win. Anything planned past the pack's
+     * own creatures should set this and check that the answer stops moving when it rises.
+     */
+    static long HORIZON = 6000;
     /** Which creature each person's deck was carried against, for the header. */
     static final Map<String, String> FROM = new HashMap<String, String>();
 
@@ -52,6 +70,7 @@ public class CombatPartySearch {
         Set<String> area = new LinkedHashSet<String>();
         int beam = 20;
         String onlyFront = null;
+        String packDir = null;
         for(int i = 0; i < argv.length; i++) {
             if("-party".equals(argv[i]))
                 party = new ArrayList<String>(Arrays.asList(argv[++i].split("\\s*,\\s*")));
@@ -63,11 +82,15 @@ public class CombatPartySearch {
                 beam = Integer.parseInt(argv[++i]);
             else if("-front".equals(argv[i]))
                 onlyFront = argv[++i];
+            else if("-pack".equals(argv[i]))
+                packDir = argv[++i];
+            else if("-horizon".equals(argv[i]))
+                HORIZON = Math.round(Formulas.secondsToTicks(Double.parseDouble(argv[++i])));
             else
                 foeName = argv[i];
         }
 
-        Path root = Paths.get("data", "combat");
+        Path root = (packDir == null) ? Paths.get("data", "combat") : Paths.get(packDir);
         Map<String, Move> sheet = CombatDeckSearch.byRes(Pack.moves(root.resolve("moves_sheet.json")));
         Map<String, Pack.Opponent> foes = Pack.opponents(root.resolve("opponents.json"));
         Map<String, Pack.Fighter> chars = Pack.characters(root.resolve("characters.json"));
@@ -173,7 +196,7 @@ public class CombatPartySearch {
         }
         System.out.printf("   %-12s %-7s %-8s %-9.0f %s   [%s]%n", front,
                           p.killed ? "yes" : "no",
-                          String.format("%.0f", p.ticks * 0.06),
+                          String.format("%.0f", Formulas.ticksToSeconds(p.ticks)),
                           p.totalLost, per,
                           p.killed ? label : String.format("%s; %.0f hp left on it", label, p.foeHp));
     }

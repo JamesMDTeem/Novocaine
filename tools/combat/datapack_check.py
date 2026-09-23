@@ -35,9 +35,11 @@ def _span(name, rec):
     """The reading, named: how many sightings, over what quality range, recovering what."""
     b = rec.get("recovered_base") or {}
     q = rec.get("quality") or []
-    return ("%s n=%s ql %s-%s -> base %s-%s"
+    sb = rec.get("shared_base")
+    return ("%s n=%s ql %s-%s -> base %s-%s%s"
             % (name, rec.get("n"), q[0] if q else "?", q[-1] if q else "?",
-               b.get("lo"), b.get("hi")))
+               b.get("lo"), b.get("hi"),
+               (", shared [%s, %s]" % (sb["lo"], sb["hi"])) if sb else ""))
 
 
 def _agrees(rec, wiki_base):
@@ -46,6 +48,12 @@ def _agrees(rec, wiki_base):
     Both ends, not the lowest: a scaling law that drifts with quality would still put one
     end on the wiki figure, and that is exactly the failure mode worth catching.
     """
+    if "shared_base" in rec:
+        # Where the pack carries it: the wiki's base must be one EVERY sighting's rounded
+        # tooltip allows - stricter than 1% at high damage, and honest at quality 6.6, where
+        # one unit of rounding is 2% on its own (estimate_parallel.weapons_seen_merge).
+        sb = rec.get("shared_base")
+        return bool(sb) and bool(wiki_base) and (sb["lo"] <= wiki_base <= sb["hi"])
     b = rec.get("recovered_base") or {}
     lo, hi = b.get("lo"), b.get("hi")
     if (lo is None) or (hi is None) or not wiki_base:

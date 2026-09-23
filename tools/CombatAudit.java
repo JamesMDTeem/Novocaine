@@ -191,6 +191,9 @@ public class CombatAudit {
             "ipCost", "ipGain", "foeIpGain", "ipExtra", "gainColour", "gainAbove",
             "cooldownBase", "cooldownMu", "ipScale", "weight", "weightMu", "mu",
             "attackMult",
+            /* what the weapon in hand must be: never reaches Sim, it decides which cards are
+             * in the deck at all (Prediction.canThrow), and LiveAdviceCheck probes it there */
+            "weaponNeeds",
         };
         uncovered("Move", Move.class, covered);
 
@@ -199,13 +202,13 @@ public class CombatAudit {
             "weaponDamage", "weaponQl", "weaponPen", "armHard", "armSoft", "penetrable",
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
             "readyAt", "whenAttacked", "weaponRange", "distance", "hhp",
-            "gloveDamage", "gloveQl", "decayPerTick",
+            "gloveDamage", "gloveQl", "decayPerTick", "soaked", "firstAct", "onUs",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
             "period", "pressure", "pressureAgainst", "damageCoef", "nGaps", "nHits",
             "modes", "fleesBelow", "restores", "restoresByColour", "cards",
-            "condFeature", "condCut", "whenPressure", "elsePressure", "soakedShare",
+            "condFeature", "condCut", "whenPressure", "elsePressure", "soakedShare", "pace",
         });
     }
 
@@ -847,6 +850,66 @@ public class CombatAudit {
                               fast.ticks, fast.hpLost, safe.ticks, safe.hpLost);
         }
         live("the aim picks a different plan off the frontier", differ, "Advisor.choose");
+
+        /* ARMOUR WEAR - Combatant.soaked (2026-09-21). What armour stops is recorded rather than
+         * thrown away, and it reaches the plan: Optimizer.armourWeight prices it in Plan.cost().
+         * At weight zero cost is hitpoints and nothing else, which is the control every other
+         * probe here runs under; above zero the same plans must cost more. */
+        Combatant unarmoured = open(50), plated = open(50);
+        plated.armHard = 1000;
+        FoeModel hitter = new FoeModel(50, new double[4], 100, 200.0, 10, 10);
+        hitter.act(unarmoured, unarmoured.defenceWeight());
+        hitter.act(plated, plated.defenceWeight());
+        live("armour records the part of a blow it stopped", unarmoured.soaked, plated.soaked,
+             "FoeModel.act");
+        Combatant worn = fighter();
+        worn.armHard = 20;
+        double w0 = Optimizer.armourWeight;
+        double c0, c1;
+        try {
+            Optimizer.armourWeight = 0;
+            Optimizer.Plan p0 = Advisor.choose(Optimizer.search(worn, weak, deck, foe, 200, 4000),
+                                               Advisor.Aim.SAFEST, Double.MAX_VALUE);
+            Optimizer.armourWeight = 1.0;
+            Optimizer.Plan p1 = Advisor.choose(Optimizer.search(worn, weak, deck, foe, 200, 4000),
+                                               Advisor.Aim.SAFEST, Double.MAX_VALUE);
+            c0 = (p0 == null) ? Double.NaN : p0.cost();
+            c1 = (p1 == null) ? Double.NaN : p1.cost();
+        } finally {
+            Optimizer.armourWeight = w0;
+        }
+        live("  and a price on wear reaches what a plan costs", c0, c1, "Optimizer.Plan.cost");
+
+        /* WHEN A CREATURE FIRST ACTS - Combatant.firstAct, 2026-09-21. One that answers at once
+         * must cost the plan more than one that waits a full period, or the field reaches nothing. */
+        Combatant late = weak.copy(), soon = weak.copy();
+        soon.firstAct = 0;
+        Optimizer.Plan pl = Advisor.choose(Optimizer.search(fighter(), late, deck, foe, 200, 4000),
+                                           Advisor.Aim.SAFEST, Double.MAX_VALUE);
+        Optimizer.Plan ps = Advisor.choose(Optimizer.search(fighter(), soon, deck, foe, 200, 4000),
+                                           Advisor.Aim.SAFEST, Double.MAX_VALUE);
+        live("an opponent that acts at once costs more than one a period away",
+             (pl == null) ? Double.NaN : pl.hpLost, (ps == null) ? Double.NaN : ps.hpLost, "Optimizer.firstAct");
+
+        /* AND HOW MUCH OF ITS CLOCK IT KEEPS UP - FoeModel.pace, 2026-09-21. At half pace it swings
+         * half as often, and the plan must see it. */
+        FoeModel idle = new FoeModel(60, new double[] {0, 0, 0, 40.0}, 100, 200.0, 10, 10);
+        idle.pace = 0.5;
+        Optimizer.Plan pf = Advisor.choose(Optimizer.search(fighter(), weak.copy(), deck, foe, 200, 4000),
+                                           Advisor.Aim.SAFEST, Double.MAX_VALUE);
+        Optimizer.Plan pi = Advisor.choose(Optimizer.search(fighter(), weak.copy(), deck, idle, 200, 4000),
+                                           Advisor.Aim.SAFEST, Double.MAX_VALUE);
+        live("an opponent at half pace costs less than one at full",
+             (pf == null) ? Double.NaN : pf.hpLost, (pi == null) ? Double.NaN : pi.hpLost, "FoeModel.pace");
+
+        /* AND WHETHER IT IS SWINGING AT US AT ALL - Combatant.onUs, 2026-09-21. One that spreads
+         * its attacks over four of us must cost less than one that has only us. */
+        Combatant shared = weak.copy();
+        shared.onUs = 0.25;
+        Optimizer.Plan po = Advisor.choose(Optimizer.search(fighter(), shared, deck, foe, 200, 4000),
+                                           Advisor.Aim.SAFEST, Double.MAX_VALUE);
+        live("an opponent shared with three others costs less",
+             (pf == null) ? Double.NaN : pf.hpLost, (po == null) ? Double.NaN : po.hpLost, "Optimizer.onUs");
 
         /* OPENINGS FADE WHILE NOTHING LANDS - Combatant.decayPerTick, measured 2026-09-16. The
          * rate has to move a standing opening, and it has to reach the plan: the optimizer
