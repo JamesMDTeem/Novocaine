@@ -136,8 +136,8 @@ public class EatObserver {
         JSONObject toJson() {
             JSONObject o = new JSONObject();
             o.put("cap", cap);
-            o.put("bar", new JSONObject(bar));
-            o.put("satiation", new JSONObject(satiation));
+            o.put("bar", obj(bar));
+            o.put("satiation", obj(satiation));
             o.put("glut", glut);
             o.put("gmod", gmod);
             return o;
@@ -348,6 +348,19 @@ public class EatObserver {
         return haven.OptWnd.eatObserverCheckBox != null && haven.OptWnd.eatObserverCheckBox.a;
     }
 
+    /**
+     * A name-to-amount map as a JSON object. Not {@code new JSONObject(m)}: this tree's org.json
+     * takes {@code Map<String, Object>}, so a {@code Map<String, Double>} binds to the bean
+     * constructor instead, which finds no getters on a LinkedHashMap and writes {@code {}}. That
+     * is what every eat log recorded for the bar and the satiations until this was fixed.
+     */
+    private static JSONObject obj(Map<String, Double> m) {
+        JSONObject o = new JSONObject();
+        for (Map.Entry<String, Double> e : m.entrySet())
+            o.put(e.getKey(), e.getValue());
+        return o;
+    }
+
     // ------------------------------------------------------------------ BAttrWnd hooks
 
     public static void onFoodBar(Widget src, double cap, List<BAttrWnd.FoodMeter.El> els) {
@@ -367,7 +380,7 @@ public class EatObserver {
             raw.put("type", "food");
             raw.put("ts", System.currentTimeMillis());
             raw.put("cap", cap);
-            raw.put("bar", new JSONObject(bar));
+            raw.put("bar", obj(bar));
             write(sn, raw);
         } catch (Exception e) {
             // Never let a logging hook break the real FEP bar it's piggybacking on.
