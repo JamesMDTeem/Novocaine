@@ -98,6 +98,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	public Boolean knocked = null;  // knocked will be null if pose update request hasn't been received yet
 	private Overlay customAuraOverlay;
 	private Overlay customRadiusOverlay;
+	private Overlay userRadiusOverlay;   // the player's own :radius list, apart from the built-in circles
 	private Overlay skyboxOverlay;
 	public static Boolean batWingCapeEquipped = false; // ND: Check for Bat Wing Cape
 	public static Boolean nightQueenDefeated = false; // ND: Check for Bat Dungeon Experience (Defeated Bat Queen)
@@ -1410,6 +1411,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		updateTroughsRadius();
 		updateBeeSkepRadius();
 		updateMoundBedsRadius();
+		updateUserRadius();
 		initPermanentHighlightOverlay();
 		HitBoxes.addHitBox(this);
         updatePartyCircleOverlay();
@@ -2208,6 +2210,19 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		} else if (customRadiusOverlay != null) {
 			removeOl(customRadiusOverlay);
 			customRadiusOverlay = null;
+		}
+	}
+
+	public void updateUserRadius() {
+		Resource res = getres();
+		haven.automated.ObjectRadii.Entry e = (res == null) ? null : haven.automated.ObjectRadii.find(res.name);
+		if(userRadiusOverlay != null) {
+			removeOl(userRadiusOverlay);
+			userRadiusOverlay = null;
+		}
+		if(e != null) {
+			userRadiusOverlay = new Overlay(this, new RangeRadiusSprite(this, null, e.radius, e.col));
+			addol(userRadiusOverlay);
 		}
 	}
 
