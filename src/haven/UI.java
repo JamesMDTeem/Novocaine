@@ -184,6 +184,7 @@ public class UI {
     }
 
     public UI(Windeye wnd, Audio.Root audio, Coord sz, Runner fun) {
+	haven.automated.UiTap.init();   // registers :uitap before any message has flowed
 	this.wnd = wnd;
 	root = new RootWidget(this, sz);
 	this.audio = new ActAudio.Root(audio);
@@ -449,6 +450,7 @@ public class UI {
 		wdg.attach(UI.this);
 		bind(wdg, id);
 	    }
+	    if(haven.automated.UiTap.on) haven.automated.UiTap.created(id, wdg, (typenm == null) ? type : typenm, cargs);
 	}
 
 	public String toString() {
@@ -486,6 +488,7 @@ public class UI {
 		if(pwdg == null)
 		    throw(new UIException(String.format("Null parent widget %d for %d (%s)", parent, id, wdg), null, pargs));
 		pwdg.addchild(wdg, pargs);
+		if(haven.automated.UiTap.on) haven.automated.UiTap.added(id, wdg, parent, pargs);
 		if (pwdg instanceof Window) {
 			processWindowContent((Window) pwdg, wdg);
 		}
@@ -683,6 +686,7 @@ public class UI {
 	public void run() {
 	    synchronized(UI.this) {
 		Widget wdg = getwidget(id);
+		if(haven.automated.UiTap.on) haven.automated.UiTap.destroyed(id, wdg);
 		if(wdg != null)
 		    destroy(wdg);
 	    }
@@ -716,6 +720,7 @@ public class UI {
 	    new Warning("wdgmsg sender (%s) is not in rwidgets, message is %s", sender.getClass().getName(), msg).issue();
 	    return;
 	}
+	if(haven.automated.UiTap.on) haven.automated.UiTap.out(id, sender, msg, args);
 	if(rcvr != null)
 	    rcvr.rcvmsg(id, msg, args);
 //	System.out.println("id: " + id + ", msg: " + msg + ", args: " + Arrays.toString(args) + " - " + getwidget(id).getClass().getName()); // ND: Use this to print widget messages
@@ -734,6 +739,7 @@ public class UI {
 
 	public void run() {
 	    Widget wdg = getwidget(id);
+	    if(haven.automated.UiTap.on) haven.automated.UiTap.in(id, wdg, msg, args);
 	    if(wdg != null) {
 		synchronized(UI.this) {
 		    dispatch(wdg, new Widget.MessageEvent(msg, args));
