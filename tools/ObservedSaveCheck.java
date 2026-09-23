@@ -118,7 +118,7 @@ public class ObservedSaveCheck {
 
     /** The bulk-copy fast path must agree with the per-tile loop for every shape of mask. */
     static void checkAdoptEquivalence() throws Exception {
-        Method adopt = mth("adopt", Map.class);
+        Method adopt = mth("adopt", Map.class, Map.class);
         String[] names = {"no mask at all", "empty mask", "one tile looked at",
                           "scattered tiles looked at", "every tile looked at"};
         for (int cse = 0; cse < names.length; cse++) {
@@ -141,7 +141,7 @@ public class ObservedSaveCheck {
             byte[] theirs = filled(Observed.OPEN);
             byte[] want = reference(mine, theirs, mask);
             install(mine, mask);
-            adopt.invoke(null, disk(theirs));
+            adopt.invoke(null, disk(theirs), null);
             ok(Arrays.equals(mapField().get(SEG).get(GC), want),
                "adopt matches the per-tile rule: " + names[cse]);
         }
@@ -154,7 +154,7 @@ public class ObservedSaveCheck {
      */
     static void checkNoMaskPollution() throws Exception {
         install(filled(Observed.SOLID), null);
-        mth("adopt", Map.class).invoke(null, disk(filled(Observed.OPEN)));
+        mth("adopt", Map.class, Map.class).invoke(null, disk(filled(Observed.OPEN)), null);
         Map<Long, Map<Coord, BitSet>> lk = lookedField();
         int n = 0;
         for (Map<Coord, BitSet> seg : lk.values())
@@ -179,7 +179,7 @@ public class ObservedSaveCheck {
         set.invoke(null, SEG, new Coord(5, 7), Observed.WALL);
         int i = (7 * MCache.cmaps.x) + 5;
         // The merge happens afterwards, as it now does.
-        mth("adopt", Map.class).invoke(null, d);
+        mth("adopt", Map.class, Map.class).invoke(null, d, null);
         byte[] got = mapField().get(SEG).get(GC);
         ok(got[i] == Observed.WALL,
            "a tile observed during the parse window is not overwritten by the file");
@@ -209,10 +209,14 @@ public class ObservedSaveCheck {
         @SuppressWarnings("unchecked")
         Map<Long, Map<Coord, byte[]>> snap =
             (Map<Long, Map<Coord, byte[]>>) mth("snapshot").invoke(null);
-        byte[] out = (byte[]) mth("encode", Map.class).invoke(null, snap);
+        /* v2 records carry a last-seen stamp per grid, and read() ages out anything over thirty
+         * days, so the round trip needs a current one or the grid is dropped on the way back. */
+        Map<Long, Map<Coord, Long>> times = new HashMap<>();
+        times.computeIfAbsent(SEG, k -> new HashMap<>()).put(GC, System.currentTimeMillis());
+        byte[] out = (byte[]) mth("encode", Map.class, Map.class).invoke(null, snap, times);
         Files.write(Paths.get("botmap.json"), out);
         Map<Long, Map<Coord, byte[]>> back = new HashMap<>();
-        boolean read = (Boolean) mth("read", Map.class).invoke(null, back);
+        boolean read = (Boolean) mth("read", Map.class, Map.class).invoke(null, back, new HashMap<Long, Map<Coord, Long>>());
         ok(read, "read() accepts what encode() produced");
         ok((back.get(SEG) != null) && Arrays.equals(back.get(SEG).get(GC), mine),
            "encode/read round-trips the record unchanged");
