@@ -185,6 +185,7 @@ public class UI {
 
     public UI(Windeye wnd, Audio.Root audio, Coord sz, Runner fun) {
 	haven.automated.UiTap.init();   // registers :uitap before any message has flowed
+	haven.automated.DevInspect.init();   // and :resinfo
 	this.wnd = wnd;
 	root = new RootWidget(this, sz);
 	this.audio = new ActAudio.Root(audio);
