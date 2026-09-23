@@ -123,11 +123,30 @@ public class SharedFile {
             ch.write(ByteBuffer.wrap(data));
             ch.force(true);
         }
-        try {
-            Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
-                StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException | AccessDeniedException e) {
-            Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
+        /* Windows refuses the rename with AccessDeniedException while anything else has the
+         * target open without delete sharing - a virus scanner or the search indexer, briefly,
+         * after every write. Retrying the same move a few times rides that out; falling straight
+         * back to a plain move, as this used to, fails the same way (a crew client logged
+         * "botmap.json.tmp -> botmap.json" for exactly this). */
+        AccessDeniedException denied = null;
+        for (int i = 0; i < 20; i++) {
+            try {
+                Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+                return;
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, dst, StandardCopyOption.REPLACE_EXISTING);
+                return;
+            } catch (AccessDeniedException e) {
+                denied = e;
+                try {
+                    Thread.sleep(25);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
+        throw denied;
     }
 }
