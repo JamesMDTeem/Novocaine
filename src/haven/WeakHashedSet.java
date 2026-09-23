@@ -99,15 +99,18 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
 	}
     }
 
-    /* Drains the reference queue, dropping entries whose referent has been collected.
-     * Reachable from outside because a caller that stops calling add() -- one that caps
-     * itself on size(), say -- otherwise never runs this again, and size() never falls
-     * back below the cap it stopped at. */
-    public void clean() {
-	int psz = sz;
+    /* How many dead references one clean() may reap (from brodgar-io-client f415785dc).
+     * Unbounded, a single intern() paid for everything the last GC cycle freed, with the
+     * CALLER's monitor held - the shape of a frame that freezes once every few seconds. What is
+     * left stays queued for the next call; a dead entry still in the table costs only its slot,
+     * since every read tests Ref.get() for null. One add() enqueues at most one future corpse
+     * and reaps up to cleanmax, so the drain keeps up on its own. */
+    private static final int cleanmax = 64;
+
+    private void clean() {
 	Ref<E>[] tab = this.tab;
 	Reference<? extends E> ref;
-	while((ref = cleanq.poll()) != null) {
+	for(int n = 0; (n < cleanmax) && ((ref = cleanq.poll()) != null); n++) {
 	    Ref rr = (Ref)ref;
 	    int idx = refidx(tab, rr);
 	    if(idx < 0)

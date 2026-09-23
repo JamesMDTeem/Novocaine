@@ -155,7 +155,22 @@ public class RenderTree implements RenderList.Adapter, Disposable {
     }
 
     public static class DepInfo {
-	private static final WeakHashedSet<DepInfo> interned = new WeakHashedSet<>(Hash.eq);
+	/* Sharded (from brodgar-io-client f415785dc). Every slot in the scene interns its DepInfo
+	 * here, from the UI thread and from every worker of the frame's parallel tick, so one static
+	 * monitor was the narrowest point the scene passed through: a recording caught the UI thread
+	 * parked 88 ms on a parallelStream whose workers all sat inside this set. Exact, because equal
+	 * DepInfos have equal hashCodes and so always pick the same shard. Each shard is its own
+	 * monitor; WeakHashedSet does no locking of its own. */
+	private static final int nshard = 16;
+	private static final WeakHashedSet<DepInfo>[] interned = mkshards();
+
+	@SuppressWarnings("unchecked")
+	private static WeakHashedSet<DepInfo>[] mkshards() {
+	    WeakHashedSet<DepInfo>[] ret = (WeakHashedSet<DepInfo>[])new WeakHashedSet[nshard];
+	    for(int i = 0; i < ret.length; i++)
+		ret[i] = new WeakHashedSet<DepInfo>(Hash.eq);
+	    return(ret);
+	}
 	public State[] states = {};
 	public boolean[] def = {};
 	public boolean[] deps = {};
@@ -203,43 +218,16 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	    return(ret);
 	}
 
-	/* Cap the interner size to prevent unbounded growth.
-	 *
-	 * The DepInfo interner is meant to dedupe state configurations so downstream
-	 * caches can key on identity. However, because per-frame state slots like
-	 * FrameInfo (which holds the per-frame `time`) participate in DepInfo's hash
-	 * via state[i].hashCode() — and FrameInfo doesn't override hashCode, so it
-	 * inherits identity hashCode — every PView.tick produces a DepInfo with a
-	 * fresh hash. The interner never finds a match, always inserts, and grows
-	 * unboundedly until GC. The accumulated dead refs then trigger ~80-150ms
-	 * cleanup spikes inside add() once a frame's intern call drains the queue.
-	 *
-	 * Capping at 8192 keeps lookups cheap and prevents the cleanup-burst spike.
-	 * Past the cap we still find() (preserves dedup of existing entries) but
-	 * skip add() — returning `this`. Downstream consumers still get a valid
-	 * DepInfo; they just lose dedup for new entries past the cap.
-	 *
-	 * The cap has to drain the queue itself before it decides. WeakHashedSet
-	 * only reaps collected entries from inside add() and remove(), and its size
-	 * only falls there, so a cap that stops calling add() is a door that shuts
-	 * once: the set stays reported-full for the rest of the process even after
-	 * everything in it has been collected, and interning never resumes. Reaping
-	 * first costs a queue poll proportional to what has died since the last one,
-	 * which is exactly the work add() would have done anyway -- the spike this
-	 * cap exists to stop came from letting that queue grow without bound, not
-	 * from draining it.
-	 */
-	private static final int INTERN_SIZE_CAP = 8192;
+	/* There used to be a size cap here (from Kami 0fcebee31) that handed back an un-interned
+	 * `this` past 8192 entries, to stop one intern() draining a whole GC cycle of dead references
+	 * under the lock. That broke the invariant the interner exists for - one canonical object per
+	 * equal DepInfo - and Kami reverted theirs on suspicion of exactly that. The drain is bounded in
+	 * WeakHashedSet.clean() instead, and the lock is sharded above, which is what the stall needed. */
 	public DepInfo intern() {
-	    synchronized(interned) {
-		if(interned.size() >= INTERN_SIZE_CAP) {
-		    interned.clean();
-		    if(interned.size() >= INTERN_SIZE_CAP) {
-			DepInfo found = interned.find(this);
-			return found != null ? found : this;
-		    }
-		}
-		return(interned.intern(this));
+	    int h = hashCode();
+	    WeakHashedSet<DepInfo> shard = interned[(h ^ (h >>> 16)) & (nshard - 1)];
+	    synchronized(shard) {
+		return(shard.intern(this));
 	    }
 	}
 
