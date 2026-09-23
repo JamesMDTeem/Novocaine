@@ -5176,6 +5176,18 @@ public class OptWnd extends Window {
 			}, prev.pos("bl").adds(0, 10).x(0));
 			prev.tooltip = worldTagTooltip;
 
+			prev = add(new CheckBox("Pre-download resources the crew has seen"){
+				{a = Utils.getprefb(haven.automated.ResourcePrefetch.PREF, false);}
+				public void changed(boolean val) {
+					Utils.setprefb(haven.automated.ResourcePrefetch.PREF, val);
+				}
+			}, prev.pos("bl").adds(0, 10).x(0));
+			prev.tooltip = RichText.render("Every client reports which game resources it loads to the crew's server (names only). " +
+				"With this on, the client fetches the ones it has not seen yet in the background, from the game's own " +
+				"resource server, so meeting something new does not stall a frame." +
+				"\n\n$col[185,185,185]{Needs the Cookbook Endpoint above. Starts at the next login; on a fresh install it can " +
+				"download a few hundred megabytes. Progress goes to logs/prefetch.log.}", UI.scale(320));
+
 			FoodService.refreshEndpointCache();
 
 			Widget backButton;

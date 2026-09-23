@@ -265,6 +265,11 @@ public class Resource implements Serializable {
 	}
     }
 	
+    /** The store remote resources are cached in, or null before the client has set one. */
+    public static ResCache cache() {
+	return(prscache);
+    }
+
     public static void setcache(ResCache cache) {
 	prscache = cache;
     }
@@ -620,6 +625,10 @@ public class Resource implements Serializable {
 		    Resource ret = new Resource(this, res.name, res.ver);
 		    ret.source = src;
 		    ret.load(msg);
+		    /* Remote resources only - the jars ship with every client - for the crew's
+		     * shared pre-download list. */
+		    if(!(src instanceof JarSource) && !(src instanceof FileSource))
+			haven.automated.ResourcePrefetch.loaded(res.name, ret.ver);
 		    res.res = ret;
 		    res.error = null;
 		    break;

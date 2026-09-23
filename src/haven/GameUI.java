@@ -1625,6 +1625,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public void tick(double dt) {
 	super.tick(dt);
 	haven.automated.WasdWalk.tick(this);
+	haven.automated.ResourcePrefetch.maybeStart();
 	haven.automated.alchemy.AlchemyService.poll(ui, dt);
 	haven.automated.lp.LpContext.tick();
 	haven.automated.nbots.world.PlaceOverlay.tick(this);
