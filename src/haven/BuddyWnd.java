@@ -144,7 +144,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 		online = status;
 	    if(ui.gui != null) {
             if (OptWnd.showKinStatusChangeMessages.a) {
-                ui.gui.msg(name + (online > 0 ? " is now ONLINE" : " has gone Offline"), BuddyWnd.gc[group]);
+                ui.gui.msg(name + (online > 0 ? " is now ONLINE" : " has gone Offline"), BuddyWnd.gcol(group));
             }
             if (ui.gui.buddies != null && Utils.getpref("buddysort", "").equals("status")) {
                 ui.gui.buddies.setcmp(statuscmp);
@@ -226,16 +226,48 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	}
     }
 
+    /* The colour for a group, and a neutral one past the eight the palette has. A village or
+     * realm has 255 permission groups (0-254), and a group the server sends above 7 used to index
+     * straight off the end of gc. */
+    public static final Color extcol = new Color(200, 200, 200);
+    public static Color gcol(int group) {
+	return(((group >= 0) && (group < gc.length)) ? gc[group] : extcol);
+    }
+
     public static class GroupSelector extends Widget {
 	public int group;
 	public GroupRect[] groups = new GroupRect[gc.length];
+	private OldDropBox<Integer> ext = null;
 
 	public GroupSelector(int group) {
-	    super(new Coord(gc.length * UI.scale(20), UI.scale(20)));
+	    this(group, false);
+	}
+
+	/* With extended set, a dropdown beside the eight squares reaches every group the server
+	 * has, 0 to 254 (after brodgar-io-client's Extended Village Permissions). The squares are
+	 * the first eight of them, so the two always show the same group. */
+	public GroupSelector(int group, boolean extended) {
+	    super(new Coord(gc.length * UI.scale(20) + (extended ? UI.scale(48) : 0), UI.scale(20)));
 	    this.group = group;
 	    for (int i = 0; i < gc.length; ++i) {
 		groups[i] = new GroupRect(this, i, group == i);
 		add(groups[i], new Coord(i * UI.scale(20), 0));
+	    }
+	    if(extended) {
+		ext = add(new OldDropBox<Integer>(UI.scale(44), 12, UI.scale(17)) {
+			protected Integer listitem(int i) {return(i);}
+			protected int listitems() {return(255);}
+			protected void drawitem(GOut g, Integer item, int i) {
+			    g.aimage(Text.strokedtex(item.toString()), Coord.of(UI.scale(3), g.sz().y / 2), 0.0, 0.5);
+			}
+			public void change(Integer item) {
+			    super.change(item);
+			    if((item != null) && (item != GroupSelector.this.group))
+				GroupSelector.this.select(item);
+			}
+		    }, new Coord(gc.length * UI.scale(20) + UI.scale(4), UI.scale(1)));
+		if(group >= 0)
+		    ext.sel = group;
 	    }
 	}
 
@@ -245,11 +277,13 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 	public void update(int group) {
 	    if(group == this.group)
 		return;
-	    if(this.group >= 0)
+	    if((this.group >= 0) && (this.group < groups.length))
 		groups[this.group].unselect();
 	    this.group = group;
-	    if(group >= 0)
+	    if((group >= 0) && (group < groups.length))
 		groups[group].select();
+	    if((ext != null) && (group >= 0))
+		ext.sel = group;
 	}
 
 	public void select(int group) {
@@ -261,7 +295,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
     @RName("grp")
     public static class $grp implements Factory {
 	public Widget create(UI ui, Object[] args) {
-	    return(new GroupSelector(INT.of(args[0])) {
+	    return(new GroupSelector(INT.of(args[0]), true) {
 		    public void changed(int group) {
 			wdgmsg("ch", group);
 		    }
@@ -393,7 +427,7 @@ public class BuddyWnd extends Widget implements Iterable<BuddyWnd.Buddy> {
 			    g.aimage(online, Coord.of(sz.y / 2), 0.5, 0.5);
 			else if(item.online == 0)
 			    g.aimage(offline, Coord.of(sz.y / 2), 0.5, 0.5);
-			g.chcolor(gc[b.group]);
+			g.chcolor(gcol(b.group));
 			g.aimage(b.rname().tex(), Coord.of(sz.y + UI.scale(5), sz.y / 2), 0.0, 0.5);
 			g.chcolor();
 		    }
