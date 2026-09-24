@@ -460,7 +460,18 @@ public class LeakDbg {
      * and, only while a frame is genuinely overrunning, one getStackTrace.
      */
     private static final long STALL_POLL_MS = 120L;
-    private static final double STALL_MS = 400.0;
+    /** 400 ms by default; {@code :stalls <ms>} lowers it for an investigation of shorter hitches. */
+    private static volatile double STALL_MS = 400.0;
+
+    static {
+        haven.Console.setscmd("stalls", (cons, args) -> {
+            if (args.length > 1)
+                STALL_MS = Math.max(50, Double.parseDouble(args[1]));
+            cons.out.print("stall capture threshold: " + (int) STALL_MS + " ms" +
+                (NLog.diag() ? "" : " (Log Diagnostics is off, so nothing is captured)") + "\n");
+            cons.out.flush();
+        });
+    }
     private static final long STALL_QUIET_MS = 3000L;
     private static final int STALL_FRAMES = 24;
     private static volatile Thread watchdog;
@@ -528,7 +539,47 @@ public class LeakDbg {
         }
         if (st.length == 0)
             sb.append("\n    (no stack - thread not running Java code)");
+        lockOwner(ui, sb);
         NLog.log(LOG, sb.toString());
+    }
+
+    /**
+     * When the UI thread is waiting for a lock, which lock and the stack of the thread holding it.
+     *
+     * The 2026-09-08..12 captures held 36 stalls in phase "lock" whose whole UI stack was
+     * UILoop$Frame.tick - waiting to enter the UI monitor, with nothing to say who had it. The
+     * holder is the half of the story that names a method. Monitors and exclusive locks report an
+     * owner; a read lock does not (readers are not owners), so that case names the lock only.
+     */
+    private static void lockOwner(Thread ui, StringBuilder sb) {
+        try {
+            java.lang.management.ThreadMXBean b = ManagementFactory.getThreadMXBean();
+            java.lang.management.ThreadInfo[] tis = b.getThreadInfo(new long[] {ui.getId()}, false, false);
+            java.lang.management.ThreadInfo ti = (tis.length > 0) ? tis[0] : null;
+            if ((ti == null) || (ti.getLockName() == null))
+                return;
+            sb.append("\n  waiting for ").append(ti.getLockName());
+            long owner = ti.getLockOwnerId();
+            if (owner < 0) {
+                sb.append(" (no single owner - a read lock, or released since)");
+                return;
+            }
+            java.lang.management.ThreadInfo oi = b.getThreadInfo(new long[] {owner}, false, false)[0];
+            if (oi == null)
+                return;
+            sb.append(", held by \"").append(oi.getThreadName()).append("\" (").append(oi.getThreadState()).append("):");
+            StackTraceElement[] os = oi.getStackTrace();
+            int n = 0;
+            for (StackTraceElement e : os) {
+                sb.append("\n    ").append(e);
+                if (++n >= STALL_FRAMES) {
+                    sb.append("\n    ... (").append(os.length - n).append(" more)");
+                    break;
+                }
+            }
+        } catch (Throwable t) {
+            sb.append("\n  (lock owner unavailable: ").append(t).append(")");
+        }
     }
 
     private static void run() {

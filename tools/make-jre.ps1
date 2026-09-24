@@ -65,6 +65,10 @@ $modules = @(
     # jdeps cannot see either: they are reached by instanceof and by MBean
     # name, so nothing in the bytecode names the module.
     'jdk.management'
+    # :jfr (haven.automated.FlightRecorder): a flight recording of the running client, the
+    # tool that finds a stutter made of many small waits. About 2 MB. Reached only through
+    # the console command, so jdeps cannot see it either.
+    'jdk.jfr'
     'java.prefs'         # every Utils.getpref* call lands here
     'java.sql'           # sqlite-jdbc
     'jdk.unsupported'    # sun.misc.Unsafe, required by lwjgl-fat.jar

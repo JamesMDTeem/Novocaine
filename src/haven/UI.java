@@ -187,6 +187,7 @@ public class UI {
 	haven.automated.UiTap.init();   // registers :uitap before any message has flowed
 	haven.automated.DevInspect.init();   // and :resinfo
 	SqliteCache.init();   // and :store
+	haven.automated.FlightRecorder.init();   // and :jfr
 	haven.automated.ObjectRadii.init();   // and :radius
 	this.wnd = wnd;
 	root = new RootWidget(this, sz);
