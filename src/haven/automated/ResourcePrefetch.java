@@ -37,12 +37,18 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * only, and every file still comes from the game.
  *
  * Reporting happens whenever the cookbook endpoint is configured, since that endpoint is the
- * crew's server and names are harmless. Pre-downloading is opt-in: on a fresh install it can mean
- * a few hundred megabytes, paced at {@link #PACE_MS} between fetches so it never competes with a
- * terrain crossing for the loader.
+ * crew's server and names are harmless. Pre-downloading is on by default and can be switched off
+ * in Server Integration; on a fresh install it can mean a few hundred megabytes, paced at
+ * {@link #PACE_MS} between fetches so it never competes with a terrain crossing for the loader.
  */
 public class ResourcePrefetch {
     public static final String PREF = "preDownloadResources";
+
+    /** On unless the player has turned it off. */
+    public static boolean enabled() {
+        return Utils.getprefb(PREF, true);
+    }
+
     private static final int PACE_MS = 40;
     private static final int BATCH = 2000;
 
@@ -69,7 +75,7 @@ public class ResourcePrefetch {
 
     /** Called from GameUI.tick: starts this session's pre-download once, if it is wanted. */
     public static void maybeStart() {
-        if (started.get() || !Utils.getprefb(PREF, false) || endpoint() == null)
+        if (started.get() || !enabled() || endpoint() == null)
             return;
         if (started.compareAndSet(false, true))
             exec.submit(ResourcePrefetch::prefetch);
@@ -131,7 +137,7 @@ public class ResourcePrefetch {
         int have = 0, got = 0, failed = 0;
         long t0 = System.currentTimeMillis();
         for (Object[] w : want) {
-            if (!Utils.getprefb(PREF, false))
+            if (!enabled())
                 break;   /* switched off mid-run */
             String name = (String) w[0];
             if (cached(name)) {

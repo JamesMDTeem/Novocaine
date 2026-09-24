@@ -1529,7 +1529,7 @@ public class OptWnd extends Window {
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
 			leftColumn = add(combatMoveAdviceCheckBox = new CheckBox("Recommend Next Combat Move (Bottom Panel)"){
-				{a = Utils.getprefb("combatMoveAdviceUI", true);}
+				{a = Utils.getprefb("combatMoveAdviceUI", false);}
 				public void changed(boolean val) {
 					Utils.setprefb("combatMoveAdviceUI", val);
 				}
@@ -5177,7 +5177,7 @@ public class OptWnd extends Window {
 			prev.tooltip = worldTagTooltip;
 
 			prev = add(new CheckBox("Pre-download resources the crew has seen"){
-				{a = Utils.getprefb(haven.automated.ResourcePrefetch.PREF, false);}
+				{a = haven.automated.ResourcePrefetch.enabled();}
 				public void changed(boolean val) {
 					Utils.setprefb(haven.automated.ResourcePrefetch.PREF, val);
 				}
