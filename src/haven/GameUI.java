@@ -1628,6 +1628,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     public void tick(double dt) {
 	super.tick(dt);
 	haven.automated.WasdWalk.tick(this);
+	haven.automated.Paint.tick(this);
 	haven.automated.ResourcePrefetch.maybeStart();
 	haven.automated.alchemy.AlchemyService.poll(ui, dt);
 	haven.automated.lp.LpContext.tick();
@@ -2588,6 +2589,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    });
 	cmdmap.put("wdgtree", (cons, args) -> haven.automated.UiTap.tree(ui, cons));
 	cmdmap.put("gobinfo", (cons, args) -> haven.automated.DevInspect.gobinfo(this, cons, args));
+	cmdmap.put("paint", (cons, args) -> haven.automated.Paint.toggle(this));
 	cmdmap.put("surv", new Console.Command() {
 		public void run(Console cons, String[] args) {
 		    haven.automated.survey.SurveyProbe.run(GameUI.this, args);

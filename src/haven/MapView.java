@@ -2852,6 +2852,9 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	if(ev.b == 2)
 	    inmdown2++;
 	parent.setfocus(this);
+	/* With a Paint pencil or eraser picked, the left button draws and the right one puts it down. */
+	if(haven.automated.Paint.mousedown(this, ev))
+	    return(true);
 	Loader.Future<Plob> placing_l = this.placing;
 	if (ev.b == 1 && areaSelect) {
 		synchronized (this) {
@@ -2906,6 +2909,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     public void mousemove(MouseMoveEvent ev) {
 	inmmove++;
 	currentCursorLocation = ev.c;
+	haven.automated.Paint.mousemove(this, ev.c);
 	if(grab != null)
 	    grab.mmousemove(ev.c);
 	Loader.Future<Plob> placing_l = this.placing;
@@ -3045,6 +3049,8 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
     }
     
     public boolean mouseup(MouseUpEvent ev) {
+		if(haven.automated.Paint.mouseup(this, ev))
+		    return(true);
 		if(ev.b == 2 || (OptWnd.allowMouse4CamDragCheckBox.a && ev.b == 4) || (OptWnd.allowMouse5CamDragCheckBox.a && ev.b == 5)) {
 	    if(camdrag != null) {
 		camera.release();

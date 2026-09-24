@@ -154,7 +154,15 @@ build("NurglingImports/AltManager.res",
       "customclient/menugrid/NurglingImports", "Alt Manager", 0,
       ["@", "NurglingImports", "AltManager"],
       "Lists the accounts saved on this client and switches between them with one click. "
-      "Gated by the Alt Manager checkbox in Advanced Settings -> Gameplay Automation.")
+      "Gated by the Alt Manager checkbox in Advanced Settings -> Novocaine Settings.")
+
+# Drawing on the ground (haven.automated.Paint): opens the tool window.
+build("NurglingImports/Paint.res",
+      "customclient/menugrid/NurglingImports", "Paint", 0,
+      ["@", "NurglingImports", "Paint"],
+      "Draw on the ground with the mouse: six colours, an eraser and a width. Strokes lie on the "
+      "terrain and are seen only on your own screen. With a pencil picked, left-drag draws and "
+      "right-click puts it down.")
 
 # The three crew bots. Each is a separate class from the stock Bots-tab version, which is left
 # exactly as it is - see haven.automated.nbots.NBot for why.
