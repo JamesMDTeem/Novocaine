@@ -33,7 +33,8 @@ import java.util.Set;
  * trimmed down to the last few launch blocks so a long-running client doesn't grow logs without
  * bound.
  *
- * Thread-safe by a single lock: bot threads, the UI thread and the watchdog all write here.
+ * Thread-safe: bot threads, the UI thread and the watchdog all log here, and none of them waits
+ * for the disk - lines are queued and one writer thread puts them in their files (see append).
  */
 public class NLog {
     /**
@@ -169,8 +170,20 @@ public class NLog {
                     banners.add(i);
             }
             int extra = banners.size() - KEEP_LAUNCHES;
+            int from = -1;
             if (extra > 0) {
-                int from = banners.get(banners.size() - KEEP_LAUNCHES);
+                from = banners.get(banners.size() - KEEP_LAUNCHES);
+            } else if (start > 0) {
+                // Fewer launches than we keep fit in the tail, so a single launch wrote more than
+                // the cap. This used to skip the trim, which is how vmem.log reached 371 MB. It is
+                // safe to cut: this runs before the current launch writes its banner, so nothing
+                // of the current run is in the file yet. Keep the tail from a line boundary.
+                from = 0;
+                while (from < tail.length && tail[from] != '\n')
+                    from++;
+                from++;
+            }
+            if (from >= 0 && from < tail.length) {
                 byte[] keep = new byte[tail.length - from];
                 System.arraycopy(tail, from, keep, 0, keep.length);
                 Files.write(file, keep, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
@@ -181,26 +194,126 @@ public class NLog {
     }
 
     private static String banner() {
-        return "-- launch " + STAMP.format(new Date()) + "  git " + gitRev();
+        String now;
+        synchronized (STAMP) {
+            now = STAMP.format(new Date());
+        }
+        return "-- launch " + now + "  git " + gitRev();
     }
 
+    /**
+     * One line waiting for the writer thread, or a flush request (file == null).
+     */
+    private static final class Pending {
+        final String file, line;
+        final java.util.concurrent.CountDownLatch done;
+
+        Pending(String file, String line, java.util.concurrent.CountDownLatch done) {
+            this.file = file;
+            this.line = line;
+            this.done = done;
+        }
+    }
+
+    private static final java.util.concurrent.LinkedBlockingQueue<Pending> queue = new java.util.concurrent.LinkedBlockingQueue<>();
+    private static volatile Thread writer = null;
+
+    /**
+     * Queues a line; the "nlog-writer" thread puts it in the file. Callers never touch the disk.
+     *
+     * Every write used to happen on the caller's thread, under one lock shared by every caller:
+     * open the file, append a line, close it. On Windows that is an open and a close per line, each
+     * of which a virus scanner may inspect, and the UI thread logs from its tick - so a UI-thread line
+     * waited behind whatever a bot thread was writing, a thread dump included, and paid its own
+     * open. A stall capture on 2026-09-12 caught the frame 498 ms inside this method. Order within a
+     * file is kept, since one thread writes everything; the timestamp is taken here, when the event
+     * happened, not when it reached the disk.
+     */
     private static void append(String file, String line) {
+        String stamped;
+        synchronized (STAMP) {
+            stamped = STAMP.format(new Date()) + " " + line;
+        }
+        startWriter();
+        queue.add(new Pending(file, stamped, null));
+    }
+
+    private static void startWriter() {
+        if (writer != null)
+            return;
         synchronized (LOCK) {
+            if (writer != null)
+                return;
+            Thread t = new Thread(NLog::drain, "nlog-writer");
+            t.setDaemon(true);
+            t.start();
+            writer = t;
             try {
-                Path dir = dir();
-                Files.createDirectories(dir);
-                Path f = dir.resolve(file);
-                if (bootstrapped.add(file)) {
-                    trimToRecentLaunches(f);
-                    Files.write(f, (banner() + System.lineSeparator()).getBytes(StandardCharsets.UTF_8),
-                        StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-                }
-                Files.write(f, (STAMP.format(new Date()) + " " + line + System.lineSeparator())
-                        .getBytes(StandardCharsets.UTF_8),
-                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-            } catch (IOException ignore) {
-                // Logging must never be the thing that brings the client down.
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> flush(2000), "nlog-flush"));
+            } catch (IllegalStateException e) {
+                /* already exiting */
             }
+        }
+    }
+
+    /**
+     * Blocks until everything queued before the call is in its file, or the timeout passes. For
+     * shutdown and for harnesses that read a log back; nothing on a frame path should call it.
+     */
+    public static void flush(long timeoutMs) {
+        if (writer == null)
+            return;
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+        queue.add(new Pending(null, null, done));
+        try {
+            done.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public static void flush() {
+        flush(10000);
+    }
+
+    /** The writer: takes whatever is queued, writes each file's lines in one append, repeats. */
+    private static void drain() {
+        List<Pending> batch = new ArrayList<>();
+        while (true) {
+            try {
+                batch.add(queue.take());
+            } catch (InterruptedException e) {
+                continue;
+            }
+            queue.drainTo(batch);
+            Map<String, StringBuilder> byFile = new java.util.LinkedHashMap<>();
+            List<java.util.concurrent.CountDownLatch> flushed = new ArrayList<>();
+            for (Pending p : batch) {
+                if (p.file == null)
+                    flushed.add(p.done);
+                else
+                    byFile.computeIfAbsent(p.file, k -> new StringBuilder()).append(p.line).append(System.lineSeparator());
+            }
+            batch.clear();
+            for (Map.Entry<String, StringBuilder> e : byFile.entrySet())
+                write(e.getKey(), e.getValue().toString());
+            for (java.util.concurrent.CountDownLatch l : flushed)
+                l.countDown();
+        }
+    }
+
+    private static void write(String file, String text) {
+        try {
+            Path dir = dir();
+            Files.createDirectories(dir);
+            Path f = dir.resolve(file);
+            if (bootstrapped.add(file)) {
+                trimToRecentLaunches(f);
+                text = banner() + System.lineSeparator() + text;
+            }
+            Files.write(f, text.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+        } catch (IOException ignore) {
+            // Logging must never be the thing that brings the client down.
         }
     }
 

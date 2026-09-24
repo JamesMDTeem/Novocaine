@@ -218,7 +218,14 @@ public class CamFollowCheck {
 	return(Math.hypot(hi0 - lo0, hi1 - lo1));
     }
 
+    /* NLog writes on its own thread; wait for it before measuring or reading a log. */
+    static long logsize(java.nio.file.Path log) throws Exception {
+	haven.automated.nbots.core.NLog.flush();
+	return(java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0);
+    }
+
     static String tail(java.nio.file.Path log, long from) throws Exception {
+	haven.automated.nbots.core.NLog.flush();
 	if(!java.nio.file.Files.exists(log))
 	    return("");
 	byte[] all = java.nio.file.Files.readAllBytes(log);
@@ -474,7 +481,7 @@ public class CamFollowCheck {
 	System.out.println("7. the follow detector fires when the camera is pinned, and not before");
 	{
 	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
-	    long was = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+	    long was = logsize(log);
 
 	    Glob glob = new Glob(null);
 	    Gob pl = mkgob(glob, PLID, 100, 100);
@@ -502,7 +509,7 @@ public class CamFollowCheck {
 	System.out.println("8. a player pacing indoors is not a stuck camera");
 	{
 	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
-	    long was = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+	    long was = logsize(log);
 
 	    Glob glob = new Glob(null);
 	    Gob pl = mkgob(glob, PLID, 100, 100);
@@ -517,7 +524,7 @@ public class CamFollowCheck {
 		  firstline(tail(log, was), "camera is not following"));
 
 	    /* And still catches a genuinely pinned camera under the same movement. */
-	    long was2 = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+	    long was2 = logsize(log);
 	    pace(pw, mv, pl, 400, false);
 	    check("still reports a pinned camera while pacing",
 		  tail(log, was2).contains("camera is not following"),
@@ -528,7 +535,7 @@ public class CamFollowCheck {
 	System.out.println("9. the client's own position freezes while the server keeps moving them");
 	{
 	    java.nio.file.Path log = java.nio.file.Paths.get("logs", "plgob.log");
-	    long was = java.nio.file.Files.exists(log) ? java.nio.file.Files.size(log) : 0;
+	    long was = logsize(log);
 
 	    Glob glob = new Glob(null);
 	    Gob pl = mkgob(glob, PLID, 100, 100);

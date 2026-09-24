@@ -68,8 +68,22 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
 	return((idx + 1) & (tab.length - 1));
     }
 
+    /* The slot a hash starts probing from. Mixed first (murmur3's finalizer): the table is
+     * linear-probed, so raw hashCode() low bits that cluster make runs whose every step is a full
+     * equals(). RenderTree.DepInfo's hash is a polynomial over its states' hashes, and stall
+     * captures (2026-09-12) caught its intern() 440 ms to 2.9 s deep in findidx/DepInfo.equals -
+     * a probe run, not the lock. Bijective, so it can only spread what was there. */
+    private static int slot(int h, int len) {
+	h ^= h >>> 16;
+	h *= 0x85ebca6b;
+	h ^= h >>> 13;
+	h *= 0xc2b2ae35;
+	h ^= h >>> 16;
+	return(h & (len - 1));
+    }
+
     private int hashidx(Ref[] tab, E el) {
-	return(hash.hash(el) & (tab.length - 1));
+	return(slot(hash.hash(el), tab.length));
     }
 
     @SuppressWarnings("unchecked")
@@ -88,7 +102,7 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
     }
 
     private int refidx(Ref<E>[] tab, Ref ref) {
-	int idx = ref.hash & (tab.length - 1);
+	int idx = slot(ref.hash, tab.length);
 	while(true) {
 	    Ref cur = tab[idx];
 	    if(cur == null)
@@ -123,7 +137,7 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
     private void remove(Ref<E>[] tab, int idx) {
 	tab[idx] = null;
 	for(int nx = nextidx(tab, idx); tab[nx] != null; nx = nextidx(tab, nx)) {
-	    int oh = (tab[nx].hash) & (tab.length - 1);
+	    int oh = slot(tab[nx].hash, tab.length);
 	    if((idx < nx) ? ((oh <= idx) || (nx < oh)) : ((oh <= idx) && (nx < oh))) {
 		tab[idx] = tab[nx];
 		tab[nx] = null;
@@ -148,7 +162,9 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
 
     private void ckshrink() {
 	int nsz = tab.length;
-	while((nsz > 32) && (sz < (loadfac * 0.25)))
+	/* Was sz < loadfac * 0.25, a constant 0.125, so the table never shrank below its
+	 * high-water mark (upstream as well). */
+	while((nsz > 32) && (sz < (nsz * loadfac * 0.25)))
 	    nsz >>= 1;
 	if(nsz < tab.length)
 	    resize(nsz);
@@ -161,7 +177,7 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
 	for(int i = 0; i < ctab.length; i++) {
 	    Ref<E> cur = ctab[i];
 	    if(cur != null) {
-		int idx = cur.hash & (ntab.length - 1);
+		int idx = slot(cur.hash, ntab.length);
 		for(; ntab[idx] != null; idx = nextidx(ntab, idx));
 		ntab[idx] = cur;
 	    }

@@ -47,7 +47,8 @@ import haven.MapWnd;
  * map file which segment that grid is in, instead of trusting the segment the anchor was written
  * with - so it no longer matters which client drew the place.
  *
- * Anchors are immutable and safe to hand between the bot threads and the UI thread.
+ * Anchors are immutable (bar one volatile lookup cache) and safe to hand between the bot threads
+ * and the UI thread.
  */
 public class WorldAnchor {
     /**
@@ -231,6 +232,20 @@ public class WorldAnchor {
      * two grids really are in different segments (separate continents, or two halves of a map that
      * have not been stitched together yet) - there is genuinely no offset to apply then.
      */
+    /** byGridinfo's last answer and the player grid it was for; see the tryLock there. One
+     *  volatile reference, so a bot thread and the UI thread never pair one's grid with the
+     *  other's answer. A cache, not state: the anchor's value is unchanged by it. */
+    private static final class Last {
+        final long mygid;
+        final Coord2d live;
+
+        Last(long mygid, Coord2d live) {
+            this.mygid = mygid;
+            this.live = live;
+        }
+    }
+    private volatile Last last = null;
+
     private Coord2d byGridinfo(GameUI gui, haven.Gob me) {
         if (gid == 0)
             return null;
@@ -242,19 +257,30 @@ public class WorldAnchor {
             Coord mygc = me.rc.floor(MCache.tilesz).div(MCache.cmaps);
             long mygid = mcache.getgrid(mygc).id;
             MapFile.GridInfo mine, theirs;
-            file.lock.readLock().lock();
+            // Never wait for the map here. PlaceOverlay.tick resolves on the UI thread every
+            // frame, and while the map's processor saves under the write lock a plain lock()
+            // parked the frame: stall captures of 2026-09-08 and 09-10 caught three frames of
+            // 430-520 ms at exactly this line. The answer only moves when the player crosses a
+            // grid, so the last one for this grid stands in until the lock is free.
+            if (!file.lock.readLock().tryLock()) {
+                Last l = last;
+                return ((l != null) && (l.mygid == mygid)) ? l.live : null;
+            }
             try {
                 mine = file.gridinfo.get(mygid);
                 theirs = file.gridinfo.get(gid);
             } finally {
                 file.lock.readLock().unlock();
             }
-            if ((mine == null) || (theirs == null) || (mine.seg != theirs.seg))
-                return null;
-            // Grid coords within one segment, so the difference is exact and distance-independent.
-            Coord dg = theirs.sc.sub(mine.sc);
-            Coord2d myul = mygc.mul(MCache.cmaps).mul(MCache.tilesz);
-            return myul.add(dg.mul(MCache.cmaps).mul(MCache.tilesz)).add(off);
+            Coord2d ret = null;
+            if ((mine != null) && (theirs != null) && (mine.seg == theirs.seg)) {
+                // Grid coords within one segment, so the difference is exact and distance-independent.
+                Coord dg = theirs.sc.sub(mine.sc);
+                Coord2d myul = mygc.mul(MCache.cmaps).mul(MCache.tilesz);
+                ret = myul.add(dg.mul(MCache.cmaps).mul(MCache.tilesz)).add(off);
+            }
+            last = new Last(mygid, ret);
+            return ret;
         } catch (Loading | NullPointerException e) {
             return null;
         }
