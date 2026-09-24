@@ -111,9 +111,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	public static final ScheduledExecutorService gobDeathExecutor = Executors.newSingleThreadScheduledExecutor();
 	private static Future<?> gobDeathFuture;
 	private Overlay gobChaseVector = null;
-	public static final HashSet<Long> alarmPlayed = new HashSet<Long>();
+	/* Concurrent: Gob.init runs on the loader threads as well as the UI thread. */
+	public static final Set<Long> alarmPlayed = java.util.concurrent.ConcurrentHashMap.newKeySet();
 	public Overlay combatFoeCircleOverlay = null;
-	public static Set<Long> permanentHighlightList = new HashSet<>();
+	public static Set<Long> permanentHighlightList = java.util.concurrent.ConcurrentHashMap.newKeySet();
 	private GobDamageInfo damage;
 	public Boolean imDrinking = false;
 	public Boolean imInCoracle = false;

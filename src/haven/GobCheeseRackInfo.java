@@ -7,7 +7,9 @@ import java.util.Map;
 
 public class GobCheeseRackInfo extends GobInfo {
 
-	private static final Map<String, Tex> stageTexCache = new HashMap<>();
+	/* Written from ctick, which runs on the parallel object tick. A handful of keys (Curd, T1-T4),
+	 * and the textures are set on the tray sprites, so it is synchronised rather than evicting. */
+	private static final Map<String, Tex> stageTexCache = java.util.Collections.synchronizedMap(new HashMap<>());
 
     protected GobCheeseRackInfo(Gob owner) {
 	super(owner);
