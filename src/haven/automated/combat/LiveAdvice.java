@@ -217,6 +217,20 @@ public final class LiveAdvice {
                || AutoFighter.on());
     }
 
+    /**
+     * Whether anything wants the PLAN - the ringed card or the auto-fighter - rather than only the
+     * damage numbers. The numbers are one Prediction.of per card on the bar; the plan is a beam
+     * search over every opponent in the fight plus a distill pass that costs tenths of a second
+     * per new matchup, re-run on every change and every heartbeat. Damage prediction is on by
+     * default and advice is not, so running the search for the numbers alone put that load on
+     * every client in every fight: a report on 2026-09-24 of frame rates collapsing in fights
+     * with advice and the auto-fighter both off.
+     */
+    static boolean planWanted() {
+        haven.CheckBox advice = haven.OptWnd.combatMoveAdviceCheckBox;
+        return(((advice != null) && advice.a) || AutoFighter.on());
+    }
+
     /* Forgets the fight, when it ends or nothing wants advice. Tick thread. */
     private static void forget() {
         chosen = 0;
@@ -493,17 +507,33 @@ public final class LiveAdvice {
                 job = pending;
                 pending = null;
             }
+            long t0 = System.nanoTime();
             try {
-                Now n = plan(job);
+                boolean planning = planWanted();
+                Now n = planning ? plan(job) : numbers(job);
                 synchronized(lock) {
                     if(job.generation == generation)
                         current = n;
                 }
                 /* After the answer is out, not before it: choosing the cards for a new matchup
                  * costs a few tenths of a second once, and the first answer should not wait. */
-                refine(job);
+                if(planning)
+                    refine(job);
             } catch(Throwable t) {
                 /* a plan that fails costs this answer, never the client */
+            }
+            /* Rest as long as the pass took before taking the next job. One pass against a pack
+             * of eight bats measured 760 ms and 1.8 GB allocated (tools/PlanCost-style timing,
+             * 2026-09-24); back to back, that allocation rate is what the collector cannot keep
+             * up with, and the frames stall instead. Half a core at most; the next pass plans
+             * from the newest fight state, since pending only ever holds the latest job. */
+            long spent = (System.nanoTime() - t0) / 1000000;
+            if(spent > 20) {
+                try {
+                    Thread.sleep(Math.min(spent, 2000));
+                } catch(InterruptedException e) {
+                    return;
+                }
             }
         }
     }
@@ -565,6 +595,27 @@ public final class LiveAdvice {
         distillKey = key;
     }
 
+    /** The damage each card on the bar would do to the target, and nothing else: no plan. */
+    private static Now numbers(Job job) {
+        Foe t = job.foes.get(0);
+        Map<String, Double> dealt = dealt(job, t);
+        return(new Now(t.gob, null, Collections.unmodifiableMap(dealt), System.currentTimeMillis(),
+                       job.observedAt, job.observedRt, "damage numbers only", 0, 0, Double.NaN,
+                       Double.NaN, t.gob, Prediction.shortName(t.res), Double.NaN, Double.NaN));
+    }
+
+    private static Map<String, Double> dealt(Job job, Foe t) {
+        Map<String, Double> dealt = new LinkedHashMap<String, Double>();
+        Iterable<String> cards = ((job.bar != null) && !job.bar.isEmpty())
+            ? job.bar.keySet() : job.me.levels.keySet();
+        for(String c : cards) {
+            Prediction.Expect x = Prediction.of(job.me, t.res, c, t.open, t.ip, true);
+            if(x != null)
+                dealt.put(c, Double.valueOf(x.dealt));
+        }
+        return(dealt);
+    }
+
     private static Now plan(Job job) {
         List<Prediction.Seen> seen = seen(job);
         java.util.Set<String> planCards = matchup(job).equals(distillKey) ? distilled : null;
@@ -577,14 +628,7 @@ public final class LiveAdvice {
         Prediction.Live live = Prediction.adviseLive(job.me, job.bar, job.mine, job.shp, job.mhp,
                                                      seen, BEAM, HORIZON, job.readyIn, planCards, held,
                                                      job.incumbent);
-        Map<String, Double> dealt = new LinkedHashMap<String, Double>();
-        Iterable<String> cards = ((job.bar != null) && !job.bar.isEmpty())
-            ? job.bar.keySet() : job.me.levels.keySet();
-        for(String c : cards) {
-            Prediction.Expect x = Prediction.of(job.me, t.res, c, t.open, t.ip, true);
-            if(x != null)
-                dealt.put(c, Double.valueOf(x.dealt));
-        }
+        Map<String, Double> dealt = dealt(job, t);
         Foe aim = ((live.target >= 0) && (live.target < job.foes.size()))
             ? job.foes.get(live.target) : t;
         /* A card planned against another target is not a card to throw at this one. */
