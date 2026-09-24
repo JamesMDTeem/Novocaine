@@ -576,6 +576,7 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
     }
 
     protected void attached() {
+	haven.automated.HudBars.attach(this);
 	iconconf = loadiconconf();
 	TileHighlight.toggle(this);
 	tileHighlight.hide();
@@ -3192,6 +3193,11 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 			return meters.get(midx);
 		}
 		return null;
+	}
+
+	/** The meter widgets the server placed ("meter"), for the HUD bars to hide and show. */
+	public List<Widget> meterWidgets() {
+		return meters;
 	}
 
 	public List<IMeter.Meter> getmeters(String name) {

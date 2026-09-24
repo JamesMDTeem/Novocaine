@@ -5143,7 +5143,29 @@ public class OptWnd extends Window {
 				}
 			}, rightColumn.pos("bl").adds(0, 4));
 
-			rightColumn = add(new Label("Performance"), rightColumn.pos("bl").adds(0, 14));
+			rightColumn = add(new CheckBox("HUD bars: health, stamina, energy"){
+				{a = haven.automated.HudBars.enabled();}
+				public void changed(boolean val) {
+					Utils.setprefb(haven.automated.HudBars.PREF, val);
+				}
+			}, rightColumn.pos("bl").adds(0, 6));
+			rightColumn.tooltip = RichText.render("Three flat bars, each placed on its own: hold $col[218,163,0]{Alt} and drag one to move it. " +
+				"A click without Alt goes through to whatever is underneath. While they are on, the small meters beside " +
+				"the portrait are hidden.", UI.scale(300));
+			{
+				Label wl = new Label("");
+				addhlp(rightColumn.pos("bl").adds(12, 4), UI.scale(5), rightColumn = new HSlider(UI.scale(140), 100, 400, Utils.getprefi("hudBarW", 220)) {
+					protected void added() {wl.settext("Width " + val);}
+					public void changed() {Utils.setprefi("hudBarW", val); wl.settext("Width " + val);}
+				}, wl);
+				Label hl = new Label("");
+				addhlp(rightColumn.pos("bl").adds(0, 4), UI.scale(5), rightColumn = new HSlider(UI.scale(140), 10, 40, Utils.getprefi("hudBarH", 18)) {
+					protected void added() {hl.settext("Height " + val);}
+					public void changed() {Utils.setprefi("hudBarH", val); hl.settext("Height " + val);}
+				}, hl);
+			}
+
+			rightColumn = add(new Label("Performance"), rightColumn.pos("bl").adds(0, 14).x(UI.scale(330)));
 			rightColumn = add(new Label("GL disposes per frame:"), rightColumn.pos("bl").adds(0, 4));
 			rightColumn.tooltip = "Maximum GL resources disposed per frame. Lower values smooth out stalls when many objects are deleted; 0 = unlimited.";
 			{
