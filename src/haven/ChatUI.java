@@ -52,6 +52,16 @@ public class ChatUI extends Widget {
     public static final RichText.Foundry fnd = new RichText.Foundry(new ChatParser(TextAttribute.FONT, Text.dfont.deriveFont(UI.scale(12f)), TextAttribute.FOREGROUND, Color.BLACK)).aa(true);
     public static final Text.Foundry qfnd = new Text.Foundry(Text.dfont, 12, new java.awt.Color(192, 255, 192));
     public static final int selw = UI.scale(150);
+    /* Channel tabs across the top instead of the list down the left (after brodgar-io-client's
+     * Simple Chat): the messages get the whole width of the window. Novocaine Settings. */
+    public static final String TABSPREF = "chatTabs";
+    public static final int tabh = UI.scale(22);
+    private boolean tabmode = false;
+    /* Cached: the selector checks it every frame. The setting writes both. */
+    public static volatile boolean tabson = Utils.getprefb(TABSPREF, false);
+    public static boolean tabs() {
+	return(tabson);
+    }
     public static final Coord marg = UI.scale(new Coord(9, 9));
     public static final Color[] urgcols = new Color[] {
 	null,
@@ -1367,7 +1377,7 @@ public class ChatUI extends Widget {
     public <T extends Widget> T add(T w) {
 	if(w instanceof Channel) {
 	    Channel chan = (Channel)w;
-	    chan.c = chansel.c.add(chansel.sz.x, 0);
+	    chan.c = chanpos();
 	    chan.resize(sz.x - marg.x - chan.c.x, sz.y - chan.c.y);
 	    super.add(w);
 	    chansel.add(chan);
@@ -1501,7 +1511,61 @@ public class ChatUI extends Widget {
 	    }
 	}
 
+	/* Tab mode. A tab is as wide as its name and icon, within a minimum and a maximum; the
+	 * strip scrolls sideways with the wheel when they do not all fit. */
+	private final int tabpad = UI.scale(8), tabmin = UI.scale(44), tabmax = UI.scale(140);
+
+	private int tabw(DarkChannel ch) {
+	    int w = ch.rname().sz().x + (tabpad * 2);
+	    try {
+		Tex icon = ch.ricon();
+		if(icon != null)
+		    w += icon.sz().x + UI.scale(3);
+	    } catch(Loading l) {}
+	    return(Math.max(tabmin, Math.min(tabmax, w)));
+	}
+
+	private int tabx(int idx) {
+	    int x = 0;
+	    for(int i = 0; i < idx; i++)
+		x += tabw(chls.get(i));
+	    return(x);
+	}
+
+	private void drawtabs(GOut g) {
+	    int ds = (int)Math.round(this.ds);
+	    synchronized(chls) {
+		int x = -ds;
+		for(DarkChannel ch : chls) {
+		    int w = tabw(ch);
+		    if(x + w > 0 && x < sz.x) {
+			boolean on = (ch.chan == sel);
+			g.chcolor(on ? new Color(90, 70, 40, 230) : new Color(20, 20, 20, 170));
+			g.frect(Coord.of(x + 1, 0), Coord.of(w - 2, sz.y - (on ? 0 : UI.scale(2))));
+			g.chcolor(on ? new Color(220, 190, 120) : new Color(90, 90, 90));
+			g.rect(Coord.of(x + 1, 0), Coord.of(w - 2, sz.y - (on ? 0 : UI.scale(2))));
+			g.chcolor();
+			Tex name = ch.rname().tex(), icon = null;
+			try {
+			    icon = ch.ricon();
+			} catch(Loading l) {}
+			int cx = x + tabpad, my = sz.y / 2;
+			if(icon != null) {
+			    g.aimage(icon, Coord.of(cx, my), 0.0, 0.5);
+			    cx += icon.sz().x + UI.scale(3);
+			}
+			g.reclip(Coord.of(cx, 0), Coord.of(Math.max(0, x + w - tabpad - cx), sz.y)).aimage(name, Coord.of(0, my), 0.0, 0.5);
+		    }
+		    x += w;
+		}
+	    }
+	}
+
 	public void draw(GOut g) {
+	    if(tabmode) {
+		drawtabs(g);
+		return;
+	    }
 	    int ds = (int)Math.round(this.ds);
 	    synchronized(chls) {
 		for(int i = ds / offset; i < chls.size(); i++) {
@@ -1531,10 +1595,22 @@ public class ChatUI extends Widget {
 
 	public void tick(double dt) {
 	    super.tick(dt);
+	    if(tabs() != tabmode)
+		ChatUI.this.resize(ChatUI.this.sz);
 	    ds = ts + (Math.pow(2, -dt * 20) * (ds - ts));
 	}
 
 	public void show(int si) {
+	    if(tabmode) {
+		if(si < 0 || si >= chls.size())
+		    return;
+		int tx = tabx(si), w = tabw(chls.get(si));
+		if(tx + w - ts > sz.x)
+		    ts = tx + w - sz.x;
+		else if(tx - ts < 0)
+		    ts = tx;
+		return;
+	    }
 	    int ty = si * offset;
 	    if(ty - ts + chanseld.sz().y > sz.y)
 		ts = ty + chanseld.sz().y - sz.y;
@@ -1581,6 +1657,16 @@ public class ChatUI extends Widget {
 
 	private Channel bypos(Coord c) {
 	    int ds = (int)Math.round(this.ds);
+	    if(tabmode) {
+		int x = -ds;
+		for(DarkChannel ch : chls) {
+		    int w = tabw(ch);
+		    if(c.x >= x && c.x < x + w)
+			return(ch.chan);
+		    x += w;
+		}
+		return(null);
+	    }
 	    int i = (c.y + ds) / offset;
 	    if((i >= 0) && (i < chls.size()))
 		return(chls.get(i).chan);
@@ -1614,6 +1700,8 @@ public class ChatUI extends Widget {
 	}
 
 	private int clips(int s) {
+	    if(tabmode)
+		return(Math.max(Math.min(s, tabx(chls.size()) - sz.x), 0));
 	    int maxh = (chls.size() * offset) - sz.y - chandiv.sz().y;
 	    return(Math.max(Math.min(s, maxh), 0));
 	}
@@ -1777,9 +1865,22 @@ public class ChatUI extends Widget {
 	}
     }
 
+    /** Where a channel's message pane starts: right of the list, or under the tabs. */
+    private Coord chanpos() {
+	return(tabmode ? chansel.c.add(0, chansel.sz.y) : chansel.c.add(chansel.sz.x, 0));
+    }
+
     public void resize(Coord sz) {
 	super.resize(sz);
-	chansel.resize(new Coord(selw, this.sz.y - marg.y));
+	tabmode = tabs();
+	if(tabmode)
+	    chansel.resize(new Coord(Math.max(this.sz.x - (marg.x * 2), UI.scale(40)), tabh));
+	else
+	    chansel.resize(new Coord(selw, this.sz.y - marg.y));
+	for(Widget ch = child; ch != null; ch = ch.next) {
+	    if(ch instanceof Channel)
+		ch.c = chanpos();
+	}
 	if(sel != null)
 	    sel.resize(new Coord(this.sz.x - marg.x - sel.c.x, this.sz.y - sel.c.y));
     }

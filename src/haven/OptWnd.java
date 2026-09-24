@@ -5165,6 +5165,16 @@ public class OptWnd extends Window {
 				}, hl);
 			}
 
+			rightColumn = add(new CheckBox("Chat channels as tabs across the top"){
+				{a = ChatUI.tabs();}
+				public void changed(boolean val) {
+					Utils.setprefb(ChatUI.TABSPREF, val);
+					ChatUI.tabson = val;
+				}
+			}, rightColumn.pos("bl").adds(0, 6).x(UI.scale(330)));
+			rightColumn.tooltip = RichText.render("Puts the chat's channels in a row of tabs above the messages instead of a list down " +
+				"the left, so the messages get the whole width of the chat window. The wheel scrolls the tabs when they do not all fit.", UI.scale(300));
+
 			rightColumn = add(new Label("Performance"), rightColumn.pos("bl").adds(0, 14).x(UI.scale(330)));
 			rightColumn = add(new Label("GL disposes per frame:"), rightColumn.pos("bl").adds(0, 4));
 			rightColumn.tooltip = "Maximum GL resources disposed per frame. Lower values smooth out stalls when many objects are deleted; 0 = unlimited.";
