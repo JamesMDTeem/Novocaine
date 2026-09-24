@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class GobReadyForHarvestInfo extends GobInfo {
 
-	private static final Map<String, Tex> contentTexCache = new HashMap<>();
+	private static final Map<String, Tex> contentTexCache = TexCache.sharedMap(512);
 
 	public static final Map<String, String> SeedsMap = new HashMap<String, String>() {{
 		// ND: There's no goddamn consistency. Some work fine with "seed-basename", but others have different names:
@@ -70,6 +70,11 @@ public class GobReadyForHarvestInfo extends GobInfo {
     @Override
 	protected boolean enabled() {
 		return OptWnd.showTreesBushesHarvestIconsCheckBox.a && !gob.isHidden;
+	}
+
+	@Override
+	protected boolean sharedtex() {
+		return(true);
 	}
 
 	@Override
@@ -142,7 +147,7 @@ public class GobReadyForHarvestInfo extends GobInfo {
 	}
 
 
-	private static final Map<String, BufferedImage> iconCache = new HashMap<>();
+	private static final Map<String, BufferedImage> iconCache = java.util.Collections.synchronizedMap(new HashMap<>());
 
 	private static BufferedImage getIcon(String basename, String type) {
 		if(basename == null) {return null;}

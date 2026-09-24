@@ -114,10 +114,20 @@ public abstract class GobInfo extends GAttrib implements RenderTree.Node, PView.
 
     protected abstract Tex render();
 
+    /**
+     * Whether {@link #render} hands out textures kept in a cache shared by every object that
+     * shows the same label. Those must not be disposed when this one label changes: the others
+     * are still drawing them, and the next draw of each would have to upload it again.
+     */
+    protected boolean sharedtex() {
+        return(false);
+    }
+
     public void clear() {
         synchronized(texLock) {
             if(tex != null) {
-                tex.dispose();
+                if(!sharedtex())
+                    tex.dispose();
                 tex = null;
             }
         }

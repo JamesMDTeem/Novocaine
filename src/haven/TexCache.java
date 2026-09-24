@@ -84,4 +84,31 @@ public class TexCache<K> {
     public int size() {
         return (back.size());
     }
+
+    /**
+     * A bounded map of textures that any thread may use, disposing what it evicts.
+     *
+     * For the labels drawn over objects ({@link GobInfo} and its subclasses), which render their
+     * textures from {@code ctick} - and {@code OCache.ctick} runs every object's tick on the
+     * parallel stream, so these maps are written by as many threads as there are cores. They used
+     * to be plain static {@code HashMap}s: unsynchronised writes from the frame's worker threads,
+     * which can corrupt a HashMap outright, and unbounded, keyed by label text such as
+     * "Water 12.5 l", so a long session kept a texture for every value it had ever shown.
+     *
+     * The callers' get-then-put is not atomic, so two threads can both render one key; the loser's
+     * texture is simply not kept. A texture evicted while a label still holds it stays drawable:
+     * {@code TexI} uploads itself again on its next draw.
+     */
+    public static <K> java.util.Map<K, Tex> sharedMap(int max) {
+        return (java.util.Collections.synchronizedMap(new LinkedHashMap<K, Tex>(16, 0.75f, true) {
+            protected boolean removeEldestEntry(Map.Entry<K, Tex> eldest) {
+                if (size() <= max)
+                    return (false);
+                Tex old = eldest.getValue();
+                if (old != null)
+                    old.dispose();
+                return (true);
+            }
+        }));
+    }
 }

@@ -11,7 +11,7 @@ public class GobFoodWaterInfo extends GobInfo {
 
     private static final BufferedImage lowFoodImage = PUtils.convolvedown(PUtils.rasterimg(PUtils.blurmask2(Resource.local().loadwait("customclient/lowFood").layer(Resource.imgc).img.getRaster(), 4, 1, Color.BLACK)), UI.scale(34, 34), CharWnd.iconfilter);
     private static final BufferedImage lowWaterImage = PUtils.convolvedown(PUtils.rasterimg(PUtils.blurmask2(Resource.local().loadwait("customclient/lowWater").layer(Resource.imgc).img.getRaster(), 4, 1, Color.BLACK)), UI.scale(34, 34), CharWnd.iconfilter);
-	private static final Map<String, Tex> contentTexCache = new HashMap<>();
+	private static final Map<String, Tex> contentTexCache = TexCache.sharedMap(512);
 
     protected GobFoodWaterInfo(Gob owner) {
 	super(owner);
@@ -20,6 +20,11 @@ public class GobFoodWaterInfo extends GobInfo {
     @Override
 	protected boolean enabled() {
 		return OptWnd.showLowFoodWaterIconsCheckBox.a && !gob.isHidden;
+	}
+
+	@Override
+	protected boolean sharedtex() {
+		return(true);
 	}
 
 	@Override

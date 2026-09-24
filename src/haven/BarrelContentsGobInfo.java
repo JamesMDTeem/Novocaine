@@ -5,7 +5,7 @@ import java.util.*;
 
 public class BarrelContentsGobInfo extends GobInfo {
 
-	private static final Map<String, Tex> contentTexCache = new HashMap<>();
+	private static final Map<String, Tex> contentTexCache = TexCache.sharedMap(512);
 
     protected BarrelContentsGobInfo(Gob owner) {
 	super(owner);
@@ -15,6 +15,11 @@ public class BarrelContentsGobInfo extends GobInfo {
     @Override
     protected boolean enabled() {
 		return OptWnd.showBarrelContentsTextCheckBox.a;
+    }
+
+    @Override
+    protected boolean sharedtex() {
+        return(true);
     }
 
     @Override

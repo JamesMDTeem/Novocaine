@@ -6,7 +6,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class ProduceSackGobInfo extends GobInfo {
-	private static final Map<String, Tex> contentTexCache = new HashMap<>();
+	private static final Map<String, Tex> contentTexCache = TexCache.sharedMap(512);
 
     protected ProduceSackGobInfo(Gob owner) {
 	super(owner);
@@ -16,6 +16,11 @@ public class ProduceSackGobInfo extends GobInfo {
     @Override
     protected boolean enabled() {
 		return OptWnd.showProduceSackTextCheckBox.a;
+    }
+
+    @Override
+    protected boolean sharedtex() {
+        return(true);
     }
 
     @Override

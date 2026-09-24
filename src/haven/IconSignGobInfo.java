@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Optional;
 
 public class IconSignGobInfo extends GobInfo {
-	private static final Map<String, Tex> contentTexCache = new HashMap<>();
+	private static final Map<String, Tex> contentTexCache = TexCache.sharedMap(512);
 
     protected IconSignGobInfo(Gob owner) {
 	super(owner);
@@ -17,6 +17,11 @@ public class IconSignGobInfo extends GobInfo {
     @Override
     protected boolean enabled() {
 		return OptWnd.showIconSignTextCheckBox.a;
+    }
+
+    @Override
+    protected boolean sharedtex() {
+        return(true);
     }
 
     @Override

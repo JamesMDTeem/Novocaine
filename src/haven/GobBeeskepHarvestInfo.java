@@ -9,7 +9,7 @@ public class GobBeeskepHarvestInfo extends GobInfo {
 
     private static final BufferedImage waxImage = PUtils.convolvedown(PUtils.rasterimg(PUtils.blurmask2(Resource.local().loadwait("customclient/wax").layer(Resource.imgc).img.getRaster(), 4, 1, Color.BLACK)), UI.scale(26, 26), CharWnd.iconfilter);
     private static final BufferedImage honeyImage = PUtils.convolvedown(PUtils.rasterimg(PUtils.blurmask2(Resource.local().loadwait("customclient/honey").layer(Resource.imgc).img.getRaster(), 4, 1, Color.BLACK)), UI.scale(26, 26), CharWnd.iconfilter);
-	private static final Map<String, Tex> contentTexCache = new HashMap<>();
+	private static final Map<String, Tex> contentTexCache = TexCache.sharedMap(512);
 
     protected GobBeeskepHarvestInfo(Gob owner) {
 	super(owner);
@@ -18,6 +18,11 @@ public class GobBeeskepHarvestInfo extends GobInfo {
     @Override
 	protected boolean enabled() {
 		return OptWnd.showBeeSkepsHarvestIconsCheckBox.a && !gob.isHidden;
+	}
+
+	@Override
+	protected boolean sharedtex() {
+		return(true);
 	}
 
 	@Override

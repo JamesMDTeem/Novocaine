@@ -12,7 +12,7 @@ public class GobGrowthInfo extends GobInfo {
 	public static final int BUSH_START = 30;
 	public static final double TREE_MULT = 100.0 / (100.0 - TREE_START);
 	public static final double BUSH_MULT = 100.0 / (100.0 - BUSH_START);
-	private static final Map<String, Tex> stageTextCache = new HashMap<>();
+	private static final Map<String, Tex> stageTextCache = TexCache.sharedMap(512);
 	public static final BufferedImage SEEDS_STAGE_DOT = drawDot(new Color(0, 102, 255,255));
 	public static final BufferedImage FINAL_STAGE_DOT = drawDot(new Color(189, 0, 0,255));
 	public static final Tex SEEDS_STAGE_DOT_TEX = new TexI(ItemInfo.catimgsh(3, 0, null, SEEDS_STAGE_DOT));
@@ -43,6 +43,11 @@ public class GobGrowthInfo extends GobInfo {
 	protected boolean enabled() {
 		return OptWnd.displayGrowthInfoCheckBox.a && !gob.isHidden;
 	}
+
+    @Override
+    protected boolean sharedtex() {
+        return(true);
+    }
 
     @Override
     protected Tex render() {
@@ -120,8 +125,13 @@ public class GobGrowthInfo extends GobInfo {
 			isHidden = false;
 		    }
 			if (!isHidden) {
-				Color c = Utils.blendcol(growth / 100.0, Color.RED, Color.ORANGE, Color.YELLOW, Color.GREEN);
-				line = Text.std.renderstroked(String.format("%d%%", growth), c, Color.BLACK);
+				/* Through the shared cache like the crop stages: sharedtex() means a label's
+				 * texture is never disposed by the label, so it must not be one of its own. */
+				final int pct = growth;
+				return stageTextCache.computeIfAbsent("pct:" + pct, k -> {
+					Color c = Utils.blendcol(pct / 100.0, Color.RED, Color.ORANGE, Color.YELLOW, Color.GREEN);
+					return new TexI(ItemInfo.catimgsh(3, 0, null, Text.std.renderstroked(String.format("%d%%", pct), c, Color.BLACK).img));
+				});
 			}
 		}
 	    }
