@@ -987,41 +987,6 @@ public class OptWnd extends Window {
 			}
 		}, leftColumn.pos("bl").adds(0, 2));
 
-		leftColumn = add(studyHelperCheckBox = new CheckBox("LP Helper (study plan from open containers)"){
-			{a = (Utils.getprefb("studyHelper", false));}
-			public void set(boolean val) {
-				Utils.setprefb("studyHelper", val);
-				a = val;
-			}
-		}, leftColumn.pos("bl").adds(0, 2));
-		studyHelperCheckBox.tooltip = studyHelperTooltip;
-
-		leftColumn = add(eatObserverCheckBox = new CheckBox("Log eating data (Eating Helper calibration)"){
-			{a = (Utils.getprefb("eatObserver", false));}
-			public void changed(boolean val) {
-				Utils.setprefb("eatObserver", val);
-			}
-		}, leftColumn.pos("bl").adds(0, 2));
-		eatObserverCheckBox.tooltip = eatObserverTooltip;
-
-		leftColumn = add(eatHelperCheckBox = new CheckBox("Eating Helper (plan foods toward a goal)"){
-			{a = (Utils.getprefb("eatHelper", false));}
-			public void set(boolean val) {
-				Utils.setprefb("eatHelper", val);
-				a = val;
-			}
-		}, leftColumn.pos("bl").adds(0, 2));
-		eatHelperCheckBox.tooltip = eatHelperTooltip;
-
-		leftColumn = add(alchemyHelperCheckBox = new CheckBox("Alchemy Helper (elixirs you can brew now)"){
-			{a = (Utils.getprefb("alchemyHelper", false));}
-			public void set(boolean val) {
-				Utils.setprefb("alchemyHelper", val);
-				a = val;
-			}
-		}, leftColumn.pos("bl").adds(0, 2));
-		alchemyHelperCheckBox.tooltip = alchemyHelperTooltip;
-
 		leftColumn = add(alwaysShowCombatUIStaminaBarCheckBox = new CheckBox("Always Show Combat UI Stamina Bar"){
 			{a = (Utils.getprefb("alwaysShowCombatUIStaminaBar", false));}
 			public void changed(boolean val) {
@@ -1528,25 +1493,6 @@ public class OptWnd extends Window {
 				}
 			}, leftColumn.pos("bl").adds(0, 2));
 			showDamagePredictUICheckBox.tooltip = showDamagePredictUITooltip;
-			leftColumn = add(combatMoveAdviceCheckBox = new CheckBox("Recommend Next Combat Move (Bottom Panel)"){
-				{a = Utils.getprefb("combatMoveAdviceUI", false);}
-				public void changed(boolean val) {
-					Utils.setprefb("combatMoveAdviceUI", val);
-				}
-			}, leftColumn.pos("bl").adds(0, 2));
-			combatMoveAdviceCheckBox.tooltip = combatMoveAdviceTooltip;
-			/* Deliberately not saved: the auto-fighter is off every time the client starts. */
-			leftColumn = add(combatAutoFightCheckBox = new CheckBox("Auto-Fighter (plays the recommended move)"){
-				{a = false;}
-			}, leftColumn.pos("bl").adds(0, 2));
-			combatAutoFightCheckBox.tooltip = combatAutoFightTooltip;
-			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
-				{a = Utils.getprefb("combatTelemetry", true);}
-				public void changed(boolean val) {
-					Utils.setprefb("combatTelemetry", val);
-				}
-			}, leftColumn.pos("bl").adds(0, 2));
-
 			leftColumn = add(drawFloatingCombatOpeningsAboveYourselfCheckBox = new CheckBox("Display Combat Openings above Yourself"){
 				{a = Utils.getprefb("drawFloatingCombatDataAboveYourself", true);}
 				public void changed(boolean val) {
@@ -3675,37 +3621,6 @@ public class OptWnd extends Window {
                 }
             }, prev.pos("bl").adds(12, 2));
 
-			prev = add(altManagerCheckBox = new CheckBox("Alt Manager (account switcher)"){
-				{a = Utils.getprefb("altManager", false);}
-				public void set(boolean val) {
-					Utils.setprefb("altManager", val);
-					a = val;
-					if (ui != null && ui.gui != null)
-						ui.gui.optionInfoMsg("Alt Manager is now " + (val ? "ENABLED" : "DISABLED") + ".", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
-				}
-			}, prev.pos("bl").adds(0, 12).x(0));
-			altManagerCheckBox.tooltip = RichText.render("Lists the accounts saved on this client and switches between them with one click.\nThe switcher is under the menu-grid Novocaine tab -> Alt Manager.", UI.scale(300));
-
-			prev = add(altKeepLoggedInCheckBox = new CheckBox("Keep current character logged in when switching"){
-				{a = Utils.getprefb("altKeepLoggedIn", false);}
-				public void set(boolean val) {
-					Utils.setprefb("altKeepLoggedIn", val);
-					a = val;
-				}
-			}, prev.pos("bl").adds(0, 2).x(0));
-			altKeepLoggedInCheckBox.tooltip = RichText.render("Not yet implemented: will leave the current character connected while switching. For now, switching always logs the current character out.", UI.scale(300));
-
-			prev = add(autoHearthOnUnknownPlayerCheckBox = new CheckBox("Auto-Hearth on Unknown Player"){
-				{a = Utils.getprefb("autoHearthOnUnknownPlayer", false);}
-				public void set(boolean val) {
-					Utils.setprefb("autoHearthOnUnknownPlayer", val);
-					a = val;
-					if (ui != null && ui.gui != null)
-						ui.gui.optionInfoMsg("Auto-Hearth is now " + (val ? "ENABLED" : "DISABLED") + ".", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
-				}
-			}, prev.pos("bl").adds(0, 2).x(0));
-			autoHearthOnUnknownPlayerCheckBox.tooltip = RichText.render("Automatically travels to your hearth fire the moment an unknown player is seen.\nParty members, kin-group members (per the per-colour \"exclude from aggro\" toggles) and village/realm members are ignored.\nFires at most once a minute, and spends hearth-travel weariness, so enable only when leaving a character unattended.", UI.scale(300));
-
 			Widget backButton;
 			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), prev.pos("bl").adds(0, 18));
 			pack();
@@ -4180,75 +4095,6 @@ public class OptWnd extends Window {
 					ui.gui.map.setGroundRenderDistance(2);
 			}), leftColumn.pos("bl").adds(210, -20));
 			groundRenderDistanceResetButton.tooltip = resetButtonTooltip;
-			leftColumn = add(new Label("GL disposes per frame:"), leftColumn.pos("bl").adds(0, 8));
-			leftColumn.tooltip = "Maximum GL resources disposed per frame. Lower values smooth out stalls when many objects are deleted; 0 = unlimited.";
-			{
-			    Label dpy = new Label("");
-			    String[] dnames = {"Unlimited", "16", "32", "64", "128", "256"};
-			    int[] dvals = {0, 16, 32, 64, 128, 256};
-			    int curval = Utils.getprefi("perf.gl_dispose_per_frame", 64);
-			    int curidx = 3;
-			    for(int i = 0; i < dvals.length; i++) { if(dvals[i] == curval) {curidx = i; break;} }
-			    addhlp(leftColumn.pos("bl").adds(0, 4), UI.scale(5),
-				   leftColumn = new HSlider(UI.scale(200), 0, dnames.length - 1, curidx) {
-				       protected void added() {dpy();}
-				       void dpy() {dpy.settext(dnames[this.val]);}
-				       public void changed() {
-					   int v = dvals[this.val];
-					   Utils.setprefi("perf.gl_dispose_per_frame", v);
-					   haven.render.gl.GLEnvironment.cachedDisposeCap = v;
-					   dpy();
-				       }
-				   },
-				   dpy);
-			}
-			leftColumn = add(new Label("Animation frame skip:"), leftColumn.pos("bl").adds(0, 8));
-			leftColumn.tooltip = "Skip animation ticks to reduce CPU. 0 = every frame, higher = more skipped frames.";
-			{
-			    Label adpy = new Label("");
-			    String[] anames = {"Off", "Skip 1", "Skip 2", "Skip 3", "Skip 4", "Skip 5"};
-			    int curval = Utils.clip(Utils.getprefi("perf.anim_frame_skip", 0), 0, 5);
-			    addhlp(leftColumn.pos("bl").adds(0, 4), UI.scale(5),
-				   leftColumn = new HSlider(UI.scale(200), 0, anames.length - 1, curval) {
-				       protected void added() {dpy();}
-				       void dpy() {adpy.settext(anames[this.val]);}
-				       public void changed() {
-					   Utils.setprefi("perf.anim_frame_skip", this.val);
-					   haven.Composited.cachedAnimSkip = this.val;
-					   dpy();
-				       }
-				   },
-				   adpy);
-			}
-			leftColumn = add(new Label("Gob info tick interval:"), leftColumn.pos("bl").adds(0, 8));
-			leftColumn.tooltip = "How often the labels drawn over objects - quality, durability, growth stage, " +
-			    "food/water, cheese and beeskep timers - are allowed to refresh.\n\n" +
-			    "Every object on screen checks these once per frame, so in a built-up base it is thousands " +
-			    "of checks a second to answer 'nothing has changed'. Throttling skips that; the cost is that " +
-			    "a label can take up to this long to appear or update after the value behind it changes.\n\n" +
-			    "'Off' means every frame, which is the most responsive and the most expensive.";
-			{
-			    Label idpy = new Label("");
-			    String[] inames = {"Off", "4/sec", "2/sec", "1/sec"};
-			    double[] ivals = {0.0, 0.25, 0.5, 1.0};
-			    int curidx = 1;
-			    double curval2 = Utils.getprefd("perf.gob_info_tick_interval", 0.25);
-			    for(int i = 0; i < ivals.length; i++) { if(Math.abs(ivals[i] - curval2) < 0.01) {curidx = i; break;} }
-			    int curi = Utils.clip(Utils.getprefi("perf.gob_info_tick_idx", curidx), 0, inames.length - 1);
-			    addhlp(leftColumn.pos("bl").adds(0, 4), UI.scale(5),
-				   leftColumn = new HSlider(UI.scale(200), 0, inames.length - 1, curi) {
-				       protected void added() {dpy();}
-				       void dpy() {idpy.settext(inames[this.val]);}
-				       public void changed() {
-					   Utils.setprefi("perf.gob_info_tick_idx", this.val);
-					   Utils.setprefd("perf.gob_info_tick_interval", ivals[this.val]);
-					   // Cached there; without this the slider only took effect on restart.
-					   haven.GobInfo.cachedTickInterval = ivals[this.val];
-					   dpy();
-				       }
-				   },
-				   idpy);
-			}
 			leftColumn = add(flatWorldCheckBox = new CheckBox("Flat World"){
 				{a = Utils.getprefb("flatWorld", false);}
 				public void changed(boolean val) {
@@ -4641,26 +4487,6 @@ public class OptWnd extends Window {
                 }
             }, rightColumn.pos("bl").adds(0, 34));
             onlyRenderCameraVisibleObjectsCheckBox.tooltip = onlyRenderCameraVisibleObjectsTooltip;
-
-            rightColumn = add(diagnosticLoggingCheckBox = new CheckBox("Log Diagnostics"){
-                {a = (Utils.getprefb("diagnosticLogging", false));}
-                public void changed(boolean val) {
-                    Utils.setprefb("diagnosticLogging", val);
-                    // The writers cache this; without it they keep the value from startup.
-                    haven.automated.nbots.core.NLog.diag(val);
-                }
-            }, rightColumn.pos("bl").adds(0, 2));
-            diagnosticLoggingCheckBox.tooltip = diagnosticLoggingTooltip;
-
-            rightColumn = add(mapWorldWhileIdleCheckBox = new CheckBox("Map The World While Not Botting"){
-                {a = (Utils.getprefb("nbots.map_while_idle", false));}
-                public void changed(boolean val) {
-                    Utils.setprefb("nbots.map_while_idle", val);
-                    // Cached in a field there, the way the other per-frame settings are.
-                    haven.automated.nbots.world.Observed.mapWhileIdle = val;
-                }
-            }, rightColumn.pos("bl").adds(0, 2));
-            mapWorldWhileIdleCheckBox.tooltip = mapWorldWhileIdleTooltip;
 
 
 			Widget backButton;
@@ -5072,16 +4898,6 @@ public class OptWnd extends Window {
 			}, prev.pos("bl").adds(0, 8).x(12));
 			uploadMapTilesCheckBox.tooltip = uploadMapTilesTooltip;
 
-			// 12-hour (AM/PM) clock instead of 24-hour military time in the HUD info bar.
-			prev = add(twelveHourClockCheckBox = new CheckBox("Use 12-hour (AM/PM) clock"){
-				{a = Utils.getprefb("twelveHourClock", false); Glob.twelveHourClock = a;}
-				public void changed(boolean val) {
-					Utils.setprefb("twelveHourClock", val);
-					Glob.twelveHourClock = val;
-				}
-			}, prev.pos("bl").adds(0, 8).x(12));
-
-
 			// Terrain normally only reaches the server on grids it asks to be re-sent, so
 			// everywhere you explored before that stays blank. This walks the local map
 			// file - every grid this character has ever seen - and fills in the gaps.
@@ -5220,6 +5036,225 @@ public class OptWnd extends Window {
     public static CheckBox autoLootWeaponCheckBox, autoLootWeaponCheckBox2; // ND: Checks both hands just for weapons
     public static CheckBox autoLootRingsCheckBox, autoLootRingsCheckBox2; // ND: Tries both rings
     public static CheckBox autoLootPouchesCheckBox, autoLootPouchesCheckBox2; // ND: Tries both pouches
+
+	/**
+	 * Everything this client added to the options, in one place. Hurricane's own panels keep what
+	 * they had; a Novocaine setting stays where it was only when that panel is plainly its home -
+	 * borderless fullscreen under Video, the map and cookbook server under Server Integration, the
+	 * RTS camera under Camera, the WASD keys under Keybindings.
+	 */
+	public class NovocaineSettingsPanel extends Panel {
+
+		public NovocaineSettingsPanel(Panel back) {
+			Widget leftColumn = add(new Label("Helpers"), 0, 0);
+			leftColumn = add(studyHelperCheckBox = new CheckBox("LP Helper (study plan from open containers)"){
+				{a = (Utils.getprefb("studyHelper", false));}
+				public void set(boolean val) {
+					Utils.setprefb("studyHelper", val);
+					a = val;
+				}
+			}, leftColumn.pos("bl").adds(0, 4));
+			studyHelperCheckBox.tooltip = studyHelperTooltip;
+
+			leftColumn = add(eatObserverCheckBox = new CheckBox("Log eating data (Eating Helper calibration)"){
+				{a = (Utils.getprefb("eatObserver", false));}
+				public void changed(boolean val) {
+					Utils.setprefb("eatObserver", val);
+				}
+			}, leftColumn.pos("bl").adds(0, 2));
+			eatObserverCheckBox.tooltip = eatObserverTooltip;
+
+			leftColumn = add(eatHelperCheckBox = new CheckBox("Eating Helper (plan foods toward a goal)"){
+				{a = (Utils.getprefb("eatHelper", false));}
+				public void set(boolean val) {
+					Utils.setprefb("eatHelper", val);
+					a = val;
+				}
+			}, leftColumn.pos("bl").adds(0, 2));
+			eatHelperCheckBox.tooltip = eatHelperTooltip;
+
+			leftColumn = add(alchemyHelperCheckBox = new CheckBox("Alchemy Helper (elixirs you can brew now)"){
+				{a = (Utils.getprefb("alchemyHelper", false));}
+				public void set(boolean val) {
+					Utils.setprefb("alchemyHelper", val);
+					a = val;
+				}
+			}, leftColumn.pos("bl").adds(0, 2));
+			alchemyHelperCheckBox.tooltip = alchemyHelperTooltip;
+
+			leftColumn = add(new Label("Combat"), leftColumn.pos("bl").adds(0, 14));
+			leftColumn = add(combatMoveAdviceCheckBox = new CheckBox("Recommend Next Combat Move (Bottom Panel)"){
+				{a = Utils.getprefb("combatMoveAdviceUI", false);}
+				public void changed(boolean val) {
+					Utils.setprefb("combatMoveAdviceUI", val);
+				}
+			}, leftColumn.pos("bl").adds(0, 4));
+			combatMoveAdviceCheckBox.tooltip = combatMoveAdviceTooltip;
+			/* Deliberately not saved: the auto-fighter is off every time the client starts. */
+			leftColumn = add(combatAutoFightCheckBox = new CheckBox("Auto-Fighter (plays the recommended move)"){
+				{a = false;}
+			}, leftColumn.pos("bl").adds(0, 2));
+			combatAutoFightCheckBox.tooltip = combatAutoFightTooltip;
+			leftColumn = add(combatTelemetryCheckBox = new CheckBox("Record Combat Telemetry (JSONL logs)"){
+				{a = Utils.getprefb("combatTelemetry", true);}
+				public void changed(boolean val) {
+					Utils.setprefb("combatTelemetry", val);
+				}
+			}, leftColumn.pos("bl").adds(0, 2));
+
+			leftColumn = add(new Label("Accounts & Safety"), leftColumn.pos("bl").adds(0, 14));
+			leftColumn = add(altManagerCheckBox = new CheckBox("Alt Manager (account switcher)"){
+				{a = Utils.getprefb("altManager", false);}
+				public void set(boolean val) {
+					Utils.setprefb("altManager", val);
+					a = val;
+					if (ui != null && ui.gui != null)
+						ui.gui.optionInfoMsg("Alt Manager is now " + (val ? "ENABLED" : "DISABLED") + ".", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
+				}
+			}, leftColumn.pos("bl").adds(0, 4));
+			altManagerCheckBox.tooltip = RichText.render("Lists the accounts saved on this client and switches between them with one click.\nThe switcher is under the menu-grid Novocaine tab -> Alt Manager.", UI.scale(300));
+
+			leftColumn = add(altKeepLoggedInCheckBox = new CheckBox("Keep current character logged in when switching"){
+				{a = Utils.getprefb("altKeepLoggedIn", false);}
+				public void set(boolean val) {
+					Utils.setprefb("altKeepLoggedIn", val);
+					a = val;
+				}
+			}, leftColumn.pos("bl").adds(0, 2).x(0));
+			altKeepLoggedInCheckBox.tooltip = RichText.render("Not yet implemented: will leave the current character connected while switching. For now, switching always logs the current character out.", UI.scale(300));
+
+			leftColumn = add(autoHearthOnUnknownPlayerCheckBox = new CheckBox("Auto-Hearth on Unknown Player"){
+				{a = Utils.getprefb("autoHearthOnUnknownPlayer", false);}
+				public void set(boolean val) {
+					Utils.setprefb("autoHearthOnUnknownPlayer", val);
+					a = val;
+					if (ui != null && ui.gui != null)
+						ui.gui.optionInfoMsg("Auto-Hearth is now " + (val ? "ENABLED" : "DISABLED") + ".", (val ? msgGreen : msgRed), Audio.resclip(val ? Toggle.sfxon : Toggle.sfxoff));
+				}
+			}, leftColumn.pos("bl").adds(0, 2).x(0));
+			autoHearthOnUnknownPlayerCheckBox.tooltip = RichText.render("Automatically travels to your hearth fire the moment an unknown player is seen.\nParty members, kin-group members (per the per-colour \"exclude from aggro\" toggles) and village/realm members are ignored.\nFires at most once a minute, and spends hearth-travel weariness, so enable only when leaving a character unattended.", UI.scale(300));
+
+			Widget rightColumn = add(new Label("Interface"), UI.scale(330, 0));
+			rightColumn = add(twelveHourClockCheckBox = new CheckBox("Use 12-hour (AM/PM) clock"){
+				{a = Utils.getprefb("twelveHourClock", false); Glob.twelveHourClock = a;}
+				public void changed(boolean val) {
+					Utils.setprefb("twelveHourClock", val);
+					Glob.twelveHourClock = val;
+				}
+			}, rightColumn.pos("bl").adds(0, 4));
+
+			rightColumn = add(new Label("Performance"), rightColumn.pos("bl").adds(0, 14));
+			rightColumn = add(new Label("GL disposes per frame:"), rightColumn.pos("bl").adds(0, 4));
+			rightColumn.tooltip = "Maximum GL resources disposed per frame. Lower values smooth out stalls when many objects are deleted; 0 = unlimited.";
+			{
+				Label dpy = new Label("");
+				String[] dnames = {"Unlimited", "16", "32", "64", "128", "256"};
+				int[] dvals = {0, 16, 32, 64, 128, 256};
+				int curval = Utils.getprefi("perf.gl_dispose_per_frame", 64);
+				int curidx = 3;
+				for(int i = 0; i < dvals.length; i++) { if(dvals[i] == curval) {curidx = i; break;} }
+				addhlp(rightColumn.pos("bl").adds(0, 4), UI.scale(5),
+				   rightColumn = new HSlider(UI.scale(200), 0, dnames.length - 1, curidx) {
+					   protected void added() {dpy();}
+					   void dpy() {dpy.settext(dnames[this.val]);}
+					   public void changed() {
+					   int v = dvals[this.val];
+					   Utils.setprefi("perf.gl_dispose_per_frame", v);
+					   haven.render.gl.GLEnvironment.cachedDisposeCap = v;
+					   dpy();
+					   }
+				   },
+				   dpy);
+			}
+			rightColumn = add(new Label("Animation frame skip:"), rightColumn.pos("bl").adds(0, 8));
+			rightColumn.tooltip = "Skip animation ticks to reduce CPU. 0 = every frame, higher = more skipped frames.";
+			{
+				Label adpy = new Label("");
+				String[] anames = {"Off", "Skip 1", "Skip 2", "Skip 3", "Skip 4", "Skip 5"};
+				int curval = Utils.clip(Utils.getprefi("perf.anim_frame_skip", 0), 0, 5);
+				addhlp(rightColumn.pos("bl").adds(0, 4), UI.scale(5),
+				   rightColumn = new HSlider(UI.scale(200), 0, anames.length - 1, curval) {
+					   protected void added() {dpy();}
+					   void dpy() {adpy.settext(anames[this.val]);}
+					   public void changed() {
+					   Utils.setprefi("perf.anim_frame_skip", this.val);
+					   haven.Composited.cachedAnimSkip = this.val;
+					   dpy();
+					   }
+				   },
+				   adpy);
+			}
+			rightColumn = add(new Label("Gob info tick interval:"), rightColumn.pos("bl").adds(0, 8));
+			rightColumn.tooltip = "How often the labels drawn over objects - quality, durability, growth stage, " +
+				"food/water, cheese and beeskep timers - are allowed to refresh.\n\n" +
+				"Every object on screen checks these once per frame, so in a built-up base it is thousands " +
+				"of checks a second to answer 'nothing has changed'. Throttling skips that; the cost is that " +
+				"a label can take up to this long to appear or update after the value behind it changes.\n\n" +
+				"'Off' means every frame, which is the most responsive and the most expensive.";
+			{
+				Label idpy = new Label("");
+				String[] inames = {"Off", "4/sec", "2/sec", "1/sec"};
+				double[] ivals = {0.0, 0.25, 0.5, 1.0};
+				int curidx = 1;
+				double curval2 = Utils.getprefd("perf.gob_info_tick_interval", 0.25);
+				for(int i = 0; i < ivals.length; i++) { if(Math.abs(ivals[i] - curval2) < 0.01) {curidx = i; break;} }
+				int curi = Utils.clip(Utils.getprefi("perf.gob_info_tick_idx", curidx), 0, inames.length - 1);
+				addhlp(rightColumn.pos("bl").adds(0, 4), UI.scale(5),
+				   rightColumn = new HSlider(UI.scale(200), 0, inames.length - 1, curi) {
+					   protected void added() {dpy();}
+					   void dpy() {idpy.settext(inames[this.val]);}
+					   public void changed() {
+					   Utils.setprefi("perf.gob_info_tick_idx", this.val);
+					   Utils.setprefd("perf.gob_info_tick_interval", ivals[this.val]);
+					   // Cached there; without this the slider only took effect on restart.
+					   haven.GobInfo.cachedTickInterval = ivals[this.val];
+					   dpy();
+					   }
+				   },
+				   idpy);
+			}
+
+			rightColumn = add(new CheckBox("Keep the map and resource cache in SQLite (restart)"){
+				{a = SqliteCache.enabled();}
+				public void changed(boolean val) {
+					Utils.setprefb(SqliteCache.PREF, val);
+				}
+			}, rightColumn.pos("bl").adds(0, 8));
+			rightColumn.tooltip = RichText.render("Keeps the recorded map and the downloaded game resources in two SQLite files " +
+				"($col[218,163,0]{map.sqlite}, $col[218,163,0]{rescache.sqlite}) instead of a folder of over a hundred thousand small files. " +
+				"Reading one is several times faster, which shows when the map window pans and zooms, and the map becomes one file to back up." +
+				"\n\nYour existing map carries over: anything not yet in SQLite is read from the old folder and copied in, and a " +
+				"background pass copies the rest once. The old folder is never changed, so turning this off goes back to it - " +
+				"without whatever was explored while it was on." +
+				"\n\n$col[185,185,185]{Takes effect at the next start. Type :store in the console to see both files and how the carry-over is going.}", UI.scale(320));
+
+			rightColumn = add(new Label("Diagnostics"), rightColumn.pos("bl").adds(0, 14));
+			rightColumn = add(diagnosticLoggingCheckBox = new CheckBox("Log Diagnostics"){
+				{a = (Utils.getprefb("diagnosticLogging", false));}
+				public void changed(boolean val) {
+					Utils.setprefb("diagnosticLogging", val);
+					// The writers cache this; without it they keep the value from startup.
+					haven.automated.nbots.core.NLog.diag(val);
+				}
+			}, rightColumn.pos("bl").adds(0, 4));
+			diagnosticLoggingCheckBox.tooltip = diagnosticLoggingTooltip;
+
+			rightColumn = add(mapWorldWhileIdleCheckBox = new CheckBox("Map The World While Not Botting"){
+				{a = (Utils.getprefb("nbots.map_while_idle", false));}
+				public void changed(boolean val) {
+					Utils.setprefb("nbots.map_while_idle", val);
+					// Cached in a field there, the way the other per-frame settings are.
+					haven.automated.nbots.world.Observed.mapWhileIdle = val;
+				}
+			}, rightColumn.pos("bl").adds(0, 2));
+			mapWorldWhileIdleCheckBox.tooltip = mapWorldWhileIdleTooltip;
+
+			Widget backButton;
+			add(backButton = new PButton(UI.scale(200), "Back", 27, back, "Advanced Settings"), 0, Math.max(leftColumn.pos("bl").y, rightColumn.pos("bl").y) + UI.scale(18));
+			pack();
+			centerBackButton(backButton, this);
+		}
+	}
 
 	public class AutoLootSettingsPanel extends Panel {
 
@@ -5520,6 +5555,7 @@ public class OptWnd extends Window {
 		Panel combataggrosettings = add(new AggroExclusionSettingsPanel(advancedSettings));
 		Panel serverintegrationsettings = add(new ServerIntegrationSettingsPanel(advancedSettings));
 		Panel autolootsettings = add(new AutoLootSettingsPanel(advancedSettings));
+		Panel novocainesettings = add(new NovocaineSettingsPanel(advancedSettings));
 
 		int leftY = UI.scale(6);
 		leftY = advancedSettings.add(new PButton(UI.scale(200), "Interface Settings", -1, interfacesettings, "Interface Settings"), 0, leftY).pos("bl").adds(0, 5).y;
@@ -5548,6 +5584,7 @@ public class OptWnd extends Window {
 		int middleX = UI.scale(110);
 		int middleY = leftY + UI.scale(20);
 		middleY = advancedSettings.add(new PButton(UI.scale(200), "Server Integration Settings", -1, serverintegrationsettings, "Server Integration Settings"), middleX, middleY).pos("bl").adds(0, 5).y;
+		middleY = advancedSettings.add(new PButton(UI.scale(200), "Novocaine Settings", -1, novocainesettings, "Novocaine Settings"), middleX, middleY).pos("bl").adds(0, 5).y;
 		middleY += UI.scale(20);
 		middleY = advancedSettings.add(new PButton(UI.scale(200), "Back", 27, main, "Options            "), middleX, middleY).pos("bl").adds(0, 5).y;
 	this.advancedSettings.pack();
