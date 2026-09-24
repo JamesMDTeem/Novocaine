@@ -1176,6 +1176,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	    ResCache mapstore = ResCache.global;
 	    if(MapFile.mapbase.get() != null)
 		mapstore = HashDirCache.get(MapFile.mapbase.get());
+	    if(mapstore != null)
+		mapstore = SqliteCache.map(mapstore);
 	    if(mapstore != null) {
 		MapFile file;
 		try {

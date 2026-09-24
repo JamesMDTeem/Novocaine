@@ -366,7 +366,7 @@ public class Client implements Console.Directory {
     public static final Config.Variable<Boolean> nopreload = Config.Variable.propb("haven.nopreload", false);
     public static void setupres() {
 	if(ResCache.global != null)
-	    Resource.setcache(ResCache.global);
+	    Resource.setcache(SqliteCache.resources(ResCache.global));
 	if(Resource.resurl.get() != null)
 	    Resource.addurl(Resource.resurl.get());
 	if(ResCache.global != null) {

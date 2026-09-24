@@ -254,7 +254,8 @@ public class HashDirCache implements ResCache {
 	    });
     }
 
-    private Iterator<String> list() throws IOException {
+    /** Every name this identity holds. Opens each file in the folder, so it takes a while. */
+    public Iterator<String> list() throws IOException {
 	return(list(true));
     }
 

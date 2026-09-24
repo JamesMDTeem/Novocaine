@@ -165,6 +165,8 @@ public class ResourcePrefetch {
         ResCache cache = Resource.cache();
         if (cache == null)
             return false;
+        if (cache instanceof haven.SqliteCache)
+            return ((haven.SqliteCache) cache).has("res/" + name);
         try (InputStream in = cache.fetch("res/" + name)) {
             return in.read() >= 0;
         } catch (FileNotFoundException e) {
