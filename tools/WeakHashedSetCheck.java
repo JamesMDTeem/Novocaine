@@ -4,7 +4,15 @@
  * Checks that every live element is still found through growth, deaths, the bounded reap and the
  * (now working) shrink; that intern() still returns one canonical object per equal value; and that
  * a hash whose low bits are all equal - the worst case for the old raw-bit indexing - no longer
- * builds long probe runs. Run from the repo root (PowerShell), after `ant jar`:
+ * builds long probe runs.
+ *
+ * Also the hash families that broke the murmur-finalizer slot (2026-09-25): a live client's
+ * DepInfo interner had one shard of 168,847 entries sitting in a single 81,746-slot probe run,
+ * so every intern() and every reap in it walked tens of thousands of slots - 400+ ms frames. The
+ * real hashes cannot be regenerated synthetically; what they had in common is that the
+ * finalizer's output bits came out concentrated, so that family is built here by inverting it.
+ * And the DepInfo shard selector, which put whole families of hashes into one of its 16 shards.
+ * Run from the repo root (PowerShell), after `ant jar`:
  *
  *   $CP="build\classes;build\classes-lib;lib\*"
  *   javac -nowarn -cp $CP -d $env:TEMP\whscheck tools\WeakHashedSetCheck.java
@@ -33,6 +41,49 @@ public class WeakHashedSetCheck {
         public int hashCode() {return(v << 12);}
 
         public boolean equals(Object o) {return((o instanceof Clustered) && (((Clustered)o).v == v));}
+    }
+
+    /** A value with a given hash and identity equality, like two DepInfos that hash apart. */
+    static final class Fixed {
+        final int h;
+
+        Fixed(int h) {this.h = h;}
+
+        public int hashCode() {return(h);}
+    }
+
+    /* murmur3's 32-bit finalizer, which WeakHashedSet.slot() used to be, and its inverse. */
+    static int fmix(int h) {
+        h ^= h >>> 16; h *= 0x85ebca6b; h ^= h >>> 13; h *= 0xc2b2ae35; h ^= h >>> 16;
+        return(h);
+    }
+
+    static int modinv(int c) {
+        int inv = c;
+        for(int i = 0; i < 5; i++)
+            inv *= 2 - (c * inv);
+        return(inv);
+    }
+
+    static int unfmix(int h) {
+        h ^= h >>> 16; h *= modinv(0xc2b2ae35); h ^= (h >>> 13) ^ (h >>> 26); h *= modinv(0x85ebca6b); h ^= h >>> 16;
+        return(h);
+    }
+
+    /** Longest probe run after adding n distinct hashes from gen, all kept alive. */
+    static int runFor(java.util.function.IntUnaryOperator gen, int n) throws Exception {
+        WeakHashedSet<Fixed> set = new WeakHashedSet<>(Hash.eq);
+        List<Fixed> hold = new ArrayList<>(n);
+        for(int i = 0; i < n; i++) {
+            Fixed f = new Fixed(gen.applyAsInt(i));
+            hold.add(f);
+            set.add(f);
+        }
+        for(Fixed f : hold) {
+            if(!set.contains(f))
+                return(Integer.MAX_VALUE);
+        }
+        return(longestRun(set));
     }
 
     static int tablen(WeakHashedSet<?> s) throws Exception {
@@ -139,6 +190,36 @@ public class WeakHashedSetCheck {
             if(s2.find(new Clustered(c.v)) != c)
                 ok = false;
         check(ok, "200,000 random interns and removes agree with a HashMap");
+
+        /* structured hash families, each at a size where the table's upper index bits are in use */
+        Random fr = new Random(13);
+        int[] conc = new int[100000];
+        for(int i = 0; i < conc.length; i++)
+            conc[i] = unfmix((fr.nextInt() & ~(0x1f << 13)) | (((i & 1) == 0) ? (3 << 13) : (17 << 13)));
+        check(fmix(unfmix(0x12345678)) == 0x12345678, "the finalizer inverse is exact");
+        Object[][] families = {
+            {"sequential", (java.util.function.IntUnaryOperator)(i -> i), 100000},
+            {"low 16 bits zero", (java.util.function.IntUnaryOperator)(i -> i << 16), 65536},
+            {"equal halves", (java.util.function.IntUnaryOperator)(i -> 0x13572468 + (i * 0x00010001)), 100000},
+            {"finalizer-concentrated", (java.util.function.IntUnaryOperator)(i -> conc[i]), conc.length},
+        };
+        for(Object[] fam : families) {
+            int frun = runFor((java.util.function.IntUnaryOperator)fam[1], (Integer)fam[2]);
+            check(frun < 64, fam[0] + " hashes build no long probe run (" + frun + ", " + fam[2] + " entries)");
+        }
+
+        /* the DepInfo interner's shard selector spreads those families over its shards */
+        java.lang.reflect.Method shard = haven.render.RenderTree.DepInfo.class.getDeclaredMethod("shard", int.class);
+        shard.setAccessible(true);
+        for(Object[] fam : families) {
+            java.util.function.IntUnaryOperator gen = (java.util.function.IntUnaryOperator)fam[1];
+            int fn = (Integer)fam[2];
+            int[] per = new int[16];
+            for(int i = 0; i < fn; i++)
+                per[(Integer)shard.invoke(null, gen.applyAsInt(i))]++;
+            int fbig = Arrays.stream(per).max().getAsInt();
+            check(fbig < (fn / 16) * 2, fam[0] + " hashes spread over the DepInfo shards (largest " + fbig + " of mean " + (fn / 16) + ")");
+        }
 
         System.out.println(fails == 0 ? "ALL PASS" : fails + " FAILED");
         System.exit(fails == 0 ? 0 : 1);

@@ -68,18 +68,21 @@ public class WeakHashedSet<E> extends AbstractSet<E> {
 	return((idx + 1) & (tab.length - 1));
     }
 
-    /* The slot a hash starts probing from. Mixed first (murmur3's finalizer): the table is
-     * linear-probed, so raw hashCode() low bits that cluster make runs whose every step is a full
-     * equals(). RenderTree.DepInfo's hash is a polynomial over its states' hashes, and stall
-     * captures (2026-09-12) caught its intern() 440 ms to 2.9 s deep in findidx/DepInfo.equals -
-     * a probe run, not the lock. Bijective, so it can only spread what was there. */
+    /* The slot a hash starts probing from: Fibonacci hashing, the top log2(len) bits of the hash
+     * times 2^32/phi. The table is linear-probed, so homes that bunch up make runs whose every
+     * step is a full equals(), and a clean() back-shift that walks the whole run.
+     *
+     * Raw low bits (upstream) bunch whenever hashCode()'s low bits do: stall captures
+     * (2026-09-12) caught RenderTree.DepInfo's intern() 440 ms to 2.9 s deep in a probe run.
+     * murmur3's finalizer, which replaced them, bunched real DepInfo hashes instead - a heap dump
+     * (2026-09-25) had one interner shard with 168,847 entries, 81,746 of them in a single run,
+     * behind 400+ ms frames every time a map grid loaded. Its first step, h ^= h >>> 16, cancels
+     * differences that are alike in both halves, and its multiplies only carry what is left
+     * upwards, out of the bits the mask keeps. A multiply carries every bit of the hash up into
+     * the top bits, which are the ones used here; on the captured hashes and on sequential,
+     * low-bits-zero and equal-halves families alike it probes like random input. */
     private static int slot(int h, int len) {
-	h ^= h >>> 16;
-	h *= 0x85ebca6b;
-	h ^= h >>> 13;
-	h *= 0xc2b2ae35;
-	h ^= h >>> 16;
-	return(h & (len - 1));
+	return((h * 0x9e3779b9) >>> (Integer.numberOfLeadingZeros(len) + 1));
     }
 
     private int hashidx(Ref[] tab, E el) {

@@ -218,16 +218,23 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	    return(ret);
 	}
 
+	/* The top bits of a multiply. Was (h ^ (h >>> 16)) & 15, which sends every hash whose halves
+	 * differ alike to one shard - 43,784 of 100,000 of them, and in a live client the one shard
+	 * holding 13x the entries of any other. The multiplier differs from WeakHashedSet.slot()'s,
+	 * whose top bits pick the slot within a shard, so a shard does not fix any of them. */
+	private static int shard(int h) {
+	    return((h * 0x2545f491) >>> (32 - Integer.numberOfTrailingZeros(nshard)));
+	}
+
 	/* There used to be a size cap here (from Kami 0fcebee31) that handed back an un-interned
 	 * `this` past 8192 entries, to stop one intern() draining a whole GC cycle of dead references
 	 * under the lock. That broke the invariant the interner exists for - one canonical object per
 	 * equal DepInfo - and Kami reverted theirs on suspicion of exactly that. The drain is bounded in
 	 * WeakHashedSet.clean() instead, and the lock is sharded above, which is what the stall needed. */
 	public DepInfo intern() {
-	    int h = hashCode();
-	    WeakHashedSet<DepInfo> shard = interned[(h ^ (h >>> 16)) & (nshard - 1)];
-	    synchronized(shard) {
-		return(shard.intern(this));
+	    WeakHashedSet<DepInfo> set = interned[shard(hashCode())];
+	    synchronized(set) {
+		return(set.intern(this));
 	    }
 	}
 
