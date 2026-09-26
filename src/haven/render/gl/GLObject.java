@@ -76,11 +76,17 @@ public abstract class GLObject implements Disposable {
 	}
     }
 
+    /* Where the object was disposed, for the cause of a UseAfterFreeException. Only captured under
+     * -Dhaven.leakcheck=1 or -Dhaven.disptrace=1: every dispose paid for a full stack trace, and GC
+     * cleanup disposes vertex arrays and textures all the time - 86 a second in a 2026-09-26 flight
+     * recording, and 290,000 of them held on the heap in a 09-25 dump - to explain a bug that
+     * almost never happens. Without it the exception still says what was used after freeing. */
+    private static final boolean DISPTRACE = LEAK_CHECK || Utils.getprop("haven.disptrace", "0").equals("1");
     public Throwable disptrace = null;
     public void dispose() {
 	synchronized(this) {
 	    disp = true;
-	    if(disptrace == null)
+	    if(DISPTRACE && (disptrace == null))
 		disptrace = new Throwable();
 	    if(rc == 0)
 		dispose0();
