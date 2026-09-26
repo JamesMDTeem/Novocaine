@@ -27,7 +27,9 @@ public class Named extends GAttrib implements InfoPart {
     public static void parse(Gob gob, Message dat) {
 	String nm = dat.string();
 	if(nm.length() > 0) {
-	    Color col = BuddyWnd.gc[dat.uint8()];
+	    /* gcol, not gc[]: the group is the server's, and village and realm groups run past the
+	     * eight colours (a friend crashed on group 11, 2026-09-26). */
+	    Color col = BuddyWnd.gcol(dat.uint8());
 	    int fl = dat.uint8();
 	    gob.setattr(new Named(gob, nm, col, (fl & 1) != 0));
 	} else {

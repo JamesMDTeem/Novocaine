@@ -65,7 +65,7 @@ public class CattleId extends GAttrib implements RenderTree.Node, PView.Render2D
 	    int grp = (entry != null) ? entry.grp : 0;
 	    String name = (entry != null) ? entry.name : null;
 	    if((name != null) && ((rnm == null) || !name.equals(lnm) || (grp != lgrp))) {
-		Color col = BuddyWnd.gc[grp];
+		Color col = BuddyWnd.gcol(grp);
 		rnm = new TexI(rasterimg(blurmask2(Utils.outline2(fnd.render(name, col).img, Color.BLACK, true).getRaster(), UI.rscale(1.0), UI.rscale(1.0), Color.BLACK)));
 		lnm = name;
 		lgrp = grp;

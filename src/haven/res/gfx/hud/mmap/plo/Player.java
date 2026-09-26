@@ -71,7 +71,7 @@ public class Player extends GobIcon.Icon {
 	if(group < 0)
 	    return(img.img);
 	BufferedImage buf = PUtils.copy(img.img);
-	PUtils.colmul(buf.getRaster(), BuddyWnd.gc[group]);
+	PUtils.colmul(buf.getRaster(), BuddyWnd.gcol(group));
 	return(buf);
     }
 
