@@ -297,16 +297,26 @@ public abstract class PView extends Widget {
 	}
     }
 
+    /* Frustum culling between the instancer and `back` - see FrustumList. The shadow list is fed by
+     * the instancer directly, so it still sees every caster. */
+    protected FrustumList frustum = null;
+
+    /* Whether this view leaves what its camera cannot see out of its draw. Off here, so a small view
+     * of its own (a portrait, a preview) draws as it always has; MapView answers the setting. */
+    protected boolean frustumcull() {return(false);}
+
     protected void envsetup() {
 	back = env.drawlist().desc("pview: " + this);
 	instancer = new InstanceList(tree);
-	instancer.add(back, Rendered.class);
+	frustum = new FrustumList(back);
+	instancer.add(frustum, Rendered.class);
 	instancer.asyncadd(tree, Rendered.class);
     }
 
     protected void envdispose() {
 	tree.remove(instancer);
 	back.dispose(); back = null;
+	frustum = null;
 	instancer.dispose(); instancer = null;
     }
 
@@ -337,6 +347,7 @@ public abstract class PView extends Widget {
 	ctx.prerender(g.out);
 	try(Locked lk = tree.lock()) {
 	    instancer.commit(g.out);
+	    frustum.cull(frustumcull());
 	    maindraw(g.out);
 	}
 	ctx.postrender(g.out);

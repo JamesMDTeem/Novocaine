@@ -1482,7 +1482,13 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	String ret = String.format("Tree %s", tree.stats());
 	if(back != null)
 	    ret = String.format("%s, Inst %s, Draw %s", ret, instancer.stats(), back.stats());
+	if(frustum != null)
+	    ret = String.format("%s, Cull %,d/%,d (tested %,d)", ret, frustum.culled(), frustum.cullable(), frustum.tested());
 	return(ret);
+    }
+
+    protected boolean frustumcull() {
+	return(OptWnd.frustumCulling);
     }
 
     private Coord3f smapcc = null;

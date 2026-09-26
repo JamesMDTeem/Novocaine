@@ -4040,6 +4040,9 @@ public class OptWnd extends Window {
 	public static CheckBox disableLibertyCapsHighCheckBox;
 	public static CheckBox disableDrunkennessDistortionCheckBox;
     public static CheckBox onlyRenderCameraVisibleObjectsCheckBox;
+    public static CheckBox frustumCullingCheckBox;
+    /* Read by MapView every frame, before the options window may exist - see FrustumList. */
+    public static volatile boolean frustumCulling = Utils.getprefb("frustumCulling", true);
 	public static HSlider palisadesAndBrickWallsScaleSlider;
 	private Button palisadesAndBrickWallsScaleResetButton;
 	public static CheckBox enableSkyboxCheckBox;
@@ -4487,6 +4490,14 @@ public class OptWnd extends Window {
                 }
             }, rightColumn.pos("bl").adds(0, 34));
             onlyRenderCameraVisibleObjectsCheckBox.tooltip = onlyRenderCameraVisibleObjectsTooltip;
+            rightColumn = add(frustumCullingCheckBox = new CheckBox("Frustum Culling"){
+                {a = frustumCulling;}
+                public void changed(boolean val) {
+                    frustumCulling = val;
+                    Utils.setprefb("frustumCulling", val);
+                }
+            }, rightColumn.pos("bl").adds(0, 2));
+            frustumCullingCheckBox.tooltip = frustumCullingTooltip;
 
 
 			Widget backButton;
@@ -6098,6 +6109,9 @@ public class OptWnd extends Window {
         "that a bot starts with the record as it stood when botting last stopped, rather than with " +
         "everything you have walked past since; it re-observes as it goes.", 300);
 
+    private static final Object frustumCullingTooltip = RichText.render("Skip drawing any model the camera cannot see, including the ground. " +
+            "Unlike the option above, objects stay in the world: what stands behind the camera still casts its shadow into view, and large objects are " +
+            "tested by their whole size, so nothing partly on screen disappears.", UI.scale(300));
     private static final Object onlyRenderCameraVisibleObjectsTooltip = RichText.render("Render only objects within the camera’s view frustum. Objects behind the camera are not rendered, reducing GPU load and potentially improving performance." +
             "\n" +
             "\n$col[218,163,0]{This is an experimental feature. It should work fine, but I wouldn't trust it with my life.}", UI.scale(300));
