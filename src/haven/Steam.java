@@ -147,7 +147,11 @@ public class Steam {
 			try {
 				if (!API.init())
 					return (null);
-			} catch (NoClassDefFoundError e) {
+			} catch (LinkageError e) {
+				/* Not only NoClassDefFoundError: a Steam native library that is missing or
+				 * built for another architecture throws UnsatisfiedLinkError, and uncaught it
+				 * killed the thread that asked - the UI thread, leaving a black window
+				 * (brodgar-io-client 68513f7a3). Without it there is no Steam, as here. */
 				return (null);
 			}
 			instance = new Steam();
