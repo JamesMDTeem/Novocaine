@@ -82,8 +82,14 @@ public class BufferBGL extends BGL {
     }
 
     public BufferBGL trim() {
-	list = Arrays.copyOf(list, n);
+	if(list.length != n)
+	    list = Arrays.copyOf(list, n);
 	return(this);
+    }
+
+    /* How many commands it holds - GLDrawList.Setting sizes its next compile by it. */
+    int size() {
+	return(n);
     }
 
     protected Iterable<Command> dump() {

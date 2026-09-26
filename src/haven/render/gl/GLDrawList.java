@@ -481,9 +481,16 @@ public class GLDrawList implements DrawList {
 
 	abstract void compile(BGL gl);
 
+	/* How many commands the last compile made. A setting compiles a handful, and each update
+	 * built a buffer of the default 128 and then copied the few into a trimmed one: the largest
+	 * single allocation site in the client (13% in a 2026-09-26 flight recording). Sized by the
+	 * last compile, the buffer is usually exact and trim() then copies nothing. */
+	private int lastn = 8;
+
 	void update() {
-	    BufferBGL buf = new BufferBGL();
+	    BufferBGL buf = new BufferBGL(lastn);
 	    compile(buf);
+	    lastn = Math.max(buf.size(), 1);
 	    this.gl.update(buf.trim());
 	}
 
