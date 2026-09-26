@@ -15,9 +15,11 @@ import java.util.Map;
 /**
  * Every bot on the Nurgling Imports tab, and the one piece of code that opens them.
  *
- * Adding a bot is a line in {@link #DEFS} and an icon. Nothing in GameUI or MenuGrid changes, which
- * is the whole point: those are vendored upstream files this fork is maintained as a patch
- * against, and the previous arrangement grew them by three edits per bot.
+ * Adding a bot is a line in {@link #DEFS}, an icon, and one {@code makeLocal} line in
+ * {@code MenuGrid} naming its resource - without that last one the bot exists but has no button.
+ * Nothing else in GameUI or MenuGrid changes, which is the point: those are vendored upstream files
+ * this fork is maintained as a patch against, and the previous arrangement grew them by three
+ * edits per bot.
  *
  * Open windows live here too rather than in a GameUI field apiece. GameUI keeps one reference to
  * this registry's map, so the per-bot field pairs are gone; the trade is that this class owns a bit
@@ -53,6 +55,9 @@ public class BotRegistry {
         DEFS.add(BotDef.window("NStockpileBot", "Stockpile Mover (crew)",
             "Carries one yard of stockpiles into another, starting new piles as they fill up.",
             NStockpileBot::new));
+        DEFS.add(BotDef.window("NSmelterBot", "Smelter (crew)",
+            "Fills, fuels and lights ore smelters, keeping well-mined ore apart, then stacks the bars.",
+            NSmelterBot::new));
         DEFS.add(BotDef.window("SurveyPlanner", "Survey Planner (crew)",
             "Plans the surveys that level a grid flat, and shares the work list with the crew.",
             haven.automated.survey.SurveyPlanWindow::new));

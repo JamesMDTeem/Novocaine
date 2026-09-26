@@ -65,8 +65,28 @@ public class PlaceRoles {
      */
     public static final String PILES_TO = "piles-to";
 
+    /**
+     * A whole smelting yard in one rectangle: the ore smelters, and beside them whatever feeds
+     * them - ore, coal, cat gold or branches - in stockpiles or containers, plus free ground for
+     * the bar piles. The smelter bot tells those apart by what they hold, not by where they stand,
+     * so one area drawn round the lot is the whole of the setup.
+     *
+     * The four roles after it are optional overrides for a yard laid out across several areas.
+     * Each one that exists is used for its own job; each one that doesn't falls back to this.
+     */
+    public static final String SMELTING = "smelting";
+    /** Where the smelter bot takes ore from, when that is not inside the smelting area. */
+    public static final String SMELT_ORE = "smelt-ore";
+    /** Where it takes coal from. */
+    public static final String SMELT_FUEL = "smelt-fuel";
+    /** Where it takes cat gold, or branches, to light the smelters with. */
+    public static final String SMELT_IGNITE = "smelt-ignite";
+    /** Where it stacks the finished bars. Wants free ground as well as any bar piles. */
+    public static final String SMELT_BARS = "smelt-bars";
+
     public static final List<String> KNOWN =
-        Arrays.asList(WATER, FOOD, TOOLS, DUMP, STORE, WORK, PILES_FROM, PILES_TO);
+        Arrays.asList(WATER, FOOD, TOOLS, DUMP, STORE, WORK, PILES_FROM, PILES_TO,
+            SMELTING, SMELT_ORE, SMELT_FUEL, SMELT_IGNITE, SMELT_BARS);
 
     /**
      * Whether a place carrying this role is one-bot-at-a-time purely by virtue of the role.

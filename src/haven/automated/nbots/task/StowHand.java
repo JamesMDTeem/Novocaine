@@ -5,6 +5,7 @@ import haven.Gob;
 import haven.Inventory;
 import haven.Loader;
 import haven.MapView;
+import haven.WItem;
 import haven.automated.nbots.core.BotCtx;
 import haven.automated.nbots.core.Outcome;
 import haven.automated.nbots.core.Task;
@@ -90,6 +91,8 @@ public class StowHand implements Task {
                 throw new InterruptedException();
             if (toPack(ctx))
                 continue;
+            if (ontoStack(ctx))
+                continue;
             toGround(ctx);
         }
         if (!held(ctx))
@@ -161,10 +164,45 @@ public class StowHand implements Task {
     }
 
     /** Drops it where we stand. The fallback, not the failure - see the class comment. */
+    /**
+     * With no free slot, puts what is held onto an item of the same kind in the pack - the game's
+     * right-click-one-onto-another, which stacks them. A full pack is often full of exactly what is
+     * being held (coal, ore, bars), and dropping it on the ground loses it for no reason.
+     */
+    private static boolean ontoStack(BotCtx ctx) throws InterruptedException {
+        Inventory inv = ctx.gui.maininv;
+        WItem hand = ctx.gui.vhand;
+        if ((inv == null) || (hand == null))
+            return false;
+        String res;
+        try {
+            res = hand.item.getres().name;
+        } catch (RuntimeException e) {
+            return false;
+        }
+        for (WItem wi : inv.getAllItems()) {
+            String r;
+            try {
+                r = wi.item.getres().name;
+            } catch (RuntimeException e) {
+                continue;
+            }
+            if (!res.equals(r))
+                continue;
+            wi.item.wdgmsg("itemact", 0);
+            ctx.nav.waitUntil(() -> !held(ctx), MOVE_TICKS);
+            if (!held(ctx))
+                return true;
+        }
+        return false;
+    }
+
     private static void toGround(BotCtx ctx) throws InterruptedException {
         Gob me = ctx.player();
         if (me == null)
             return;
+        // Said out loud: it was silent, and an item left on the ground is an item a player looks for.
+        ctx.log("pack full and nothing to stack it on - dropping " + describe(ctx) + " on the ground");
         ctx.gui.map.wdgmsg("drop", Coord.z, me.rc.floor(posres), 0);
         ctx.nav.waitUntil(() -> !held(ctx), MOVE_TICKS);
     }

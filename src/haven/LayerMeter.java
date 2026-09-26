@@ -52,6 +52,11 @@ public abstract class LayerMeter extends Widget implements ItemInfo.Owner {
 	this.meters = meters;
     }
 
+    /* Read by bots outside this package (the smelter bot reads a furnace's fuel off its meter). */
+    public List<Meter> meters() {
+	return(meters);
+    }
+
     public void set(double a, Color c) {
 	set(Collections.singletonList(new Meter(a, c)));
     }

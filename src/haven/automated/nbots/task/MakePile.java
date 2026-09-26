@@ -74,6 +74,8 @@ public class MakePile implements Task {
     private static final int FILL_TICKS = 200;
     /** How near the aimed square a new gob has to be to count as the one we just placed. */
     private static final double PLACED_NEAR = MCache.tilesz.x * 1.2;
+    /** How many squares the caller's {@link #only} test may be asked about in one go. */
+    private static final int MAX_JUDGED = 40;
     /** How many squares to try before giving up on this trip. */
     private static final int MAX_SPOTS = 6;
     /** How far back from the square to stand while placing on it. See {@link #approachFrom}. */
@@ -95,6 +97,10 @@ public class MakePile implements Task {
     private final Coord2d near;
 
     private Gob made;
+    /** Piles already standing near the square before the placement, so none of them is taken for the new one. */
+    private final java.util.Set<Long> already = new java.util.HashSet<>();
+    /** Squares the caller will allow a pile on. Everything, unless {@link #only} narrows it. */
+    private java.util.function.Predicate<Coord2d> allowed = at -> true;
 
     /**
      * @param place   where the pile is allowed to go
@@ -111,6 +117,15 @@ public class MakePile implements Task {
         this.itemRes = itemRes;
         this.pileRes = pileRes;
         this.near = near;
+    }
+
+    /**
+     * Restricts where the new pile may go - a bot that knows which ground it needs to keep clear
+     * says so here, and squares failing the test are never offered.
+     */
+    public MakePile only(java.util.function.Predicate<Coord2d> ok) {
+        this.allowed = (ok == null) ? (at -> true) : ok;
+        return this;
     }
 
     /** The pile that was created, or null if none was. */
@@ -130,12 +145,22 @@ public class MakePile implements Task {
             return Outcome.blocked("no free ground left in " + place.name);
 
         long seg = Stockpile.segment(ctx.gui);
-        int tried = 0;
+        int tried = 0, judged = 0, refused = 0;
         for (Coord2d spot : spots) {
             if (!ctx.running())
                 throw new InterruptedException();
             if (tried >= MAX_SPOTS)
                 break;
+            /* The caller's test runs here, square by square, rather than over the whole list up
+             * front: it may be expensive - the smelter bot's floods the ground round each square -
+             * and only the first few squares that pass it are ever walked to. */
+            if (judged >= MAX_JUDGED)
+                break;
+            judged++;
+            if (!allowed.test(spot)) {
+                refused++;
+                continue;
+            }
             Coord tile = Stockpile.tileOf(ctx.gui, spot);
             if (tile == null)
                 continue;
@@ -158,7 +183,8 @@ public class MakePile implements Task {
                 WorkClaims.release(key);
             }
         }
-        return Outcome.blocked("couldn't find ground for a new pile in " + place.name);
+        return Outcome.blocked("couldn't find ground for a new pile in " + place.name
+            + ((refused > 0) ? " (" + refused + " square(s) would have been in the way)" : ""));
     }
 
     /**
@@ -306,6 +332,18 @@ public class MakePile implements Task {
              * thirty in the pack, which then need a second gesture - and, before this, a whole
              * second visit to a pile that had only just been built two paces away. Shift folds the
              * build and the fill into the one click. */
+            /* Noted before placing: every pile already near the square. A new pile goes beside
+             * the old ones - that is what spotsIn prefers - so a neighbour is always within reach
+             * of the test below, and without this it answered at once with a pile that was already
+             * there. The smelter bot's log shows it: a refused placement reported as "started a new
+             * ore pile", then a fill of the full neighbour that moved nothing. */
+            already.clear();
+            synchronized (ctx.gui.map.glob.oc) {
+                for (Gob g : ctx.gui.map.glob.oc) {
+                    if (Stockpile.is(g) && (g.rc.dist(spot) <= PLACED_NEAR * 2))
+                        already.add(g.id);
+                }
+            }
             Stockpile.placeAll(ctx, spot);
             ctx.nav.waitUntil(() -> found(ctx, spot) != null, PLACE_TICKS);
             WorkClaims.renew(key);
@@ -326,7 +364,16 @@ public class MakePile implements Task {
              * caller decides what to do next from how much is still carried, and reading that
              * mid-transfer would have it building a second pile for soil already on its way into
              * this one. */
-            ctx.nav.waitUntil(() -> PileTransfer.carrying(ctx, itemRes) <= 0, FILL_TICKS);
+            /* Until the pack stops changing, not until it is empty: a pack holding more than one pile
+             * takes is never empty here, and waiting for that ran the whole wait out every time. */
+            int[] last = {PileTransfer.carrying(ctx, itemRes)};
+            int[] still = {0};
+            ctx.nav.waitUntil(() -> {
+                int now = PileTransfer.carrying(ctx, itemRes);
+                still[0] = (now == last[0]) ? still[0] + 1 : 0;
+                last[0] = now;
+                return (now <= 0) || (still[0] >= 12);
+            }, FILL_TICKS);
             WorkClaims.renew(key);
             ctx.log("started a new " + Stockpile.kind(pile) + " pile in " + place.name
                 + "; " + PileTransfer.carrying(ctx, itemRes) + " left in the pack");
@@ -336,11 +383,11 @@ public class MakePile implements Task {
         }
     }
 
-    /** A stockpile standing on the square we just aimed at, if one has appeared. */
-    private static Gob found(BotCtx ctx, Coord2d spot) {
+    /** A stockpile that has appeared on the square we just aimed at - one that was not there before. */
+    private Gob found(BotCtx ctx, Coord2d spot) {
         synchronized (ctx.gui.map.glob.oc) {
             for (Gob g : ctx.gui.map.glob.oc) {
-                if (Stockpile.is(g) && (g.rc.dist(spot) <= PLACED_NEAR))
+                if (Stockpile.is(g) && !already.contains(g.id) && (g.rc.dist(spot) <= PLACED_NEAR))
                     return g;
             }
         }

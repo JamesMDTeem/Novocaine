@@ -211,6 +211,13 @@ build("NurglingImports/CrewBots/NStockpileBot.res",
       "beside the full ones when they run out of room. Several can work the same yard: a pile "
       "that empties or fills under one of them is the next pile, not an error.")
 
+build("NurglingImports/CrewBots/NSmelterBot.res",
+      "customclient/menugrid/NurglingImports/CrewBots", "Smelter (crew)", 0,
+      ["@", "NurglingImports", "NSmelterBot"],
+      "Runs a yard of ore smelters from one Smelting area: loads them with ore, keeping "
+      "well-mined ore apart so it gets 9 coal instead of 12, lights them with a pyrite spark or "
+      "a firebrand, then empties the bars into stockpiles, drops the slag and goes again.")
+
 build("NurglingImports/CrewBots/SurveyPlanner.res",
       "customclient/menugrid/NurglingImports/CrewBots", "Survey Planner (crew)", 0,
       ["@", "NurglingImports", "SurveyPlanner"],

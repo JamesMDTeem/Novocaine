@@ -9,6 +9,8 @@ import haven.Moving;
 import haven.automated.pathfinder.World;
 import haven.automated.nbots.core.NLog;
 
+import java.util.List;
+
 import static haven.OCache.posres;
 
 /**
@@ -210,6 +212,29 @@ public class Walk {
                 if (why != null)
                     why.append("object box");
                 return false;
+            }
+        }
+        /* Object boxes again, at the character's width and at a spacing finer than any box.
+         *
+         * The loop above tests single points half a tile apart, as if the character had no width.
+         * That passed the smelter bot's line through the gap between a mine support and a smelter -
+         * a gap narrower than the character - and it walked in and wedged: every path from there
+         * failed on its first step ("first objection 0t out") and two smelters were given up on.
+         * The same half-tile spacing can step clean over a mine support, which is 5.8 units across.
+         * The first and last stretch are left to the point test above, so a line may still start
+         * or end pressed against something, which leaving a barrel requires. */
+        if (len >= 1.0) {
+            Coord2d dir = to.sub(from).mul(1.0 / len);
+            Coord2d side = new Coord2d(-dir.y, dir.x).mul(World.HALFWIDTH);
+            double edge = World.HALFWIDTH * 2;
+            List<Gob> solids = BotNav.solids(gui);
+            for (double d = edge; d <= len - edge; d += World.HALFWIDTH) {
+                Coord2d p = from.add(dir.mul(d));
+                if (BotNav.occupied(solids, p.add(side)) || BotNav.occupied(solids, p.sub(side))) {
+                    if (why != null)
+                        why.append("too narrow for us");
+                    return false;
+                }
             }
         }
         return true;
