@@ -1393,6 +1393,17 @@ public class MCache implements MapSource {
 	Coord rc = new Coord();
 	for(rc.y = ul.y; rc.y <= br.y; rc.y++) {
 	    for(rc.x = ul.x; rc.x <= br.x; rc.x++) {
+		/* A grid that has not arrived is requested here directly. getcut would request it
+		 * too, and then throw a LoadingMap for this loop to catch and drop: MapView.draw runs
+		 * this every frame, and that exception - a full stack trace each time - was thrown
+		 * some 65 times a second while any grid in view was still coming in (2026-09-26
+		 * flight recording). A grid that is here goes through getcut as before, which is what
+		 * sets its cut's mesh building. */
+		Coord gc = rc.div(cutn);
+		if(!gridloaded(gc)) {
+		    request(gc);
+		    continue;
+		}
 		try {
 		    getcut(Coord.of(rc));
 		} catch(Loading e) {}
