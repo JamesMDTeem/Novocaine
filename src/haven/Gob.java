@@ -1764,7 +1764,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	public void updateContainerFullnessHighlight() {
 		if (getres() != null) {
 			String resName = getres().name;
-			if (Arrays.stream(Config.containersResPaths).anyMatch(resName::matches)) {
+			if (Config.containersRes.matches(resName)) {
 				Drawable dr = getattr(Drawable.class);
 				ResDrawable d = (dr instanceof ResDrawable) ? (ResDrawable) dr : null;
 				if (d != null) {
@@ -2018,7 +2018,7 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	public void updateWorkstationProgressHighlight() {
 		if (getres() != null) {
 			String resName = getres().name;
-			if (Arrays.stream(Config.workstationsResPaths).anyMatch(resName::matches)) {
+			if (Config.workstationsRes.matches(resName)) {
 				setWorkstationProgressHighlight(resName);
 			}
 		}
@@ -2078,23 +2078,23 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 		if (getres() != null) {
 			String resourceName = getres().name;
 			if (knocked != null && !knocked) {
-				if (Arrays.stream(Config.critterResPaths).anyMatch(resourceName::matches)) {
+				if (Config.critterRes.matches(resourceName)) {
 					setAuraCircleOverlay(OptWnd.showCritterAurasCheckBox.a, OptWnd.genericCritterAuraColorOptionWidget.currentColor);
-				} else if (resourceName.matches(".*(rabbit|bunny)$")) {
+				} else if (Config.rabbitRes.matches(resourceName)) {
 					setAuraCircleOverlay(OptWnd.showCritterAurasCheckBox.a, OptWnd.rabbitAuraColorOptionWidget.currentColor);
-                } else if (resourceName.matches(".*(woodscorpion)$")) {
+                } else if (Config.woodscorpionRes.matches(resourceName)) {
                     setAuraCircleOverlay(OptWnd.showCritterAurasCheckBox.a, OptWnd.dangerousCritterAuraColorOptionWidget.currentColor);
                 }
 			} else if (knocked != null && knocked) {
-				if (Arrays.stream(Config.critterResPaths).anyMatch(resourceName::matches)) {
+				if (Config.critterRes.matches(resourceName)) {
 					setAuraCircleOverlay(false, OptWnd.genericCritterAuraColorOptionWidget.currentColor);
-				} else if (resourceName.matches(".*(rabbit|bunny)$")) {
+				} else if (Config.rabbitRes.matches(resourceName)) {
 					setAuraCircleOverlay(false, OptWnd.rabbitAuraColorOptionWidget.currentColor);
-                } else if (resourceName.matches(".*(woodscorpion)$")) {
+                } else if (Config.woodscorpionRes.matches(resourceName)) {
                     setAuraCircleOverlay(OptWnd.showCritterAurasCheckBox.a, OptWnd.dangerousCritterAuraColorOptionWidget.currentColor);
                 }
 			} else if (!isComposite) { // ND: For critters that can't have a knocked status, like insects.
-				if (Arrays.stream(Config.critterResPaths).anyMatch(resourceName::matches)) {
+				if (Config.critterRes.matches(resourceName)) {
 					setAuraCircleOverlay(OptWnd.showCritterAurasCheckBox.a, OptWnd.genericCritterAuraColorOptionWidget.currentColor);
 				}
 			}

@@ -722,6 +722,14 @@ public class Config {
 			"gfx/terobjs/gardenpot",
 	};
 
+	/* The three lists above, and the two patterns Gob's critter auras test after them, compiled
+	 * once - see ResMatcher. Declared after the lists, as static initialisers run in order. */
+	public static final ResMatcher critterRes = new ResMatcher(critterResPaths);
+	public static final ResMatcher containersRes = new ResMatcher(containersResPaths);
+	public static final ResMatcher workstationsRes = new ResMatcher(workstationsResPaths);
+	public static final ResMatcher rabbitRes = new ResMatcher(".*(rabbit|bunny)$");
+	public static final ResMatcher woodscorpionRes = new ResMatcher(".*(woodscorpion)$");
+
 
 	public final static Set<String> stoneItemBaseNames = new HashSet<String>(Arrays.asList(
 			"gneiss",
