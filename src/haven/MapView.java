@@ -1577,8 +1577,19 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
     public DirLight amblight = null;
     private RenderTree.Slot s_amblight = null;
+    /* What the sun standing in the scene was built from. This runs every tick, and the server's light
+     * holds still between its turns; building a new DirLight every tick anyway took the sun's slot out of
+     * the scene and put it back each frame, and made updsmap's ShadowMap.light (which compares by
+     * identity) hand basic() a new ShadowMap, so every tick with shadows on applied the whole render state
+     * again. A 09-25 heap dump held ~2,500 dead ShadowMaps from it. After brodgar-io-client c17ed56e9. */
+    private Object[] sunkey = null;
     private void amblight() {
 	synchronized(glob) {
+	    Object[] key = (glob.lightamb == null) ? null :
+		new Object[] {glob.blightamb, glob.blightdif, glob.blightspc, glob.lightelev, glob.lightang};
+	    if(Arrays.equals(key, sunkey) && ((key == null) == (s_amblight == null)))
+		return;
+	    sunkey = key;
 	    if(glob.lightamb != null) {
 		amblight = new DirLight(glob.blightamb, glob.blightdif, glob.blightspc, Coord3f.o.sadd((float)glob.lightelev, (float)glob.lightang, 1f));
 		amblight.prio(100);
@@ -1623,12 +1634,21 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 		    (prefs.maxlights.val == gprefs.maxlights.val)));
 	}
 
+	/* The SIMPLE-mode state last compiled, and what from - see Light.LightList.compile. ZONED
+	 * keeps its own in Lighting.LightGrid. A new SimpleLights every frame applied the whole scene's
+	 * render state again every frame in this mode. */
+	private Lighting.SimpleLights lastsimple = null;
+	private Object[][] lastsimplep = null;
+
 	public Pipe.Op compile(Object[][] params, Projection proj) {
 	    if(zgrid == null) {
-		Lighting.SimpleLights ret = new Lighting.SimpleLights(params);
+		if((lastsimple != null) && Lighting.LightGrid.lightsEq(lastsimplep, params))
+		    return(lastsimple);
+		lastsimplep = Lighting.copyParams(params);
+		Lighting.SimpleLights ret = new Lighting.SimpleLights(lastsimplep);
 		if(maxlights != 0)
 		    ret.maxlights = maxlights;
-		return(ret);
+		return(lastsimple = ret);
 	    } else {
 		return(zgrid.compile(params, proj));
 	    }

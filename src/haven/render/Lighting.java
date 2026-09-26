@@ -60,6 +60,24 @@ public interface Lighting {
 	}
     }
 
+    /* The light parameters as they stand, each float[] copied. A light hands out its own colour
+     * arrays, so a cache holding them would compare equal to a light that has since changed them
+     * in place. Taken only when a state is compiled, not per frame. */
+    public static Object[][] copyParams(Object[][] params) {
+	Object[][] ret = new Object[params.length][];
+	for(int i = 0; i < params.length; i++) {
+	    if(params[i] == null)
+		continue;
+	    Object[] p = params[i].clone();
+	    for(int o = 0; o < p.length; o++) {
+		if(p[o] instanceof float[])
+		    p[o] = ((float[])p[o]).clone();
+	    }
+	    ret[i] = p;
+	}
+	return(ret);
+    }
+
     public static class SimpleLights extends State {
 	public static final boolean unroll = true;
 	public static final int defmax = 4;
@@ -197,7 +215,7 @@ public interface Lighting {
 	/* Deep comparison of the light parameter arrays with the tolerance
 	 * above. Mirrors the shape Arrays.deepEquals walks, but compares
 	 * float[] and Float leaves with feq rather than bit equality. */
-	private static boolean lightsEq(Object[][] a, Object[][] b) {
+	public static boolean lightsEq(Object[][] a, Object[][] b) {
 	    if(a == b)
 		return(true);
 	    if((a == null) || (b == null) || (a.length != b.length))
@@ -528,7 +546,7 @@ public interface Lighting {
 		last.dispose();
 		last = null;
 	    }
-	    lastlights = lights;
+	    lastlights = copyParams(lights);
 	    return(last = new GridLights(lights, c.bbox, c.grid, c.listbuf, c.lboff));
 	}
 

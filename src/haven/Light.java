@@ -92,8 +92,20 @@ public abstract class Light implements RenderTree.Node {
 	    return(cl);
 	}
 
+	/* The state last compiled, and what from. PView.lights() asks for this on every draw, and a
+	 * new SimpleLights every time made every view - the character portraits included - apply its
+	 * whole render state again each frame. The same lights hand back the same state, compared
+	 * with the tolerance LightGrid uses, so a view whose lights stand still re-applies nothing. */
+	private Lighting.SimpleLights lastc = null;
+	private Object[][] lastp = null;
+
 	public State compile() {
-	    return(new Lighting.SimpleLights(params()));
+	    Object[][] p = params();
+	    if((lastc == null) || !Lighting.LightGrid.lightsEq(lastp, p)) {
+		lastp = Lighting.copyParams(p);
+		lastc = new Lighting.SimpleLights(lastp);
+	    }
+	    return(lastc);
 	}
 
 	public void add(RenderList.Slot<Light> light) {
