@@ -75,7 +75,11 @@ public class TerrainTile extends Tiler implements Tiler.MCons, Tiler.CTrans {
 	    }
 		}
 	    setbase(buf1);
-	    for(int i = 0; i < sr; i++) {
+	    /* With tile blending off the noise weights all stay 0, and a pass then computes
+	     * (v * 4 + 0) / (4 + 0) = v exactly - scaling by 4 is exact in floating point - so the
+	     * twelve passes changed nothing and only cost time on every cut built. Skipped. */
+	    int passes = OptWnd.disableTileBlendingCheckBox.a ? 0 : sr;
+	    for(int i = 0; i < passes; i++) {
 		float[][] buf2 = new float[var.length + 1][vs.l];
 		for(int y = vs.ul.y; y < vs.br.y; y++) {
 		    for(int x = vs.ul.x; x < vs.br.x; x++) {
