@@ -653,9 +653,10 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 	Drawable d = getattr(Drawable.class);
 	if(d != null)
 	    d.gtick(g);
-	List<Overlay> olsSnapshot;
-	    olsSnapshot = new ArrayList<>(ols);
-	for(Overlay ol : olsSnapshot) {
+	/* ols is copy-on-write, and its iterator already walks a snapshot that nothing can modify,
+	 * so it is iterated as it is. Copying it into an ArrayList first, for every gob every
+	 * frame, was about 2% of the client's allocation (2026-09-26 flight recording). */
+	for(Overlay ol : ols) {
 	    if(ol.spr != null)
 		ol.spr.gtick(g);
 	}
