@@ -64,7 +64,11 @@ public class FragData extends Variable.Global {
     private static final Object defid = new PostProc.AutoID("fragdata", 15000) {
 	    public void proc(Context ctx) {
 		FragmentContext fctx = (FragmentContext)ctx;
-		Collection<FragData> used = new HashSet<>();
+		/* Insertion order, not a HashSet's: FragData hashes by identity, so with two
+		 * non-primary outputs the slots came out numbered differently from run to run, the
+		 * program's source with them, and ProgramCache - keyed on the source - missed and
+		 * recompiled on every launch (brodgar-io-client 0d8309ef4). */
+		Collection<FragData> used = new LinkedHashSet<>();
 		for(Toplevel tl : fctx.vardefs) {
 		    if(tl instanceof Def)
 			used.add(((Def)tl).var());
