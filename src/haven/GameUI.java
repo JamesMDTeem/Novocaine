@@ -378,6 +378,8 @@ public class GameUI extends ConsoleHost implements Console.Directory, UI.Notice.
 	 * must not follow the player onto the next one. */
 	haven.automated.eat.ModifierContext.reset();
 	haven.automated.nbots.core.NLog.installUncaughtHandler();
+	/* The combat data pack, off the UI thread, before a fight asks for it - see Prediction.preload. */
+	haven.automated.combat.Prediction.preload();
 	setcanfocus(true);
 	setfocusctl(true);
 	chat = new ChatUI();

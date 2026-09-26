@@ -948,16 +948,48 @@ public final class CombatRecorder {
             log(CombatEvent.predict(now(), gobId, moveRes, e.pack, e.opened, e.dealt,
                                     e.grievous, e.cooldown));
         }
-        /* And what the model would have thrown instead, which it does NOT throw. Costs a
-         * beam search - 4 ms at beam 60 against a wolf with a ten-card deck - and runs once
-         * per card rather than once per frame. Kept after the prediction so a failure here
-         * cannot cost us that. */
-        Prediction.Advised adv = advise(m, gobId, open);
-        if(adv != null) {
-            log(CombatEvent.advice(now(), gobId, adv.moveRes, adv.pack, adv.ticks,
-                                   adv.hpLost, adv.killed, adv.frontier));
+        /* And what the model would have thrown instead, which it does NOT throw. Kept after the
+         * prediction so a failure here cannot cost us that.
+         *
+         * It is a beam search, and NOT on this thread. It was written as 4 ms against a wolf and
+         * measured 2026-09-25 at 50-150 ms per card, 120-360 ms on the first - every card we
+         * threw, on the UI thread, whenever telemetry was on, which is the default. The inputs
+         * are all taken here, as they stand when the card is thrown; the search runs on
+         * adviceWorker; the row's place in the file is held by offerLater, so it lands exactly
+         * where it was always written. Its time is the card's, not the card's plus however long
+         * the search took, which was only ever the frame the search was holding up. */
+        CombatLogWriter w = writer;
+        java.util.concurrent.Callable<Prediction.Advised> job = adviceJob(m.snapshot(), gobId, open);
+        if((w == null) || (job == null))
+            return;
+        long t = now();
+        try {
+            w.offerLater(adviceWorker.submit(() -> {
+                        Prediction.Advised adv;
+                        try {
+                            adv = job.call();
+                        } catch(Exception x) {
+                            /* as when it ran inline: no advice, and nothing counted lost */
+                            return(null);
+                        }
+                        return((adv == null) ? null
+                               : CombatEvent.advice(t, gobId, adv.moveRes, adv.pack, adv.ticks,
+                                                    adv.hpLost, adv.killed, adv.frontier));
+                    }));
+        } catch(java.util.concurrent.RejectedExecutionException x) {
+            /* never propagate into the message loop */
         }
     }
+
+    /* One thread, so the searches finish in the order their rows were placed and the writer never
+     * waits on a later one to get past an earlier one. */
+    private static final java.util.concurrent.ExecutorService adviceWorker =
+        java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "combat-advice-log");
+                t.setDaemon(true);
+                t.setPriority(Thread.NORM_PRIORITY - 1);
+                return(t);
+            });
 
     /**
      * The advice, asked about EVERY opponent rather than the one we are aimed at.
@@ -971,22 +1003,28 @@ public final class CombatRecorder {
      * already validated for it. The rest come from the last crowd sample. Anything the map
      * cannot name is left out: an opponent we cannot identify cannot be modelled, and
      * inventing one would be worse than planning against fewer.
+     *
+     * Everything the search reads is read HERE, on the calling thread, and the search itself is
+     * handed back to run elsewhere - see predict(). Null when there is nothing to advise on.
      */
-    private static Prediction.Advised advise(Prediction.Me m, long gobId, int[] open) {
+    private static java.util.concurrent.Callable<Prediction.Advised> adviceJob(Prediction.Me m, long gobId,
+                                                                               int[] open) {
+        int myIp = lastMyIp;
         /* Against a PLAYER the pack has nothing - there is no species - so the advice is built
          * from the cards we have seen that person throw, and there is no advice until we have
          * seen one. */
         if(isPlayer(gobId)) {
             java.util.Map<String, Integer> seen = seenDeck(gobId);
             return(seen.isEmpty() ? null
-                   : Prediction.adviseAgainstPlayer(m, seen, open, lastMyIp,
-                                                    ADVICE_BEAM, ADVICE_HORIZON));
+                   : () -> Prediction.adviseAgainstPlayer(m, seen, open, myIp,
+                                                          ADVICE_BEAM, ADVICE_HORIZON));
         }
         long[] crowd = lastCrowd;
         String mine = foeResById.get(Long.valueOf(gobId));
         if((crowd == null) || (crowd.length <= 5) || (mine == null)) {
-            return(Prediction.advise(m, foeRes, open, lastMyIp,
-                                     ADVICE_BEAM, ADVICE_HORIZON));
+            String only = foeRes;
+            return(() -> Prediction.advise(m, only, open, myIp,
+                                           ADVICE_BEAM, ADVICE_HORIZON));
         }
         int[] dists = lastCrowdDist;
         int[] crowdIp = lastCrowdIp;
@@ -997,7 +1035,7 @@ public final class CombatRecorder {
         res.add(mine);
         ops.add(open);
         /* The one we are aimed at carries the sampled relation's own figure. */
-        ips.add(Integer.valueOf(lastMyIp));
+        ips.add(Integer.valueOf(myIp));
         /* The one we are swinging at is by definition the one we are on, and the sweep
          * question is about the others - so its own distance is not needed and is left
          * unknown rather than filled with the sampled figure, which belongs to whichever
@@ -1029,9 +1067,10 @@ public final class CombatRecorder {
         int[] ia = new int[ips.size()];
         for(int i = 0; i < ia.length; i++)
             ia[i] = ips.get(i).intValue();
-        return(Prediction.advise(m, res.toArray(new String[0]),
-                                 ops.toArray(new int[0][]), da, ia, lastMyIp,
-                                 ADVICE_BEAM, ADVICE_HORIZON));
+        String[] ra = res.toArray(new String[0]);
+        int[][] oa = ops.toArray(new int[0][]);
+        return(() -> Prediction.advise(m, ra, oa, da, ia, myIp,
+                                       ADVICE_BEAM, ADVICE_HORIZON));
     }
 
     /* Beam and horizon for the advice above. The beam is where the search stops being
@@ -1657,17 +1696,25 @@ public final class CombatRecorder {
         lastGear = null;
         lastWpn = null;
         emptiedAt.clear();
-        try {
-            w.close();
-        } catch(Exception e) {
-            /* never propagate */
-        }
-        try {
-            if(path != null)
-                CombatLogSync.enqueue(path);
-        } catch(Exception e) {
-            /* never propagate — upload is best-effort */
-        }
+        /* Closing waits for the writer to put everything on disk - its drain polls every 200 ms,
+         * and an advice row may still be searching - and the upload has to see the whole file, so
+         * both happen on a thread of their own. stop() runs on the UI thread when the last
+         * opponent leaves, and the wait was a frame held up at the end of every fight. Not a
+         * daemon, so a client closing mid-fight still finishes the file. */
+        Thread closer = new Thread(() -> {
+                try {
+                    w.close();
+                } catch(Exception e) {
+                    /* never propagate */
+                }
+                try {
+                    if(path != null)
+                        CombatLogSync.enqueue(path);
+                } catch(Exception e) {
+                    /* never propagate — upload is best-effort */
+                }
+            }, "combat-log-close");
+        closer.start();
         /* The decks learned this fight, written once it is over rather than per card. */
         try {
             haven.combat.log.PlayerDecks d = decks;

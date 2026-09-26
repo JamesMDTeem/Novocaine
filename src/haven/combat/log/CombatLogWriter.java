@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,7 +30,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Imports nothing from haven - see tools/CombatLogCheck.java.
  */
 public final class CombatLogWriter implements Closeable {
-    private final BlockingQueue<String> q;
+    /* How long the drain waits for a line offered with offerLater() before counting it dropped.
+     * Far above what one is meant to take - the advice search is tenths of a second - so it only
+     * ever fires on a computation that hung. */
+    private static final long LATER_WAIT_MS = 10000;
+
+    /* Strings, or Futures of one for offerLater(). */
+    private final BlockingQueue<Object> q;
     private final Thread thread;
     private final BufferedWriter w;
     private final AtomicInteger dropped = new AtomicInteger(0);
@@ -42,7 +49,7 @@ public final class CombatLogWriter implements Closeable {
             Files.createDirectories(parent);
         this.w = Files.newBufferedWriter(path, StandardCharsets.UTF_8,
                                          StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-        this.q = new ArrayBlockingQueue<String>(capacity);
+        this.q = new ArrayBlockingQueue<Object>(capacity);
         this.thread = new Thread(this::drain, "combat-log-writer");
         this.thread.setDaemon(true);
         this.thread.start();
@@ -55,8 +62,48 @@ public final class CombatLogWriter implements Closeable {
             dropped.incrementAndGet();
     }
 
+    /**
+     * A line that is still being computed, written in the place it was offered.
+     *
+     * For a line whose content takes too long to work out on the thread that knows where it
+     * belongs: the caller holds its place in the file now, and the drain thread waits for it
+     * there, so every line keeps the position and order it would have had written inline. A
+     * future that yields null writes nothing, as a caller with nothing to say would have; one
+     * that fails or outlasts LATER_WAIT_MS writes nothing and counts as dropped.
+     */
+    public void offerLater(Future<String> line) {
+        if(closed || line == null)
+            return;
+        if(!q.offer(line))
+            dropped.incrementAndGet();
+    }
+
     public int dropped() {
         return(dropped.get());
+    }
+
+    private String resolve(Object item) {
+        if(!(item instanceof Future))
+            return((String)item);
+        Future<?> f = (Future<?>)item;
+        try {
+            return((String)f.get(LATER_WAIT_MS, TimeUnit.MILLISECONDS));
+        } catch(InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return(null);
+        } catch(Exception e) {
+            f.cancel(true);
+            dropped.incrementAndGet();
+            return(null);
+        }
+    }
+
+    private void write(Object item) throws IOException {
+        String line = resolve(item);
+        if(line != null) {
+            w.write(line);
+            w.write('\n');
+        }
     }
 
     /* False once an IOException has killed the drain thread - offer() keeps accepting into the
@@ -69,11 +116,9 @@ public final class CombatLogWriter implements Closeable {
     private void drain() {
         try {
             while(true) {
-                String line = q.poll(200, TimeUnit.MILLISECONDS);
-                if(line != null) {
-                    w.write(line);
-                    w.write('\n');
-                }
+                Object line = q.poll(200, TimeUnit.MILLISECONDS);
+                if(line != null)
+                    write(line);
                 if(q.isEmpty()) {
                     w.flush();
                     if(closed)
@@ -84,11 +129,9 @@ public final class CombatLogWriter implements Closeable {
              * the queue in the gap between offer() reading `closed` as false and this thread
              * observing it as true and breaking out above. Drain whatever is left before we
              * shut down so that gap doesn't silently eat a line. */
-            String line;
-            while((line = q.poll()) != null) {
-                w.write(line);
-                w.write('\n');
-            }
+            Object line;
+            while((line = q.poll()) != null)
+                write(line);
             w.flush();
         } catch(InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -104,12 +147,16 @@ public final class CombatLogWriter implements Closeable {
         }
     }
 
+    /**
+     * Stops taking lines and waits for everything offered to reach the file. Waits for any line
+     * still being computed as well, so call it off the UI thread.
+     */
     public void close() {
         if(closed)
             return;
         closed = true;
         try {
-            thread.join(3000);
+            thread.join(3000 + LATER_WAIT_MS);
         } catch(InterruptedException e) {
             Thread.currentThread().interrupt();
         }

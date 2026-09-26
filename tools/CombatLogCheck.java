@@ -483,6 +483,34 @@ public class CombatLogCheck {
                 threw = true;
             }
             check("bad path throws from constructor", threw, true);
+
+            // offerLater: a line still being computed keeps the place it was offered in, however
+            // long it takes - the recorder's advice row, searched off the UI thread (2026-09-25).
+            java.util.concurrent.ExecutorService ex = java.util.concurrent.Executors.newSingleThreadExecutor();
+            Path h = dir.resolve("d.jsonl");
+            CombatLogWriter w4 = new CombatLogWriter(h, 64);
+            w4.offer("{\"n\":1}");
+            w4.offerLater(ex.submit(() -> {Thread.sleep(300); return("{\"n\":2}");}));
+            w4.offer("{\"n\":3}");
+            w4.offerLater(ex.submit(() -> null));
+            w4.offerLater(ex.submit(() -> {throw(new RuntimeException("search failed"));}));
+            w4.offer("{\"n\":4}");
+            w4.close();
+            ex.shutdown();
+            check("later line keeps its place", Files.readAllLines(h),
+                  java.util.Arrays.asList("{\"n\":1}", "{\"n\":2}", "{\"n\":3}", "{\"n\":4}"));
+            check("a failed later line counts as dropped", w4.dropped(), 1);
+
+            // A null answer writes nothing and loses nothing, as a caller with no advice would.
+            java.util.concurrent.ExecutorService ex2 = java.util.concurrent.Executors.newSingleThreadExecutor();
+            Path k = dir.resolve("e.jsonl");
+            CombatLogWriter w5 = new CombatLogWriter(k, 8);
+            w5.offerLater(ex2.submit(() -> null));
+            w5.offer("{\"n\":1}");
+            w5.close();
+            ex2.shutdown();
+            check("null later line writes nothing", Files.readAllLines(k), java.util.Arrays.asList("{\"n\":1}"));
+            check("and counts nothing dropped", w5.dropped(), 0);
         } catch(Exception e) {
             System.out.println("  writer check threw: " + e);
             failures++;

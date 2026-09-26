@@ -81,6 +81,23 @@ public final class Prediction {
     }
 
     /**
+     * Loads the data pack on a thread of its own, ahead of the first fight.
+     *
+     * Loaded lazily it cost the first fight of every session 120-280 ms (measured 2026-09-25) on
+     * whatever touched it first, and that is the UI thread: CombatRecorder.start builds our side
+     * the moment a fight opens. load() is synchronized, so a fight that opens before this finishes
+     * waits for the rest of it, never for a second load.
+     */
+    public static void preload() {
+        if(loaded)
+            return;
+        Thread t = new Thread(Prediction::load, "combat-pack-load");
+        t.setDaemon(true);
+        t.setPriority(Thread.NORM_PRIORITY - 1);
+        t.start();
+    }
+
+    /**
      * The deck weighting a card at this level carries.
      *
      * Linear across the five levels - 1.0, 1.125, 1.25, 1.375, 1.5. Settled by a ladder of
@@ -206,6 +223,24 @@ public final class Prediction {
         /** Whether the stats needed for any prediction at all are present. */
         public boolean usable() {
             return((str > 0) && (agi > 0) && ((unarmed > 0) || (melee > 0)));
+        }
+
+        /**
+         * This side as it stands now, for a planner that runs after the moment it is asked about.
+         * buffs, shield and tile are written live from the message loop, so a search reading this
+         * object from another thread could plan with a stance taken up after the card it is about.
+         */
+        Me snapshot() {
+            Me c = new Me(str, agi, unarmed, melee, armHard, armSoft, weaponDamage, weaponQl,
+                          weaponPen, weaponRange, armed, levels);
+            c.buffs = buffs;
+            c.shield = shield;
+            c.tile = tile;
+            c.gloveDamage = gloveDamage;
+            c.gloveQl = gloveQl;
+            c.weaponRes = weaponRes;
+            c.weaponClasses = weaponClasses;
+            return(c);
         }
     }
 
