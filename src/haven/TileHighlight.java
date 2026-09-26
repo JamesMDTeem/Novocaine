@@ -270,8 +270,18 @@ public class TileHighlight {
     
     private static class TileItem {
 	private final String name, res;
-	private final Tex tex;
-	
+	/* Rendered when the list first draws the row, not when the item is made. Every item is
+	 * made at login (GameUI.attached builds this window only to hide it), and rendering a
+	 * stroked label for every tile type there held the UI lock for 510 ms - a stall capture on
+	 * 2026-09-25 caught the frame waiting on it. The window draws the rows in view. */
+	private Tex tex;
+
+	private Tex tex() {
+	    if(tex == null)
+		tex = elf.renderstroked(this.name, Color.WHITE, Color.BLACK).tex();
+	    return(tex);
+	}
+
 	private TileItem(String res) {
 	    this.res = res;
 		String key = Utils.prettyResName(res).toLowerCase();
@@ -282,7 +292,6 @@ public class TileHighlight {
 		} else {
 			this.name = Utils.prettyResName(res);
 		}
-	    this.tex = elf.renderstroked(this.name, Color.WHITE, Color.BLACK).tex();
 	}
     }
     
@@ -407,7 +416,7 @@ public class TileHighlight {
 		g.chcolor(((idx % 2) == 0) ? every : other);
 		g.frect(Coord.z, g.sz());
 		g.chcolor();
-		g.aimage(item.tex, new Coord(UI.scale(3), elh / 2), 0.0, 0.5);
+		g.aimage(item.tex(), new Coord(UI.scale(3), elh / 2), 0.0, 0.5);
 		g.image(CheckBox.sbox, showc);
 		if(isHighlighted(item.res))
 		    g.image(CheckBox.smark, showc);
