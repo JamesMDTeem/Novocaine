@@ -199,12 +199,8 @@ public interface UniformApplier<T> {
 	    TypeMapping.register(new Array(Type.MAT4), float[][].class, (gl, var, type, mats) -> {
 		    Array ary = (Array)type;
 		    int n = Math.min(mats.length, ary.sz);
-		    float[] buf = new float[n * 16];
-		    for(int i = 0, m = 0; i < n; i++) {
-			for(int o = 0; o < 16; o++)
-			    buf[m++] = mats[i][o];
-		    }
-		    gl.glUniformMatrix4fv(var, n, false, buf);
+		    /* Flattened when the command runs, not here - see BGL.glUniformMatrix4fv(float[][]). */
+		    gl.glUniformMatrix4fv(var, n, false, mats);
 		});
 
 	    TypeMapping.register(Type.SAMPLER2D, GLTexture.Tex2D.class, (gl, var, type, smp) -> {

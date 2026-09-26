@@ -877,6 +877,38 @@ public abstract class BGL {
 	    });
     }
 
+    /* The matrices as the caller holds them, one array each, laid end to end only when the
+     * command runs - into a buffer the running thread keeps, since glUniformMatrix4fv has copied
+     * what it is given by the time it returns. The skinned-mesh bone uniform built a fresh
+     * n*16 array for every animated model every frame to hand over at record time: 4.5% of the
+     * client's allocation in a 2026-09-26 flight recording. The caller must not change the arrays
+     * after handing them over; PoseMorph makes new ones for every pose.
+     *
+     * One buffer per matrix count, each exactly count * 16 long: LWJGLWrap asserts the array's
+     * length equals count * 16, so a longer shared buffer would throw there. A skinned mesh has
+     * one of a handful of bone counts, so the table stays small. */
+    private static final ThreadLocal<float[][]> mat4buf = ThreadLocal.withInitial(() -> new float[64][]);
+    public void glUniformMatrix4fv(final ID location, final int count, final boolean transpose, final float[][] mats) {
+	add(new Command() {
+		public void run(GL gl) {
+		    int id = location.glid();
+		    if(id == -1)
+			return;
+		    float[][] bycount = mat4buf.get();
+		    if(count >= bycount.length) {
+			bycount = Arrays.copyOf(bycount, count + 1);
+			mat4buf.set(bycount);
+		    }
+		    float[] buf = bycount[count];
+		    if(buf == null)
+			buf = bycount[count] = new float[count * 16];
+		    for(int i = 0; i < count; i++)
+			System.arraycopy(mats[i], 0, buf, i * 16, 16);
+		    gl.glUniformMatrix4fv(id, count, transpose, buf);
+		}
+	    });
+    }
+
     public void glUseProgram(final ID program) {
 	add(new Command() {
 		public void run(GL gl) {gl.glUseProgram((program == null)?0:program.glid());}
