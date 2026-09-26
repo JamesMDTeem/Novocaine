@@ -205,12 +205,40 @@ public interface SignKey {
 	    return(sig);
 	}
 
+	/* How wide r and s are in P1363: the curve's field, not the hash. The two agree for
+	 * P-256/SHA-256 and P-384/SHA-384, but P-521 numbers are 66 bytes and SHA-512 is 64, so
+	 * sizing by the hash made every ES512 signature fail. */
+	private int nlen() {
+	    return((crv.params.getCurve().getField().getFieldSize() + 7) / 8);
+	}
+
+	/* A DER INTEGER to a fixed-width unsigned number. DER is minimal: a leading 0x00 only
+	 * where the top bit would read as a sign, and none of the zero bytes a smaller number
+	 * starts with. So about one signature in 128 has an r or s a byte short, which this
+	 * used to refuse - "unexpected number length 31 (expected 32)", a friend's crash on the
+	 * store button (2026-09-26). Short ones are left-padded. */
 	private byte[] unsign(byte[] n) {
-	    if((n.length == hash.len + 1) && (n[0] == 0))
-		return(Utils.splice(n, 1));
-	    if(n.length == hash.len)
-		return(n);
-	    throw(new Message.FormatError(String.format("unexpected number length %d (expected %d)", n.length, hash.len)));
+	    int len = nlen(), o = 0;
+	    while((o < n.length) && (n[o] == 0))
+		o++;
+	    if(n.length - o > len)
+		throw(new Message.FormatError(String.format("unexpected number length %d (expected at most %d)", n.length - o, len)));
+	    byte[] ret = new byte[len];
+	    System.arraycopy(n, o, ret, len - (n.length - o), n.length - o);
+	    return(ret);
+	}
+
+	/* The other way: a fixed-width number to a minimal DER INTEGER. Leading zeros dropped,
+	 * one put back where the top bit is set. Java rejects a signature whose integers are
+	 * not minimal, which is every P1363 signature with a short r or s. */
+	private static byte[] derint(byte[] n) {
+	    int o = 0;
+	    while((o < n.length - 1) && (n[o] == 0))
+		o++;
+	    n = Utils.splice(n, o);
+	    if(n[0] < 0)
+		n = Utils.concat(new byte[] {0}, n);
+	    return(n);
 	}
 
 	private byte[] decberblock(Message data, int checktag) {
@@ -240,6 +268,10 @@ public interface SignKey {
 		    lbuf[--o] = (byte)(ln & 0xff);
 		    ln >>= 8;
 		}
+		/* Long form: 0x80 plus how many length bytes follow, then those bytes. The count
+		 * byte was missing, so any block of 128 bytes or more - every P-521 signature - came
+		 * out malformed. */
+		buf.adduint8(0x80 | (lbuf.length - o));
 		buf.addbytes(lbuf, o, lbuf.length - o);
 	    }
 	    buf.addbytes(data);
@@ -262,10 +294,8 @@ public interface SignKey {
 	protected byte[] ext2int(byte[] sig) {
 	    if(fmt == Format.P1363) {
 		int p = sig.length / 2;
-		byte[] r = Utils.splice(sig, 0, p);
-		byte[] s = Utils.splice(sig, p);
-		if(r[0] < 0) r = Utils.concat(new byte[] {0}, r);
-		if(s[0] < 0) s = Utils.concat(new byte[] {0}, s);
+		byte[] r = derint(Utils.splice(sig, 0, p));
+		byte[] s = derint(Utils.splice(sig, p));
 		return(encderblock(0x30, Utils.concat(encderblock(0x02, r), encderblock(0x02, s))));
 	    } else if(fmt == Format.X690) {
 		return(sig);
