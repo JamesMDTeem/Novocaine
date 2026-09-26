@@ -1570,9 +1570,27 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	}
     }
 
+    /* THE SHADOW MAP IS DRAWN EVERY OTHER FRAME (brodgar-io-client bd8b596f4). Its texture keeps the
+     * last frame's depth and the scene reads it through the map's own light camera, so a frame that
+     * skips the render reads a map drawn one frame earlier from the very same camera; all it misses is
+     * how far a moving caster got in that one frame. A map whose camera has moved (the player walked
+     * past updsmap's 50 units, or the sun turned) is drawn in the same frame, never skipped. Half the
+     * shadow pass's draw calls and GPU time. */
+    private ShadowMap smapdrawn = null;
+    private boolean smapskip = false;
+
     private void drawsmap(Render out) {
-	if(smap != null)
+	if(smap != null) {
+	    if(smapskip && smap.samezone(smapdrawn)) {
+		smapskip = false;
+		return;
+	    }
 	    smap.update(out, slist);
+	    smapdrawn = smap;
+	    smapskip = true;
+	} else {
+	    smapdrawn = null;
+	}
     }
 
     public DirLight amblight = null;

@@ -230,6 +230,13 @@ public class ShadowMap extends State {
 	return(lcam != null);
     }
 
+    /* Does `that` hold the depth this one would draw - the same buffer, seen from the same light
+     * camera? What the map holds depends on the camera alone, not on which ShadowMap object carries
+     * it (light() and setpos() make new ones). MapView.drawsmap skips a redraw on this. */
+    public boolean samezone(ShadowMap that) {
+	return((that != null) && (that.lbuf == this.lbuf) && Utils.eq(that.lcam, this.lcam));
+    }
+
     public ShadowMap setpos(Coord3f base, Coord3f dir) {
 	Camera lcam = Camera.dir(base, dir);
 	if(Utils.eq(this.lcam, lcam))
