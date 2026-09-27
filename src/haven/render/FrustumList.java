@@ -25,9 +25,13 @@ import haven.*;
  * near plane (never merely "no corner inside", the way a box wider than the screen vanishes); the
  * side planes are widened by a margin, ENTER to come in and the wider LEAVE to go out, so what turns
  * into view is already drawn when it reaches the edge and one on the edge does not flicker; the far
- * plane is not tested. An instanced batch, a slot with no location or camera, and a non-mesh object
- * are always drawn. Taking a slot out is capped per frame, putting one back never is. Every call is
- * under the tree's lock, as the instancer's are.
+ * plane is not tested. A slot with no location or camera, and a non-mesh object, are always drawn.
+ * Taking a slot out is capped per frame, putting one back never is. Every call is under the tree's
+ * lock, as the instancer's are.
+ *
+ * An instanced batch holds one map grid's members (InstanceList.CELL, after brodgar-io-client
+ * 0401da437) and is tested as the box round them all, exactly rather than as a sphere: until then a
+ * batch spanned the whole scene and was always drawn, every instance of it, every frame.
  */
 public class FrustumList implements RenderList<Rendered> {
     /* Fractions of the view's half-width at a slot's distance: 0.1 widens a 90-degree frustum by
@@ -89,20 +93,36 @@ public class FrustumList implements RenderList<Rendered> {
 	    }
 	    return(true);
 	}
+
+	/* An axis-aligned box, nx ny nz px py pz, against the same planes: out when its corner
+	 * furthest along a plane's normal is behind it, which is every corner behind it - exactly
+	 * what the eight-corner test decides, at the sphere's cost. For an instanced batch, whose box
+	 * is a map grid wide, the sphere round it would be some 1.4 times as loose. */
+	boolean box(float[] pl, float[] b) {
+	    float cx = (b[0] + b[3]) * 0.5f, cy = (b[1] + b[4]) * 0.5f, cz = (b[2] + b[5]) * 0.5f;
+	    float hx = (b[3] - b[0]) * 0.5f, hy = (b[4] - b[1]) * 0.5f, hz = (b[5] - b[2]) * 0.5f;
+	    for(int p = 0; p < 20; p += 4) {
+		float r = (Math.abs(pl[p]) * hx) + (Math.abs(pl[p + 1]) * hy) + (Math.abs(pl[p + 2]) * hz);
+		if(((pl[p] * cx) + (pl[p + 1] * cy) + (pl[p + 2] * cz) + pl[p + 3]) < -r)
+		    return(false);
+	    }
+	    return(true);
+	}
     }
 
     private static class Entry {
 	final Slot<? extends Rendered> slot;
 	int oidx;
 	boolean drawn;
-	/* Never testable: an instanced batch, or an object that is not a mesh. */
+	/* Never testable: an object that is not a mesh. */
 	boolean untestable;
 	/* The world sphere, for the location it was taken under. */
 	Location.Chain wloc;
 	float x, y, z, r;
-	/* What it was last tested against, and the answer. */
+	/* What it was last tested against - the frustum, and the location, or an instanced batch's
+	 * box - and the answer. */
 	Planes tested;
-	Location.Chain tloc;
+	Object tloc;
 	boolean twant;
 
 	Entry(Slot<? extends Rendered> slot) {
@@ -245,10 +265,8 @@ public class FrustumList implements RenderList<Rendered> {
 	    return(null);
 	try {
 	    Slot<? extends Rendered> slot = e.slot;
-	    if(slot instanceof InstanceBatch) {
-		e.untestable = true;
-		return(null);
-	    }
+	    if(slot instanceof InstanceBatch)
+		return(visbatch(e, reuse));
 	    GroupPipe st = slot.state();
 	    Location.Chain loc = st.get(Homo3D.loc);
 	    Camera cam = st.get(Homo3D.cam);
@@ -276,6 +294,30 @@ public class FrustumList implements RenderList<Rendered> {
 	} catch(RuntimeException exc) {
 	    return(null);
 	}
+    }
+
+    /* An instanced batch: one map grid's members (InstanceList.CELL), tested as the box round them
+     * all. The box is a new array whenever it changes, so an unchanged one under an unchanged
+     * frustum keeps its answer. A batch with a member that has no box is drawn, and asked again
+     * next frame - its members come and go. */
+    private Boolean visbatch(Entry e, boolean reuse) {
+	float[] b = InstanceList.batchbox(e.slot);
+	if(b == null)
+	    return(null);
+	GroupPipe st = e.slot.state();
+	Camera cam = st.get(Homo3D.cam);
+	Projection prj = st.get(Homo3D.prj);
+	if((cam == null) || (prj == null))
+	    return(null);
+	Planes pl = planes(cam, prj);
+	if(reuse && (e.tested == pl) && (e.tloc == b))
+	    return(e.twant);
+	ntested++;
+	boolean want = pl.box(e.drawn ? pl.leave : pl.enter, b);
+	e.tested = pl;
+	e.tloc = b;
+	e.twant = want;
+	return(want);
     }
 
     /* The mesh's box taken to the world, as a sphere round it: the box's centre through the

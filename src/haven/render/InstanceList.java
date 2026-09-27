@@ -97,6 +97,62 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	return(ret);
     }
 
+    /* A BATCH IS ONE MAP GRID'S (after brodgar-io-client 0401da437). Upstream batches every slot of
+     * one mesh and state wherever it stands, so a batch is one draw call over the whole scene that
+     * FrustumList can never leave out: every instance is drawn every frame, on screen or not. The grid
+     * a slot's location falls in is part of its key, so a batch holds one grid's members and has a box
+     * the frustum can test (batchbox), for a draw call per grid it covers instead of one. A slot with
+     * no location is in no grid. */
+    private static final float CELL = (float)(haven.MCache.cmaps.x * haven.MCache.tilesz.x);
+    private static final long NOCELL = Long.MIN_VALUE;
+
+    private static long cellof(GroupPipe st) {
+	Location.Chain loc = st.get(Homo3D.loc);
+	if(loc == null)
+	    return(NOCELL);
+	float[] m = loc.fin(Matrix4f.id).m;
+	long cx = (long)Math.floor(m[12] / CELL), cy = (long)Math.floor(m[13] / CELL);
+	return((cx << 32) ^ (cy & 0xffffffffL));
+    }
+
+    /* Whether a state change in `mask` moved the slot's location, and to another grid than its key's. */
+    private static boolean locmoved(int[] mask) {
+	int lid = Homo3D.loc.id;
+	for(int i = 0; i < mask.length; i++) {
+	    if(mask[i] == lid)
+		return(true);
+	}
+	return(false);
+    }
+
+    private static boolean movedcell(Slot<? extends Rendered> slot, InstKey key, int[] mask) {
+	return(locmoved(mask) && (cellof(slot.state()) != key.cell));
+    }
+
+    /* The world box round a member's mesh at its location - nx ny nz px py pz - grown into `b`, or
+     * false when it has none (no location, or not a mesh). The box's centre is taken through the
+     * location and its half-extents through the absolute of its axes: one transform, not eight. */
+    private static boolean growbox(float[] b, Slot<? extends Rendered> slot) {
+	if(!(slot.obj() instanceof haven.FastMesh))
+	    return(false);
+	Location.Chain loc = slot.state().get(Homo3D.loc);
+	if(loc == null)
+	    return(false);
+	haven.Volume3f v = ((haven.FastMesh)slot.obj()).bounds();
+	if(v == null)
+	    return(false);
+	float[] m = loc.fin(Matrix4f.id).m;
+	float cx = (v.n.x + v.p.x) * 0.5f, cy = (v.n.y + v.p.y) * 0.5f, cz = (v.n.z + v.p.z) * 0.5f;
+	float hx = (v.p.x - v.n.x) * 0.5f, hy = (v.p.y - v.n.y) * 0.5f, hz = (v.p.z - v.n.z) * 0.5f;
+	for(int r = 0; r < 3; r++) {
+	    float c = (m[r] * cx) + (m[4 + r] * cy) + (m[8 + r] * cz) + m[12 + r];
+	    float h = (Math.abs(m[r]) * hx) + (Math.abs(m[4 + r]) * hy) + (Math.abs(m[8 + r]) * hz);
+	    b[r] = Math.min(b[r], c - h);
+	    b[3 + r] = Math.max(b[3 + r], c + h);
+	}
+	return(true);
+    }
+
     private static class InstKey {
 	final Object instid;
 	final Pipe[] ust;
@@ -104,10 +160,12 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	 * rather than by identity, if need be. */
 	final Instancer[] instids;
 	final int[] instidmap;
+	final long cell;
 
 	InstKey(Slot<? extends Rendered> slot) {
 	    this.instid = ((Instancable)slot.obj()).instanceid();
 	    GroupPipe st = slot.state();
+	    this.cell = cellof(st);
 	    int ls;
 	    for(ls = st.nstates() - 1; (ls >= 0) && (st.gstate(ls) < 0); ls--);
 	    if(ls < 0) {
@@ -132,7 +190,7 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	}
 
 	public int hashCode() {
-	    int ret = System.identityHashCode(instid);
+	    int ret = System.identityHashCode(instid) ^ Long.hashCode(cell);
 	    for(int i = 0; i < ust.length; i++)
 		ret = (ret * 31) + System.identityHashCode(ust[i]);
 	    for(int i = 0; i < instids.length; i++)
@@ -142,6 +200,8 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 
 	private boolean equals(InstKey that) {
 	    if(this.instid != that.instid)
+		return(false);
+	    if(this.cell != that.cell)
 		return(false);
 	    if(this.ust.length != that.ust.length)
 		return(false);
@@ -291,6 +351,15 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	    }
 
 	    void update(Pipe group, int[] mask) {
+		if(locmoved(mask)) {
+		    if(cellof(slot.state()) != key.cell) {
+			/* Into another grid's batch. */
+			InstanceList.this.remove(slot);
+			InstanceList.this.add(slot);
+			return;
+		    }
+		    boxstale = true;
+		}
 		for(int i = 0; i < key.instids.length; i++) {
 		    for(int o = 0; o < mask.length; o++) {
 			if(mask[o] == key.instidmap[i]) {
@@ -381,7 +450,37 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 		insts = Arrays.copyOf(insts, insts.length * 2);
 	    insts[inst.idx = ni++] = inst;
 	    iupdate(inst.idx);
+	    if(!boxstale && (box != null)) {
+		/* Grown in place of made again: a grid streaming in is a run of adds. A new array,
+		 * as its identity is what tells FrustumList the box changed. */
+		float[] nb = box.clone();
+		if(growbox(nb, ns))
+		    box = nb;
+		else
+		    box = null;
+	    }
 	    return(inst);
+	}
+
+	/* The world box round every member, nx ny nz px py pz, or null when one of them has none.
+	 * Made again only after a member left or moved; an added one grows it. */
+	private float[] box = null;
+	private boolean boxstale = true;
+
+	float[] box() {
+	    if(boxstale) {
+		boxstale = false;
+		float[] b = {Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY,
+			     Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY};
+		box = (ni > 0) ? b : null;
+		for(int i = 0; i < ni; i++) {
+		    if(!growbox(b, insts[i].slot)) {
+			box = null;
+			break;
+		    }
+		}
+	    }
+	    return(box);
 	}
 
 	Instance remove(Instance inst) {
@@ -394,6 +493,7 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	     * expect it to become so again in the future, in which
 	     * case the updating overhead can be avoided. */
 	    inst.unregister();
+	    boxstale = true;
 	    (insts[ri] = insts[--ni]).idx = inst.idx;
 	    inst.idx = -1;
 	    if(ni < 0)
@@ -407,6 +507,8 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	void dispose() {
 	    rend.dispose();
 	}
+
+	InstanceList owner() {return(InstanceList.this);}
 
 	void update(Slot<? extends Rendered> ns) {
 	    /* XXX? Is this really necessary? Can't I just iupdate
@@ -552,6 +654,12 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 	}
 
 	void update(Pipe group, int[] mask) {
+	    if(movedcell(slot, key, mask)) {
+		/* Into another grid, where it may batch. */
+		InstanceList.this.remove(slot);
+		InstanceList.this.add(slot);
+		return;
+	    }
 	    for(int i = 0; i < key.instids.length; i++) {
 		for(int o = 0; o < mask.length; o++) {
 		    if(mask[o] == key.instidmap[i]) {
@@ -818,6 +926,17 @@ public class InstanceList implements RenderList<Rendered>, RenderList.Adapter, D
 		for(Sole slot : new ArrayList<>((List<Sole>)lone))
 		    slot.update(group, mask);
 	    }
+	}
+    }
+
+    /** The world box an instanced batch's members stand in, nx ny nz px py pz, the same array for
+     * as long as it holds; null for any other slot, or a batch with a member that has no box. */
+    public static float[] batchbox(Slot<?> slot) {
+	if(!(slot instanceof InstancedSlot))
+	    return(null);
+	InstancedSlot b = (InstancedSlot)slot;
+	synchronized(b.owner()) {
+	    return(b.box());
 	}
     }
 
