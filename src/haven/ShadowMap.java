@@ -59,10 +59,7 @@ public class ShadowMap extends State {
 
     public ShadowMap(Coord res, float size, float depth, float dthr) {
 	lbuf = new Texture2D(res, DataBuffer.Usage.STATIC, Texture.DEPTH, new VectorFormat(1, NumberFormat.FLOAT32), null);
-	/* Sampled as a comparison, LINEAR both ways: every fetch is the hardware's blend of the four
-	 * comparisons round its point (bilinear PCF). Shader.shcalc reads it so. */
-	(lsamp = new Texture2D.Sampler2D(lbuf)).magfilter(Texture.Filter.LINEAR).minfilter(Texture.Filter.LINEAR)
-	    .wrapmode(Texture.Wrapping.CLAMP).compare(true);
+	(lsamp = new Texture2D.Sampler2D(lbuf)).magfilter(Texture.Filter.LINEAR).wrapmode(Texture.Wrapping.CLAMP);
 	/* XXX: It would arguably be nice to intern the shader. */
 	shader = Shader.get(1.0 / res.x, 1.0 / res.y, 4, dthr / depth);
 	lproj = Projection.ortho(-size, size, -size, size, 1, depth);
@@ -280,11 +277,7 @@ public class ShadowMap extends State {
 		    idx = lights.index(light);
 		return(idx);
 	    }, smap, Light.lights);
-	public static final Uniform map = new Uniform(SAMPLER2DSHADOW, p -> p.get(smap).lsamp, smap);
-	/* GLSL's texture() on a sampler2DShadow, which answers a float. It names the same symbol as
-	 * Function.Builtin.texture: a program that samples the map samples ordinary textures too, and
-	 * a second symbol of the same name is not the same function to it. */
-	private static final Function.Builtin shtexture = new Function.Builtin(FLOAT, Function.Builtin.texture.name, 2);
+	public static final Uniform map = new Uniform(SAMPLER2D, p -> p.get(smap).lsamp, smap);
 	public static final AutoVarying stc = new AutoVarying(VEC4) {
 		public Expression root(VertexContext vctx) {
 		    return(mul(txf.ref(), Homo3D.get(vctx.prog).eyev.depref()));
@@ -298,6 +291,7 @@ public class ShadowMap extends State {
 	    this.id = Arrays.asList(xd, yd, res, thr);
 	    this.shcalc = new Function.Def(FLOAT) {
 		    {
+			LValue sdw = code.local(FLOAT, l(0.0)).ref();
 			Expression mapc = code.local(VEC3, div(pick(stc.ref(), "xyz"), pick(stc.ref(), "w"))).ref();
 			/* The map covers a box round the player and nothing past it. A fragment outside
 			 * that box read the CLAMPed edge texel, or lay past the light's far depth, and came
@@ -306,23 +300,31 @@ public class ShadowMap extends State {
 					      gt(max(pick(mapc, "x"), pick(mapc, "y")), l(1.0))),
 					   gt(pick(mapc, "z"), l(1.0))),
 					new Return(l(1.0))));
-			/* HARDWARE PCF (brodgar-io-client bd8b596f4). The map is sampled as a comparison,
-			 * LINEAR, so one fetch is the hardware's blend of the comparisons of the four
-			 * texels round its point. The loop this replaces compared res x res points a texel
-			 * apart; a fetch at (+-1, +-1) texels blends the 2 x 2 round it, so (res/2)^2
-			 * fetches span the same texels - four instead of sixteen - and answer a continuous
-			 * shade instead of one of res^2 + 1 steps. The reference is the fragment's depth
-			 * less the bias: lit where ref <= stored, which is the loop's stored + thr > z. */
-			Expression ref = code.local(FLOAT, sub(pick(mapc, "z"), l(thr))).ref();
-			int n = Math.max(res / 2, 1);
-			Expression[] taps = new Expression[n * n];
-			for(int yi = 0, t = 0; yi < n; yi++) {
-			    for(int xi = 0; xi < n; xi++, t++) {
-				double xo = ((2 * xi) - (n - 1)) * xd, yo = ((2 * yi) - (n - 1)) * yd;
-				taps[t] = shtexture.call(map.ref(), vec3(add(pick(mapc, "xy"), vec2(l(xo), l(yo))), ref));
+			/* The map is compared by hand, on depths the sampler interpolates, not by the
+			 * hardware (a sampler2DShadow, brodgar-io-client bd8b596f4, tried 2026-09-26 and
+			 * taken out). Interpolated depth follows a sloped surface exactly, so a slope is
+			 * shaded evenly; the hardware compares each texel's own depth and then blends,
+			 * and on a slope steep to the sun those texels straddle the bias by where the
+			 * pixel falls in the texel - a pattern at the map's texel pitch, hashmarks on
+			 * snow and steep ground. */
+			double xr = xd * (res - 1), yr = yd * (res - 1);
+			boolean unroll = false;
+			if(!unroll) {
+			    LValue xo = code.local(FLOAT, null).ref();
+			    LValue yo = code.local(FLOAT, null).ref();
+			    code.add(new For(ass(yo, l(-yr / 2)), lt(yo, l((yr / 2) + (yd / 2))), aadd(yo, l(yd)),
+					     new For(ass(xo, l(-xr / 2)), lt(xo, l((xr / 2) + (xd / 2))), aadd(xo, l(xd)),
+						     new If(gt(add(pick(texture2D(map.ref(), add(pick(mapc, "xy"), vec2(xo, yo))), "r"), l(thr)), pick(mapc, "z")),
+							    stmt(aadd(sdw, l(1.0 / (res * res))))))));
+			} else {
+			    for(double yo = -yr / 2; yo < (yr / 2) + (yd / 2); yo += yd) {
+				for(double xo = -xr / 2; xo < (xr / 2) + (xd / 2); xo += xd) {
+				    code.add(new If(gt(add(pick(texture2D(map.ref(), add(pick(mapc, "xy"), vec2(l(xo), l(yo)))), "r"), l(thr)), pick(mapc, "z")),
+						    stmt(aadd(sdw, l(1.0 / (res * res))))));
+				}
 			    }
 			}
-			code.add(new Return(mul(add(taps), l(1.0 / (n * n)))));
+			code.add(new Return(sdw));
 		    }
 		};
 	}
