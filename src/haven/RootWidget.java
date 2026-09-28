@@ -33,6 +33,9 @@ public class RootWidget extends ConsoleHost implements UI.Notice.Handler, Widget
     public static final Text.Foundry msgfoundry = new Text.Foundry(Text.dfont, 14);
     public boolean modtip = false;
     Profile guprof, grprof, ggprof;
+    /** The UI-thread, render-thread and GPU frame profiles, for :perflog (LeakDbg); filled only while
+     *  haven.profile is on. */
+    public Profile[] profiles() {return(new Profile[] {guprof, grprof, ggprof});}
     private Text lastmsg;
     private double msgtime;
 	public static final Resource defaultCursor = Resource.local().loadwait("gfx/hud/curs/arw");

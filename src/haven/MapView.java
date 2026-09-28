@@ -1587,7 +1587,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 
     private void drawsmap(Render out) {
 	if(smap != null) {
-	    if(smapskip && smap.samezone(smapdrawn)) {
+	    if(smapskip && RenderOpts.shadowSkip && smap.samezone(smapdrawn)) {
 		smapskip = false;
 		return;
 	    }
@@ -1611,7 +1611,7 @@ public class MapView extends PView implements DTarget, Console.Directory, PFList
 	synchronized(glob) {
 	    Object[] key = (glob.lightamb == null) ? null :
 		new Object[] {glob.blightamb, glob.blightdif, glob.blightspc, glob.lightelev, glob.lightang};
-	    if(Arrays.equals(key, sunkey) && ((key == null) == (s_amblight == null)))
+	    if(RenderOpts.lightCache && Arrays.equals(key, sunkey) && ((key == null) == (s_amblight == null)))
 		return;
 	    sunkey = key;
 	    if(glob.lightamb != null) {

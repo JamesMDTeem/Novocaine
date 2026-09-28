@@ -161,6 +161,8 @@ public class LeakDbg {
         LeakDbg.ui = ui;
         frames++;
         snapIfDue(ui);
+        if (test != null)
+            stepTest(ui);
         if (mapRef == null || (frames & (MAP_REFRESH_PERIOD - 1)) == 0) {
             try {
                 mapRef = ui.root.findchild(MapView.class);
@@ -495,6 +497,8 @@ public class LeakDbg {
      *   :perflog            on (or the state, if already on)
      *   :perflog snap text  one snapshot now, tagged with the note
      *   :perflog off        a last snapshot, then everything back as it was
+     *   :perflog test       perflog on, then each render setting A/B-tested (see Test)
+     *   :perflog test stop  the test abandoned, the setting under trial put back
      * </pre>
      */
     private static volatile boolean perflog = false;
@@ -511,6 +515,8 @@ public class LeakDbg {
     private static volatile long nextSendAt = 0;
     private static volatile String character = null;
     private static volatile boolean hooked = false;
+    /* haven.profile as it was before :perflog turned it on, to put back on :perflog off. */
+    private static volatile Boolean profileBefore = null;
     private static final String SESSION = session();
 
     private static String session() {
@@ -596,31 +602,291 @@ public class LeakDbg {
                             write(l);
                     }
                 }
+                if (LeakDbg.test != null)
+                    stopTest("perflog off");
                 if (perflog)
                     send(false);
+                if (profileBefore != null) {
+                    haven.UILoop.profile.set(profileBefore);
+                    profileBefore = null;
+                }
                 perflog = false;
                 STALL_MS = 400.0;
                 setDiag(false);
                 cons.out.print("perflog off - diagnostics off, stall threshold back to 400 ms\n");
+            } else if (sub.equals("test")) {
+                if (note.equalsIgnoreCase("stop")) {
+                    stopTest("stopped by hand");
+                    cons.out.print("perflog test stopped - every setting put back\n");
+                } else if (LeakDbg.test != null) {
+                    cons.out.print("perflog test already running\n");
+                } else {
+                    /* Perflog on first, so the result goes up with the rest of the session. */
+                    perflogOn("perflog test");
+                    cons.out.print("perflog test: about two minutes - stand still and leave the camera "
+                                   + "alone. Each render setting is switched in turn and put back.\n");
+                    startTest();
+                }
             } else if (sub.equals("snap")) {
                 snapNote = note.isEmpty() ? "snap" : note;
                 cons.out.print("perflog: a snapshot will be written to logs/vmem.log on the next frame\n");
             } else {
-                boolean was = perflog;
-                perflog = true;
-                hookExit();
-                STALL_MS = 100.0;
-                setDiag(true);
-                if (!was) {
-                    nextSnapAt = 0;
-                    snapNote = note.isEmpty() ? "perflog on" : note;
-                }
+                boolean was = perflogOn(note.isEmpty() ? "perflog on" : note);
                 cons.out.print("perflog " + (was ? "already on" : "on") + " - logs/vmem.log: a sample a second, "
                     + "a full snapshot every minute, frames over 100 ms captured. ':perflog snap <note>' "
                     + "marks a moment, ':perflog off' stops it.\n");
             }
             cons.out.flush();
         });
+    }
+
+    /* Perflog on, with the frame profiles and the lower stall threshold; whether it already was. */
+    private static boolean perflogOn(String note) {
+        boolean was = perflog;
+        perflog = true;
+        hookExit();
+        /* The frame profiles: the only place the render thread's own time and the GPU's are
+         * measured, which is the split a render-side slowdown needs (GL timer queries, a few
+         * per frame). */
+        if (profileBefore == null) {
+            profileBefore = haven.UILoop.profile.get();
+            haven.UILoop.profile.set(true);
+        }
+        STALL_MS = 100.0;
+        setDiag(true);
+        if (!was) {
+            nextSnapAt = 0;
+            snapNote = note;
+        }
+        return (was);
+    }
+
+    /**
+     * {@code :perflog test} - which render setting the frame rate answers to, measured in the
+     * client that is slow, while it is slow (2026-09-28).
+     *
+     * The friend's stall - 11 FPS after a while at home, the GPU three frames behind, gone on a
+     * restart - cannot be reproduced here, and asking them to try settings one at a time by hand
+     * took a round trip per setting. This does it in one command: a baseline, then each switch in
+     * turn - applied, a few seconds to settle, measured, put back, measured again - and a verdict.
+     * A trial is judged against the mean of the baselines either side of it, so a client whose
+     * rate drifts is not blamed on the setting that happened to be on at the time, and a baseline
+     * that jumps and stays up says the stall itself was cleared, and by which change.
+     *
+     * Graphics settings changed here are saved as the options window saves them, and put back the
+     * same way; a client that dies mid-trial keeps that one change.
+     */
+    private static final class Trial {
+        final String name;
+        final java.util.function.Predicate<UI> apply;   // false: not applicable here, skipped
+        final java.util.function.Consumer<UI> revert;
+
+        Trial(String name, java.util.function.Predicate<UI> apply, java.util.function.Consumer<UI> revert) {
+            this.name = name;
+            this.apply = apply;
+            this.revert = revert;
+        }
+    }
+
+    /* One measuring window: frames, and the per-frame sums of the GPU lag and the idle share. */
+    private static final class Window {
+        final long t0 = System.nanoTime();
+        final long f0 = frames;
+        double lag, idle;
+        int n;
+
+        void add() {
+            lag += haven.UILoop.statlag;
+            idle += haven.UILoop.statidle;
+            n++;
+        }
+
+        double fps() {
+            double dt = (System.nanoTime() - t0) / 1e9;
+            return ((dt > 0) ? (frames - f0) / dt : 0);
+        }
+
+        String line() {
+            return (String.format("fps=%.1f gpulag=%.1fms idle=%.0f%%", fps(), (n > 0) ? lag / n * 1000.0 : 0,
+                                  (n > 0) ? idle / n * 100.0 : 0));
+        }
+    }
+
+    private static final class Test {
+        final List<Trial> trials;
+        int i = -1;                 // the trial on; -1 for the first baseline
+        boolean applied;            // measuring the trial (true) or the baseline after it (false)
+        boolean settling;
+        long until;
+        Window w;
+        final List<Double> base = new java.util.ArrayList<>();
+        final List<Double> trialFps = new java.util.ArrayList<>();
+        final List<String> trialNames = new java.util.ArrayList<>();
+
+        Test(List<Trial> trials) {
+            this.trials = trials;
+        }
+    }
+
+    private static final long TEST_SETTLE_MS = 3_000L;
+    private static final long TEST_MEASURE_MS = 5_000L;
+    private static volatile Test test = null;
+
+    private static List<Trial> trials() {
+        List<Trial> t = new java.util.ArrayList<>();
+        final boolean[] fc = new boolean[1];
+        t.add(new Trial("frustum culling off",
+                        u -> {fc[0] = haven.OptWnd.frustumCulling; if (!fc[0]) return (false); haven.OptWnd.frustumCulling = false; return (true);},
+                        u -> haven.OptWnd.frustumCulling = fc[0]));
+        t.add(new Trial("shadow every-other-frame off",
+                        u -> {haven.RenderOpts.shadowSkip = false; return (u.gprefs.lshadow.val);},
+                        u -> haven.RenderOpts.shadowSkip = true));
+        t.add(new Trial("light-state caches off",
+                        u -> {haven.RenderOpts.lightCache = false; return (true);},
+                        u -> haven.RenderOpts.lightCache = true));
+        t.add(new Trial("per-grid batch culling off",
+                        u -> {haven.RenderOpts.batchCull = false; return (haven.OptWnd.frustumCulling);},
+                        u -> haven.RenderOpts.batchCull = true));
+        final haven.GSettings[] before = new haven.GSettings[1];
+        t.add(new Trial("shadows off",
+                        u -> {before[0] = u.gprefs; return (u.gprefs.lshadow.val && gset(u, u.gprefs.lshadow, false));},
+                        u -> gput(u, before[0])));
+        t.add(new Trial("vsync flipped",
+                        u -> {before[0] = u.gprefs; return (gset(u, u.gprefs.vsync, !u.gprefs.vsync.val));},
+                        u -> gput(u, before[0])));
+        t.add(new Trial("render scale halved",
+                        u -> {before[0] = u.gprefs; return (gset(u, u.gprefs.rscale, u.gprefs.rscale.val * 0.5f));},
+                        u -> gput(u, before[0])));
+        return (t);
+    }
+
+    /* A graphics setting changed as the options window changes it; false if it was refused. */
+    private static <T> boolean gset(UI u, haven.GSettings.Setting<T> s, T val) {
+        try {
+            u.setgprefs(u.gprefs.update(null, s, val));
+            return (true);
+        } catch (haven.GSettings.SettingException e) {
+            return (false);
+        }
+    }
+
+    /* The settings as they were before the trial - the very object, so nothing else is disturbed. */
+    private static void gput(UI u, haven.GSettings was) {
+        if ((u != null) && (was != null))
+            u.setgprefs(was);
+    }
+
+    private static void startTest() {
+        Test t = new Test(trials());
+        t.settling = true;
+        t.until = System.currentTimeMillis() + TEST_SETTLE_MS;
+        write(tag("test") + " ---- start: " + haven.RenderOpts.state() + " frustumCulling=" + haven.OptWnd.frustumCulling);
+        test = t;
+    }
+
+    /* From tick(), on the UI thread: advances the test by the clock. */
+    private static void stepTest(UI u) {
+        Test t = test;
+        if (t == null)
+            return;
+        try {
+            long now = System.currentTimeMillis();
+            if (!t.settling)
+                t.w.add();
+            if (now < t.until)
+                return;
+            if (t.settling) {
+                t.settling = false;
+                t.w = new Window();
+                t.until = now + TEST_MEASURE_MS;
+                return;
+            }
+            /* A window just closed. */
+            double fps = t.w.fps();
+            String what = (t.i < 0) ? "baseline" : t.applied ? t.trials.get(t.i).name : "baseline after " + t.trials.get(t.i).name;
+            write(tag("test") + " " + what + ": " + t.w.line());
+            say(u, String.format("perflog test: %s %.1f fps", what, fps));
+            if (t.applied) {
+                t.trialFps.add(fps);
+                t.trialNames.add(t.trials.get(t.i).name);
+                t.trials.get(t.i).revert.accept(u);
+                t.applied = false;
+            } else {
+                t.base.add(fps);
+                /* The next trial that applies here; one that does not is put back and passed over. */
+                for (t.i++; t.i < t.trials.size(); t.i++) {
+                    Trial tr = t.trials.get(t.i);
+                    if (tr.apply.test(u)) {
+                        t.applied = true;
+                        break;
+                    }
+                    tr.revert.accept(u);
+                    write(tag("test") + " " + tr.name + ": skipped, not in use here");
+                }
+                if (t.i >= t.trials.size()) {
+                    verdict(u, t);
+                    test = null;
+                    return;
+                }
+            }
+            t.settling = true;
+            t.until = now + TEST_SETTLE_MS;
+        } catch (Throwable e) {
+            write(tag("test") + " failed: " + e);
+            stopTest("failed");
+        }
+    }
+
+    private static void stopTest(String why) {
+        Test t = test;
+        test = null;
+        if (t == null)
+            return;
+        if (t.applied && (t.i >= 0) && (t.i < t.trials.size())) {
+            try {
+                t.trials.get(t.i).revert.accept(ui);
+            } catch (Throwable ignore) {
+            }
+        }
+        write(tag("test") + " ---- " + why + ", settings put back: " + haven.RenderOpts.state()
+              + " frustumCulling=" + haven.OptWnd.frustumCulling);
+    }
+
+    /* Each trial against the mean of the baselines either side of it. */
+    private static void verdict(UI u, Test t) {
+        List<String> helped = new java.util.ArrayList<>();
+        for (int k = 0; k < t.trialFps.size(); k++) {
+            double b = (t.base.get(k) + t.base.get(k + 1)) / 2;
+            double r = (b > 0) ? t.trialFps.get(k) / b : 0;
+            write(tag("test") + String.format(" result %s: %.1f fps against %.1f (x%.2f)", t.trialNames.get(k), t.trialFps.get(k), b, r));
+            if (r >= 1.25)
+                helped.add(String.format("%s x%.2f", t.trialNames.get(k), r));
+        }
+        double first = t.base.get(0), last = t.base.get(t.base.size() - 1);
+        String cleared = "";
+        if ((first > 0) && (last / first >= 1.5)) {
+            /* The first baseline that stayed up names the change that cleared it. */
+            for (int k = 1; k < t.base.size(); k++) {
+                if (t.base.get(k) / first >= 1.5) {
+                    cleared = String.format(" The slowdown itself cleared (%.1f -> %.1f fps) after: %s.", first, last, t.trialNames.get(k - 1));
+                    break;
+                }
+            }
+        }
+        String v = (helped.isEmpty() ? "no setting raised the frame rate by a quarter or more" : "faster with " + String.join(", ", helped))
+            + "." + cleared;
+        write(tag("test") + " ---- verdict: " + v);
+        say(u, "perflog test done: " + v + " Sent with the log.");
+        send(false);
+    }
+
+    /* A line in the game's message area, where the player is looking. */
+    private static void say(UI u, String msg) {
+        try {
+            if (u != null)
+                u.msg(msg, java.awt.Color.WHITE, null);
+        } catch (Throwable ignore) {
+        }
     }
 
     /* The Log Diagnostics setting, the cached flag and its checkbox, kept in step. */
@@ -706,6 +972,15 @@ public class LeakDbg {
         } catch (Throwable ignore) {
         }
         try {
+            if (haven.UILoop.profile.get()) {
+                haven.Profile[] pr = u.root.profiles();
+                String[] names = {"ui-thread", "render-thread", "gpu"};
+                for (int i = 0; (i < pr.length) && (i < names.length); i++)
+                    body.add("profile " + names[i] + " " + profSummary(pr[i]));
+            }
+        } catch (Throwable ignore) {
+        }
+        try {
             StringBuilder p = new StringBuilder();
             appendProbes(p, u);
             body.add("objects" + p);
@@ -742,6 +1017,45 @@ public class LeakDbg {
         for (String l : body)
             out.add(t + " " + l);
         return (out);
+    }
+
+    /**
+     * The mean of each part over the profile's completed frames, in ms: "frames=N total=… draw=…".
+     * A GPU frame is filled in by timer queries that come back frames later, so one not yet complete
+     * reads as zero or negative and is left out; the render thread is appending to the history while
+     * this reads it, so a frame that changes underneath is skipped rather than read.
+     */
+    private static String profSummary(haven.Profile p) {
+        if (p == null)
+            return ("-");
+        Map<String, double[]> acc = new java.util.LinkedHashMap<>();
+        int n = 0;
+        double tot = 0;
+        for (haven.Profile.Part f : p.hist.clone()) {
+            if (f == null)
+                continue;
+            try {
+                double d = f.d();
+                if (!(d > 0) || (d > 10))
+                    continue;
+                List<haven.Profile.Part> subs = new java.util.ArrayList<>(f.sub());
+                for (haven.Profile.Part s : subs) {
+                    double sd = s.d();
+                    if (sd >= 0)
+                        acc.computeIfAbsent(String.valueOf(s.nm), k -> new double[1])[0] += sd;
+                }
+                n++;
+                tot += d;
+            } catch (RuntimeException skip) {
+                // Being written while read; the next snapshot will have it.
+            }
+        }
+        if (n == 0)
+            return ("no completed frames");
+        StringBuilder sb = new StringBuilder(String.format("frames=%d total=%.2fms", n, tot / n * 1000.0));
+        for (Map.Entry<String, double[]> e : acc.entrySet())
+            sb.append(' ').append(e.getKey()).append('=').append(String.format("%.2fms", e.getValue()[0] / n * 1000.0));
+        return (sb.toString());
     }
 
     private static final long STALL_QUIET_MS = 3000L;

@@ -101,7 +101,7 @@ public abstract class Light implements RenderTree.Node {
 
 	public State compile() {
 	    Object[][] p = params();
-	    if((lastc == null) || !Lighting.LightGrid.lightsEq(lastp, p)) {
+	    if((lastc == null) || !RenderOpts.lightCache || !Lighting.LightGrid.lightsEq(lastp, p)) {
 		lastp = Lighting.copyParams(p);
 		lastc = new Lighting.SimpleLights(lastp);
 	    }

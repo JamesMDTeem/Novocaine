@@ -534,7 +534,7 @@ public interface Lighting {
 	     * The bbox is carried by the state too, as the shader's coordinate
 	     * transform reads it. */
 	    Volume3f bbox = viewbox(proj);
-	    if((last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
+	    if(haven.RenderOpts.lightCache && (last != null) && (lastlights != null) && lightsEq(lastlights, lights) && last.bbox.equals(bbox))
 		return(last);
 	    Compiler c = new Compiler(bbox);
 	    int n = Math.min(lights.length, 65535);

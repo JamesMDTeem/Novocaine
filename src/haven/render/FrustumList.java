@@ -266,7 +266,7 @@ public class FrustumList implements RenderList<Rendered> {
 	try {
 	    Slot<? extends Rendered> slot = e.slot;
 	    if(slot instanceof InstanceBatch)
-		return(visbatch(e, reuse));
+		return(haven.RenderOpts.batchCull ? visbatch(e, reuse) : null);
 	    GroupPipe st = slot.state();
 	    Location.Chain loc = st.get(Homo3D.loc);
 	    Camera cam = st.get(Homo3D.cam);
