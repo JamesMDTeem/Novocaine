@@ -203,12 +203,14 @@ public class CombatAudit {
             "hp", "maxHp", "blockSkill", "blockMult", "attackMult", "openings", "ip",
             "readyAt", "whenAttacked", "weaponRange", "distance", "hhp",
             "gloveDamage", "gloveQl", "decayPerTick", "soaked", "firstAct", "onUs",
+            "fled", "charge", "charges", "weaponCoolmod", "wounded",
         });
 
         uncovered("FoeModel", FoeModel.class, new String[] {
             "period", "pressure", "pressureAgainst", "damageCoef", "nGaps", "nHits",
             "modes", "fleesBelow", "restores", "restoresByColour", "cards",
             "condFeature", "condCut", "whenPressure", "elsePressure", "soakedShare", "pace",
+            "attackSkill", "pressureRef",
         });
     }
 
@@ -786,6 +788,48 @@ public class CombatAudit {
         live("a blow reads only the colours its card attacks", blows[0], blows[1],
              "FoeModel.strike");
 
+        /* A CREATURE'S GRIEVOUS SHARE WOUNDS US - Combatant.wounded, 2026-09-28. The same card with
+         * and without a grievous share, into the same open fighter: only the wounding one leaves
+         * hard hitpoints taken. */
+        double[] cut = new double[2];
+        for(int i = 0; i < 2; i++) {
+            BeastMove claw = new BeastMove("claw", new double[4], 90, 60, new double[4],
+                                           (i == 0) ? 0.0 : 0.3, 0.8);
+            FoeModel one = new FoeModel(40, press, 100, 2.0, 10, 10, Double.NaN, new int[0], 0, null,
+                                        0, null, null, null,
+                                        new Repertoire(new BeastMove[] {claw}, new double[] {1.0},
+                                                       null, 0, null, null));
+            Combatant open = fighter();
+            open.openings[Formulas.GREEN] = 60;
+            one.act(open, open.defenceWeight(), fighter(), 0, null);
+            cut[i] = open.wounded;
+        }
+        live("a creature's grievous share wounds us", cut[0], cut[1], "FoeModel.strike");
+
+        /* ITS OPENINGS IN THE FORMULA'S TERMS - FoeModel.pressureRef and .attackSkill, 2026-09-28.
+         * With a reference the scale is cbrt(equalize(S_it, S_ours) / m_ours) / ref, not the block
+         * weight ratio; and the creature's skill must reach it - one far below us opens us less. */
+        double[] ref = new double[3];
+        for(int i = 0; i < 3; i++) {
+            BeastMove opener = new BeastMove("opener", new double[] {10, 0, 0, 0}, Double.NaN, 60,
+                                             new double[4], 0, 0.8);
+            FoeModel one = new FoeModel(40, press, 100, 2.0, 10, 10, Double.NaN, new int[0], 0, null,
+                                        0, null, null, null,
+                                        new Repertoire(new BeastMove[] {opener}, new double[] {1.0},
+                                                       null, 0, null, null));
+            if(i > 0) {
+                one.pressureRef = 0.5;
+                one.attackSkill = (i == 1) ? 158 : 15.8;
+            }
+            Combatant us = fighter();
+            one.act(us, us.defenceWeight(), fighter(), 0, null);
+            ref[i] = us.opening(Formulas.GREEN);
+        }
+        live("a pressure reference puts its openings in the formula's terms", ref[0], ref[1],
+             "FoeModel.scaleAgainst");
+        live("  and its own skill reaches them, equalized against ours", ref[1], ref[2],
+             "FoeModel.scaleAgainst");
+
         /* A repertoire beats the average: with cards present the pooled pressure must not
          * be what lands, or the restructure is decorative. */
         Combatant avgd = fighter();
@@ -910,6 +954,54 @@ public class CombatAudit {
                                            Advisor.Aim.SAFEST, Double.MAX_VALUE);
         live("an opponent shared with three others costs less",
              (pf == null) ? Double.NaN : pf.hpLost, (po == null) ? Double.NaN : po.hpLost, "Optimizer.onUs");
+
+        /* AND WHETHER IT HAS GIVEN UP - Combatant.fled, 2026-09-27. One showing its olive branch
+         * swings at nothing, so it costs the plan nothing. */
+        Combatant gone = weak.copy();
+        gone.fled = true;
+        Optimizer.Plan pg = Advisor.choose(Optimizer.search(fighter(), gone, deck, foe, 200, 4000),
+                                           Advisor.Aim.SAFEST, Double.MAX_VALUE);
+        live("an opponent that is running costs less than one that fights",
+             (pf == null) ? Double.NaN : pf.hpLost, (pg == null) ? Double.NaN : pg.hpLost, "FoeModel.fleeing");
+
+        /* BLOODLUST'S METER - Combatant.charges and .charge, 2026-09-27. A holder at full charge
+         * opens us harder than one at none, and a blow received charges it. */
+        Move swing = deck.get(0);
+        for(Move m : deck)
+            if(m.isAttack() && (m.openings[0] + m.openings[1] + m.openings[2] + m.openings[3] > 0))
+                swing = m;
+        Combatant lustA = fighter(), lustB = fighter();
+        lustA.charges = lustB.charges = true;
+        lustB.charge = 1.0;
+        Combatant tA = weak.copy(), tB = weak.copy();
+        new Sim(lustA, tA).use(lustA, swing);
+        new Sim(lustB, tB).use(lustB, swing);
+        double oA = 0, oB = 0;
+        for(int c = 0; c < 4; c++) {
+            oA += tA.opening(c);
+            oB += tB.opening(c);
+        }
+        live("a full Bloodlust opens harder than an empty one", oA, oB, "Sim.lust");
+        Combatant charged = fighter();
+        charged.charges = true;
+        Combatant striker = weak.copy();
+        striker.readyAt = 0;
+        new Sim(striker, charged).use(striker, swing);
+        live("  and a blow received charges it", 0.0, charged.charge, "Sim.land");
+
+        /* A WEAPON'S OWN COOLDOWN MODIFIER - Combatant.weaponCoolmod, 2026-09-27. A weapon card thrown
+         * with Dunki's B12 (1.25) must take longer than the same card with a sword. */
+        Move wcard = null;
+        for(Move m : deck)
+            if(m.damageShare > 0)
+                wcard = m;
+        if(wcard != null) {
+            Combatant plainW = fighter(), slowW = fighter();
+            slowW.weaponCoolmod = 1.25;
+            Sim.Result rp = new Sim(plainW, weak.copy()).use(plainW, wcard);
+            Sim.Result rs = new Sim(slowW, weak.copy()).use(slowW, wcard);
+            live("a weapon's cooldown modifier lengthens its cards", rp.cooldown, rs.cooldown, "Sim.use");
+        }
 
         /* OPENINGS FADE WHILE NOTHING LANDS - Combatant.decayPerTick, measured 2026-09-16. The
          * rate has to move a standing opening, and it has to reach the plan: the optimizer

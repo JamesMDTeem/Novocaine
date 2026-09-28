@@ -266,7 +266,7 @@ public class LiveAdviceCheck {
                          "gfx/kritter/moose/moose", "gfx/kritter/boar/boar", "gfx/kritter/wolf/wolf",
                          "gfx/kritter/lynx/lynx"};
         int[][] states = {{30, 0, 30, 0}, {0, 30, 0, 30}, {30, 30, 30, 30}, {50, 50, 0, 0}};
-        int changed = 0, restored = 0, cheaper = 0;
+        int changed = 0, restored = 0, cheaper = 0, lowRestores = 0;
         for(int[] standing : states)
         for(String h : hard) {
             Prediction.Live hf = advise(me, null, standing, 300, 300, seen(h, new int[] {20, 0, 0, 20}, 0));
@@ -276,7 +276,14 @@ public class LiveAdviceCheck {
             System.out.printf("      %-36s full: %-22s %6.1f hp%s | at 120: %-22s %6.1f hp%s (%s, trade %.1f)%n", h,
                               hf.moveRes, hf.hpLost, hf.killed ? "" : " no kill", hl.moveRes, hl.hpLost,
                               hl.killed ? "" : " no kill", hl.why, hl.trade);
+            if(restorations.contains(hl.moveRes) && (hl.hpLost < 120 - 1e-9))
+                lowRestores++;
             if(hf.moveRes.equals(hl.moveRes))
+                continue;
+            /* The reserve's question is the PLAN's pick. A full-health pick the wear guard made
+             * (WearGuard: a restoration that saves armour for a little time) is not the plan's, and
+             * the guard stands aside once no line wins - so the pair would compare two rules. */
+            if((hf.why != null) && hf.why.contains("wear (hp + armour)"))
                 continue;
             /* A line that loses all 120 is a death whatever is thrown: every plan dies, the pick
              * among them is not a reserve decision, and it is not this case. */
@@ -293,7 +300,11 @@ public class LiveAdviceCheck {
             if(hl.hpLost < hf.hpLost)
                 cheaper++;
         }
-        check("at least one hard creature changes the pick at low health", changed > 0, true);
+        /* WAS "at least one hard creature changes the pick at low health". Since the wear guard
+         * (2026-09-27) the full-health pick against the bear, moose and cave angler at these
+         * openings is ALREADY the restoration the reserve reached for at 120, so the pair no longer
+         * differs - which is the point of the guard. What the reserve must still do is defend. */
+        check("at low health, some hard fight is answered with a restoration", lowRestores > 0, true);
         check("  every changed pick is a restoration", restored, changed);
         check("  and every one costs fewer hitpoints", cheaper, changed);
 
@@ -462,7 +473,9 @@ public class LiveAdviceCheck {
                      advise(me, null, greenOnly, 300, 300, armed)}) {
                 if(!(l.danger > l.dangerCap))
                     continue;
-                boolean restoring = (l.moveRes != null) && l.why.contains(" first");
+                /* The hitpoint guard's own answer. The wear guard (below) may restore where hitpoints
+                 * say there is nothing to save - that is what it is for - and says so differently. */
+                boolean restoring = (l.moveRes != null) && l.why.contains("blow is possible");
                 boolean nothing = l.why.contains("nothing on the bar answers it");
                 if(!(l.trade > Prediction.NEGLIGIBLE_HP)) {
                     quiet++;
@@ -534,6 +547,9 @@ public class LiveAdviceCheck {
         check("  and against at least one they plan strictly better", quicker > 0, true);
 
         targets(me);
+        running(me);
+        wear(me);
+        person(me);
         System.out.println("agility from the client's bracket:");
         check("  (0, 0.579) of 100 is staged inside it, at the clamp's floor side",
               Math.round(Prediction.agilityFrom(100, 0, 0.579)), 54L);
@@ -550,6 +566,87 @@ public class LiveAdviceCheck {
         check("  one overdue acts now, never in the past", Prediction.firstAct(40, 5.0), 0.0);
         check("  unknown stays a full period (NaN)", Double.isNaN(Prediction.firstAct(40, Double.NaN)), true);
         finish();
+    }
+
+    /**
+     * A RUNNING OPPONENT IS NOT CHASED WHILE ANOTHER STILL SWINGS (James, 2026-09-27). Its olive
+     * branch is on the relation; of 1,087 creatures in the pool that showed it, 1,043 never acted
+     * again.
+     */
+    static void running(Prediction.Me me) {
+        System.out.println("\na running opponent");
+        String fox = "gfx/kritter/fox/fox";
+        Prediction.Seen fleeing = new Prediction.Seen(1, fox, new int[] {10, 0, 0, 10}, 0, 0, 12, 0, null, true).fled(true);
+        /* An identical twin, so the switch is the running and not a better target - a fresh boar beside
+         * a fox is worth switching to on its own (the case above). */
+        Prediction.Seen swinging = new Prediction.Seen(2, fox, new int[] {10, 0, 0, 10}, 0, 0, 12, 0, null, true);
+        Prediction.Live l = advise(me, null, new int[] {20, 0, 0, 0}, 300, 300, fleeing, swinging);
+        System.out.printf("      fox running, its twin swinging: target %d (%s)%n", l.target, l.why);
+        check("  the one still swinging is the target", l.target, 1);
+        check("  and the reason says the other is running", (l.why != null) && l.why.contains("is running"), true);
+        Prediction.Live alone = advise(me, null, new int[] {20, 0, 0, 0}, 300, 300, fleeing);
+        check("  alone, the runner is still fought", (alone.target == 0) && (alone.moveRes != null), true);
+        Prediction.Live same = advise(me, null, new int[] {20, 0, 0, 0}, 300, 300,
+                                      new Prediction.Seen(1, fox, new int[] {10, 0, 0, 10}, 0, 0, 12, 0, null, true), swinging);
+        check("  not running, the fox we are on is kept", same.target, 0);
+    }
+
+    /**
+     * WEAR: restore when walking the plan with a restoration first saves at least twice the share of
+     * wear it costs in time (haven.combat.WearGuard; James, 2026-09-27, "keeping 40/50+ openings into
+     * mobs ... mass amounts of armor damage"). Cave lice open green, so Quick Dodge is the answer and a
+     * bar without it has none; standing closed, nothing is restored.
+     */
+    static void wear(Prediction.Me me) {
+        System.out.println("\narmour wear against a crowd of lice");
+        String louse = "gfx/kritter/cavelouse/cavelouse";
+        Prediction.Seen[] lice = new Prediction.Seen[3];
+        for(int i = 0; i < lice.length; i++)
+            lice[i] = new Prediction.Seen(i + 1, louse, new int[] {0, 0, 0, 0}, 0, 0, 8 + i, 0, null, true);
+        Prediction.Live open = advise(me, null, new int[] {55, 0, 0, 0}, 300, 300, lice);
+        Prediction.Live shut = advise(me, null, FRESH, 300, 300, lice);
+        Map<String, Integer> noDodge = new LinkedHashMap<String, Integer>(levels());
+        noDodge.remove("paginae/atk/qdodge");
+        Prediction.Live other = advise(me, noDodge, new int[] {55, 0, 0, 0}, 300, 300, lice);
+        System.out.printf("      green 55: %s (%s)%n      shut: %s (%s)%n      no Quick Dodge: %s (%s)%n",
+                          open.moveRes, open.why, shut.moveRes, shut.why, other.moveRes, other.why);
+        check("  green wide open against three lice: Quick Dodge", open.moveRes, "paginae/atk/qdodge");
+        check("  standing shut, no wear restoration", (shut.why != null) && shut.why.contains("wear"), false);
+        check("  no card for green on the bar: none for colours they do not hit",
+              (other.why != null) && other.why.contains("wear"), false);
+    }
+
+    /**
+     * A PERSON'S FINISHER, which the averaged deck never saw (2026-09-26 spars: Quick Barrage into our
+     * red until they held six, then a Cleave for our whole bar). Their hands say B12, the B12 deck
+     * holds Cleave, their initiative is on the relation - so past the cap the advice restores, and
+     * never with the card that would hand them the missing points.
+     */
+    static void person(Prediction.Me me) {
+        System.out.println("\na person with a B12");
+        String body = "gfx/borka/body";
+        int[] redOpen = {0, 0, 0, 60};
+        Prediction.Seen armed = new Prediction.Seen(1, body, new int[] {0, 0, 0, 0}, 0, 5, 10, 0, null, true)
+            .wielding("b12axe", new String[] {"paginae/atk/bloodlust"});
+        Prediction.Seen poor = new Prediction.Seen(1, body, new int[] {0, 0, 0, 0}, 0, 0, 10, 0, null, true)
+            .wielding("b12axe", new String[] {"paginae/atk/bloodlust"});
+        Prediction.Live l = advise(me, null, redOpen, 300, 300, armed);
+        Prediction.Live q = advise(me, null, redOpen, 300, 300, poor);
+        System.out.printf("      red 60, they hold 5: %s (%s), worst blow %.0f / cap %.0f%n", l.moveRes, l.why, l.danger, l.dangerCap);
+        System.out.printf("      red 60, they hold 0: %s (%s), worst blow %.0f%n", q.moveRes, q.why, q.danger);
+        check("  holding 5 with a B12, a Cleave is the worst blow and it is past the cap",
+              l.danger > l.dangerCap, true);
+        check("    and it is answered with a restoration", (l.why != null) && l.why.contains("blow is possible") && l.why.contains(" first"), true);
+        check("    one that closes red", "paginae/atk/zigzag".equals(l.moveRes) || "paginae/atk/artevade".equals(l.moveRes), true);
+        check("  holding nothing, the Cleave is two cards away and not priced", q.danger < l.danger, true);
+        /* Zig-Zag hands every opponent two points. At four held, that is the Cleave. */
+        Prediction.Seen four = new Prediction.Seen(1, body, new int[] {0, 0, 0, 0}, 0, 4, 10, 0, null, true)
+            .wielding("b12axe", null);
+        Map<String, Integer> zigOnly = new LinkedHashMap<String, Integer>();
+        zigOnly.put("paginae/atk/barrage", 1);
+        zigOnly.put("paginae/atk/zigzag", 1);
+        Prediction.Live z = advise(me, zigOnly, new int[] {0, 60, 0, 60}, 300, 300, four);
+        System.out.printf("      blue and red 60, they hold 4, only Zig-Zag to hand: %s (%s)%n", z.moveRes, z.why);
     }
 
     static Prediction.Seen at(long gob, String res, double dist, double taken) {

@@ -188,7 +188,16 @@ public class CombatLogCheck {
          * by four times its charge, and without the charge a gain made under it cannot be priced. */
         /* 24 adds durability to the gear row (wd of wm), so armour wear per point soaked can be
          * measured rather than assumed (COMBAT.md §3.8 D1). */
-        check("schema constant", CombatEvent.SCHEMA, 24);
+        /* 25 adds the foewpn row: the weapon in a person's hands, which decides what they can
+         * throw (pvp_meta.json) and was never recorded. */
+        /* 26 adds the pose row: an opponent's pose set when it changes (Bear Rage is a mode). */
+        check("schema constant", CombatEvent.SCHEMA, 26);
+        check("pose lists an opponent's poses",
+              CombatEvent.pose(8L, 5L, java.util.Arrays.asList("idle", "rage")),
+              "{\"ev\":\"pose\",\"t\":8,\"gob\":5,\"poses\":[\"idle\",\"rage\"]}");
+        check("foewpn names the weapon a person holds",
+              CombatEvent.foewpn(31L, 77L, "b12axe"),
+              "{\"ev\":\"foewpn\",\"t\":31,\"gob\":77,\"res\":\"b12axe\"}");
         check("gear carries durability when the piece has any",
               CombatEvent.gear(40L, 2, "gfx/invobjs/cuirass", 10.0, 8, 3, false, 120, 2000),
               "{\"ev\":\"gear\",\"t\":40,\"slot\":2,\"res\":\"gfx/invobjs/cuirass\","

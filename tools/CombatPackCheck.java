@@ -389,11 +389,23 @@ public class CombatPackCheck {
          *
          * The numbers come off the client's own gear rows, which carry hard and soft per
          * item, so this is measured rather than matched against the wiki. */
-        if(zz != null) {
-            check("  the character is wearing something", zz.armHard > 50, true);
-            check("    soft soak as well as hard", zz.armSoft > 50, true);
+        /* THE MOST ARMOURED CHARACTER, not ZzxcuV3 by name. This read ZzxcuV3 and went red on
+         * 2026-09-27 because he now fights in a whaler's jacket, a bore-worm mask and a round
+         * shield (44/27 in every log since 2026-09-26) - a change of gear, not a reading fault;
+         * the pieces are all in the gear rows. The property is that armour gets read and carried,
+         * whoever wears it. */
+        Pack.Fighter worn = null;
+        for(Pack.Fighter f : chars.values()) {
+            if((f != null) && ((worn == null) || (f.armHard > worn.armHard)))
+                worn = f;
+        }
+        if(worn != null) {
+            check("  some character is wearing something", worn.armHard > 50, true);
+            check("    soft soak as well as hard", worn.armSoft > 50, true);
             check("    and the combatant it builds carries it",
-                  zz.combatant().armHard, zz.armHard);
+                  worn.combatant().armHard, worn.armHard);
+        }
+        if(zz != null) {
             /* Combatant defaults penetrable false because every armoured opponent in the
              * corpus is an animal and the one that could be tested was immune. A person
              * is not, and a weapon's penetration against a player is what it says. */

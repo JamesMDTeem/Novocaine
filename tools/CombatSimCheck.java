@@ -134,6 +134,7 @@ public class CombatSimCheck {
         deckAsOpponent();
         twoSidedDuel();
         jorbsWorkedExample();
+        bloodlust();
         System.out.println(failures == 0 ? "\nALL CHECKS PASSED"
                            : "\n" + failures + " CHECK(S) FAILED");
         System.exit(failures == 0 ? 0 : 1);
@@ -357,6 +358,48 @@ public class CombatSimCheck {
     }
 
     /* ---- the character and its moves, exactly as the logs and the character sheet have them ---- */
+
+    /**
+     * BLOODLUST'S METER (2026-09-27), measured on Dunki's own log of the 2026-09-26 spar: +0.25 per
+     * blow received to a cap of 1, halved by each of his own attacks, and his attack weight x(1 +
+     * 4 x charge) read before the halving - his Quick Barrage at 0.98 opened our red 12 where one at
+     * 0.25 opened 9 (cbrt(4.92/2) = 1.35).
+     */
+    static void bloodlust() {
+        System.out.println("\nBloodlust's meter");
+        Combatant lusty = me();
+        lusty.charges = true;
+        Combatant hitter = target();
+        hitter.weaponDamage = 90; hitter.weaponQl = 30; hitter.str = 80; hitter.melee = 111;
+        lusty.blockSkill = 111;
+        Sim s = new Sim(hitter, lusty);
+        for(int i = 0; i < 5; i++) {
+            hitter.readyAt = 0;
+            s.use(hitter, barrage());
+        }
+        near("  five blows received charge it to the cap", lusty.charge, 1.0, 1e-9);
+        Combatant fresh = me();
+        fresh.charges = true;
+        fresh.charge = 0.25;
+        Combatant full = me();
+        full.charges = true;
+        full.charge = 0.98;
+        Combatant v1 = target(), v2 = target();
+        new Sim(fresh, v1).use(fresh, barrage());
+        new Sim(full, v2).use(full, barrage());
+        double ratio = v2.opening(Formulas.RED) / v1.opening(Formulas.RED);
+        near("  a swing at 0.98 opens cbrt(4.92/2) times one at 0.25", ratio, Math.cbrt(4.92 / 2.0), 1e-6);
+        near("  and the swing spends half the meter", full.charge, 0.49, 1e-9);
+        Combatant still = me();
+        still.charges = true;
+        still.charge = 0.74;
+        still.readyAt = 0;
+        new Sim(still, target()).use(still, zigZagMove());
+        near("  a maneuver spends none of it", still.charge, 0.74, 1e-9);
+        Combatant plain = me();
+        new Sim(plain, target()).use(plain, barrage());
+        check("  without the stance there is no meter", plain.charge, 0.0);
+    }
 
     static Combatant me() {
         Combatant c = new Combatant("ZzxcuV3");

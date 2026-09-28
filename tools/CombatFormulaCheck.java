@@ -132,6 +132,14 @@ public class CombatFormulaCheck {
         System.out.println("\ncooldownTicks");
         // Against the slower partner: bases 35, 40, 20 reported as 33, 38, 19.
         check("KITO vs agility 59", Formulas.cooldownTicks(35, false, 1, 0, 0, true, 81, 59), 33L);
+        /* A WEAPON'S COOLDOWN MODIFIER, observed (2026-09-27): Dunki at agility 386 with a B12
+         * (coolmod 1.25) against a bat at half his agility or less reported Quick Barrage 23, Full
+         * Circle 45 and Cleave 91 - base x 1.25 x 0.5^(1/7), one rounding. Without the modifier
+         * they would be 18, 36 and 72. */
+        check("B12 Quick Barrage vs a slow bat", Formulas.cooldownTicks(20, false, 1, 0, 0, true, 386, 150, 1.25), 23L);
+        check("B12 Full Circle vs a slow bat", Formulas.cooldownTicks(40, false, 1, 0, 0, true, 386, 150, 1.25), 45L);
+        check("B12 Cleave vs a slow bat", Formulas.cooldownTicks(80, false, 1, 0, 0, true, 386, 150, 1.25), 91L);
+        check("  and a modifier of 1 changes nothing", Formulas.cooldownTicks(35, false, 1, 0, 0, true, 81, 59, 1.0), 33L);
         check("Full Circle vs agility 59",
               Formulas.cooldownTicks(40, false, 1, 0, 0, true, 81, 59), 38L);
         check("Quick Barrage vs agility 59",
