@@ -122,6 +122,8 @@ public class LeakDbg {
     private static volatile int capStreak = 0;
     private static volatile int churnStreak = 0;
     private static volatile long prevSampleFrames;
+    /* The last sample's frame rate, for :perflog's snapshots. */
+    private static volatile double lastFps;
     private static volatile double prevSampleTime = -1;
     /* Volatile: transition() runs on the Connection worker and on the UI thread. */
     private static volatile long[] prevTransBytes;
@@ -150,10 +152,15 @@ public class LeakDbg {
          * writing, it is the sampler and the watchdog running for the whole session, and a
          * client nobody is investigating should not be paying it at all. Checked every frame
          * so the setting takes effect without a restart - it is one volatile read. */
-        if (!NLog.diag())
+        if (!NLog.diag()) {
+            /* A one-off ':perflog snap' with the diagnostics off - one volatile read otherwise. */
+            if (snapNote != null)
+                snapIfDue(ui);
             return;
+        }
         LeakDbg.ui = ui;
         frames++;
+        snapIfDue(ui);
         if (mapRef == null || (frames & (MAP_REFRESH_PERIOD - 1)) == 0) {
             try {
                 mapRef = ui.root.findchild(MapView.class);
@@ -215,7 +222,7 @@ public class LeakDbg {
             prevTransBytes = mb;
             prevTransObjs = mo;
         }
-        NLog.log(LOG, sb.toString());
+        write(sb.toString());
     }
 
     /** Where TexI objects are being constructed: "Class.method:line" -> count. */
@@ -435,11 +442,11 @@ public class LeakDbg {
                 if (++n > HEAP_HIST_LINES + 2)
                     break;
             }
-            NLog.log(LOG, sb.toString());
+            write(sb.toString());
         } catch (Throwable t) {
             /* An unsupported JVM, a security manager, or a renamed MBean. Report once-ish and
              * carry on - the rest of the sampler is still worth having. */
-            NLog.log(LOG, tag("heapclass") + " unavailable: " + t);
+            write(tag("heapclass") + " unavailable: " + t);
         }
     }
 
@@ -472,6 +479,271 @@ public class LeakDbg {
             cons.out.flush();
         });
     }
+    /**
+     * {@code :perflog} - everything a performance report needs, from one command (2026-09-28).
+     *
+     * A friend's "FPS drops in base after half an hour" took three rounds to gather: switch on Log
+     * Diagnostics, type {@code :stalls}, then {@code :stats on} and screenshot it before and after
+     * a restart - and the log that came back had started fifty minutes into the session and held no
+     * render-tree counts at all. This turns the diagnostics on, lowers the stall threshold to 100
+     * ms, and writes a full snapshot to {@code logs/vmem.log} now and every minute: what the
+     * {@code :stats} overlay shows (FPS, memory, render tree, instancer, draw list, culling,
+     * connection, loaders), the GPU and driver, every graphics setting, the options that decide
+     * render load, the object counts and where the player stands. One log, the whole session.
+     *
+     * <pre>
+     *   :perflog            on (or the state, if already on)
+     *   :perflog snap text  one snapshot now, tagged with the note
+     *   :perflog off        a last snapshot, then everything back as it was
+     * </pre>
+     */
+    private static volatile boolean perflog = false;
+    private static volatile long nextSnapAt = 0;
+    private static volatile String snapNote = null;
+    private static final long SNAP_MS = 60_000L;
+    /* Everything written while perflog is on, waiting to go to the mapper server's /perflog. */
+    private static final java.util.concurrent.ConcurrentLinkedQueue<String> outbox =
+        new java.util.concurrent.ConcurrentLinkedQueue<>();
+    private static final int OUTBOX_MAX = 20_000;
+    private static final long SEND_MS = 60_000L;
+    /* One post stays well under the server's 2 MB body limit. */
+    private static final int SEND_MAX_CHARS = 1_200_000;
+    private static volatile long nextSendAt = 0;
+    private static volatile String character = null;
+    private static volatile boolean hooked = false;
+    private static final String SESSION = session();
+
+    private static String session() {
+        try {
+            long start = ManagementFactory.getRuntimeMXBean().getStartTime();
+            return (PID.trim() + "-" + new java.text.SimpleDateFormat("yyyyMMdd-HHmmss").format(new java.util.Date(start)));
+        } catch (Throwable t) {
+            return (PID.trim() + "-" + System.currentTimeMillis());
+        }
+    }
+
+    /**
+     * Every line this class writes: to logs/vmem.log, and - while :perflog is on - to the outbox
+     * the sampler sends to the mapper server once a minute (see send). The local file is always
+     * written; the upload is a copy.
+     */
+    private static void write(String line) {
+        NLog.log(LOG, line);
+        if (perflog) {
+            outbox.add(line);
+            /* Bounded: a server that cannot be reached must not grow this without end. */
+            while (outbox.size() > OUTBOX_MAX)
+                outbox.poll();
+        }
+    }
+
+    /**
+     * The outbox, to the mapper server's /perflog, in posts under the body limit. Through
+     * CombatLogSync's own thread (enqueue) or, at exit, on the caller's (now) - the scheduler is a
+     * daemon and may already be gone. Needs a map endpoint and nothing else: typing :perflog is the
+     * consent, so this does not wait on the combat-telemetry setting.
+     */
+    private static void send(boolean now) {
+        List<String> chunk = new java.util.ArrayList<>();
+        int chars = 0;
+        for (String l; (l = outbox.poll()) != null; ) {
+            chunk.add(l);
+            chars += l.length();
+            if (chars >= SEND_MAX_CHARS) {
+                ship(chunk, now);
+                chunk = new java.util.ArrayList<>();
+                chars = 0;
+            }
+        }
+        if (!chunk.isEmpty())
+            ship(chunk, now);
+    }
+
+    private static void ship(List<String> lines, boolean now) {
+        if (now)
+            haven.automated.combat.CombatLogSync.postPerfLog(SESSION, character, lines);
+        else
+            haven.automated.combat.CombatLogSync.enqueuePerfLog(SESSION, character, lines);
+    }
+
+    /* At exit, what the last minute wrote - once per session, only after :perflog was first used. */
+    private static void hookExit() {
+        if (hooked)
+            return;
+        hooked = true;
+        try {
+            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                if (perflog && !outbox.isEmpty())
+                    send(true);
+            }, "perflog-exit"));
+        } catch (Throwable ignore) {
+            // Already shutting down.
+        }
+    }
+    private static final java.util.concurrent.ConcurrentLinkedQueue<List<String>> pendingSnaps =
+        new java.util.concurrent.ConcurrentLinkedQueue<>();
+
+    static {
+        haven.Console.setscmd("perflog", (cons, args) -> {
+            String sub = (args.length > 1) ? args[1].toLowerCase() : "on";
+            String note = (args.length > 2) ? String.join(" ", java.util.Arrays.copyOfRange(args, 2, args.length)) : "";
+            if (sub.equals("off")) {
+                if (perflog || NLog.diag()) {
+                    /* Written here, before the sampler that would write it stands down. */
+                    UI u = ui;
+                    if (u != null) {
+                        for (String l : snapshot(u, note.isEmpty() ? "perflog off" : note))
+                            write(l);
+                    }
+                }
+                if (perflog)
+                    send(false);
+                perflog = false;
+                STALL_MS = 400.0;
+                setDiag(false);
+                cons.out.print("perflog off - diagnostics off, stall threshold back to 400 ms\n");
+            } else if (sub.equals("snap")) {
+                snapNote = note.isEmpty() ? "snap" : note;
+                cons.out.print("perflog: a snapshot will be written to logs/vmem.log on the next frame\n");
+            } else {
+                boolean was = perflog;
+                perflog = true;
+                hookExit();
+                STALL_MS = 100.0;
+                setDiag(true);
+                if (!was) {
+                    nextSnapAt = 0;
+                    snapNote = note.isEmpty() ? "perflog on" : note;
+                }
+                cons.out.print("perflog " + (was ? "already on" : "on") + " - logs/vmem.log: a sample a second, "
+                    + "a full snapshot every minute, frames over 100 ms captured. ':perflog snap <note>' "
+                    + "marks a moment, ':perflog off' stops it.\n");
+            }
+            cons.out.flush();
+        });
+    }
+
+    /* The Log Diagnostics setting, the cached flag and its checkbox, kept in step. */
+    private static void setDiag(boolean on) {
+        haven.Utils.setprefb("diagnosticLogging", on);
+        NLog.diag(on);
+        try {
+            if (haven.OptWnd.diagnosticLoggingCheckBox != null)
+                haven.OptWnd.diagnosticLoggingCheckBox.a = on;
+        } catch (Throwable ignore) {
+            // Options window not built yet; the pref and the flag are what count.
+        }
+    }
+
+    /* From tick(), on the UI thread - where the :stats overlay reads the same things - once a
+     * minute while perflog is on, or when a snapshot was asked for. The sampler writes it. */
+    private static void snapIfDue(UI u) {
+        long now = System.currentTimeMillis();
+        String note = snapNote;
+        boolean due = perflog && (now >= nextSnapAt);
+        if (!due && (note == null))
+            return;
+        snapNote = null;
+        if (due)
+            nextSnapAt = now + SNAP_MS;
+        try {
+            haven.GameUI gui = u.root.findchild(haven.GameUI.class);
+            if (gui != null)
+                character = gui.chrid;
+        } catch (Throwable ignore) {
+        }
+        List<String> lines = snapshot(u, note);
+        if (NLog.diag()) {
+            pendingSnaps.add(lines);
+        } else {
+            /* A one-off snapshot with the diagnostics off: no sampler to hand it to. */
+            for (String l : lines)
+                write(l);
+        }
+    }
+
+    private static List<String> snapshot(UI u, String note) {
+        List<String> out = new java.util.ArrayList<>();
+        String t = tag("snap");
+        out.add(t + " ---- " + ((note == null) ? "periodic" : note));
+        List<String> body = new java.util.ArrayList<>();
+        try {
+            body.add(String.format("fps~%.1f (sampled) idle=%.0f%% gpulag=%.1fms", lastFps,
+                                   haven.UILoop.statidle * 100.0, haven.UILoop.statlag * 1000.0));
+        } catch (Throwable ignore) {
+        }
+        try {
+            Runtime rt = Runtime.getRuntime();
+            body.add(String.format("heap used=%,d total=%,d max=%,d cpus=%d java=%s", rt.totalMemory() - rt.freeMemory(),
+                                   rt.totalMemory(), rt.maxMemory(), rt.availableProcessors(), Runtime.version()));
+            body.add("state slots " + haven.render.State.Slot.numslots());
+        } catch (Throwable ignore) {
+        }
+        try {
+            Environment env = u.getenv();
+            if (env instanceof GLEnvironment) {
+                GLEnvironment.Caps c = ((GLEnvironment) env).caps;
+                body.add("gpu " + c.renderer + " | " + c.vendor + " | GL " + c.version);
+            }
+            env.stats(body);
+        } catch (Throwable ignore) {
+        }
+        try {
+            MapView map = mapRef;
+            if (map == null)
+                map = u.root.findchild(MapView.class);
+            if (map != null) {
+                body.add("camera " + map.camstats());
+                body.add("mapview " + map.stats());
+            }
+        } catch (Throwable ignore) {
+            // Mid-teardown; the rest of the snapshot still stands.
+        }
+        try {
+            if ((u.sess != null) && (u.sess.conn instanceof haven.Connection))
+                body.add("connection " + ((haven.Connection) u.sess.conn).stats);
+            body.add("async L " + u.loader.stats() + ", D " + haven.Defer.gstats());
+        } catch (Throwable ignore) {
+        }
+        try {
+            StringBuilder p = new StringBuilder();
+            appendProbes(p, u);
+            body.add("objects" + p);
+        } catch (Throwable ignore) {
+        }
+        try {
+            StringBuilder g = new StringBuilder("gsettings");
+            haven.GSettings gs = u.gprefs;
+            for (java.lang.reflect.Field f : haven.GSettings.class.getFields()) {
+                if (haven.GSettings.Setting.class.isAssignableFrom(f.getType())) {
+                    haven.GSettings.Setting<?> s = (haven.GSettings.Setting<?>) f.get(gs);
+                    g.append(' ').append(s.nm).append('=').append(s.val);
+                }
+            }
+            body.add(g.toString());
+        } catch (Throwable ignore) {
+        }
+        try {
+            body.add("options frustumCulling=" + haven.OptWnd.frustumCulling
+                     + " onlyRenderCameraVisibleObjects=" + haven.Utils.getprefb("onlyRenderCameraVisibleObjects", false)
+                     + " mapWorldWhileNotBotting=" + haven.automated.nbots.world.Observed.mapWhileIdle
+                     + " combatMoveAdvice=" + haven.Utils.getprefb("combatMoveAdviceUI", false)
+                     + " autoFighter=" + haven.automated.combat.AutoFighter.on()
+                     + " stallMs=" + (int) STALL_MS);
+        } catch (Throwable ignore) {
+        }
+        try {
+            MapView map = mapRef;
+            Gob pl = (map == null) ? null : map.player();
+            if (pl != null)
+                body.add(String.format("player at (%.0f,%.0f)", pl.rc.x, pl.rc.y));
+        } catch (Throwable ignore) {
+        }
+        for (String l : body)
+            out.add(t + " " + l);
+        return (out);
+    }
+
     private static final long STALL_QUIET_MS = 3000L;
     private static final int STALL_FRAMES = 24;
     private static volatile Thread watchdog;
@@ -540,7 +812,7 @@ public class LeakDbg {
         if (st.length == 0)
             sb.append("\n    (no stack - thread not running Java code)");
         lockOwner(ui, sb);
-        NLog.log(LOG, sb.toString());
+        write(sb.toString());
     }
 
     /**
@@ -584,7 +856,7 @@ public class LeakDbg {
 
     private static void run() {
         List<String> args = ManagementFactory.getRuntimeMXBean().getInputArguments();
-        NLog.log(LOG, tag("jvmargs") + " " + String.join(" ", args));
+        write(tag("jvmargs") + " " + String.join(" ", args));
         long next = System.currentTimeMillis();
         long nextHeapHist = (HEAP_HIST_MS > 0) ? System.currentTimeMillis() : Long.MAX_VALUE;
         try {
@@ -596,10 +868,18 @@ public class LeakDbg {
              * than as instrumentation that has been switched off. 138 of the 219 samples in the
              * 2026-09-03 log are that artefact. */
             if (!NLog.diag()) {
-                NLog.log(LOG, tag("samp") + " diagnostics switched off - sampler stopping");
+                write(tag("samp") + " diagnostics switched off - sampler stopping");
                 return;
             }
             try {
+                for (List<String> snap; (snap = pendingSnaps.poll()) != null; ) {
+                    for (String l : snap)
+                        write(l);
+                }
+                if (perflog && (System.currentTimeMillis() >= nextSendAt)) {
+                    nextSendAt = System.currentTimeMillis() + SEND_MS;
+                    send(false);
+                }
                 sample();
                 if (System.currentTimeMillis() >= nextHeapHist) {
                     heapHistogram();
@@ -608,7 +888,7 @@ public class LeakDbg {
             } catch (Throwable t) {
                 StringWriter sw = new StringWriter();
                 t.printStackTrace(new PrintWriter(sw));
-                NLog.log(LOG, tag("err") + " " + sw);
+                write(tag("err") + " " + sw);
             }
             next += SAMPLE_MS;
             long delay = next - System.currentTimeMillis();
@@ -683,7 +963,7 @@ public class LeakDbg {
                         + " (jdk.management missing from the runtime?)";
                 }
                 if (why != null)
-                    NLog.log(LOG, tag("alloc") + " per-thread allocation unavailable - " + why);
+                    write(tag("alloc") + " per-thread allocation unavailable - " + why);
             }
             if (allocBean == null)
                 return;
@@ -742,6 +1022,7 @@ public class LeakDbg {
         }
         prevSampleTime = now;
         prevSampleFrames = f;
+        lastFps = fps;
 
         StringBuilder sb = new StringBuilder(tag("samp"));
         long totalBytes = -1;
@@ -846,7 +1127,7 @@ public class LeakDbg {
 
         String line = sb.toString();
         pushRing(now, line);
-        NLog.log(LOG, line);
+        write(line);
 
         /* A draw path building textures instead of reusing them. Named separately from the VRAM
          * watchdog because it is a different bug with a different fix: the watchdog asks "is too
@@ -856,11 +1137,11 @@ public class LeakDbg {
         if ((framesDelta > 0) && (perFrame >= CHURN_PER_FRAME)) {
             if (++churnStreak >= CHURN_CONSECUTIVE) {
                 churnStreak = 0;
-                NLog.log(LOG, String.format(
+                write(String.format(
                     "%s %d GL texture allocs/frame for %d s (fps %.1f) — a draw path is building "
                     + "textures per frame instead of caching them; last allocs name it",
                     tag("CHURN"), perFrame, CHURN_CONSECUTIVE, fps));
-                NLog.log(LOG, tag("last") + " " + lastAllocs());
+                write(tag("last") + " " + lastAllocs());
             }
         } else {
             churnStreak = 0;
@@ -886,12 +1167,12 @@ public class LeakDbg {
         if (watch && totalBytes > lastWatchTotal && (now - lastWatchAt) > WATCH_REARM_MS) {
             lastWatchTotal = totalBytes;
             lastWatchAt = now;
-            NLog.log(LOG, String.format(
+            write(String.format(
                 tag("WATCH") + " gl total=%,d bytes, T=%d objects (session baseline=%,d) — dumping ring",
                 totalBytes, texObjs, baselineTotal));
             dumpRing();
-            NLog.log(LOG, tag("hist") + " " + topTexHist(0));
-            NLog.log(LOG, tag("last") + " " + lastAllocs());
+            write(tag("hist") + " " + topTexHist(0));
+            write(tag("last") + " " + lastAllocs());
         }
 
         if (texObjs >= 0 && texBytes() > CAP_TEXTURE_BYTES) {
@@ -901,12 +1182,12 @@ public class LeakDbg {
         }
         if (capStreak >= CAP_CONSECUTIVE) {
             capStreak = 0;
-            NLog.log(LOG, String.format(
+            write(String.format(
                 tag("CAP") + " textures %,dB exceeded %,dB for %d consecutive samples — dumping ring + histogram",
                 texBytes(), CAP_TEXTURE_BYTES, CAP_CONSECUTIVE));
             dumpRing();
-            NLog.log(LOG, tag("hist") + " " + topTexHist(0));
-            NLog.log(LOG, tag("last") + " " + lastAllocs());
+            write(tag("hist") + " " + topTexHist(0));
+            write(tag("last") + " " + lastAllocs());
             System.gc();
         }
     }
@@ -977,6 +1258,6 @@ public class LeakDbg {
             int idx = (ringHead - ringLen + i + RING) % RING;
             sb.append("  ").append(ringT[idx]).append(' ').append(ringL[idx]).append('\n');
         }
-        NLog.log(LOG, sb.toString());
+        write(sb.toString());
     }
 }

@@ -126,6 +126,60 @@ public final class CombatLogSync {
         }
     }
 
+    /* A :perflog post is a minute of samples and snapshots; the server takes up to 2 MB. */
+    private static final long MAX_PERF_BYTES = 1900L * 1024;
+
+    /**
+     * Send a slice of a {@code :perflog} session's diagnostics to the server's {@code /perflog}
+     * (LeakDbg). Returns in microseconds; the post runs on this class's thread. Needs a map
+     * endpoint only - typing {@code :perflog} is the player's consent, so the combat-telemetry
+     * setting does not gate it. A post that fails is dropped: the same lines are in the local
+     * logs/vmem.log regardless.
+     */
+    public static void enqueuePerfLog(String session, String characterId, List<String> lines) {
+        if ((lines == null) || lines.isEmpty() || !hasEndpoint())
+            return;
+        try {
+            scheduler.execute(() -> postPerfLog(session, characterId, lines));
+        } catch (RejectedExecutionException e) {
+            // scheduler shut down - drop silently
+        }
+    }
+
+    /** The same post on the caller's thread - for the exit hook, where the scheduler may be gone. */
+    public static boolean postPerfLog(String session, String characterId, List<String> lines) {
+        try {
+            if ((lines == null) || lines.isEmpty() || !hasEndpoint())
+                return false;
+            String endpoint = clientEndpoint("/perflog");
+            if (endpoint == null)
+                return false;
+            JSONObject payload = new JSONObject();
+            payload.put("session", (session == null) ? "unknown" : session);
+            payload.put("characterId", (characterId == null) ? "" : characterId);
+            String world = WorldTag.current();
+            payload.put("world", (world == null) ? JSONObject.NULL : world);
+            JSONArray arr = new JSONArray();
+            for (String l : lines)
+                arr.put((Object) l);
+            payload.put("lines", arr);
+            byte[] bytes = payload.toString().getBytes(StandardCharsets.UTF_8);
+            if (bytes.length > MAX_PERF_BYTES) {
+                System.out.println("[CombatLogSync] skip perflog post >1.9MB");
+                return false;
+            }
+            return postWithRetry(endpoint, bytes, bearerToken());
+        } catch (Exception e) {
+            System.out.println("[CombatLogSync] perflog upload failed (debug): " + e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean hasEndpoint() {
+        String ep = Utils.getpref("webMapEndpoint", "");
+        return (ep != null) && !ep.trim().isEmpty();
+    }
+
     private static boolean shouldSkip() {
         if (!Utils.getprefb("combatTelemetry", true))
             return true;
