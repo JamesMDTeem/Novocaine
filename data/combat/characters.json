@@ -7,6 +7,12 @@
     "pieces": 1,
     "soft": 0
    },
+   "armour_now": {
+    "hard": 0,
+    "pieces": 1,
+    "soft": 0
+   },
+   "combat_set_wall": 1789860043395,
    "con": 8,
    "hhp": 37,
    "hp": 89,
@@ -28,15 +34,21 @@
    "unarmed": 1
   },
   {
-   "agi": 305,
+   "agi": 386,
    "armour": {
-    "hard": 16,
+    "hard": 294,
     "pieces": 23,
-    "soft": 16
+    "soft": 196
    },
-   "con": 243,
-   "hhp": 501,
-   "hp": 503,
+   "armour_now": {
+    "hard": 280,
+    "pieces": 23,
+    "soft": 190
+   },
+   "combat_set_wall": 1790500273907,
+   "con": 277,
+   "hhp": 508,
+   "hp": 531,
    "known": {
     "Artful Evasion": 5,
     "Bloodlust": 1,
@@ -75,61 +87,61 @@
     "To Arms": 1,
     "Uppercut": 5,
     "Watch Its Moves": 5,
-    "Yield Ground": 4,
+    "Yield Ground": 5,
     "Zig-Zag Ruse": 5
    },
-   "logs": 2876,
-   "melee": 314,
+   "logs": 3741,
+   "melee": 540,
    "name": "BonkiDonki",
    "owned": {
-    "Artful Evasion": 0,
+    "Artful Evasion": 5,
     "Bloodlust": 0,
     "Chin Up": 0,
     "Chop": 0,
     "Cleave": 1,
     "Dash": 0,
-    "Feigned Dodge": 0,
-    "Flex": 0,
-    "Full Circle": 5,
+    "Feigned Dodge": 5,
+    "Flex": 5,
+    "Full Circle": 1,
     "Go for the Jugular": 0,
     "Haymaker": 0,
     "Jump": 0,
     "Kick": 0,
-    "Knock Its Teeth Out": 0,
+    "Knock Its Teeth Out": 5,
     "Left Hook": 0,
     "Low Blow": 0,
-    "Opportunity Knocks": 1,
+    "Opportunity Knocks": 0,
     "Parry": 0,
     "Punch": 0,
     "Punch 'em Both": 0,
     "Quick Barrage": 1,
-    "Quick Dodge": 5,
+    "Quick Dodge": 0,
     "Raven's Bite": 0,
     "Regain Composure": 0,
     "Rip Apart": 0,
-    "Shield Up": 1,
-    "Sidestep": 5,
+    "Shield Up": 0,
+    "Sidestep": 0,
     "Sideswipe": 0,
     "Steal Thunder": 0,
-    "Sting": 5,
+    "Sting": 0,
     "Storm of Swords": 0,
     "Take Aim": 1,
     "Takedown": 0,
     "Think": 0,
-    "To Arms": 0,
+    "To Arms": 1,
     "Uppercut": 0,
     "Watch Its Moves": 0,
     "Yield Ground": 0,
     "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 302,
-   "unarmed": 257,
+   "str": 588,
+   "unarmed": 425,
    "weapon": {
     "armour_pen": 0.075,
     "base_damage": 115,
     "name": "Hirdsman's Sword",
-    "ql": 100.4318,
+    "ql": 124.3656,
     "range": 1.2
    }
   },
@@ -140,6 +152,12 @@
     "pieces": 2,
     "soft": 0
    },
+   "armour_now": {
+    "hard": 0,
+    "pieces": 2,
+    "soft": 0
+   },
+   "combat_set_wall": 1789858931822,
    "con": 10,
    "hhp": 72,
    "hp": 100,
@@ -182,6 +200,12 @@
     "pieces": 2,
     "soft": 2
    },
+   "armour_now": {
+    "hard": 6,
+    "pieces": 2,
+    "soft": 2
+   },
+   "combat_set_wall": 1790037955845,
    "con": 10,
    "hhp": 7,
    "hp": 100,
@@ -226,12 +250,18 @@
    "unarmed": 1
   },
   {
-   "agi": 44,
+   "agi": 45,
    "armour": {
     "hard": 13,
     "pieces": 23,
     "soft": 13
    },
+   "armour_now": {
+    "hard": 8,
+    "pieces": 23,
+    "soft": 8
+   },
+   "combat_set_wall": 1790099631675,
    "con": 20,
    "hhp": 141,
    "hp": 141,
@@ -253,7 +283,7 @@
     "Left Hook": 5,
     "Low Blow": 5,
     "Oak Stance": 1,
-    "Opportunity Knocks": 2,
+    "Opportunity Knocks": 3,
     "Parry": 1,
     "Punch": 5,
     "Punch 'em Both": 5,
@@ -277,7 +307,7 @@
     "Yield Ground": 2,
     "Zig-Zag Ruse": 2
    },
-   "logs": 160,
+   "logs": 201,
    "melee": 80,
    "name": "Japcek",
    "owned": {
@@ -323,23 +353,29 @@
     "Zig-Zag Ruse": 2
    },
    "shield": false,
-   "str": 43,
+   "str": 47,
    "unarmed": 88,
    "weapon": {
-    "armour_pen": 0.1,
-    "base_damage": 100,
-    "name": "Fyrdsman's Sword",
-    "ql": 94.2772,
-    "range": 1.2
+    "armour_pen": 0.2,
+    "base_damage": 45,
+    "name": "Butcher's Cleaver",
+    "ql": 169.6652,
+    "range": 1.0
    }
   },
   {
    "agi": 33,
    "armour": {
-    "hard": 3,
+    "hard": 5,
     "pieces": 21,
-    "soft": 3
+    "soft": 5
    },
+   "armour_now": {
+    "hard": 5,
+    "pieces": 21,
+    "soft": 5
+   },
+   "combat_set_wall": 1790499458057,
    "con": 49,
    "hhp": 221,
    "hp": 221,
@@ -385,18 +421,18 @@
     "Yield Ground": 3,
     "Zig-Zag Ruse": 5
    },
-   "logs": 961,
+   "logs": 1127,
    "melee": 55,
    "name": "Pikapolonica",
    "owned": {},
    "shield": false,
-   "str": 84,
+   "str": 86,
    "unarmed": 55,
    "weapon": {
     "armour_pen": 0.2,
-    "base_damage": 30,
-    "name": "Stone Axe",
-    "ql": 174.6168,
+    "base_damage": 45,
+    "name": "Butcher's Cleaver",
+    "ql": 121.5402,
     "range": 1.0
    }
   },
@@ -407,6 +443,12 @@
     "pieces": 5,
     "soft": 0
    },
+   "armour_now": {
+    "hard": 0,
+    "pieces": 5,
+    "soft": 0
+   },
+   "combat_set_wall": 1789858466154,
    "con": 12,
    "hhp": 110,
    "hp": 110,
@@ -445,15 +487,21 @@
    }
   },
   {
-   "agi": 174,
+   "agi": 208,
    "armour": {
-    "hard": 82,
-    "pieces": 23,
-    "soft": 89
+    "hard": 185,
+    "pieces": 22,
+    "soft": 142
    },
-   "con": 165,
-   "hhp": 413,
-   "hp": 424,
+   "armour_now": {
+    "hard": 185,
+    "pieces": 22,
+    "soft": 142
+   },
+   "combat_set_wall": 1790515681886,
+   "con": 193,
+   "hhp": 430,
+   "hp": 457,
    "known": {
     "Artful Evasion": 5,
     "Bloodlust": 1,
@@ -497,8 +545,8 @@
     "Yield Ground": 3,
     "Zig-Zag Ruse": 5
    },
-   "logs": 3488,
-   "melee": 315,
+   "logs": 4150,
+   "melee": 380,
    "name": "Santa Samus",
    "owned": {
     "Artful Evasion": 0,
@@ -544,8 +592,8 @@
     "Zig-Zag Ruse": 4
    },
    "shield": true,
-   "str": 766,
-   "unarmed": 104,
+   "str": 972,
+   "unarmed": 140,
    "weapon": {
     "armour_pen": 0.075,
     "base_damage": 115,
@@ -555,15 +603,21 @@
    }
   },
   {
-   "agi": 411,
+   "agi": 489,
    "armour": {
-    "hard": 168,
+    "hard": 294,
     "pieces": 23,
-    "soft": 119
+    "soft": 197
    },
-   "con": 182,
-   "hhp": 442,
-   "hp": 446,
+   "armour_now": {
+    "hard": 88,
+    "pieces": 23,
+    "soft": 82
+   },
+   "combat_set_wall": 1790456961086,
+   "con": 205,
+   "hhp": 303,
+   "hp": 468,
    "known": {
     "Artful Evasion": 5,
     "Bloodlust": 1,
@@ -607,29 +661,29 @@
     "Yield Ground": 5,
     "Zig-Zag Ruse": 5
    },
-   "logs": 3710,
-   "melee": 455,
+   "logs": 4534,
+   "melee": 620,
    "name": "Shade",
    "owned": {
     "Artful Evasion": 0,
     "Bloodlust": 0,
     "Chin Up": 0,
     "Chop": 0,
-    "Cleave": 2,
+    "Cleave": 1,
     "Combat Meditation": 0,
     "Dash": 0,
     "Feigned Dodge": 0,
     "Flex": 0,
-    "Full Circle": 4,
+    "Full Circle": 2,
     "Go for the Jugular": 0,
     "Haymaker": 0,
-    "Jump": 0,
+    "Jump": 5,
     "Kick": 0,
     "Knock Its Teeth Out": 0,
     "Left Hook": 0,
     "Low Blow": 0,
     "Oak Stance": 0,
-    "Opportunity Knocks": 1,
+    "Opportunity Knocks": 0,
     "Parry": 0,
     "Punch": 0,
     "Punch 'em Both": 0,
@@ -642,7 +696,7 @@
     "Sidestep": 5,
     "Sideswipe": 0,
     "Steal Thunder": 0,
-    "Sting": 1,
+    "Sting": 0,
     "Storm of Swords": 0,
     "Take Aim": 1,
     "Takedown": 0,
@@ -654,25 +708,31 @@
     "Zig-Zag Ruse": 5
    },
    "shield": true,
-   "str": 563,
+   "str": 857,
    "unarmed": 172,
    "weapon": {
     "armour_pen": 0.075,
     "base_damage": 115,
     "name": "Hirdsman's Sword",
-    "ql": 124.3656,
+    "ql": 164.9707,
     "range": 1.2
    }
   },
   {
    "agi": 13,
    "armour": {
+    "hard": 5,
+    "pieces": 3,
+    "soft": 5
+   },
+   "armour_now": {
     "hard": 0,
     "pieces": 3,
     "soft": 0
    },
+   "combat_set_wall": 1790174200581,
    "con": 10,
-   "hhp": 100,
+   "hhp": 95,
    "hp": 100,
    "known": {
     "Chin Up": 1,
@@ -683,7 +743,7 @@
     "Sidestep": 1,
     "To Arms": 1
    },
-   "logs": 4,
+   "logs": 7,
    "melee": 1,
    "name": "Slave10",
    "owned": {
@@ -706,6 +766,12 @@
     "pieces": 2,
     "soft": 5
    },
+   "armour_now": {
+    "hard": 5,
+    "pieces": 2,
+    "soft": 5
+   },
+   "combat_set_wall": 1790038306668,
    "con": 10,
    "hhp": 81,
    "hp": 100,
@@ -733,6 +799,12 @@
     "pieces": 23,
     "soft": 8
    },
+   "armour_now": {
+    "hard": 5,
+    "pieces": 23,
+    "soft": 8
+   },
+   "combat_set_wall": 1789253226255,
    "con": 20,
    "hhp": 140,
    "hp": 141,
@@ -770,6 +842,12 @@
     "pieces": 22,
     "soft": 51
    },
+   "armour_now": {
+    "hard": 70,
+    "pieces": 22,
+    "soft": 51
+   },
+   "combat_set_wall": 1789860855399,
    "con": 83,
    "hhp": 292,
    "hp": 293,
@@ -779,20 +857,22 @@
     "Chin Up": 1,
     "Chop": 3,
     "Dash": 3,
-    "Feigned Dodge": 2,
+    "Feigned Dodge": 3,
     "Full Circle": 2,
     "Go for the Jugular": 1,
-    "Haymaker": 2,
+    "Haymaker": 3,
     "Jump": 5,
     "Kick": 4,
-    "Knock Its Teeth Out": 2,
+    "Knock Its Teeth Out": 3,
     "Left Hook": 5,
     "Low Blow": 2,
+    "Opportunity Knocks": 1,
     "Punch": 5,
     "Punch 'em Both": 5,
     "Quick Barrage": 2,
     "Quick Dodge": 5,
-    "Raven's Bite": 2,
+    "Raven's Bite": 3,
+    "Regain Composure": 1,
     "Rip Apart": 1,
     "Shield Up": 1,
     "Sidestep": 5,
@@ -822,14 +902,16 @@
     "Haymaker": 0,
     "Jump": 0,
     "Kick": 0,
-    "Knock Its Teeth Out": 2,
+    "Knock Its Teeth Out": 3,
     "Left Hook": 0,
     "Low Blow": 0,
+    "Opportunity Knocks": 0,
     "Punch": 0,
     "Punch 'em Both": 0,
     "Quick Barrage": 2,
     "Quick Dodge": 5,
     "Raven's Bite": 0,
+    "Regain Composure": 0,
     "Rip Apart": 0,
     "Shield Up": 1,
     "Sidestep": 5,
@@ -862,6 +944,12 @@
     "pieces": 1,
     "soft": 0
    },
+   "armour_now": {
+    "hard": 0,
+    "pieces": 1,
+    "soft": 0
+   },
+   "combat_set_wall": 1789860843352,
    "con": 10,
    "hhp": 99,
    "hp": 100,
@@ -883,15 +971,21 @@
    "unarmed": 1
   },
   {
-   "agi": 292,
+   "agi": 368,
    "armour": {
-    "hard": 128,
+    "hard": 153,
     "pieces": 23,
-    "soft": 96
+    "soft": 112
    },
-   "con": 179,
-   "hhp": 423,
-   "hp": 423,
+   "armour_now": {
+    "hard": 38,
+    "pieces": 23,
+    "soft": 25
+   },
+   "combat_set_wall": 1790297312913,
+   "con": 230,
+   "hhp": 439,
+   "hp": 439,
    "known": {
     "Artful Evasion": 3,
     "Bloodlust": 1,
@@ -935,8 +1029,8 @@
     "Yield Ground": 1,
     "Zig-Zag Ruse": 5
    },
-   "logs": 1587,
-   "melee": 338,
+   "logs": 1642,
+   "melee": 355,
    "name": "ZzxcuV3",
    "owned": {
     "Artful Evasion": 0,
@@ -982,8 +1076,8 @@
     "Zig-Zag Ruse": 1
    },
    "shield": true,
-   "str": 360,
-   "unarmed": 185,
+   "str": 489,
+   "unarmed": 235,
    "weapon": {
     "armour_pen": 0.075,
     "base_damage": 115,
@@ -999,6 +1093,12 @@
     "pieces": 12,
     "soft": 3
    },
+   "armour_now": {
+    "hard": 3,
+    "pieces": 12,
+    "soft": 3
+   },
+   "combat_set_wall": 1789594154020,
    "con": 11,
    "hhp": 102,
    "hp": 105,
@@ -1026,6 +1126,12 @@
     "pieces": 2,
     "soft": 7
    },
+   "armour_now": {
+    "hard": 11,
+    "pieces": 2,
+    "soft": 7
+   },
+   "combat_set_wall": 1789859031800,
    "con": 10,
    "hhp": 100,
    "hp": 100,
@@ -1053,6 +1159,12 @@
     "pieces": 1,
     "soft": 0
    },
+   "armour_now": {
+    "hard": 0,
+    "pieces": 1,
+    "soft": 0
+   },
+   "combat_set_wall": 1789860435038,
    "con": 10,
    "hhp": 56,
    "hp": 100,
@@ -1080,6 +1192,12 @@
     "pieces": 3,
     "soft": 4
    },
+   "armour_now": {
+    "hard": 4,
+    "pieces": 3,
+    "soft": 4
+   },
+   "combat_set_wall": 1789860112936,
    "con": 10,
    "hhp": 68,
    "hp": 100,
