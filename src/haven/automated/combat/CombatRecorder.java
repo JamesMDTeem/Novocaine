@@ -963,6 +963,14 @@ public final class CombatRecorder {
          * adviceWorker; the row's place in the file is held by offerLater, so it lands exactly
          * where it was always written. Its time is the card's, not the card's plus however long
          * the search took, which was only ever the frame the search was holding up. */
+        /* ONLY WHEN SOMETHING WANTS A PLAN (2026-09-28). Off the UI thread was not enough: with the
+         * move advice and the auto-fighter both off, every card we threw still started a beam
+         * search over the whole fight for this log row alone - 50-150 ms of a core each, and
+         * hundreds of megabytes of garbage a plan against a crowd (eight bats: 760 ms, 1.8 GB) - and
+         * a friend's frame rate fell away as fights opened, the crowd being biggest then. The row
+         * is an audit of advice nobody was shown; a client that is not planning writes none. */
+        if(!LiveAdvice.planWanted())
+            return;
         CombatLogWriter w = writer;
         java.util.concurrent.Callable<Prediction.Advised> job = adviceJob(m.snapshot(), gobId, open);
         if((w == null) || (job == null))
