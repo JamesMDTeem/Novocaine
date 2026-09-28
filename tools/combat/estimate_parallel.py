@@ -29,6 +29,7 @@ children must inherit it.
 import atexit
 import math
 import os
+import sys
 from collections import defaultdict
 from multiprocessing import get_context
 
@@ -76,6 +77,147 @@ _BUILDING = False
 _BOOT = None
 
 
+# FUSED SWEEPS (2026-09-27). A --write-pack ran a dozen sweeps over the same 15,467 logs, each
+# parsing every file again - ~5 s of the ~5 s each took was the parse. prefetch() runs them in ONE
+# pass: a worker takes a chunk, and each sweep's own chunk function runs over it in turn against a
+# read cache, so a file is parsed once per reading (fightlog.read with and without an opens map)
+# instead of once per sweep. The sweeps are grouped by that reading and the cache is dropped between
+# groups, and the chunks are a quarter the usual size, so a worker holds ~100 parsed logs and not
+# ~500 of each kind (a 480-file chunk in both readings held 662 MB).
+#
+# What the first consumer of each sweep gets is its parts, one per chunk, in file order - the same
+# as map_chunks would hand it, over finer chunks. That changes nothing a consumer computes: each
+# folds parts in order, and the chunking already varies with COMBAT_JOBS. --write-pack was diffed
+# byte for byte, fused against unfused, when this went in.
+#
+# Nothing a prefetched sweep reads is written by the pack build (it writes the derived files and
+# reads only the logs, the move sheet and the wiki scrapes), so running it early changes no input.
+PACK_SWEEPS = (
+    # fightlog.read(path) - no opens map
+    ("weapons_seen", "agility_band", "agility_control", "agi_records", "flee_points",
+     "write_characters", "animal_cooldowns", "animal_soak", "animal_restores", "animal_grievous"),
+    # fightlog.read(path, opens)
+    ("mu_from_reductions", "collect"),
+)
+
+_PREFETCHED = {}
+
+
+def _fused_chunk(task):
+    groups, paths = task
+    import fightlog
+    real = fightlog.read
+    cache = {}
+
+    def read(path, opens=None):
+        k = (path, id(opens))
+        hit = cache.get(k)
+        if hit is None:
+            try:
+                hit = (True, real(path, opens))
+            except Exception as x:
+                hit = (False, x)
+            cache[k] = hit
+        if not hit[0]:
+            raise hit[1]
+        return hit[1]
+
+    out = []
+    fightlog.read = read
+    try:
+        for group in groups:
+            for sid in group:
+                out.append((sid, _SWEEPS[sid](paths)))
+            cache.clear()
+    finally:
+        fightlog.read = real
+    return out
+
+
+def prefetch(groups, paths):
+    """Run every sweep in `groups` over `paths` in one pass, for map_chunks to hand to the first
+    caller of each with the same paths. A no-op wherever map_chunks would not pool."""
+    paths = list(paths)
+    if (not enabled()) or (len(paths) <= 1) or _in_worker() or _BUILDING:
+        return
+    key = tuple(paths)
+    groups = tuple(tuple(sid for sid in g if (sid, key) not in _SWEPT) for g in groups)
+    # A sweep already on disk for exactly this corpus and code is handed over as it is.
+    kept = []
+    for g in groups:
+        rest = []
+        for sid in g:
+            hit = _stored_sweep(sid, paths)
+            if hit is not None:
+                _PREFETCHED[(sid, key)] = hit[0]
+            else:
+                rest.append(sid)
+        kept.append(tuple(rest))
+    groups = tuple(g for g in kept if g)
+    if not groups:
+        return
+    import time
+    t0 = time.time()
+    workers = worker_count()
+    pool = _get_pool(context(), workers)
+    n = len(paths)
+    size = max(1, (n + (workers * 16) - 1) // (workers * 16))
+    tasks = [(groups, paths[i:i + size]) for i in range(0, n, size)]
+    parts = defaultdict(list)
+    for res in pool.imap(_fused_chunk, tasks, chunksize=1):
+        for sid, part in res:
+            parts[sid].append(part)
+    for sid, got in parts.items():
+        _PREFETCHED[(sid, key)] = got
+        _store_sweep(sid, paths, got)
+    if os.environ.get("COMBAT_TIMINGS"):
+        sys.stderr.write("[fused %-20s %6d files %7.1f s: %s]\n"
+                         % ("%d sweeps" % len(parts), n, time.time() - t0,
+                            " ".join(sid for g in groups for sid in g)))
+        sys.stderr.flush()
+
+
+def warm():
+    """Build (or load) the context now if this process will pool, so what it carries - the gob map,
+    measured mu - is in place before anything measures it again. A no-op in a worker, while the
+    context is being built, or where no pool would be started."""
+    if enabled() and (_CTX is None) and not _BUILDING and not _in_worker():
+        context()
+
+
+def ordered_map(fn, items, chunksize=32):
+    """fn over items, results in item order, on a spawn pool that carries NO context.
+
+    For the pack's side scripts (creature_sizes.py, player_lines.py): each file's part reads
+    nothing the context holds, so map_chunks would make them pay the gob map and the mu sweeps -
+    ~20 s - for nothing. fn must be a module-level function of a module that guards its main.
+    Serial where map_chunks would be (COMBAT_JOBS of two or fewer, or already in a worker).
+    """
+    items = list(items)
+    kind = None
+    if not _in_worker() and all(isinstance(x, str) for x in items):
+        # Named by the function's file and name: under spawn a script's own functions all live
+        # in "__main__", and two scripts' _file_part must not share a store.
+        mod = sys.modules.get(fn.__module__)
+        where = os.path.splitext(os.path.basename(getattr(mod, "__file__", "") or fn.__module__))[0]
+        kind = "map.%s.%s" % (where, fn.__qualname__)
+        hit = _stored_sweep(kind, items)
+        if hit is not None:
+            return hit[0]
+    if (not enabled()) or (len(items) <= 1) or _in_worker():
+        out = [fn(x) for x in items]
+    else:
+        pool = get_context("spawn").Pool(processes=worker_count())
+        try:
+            out = list(pool.imap(fn, items, chunksize=chunksize))
+        finally:
+            pool.terminate()
+            pool.join()
+    if kind is not None:
+        _store_sweep(kind, items, out)
+    return out
+
+
 def _in_worker():
     """True inside a pool worker, which is a daemon and may not create children."""
     from multiprocessing import current_process
@@ -84,6 +226,10 @@ def _in_worker():
 
 def _init_worker(ctx):
     global _CTX
+    if isinstance(ctx, str):
+        import pickle
+        with open(ctx, "rb") as fh:
+            ctx = pickle.load(fh)
     _CTX = ctx
     import estimate
     # CRITICAL: seed the full-corpus gob map. Without it, each worker's first bucket() or
@@ -100,24 +246,46 @@ def _run_chunk(task):
 
 
 def _get_pool(ctx, workers):
-    global _POOL, _POOL_WORKERS
+    global _POOL, _POOL_WORKERS, _POOL_CTX_FILE
     if _POOL is None or _POOL_WORKERS != workers:
         close()
+        # THE CONTEXT GOES BY FILE, NOT IN THE SPAWN MESSAGE (2026-09-27). A spawned child imports
+        # the parent's __main__ before it reads its process object, and the parent writes that
+        # object - initargs and all - into a pipe it blocks on, starting the workers one after
+        # another. With a 3.7 MB context and estimate.py as __main__ (1.2 s to import), every
+        # pool took ~1.3 s per worker to start: 21.4 s on sixteen, before any work. Handed a path,
+        # the message fits the pipe, the parent does not wait, and the children import in parallel.
+        import pickle
+        import tempfile
+        fd, _POOL_CTX_FILE = tempfile.mkstemp(prefix="combat-ctx-", suffix=".pkl")
+        with os.fdopen(fd, "wb") as fh:
+            pickle.dump(ctx, fh, protocol=pickle.HIGHEST_PROTOCOL)
         _POOL = get_context("spawn").Pool(
-            processes=workers, initializer=_init_worker, initargs=(ctx,))
+            processes=workers, initializer=_init_worker, initargs=(_POOL_CTX_FILE,))
         _POOL_WORKERS = workers
     return _POOL
 
 
+_POOL_CTX_FILE = None
+
+
 def close():
-    global _POOL, _POOL_WORKERS
+    global _POOL, _POOL_WORKERS, _POOL_CTX_FILE
     if _POOL is not None:
         try:
-            _POOL.close()
+            # Terminated, not closed: every caller drains its imap before this runs, so the pool
+            # is idle and there is nothing to wait for.
+            _POOL.terminate()
             _POOL.join()
         finally:
             _POOL = None
             _POOL_WORKERS = None
+    if _POOL_CTX_FILE is not None:
+        try:
+            os.remove(_POOL_CTX_FILE)
+        except OSError:
+            pass
+        _POOL_CTX_FILE = None
 
 
 atexit.register(close)
@@ -132,6 +300,10 @@ def context():
     global _CTX, _BUILDING, _BOOT
     if _CTX is None:
         import estimate
+        cached = _cached_context()
+        if cached is not None:
+            _CTX = cached
+            return _CTX
         moves = estimate.load_moves()
         opens = estimate.opens_map(moves)
         if enabled() and not _in_worker():
@@ -153,7 +325,180 @@ def context():
                 close()
         _CTX = {"moves": moves, "opens": opens, "gob_res": gob_res,
                 "mu_state": mu_state}
+        _store_context(_CTX)
     return _CTX
+
+
+# THE CONTEXT ON DISK (2026-09-27). Every python check in the suite built its own - the gob map and
+# the mu sweeps, ~40 s at three workers, half of experiment_check.py - from the same corpus, all
+# at once. It is a pure function of what _context_key reads, so it is kept beside the pool and
+# reused while that is unchanged. COMBAT_CTX_CACHE=0 turns it off.
+_CTX_CACHE_NAME = ".context-cache.pkl"
+
+
+def _context_key():
+    """A fingerprint of everything the context could depend on, erring towards "changed": every
+    file in every log directory and the whole pool (path, size, mtime - a live client appending
+    to a log changes it), every Python source in tools/combat, every file in data/combat, and the
+    interpreter version."""
+    import hashlib
+    import estimate
+    import fightlog
+    h = hashlib.sha256(sys.version.encode())
+    pool = os.path.join(estimate.ROOT, "data", "combat", "pool")
+
+    # os.scandir, whose entries carry size and time from the directory listing itself - an
+    # os.stat per file made this ~2 s over 15,000 logs. Names beginning with a dot are this
+    # project's own caches (.context-cache.pkl, .deck-dumps.pkl, .sweep-cache/, .derived-stamp),
+    # which change when they are written and must not change the key they are filed under.
+    def walk(d, deep):
+        try:
+            entries = sorted(os.scandir(d), key=lambda e: e.name)
+        except OSError:
+            return
+        for e in entries:
+            if e.name.startswith("."):
+                continue
+            try:
+                if e.is_dir():
+                    if deep:
+                        walk(e.path, True)
+                    continue
+                st = e.stat()
+            except OSError:
+                continue
+            h.update(("%s|%d|%d\n" % (e.path, st.st_size, st.st_mtime_ns)).encode())
+
+    for d in fightlog.find_log_dirs(estimate.ROOT):
+        walk(d, False)
+    walk(pool, True)
+    for sub in (("tools", "combat"), ("data", "combat")):
+        base = os.path.join(estimate.ROOT, *sub)
+        for f in sorted(os.listdir(base)):
+            p = os.path.join(base, f)
+            if os.path.isfile(p) and ((sub[0] == "data") or f.endswith(".py")):
+                with open(p, "rb") as fh:
+                    h.update(f.encode() + b"\0" + fh.read())
+    return h.hexdigest()
+
+
+# SWEEPS ON DISK (2026-09-28). What a sweep hands back is a pure function of the logs it was
+# given, the code, the data files and the context, and all of those are in _context_key - so its
+# result is kept under that key and the paths, in data/combat/pool/.sweep-cache. NOT under the
+# worker count: that only sets how the files are chunked, and every consumer folds its parts in
+# file order - fused against unfused (a quarter the chunk size) and 3, 8 and 16 workers all gave
+# byte-identical packs and reports - so the pack build's sixteen-worker sweeps serve the checks'
+# three- and eight-worker ones, and a run after an edit computes each sweep once, not twice.
+# A rerun with nothing changed - after a Java-only edit, say - reads its sweeps back instead of
+# the corpus. Any change to a log, a tools/combat source or a data/combat file is a new key.
+# COMBAT_SWEEP_CACHE=0 turns it off; the directory is trimmed to SWEEP_CACHE_BYTES, oldest first.
+SWEEP_CACHE_BYTES = 8 * 1024 ** 3
+_KEY_BASE = None
+
+
+def _sweep_cache_on():
+    return (os.environ.get("COMBAT_SWEEP_CACHE", "1").strip() != "0") and not _in_worker()
+
+
+def _sweep_path(kind, paths):
+    global _KEY_BASE
+    import hashlib
+    import estimate
+    if _KEY_BASE is None:
+        _KEY_BASE = _context_key()
+    h = hashlib.sha256(_KEY_BASE.encode())
+    h.update(b"\0" + kind.encode() + b"\0")
+    h.update("\n".join(paths).encode("utf-8", "surrogatepass"))
+    return os.path.join(estimate.ROOT, "data", "combat", "pool", ".sweep-cache",
+                        "%s-%s.pkl" % (kind, h.hexdigest()[:40]))
+
+
+def _stored_sweep(kind, paths):
+    """(result,) when this sweep over these paths is on disk under the current key, else None.
+    Read afresh each time: a consumer that changes what it was handed must not change it for the
+    next one, just as a sweep made twice gives two copies."""
+    if not _sweep_cache_on():
+        return None
+    import pickle
+    try:
+        with open(_sweep_path(kind, paths), "rb") as fh:
+            return (pickle.load(fh),)
+    except Exception:
+        return None
+
+
+def _store_sweep(kind, paths, out):
+    if not _sweep_cache_on():
+        return
+    import pickle
+    p = _sweep_path(kind, paths)
+    d = os.path.dirname(p)
+    try:
+        os.makedirs(d, exist_ok=True)
+        tmp = "%s.%d" % (p, os.getpid())
+        with open(tmp, "wb") as fh:
+            pickle.dump(out, fh, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp, p)
+    except OSError:
+        return
+    try:
+        files = sorted((e.stat().st_mtime, e.stat().st_size, e.path) for e in os.scandir(d)
+                       if e.name.endswith(".pkl"))
+        total = sum(s for _t, s, _p in files)
+        for _t, s, f in files:
+            if total <= SWEEP_CACHE_BYTES:
+                break
+            os.remove(f)
+            total -= s
+    except OSError:
+        pass
+
+
+def _cache_path():
+    import estimate
+    return os.path.join(estimate.ROOT, "data", "combat", "pool", _CTX_CACHE_NAME)
+
+
+def _cached_context():
+    """The stored context when its key still matches, with this process seeded from it exactly as
+    building it would have left it; None otherwise."""
+    if os.environ.get("COMBAT_CTX_CACHE", "1").strip() == "0":
+        return None
+    import pickle
+    import estimate
+    try:
+        with open(_cache_path(), "rb") as fh:
+            key, ctx, swept = pickle.load(fh)
+    except Exception:
+        return None
+    if key != _context_key():
+        return None
+    # The sweeps the context was measured from, so a caller that asks for measure_mu() or
+    # ok_boost() itself (estimate_check's mu sections) is not sent back to the corpus.
+    _SWEPT.update(swept)
+    estimate._GOB_RES = ctx["gob_res"]
+    estimate.seed_measured_mu(ctx["mu_state"])
+    return ctx
+
+
+def _store_context(ctx):
+    if os.environ.get("COMBAT_CTX_CACHE", "1").strip() == "0":
+        return
+    import pickle
+    path = _cache_path()
+    if not os.path.isdir(os.path.dirname(path)):
+        return
+    tmp = "%s.%d" % (path, os.getpid())
+    try:
+        with open(tmp, "wb") as fh:
+            swept = dict((k, v) for k, v in _SWEPT.items() if k[0] in ("measure_mu", "ok_boost"))
+            pickle.dump((_context_key(), ctx, swept), fh, protocol=pickle.HIGHEST_PROTOCOL)
+        os.replace(tmp, path)
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
 
 
 def _gob_species_parallel():
@@ -201,6 +546,52 @@ def map_chunks(sweep_id, paths):
     every merge.
     """
     paths = list(paths)
+    # THE CONTEXT FIRST, THEN THE CACHE. Building the context runs measure_mu and ok_boost in
+    # the bootstrap pool; a measure_mu that arrived here first used to miss the cache, build the
+    # context (which ran measure_mu), and then run itself again - 50 s of a replay.py.
+    if enabled() and (len(paths) > 1) and (_CTX is None) and not _BUILDING and not _in_worker():
+        context()
+    key = (sweep_id, tuple(paths))
+    if (sweep_id in _REUSED) and (key in _SWEPT):
+        return _SWEPT[key]
+    hit = None if (key in _PREFETCHED) else _stored_sweep(sweep_id, paths)
+    if key in _PREFETCHED:
+        # Made by prefetch(), in the one read of the corpus it shared with the other sweeps.
+        out = _PREFETCHED.pop(key)
+    elif hit is not None:
+        out = hit[0]
+    else:
+        # COMBAT_TIMINGS=1 names every sweep and what it cost, on stderr - see _timed.
+        if os.environ.get("COMBAT_TIMINGS") and not _in_worker():
+            out = _timed(sweep_id, paths)
+        else:
+            out = _map_chunks(sweep_id, paths)
+        _store_sweep(sweep_id, paths, out)
+    if sweep_id in _REUSED:
+        _SWEPT[key] = out
+    return out
+
+
+# SWEEPS RUN MORE THAN ONCE PER PROCESS, KEPT (2026-09-27): a --write-pack mapped measure_mu
+# twice, ok_boost three times, weapons_seen twice - ~5 s of file reads each, same corpus, same
+# answer. Only sweeps whose every consumer reads its parts into fresh containers are listed; a
+# consumer that mutated a part in place would see its own edits on the second call.
+_REUSED = frozenset(("measure_mu", "ok_boost", "weapons_seen", "animal_restores",
+                     "animal_grievous", "replay_passes", "mu_from_reductions",
+                     "agility_band"))
+_SWEPT = {}
+
+
+def _timed(sweep_id, paths):
+    import time
+    t0 = time.time()
+    out = _map_chunks(sweep_id, paths)
+    sys.stderr.write("[sweep %-20s %6d files %7.1f s]\n" % (sweep_id, len(paths), time.time() - t0))
+    sys.stderr.flush()
+    return out
+
+
+def _map_chunks(sweep_id, paths):
     if _BUILDING and (_BOOT is not None) and not _in_worker() and (len(paths) > 1):
         tasks = [(sweep_id, c) for c in _chunks(paths, worker_count())]
         return list(_BOOT.imap(_run_chunk, tasks, chunksize=1))
@@ -326,6 +717,40 @@ def _weapons_seen_chunk(paths):
         for g in (log.gear or []):
             if g.get("res"):
                 ql[g["res"]] = g.get("ql")
+        # WHETHER A WEAPON'S COOLDOWN MODIFIER IS IN THE REPORTED COOLDOWN, per weapon, from the
+        # cooldowns themselves: a weapon card thrown with both hands on it (so it is what swung) at
+        # no initiative, whose cooldown / base lies above the agility law's ceiling, could only have
+        # it applied; one below the floor times the modifier could only not. Counted here, judged in
+        # the merge.
+        mods = estimate.fightlog.coolmod_hands(log)
+        # ONLY WHERE THE HANDS CAN BE TRUSTED. Swaps were first logged at schema 13, so an older
+        # log can show a pickaxe in hand after the fight swapped to a sword (James: "combat started
+        # with that weapon then the weapon was swapped"). All 47 pickaxe cooldowns that "could not
+        # carry" its 1.15 were from such logs; from schema 13 on it reads 20 that need it and none
+        # that forbid it - the same as the B12's 510 to 0 (2026-09-27).
+        if mods and (log.schema >= 13):
+            moves = _moves()
+            for eng in log.engagements:
+                for m in eng.moves:
+                    mv = moves.get(m.get("name"))
+                    cd = m.get("cd")
+                    if (m.get("actor") != "me") or (not mv) or (not cd) or (cd <= 0) \
+                            or (not mv.get("damage_share")) or (mv.get("cooldown") is None) \
+                            or mv.get("cooldown_mu"):
+                        continue
+                    held = _hands_at(log, m.get("t") or 0)
+                    if (held[0] is None) or (held[0] != held[1]) or (held[0] not in mods):
+                        continue
+                    cm = mods[held[0]]
+                    r = cd / float(mv["cooldown"])
+                    rec = out.setdefault(held[0].rsplit("/", 1)[-1],
+                                         {"res": held[0], "n": 0, "quality": [], "recovered_base": [],
+                                          "base_iv": []})
+                    tally = rec.setdefault("coolmod_tally", [0, 0])
+                    if r > AGI_CEIL + 0.02:
+                        tally[0] += 1
+                    elif r < (AGI_FLOOR * cm) - 0.02:
+                        tally[1] += 1
         for w in (log.weapons or []):
             res = w.get("res")
             v = w.get("v") or {}
@@ -336,7 +761,7 @@ def _weapons_seen_chunk(paths):
             rec = out.setdefault(base, {"res": res, "n": 0, "quality": [],
                                         "recovered_base": [], "base_iv": []})
             rec["n"] += 1
-            for k in ("damage", "armpen", "range", "grievous"):
+            for k in ("damage", "armpen", "range", "grievous", "coolmod"):
                 if k in v:
                     rec.setdefault(k, set()).add(round(float(v[k]), 4))
             if q and (q > 0):
@@ -351,6 +776,22 @@ def _weapons_seen_chunk(paths):
     return out
 
 
+# The agility law's factor range, (1/2)^(1/7) to 2^(1/7) - Formulas.agilityCooldownFactor.
+AGI_FLOOR, AGI_CEIL = 0.5 ** (1.0 / 7.0), 2.0 ** (1.0 / 7.0)
+
+
+def _hands_at(log, t):
+    """The resources in the two hand slots at time `t`, from the gear rows."""
+    hands = {}
+    for g in (log.gear or []):
+        if g.get("slot") not in (6, 7):
+            continue
+        if (g.get("t") or 0) > t:
+            break
+        hands[g.get("slot")] = g.get("res")
+    return [hands.get(6), hands.get(7)]
+
+
 def weapons_seen_merge(parts):
     """Reduce the raw sightings exactly as the old single pass did."""
     merged = {}
@@ -359,7 +800,11 @@ def weapons_seen_merge(parts):
             dst = merged.setdefault(base, {"res": rec["res"], "n": 0, "quality": [],
                                            "recovered_base": [], "base_iv": []})
             dst["n"] += rec["n"]
-            for k in ("damage", "armpen", "range", "grievous"):
+            if "coolmod_tally" in rec:
+                t = dst.setdefault("coolmod_tally", [0, 0])
+                t[0] += rec["coolmod_tally"][0]
+                t[1] += rec["coolmod_tally"][1]
+            for k in ("damage", "armpen", "range", "grievous", "coolmod"):
                 if k in rec:
                     dst.setdefault(k, set()).update(rec[k])
             dst["quality"].extend(rec["quality"])
@@ -368,9 +813,16 @@ def weapons_seen_merge(parts):
     # Sets do not serialise, and a weapon read at two qualities has two damages and one
     # base - so the tooltip figures are kept as sorted lists and the base as a range.
     for base, rec in merged.items():
-        for k in ("damage", "armpen", "range", "grievous"):
+        for k in ("damage", "armpen", "range", "grievous", "coolmod"):
             if k in rec:
                 rec[k] = sorted(rec[k])
+        # THE VERDICT on the modifier: cooldowns only it explains, and none it cannot -> applies;
+        # the reverse -> does not; both -> disputed (null), and the model then leaves it out.
+        tally = rec.pop("coolmod_tally", None)
+        if tally is not None:
+            rec["coolmod_evidence"] = {"only_with": tally[0], "only_without": tally[1]}
+            rec["coolmod_applies"] = (True if (tally[0] > 0 and tally[1] == 0)
+                                      else (False if (tally[1] > 0 and tally[0] == 0) else None))
         rec["quality"] = sorted(set(rec["quality"]))
         b = sorted(set(rec["recovered_base"]))
         rec["recovered_base"] = {"lo": b[0], "hi": b[-1]} if b else None
@@ -491,6 +943,7 @@ def _agility_control_chunk(paths):
         if not agi_me:
             continue
         obs = defaultdict(list)
+        mods = estimate.fightlog.coolmod_hands(log)
         for eng in log.engagements:
             for m in eng.moves:
                 if m.get("actor") != "me":
@@ -504,11 +957,34 @@ def _agility_control_chunk(paths):
                     continue
                 if mv.get("cooldown") is None:
                     continue
-                obs[eng.gob].append((mv["cooldown"], cd))
+                # A WEAPON CARD WITH A MODIFYING WEAPON IN HAND runs on base x modifier (2026-09-27,
+                # Formulas.cooldownTicks): all 47 disagreements this control reported that day were
+                # Dunki's B12 at 1.25, read as a bat at twice his agility when the client's table put
+                # it at half. Dividing it out in logs older than schema 13 broke eight pickaxe
+                # readings - fights that had swapped to a sword without a gear row saying so.
+                base = mv["cooldown"]
+                if mods and mv.get("damage_share"):
+                    held = _hands_at(log, m.get("t") or 0)
+                    cm = estimate.fightlog.held_coolmod(log, m.get("t") or 0, mods)
+                    if cm:
+                        # Schema 13 and on, both hands on the modifying weapon: it is what swung,
+                        # and its modifier is in the number. Otherwise the hands are not known well
+                        # enough to say, and the reading is left out.
+                        if (log.schema < 13) or (held[0] != held[1]):
+                            continue
+                        base = base * cm
+                obs[eng.gob].append((base, cd))
         best = {}
         for r in log.agility:
             best[r["gob"]] = (r.get("min"), r.get("max"))
         stale = estimate.stale_brackets(log, moves)
+        # THE CLIENT'S BRACKET IS WRONG WITH A PICKAXE IN HAND, in every log recorded before
+        # 2026-09-27: it has cooldown tables for the B12 and the Cutblade and none for the pickaxe,
+        # and it did not even see the pickaxe (gob.currentWeapon), so a Quick Barrage at 20 x 1.15 x
+        # 0.906 = 21 against a slow red deer was read through the default table as a deer 1.2-1.7
+        # times our agility (Shade-1790485979192-Shade-9). Fightsess now reads the hands from the
+        # equipment and narrows nothing then; the brackets already logged are not evidence.
+        no_table = any(r.rsplit("/", 1)[-1] not in ("b12axe", "cutblade") for r in mods) if mods else False
         tol = 1.0 + estimate.AGILITY_EDGE_TOL
         for gob, (lo_r, hi_r) in best.items():
             iv = estimate.agility_interval(obs.get(gob, []), agi_me) if obs.get(gob) else None
@@ -518,7 +994,7 @@ def _agility_control_chunk(paths):
                 agree = None
             else:
                 olo, ohi, _capped = iv
-                if (olo > ohi) or (clo > chi) or (gob in stale):
+                if (olo > ohi) or (clo > chi) or (gob in stale) or no_table:
                     agree = None
                 else:
                     agree = (clo <= ohi * tol) and (olo <= chi * tol)
@@ -859,11 +1335,16 @@ def _animal_grievous_chunk(paths):
         if not log.rows:
             continue
         for eng in log.engagements:
+            # CLEAN ENGAGEMENTS ONLY, as the damage coefficient is (2026-09-28): in a bat swarm the
+            # sampled bat's Wingbeat is timed beside wounds other bats dealt, unlogged, and the
+            # crowd read Wingbeat at 0.52 hard per soft against 0.18 in clean fights.
+            if not eng.defence_ok:
+                continue
             for h in _foe_intake(eng, log.me):
                 shp, hhp = h["shp"], h["hhp"]
                 nm = h["move"]
                 if nm and (shp > 0):
-                    obs[nm].append(hhp / float(shp))
+                    obs[nm].append((shp, hhp))
     return dict(obs)
 
 
@@ -956,7 +1437,42 @@ def _gob_species_chunk(paths):
     return estimate.gob_species(paths)
 
 
+def _flee_points_chunk(paths):
+    import estimate
+    out = []
+    for p in paths:
+        r = estimate._flee_file(p)
+        if r is not None:
+            out.append(r)
+    return out
+
+
+def _replay_passes_chunk(paths):
+    import replay
+    return [replay._passes(p) for p in paths]
+
+
+def _miss_sounds_chunk(paths):
+    import estimate
+    return estimate.miss_sound_tally(paths)
+
+
+def _own_throws_ip_chunk(paths):
+    import estimate
+    return estimate.own_throws_with_ip(paths)
+
+
+def _coverage_uses_chunk(paths):
+    import experiment
+    return experiment.coverage_uses(paths)
+
+
 _SWEEPS = {
+    "coverage_uses": _coverage_uses_chunk,
+    "own_throws_ip": _own_throws_ip_chunk,
+    "miss_sounds": _miss_sounds_chunk,
+    "replay_passes": _replay_passes_chunk,
+    "flee_points": _flee_points_chunk,
     "gob_species": _gob_species_chunk,
     "ok_boost": _ok_boost_chunk,
     "measure_mu": _measure_mu_chunk,

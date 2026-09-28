@@ -614,8 +614,9 @@ def _corpus_sweep():
     # These four are whole-corpus COUNTS, so the order the files are visited in cannot
     # change the answer - an ordered map is still used, for the same shape as the rest.
     gains = thrown = openers = stance_fights = 0
+    # Sorted, as every other sweep here is, so the fused pass in main() can serve it.
     for part in estimate_parallel.map_chunks(
-            "corpus_sweep", estimate.fightlog.default_logs(estimate.ROOT)[0]):
+            "corpus_sweep", sorted(estimate.fightlog.default_logs(estimate.ROOT)[0])):
         gains += part["gains"]
         thrown += part["thrown"]
         openers += part["openers"]
@@ -719,28 +720,15 @@ def a_miss_is_not_a_whiff():
     moves = estimate.load_moves()
     per = collections.defaultdict(collections.Counter)
     arm_on_miss = miss_tot = arm_on_hit = hit_tot = 0
-    for path in logs:
-        try:
-            log = estimate.fightlog.read(path)
-        except Exception:
-            continue
-        for eng in log.engagements:
-            for m in eng.moves:
-                sfx = estimate.fightlog._bracket_sfx(eng, m)
-                if sfx["connected"] is None:
-                    continue
-                name = m.get("name") or m.get("move") or "?"
-                key = "hit" if sfx["connected"] else "miss"
-                per[name][key] += 1
-                target = eng.gob if m.get("actor") == "me" else log.me
-                arm = any((d.get("ch") == "ARM") and (abs(d["t"] - m["t"]) <= estimate.fightlog.PAIR_MS)
-                          and (d.get("gob") == target) for d in eng.damage)
-                if key == "miss":
-                    miss_tot += 1
-                    arm_on_miss += 1 if arm else 0
-                else:
-                    hit_tot += 1
-                    arm_on_hit += 1 if arm else 0
+    # On the pool (2026-09-27: this read the corpus serially, 43 s of the suite's long pole). The
+    # tallies are counts, so folding the chunks' parts gives the single loop's figures exactly.
+    for c_per, c_am, c_mt, c_ah, c_ht in estimate_parallel.map_chunks("miss_sounds", logs):
+        for name, cnt in c_per.items():
+            per[name].update(cnt)
+        arm_on_miss += c_am
+        miss_tot += c_mt
+        arm_on_hit += c_ah
+        hit_tot += c_ht
 
     def share(name):
         c = per.get(name) or {}
@@ -1180,29 +1168,13 @@ def the_gate_test_has_a_known_answer():
     shuffled across the throws. A test that fails the first misses real gates; one that
     passes either of the others invents them.
     """
-    import json as _json
     import random as _random
     print("\nthe gate test, against gates whose answer is known")
     pairs = []
-    for p in sorted(estimate.fightlog.default_logs(estimate.ROOT)[0]):
-        ip = None
-        try:
-            with open(p, "r", encoding="utf-8", errors="replace") as f:
-                for line in f:
-                    if '"ev":"state"' in line:
-                        try:
-                            ip = _json.loads(line).get("myip")
-                        except ValueError:
-                            pass
-                    elif ('"ev":"move"' in line) and ('"actor":"me"' in line) and (ip is not None):
-                        try:
-                            nm = _json.loads(line).get("name")
-                        except ValueError:
-                            continue
-                        if nm:
-                            pairs.append((nm, ip))
-        except OSError:
-            continue
+    # On the pool, joined in file order (2026-09-27: a serial raw read of the corpus, 14-21 s).
+    for part in estimate_parallel.map_chunks(
+            "own_throws_ip", sorted(estimate.fightlog.default_logs(estimate.ROOT)[0])):
+        pairs.extend(part)
     print("    %d of our own throws with the initiative standing before them" % len(pairs))
     cleave = estimate.threshold_test(pairs, "Cleave", (5.0,))
     qb = estimate.threshold_test(pairs, "Quick Barrage", (5.0,))
@@ -3037,57 +3009,86 @@ def skill_sorts_by_toughness():
     check("  most of the common-sense pairs have a value on both sides", judged >= 12, True)
     check("  and none is inverted", inverted, [])
 
+SECTIONS = (
+    hitpoints,
+    agility,
+    defence,
+    deck_weighting,
+    deck_history,
+    mu_measurement,
+    own_defence,
+    pressure_denominator,
+    animal_cards_are_cards,
+    opponents_are_identified,
+    cards_do_not_cross_sides,
+    a_creature_chooses_by_state,
+    the_policy_model_carries_the_gate,
+    the_gate_test_has_a_known_answer,
+    the_reader_knows_every_event,
+    deck_comes_from_the_fight,
+    coverage_has_a_floor,
+    the_slope_says_what_is_measurable,
+    a_miss_is_not_a_whiff,
+    a_stance_scales_every_attack,
+    mu_from_reductions,
+    stale_bracket_control,
+    wiki_rows,
+    agility_consensus_control,
+    creature_cards_pay_and_scale,
+    individuals_in_range,
+    agility_control,
+    agi_brackets,
+    agility_band,
+    agility_carriers,
+    opportunity_knocks,
+    mu_instruments_agree,
+    deepest_interval,
+    dropped_gains,
+    defence_weight_late,
+    attribution_provenance,
+    mu_curve,
+    equalization,
+    foe_skill,
+    skill_sorts_by_toughness,
+    hp_sorts_by_toughness,
+    foe_policy,
+    attack_colours,
+    state_models,
+    tactics,
+    armour,
+    buckets,
+    broken_gear,
+    opponent_period,
+    weapons_live_vs_wiki,
+)
+
+
+# Every corpus sweep a run of this check makes, grouped by how each reads a log (see
+# estimate_parallel.PACK_SWEEPS): made in one fused pass before the sections run, and handed to
+# the first section that asks. A sweep missing from here still runs, just on its own.
+CHECK_SWEEPS = (
+    ("weapons_seen", "agility_band", "agility_control", "agi_records", "animal_cooldowns",
+     "miss_sounds", "own_throws_ip"),
+    ("mu_from_reductions", "collect", "corpus_sweep"),
+)
+
+
 def main():
-    hitpoints()
-    agility()
-    defence()
-    deck_weighting()
-    deck_history()
-    mu_measurement()
-    own_defence()
-    pressure_denominator()
-    animal_cards_are_cards()
-    opponents_are_identified()
-    cards_do_not_cross_sides()
-    a_creature_chooses_by_state()
-    the_policy_model_carries_the_gate()
-    the_gate_test_has_a_known_answer()
-    the_reader_knows_every_event()
-    deck_comes_from_the_fight()
-    coverage_has_a_floor()
-    the_slope_says_what_is_measurable()
-    a_miss_is_not_a_whiff()
-    a_stance_scales_every_attack()
-    mu_from_reductions()
-    stale_bracket_control()
-    wiki_rows()
-    agility_consensus_control()
-    creature_cards_pay_and_scale()
-    individuals_in_range()
-    agility_control()
-    agi_brackets()
-    agility_band()
-    agility_carriers()
-    opportunity_knocks()
-    mu_instruments_agree()
-    deepest_interval()
-    dropped_gains()
-    defence_weight_late()
-    attribution_provenance()
-    mu_curve()
-    equalization()
-    foe_skill()
-    skill_sorts_by_toughness()
-    hp_sorts_by_toughness()
-    foe_policy()
-    attack_colours()
-    state_models()
-    tactics()
-    armour()
-    buckets()
-    broken_gear()
-    opponent_period()
-    weapons_live_vs_wiki()
+    # EACH SECTION TIMED, the slowest named at the end (2026-09-27): this check is the longest
+    # step of the combat suite (622 s of its 1,130), and which of its fifty sections that is
+    # spent in was not written down anywhere.
+    import time
+    took = []
+    if os.environ.get("COMBAT_FUSE", "1") != "0":
+        t0 = time.time()
+        estimate_parallel.prefetch(
+            CHECK_SWEEPS, sorted(estimate.fightlog.default_logs(estimate.ROOT)[0]))
+        took.append((time.time() - t0, "fused sweeps"))
+    for section in SECTIONS:
+        t0 = time.time()
+        section()
+        took.append((time.time() - t0, section.__name__))
+    print("\nslowest sections: %s" % ", ".join("%s %.0f s" % (n, t) for t, n in sorted(took, reverse=True)[:6]))
     if failures:
         print("\n%d CHECK(S) FAILED" % len(failures))
         return 1

@@ -695,7 +695,7 @@ def animal_cards():
 
         damage        Shredding Paw 143 against Vampirism 9, sixteen times
         restoration   Swift Evasion 0.30 against Rampant Rage 0.08, nearly four times
-        grievous      three cards do any at all; every other reads exactly zero
+        grievous      Shredding Paw 0.35 of the soft blow, Fell Scratch 0.1, many cards less
         armour        most soaked at 0.80 to 0.83, Ant Spit alone at 0.50
 
     The cooldowns come from creatures acting as soon as they can, so the floor of the gap
@@ -792,8 +792,11 @@ def animal_cards():
     bris = ((moves.get("Bristle") or {}).get("restores") or {}).get("by_colour", {})
     check("  and only one is even across all four", len(bris), 4)
 
-    # Grievous is the sharpest: a handful of cards, and the rest are not merely small, they
-    # are EXACTLY zero. A per-creature rate would smear that handful across everything.
+    # Grievous is a share of the soft blow, per card, rounded by the game: Shredding Paw ~0.35 on
+    # every blow, Chomp ~0.2, a Fell Scratch ~0.1 that small blows round away. It used to be read
+    # as the median of per-blow ratios, which read the ROUNDING - "a handful of cards, the rest
+    # exactly zero" - while creatures took 21% of their soft damage off us as hard (corrected
+    # 2026-09-28, creature_audit.py). A per-creature rate would still smear it across cards.
     #
     # THE SHAPE IS ASSERTED AND THE MEMBERSHIP IS PRINTED, because the membership moves with
     # the corpus and a pinned list of names is a verdict rather than a reading. It was
@@ -813,9 +816,14 @@ def animal_cards():
     # grown. What must hold is that every card ON the list got there from measurements.
     check("  and every card that leaves a wound was measured",
           [nm for nm in hurts if not (grv_n.get(nm) or 0) > 0], [])
-    check("  and the rest are exactly zero, not merely small",
-          [nm for nm in zeros if grv[nm] != 0.0], [])
-    check("    with more cards reading zero than not", len(zeros) > len(hurts), True)
+    # What must hold of a share of the blow: a finite fraction, and the heaviest wounders
+    # ahead of the light ones - Shredding Paw over Chomp over Fell Scratch, the order every
+    # blow-size bin reads them in.
+    check("  and every share is a finite fraction in [0,1]",
+          [nm for nm, v in grv.items() if not (isinstance(v, (int, float)) and 0.0 <= v <= 1.0)], [])
+    order = [grv.get(nm) for nm in ("Shredding Paw", "Chomp", "Fell Scratch")]
+    check("    Shredding Paw wounds most, then Chomp, then Fell Scratch",
+          all(v is not None for v in order) and (order[0] > order[1] > order[2] > 0), True)
 
     # And the penetration outlier, matched on swing size so size cannot explain it. Which
     # cards soak and how much is a reading, printed with support; the assertion is only that

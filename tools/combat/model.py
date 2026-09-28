@@ -149,14 +149,20 @@ def takes_agility(mv):
     return any("given to the opponent" in (n or "") for n in (mv.get("notes") or []))
 
 
-def cooldown_ticks(base, mu_divides, mu, ip_scale, ip, is_attack, agi_me, agi_foe):
-    """A move's cooldown in whole server ticks. Floors, and floors TWICE - see the Java."""
+def cooldown_ticks(base, mu_divides, mu, ip_scale, ip, is_attack, agi_me, agi_foe, coolmod=1.0):
+    """A move's cooldown in whole server ticks. Floors, and floors TWICE - see the Java.
+
+    `coolmod` is the weapon's own cooldown modifier, passed for a WEAPON card only; it multiplies
+    before the agility factor and the rounding (Formulas.cooldownTicks, Dunki's B12 at 1.25)."""
     cd = base
     if mu_divides and mu > 0:
         cd = math.floor(cd / mu)
     cd = math.floor(cd * (1.0 + (ip_scale * ip)))
+    cm = coolmod if (coolmod and coolmod > 0) else 1.0
     if is_attack:
-        return _round_half_up(cd * agility_cooldown_factor(agi_me, agi_foe))
+        return _round_half_up(cd * cm * agility_cooldown_factor(agi_me, agi_foe))
+    if cm != 1.0:
+        return _round_half_up(cd * cm)
     return int(cd)
 
 

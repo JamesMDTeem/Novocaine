@@ -31,10 +31,16 @@ PASS_BAND = (0.85, 1.15)
 MIN_SIDE = 10
 
 
-def blows():
-    """(species, card, combined opening in the card's colours, swing, gob) for every clean blow on us."""
+_COLOURS = None
+
+
+def _colours():
+    """{card: colour indices} each creature card's damage is read on, built once per process."""
     # THE COLOURS THE PACK READS EACH CARD ON (animal_moves_measured.json), which is what the
     # model multiplies; the wiki's where the pack names none.
+    global _COLOURS
+    if _COLOURS is not None:
+        return _COLOURS
     import json
     meas = json.load(open(os.path.join(ROOT, "data", "combat", "animal_moves_measured.json"), encoding="utf-8"))
     rows = meas if isinstance(meas, list) else (meas.get("moves") or [v for v in meas.values() if isinstance(v, list)][0])
@@ -49,28 +55,43 @@ def blows():
         cs = ((r.get("damage") or {}).get("colours")) if isinstance(r, dict) else None
         if cs:
             wiki[r["name"]] = [cidx[c] for c in cs]
+    _COLOURS = wiki
+    return wiki
+
+
+def _file_blows(path):
+    """blows() for one log, in the order met."""
+    wiki = _colours()
     out = []
-    pool = os.path.join(ROOT, "data", "combat", "pool")
-    for name in sorted(os.listdir(pool)):
-        if not name.endswith(".jsonl"):
+    try:
+        log = fightlog.read(path)
+    except Exception:
+        return out
+    for eng in log.engagements:
+        if not eng.defence_ok or not eng.res or "kritter" not in eng.res:
             continue
-        try:
-            log = fightlog.read(os.path.join(pool, name))
-        except Exception:
-            continue
-        for eng in log.engagements:
-            if not eng.defence_ok or not eng.res or "kritter" not in eng.res:
+        sp = eng.res.rsplit("/", 1)[-1]
+        for h in fightlog.hits(eng, log.me):
+            if h["actor"] == "me" or not h.get("move"):
                 continue
-            sp = eng.res.rsplit("/", 1)[-1]
-            for h in fightlog.hits(eng, log.me):
-                if h["actor"] == "me" or not h.get("move"):
-                    continue
-                o = [min(x, 100) / 100.0 for x in h["openings"]]
-                idx = wiki.get(h["move"]) or (0, 1, 2, 3)
-                p = 1.0
-                for i in idx:
-                    p *= (1.0 - o[i])
-                out.append((sp, h["move"], 1.0 - p, (h["shp"] or 0) + (h["soaked"] or 0), eng.gob))
+            o = [min(x, 100) / 100.0 for x in h["openings"]]
+            idx = wiki.get(h["move"]) or (0, 1, 2, 3)
+            p = 1.0
+            for i in idx:
+                p *= (1.0 - o[i])
+            out.append((sp, h["move"], 1.0 - p, (h["shp"] or 0) + (h["soaked"] or 0), eng.gob))
+    return out
+
+
+def blows():
+    """(species, card, combined opening in the card's colours, swing, gob) for every clean blow on us."""
+    pool = os.path.join(ROOT, "data", "combat", "pool")
+    names = [os.path.join(pool, n) for n in sorted(os.listdir(pool)) if n.endswith(".jsonl")]
+    # On the pool, joined in file order (2026-09-27: a serial read, ~50 s of this check).
+    import estimate_parallel
+    out = []
+    for part in estimate_parallel.ordered_map(_file_blows, names):
+        out.extend(part)
     return out
 
 

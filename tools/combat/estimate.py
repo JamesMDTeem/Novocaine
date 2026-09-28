@@ -446,6 +446,82 @@ def mu_ratio(wd_a, wd_b):
     return wd_a / wd_b if wd_b > 0 else 0.0
 
 
+_DUMPS = None
+
+
+def _deck_dumps():
+    """Every deck dump on this machine: ([(dir, [path in glob order]), ...], {path: doc or None}).
+
+    READ ONCE, AND KEPT (2026-09-27). deck_history() and learned_levels() each opened and parsed
+    all ~3,500 dumps, at import - 1.5 s of every `import estimate`, and a suite imports it in
+    every check and every pool worker, ~50 times. They now share one read, and the parsed dumps
+    are kept beside the pool keyed on every dump's path, size and modification time, so an
+    unchanged set is one small unpickle. A file that does not parse is None, as the readers
+    skipped it before. Each reader still walks the files in the order it always did.
+    """
+    global _DUMPS
+    if _DUMPS is not None:
+        return _DUMPS
+    import pickle
+    dirs = list(fightlog.find_log_dirs(ROOT))
+    dirs.append(os.path.join(ROOT, "data", "combat", "pool", "decks"))
+    listing = [(d, glob.glob(os.path.join(d, "deck-*.json"))) for d in dirs]
+    key = []
+    for _d, paths in listing:
+        for p in paths:
+            try:
+                st = os.stat(p)
+                key.append((p, st.st_size, st.st_mtime_ns))
+            except OSError:
+                key.append((p, None, None))
+    cache = os.path.join(ROOT, "data", "combat", "pool", ".deck-dumps.pkl")
+    docs = None
+    try:
+        with open(cache, "rb") as fh:
+            ckey, cdocs = pickle.load(fh)
+        if ckey == key:
+            docs = cdocs
+    except Exception:
+        pass
+    if docs is None:
+        docs = {}
+        for _d, paths in listing:
+            for p in paths:
+                try:
+                    with open(p, "r", encoding="utf8") as f:
+                        docs[p] = _slim_dump(json.load(f))
+                except (OSError, ValueError):
+                    docs[p] = None
+        if os.path.isdir(os.path.dirname(cache)):
+            tmp = "%s.%d" % (cache, os.getpid())
+            try:
+                with open(tmp, "wb") as fh:
+                    pickle.dump((key, docs), fh, protocol=pickle.HIGHEST_PROTOCOL)
+                os.replace(tmp, cache)
+            except OSError:
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+    _DUMPS = (listing, docs)
+    return _DUMPS
+
+
+def _slim_dump(doc):
+    """A dump cut to what the two readers ask of it - the character and each move's name and two
+    levels - read back through the same .get calls. A dump is ~11 KB of JSON and this is ~1%
+    of it."""
+    if not isinstance(doc, dict):
+        return doc
+    body = doc.get("body", doc)
+    if not isinstance(body, dict):
+        return doc
+    moves = body.get("moves") or []
+    slim = [dict((k, m.get(k)) for k in ("name", "decklevel", "maxlevel")) if isinstance(m, dict) else m
+            for m in moves] if isinstance(moves, list) else moves
+    return {"body": {"char": body.get("char"), "moves": slim}, "char": doc.get("char")}
+
+
 def deck_history():
     """Every deck the client has dumped, as (wall time, {move: level}), oldest first.
 
@@ -463,20 +539,18 @@ def deck_history():
     out = []
     # Local installs, plus the team's dumps pulled by tools/combat/sync_pool.py. The pooled
     # files are named exactly as the client names them - deck-<character>-<wall>.json - so both
-    # sources parse through this one loop and neither needs to know where it came from.
-    dirs = list(fightlog.find_log_dirs(ROOT))
-    dirs.append(os.path.join(ROOT, "data", "combat", "pool", "decks"))
-    for d in dirs:
-        for p in glob.glob(os.path.join(d, "deck-*.json")):
+    # sources parse through this one loop and neither needs to know where it came from. Read
+    # once, shared with learned_levels - see _deck_dumps.
+    listing, docs = _deck_dumps()
+    for _d, paths in listing:
+        for p in paths:
             stamp = os.path.basename(p).rsplit("-", 1)[-1].split(".")[0]
             try:
                 when = int(stamp)
             except ValueError:
                 continue
-            try:
-                with open(p, "r", encoding="utf8") as f:
-                    doc = json.load(f)
-            except (OSError, ValueError):
+            doc = docs.get(p)
+            if doc is None:
                 continue
             body = doc.get("body", doc)
             moves = body.get("moves") or []
@@ -537,20 +611,17 @@ def learned_levels():
     are bought and never unbought, so the latest dump is the character as it stands.
     """
     out = {}
-    dirs = list(fightlog.find_log_dirs(ROOT))
-    dirs.append(os.path.join(ROOT, "data", "combat", "pool", "decks"))
+    listing, docs = _deck_dumps()
     newest = {}
-    for d in dirs:
-        for p in sorted(glob.glob(os.path.join(d, "deck-*.json"))):
+    for _d, paths in listing:
+        for p in sorted(paths):
             stamp = os.path.basename(p).rsplit("-", 1)[-1].split(".")[0]
             try:
                 when = int(stamp)
             except ValueError:
                 continue
-            try:
-                with open(p, "r", encoding="utf8") as f:
-                    doc = json.load(f)
-            except (OSError, ValueError):
+            doc = docs.get(p)
+            if doc is None:
                 continue
             body = doc.get("body", doc)
             char = body.get("char") or doc.get("char")
@@ -954,7 +1025,15 @@ def measured_mu():
     """
     global _MU_STATE, MU_MEASURED, MU_DISPUTED
     if _MU_STATE is None:
+        # The pool's context carries this measurement, and a stored one is read off disk - so
+        # ask for it first, which may leave nothing to measure.
+        estimate_parallel.warm()
+    if _MU_STATE is None:
         measured, disputed = _mu_measured()
+        if _MU_STATE is not None:
+            # Built underneath us - a first sweep builds the pool's context, which measures
+            # mu - so it is already stored and its warning already written.
+            return _MU_STATE
         MU_MEASURED = measured
         MU_DISPUTED = disputed
         for _lvl, (_a, _b) in sorted(disputed.items()):
@@ -963,6 +1042,79 @@ def measured_mu():
                 "they do not meet, so neither is folded in\n" % (_lvl, _a, _b))
         _MU_STATE = (measured, disputed)
     return _MU_STATE
+
+
+def miss_sound_tally(paths):
+    """For estimate_check's a_miss_is_not_a_whiff, over some logs: ({card: Counter(hit, miss)},
+    misses with an armour number, misses, hits with one, hits) from each move's sound bracket."""
+    per = defaultdict(Counter)
+    arm_on_miss = miss_tot = arm_on_hit = hit_tot = 0
+    for path in paths:
+        try:
+            log = fightlog.read(path)
+        except Exception:
+            continue
+        for eng in log.engagements:
+            for m in eng.moves:
+                sfx = fightlog._bracket_sfx(eng, m)
+                if sfx["connected"] is None:
+                    continue
+                name = m.get("name") or m.get("move") or "?"
+                key = "hit" if sfx["connected"] else "miss"
+                per[name][key] += 1
+                target = eng.gob if m.get("actor") == "me" else log.me
+                arm = any((d.get("ch") == "ARM") and (abs(d["t"] - m["t"]) <= fightlog.PAIR_MS)
+                          and (d.get("gob") == target) for d in eng.damage)
+                if key == "miss":
+                    miss_tot += 1
+                    arm_on_miss += 1 if arm else 0
+                else:
+                    hit_tot += 1
+                    arm_on_hit += 1 if arm else 0
+    return (dict(per), arm_on_miss, miss_tot, arm_on_hit, hit_tot)
+
+
+def own_throws_with_ip(paths):
+    """For estimate_check's gate test: (card, our initiative standing before it) for every card we
+    threw, in file order - read off the raw rows, the last state row before each move."""
+    pairs = []
+    for p in paths:
+        ip = None
+        try:
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if '"ev":"state"' in line:
+                        try:
+                            ip = fightlog.loads(line).get("myip")
+                        except ValueError:
+                            pass
+                    elif ('"ev":"move"' in line) and ('"actor":"me"' in line) and (ip is not None):
+                        try:
+                            nm = fightlog.loads(line).get("name")
+                        except ValueError:
+                            continue
+                        if nm:
+                            pairs.append((nm, ip))
+        except OSError:
+            continue
+    return pairs
+
+
+def seed_measured_mu(state):
+    """Adopt a measured_mu() result made elsewhere (estimate_parallel's stored context), leaving
+    this process as measuring it would have - the module names set and the disputed levels
+    reported once."""
+    global _MU_STATE, MU_MEASURED, MU_DISPUTED
+    if (_MU_STATE is not None) or (state is None):
+        return
+    measured, disputed = state
+    MU_MEASURED = measured
+    MU_DISPUTED = disputed
+    for _lvl, (_a, _b) in sorted(disputed.items()):
+        sys.stderr.write(
+            "mu at level %d DISPUTED: Take Aim says %s, Opportunity Knocks says %s - "
+            "they do not meet, so neither is folded in\n" % (_lvl, _a, _b))
+    _MU_STATE = (measured, disputed)
 
 
 def load_moves():
@@ -1026,13 +1178,31 @@ def stance_attack_mult(deck):
     mult = 1.0
     if not deck:
         return mult
+    stances = _stance_mults()
     for name, level in deck.items():
         if not level:
             continue
-        m = load_moves().get(name) or {}
-        if m.get("stance") and m.get("attack_mult"):
-            mult *= float(m["attack_mult"])
+        if name in stances:
+            mult *= stances[name]
     return mult
+
+
+_STANCE_MULTS = {}
+
+
+def _stance_mults():
+    """{stance: attack_mult} off the move sheet, read once per version of the sheet. This used
+    to re-parse the whole sheet per deck entry - 25,511 reads, 10.6 s of a 1500-log replay."""
+    try:
+        stamp = os.path.getmtime(SHEET)
+    except OSError:
+        stamp = None
+    if stamp not in _STANCE_MULTS:
+        _STANCE_MULTS.clear()
+        _STANCE_MULTS[stamp] = dict(
+            (name, float(m["attack_mult"])) for name, m in load_moves().items()
+            if m.get("stance") and m.get("attack_mult"))
+    return _STANCE_MULTS[stamp]
 
 
 def attack_weight_bounds(move, attrs, level=None, deck=None):
@@ -1671,40 +1841,23 @@ def flee_points(logs=None):
     hits = defaultdict(list)
     res, died_at, last_hit = {}, {}, {}
     flee = {}
-    for path in sorted(logs):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        wall = (log.header or {}).get("wall") or 0
-        seen_here = set()
-        for eng in log.engagements:
-            if eng.res:
-                res[eng.gob] = eng.res
-            # The creature's damage over the whole file, once (see fightlog.Log.damage_on).
-            if eng.gob not in seen_here:
-                seen_here.add(eng.gob)
-                for d in log.damage_on(eng.gob):
-                    if d.get("ch") == "SHP":
-                        hits[eng.gob].append((wall + d["t"], d["v"]))
-            # The first moment this individual extended its olive branch, on the same
-            # absolute clock as the damage, so the two can be compared across files.
-            for st in eng.states:
-                g = st.get("gst")
-                if (g is not None) and (g & 2):
-                    t = wall + st["t"]
-                    if (eng.gob not in flee) or (t < flee[eng.gob]):
-                        flee[eng.gob] = t
-                    break
-            # Only a kill whose last blow was drawn has a total that IS its health; one
-            # that died to an undrawn blow is short by it, so it falls to the survivor
-            # branch below and bounds the fraction from one side (see kill_kind).
-            if kill_kind(eng, log) == "drawn":
-                tot = sum(v for _t, v in hits.get(eng.gob, []))
-                died_at[eng.gob] = tot
-                shp = [d for d in log.damage_on(eng.gob) if d.get("ch") == "SHP"]
-                if shp:
-                    last_hit[eng.gob] = shp[-1]["v"]
+    # PER FILE IN THE POOL, FOLDED HERE IN FILE ORDER (2026-09-27): this read every log serially in
+    # the parent - 76 s of a --write-pack. Each file's projection (_flee_file) carries what it saw;
+    # the fold applies it in sorted order, and a drawn kill's total is still everything the gob
+    # took up to and including its file, as it was.
+    for part in estimate_parallel.map_chunks("flee_points", sorted(logs)):
+        for f_res, f_hits, f_flee, f_kills in part:
+            for gob, r in f_res:
+                res[gob] = r
+            for gob, rows in f_hits:
+                hits[gob].extend(rows)
+            for gob, t in f_flee:
+                if (gob not in flee) or (t < flee[gob]):
+                    flee[gob] = t
+            for gob, last in f_kills:
+                died_at[gob] = sum(v for _t, v in hits.get(gob, []))
+                if last is not None:
+                    last_hit[gob] = last
 
     out = defaultdict(list)
     for gob, t in sorted(flee.items()):
@@ -1731,6 +1884,41 @@ def flee_points(logs=None):
         frac_hi = (1.0 - (dmg / float(hi))) if hi else None
         out[(res.get(gob) or "?").split("/")[-1]].append((gob, dmg, lo, hi, frac_lo, frac_hi))
     return out
+
+
+def _flee_file(path):
+    """One log's part of flee_points: (res, hits, first flight, drawn kills), each in file order."""
+    try:
+        log = fightlog.read(path)
+    except Exception:
+        return None
+    wall = (log.header or {}).get("wall") or 0
+    f_res, f_hits, f_flee, f_kills = [], [], {}, []
+    seen_here = set()
+    for eng in log.engagements:
+        if eng.res:
+            f_res.append((eng.gob, eng.res))
+        # The creature's damage over the whole file, once (see fightlog.Log.damage_on).
+        if eng.gob not in seen_here:
+            seen_here.add(eng.gob)
+            f_hits.append((eng.gob, [(wall + d["t"], d["v"]) for d in log.damage_on(eng.gob)
+                                     if d.get("ch") == "SHP"]))
+        # The first moment this individual extended its olive branch, on the same absolute
+        # clock as the damage, so the two can be compared across files.
+        for st in eng.states:
+            g = st.get("gst")
+            if (g is not None) and (g & 2):
+                t = wall + st["t"]
+                if (eng.gob not in f_flee) or (t < f_flee[eng.gob]):
+                    f_flee[eng.gob] = t
+                break
+        # Only a kill whose last blow was drawn has a total that IS its health; one that died to
+        # an undrawn blow is short by it, so it falls to the survivor branch and bounds the
+        # fraction from one side (see kill_kind).
+        if kill_kind(eng, log) == "drawn":
+            shp = [d for d in log.damage_on(eng.gob) if d.get("ch") == "SHP"]
+            f_kills.append((eng.gob, shp[-1]["v"] if shp else None))
+    return (f_res, f_hits, sorted(f_flee.items()), f_kills)
 
 
 def report_flees():
@@ -1896,7 +2084,9 @@ def agi_records_by_species(logs=None):
 def agi_species_comparison(logs=None):
     if logs is None:
         logs, _dirs = fightlog.default_logs(ROOT)
-    per, _moves = collect(logs)
+    # The same read main() has just made - see collect_cached (2026-09-27: a second full collect,
+    # 28 s of every --write-pack).
+    per, _moves = collect_cached(logs)
     brackets = agi_records_by_species(logs)
     out = {}
     for sp in sorted(set(list(per.keys()) + list(brackets.keys()))):
@@ -2013,6 +2203,55 @@ def report_agi_species_comparison(logs=None):
 ARM_RMS_TRUST = 1.0
 
 
+def _armour_grid(pts, top):
+    """[(squared error, hard, soft)] for every split of every total soak 0..top, over (raw, dealt).
+
+    VECTORISED OVER THE CANDIDATES, SUMMED IN THE SAME ORDER (2026-09-27). The loop this replaces
+    called model.dealt_damage once per candidate per hit - 540 million calls and most of the
+    pack's serial time (fit_armour was 333 s of a profiled --write-pack). Here each hit is applied
+    to every candidate at once with the same arithmetic as model.dealt_damage, in the same order,
+    and each candidate's error accumulates hit by hit as before. One difference: the loop squared
+    with Python's ** (the C library's pow, which on Windows is not correctly rounded - 501 in a
+    million squares differ from x*x), this with x*x, so 4 of 31 grids differed in a last bit on a
+    candidate that was not chosen. Checked on the whole corpus: all 20 fitted armours - hard, soft,
+    rms, total range, identified - identical, in 3.8 s against 78. Pure Python where numpy is absent.
+    """
+    try:
+        import numpy as np
+    except ImportError:
+        np = None
+    if np is None:
+        out = []
+        for total in range(0, top + 1):
+            for soft in range(0, total + 1):
+                hard = total - soft
+                err = 0.0
+                for raw, dealt in pts:
+                    err += (model.dealt_damage(raw, hard, soft, 0.0) - dealt) ** 2
+                out.append((err, hard, soft))
+        return out
+    hs, ss = [], []
+    for total in range(0, top + 1):
+        for soft in range(0, total + 1):
+            hs.append(total - soft)
+            ss.append(soft)
+    hard = np.array(hs, dtype=np.float64)
+    soft = np.array(ss, dtype=np.float64)
+    has_soft = soft > 0
+    twice = np.where(has_soft, 2.0 * soft, 1.0)
+    err = np.zeros(len(hs), dtype=np.float64)
+    for raw, dealt in pts:
+        raw = float(raw)
+        pen = raw * 0.0
+        r = np.maximum(0.0, (raw - pen) - hard)
+        x = np.minimum(1.0, r / twice)
+        ramp = pen + r - (soft * (1.0 - ((1.0 - x) * (1.0 - x))))
+        d = np.where(has_soft, ramp, pen + r)
+        e = d - float(dealt)
+        err += e * e
+    return [(float(e), h, s) for e, h, s in zip(err.tolist(), hs, ss)]
+
+
 def fit_armour(hits, clean=None):
     """Hard and soft soak, from attacks whose ARM channel recorded what was absorbed.
 
@@ -2054,14 +2293,7 @@ def fit_armour(hits, clean=None):
         return {"hard": None, "soft": None, "n": len(pts), "rms": 0.0, "source": source,
                 "total": (biggest, None), "identified": False, "penetrated": False}
     top = biggest + 2
-    scored = []
-    for total in range(0, top + 1):
-        for soft in range(0, total + 1):
-            hard = total - soft
-            err = 0.0
-            for raw, dealt in pts:
-                err += (model.dealt_damage(raw, hard, soft, 0.0) - dealt) ** 2
-            scored.append((err, hard, soft))
+    scored = _armour_grid(pts, top)
     scored.sort()
     err, hard, soft = scored[0]
 
@@ -2161,6 +2393,9 @@ def gob_species(paths=None):
     for the life of the process.
     """
     global _GOB_RES
+    if (_GOB_RES is None) and (paths is None):
+        # The pool's context carries this map (built on the pool, or read off disk).
+        estimate_parallel.warm()
     if (_GOB_RES is not None) and (paths is None):
         return _GOB_RES
     out = {}
@@ -2171,7 +2406,7 @@ def gob_species(paths=None):
                     if ('"foe"' not in line) and ('"begin"' not in line):
                         continue
                     try:
-                        r = json.loads(line)
+                        r = fightlog.loads(line)
                     except ValueError:
                         continue
                     if r.get("ev") == "foe" and r.get("gob") and r.get("res"):
@@ -2472,6 +2707,48 @@ def own_defence_weight(moves, attrs, gear, levels, held=None):
     return best
 
 
+_BLOCK_PARTS = None
+
+
+def _block_parts(why):
+    """(block skill, stance multiplier x mu) out of own_defence_weight's description, or None."""
+    global _BLOCK_PARTS
+    if _BLOCK_PARTS is None:
+        import re
+        _BLOCK_PARTS = re.compile(r": \w+ ([0-9.eE+-]+) x ([0-9.eE+-]+) x mu ([0-9.]+)")
+    m = _BLOCK_PARTS.search(why or "")
+    if not m:
+        return None
+    return (float(m.group(1)), float(m.group(2)) * float(m.group(3)))
+
+
+def pressure_ref(rec, skill):
+    """The factor that puts a creature's measured pressure into the opening formula's terms.
+
+    A creature's card opens us by cbrt(equalize(S_it, S_ours) * m_it / m_ours) * Ob * (1 - Oc), and
+    the pressure is what the corpus sees of that: gain / (1 - Oc). Our half of it - the equalized
+    skill ratio and our STANCE's multiplier - differs fight to fight, so the pressure is an average
+    over whatever we brought. This is sum(p) / sum(p / f), f = cbrt(equalize(S_it, S_ours) / m_ours)
+    over the same observations: the client divides f for the fight in hand by it (FoeModel.
+    scaleAgainst), which returns the measured pressure where the fight looks like the ones it
+    came from and moves it the way the formula says elsewhere. Scored on every creature gain on
+    us with each character left out: rms 1.54 against 2.37 for the old block weight ratio, which
+    let our block skill move a creature's openings inside the equalization band (2026-09-28).
+    None when the species' skill or the observations are missing.
+    """
+    obs = rec.get("pressure_obs") or ()
+    if (not skill) or (skill <= 0) or not obs:
+        return None
+    num = den = 0.0
+    for p, s_ours, m_ours in obs:
+        if (p <= 0) or (s_ours <= 0) or (m_ours <= 0):
+            continue
+        f = (model.equalize(skill, s_ours) / m_ours) ** (1.0 / 3.0)
+        num += p
+        den += p / f
+    return round(num / den, 4) if den > 0 else None
+
+
 # The four attack schools, and the opening colour each one inflicts. The wiki's animal
 # table names schools where our own sheet names colours; they are the same four things.
 SCHOOL_COLOUR = {"striking": "green", "backhanded": "blue",
@@ -2694,7 +2971,7 @@ def collect_cached(paths):
 
 _LIST_KEYS = ("skipped", "wd", "foe_close", "foe_close_col", "foe_state", "hits",
               "took", "soak", "soak_clean", "foe_moves", "foe_choice", "sep", "myspd",
-              "foespd", "ip_edges", "foe_gaps", "flee")
+              "foespd", "ip_edges", "foe_gaps", "flee", "pressure_obs")
 _SET_KEYS = ("agi_me", "agi_obs", "agi_obs_clean", "boost_moves",
              "mu_scaled_openings", "my_wd", "killed", "killed_floor", "partial")
 _INT_KEYS = ("engagements", "sfx_brackets")
@@ -2778,6 +3055,10 @@ def _blank_rec():
         # What the opponent's moves do to US, against our own KNOWN defence weight.
         # move -> list of (pressure, our Wd, n) - see own_defence_weight.
         "pressure": defaultdict(list), "my_wd": set(),
+        # (pressure, our block SKILL, our stance multiplier x mu) per observation - the two
+        # halves of our block weight, which the opening formula treats differently: only the
+        # skill equalizes. See pressure_ref.
+        "pressure_obs": [],
         # (move, the opponent's own initiative before it, whether we were alone) - the raw
         # material for foe_policy.
         "foe_moves": [],
@@ -2955,6 +3236,7 @@ def _collect_file(p, moves, opens):
     # actually fought with rather than the strongest card the deck could have held.
     held = stance_of(log, None, who="me")
     my_wd, my_wd_why = own_defence_weight(moves, attrs, log.gear, lv, held=held)
+    my_block = _block_parts(my_wd_why) if my_wd else None
     dealt_seen, fled_seen = set(), set()
     coolmods = fightlog.coolmod_hands(log)
     crowded = {e.gob for e in log.engagements if e.others_present}
@@ -3301,6 +3583,8 @@ def _collect_file(p, moves, opens):
                     continue
                 rec["pressure"][(name, colour)].append(gain / (1.0 - oc))
                 rec["my_wd"].add(round(my_wd, 1))
+                if my_block is not None:
+                    rec["pressure_obs"].append((gain / (1.0 - oc), my_block[0], my_block[1]))
 
         # Under Bloodlust our attack weight carries a charge nobody recorded - see
         # holds_charged_stance - so no gain of ours in this fight measures the opponent.
@@ -4137,6 +4421,7 @@ def animal_move_damage(per):
             if (swing >= 0) and h.get("move"):
                 hits[h["move"]].append((sp, tuple(o), swing))
     out = {}
+    own_pairs = {}
     for nm, hs in hits.items():
         cols, source = animal_attack_colours([x for x in hs if x[2] > 0], wiki.get(nm))
         idx = cols if cols else (0, 1, 2, 3)
@@ -4168,10 +4453,94 @@ def animal_move_damage(per):
                 continue
             species[sp] = {"coef": ratio_coef(by_pairs[sp]),
                            "p90": round(sv[int(0.9 * (len(sv) - 1))], 1), "n": len(sv)}
+            own_pairs[(nm, sp)] = by_pairs[sp]
         if species:
             entry["by_species"] = species
         out[nm] = entry
+    _derive_by_strength(out, own_pairs, per)
     return out
+
+
+# The species strengths the last animal_move_damage() fitted, for write_animal_moves to publish.
+DAMAGE_STRENGTH = {}
+
+
+def _derive_by_strength(out, own_pairs, per, iters=100):
+    """Give each thrower too rarely seen on a card that card's base times ITS strength.
+
+    WHY (2026-09-28, creature_audit.py). A species with too few blows of its own on a card was
+    priced at the card's POOLED coefficient - the average over whoever throws it, so the bear's
+    Bear Down read the mean of boars, cave anglers, moose and polar bears. Held out cell by cell,
+    that pooled figure missed a species' own blows by x1.36 at the median and x1.76 at the 90th
+    percentile, from x0.29 (a bat's Fell Scratch priced at everyone's) to x1.82 (a polar bear's).
+    One multiplicative model - coef[species, card] = base[card] * strength[species], fitted as
+    alternating ratios of totals over the cells that DO have their own blows - missed by x1.09 and
+    x1.25 on the same held-out cells. The strengths read like the animals: polar bear 1.57, cave
+    angler 1.25, bear 1.19, wolf 1.12, down to boar 0.72 and cattle 0.69.
+
+    Only where the product is identified: the species and the card must be joined through cells
+    that share cards, or strength and base trade freely and the product is arbitrary. A derived
+    entry says so ("from"), and its p90 keeps the card's own p90-to-median proportion.
+    """
+    global DAMAGE_STRENGTH
+    DAMAGE_STRENGTH = {}
+    if not own_pairs:
+        return
+    # Creatures only: a person (body#) throws OUR cards and an unnamed gob (?#) is nobody in
+    # particular, and neither has a strength to share with an animal.
+    cells = dict((k, v) for k, v in own_pairs.items()
+                 if v and not str(k[1]).startswith(("body#", "?#")))
+    sps = sorted(set(s for _c, s in cells))
+    cds = sorted(set(c for c, _s in cells))
+    # Components of the species-card graph: a product is identified only inside one.
+    parent = {}
+
+    def find(x):
+        while parent.setdefault(x, x) != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    for c, s in cells:
+        parent[find(("c", c))] = find(("s", s))
+    S = dict((s, 1.0) for s in sps)
+    B = {}
+    for c in cds:
+        rows = [x for (cc, _s), v in cells.items() if cc == c for x in v]
+        den = sum(x * x for _sw, x in rows)
+        B[c] = (sum(sw for sw, _x in rows) / den) if den else 0.0
+    for _ in range(iters):
+        for s in sps:
+            num = sum(sw for (c, ss), v in cells.items() if ss == s for sw, _x in v)
+            den = sum(B[c] * x * x for (c, ss), v in cells.items() if ss == s for _sw, x in v)
+            S[s] = (num / den) if den else 1.0
+        for c in cds:
+            num = sum(sw for (cc, s), v in cells.items() if cc == c for sw, _x in v)
+            den = sum(S[s] * x * x for (cc, s), v in cells.items() if cc == c for _sw, x in v)
+            B[c] = (num / den) if den else 0.0
+    # Report strengths on the scale of the median species, which is the only scale they have.
+    ms = sorted(S.values())[len(S) // 2] if S else 1.0
+    DAMAGE_STRENGTH = dict((s, round(S[s] / ms, 3)) for s in sps if ms > 0)
+    for nm, entry in out.items():
+        if nm not in B or B[nm] <= 0:
+            continue
+        own = entry.get("by_species") or {}
+        for sp, rec in per.items():
+            if (sp in own) or (sp not in S) or (S[sp] <= 0) or str(sp).startswith(("body#", "?#")):
+                continue
+            if nm not in (rec.get("their_moves") or ()) and not any(
+                    h.get("move") == nm for h in (rec.get("took") or ())):
+                continue
+            if find(("c", nm)) != find(("s", sp)):
+                continue
+            coef = round(B[nm] * S[sp], 1)
+            # The pessimistic end in the card's own proportion to its median, never below the
+            # median: left out, the pack fell back to the POOLED p90, which sits under a strong
+            # thrower's derived median and priced its worst blow softer than its usual one.
+            spread = (entry["p90"] / entry["coef"]) if (entry.get("coef") and entry.get("p90")) else 1.0
+            own[sp] = {"coef": coef, "p90": round(coef * max(spread, 1.0), 1), "n": 0,
+                       "from": "card base x species strength"}
+        if own:
+            entry["by_species"] = dict(sorted(own.items()))
 
 
 def animal_move_soak(paths=None):
@@ -4248,17 +4617,22 @@ def animal_move_restores(paths=None):
 
 
 def animal_move_grievous(paths=None):
-    """Hard hitpoints per soft hitpoint, per card.
+    """Hard hitpoints per soft hitpoint, per card: total HHP over total soft damage.
 
-    THIS IS THE ONE THAT DECIDES WHETHER A FIGHT LEAVES A MARK. Soft hitpoints come back;
-    hard ones are the lasting wound, and the corpus says only three creature cards inflict
-    any at all - Shredding Paw at a third of what it takes in soft, Blood and Gore at a
-    quarter, Chomp at a fifth. Everything else reads exactly zero across hundreds of
-    observations, including Fell Scratch over 705 of them.
+    THIS IS THE ONE THAT DECIDES WHETHER A FIGHT LEAVES A MARK. Soft hitpoints come back; hard
+    ones are the lasting wound.
 
-    A per-creature figure cannot express that: a creature that throws Chomp among four
-    harmless cards would carry a fifth of Chomp's rate on everything it does, which is
-    wrong in both directions at once.
+    A RATIO OF TOTALS, NOT THE MEDIAN OF RATIOS (corrected 2026-09-28, creature_audit.py). The wound
+    is a fixed share of the blow's soft damage, ROUNDED: Shredding Paw takes 0.35 on every blow at
+    every size, Chomp 0.2 and every Chomp of five or more soft wounds, a cave angler's Fell Scratch
+    0.13 - seven of its eight blows of 5-9 soft wound, while most of its blows are 0-4 soft and round
+    to nothing. The median of per-blow ratios read that rounding, not the rate: it published "only
+    three cards wound, every other reads exactly zero" while creatures took 700 hard hitpoints off
+    us against 3,324 soft (21%), most of it from cards the pack said wound nothing. The same bias
+    ratio_coef removed from the damage coefficient.
+
+    A per-creature figure cannot express it either: a creature that throws Chomp among four
+    harmless cards would carry a fifth of Chomp's rate on everything it does.
     """
     if paths is None:
         paths, _dirs = fightlog.default_logs(ROOT)
@@ -4270,8 +4644,10 @@ def animal_move_grievous(paths=None):
     for nm, v in obs.items():
         if len(v) < 10:
             continue
-        v.sort()
-        out[nm] = {"per_soft": round(v[len(v) // 2], 3), "n": len(v)}
+        soft = sum(s for s, _h in v)
+        hard = sum(h for _s, h in v)
+        out[nm] = {"per_soft": round(hard / float(soft), 3) if soft else 0.0, "n": len(v),
+                   "wounding": sum(1 for _s, h in v if h > 0)}
     return out
 
 
@@ -4334,8 +4710,11 @@ def write_animal_moves(per, paths=None):
            "note": "Per-CARD, not per-creature. Opening percentages are ratios: the fit "
                    "has a gauge freedom that nothing here resolves.",
            "species_factor": dict((k, round(v, 3)) for k, v in sorted(f.items())),
+           # What a card's damage is scaled by for a thrower with too few blows of its own - see
+           # _derive_by_strength. Openings use species_factor; damage uses this.
+           "species_strength": dict(sorted(DAMAGE_STRENGTH.items())),
            "moves": out}
-    with open(ANIMAL_MOVES_OUT, "w", encoding="utf8") as fh:
+    with fightlog.write_atomically(ANIMAL_MOVES_OUT, encoding="utf8") as fh:
         json.dump(doc, fh, indent=1, sort_keys=False)
         fh.write(chr(10))
     print("wrote %s  (%d card(s): %d openings, %d damage, %d cooldown, %d restore, "
@@ -5107,6 +5486,12 @@ def foe_policy_rule(rec):
         return None
     tbase = _bits(Counter(r[0] for r in test))
     tgain = tbase - ((tna * _bits(ta) + tnb * _bits(tb)) / float(tna + tnb))
+    # THE HELD-OUT GATE THE DOCSTRING PROMISED AND NOTHING ENFORCED (2026-09-27). Every rule had
+    # simply happened to gain on its held-out half until the 1,813-fight sync, when cave rat and
+    # golden eagle published rules that LOST bits on data they were not chosen on - and
+    # estimate_check, which asserts the promise, went red. A rule that does not survive is noise.
+    if tgain <= 0:
+        return None
     # THE BRANCH AS SOMETHING THE SIMULATOR CAN ACT ON. Knowing a creature throws Bristle
     # when it is closed and Fell Scratch when it is open is only useful if the pressure and
     # the restoration follow, so each branch carries its own - the card mix on that side,
@@ -6031,10 +6416,18 @@ def foe_skill_profile(rec, rows=None):
         grid.append(f)
         f *= PROFILE_GRID
 
+    # ONE LOG PER DISTINCT SKILL, NOT PER ROW (2026-09-27): 27,050 rows over the corpus carry
+    # 1,279 skills between them, and this ran the log for every row at every grid point - 7 s of
+    # a --write-pack on one core. The sum is the same terms in the same order.
+    skills = sorted(set(o[0] for o in obs))
+    at = dict((sk, i) for i, sk in enumerate(skills))
+    ix = [at[o[0]] for o in obs]
+
     def ssq(F):
+        logs = [math.log(model.equalize(sk, F)) for sk in skills]
         t = 0.0
-        for s, leq, w in obs:
-            d = leq - math.log(model.equalize(s, F))
+        for (_s, leq, w), i in zip(obs, ix):
+            d = leq - logs[i]
             t += w * d * d
         return t
 
@@ -7519,7 +7912,7 @@ def _character_file(p, wep):
     who, attr = head.get("char"), head.get("attr") or {}
     if not who or not attr:
         return None
-    d = {"logs": 1, "attr": attr}
+    d = {"logs": 1, "attr": attr, "attrb": head.get("attrb") or {}}
     # The game's own figures for what is in hand, keyed by resource basename. The gear
     # rows say WHAT is held and the weapon rows say what it does.
     wrange = {}
@@ -7564,6 +7957,10 @@ def _character_file(p, wep):
     return (who, d, head.get("wall") or 0)
 
 
+# How far back a character's combat set may be found - see write_characters.
+COMBAT_SET_DAYS = 14
+
+
 def write_characters(paths=None):
     """Every character the corpus has fought as, with the numbers a fight needs.
 
@@ -7600,22 +7997,57 @@ def write_characters(paths=None):
     # File order breaks ties so the merge stays deterministic and parallel == serial.
     seen = {}
     wall_of = {}
+    kits = {}
     for part in estimate_parallel.map_chunks("write_characters", sorted(paths)):
         for who, rec, wall in part:
             d = seen.setdefault(who, {"name": who, "logs": 0})
             d["logs"] += rec["logs"]
+            if "armour" in rec:
+                kits.setdefault(who, []).append((wall, rec))
             if wall >= wall_of.get(who, -1):
                 wall_of[who] = wall
                 d["attr"] = rec["attr"]
+                d["attrb"] = rec.get("attrb") or {}
                 if "weapon" in rec:
                     d["weapon"] = rec["weapon"]
                 if "armour" in rec:
                     d["armour"] = rec["armour"]
                     d["shield"] = rec["shield"]
+    # THE COMBAT SET, NOT THE NEWEST ONE (James, 2026-09-27): "each character has multiple sets,
+    # I for example have a mining set and my actual combat/plate gear. Dunki and Shade have
+    # learning and combat sets ... for optimization such as generating decks, it's probably best
+    # to just use our combat gear. Live advice should use whatever we have at the moment." The
+    # newest log had ZzxcuV3 in a whaler's jacket and a mask at 38/25, and every deck generated
+    # for him would have been for that. So armour, weapon and shield come TOGETHER from the most
+    # armoured log inside COMBAT_SET_DAYS of his newest one - a set, not a mix of two - and the
+    # newest reading stays beside it as armour_now. Attributes are still the newest.
+    for who, d in seen.items():
+        near = [(w, r) for (w, r) in kits.get(who, [])
+                if w >= wall_of.get(who, 0) - COMBAT_SET_DAYS * 86400000]
+        if not near:
+            continue
+        w, best = max(near, key=lambda wr: ((wr[1]["armour"].get("hard") or 0)
+                                            + (wr[1]["armour"].get("soft") or 0), wr[0]))
+        if "armour" in d:
+            d["armour_now"] = d["armour"]
+        d["armour"] = best["armour"]
+        d["shield"] = best["shield"]
+        if "weapon" in best:
+            d["weapon"] = best["weapon"]
+        d["combat_set_wall"] = w
+        # AND WHAT THE SET DOES TO THE BODY. Gear carries gildings that raise attributes (James),
+        # so the attributes that go with the combat set are the NEWEST base attributes - skills
+        # keep growing after that log - plus the set's own bonus, its effective minus its base.
+        # A log with no base row (older schemas) keeps the newest effective figures.
+        base_now, eff_set, base_set = d.get("attrb") or {}, best.get("attr") or {}, best.get("attrb") or {}
+        if base_now and base_set:
+            d["attr"] = dict((k, (base_now.get(k) or 0) + ((eff_set.get(k) or 0) - (base_set.get(k) or 0)))
+                             for k in set(base_now) | set(eff_set))
 
     out = []
     for who in sorted(seen):
         d = seen[who]
+        d.pop("attrb", None)
         a = d.pop("attr", {}) or {}
         # hp is the pool a fight actually spends. "hp" is the soft pool and "hhp" the
         # hard one; a fight ends when the soft one runs out, so that is the one modelled.
@@ -7645,7 +8077,7 @@ def write_characters(paths=None):
            "format": PACK_FORMAT,
            "note": "The newest reading per character. A deck is built for ONE of these.",
            "characters": out}
-    with open(CHARS, "w", encoding="utf8") as f:
+    with fightlog.write_atomically(CHARS, encoding="utf8") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write(chr(10))
     print("wrote %s  (%d character(s))" % (os.path.relpath(CHARS, ROOT), len(out)))
@@ -7851,6 +8283,8 @@ def write_pack(per, moves):
         entry["relative_speed"] = relative_speed(rec)
         # What it does to us. Everything else in this entry is our attacks on it.
         entry["threat"] = threat(rec)
+        if entry["threat"] is not None:
+            entry["threat"]["pressure_ref"] = pressure_ref(rec, (entry.get("skill") or {}).get("value"))
 
         obs = sorted(rec["agi_obs"])
         agi_me = sorted(rec["agi_me"])[-1] if rec["agi_me"] else None
@@ -7899,7 +8333,7 @@ def write_pack(per, moves):
            "format": PACK_FORMAT,
            "note": "Every value is an interval or null. Nothing here is a point estimate.",
            "opponents": out}
-    with open(PACK, "w", encoding="utf8") as f:
+    with fightlog.write_atomically(PACK, encoding="utf8") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
     print("wrote %s  (%d opponent(s))" % (os.path.relpath(PACK, ROOT), len(out)))
@@ -7914,7 +8348,7 @@ def write_pack(per, moves):
         rows = individuals(per[nm])
         if rows:
             joint[nm] = rows
-    with open(INDIVIDUALS, "w", encoding="utf8") as f:
+    with fightlog.write_atomically(INDIVIDUALS, encoding="utf8") as f:
         json.dump({"source": "one row per creature measured on two or more axes",
                    "format": PACK_FORMAT,
                    "species": joint}, f, indent=1, sort_keys=True)
@@ -7930,7 +8364,7 @@ def write_pack(per, moves):
     # reproducible.
     seen = weapons_seen()
     if seen:
-        with open(SEEN, "w", encoding="utf8") as f:
+        with fightlog.write_atomically(SEEN, encoding="utf8") as f:
             json.dump({"source": "the client's own WeaponInfo, over the corpus",
                        "format": PACK_FORMAT,
                        "note": "Damage is QUALITY-SCALED, as the tooltip gives it. "
@@ -7964,7 +8398,10 @@ def main(argv):
     if not paths:
         print(__doc__)
         return 2
-    per, moves = collect(paths)
+    if write and os.environ.get("COMBAT_FUSE", "1") != "0":
+        # Every sweep the pack build runs, in one read of the corpus - see estimate_parallel.prefetch.
+        estimate_parallel.prefetch(estimate_parallel.PACK_SWEEPS, sorted(paths))
+    per, moves = collect_cached(paths)
     if not moves:
         print("no %s - run tools/combat/parse_deck.py first"
               % os.path.relpath(SHEET, ROOT))

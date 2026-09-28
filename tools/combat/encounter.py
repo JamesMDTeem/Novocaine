@@ -375,7 +375,7 @@ def headers(paths):
         except OSError:
             continue
         try:
-            h = json.loads(line)
+            h = fightlog.loads(line)
         except ValueError:
             continue
         if isinstance(h, dict) and (h.get("ev") == "begin"):

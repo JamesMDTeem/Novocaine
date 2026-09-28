@@ -94,7 +94,7 @@ def damage_is_integers():
                     if '"dmg"' not in line:
                         continue
                     try:
-                        r = json.loads(line)
+                        r = fightlog.loads(line)
                     except ValueError:
                         continue
                     if r.get("ev") != "dmg":
@@ -379,6 +379,7 @@ def the_join_keeps_the_opening_fresh():
     encs = encounter.find(limit=40)
     joined = single = 0
     jstale = sstale = 0
+    views = {}
     for enc in encs:
         pooled = attribution.victim_openings(enc)
         acts = attribution.actions_of(enc)
@@ -393,7 +394,7 @@ def the_join_keeps_the_opening_fresh():
                 continue
             own = getattr(c.actor, "logs", None)
             for label, rows in (("joined", pooled.get(c.victim) or []),
-                                ("single", _own_view(enc, own, c.victim) if own else None)):
+                                ("single", _own_view(enc, own, c.victim, views) if own else None)):
                 if rows is None:
                     continue
                 sample = None
@@ -434,11 +435,20 @@ def the_join_keeps_the_opening_fresh():
           (sstale - jstale) >= (0.4 * sstale), True)
 
 
-def _own_view(enc, logs, victim):
-    """The victim's opening samples as one character's own files recorded them."""
-    sub = encounter.Encounter(list(logs))
-    sub.offset, sub.matches, sub.residual = enc.offset, enc.matches, enc.residual
-    return attribution.victim_openings(sub).get(victim) or []
+def _own_view(enc, logs, victim, views=None):
+    """The victim's opening samples as one character's own files recorded them.
+
+    `views` keeps each (encounter, character) timeline for the caller's loop: it was rebuilt for
+    every action, 594 times over 40 encounters - 21 s of this check (2026-09-27)."""
+    key = (id(enc), tuple(id(g) for g in logs))
+    timeline = None if views is None else views.get(key)
+    if timeline is None:
+        sub = encounter.Encounter(list(logs))
+        sub.offset, sub.matches, sub.residual = enc.offset, enc.matches, enc.residual
+        timeline = attribution.victim_openings(sub)
+        if views is not None:
+            views[key] = timeline
+    return timeline.get(victim) or []
 
 
 def the_enum_is_exercised():

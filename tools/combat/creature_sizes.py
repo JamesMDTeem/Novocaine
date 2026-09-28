@@ -145,6 +145,63 @@ def consensus(intervals):
     return (min(good), max(good), best)
 
 
+_INPUTS = None
+
+
+def _file_part(path):
+    """One log's part of main()'s tallies, as the operations the old loop applied, in order."""
+    global _INPUTS
+    if _INPUTS is None:
+        _INPUTS = (estimate.load_moves(), replay.load_weapons())
+    moves, weapons = _INPUTS
+    ops = []
+    try:
+        log = fightlog.read(path)
+    except Exception:
+        return ops
+    char = (log.header or {}).get("char")
+    tiles = defaultdict(Counter)
+    whole = Counter()
+    brackets = {}
+    for r in log.rows:
+        ev = r.get("ev")
+        if ev == "state" and r.get("tile"):
+            tiles[r.get("gob")][r["tile"]] += 1
+            whole[r["tile"]] += 1
+        elif ev == "agi":
+            brackets[r.get("gob")] = (r.get("min") or 0.0, r.get("max") or 2.0)
+    done = set()
+    for e in log.engagements:
+        if not e.res or "kritter" not in e.res:
+            continue
+        sp = e.res.rsplit("/", 1)[-1]
+        key = (sp, e.gob)
+        # A DRAWN kill of THIS creature (fightlog.kill_kind), not "an award somewhere in the
+        # engagement": that read every bat sampled while another died as killed, at its partial
+        # intake. An undrawn kill's total is a floor and is not a size either.
+        if e.kill == "drawn":
+            ops.append(("drawn", key))
+        elif e.kill == "undrawn":
+            ops.append(("undrawn", key))
+            b = price_undrawn(log, e, moves, weapons)
+            if b is not None:
+                ops.append(("blow", key, char, b))
+        if e.gob in done:
+            continue
+        done.add(e.gob)
+        # The creature's damage over the whole file (Log.damage_on) - the engagement holds only
+        # what landed while it was the sampled one, a third short for a fatbat in a crowd.
+        ops.append(("taken", key, char, log.taken(e.gob), tiles[e.gob] or whole))
+        # Once per fight: this appended once per ENGAGEMENT, so a creature re-sampled five
+        # times in a crowd put the same bracket in five times.
+        lo, hi = brackets.get(e.gob, (0.0, 2.0))
+        if (lo > 0 or hi < 2) and lo <= hi:
+            lo, hi = max(0.5, lo), min(2.0, hi)
+            if lo <= hi:
+                ops.append(("ratio", sp, math.sqrt(lo * hi)))
+    return ops
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(ROOT, "data", "combat", "creature_sizes.json"))
@@ -158,56 +215,26 @@ def main(argv=None):
     undrawn = set()                                  # ... to a blow with no number: a floor
     blows = defaultdict(dict)                        # (species, gob) -> char -> priced undrawn blow
     ratios = defaultdict(list)          # species -> agility ratio per fight
-    moves = estimate.load_moves()
-    weapons = replay.load_weapons()
     # THE WHOLE POOL. This read os.listdir(pool) and so only the top level - 9,855 of 12,849
     # logs on 2026-09-22 - while ~3,000 sit in per-character folders.
-    for path in fightlog.pool_logs(pool):
-        try:
-            log = fightlog.read(path)
-        except Exception:
-            continue
-        char = (log.header or {}).get("char")
-        tiles = defaultdict(Counter)
-        whole = Counter()
-        brackets = {}
-        for r in log.rows:
-            ev = r.get("ev")
-            if ev == "state" and r.get("tile"):
-                tiles[r.get("gob")][r["tile"]] += 1
-                whole[r["tile"]] += 1
-            elif ev == "agi":
-                brackets[r.get("gob")] = (r.get("min") or 0.0, r.get("max") or 2.0)
-        done = set()
-        for e in log.engagements:
-            if not e.res or "kritter" not in e.res:
-                continue
-            sp = e.res.rsplit("/", 1)[-1]
-            key = (sp, e.gob)
-            # A DRAWN kill of THIS creature (fightlog.kill_kind), not "an award somewhere in the
-            # engagement": that read every bat sampled while another died as killed, at its partial
-            # intake. An undrawn kill's total is a floor and is not a size either.
-            if e.kill == "drawn":
-                drawn.add(key)
-            elif e.kill == "undrawn":
-                undrawn.add(key)
-                b = price_undrawn(log, e, moves, weapons)
-                if b is not None:
-                    blows[key][char] = b
-            if e.gob in done:
-                continue
-            done.add(e.gob)
-            # The creature's damage over the whole file (Log.damage_on) - the engagement holds only
-            # what landed while it was the sampled one, a third short for a fatbat in a crowd.
-            taken[key][char] += log.taken(e.gob)
-            where[key].update(tiles[e.gob] or whole)
-            # Once per fight: this appended once per ENGAGEMENT, so a creature re-sampled five
-            # times in a crowd put the same bracket in five times.
-            lo, hi = brackets.get(e.gob, (0.0, 2.0))
-            if (lo > 0 or hi < 2) and lo <= hi:
-                lo, hi = max(0.5, lo), min(2.0, hi)
-                if lo <= hi:
-                    ratios[sp].append(math.sqrt(lo * hi))
+    # ON THE WORKER POOL (2026-09-27): each file's part is a list of what the old single loop did
+    # to the tallies, applied here in the same file order - 37 s serial, of every regeneration.
+    import estimate_parallel
+    for ops in estimate_parallel.ordered_map(_file_part, fightlog.pool_logs(pool)):
+        for op in ops:
+            kind = op[0]
+            if kind == "drawn":
+                drawn.add(op[1])
+            elif kind == "undrawn":
+                undrawn.add(op[1])
+            elif kind == "blow":
+                blows[op[1]][op[2]] = op[3]
+            elif kind == "taken":
+                _k, key, char, dmg, tiles = op
+                taken[key][char] += dmg
+                where[key].update(tiles)
+            else:
+                ratios[op[1]].append(op[2])
     dealt = defaultdict(dict)          # species -> gob -> (damage, tile), fullest witness
     for key in drawn:
         d = max(taken[key].values()) if taken[key] else 0
@@ -258,7 +285,7 @@ def main(argv=None):
             row["agi_ratio"] = {"median": round(r[len(r) // 2], 3), "n": len(r)}
         if row:
             out["species"][sp] = row
-    with open(a.out, "w", encoding="utf-8") as f:
+    with fightlog.write_atomically(a.out, encoding="utf-8") as f:
         json.dump(out, f, indent=1, sort_keys=True)
         f.write("\n")
     print("wrote %s  (%d species)" % (a.out, len(out["species"])))

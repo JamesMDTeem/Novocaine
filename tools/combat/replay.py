@@ -38,6 +38,8 @@ import estimate  # noqa: E402
 import fightlog  # noqa: E402
 import model  # noqa: E402
 
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+
 # An observed integer gain carries the display's truncation on both the gain and the
 # standing opening it came from. estimate.GAIN_SLOP is the same allowance, for the same
 # reason, and sharing the constant keeps the two from drifting apart.
@@ -256,6 +258,64 @@ def replay_damage(log, eng, moves, weapons):
     return out
 
 
+_PLAYER_ARMOUR = None
+
+
+def _player_armour(gob, log):
+    """(hard, soft) armour of the person whose own log has `gob` as its megob, from the begin row
+    of a log within a day of this one, or None. A person's gob id holds for a login session, and
+    both clients of one fight see the same id - which is what lets the spars be read from both
+    sides."""
+    global _PLAYER_ARMOUR
+    if _PLAYER_ARMOUR is None:
+        _PLAYER_ARMOUR = {}
+        pool = os.path.join(ROOT, "data", "combat", "pool")
+        for dirpath, _dirs, files in os.walk(pool):
+            for f in files:
+                if not f.endswith(".jsonl"):
+                    continue
+                try:
+                    with open(os.path.join(dirpath, f), encoding="utf-8") as fh:
+                        b = fightlog.loads(fh.readline())
+                except Exception:
+                    continue
+                if b.get("ev") != "begin" or b.get("megob") is None or b.get("hard") is None:
+                    continue
+                _PLAYER_ARMOUR.setdefault(b["megob"], []).append(
+                    (b.get("wall") or 0, b.get("hard") or 0, b.get("soft") or 0))
+    wall = (log.header or {}).get("wall") or 0
+    best = None
+    for w, hard, soft in _PLAYER_ARMOUR.get(gob, []):
+        if abs(w - wall) <= 86400000 and (best is None or abs(w - wall) < best[0]):
+            best = (abs(w - wall), hard, soft)
+    return None if best is None else (best[1], best[2])
+
+
+def _pen_of(log, weapons, h, moves):
+    """Armour penetration of the blow: the weapon's for a weapon card, 30% for an unarmed one."""
+    m = moves.get(h.get("move")) or {}
+    if not m.get("damage_share"):
+        return 0.3
+    name = weapon_name_at(log, h.get("t"))
+    return _WEAPON_PEN.get(name, 0.0)
+
+
+def _load_pen():
+    out = {}
+    try:
+        with open(os.path.join(ROOT, "data", "combat", "weapons.json"), encoding="utf-8") as fh:
+            for w in json.load(fh):
+                v = (w.get("armorpen") or {}).get("value")
+                if v is not None:
+                    out[w.get("name")] = v / 100.0
+    except Exception:
+        pass
+    return out
+
+
+_WEAPON_PEN = _load_pen()
+
+
 # Tools carried for gathering, which a fight finds in hand and which are swapped away from -
 # see replay_damage. Only these are distrusted in pre-schema-13 logs; a sword at t=0 was
 # almost always the sword swung (swords read 1.02 across every schema).
@@ -298,12 +358,215 @@ def gloves_at(log, weapons, t):
     return None
 
 
-def replay(paths):
-    moves = estimate.load_moves()
-    opens = estimate.opens_map(moves)
-    pack = load_pack()
+def _replay_file(p, log, moves, opens, pack, weapons):
+    """One log's part of replay(): its events, in the order the old single loop met them. `log` is
+    None when the file could not be read. replay() folds the events into its tallies."""
+    ev = []
+    if log is None:
+        ev.append(("skip", "unreadable"))
+        return ev
+    if not log.rows:
+        return ev
+    if fightlog.is_ranged(log):
+        ev.append(("ranged", os.path.basename(p)))
+        return ev
+    attrs = (log.header or {}).get("attr") or {}
+    lv = estimate.levels_for_log(log)
+    for eng in log.engagements:
+        name = estimate.bucket(eng)
+        # THE OLD ALL-OR-NOTHING GATE, AND ONLY WHERE IT STILL EARNS ITS KEEP. This ran
+        # over both halves and excluded 60.8% of engagements - 57.1% for others_present
+        # alone, which fires when anything at all was happening anywhere in the fight.
+        # attributed_gains was written to replace exactly that, testing each observation
+        # instead of condemning the engagement, and running both meant the openings half
+        # was gated twice: once by a rule the project had already decided was too coarse.
+        #
+        # The damage half still leans on it, because a pairing is made by time and a
+        # third party's numbers over the same target look identical. It is no longer
+        # the only defence: hits() now vetoes a pairing outright when another
+        # combatant's move announcement falls inside the window (see
+        # fightlog._announcement_by_other), so this gate is the floor under the pairs
+        # that carry no announcement. The openings half sees every fight its own four
+        # tests allow.
+        clean = eng.offence_ok
+        if not clean:
+            ev.append(("skip", "contaminated (damage half only)"))
+        # Damage needs no opponent stats, so it covers fights the opening replay has
+        # to skip for want of a pinned defence weight - but it still needs a clean
+        # fight. hits() pairs damage numbers to a move by time, and in a group fight
+        # the client draws somebody else's numbers over the same target, so an
+        # ungated damage replay reads their hits as ours.
+        #
+        # RE-MEASURED 2026-09-10, because the gate is expensive and everything around
+        # it has changed. It is still right, and by a wider margin than the rms of 9.3
+        # first recorded here. Hits before the last of an engagement:
+        #
+        #   clean                          1906 hits   rms  3.16   p90 |err|  1.96
+        #   others present, us in a party  2439 hits   rms 39.12   p90 |err| 31.87
+        #   others present, no party       3442 hits   rms 25.85   p90 |err| 16.07
+        #
+        # The median is fine in all three - -0.29, -0.52, -0.42 - so this is not bias,
+        # it is somebody else's number landing on our move. Being in a party is the
+        # worse case, which is what you would expect: more people hitting one target.
+        # There IS now a per-observation test for the announced case - the veto in
+        # hits() - but an unannounced third party leaves no row to test, so this gate
+        # remains the floor for that residue. Separating on the announcement alone
+        # would report a population and not a measurement.
+        # THE LAST HIT OF AN ENGAGEMENT IS NOT A SOUND OBSERVATION, and is scored
+        # separately rather than dropped. A blow that kills is recorded at the health
+        # it actually removed, not the damage it would have done, so a killing blow
+        # that overshoots reads short - and the residuals say exactly that. Hits
+        # before the last sit at rms 3.16 with p05 -2.3 and p95 +2.7, symmetric about
+        # zero; the last hit sits at 13.24 with the same median and a p95 of +14.0,
+        # one-sided upward. Of the thirty worst residuals in the corpus, twenty-five
+        # are over-predictions and twenty-three of those end an engagement the
+        # creature did not survive.
+        #
+        # Pooled, that one population takes the animal figure from 3.16 to 8.02 and
+        # hides the state of the model: on hits before the last, Santa Samus reads
+        # 1.07, ZzxcuV3 1.27 and Shade 1.77.
+        hs = [h for h in fightlog.hits(eng, log.me) if h.get("actor") == "me"
+              and ((h.get("shp") or 0) + (h.get("soaked") or 0)) > 0] if clean else []
+        lastt = max([h.get("t", 0) for h in hs] or [None])
+        scored = [h for h in hs if moves.get(h.get("move"))]
+        char = (log.header or {}).get("char")
+        for (mv, pred, obs), h in zip(
+                replay_damage(log, eng, moves, weapons), scored):
+            # A HIT THE OLD RECORDER HALF-WROTE. Schema 2 and 3 logs carry the soaked
+            # half of a hit on only 6% and 47% of hits, and observed damage is SHP + ARM,
+            # so a hit on an ARMOURED creature with no soak written reads short by exactly
+            # the armour - a constant 30-44 points, which is the shape BonkiDonki's
+            # residuals had. Skipped here and counted, never scored: the model is not
+            # wrong about a number the log never recorded. (Inside the loop, not by
+            # filtering `scored`, because the zip pairs by position.)
+            if (log.schema <= 3) and ((h.get("soaked") or 0) <= 0) \
+                    and _armoured(name, pack):
+                ev.append(("skip", "schema 2-3 hit on armour with no soak written"))
+                continue
+            # A HIT ON A PERSON CARRIES NO ARMOUR ROW - the client writes SHP alone on players,
+            # on us as well as on them (every blow of the 2026-09-26 spars) - so what was
+            # observed is damage AFTER armour, and it was scored against damage before: the
+            # six spar hits read rms 164 against a model that had them to the point (Cleave
+            # 461 predicted through our armour, 462 landed). Where the person
+            # logged the fight too, their own begin row has their armour and the comparison is
+            # made after it; where not, the hit cannot be scored and is counted.
+            if str(name).startswith("body#") and ((h.get("soaked") or 0) <= 0):
+                arm = _player_armour(eng.gob, log)
+                if arm is None:
+                    ev.append(("skip", "hit on a person whose armour is not in any log"))
+                    continue
+                pred = model.dealt_damage(pred, arm[0], arm[1], _pen_of(log, weapons, h, moves))
+            final = (lastt is not None) and (h.get("t") == lastt)
+            # Observed damage is a whole number the client rounded, so a residual
+            # under a point is the display and not the model.
+            ev.append(("dmg", final, name, char, abs(pred - obs)))
 
-    weapons = load_weapons()
+        bounds = opponent_bounds(name, pack)
+        if bounds is None:
+            ev.append(("skip", "opponent not pinned"))
+            continue
+        foe_lo, foe_hi = bounds
+        charged = estimate.holds_charged_stance(log)
+        for actor, mv, colour, standing, gain in fightlog.attributed_gains(
+                eng, opens, log.me):
+            if actor != "me":
+                continue
+            # Our weight under Bloodlust rides an unlogged charge - not a prediction
+            # the inputs can make, so not scored against one.
+            if charged:
+                ev.append(("skip", "gain made under Bloodlust, whose charge is not logged"))
+                continue
+            m = moves.get(mv)
+            if m is None:
+                continue
+            ob = None
+            for o in m.get("openings") or []:
+                if o.get("colour") == colour:
+                    ob = o.get("pct")
+            if not ob:
+                continue
+            # `lv` and not just `lv.get(mv)`: a stance held for the fight multiplies
+            # every attack in it, and the prediction this replay scores has to price
+            # the same weight the recovery did. See estimate.collect.
+            wa = estimate.attack_weight_bounds(m, attrs, lv.get(mv), lv)
+            if not wa:
+                continue
+            wa_lo, wa_hi = wa
+            # WHETHER OUR OWN WEIGHT WAS A NUMBER. An undatable deck leaves mu as the
+            # whole 1.0-1.5 range (estimate.mu_bounds), so wa_lo and wa_hi are a third
+            # apart and the gain they predict is not one prediction but a range wide
+            # enough to hide a finding in. estimate.pinned refuses such a row for the
+            # same reason; here it is scored apart rather than dropped, because a miss
+            # too big for mu to explain is still worth reading - see the gate below.
+            pinned_wa = (wa_hi <= (wa_lo * 1.0001))
+            # The SKILL and the multipliers go in separately, because only the skills
+            # equalize. Our skill is the raw attribute the card names; everything else in
+            # the attack weight - the card's multiplier, mu, a stance - rides outside the
+            # comparison, as Sim does it. This used to divide only the card's multiplier
+            # back out, which left mu inside the skill (see estimate.our_skill).
+            skill = attrs.get(m.get("attack_skill") or "melee")
+            if not skill:
+                continue
+            oc = standing / 100.0
+            # Widest prediction the inputs allow: our biggest weight against the
+            # weakest opponent, and the reverse.
+            hi = model.opening_gain_eq(skill, wa_hi / skill, foe_lo, 1.0, ob, oc) + SLOP
+            lo = model.opening_gain_eq(skill, wa_lo / skill, foe_hi, 1.0, ob, oc) - SLOP
+            if lo <= gain <= hi:
+                ev.append(("agree", name))
+            else:
+                off = (lo - gain) if gain < lo else (gain - hi)
+                ev.append(("miss", name, (off, name, mv, colour, standing, gain, lo, hi,
+                                          os.path.basename(p), clean, pinned_wa)))
+    return ev
+
+
+def _inputs():
+    """(moves, opens, pack, weapons) for this process, loaded once - every pass and worker reads
+    the same four."""
+    global _INPUTS
+    if _INPUTS is None:
+        moves = estimate.load_moves()
+        _INPUTS = (moves, estimate.opens_map(moves), load_pack(), load_weapons())
+    return _INPUTS
+
+
+_INPUTS = None
+
+
+def _passes(p):
+    """All three corpus passes over one log, off one read: (replay events, prediction part,
+    advice part). The two parts are None where the old loops skipped the file without counting
+    it, and (rows, carried any) otherwise."""
+    moves, opens, pack, weapons = _inputs()
+    try:
+        log = fightlog.read(p, opens)
+    except Exception:
+        # replay() counted any failed read as unreadable; logged_predictions let a failure other
+        # than OSError/ValueError escape, which the corpus never produces - the suite passes.
+        log = None
+    ev = _replay_file(p, log, moves, opens, pack, weapons)
+    if (log is None) or not log.rows:
+        return ev, None, None
+    return ev, _predictions_of(log), _advice_of(log, p)
+
+
+def _passes_over(paths):
+    """_passes for every log, in sorted file order, on the worker pool.
+
+    ONE READ AND ONE POOL FOR ALL THREE (2026-09-27). replay(), logged_predictions() and
+    logged_advice() each walked the corpus serially in this process - three reads of 15,467 logs
+    and 482 s, the suite's long pole. Each file's part is independent of every other file, and
+    the folds run in the same file order the loops did, so the report is unchanged.
+    """
+    import estimate_parallel
+    out = []
+    for part in estimate_parallel.map_chunks("replay_passes", sorted(paths)):
+        out.extend(part)
+    return out
+
+
+def replay(paths):
     stats = defaultdict(lambda: {"agree": 0, "miss": 0, "worst": 0.0, "n": 0})
     dmg = defaultdict(lambda: {"n": 0, "err": 0.0, "worst": 0.0})
     # The last hit of an engagement, kept apart - see the argument where it is filled.
@@ -314,168 +577,37 @@ def replay(paths):
     ranged_skipped = 0
     ranged_files = []
 
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, opens)
-        except Exception:
-            skipped["unreadable"] += 1
-            continue
-        if not log.rows:
-            continue
-        if fightlog.is_ranged(log):
-            ranged_skipped += 1
-            ranged_files.append(os.path.basename(p))
-            continue
-        attrs = (log.header or {}).get("attr") or {}
-        lv = estimate.levels_for_log(log)
-        for eng in log.engagements:
-            name = estimate.bucket(eng)
-            # THE OLD ALL-OR-NOTHING GATE, AND ONLY WHERE IT STILL EARNS ITS KEEP. This ran
-            # over both halves and excluded 60.8% of engagements - 57.1% for others_present
-            # alone, which fires when anything at all was happening anywhere in the fight.
-            # attributed_gains was written to replace exactly that, testing each observation
-            # instead of condemning the engagement, and running both meant the openings half
-            # was gated twice: once by a rule the project had already decided was too coarse.
-            #
-            # The damage half still leans on it, because a pairing is made by time and a
-            # third party's numbers over the same target look identical. It is no longer
-            # the only defence: hits() now vetoes a pairing outright when another
-            # combatant's move announcement falls inside the window (see
-            # fightlog._announcement_by_other), so this gate is the floor under the pairs
-            # that carry no announcement. The openings half sees every fight its own four
-            # tests allow.
-            clean = eng.offence_ok
-            if not clean:
-                skipped["contaminated (damage half only)"] += 1
-            # Damage needs no opponent stats, so it covers fights the opening replay has
-            # to skip for want of a pinned defence weight - but it still needs a clean
-            # fight. hits() pairs damage numbers to a move by time, and in a group fight
-            # the client draws somebody else's numbers over the same target, so an
-            # ungated damage replay reads their hits as ours.
-            #
-            # RE-MEASURED 2026-09-10, because the gate is expensive and everything around
-            # it has changed. It is still right, and by a wider margin than the rms of 9.3
-            # first recorded here. Hits before the last of an engagement:
-            #
-            #   clean                          1906 hits   rms  3.16   p90 |err|  1.96
-            #   others present, us in a party  2439 hits   rms 39.12   p90 |err| 31.87
-            #   others present, no party       3442 hits   rms 25.85   p90 |err| 16.07
-            #
-            # The median is fine in all three - -0.29, -0.52, -0.42 - so this is not bias,
-            # it is somebody else's number landing on our move. Being in a party is the
-            # worse case, which is what you would expect: more people hitting one target.
-            # There IS now a per-observation test for the announced case - the veto in
-            # hits() - but an unannounced third party leaves no row to test, so this gate
-            # remains the floor for that residue. Separating on the announcement alone
-            # would report a population and not a measurement.
-            # THE LAST HIT OF AN ENGAGEMENT IS NOT A SOUND OBSERVATION, and is scored
-            # separately rather than dropped. A blow that kills is recorded at the health
-            # it actually removed, not the damage it would have done, so a killing blow
-            # that overshoots reads short - and the residuals say exactly that. Hits
-            # before the last sit at rms 3.16 with p05 -2.3 and p95 +2.7, symmetric about
-            # zero; the last hit sits at 13.24 with the same median and a p95 of +14.0,
-            # one-sided upward. Of the thirty worst residuals in the corpus, twenty-five
-            # are over-predictions and twenty-three of those end an engagement the
-            # creature did not survive.
-            #
-            # Pooled, that one population takes the animal figure from 3.16 to 8.02 and
-            # hides the state of the model: on hits before the last, Santa Samus reads
-            # 1.07, ZzxcuV3 1.27 and Shade 1.77.
-            hs = [h for h in fightlog.hits(eng, log.me) if h.get("actor") == "me"
-                  and ((h.get("shp") or 0) + (h.get("soaked") or 0)) > 0] if clean else []
-            lastt = max([h.get("t", 0) for h in hs] or [None])
-            scored = [h for h in hs if moves.get(h.get("move"))]
-            char = (log.header or {}).get("char")
-            for (mv, pred, obs), h in zip(
-                    replay_damage(log, eng, moves, weapons), scored):
-                # A HIT THE OLD RECORDER HALF-WROTE. Schema 2 and 3 logs carry the soaked
-                # half of a hit on only 6% and 47% of hits, and observed damage is SHP + ARM,
-                # so a hit on an ARMOURED creature with no soak written reads short by exactly
-                # the armour - a constant 30-44 points, which is the shape BonkiDonki's
-                # residuals had. Skipped here and counted, never scored: the model is not
-                # wrong about a number the log never recorded. (Inside the loop, not by
-                # filtering `scored`, because the zip pairs by position.)
-                if (log.schema <= 3) and ((h.get("soaked") or 0) <= 0) \
-                        and _armoured(name, pack):
-                    skipped["schema 2-3 hit on armour with no soak written"] += 1
-                    continue
-                final = (lastt is not None) and (h.get("t") == lastt)
+    for ev, _pred, _adv in _passes_over(paths):
+        for e in ev:
+            kind = e[0]
+            if kind == "skip":
+                skipped[e[1]] += 1
+            elif kind == "ranged":
+                ranged_skipped += 1
+                ranged_files.append(e[1])
+            elif kind == "dmg":
+                _k, final, name, char, err = e
                 d = (final_dmg if final else dmg)[name]
                 d["n"] += 1
-                # Observed damage is a whole number the client rounded, so a residual
-                # under a point is the display and not the model.
-                e = abs(pred - obs)
-                d["err"] += e * e
-                d["worst"] = max(d["worst"], e)
+                d["err"] += err * err
+                d["worst"] = max(d["worst"], err)
                 if not final and not str(name).startswith(("body#", "?#")):
                     # Animals only, to match the figure above it. A player opponent is a
                     # different question - see the standing gap at the foot of this report.
                     a = by_char[char]
                     a["n"] += 1
-                    a["err"] += e * e
-                    a["worst"] = max(a["worst"], e)
-
-            bounds = opponent_bounds(name, pack)
-            if bounds is None:
-                skipped["opponent not pinned"] += 1
-                continue
-            foe_lo, foe_hi = bounds
-            charged = estimate.holds_charged_stance(log)
-            for actor, mv, colour, standing, gain in fightlog.attributed_gains(
-                    eng, opens, log.me):
-                if actor != "me":
-                    continue
-                # Our weight under Bloodlust rides an unlogged charge - not a prediction
-                # the inputs can make, so not scored against one.
-                if charged:
-                    skipped["gain made under Bloodlust, whose charge is not logged"] += 1
-                    continue
-                m = moves.get(mv)
-                if m is None:
-                    continue
-                ob = None
-                for o in m.get("openings") or []:
-                    if o.get("colour") == colour:
-                        ob = o.get("pct")
-                if not ob:
-                    continue
-                # `lv` and not just `lv.get(mv)`: a stance held for the fight multiplies
-                # every attack in it, and the prediction this replay scores has to price
-                # the same weight the recovery did. See estimate.collect.
-                wa = estimate.attack_weight_bounds(m, attrs, lv.get(mv), lv)
-                if not wa:
-                    continue
-                wa_lo, wa_hi = wa
-                # WHETHER OUR OWN WEIGHT WAS A NUMBER. An undatable deck leaves mu as the
-                # whole 1.0-1.5 range (estimate.mu_bounds), so wa_lo and wa_hi are a third
-                # apart and the gain they predict is not one prediction but a range wide
-                # enough to hide a finding in. estimate.pinned refuses such a row for the
-                # same reason; here it is scored apart rather than dropped, because a miss
-                # too big for mu to explain is still worth reading - see the gate below.
-                pinned_wa = (wa_hi <= (wa_lo * 1.0001))
-                # The SKILL and the multipliers go in separately, because only the skills
-                # equalize. Our skill is the raw attribute the card names; everything else in
-                # the attack weight - the card's multiplier, mu, a stance - rides outside the
-                # comparison, as Sim does it. This used to divide only the card's multiplier
-                # back out, which left mu inside the skill (see estimate.our_skill).
-                skill = attrs.get(m.get("attack_skill") or "melee")
-                if not skill:
-                    continue
-                oc = standing / 100.0
-                # Widest prediction the inputs allow: our biggest weight against the
-                # weakest opponent, and the reverse.
-                hi = model.opening_gain_eq(skill, wa_hi / skill, foe_lo, 1.0, ob, oc) + SLOP
-                lo = model.opening_gain_eq(skill, wa_lo / skill, foe_hi, 1.0, ob, oc) - SLOP
-                s = stats[name]
+                    a["err"] += err * err
+                    a["worst"] = max(a["worst"], err)
+            elif kind == "agree":
+                s = stats[e[1]]
                 s["n"] += 1
-                if lo <= gain <= hi:
-                    s["agree"] += 1
-                else:
-                    s["miss"] += 1
-                    off = (lo - gain) if gain < lo else (gain - hi)
-                    s["worst"] = max(s["worst"], off)
-                    misses.append((off, name, mv, colour, standing, gain, lo, hi,
-                                   os.path.basename(p), clean, pinned_wa))
+                s["agree"] += 1
+            else:
+                s = stats[e[1]]
+                s["n"] += 1
+                s["miss"] += 1
+                s["worst"] = max(s["worst"], e[2][0])
+                misses.append(e[2])
     print("%d ranged fight(s) routed out of melee validation (%s)"
           % (ranged_skipped, ", ".join(sorted(ranged_files))))
     return stats, dmg, misses, skipped, final_dmg, by_char
@@ -558,85 +690,101 @@ def logged_predictions(paths, opens=None):
     carry no predictions at all - which is every log written before schema 8, and every
     fight against an opponent the pack cannot predict.
     """
-    if opens is None:
-        opens = estimate.opens_map(estimate.load_moves())
-    rows, missing = [], 0
-    for pth in sorted(paths):
-        try:
-            log = fightlog.read(pth, opens)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        seen = False
-        for eng in log.engagements:
-            if not eng.predictions:
+    if opens is not None:
+        # An opens map of the caller's own is a different reading; it is walked here.
+        rows, missing = [], 0
+        for pth in sorted(paths):
+            try:
+                log = fightlog.read(pth, opens)
+            except (OSError, ValueError):
                 continue
-            seen = True
-            name = estimate.bucket(eng)
-            gone = [r["t"] for r in log.rows
-                    if (r.get("ev") == "foe") and (r.get("how") == "del")
-                    and (r.get("gob") == eng.gob) and (r.get("t") is not None)]
-            for pr in eng.predictions:
-                # The move this prediction belongs to is the one at the same instant. The
-                # client writes them back to back, so an exact timestamp match is right and
-                # a window would risk pairing with the NEXT move.
-                mv = None
-                for m in eng.moves:
-                    if (m.get("t") == pr.get("t")) and (m.get("actor") == "me"):
-                        mv = m
-                        break
-                if mv is None:
-                    continue
-                before, after = eng.brackets(mv)
-                if (before is None) or (after is None):
-                    continue
-                # A GAIN CAN ARRIVE IN TWO ROWS. Full Circle's red and green land as separate
-                # state updates a few milliseconds apart: on ants the row 3 ms after the move
-                # carried red only, and green went 0 -> 47 at +10 ms against a predicted 47.1,
-                # so reading the first row scored a correct prediction as "observed 0". The
-                # after-state is taken once the update settles - the last row within SETTLE_MS
-                # of the first one - which a following move's own effects cannot reach.
-                #
-                # AND IT IS TIMED FROM THE BLOW, NOT THE ROW (2026-09-15). Our landing fx can sit
-                # before the move row by up to ~120 ms, and a state in that gap already holds the
-                # gain - so `before` read it and the observation came out 0 (381 such readings), or
-                # an `after` just past the row preceded a gain that landed after it. Anchored on OUR
-                # OWN fx only - never target damage, which in BonkiDonki-181 was a party member's
-                # Quick Barrage doubling the gain - rms 5.02 -> 3.95, zero readings 381 -> 55;
-                # 381 readings moved, 369 closer, 10 further.
-                lands = [o["t"] for o in eng.overlays
-                         if (o.get("gob") == log.me) and (o.get("t") is not None)
-                         and fightlog.overlay_announces(o.get("res") or "", mv.get("name"))
-                         and (abs(mv["t"] - o["t"]) <= fightlog.TICK_MS)]
-                if lands and (min(lands) < mv["t"]):
-                    earlier = eng.state_before(mv, min(lands))
-                    if earlier is not None:
-                        before = earlier
-                after = landed_after(eng, log, mv, max(lands + [mv["t"]]))
-                if after is None:
-                    continue
-                # THE TARGET CAN BE GONE BEFORE THE GAIN IS SENT. Full Circle kills an ant: red
-                # arrives, the relation is deleted 27 ms after the blow, and the green is never
-                # sent - "observed 0" for a prediction nobody could observe. Excluding predictions
-                # whose target relation ends within UNOBSERVABLE_MS of the landing: rms 3.96 ->
-                # 2.87, zero readings 64 -> 34, 676 of 4,759 dropped (drawn kills, undrawn kills and
-                # escapes alike). 50 ms keeps more zeros; 150 and 300 ms change nothing.
-                t_land = max(lands + [mv["t"]])
-                if any(-5 <= (d - t_land) <= UNOBSERVABLE_MS for d in gone):
-                    continue
-                opened = pr.get("opened") or []
-                for c, colour in enumerate(("green", "blue", "yellow", "red")):
-                    if c >= len(opened):
-                        continue
-                    if opened[c] <= 0:
-                        continue
-                    obs = after["foe"][c] - before["foe"][c]
-                    rows.append((name, mv.get("name") or mv.get("move"), colour,
-                                 opened[c], obs, os.path.basename(log.path)))
-        if not seen:
+            if not log.rows:
+                continue
+            got, seen = _predictions_of(log)
+            rows.extend(got)
+            if not seen:
+                missing += 1
+        return (rows, missing)
+    rows, missing = [], 0
+    for _ev, pred, _adv in _passes_over(paths):
+        if pred is None:
+            continue
+        rows.extend(pred[0])
+        if not pred[1]:
             missing += 1
     return (rows, missing)
+
+
+def _predictions_of(log):
+    """One log's part of logged_predictions: (rows, whether it carried any prediction)."""
+    rows = []
+    seen = False
+    for eng in log.engagements:
+        if not eng.predictions:
+            continue
+        seen = True
+        name = estimate.bucket(eng)
+        gone = [r["t"] for r in log.rows
+                if (r.get("ev") == "foe") and (r.get("how") == "del")
+                and (r.get("gob") == eng.gob) and (r.get("t") is not None)]
+        for pr in eng.predictions:
+            # The move this prediction belongs to is the one at the same instant. The
+            # client writes them back to back, so an exact timestamp match is right and
+            # a window would risk pairing with the NEXT move.
+            mv = None
+            for m in eng.moves:
+                if (m.get("t") == pr.get("t")) and (m.get("actor") == "me"):
+                    mv = m
+                    break
+            if mv is None:
+                continue
+            before, after = eng.brackets(mv)
+            if (before is None) or (after is None):
+                continue
+            # A GAIN CAN ARRIVE IN TWO ROWS. Full Circle's red and green land as separate
+            # state updates a few milliseconds apart: on ants the row 3 ms after the move
+            # carried red only, and green went 0 -> 47 at +10 ms against a predicted 47.1,
+            # so reading the first row scored a correct prediction as "observed 0". The
+            # after-state is taken once the update settles - the last row within SETTLE_MS
+            # of the first one - which a following move's own effects cannot reach.
+            #
+            # AND IT IS TIMED FROM THE BLOW, NOT THE ROW (2026-09-15). Our landing fx can sit
+            # before the move row by up to ~120 ms, and a state in that gap already holds the
+            # gain - so `before` read it and the observation came out 0 (381 such readings), or
+            # an `after` just past the row preceded a gain that landed after it. Anchored on OUR
+            # OWN fx only - never target damage, which in BonkiDonki-181 was a party member's
+            # Quick Barrage doubling the gain - rms 5.02 -> 3.95, zero readings 381 -> 55;
+            # 381 readings moved, 369 closer, 10 further.
+            lands = [o["t"] for o in eng.overlays
+                     if (o.get("gob") == log.me) and (o.get("t") is not None)
+                     and fightlog.overlay_announces(o.get("res") or "", mv.get("name"))
+                     and (abs(mv["t"] - o["t"]) <= fightlog.TICK_MS)]
+            if lands and (min(lands) < mv["t"]):
+                earlier = eng.state_before(mv, min(lands))
+                if earlier is not None:
+                    before = earlier
+            after = landed_after(eng, log, mv, max(lands + [mv["t"]]))
+            if after is None:
+                continue
+            # THE TARGET CAN BE GONE BEFORE THE GAIN IS SENT. Full Circle kills an ant: red
+            # arrives, the relation is deleted 27 ms after the blow, and the green is never
+            # sent - "observed 0" for a prediction nobody could observe. Excluding predictions
+            # whose target relation ends within UNOBSERVABLE_MS of the landing: rms 3.96 ->
+            # 2.87, zero readings 64 -> 34, 676 of 4,759 dropped (drawn kills, undrawn kills and
+            # escapes alike). 50 ms keeps more zeros; 150 and 300 ms change nothing.
+            t_land = max(lands + [mv["t"]])
+            if any(-5 <= (d - t_land) <= UNOBSERVABLE_MS for d in gone):
+                continue
+            opened = pr.get("opened") or []
+            for c, colour in enumerate(("green", "blue", "yellow", "red")):
+                if c >= len(opened):
+                    continue
+                if opened[c] <= 0:
+                    continue
+                obs = after["foe"][c] - before["foe"][c]
+                rows.append((name, mv.get("name") or mv.get("move"), colour,
+                             opened[c], obs, os.path.basename(log.path)))
+    return rows, seen
 
 
 def logged_advice(paths, opens=None):
@@ -656,39 +804,54 @@ def logged_advice(paths, opens=None):
     Returns (rows, missing) where a row is (species, advised, thrown, agreed, ticks,
     killed, frontier, file).
     """
-    if opens is None:
-        opens = estimate.opens_map(estimate.load_moves())
-    rows, missing = [], 0
-    for pth in sorted(paths):
-        try:
-            log = fightlog.read(pth, opens)
-        except Exception:
-            continue
-        if not log.rows:
-            continue
-        any_here = False
-        for eng in log.engagements:
-            adv = getattr(eng, "advice", None) or []
-            if not adv:
+    if opens is not None:
+        rows, missing = [], 0
+        for pth in sorted(paths):
+            try:
+                log = fightlog.read(pth, opens)
+            except Exception:
                 continue
-            any_here = True
-            mine = sorted([m for m in eng.moves if m.get("actor") == "me"],
-                          key=lambda m: m.get("t") or 0)
-            for a in adv:
-                t = a.get("t") or 0
-                nxt = None
-                for m in mine:
-                    if (m.get("t") or 0) >= t - 200:
-                        nxt = m
-                        break
-                thrown = (nxt or {}).get("move")
-                rows.append((estimate.bucket(eng), a.get("move"), thrown,
-                             (thrown is not None) and (thrown == a.get("move")),
-                             a.get("ticks"), a.get("killed"), a.get("frontier"),
-                             os.path.basename(pth)))
-        if not any_here:
+            if not log.rows:
+                continue
+            got, any_here = _advice_of(log, pth)
+            rows.extend(got)
+            if not any_here:
+                missing += 1
+        return rows, missing
+    rows, missing = [], 0
+    for _ev, _pred, adv in _passes_over(paths):
+        if adv is None:
+            continue
+        rows.extend(adv[0])
+        if not adv[1]:
             missing += 1
     return rows, missing
+
+
+def _advice_of(log, pth):
+    """One log's part of logged_advice: (rows, whether it carried any advice)."""
+    rows = []
+    any_here = False
+    for eng in log.engagements:
+        adv = getattr(eng, "advice", None) or []
+        if not adv:
+            continue
+        any_here = True
+        mine = sorted([m for m in eng.moves if m.get("actor") == "me"],
+                      key=lambda m: m.get("t") or 0)
+        for a in adv:
+            t = a.get("t") or 0
+            nxt = None
+            for m in mine:
+                if (m.get("t") or 0) >= t - 200:
+                    nxt = m
+                    break
+            thrown = (nxt or {}).get("move")
+            rows.append((estimate.bucket(eng), a.get("move"), thrown,
+                         (thrown is not None) and (thrown == a.get("move")),
+                         a.get("ticks"), a.get("killed"), a.get("frontier"),
+                         os.path.basename(pth)))
+    return rows, any_here
 
 
 def report_logged_advice(paths, opens=None):

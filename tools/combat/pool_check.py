@@ -52,6 +52,17 @@ def check(what, got, want):
         failures.append(what)
 
 
+def _file_shape(path):
+    """(name, read error or None, begins with begin, has an end row, unparseable lines) for one file."""
+    name = os.path.basename(path)
+    try:
+        log = fightlog.read(path)
+    except Exception as e:
+        return (name, str(e), False, False, 0)
+    return (name, None, log.header is not None and log.header.get("ev") == "begin",
+            log.end is not None, log.unparseable)
+
+
 def pooled_corpus():
     print("pooled corpus on disk")
     if not os.path.isdir(POOL_DIR):
@@ -133,20 +144,19 @@ def pooled_corpus():
 
     # every pool file parses as .jsonl with a begin first line and an end line
     unreadable, no_begin, no_end, unparseable = [], [], [], []
-    for path in files:
-        name = os.path.basename(path)
-        try:
-            log = fightlog.read(path)
-        except Exception as e:
-            unreadable.append("%s (%s)" % (name[:32], e))
+    # On the pool, in file order (2026-09-27: a serial read of every pool file, ~50 s of this check).
+    import estimate_parallel
+    for name, err, begins, ends, bad_lines in estimate_parallel.ordered_map(_file_shape, files):
+        if err is not None:
+            unreadable.append("%s (%s)" % (name[:32], err))
             continue
-        if not (log.header is not None and log.header.get("ev") == "begin"):
+        if not begins:
             no_begin.append(name[:32])
-        if log.end is None:
+        if not ends:
             no_end.append(name[:32])
         # Also ensure unparseable count is zero - valid jsonl
-        if log.unparseable:
-            unparseable.append("%s (%d)" % (name[:32], log.unparseable))
+        if bad_lines:
+            unparseable.append("%s (%d)" % (name[:32], bad_lines))
     check("every pool file parses (%d files)" % len(files), unreadable[:5], [])
     check("every pool file begins with begin", no_begin[:5], [])
     check("every pool file ends with end", no_end[:5], [])

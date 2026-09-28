@@ -60,8 +60,11 @@ def main(argv=None):
     ap.add_argument("--per", type=int, default=12)
     a = ap.parse_args(argv)
     counts = defaultdict(Counter)
-    for path in fightlog.pool_logs(os.path.join(ROOT, "data", "combat", "pool")):
-        for sp, line in lines_of(path):
+    # On the worker pool, folded in file order (2026-09-27: 35 s serial, of every regeneration).
+    import estimate_parallel
+    for part in estimate_parallel.ordered_map(
+            lines_of, fightlog.pool_logs(os.path.join(ROOT, "data", "combat", "pool"))):
+        for sp, line in part:
             counts[sp][line] += 1
     out = {"format": 1,
            "note": "player_lines.py - the lines our characters threw to kill each creature, most "
@@ -70,7 +73,7 @@ def main(argv=None):
     for sp in sorted(counts):
         top = counts[sp].most_common(a.per)
         out["species"][sp] = [{"n": n, "line": list(line)} for line, n in top]
-    with open(a.out, "w", encoding="utf-8") as f:
+    with fightlog.write_atomically(a.out, encoding="utf-8") as f:
         json.dump(out, f, indent=1, sort_keys=True)
         f.write("\n")
     print("wrote %s  (%d species, %d kills)" % (a.out, len(out["species"]),

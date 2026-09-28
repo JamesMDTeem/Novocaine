@@ -365,6 +365,8 @@ SPEC = {
     "advin": 22,
     "charge": 23,
     "wear": 24,
+    "foewpn": 25,    # the weapon in a person's hands
+    "pose": 26,      # an opponent's pose set - Bear Rage is a mode
 }
 
 
@@ -409,6 +411,10 @@ class Log(object):
         self.buffs = []
         # Schema 23 "charge" rows: a non-opening buff's meter over time.
         self.charges = []
+        # Schema 25 "foewpn" rows: the weapon in a person's hands, when it changes.
+        self.foe_weapons = []
+        # Schema 26 "pose" rows: an opponent's pose set, when it changes.
+        self.poses = []
         # Every damage row in the file, keyed by the gob it was drawn on. See damage_on().
         self.damage_by_gob = {}
 
@@ -481,6 +487,65 @@ class Log(object):
         return best
 
 
+try:
+    import orjson as _orjson
+except ImportError:
+    _orjson = None
+
+
+class write_atomically(object):
+    """`with write_atomically(path) as f:` - a text file written beside its target and moved over
+    it when complete, retrying the move for a few seconds.
+
+    WHY (2026-09-27). The pack build opened data/combat/opponents.json for writing in place and a
+    suite run failed on it with OSError 22 - another process (an indexer, a scanner, an editor)
+    held the file for a moment. That failure left the stamp unwritten, so the next run
+    regenerated everything again. A move retried past a brief lock does not fail, and a reader
+    never sees half a file. The bytes written are the same as open(path, "w") would write.
+    """
+
+    def __init__(self, path, encoding="utf-8"):
+        self.path = path
+        self.tmp = "%s.%d.tmp" % (path, os.getpid())
+        self.encoding = encoding
+        self.f = None
+
+    def __enter__(self):
+        self.f = open(self.tmp, "w", encoding=self.encoding)
+        return self.f
+
+    def __exit__(self, kind, value, tb):
+        self.f.close()
+        if kind is not None:
+            try:
+                os.remove(self.tmp)
+            except OSError:
+                pass
+            return False
+        import time
+        for attempt in range(20):
+            try:
+                os.replace(self.tmp, self.path)
+                return False
+            except OSError:
+                if attempt == 19:
+                    raise
+                time.sleep(0.25)
+        return False
+
+
+def loads(text):
+    """json.loads, through orjson where it is installed: the same value for anything the stdlib
+    reads, and the stdlib's ValueError for anything it does not. For the tools that scan raw
+    lines rather than read() a whole log."""
+    if _orjson is not None:
+        try:
+            return _orjson.loads(text)
+        except ValueError:
+            pass
+    return json.loads(text)
+
+
 def read(path, opens=None):
     """Parse one log file into a Log. Never raises on bad content.
 
@@ -489,19 +554,44 @@ def read(path, opens=None):
     """
     log = Log(path)
     with open(path, "r", encoding="utf-8", errors="replace") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
+        # split("\n") and not splitlines(): iterating the file split on newlines only, and
+        # splitlines() would also break a row at a U+2028 inside one of its strings.
+        lines = [ln for ln in (x.strip() for x in f.read().split("\n")) if ln]
+    # ONE PARSE FOR THE FILE, NOT ONE PER LINE (2026-09-27). json.loads per row was 60% of a
+    # read and most of that was the call, not the decoding; the suite reads the corpus about
+    # eight times over. The rows are decoded as one array, and that is kept only when it
+    # decodes and gives exactly one value per line - a truncated or bad line breaks the array
+    # or the count, and the file is then read line by line exactly as before.
+    objs = None
+    joined = "[" + ",".join(lines) + "]"
+    if _orjson is not None:
+        # orjson where it is installed (tools/combat/requirements.txt): the decode itself was
+        # 40% of a read after the batching. It refuses what the stdlib accepts - NaN, integers
+        # past 64 bits - and a file it refuses goes through the stdlib as before; checked equal
+        # to the stdlib row for row over the whole corpus when it went in.
+        try:
+            objs = _orjson.loads(joined)
+        except ValueError:
+            objs = None
+    if objs is None:
+        try:
+            objs = json.loads(joined)
+        except ValueError:
+            objs = None
+    if (objs is not None) and (len(objs) != len(lines)):
+        objs = None
+    if objs is None:
+        objs = []
+        for line in lines:
             try:
-                obj = json.loads(line)
+                objs.append(json.loads(line))
             except ValueError:
                 log.unparseable += 1
-                continue
-            if not isinstance(obj, dict):
-                log.unparseable += 1
-                continue
-            log.rows.append(obj)
+    for obj in objs:
+        if not isinstance(obj, dict):
+            log.unparseable += 1
+            continue
+        log.rows.append(obj)
 
     # NO PARENTHESES INSIDE THIS TUPLE. estimate_check._reader_known reads it out of this file
     # by slicing from "known = (" to the first ")", so a comment holding one truncates the list
@@ -512,7 +602,7 @@ def read(path, opens=None):
     # can be diagnosed from its own log.
     known = ("begin", "gear", "end", "foe", "hp", "overlay", "party", "agi", "wpn",
              "atkres", "buffs", "foes", "state", "predict", "advice", "move", "dmg",
-             "card", "foeact", "mvfx", "advin", "charge")
+             "card", "foeact", "mvfx", "advin", "charge", "foewpn", "pose")
     for r in log.rows:
         ev = r.get("ev")
         if ev not in known:
@@ -543,6 +633,10 @@ def read(path, opens=None):
             log.weapons.append(r)
         elif ev == "atkres":
             log.atkres.append(r)
+        elif ev == "foewpn":
+            log.foe_weapons.append(r)
+        elif ev == "pose":
+            log.poses.append(r)
         elif ev == "charge":
             # Schema 23. A held buff's meter - Bloodlust's charge, which raises our attack weight
             # by four times itself. See estimate.holds_charged_stance.
@@ -1365,7 +1459,19 @@ def held_coolmod(log, t, mods=None):
     Take Aim, whose cooldown really does climb - and a fast opponent, which the within-gob
     swap rules out.
 
-    So the one honest use is to EXCLUDE an observation taken with one of these in hand.
+    SETTLED 2026-09-27, and the AGAINST above was the retired agility band talking. Dunki's B12
+    (coolmod 1.25): 510 Quick Barrage, Full Circle and Cleave cooldowns with it in hand, every one
+    1.25 x a factor in [0.9, 1.0] - the smallest, 1.125, already past the 1.104 the 1/7 power law
+    allows - while the 115 Knock Its Teeth Out and every maneuver beside them read an ordinary
+    factor. The reported cooldown CARRIES the modifier, on WEAPON cards only
+    (Formulas.cooldownTicks). The pickaxe's 1.05s read 1.15 x 0.91 under the current law, not "no
+    modifier" under the old one - and every pickaxe reading that could NOT carry it is in a log
+    before schema 13, where a swap to a sword was never written (James: the fight started with the
+    pickaxe and swapped). From schema 13 on: B12 510 need it / 0 forbid it, pickaxe 20 / 0. The
+    agility control divides it out there; the estimators below still exclude, which costs readings
+    and is safe.
+
+    So the one honest use WAS to EXCLUDE an observation taken with one of these in hand.
     See estimate.agility_band, whose whole reading is that a slice at one card, level and
     initiative isolates the opponent's agility and nothing else. Settling it needs a
     deliberate test rather than more corpus: one opponent, one card, swapped weapons, which
@@ -1929,6 +2035,9 @@ def find_log_dirs(root=None):
     Returns existing directories only, most recently written first, so the newest corpus
     leads.
     """
+    if root in _LOG_DIRS:
+        return list(_LOG_DIRS[root])
+    asked = root
     if root is None:
         root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                             "..", ".."))
@@ -1987,12 +2096,57 @@ def find_log_dirs(root=None):
             return 0
 
     dirs.sort(key=newest, reverse=True)
+    _LOG_DIRS[asked] = list(dirs)
     return dirs
 
 
+# find_log_dirs' answer for the life of the process (2026-09-27): it reads the registry and the
+# Steam library files and stats every log in every directory to order them, and a --write-pack
+# asked 20 times. Held once, the order is also the same for every caller in the process, which
+# it was not while a running client could write a newer log between two calls.
+_LOG_DIRS = {}
+
+_DEFAULT_LOGS = {}
+
+
 def default_logs(root=None):
-    """Every combat log this machine has, from every install. (paths, dirs)."""
+    """Every combat log this machine has, from every install. (paths, dirs).
+
+    KEPT WHILE NO DIRECTORY CHANGED (2026-09-27). A --write-pack asked for this 15 times, 0.28 s
+    each to glob and de-duplicate 15,467 files. A file added to or removed from a directory
+    changes that directory's modification time, so the answer is kept against the times of every
+    log directory and every directory under the pool, and handed out as fresh lists.
+    """
     dirs = find_log_dirs(root)
+    base = root if root is not None else os.path.abspath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+    pool = os.path.join(base, "data", "combat", "pool")
+
+    def stamp(pool_dirs):
+        out = [base]
+        for d in list(dirs) + list(pool_dirs):
+            try:
+                out.append((d, os.stat(d).st_mtime_ns))
+            except OSError:
+                out.append((d, None))
+        return tuple(out)
+
+    # The pool's directories as the last answer found them: a directory added under any of them
+    # changes that one's time, so re-statting these is enough to notice it.
+    known = _DEFAULT_LOGS.get(("pool dirs", base))
+    if known is not None:
+        hit = _DEFAULT_LOGS.get(stamp(known))
+        if hit is not None:
+            return list(hit[0]), list(hit[1])
+    pool_dirs = [x for x, _s, _f in os.walk(pool)]
+    hit = _default_logs(root, dirs)
+    _DEFAULT_LOGS.clear()
+    _DEFAULT_LOGS[("pool dirs", base)] = pool_dirs
+    _DEFAULT_LOGS[stamp(pool_dirs)] = hit
+    return list(hit[0]), list(hit[1])
+
+
+def _default_logs(root, dirs):
     paths = []
     for d in dirs:
         paths.extend(sorted(glob.glob(os.path.join(d, "*.jsonl"))))

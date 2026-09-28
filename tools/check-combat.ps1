@@ -35,9 +35,24 @@
     Skip the regeneration stage and check whatever is on disk. Use it to reproduce a
     failure exactly, not as the normal way to run this.
 
+.PARAMETER Refresh
+    Regenerate even when nothing it reads has changed. By default the stage is skipped when
+    tools/combat/derived_stamp.py says the pool, the estimator's sources and the data it
+    reads are exactly as they were at the last successful regeneration - it rewrote the same
+    files byte for byte, and it is 480 of the suite's ~1,100 seconds.
+
 .PARAMETER Jobs
     How many independent checks run at once. The default (0) means one worker per check,
     capped at the processor count. Pass 1 to run them strictly serially in this process.
+
+.PARAMETER PyJobs
+    The worker pool each PYTHON check may start (COMBAT_JOBS) while the checks run side by
+    side. Every python check sizes its pool to the whole machine on its own, so sixteen
+    checks at once on sixteen cores could ask for over a hundred workers between them. The
+    default (0) gives three to each check and half the machine to each of the two long poles,
+    estimate_check.py and replay.py; a value here applies to all of them. The regeneration
+    stage, which runs alone, always gets the whole machine. Timings per step and per check
+    are printed so a change here can be judged.
 
 .EXAMPLE
     powershell -File tools\check-combat.ps1
@@ -48,8 +63,11 @@ param(
     [switch]$Quiet,
     [switch]$NoSync,
     [switch]$NoRefresh,
-    [int]$Jobs = 0
+    [switch]$Refresh,
+    [int]$Jobs = 0,
+    [int]$PyJobs = 0
 )
+$suiteClock = [Diagnostics.Stopwatch]::StartNew()
 
 $ErrorActionPreference = 'Continue'
 $root = Split-Path -Parent $PSScriptRoot
@@ -155,6 +173,10 @@ $executor = {
     # parent's environment, but a worker setting it itself means a job can never run
     # without the seed that keeps the hash-order-dependent censuses reproducible.
     $env:PYTHONHASHSEED = '0'
+    $checkClock = [Diagnostics.Stopwatch]::StartNew()
+    if ($Ctx.PyJobs -gt 0) {
+        $env:COMBAT_JOBS = [string]$(if ($Spec.Pool -eq 'big') { $Ctx.PyJobsBig } else { $Ctx.PyJobs })
+    }
     $root = $Ctx.Root
     Set-Location $root
     $javac = Join-Path $Ctx.Jdk 'bin\javac.exe'
@@ -285,7 +307,8 @@ $executor = {
         }
     }
 
-    [pscustomobject]@{ Name = $Spec.Name; Passed = $ok; Detail = $detail; Output = @($lines) }
+    [pscustomobject]@{ Name = $Spec.Name; Passed = $ok; Detail = $detail; Output = @($lines);
+                       Seconds = [Math]::Round($checkClock.Elapsed.TotalSeconds) }
 }
 
 # ---------------------------------------------------------------------------------
@@ -345,7 +368,16 @@ if (-not $NoSync) {
 # network), and the golden vectors, which have their own freshness check further down
 # that regenerates to a temporary file and diffs - the right pattern where the checked-in
 # copy is the thing under test.
-if (-not $NoRefresh) {
+$unchanged = $false
+if ((-not $NoRefresh) -and (-not $Refresh)) {
+    $unchanged = ((& python 'tools\combat\derived_stamp.py' '--check' 2>$null) -eq 'unchanged')
+}
+if ($unchanged) {
+    Write-Host "`n== regenerating what is derived" -ForegroundColor Cyan
+    Write-Host "  skipped - the pool, tools\combat and the data it reads are as they were at the last"
+    Write-Host "  regeneration (tools\combat\derived_stamp.py). -Refresh forces it."
+}
+if ((-not $NoRefresh) -and (-not $unchanged)) {
     Write-Host "`n== regenerating what is derived" -ForegroundColor Cyan
     $derived = @(
         'data\combat\moves_sheet.json',
@@ -363,28 +395,41 @@ if (-not $NoRefresh) {
         # search is offered beside its own so it never answers worse than one of them.
         'data\combat\player_lines.json'
     )
+    $regenOk = $true
     $before = @{}
     foreach ($f in $derived) {
         $path = Join-Path $root $f
         if (Test-Path $path) { $before[$f] = (Get-FileHash $path -Algorithm SHA256).Hash }
     }
+    $stepClock = [Diagnostics.Stopwatch]::StartNew()
     $gen = & python 'tools\combat\parse_deck.py' 2>&1
+    Write-Host ("  parse_deck.py  {0:N0} s" -f $stepClock.Elapsed.TotalSeconds)
     if ($LASTEXITCODE -ne 0) {
+        $regenOk = $false
         Write-Host "  parse_deck.py failed - the deck sheet is whatever was on disk" -ForegroundColor Yellow
         if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
     }
+    $stepClock = [Diagnostics.Stopwatch]::StartNew()
     $gen = & python 'tools\combat\estimate.py' '--write-pack' 2>&1
+    Write-Host ("  estimate.py --write-pack  {0:N0} s" -f $stepClock.Elapsed.TotalSeconds)
     if ($LASTEXITCODE -ne 0) {
+        $regenOk = $false
         Write-Host "  estimate.py failed - the pack is whatever was on disk" -ForegroundColor Red
         if (-not $Quiet) { $gen | Select-Object -Last 20 | ForEach-Object { Write-Host "    $_" } }
     }
+    $stepClock = [Diagnostics.Stopwatch]::StartNew()
     $gen = & python 'tools\combat\creature_sizes.py' 2>&1
+    Write-Host ("  creature_sizes.py  {0:N0} s" -f $stepClock.Elapsed.TotalSeconds)
     if ($LASTEXITCODE -ne 0) {
+        $regenOk = $false
         Write-Host "  creature_sizes.py failed - the sizes are whatever was on disk" -ForegroundColor Red
         if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
     }
+    $stepClock = [Diagnostics.Stopwatch]::StartNew()
     $gen = & python 'tools\combat\player_lines.py' 2>&1
+    Write-Host ("  player_lines.py  {0:N0} s" -f $stepClock.Elapsed.TotalSeconds)
     if ($LASTEXITCODE -ne 0) {
+        $regenOk = $false
         Write-Host "  player_lines.py failed - the player lines are whatever was on disk" -ForegroundColor Red
         if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
     }
@@ -394,6 +439,9 @@ if (-not $NoRefresh) {
         $now = if (Test-Path $path) { (Get-FileHash $path -Algorithm SHA256).Hash } else { $null }
         if ($before[$f] -ne $now) { $changed += $f }
     }
+    # A regeneration whose four steps all exited cleanly is stamped, so an unchanged rerun can
+    # skip it. A failed step leaves the stamp as it was, and the next run regenerates again.
+    if ($regenOk) { & python 'tools\combat\derived_stamp.py' '--write' | Out-Null }
     if ($changed.Count -gt 0) {
         Write-Host "  REGENERATED, and the contents moved:" -ForegroundColor Yellow
         $changed | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
@@ -402,6 +450,20 @@ if (-not $NoRefresh) {
     } else {
         Write-Host "  up to date - nothing derived moved"
     }
+}
+
+# THE POOL'S CONTEXT, ONCE, ON THE WHOLE MACHINE (2026-09-27). Every python check that pools needs
+# the gob map and measured mu - ~40 s at three workers - and built its own, all of them at the same
+# moment. estimate_parallel keeps the context on disk keyed on everything it reads; this builds it
+# (or finds it current, in about two seconds) before the checks start, so each of them reads it.
+Write-Host "`n== the corpus context the python checks share" -ForegroundColor Cyan
+$stepClock = [Diagnostics.Stopwatch]::StartNew()
+$gen = & python -c "import sys; sys.path.insert(0, r'tools\combat'); import estimate_parallel as p; p.warm()" 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "  failed - each check builds its own, as before" -ForegroundColor Yellow
+    if (-not $Quiet) { $gen | Select-Object -Last 6 | ForEach-Object { Write-Host "    $_" } }
+} else {
+    Write-Host ("  ready in {0:N0} s" -f $stepClock.Elapsed.TotalSeconds)
 }
 
 $model = @(
@@ -451,8 +513,8 @@ $specs = @(
     [pscustomobject]@{ Kind = 'vec'; Name = 'golden-vectors-fresh'; Section = 'the golden vectors match the Java they were generated from' }
     [pscustomobject]@{ Kind = 'py'; Name = 'fightlog_check.py'; Section = 'what a log is allowed to measure'; Script = 'tools\combat\fightlog_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'pool_check.py'; Section = 'the pooled corpus on disk'; Script = 'tools\combat\pool_check.py' }
-    [pscustomobject]@{ Kind = 'py'; Name = 'estimate_check.py'; Section = 'the estimators'; Script = 'tools\combat\estimate_check.py' }
-    [pscustomobject]@{ Kind = 'py'; Name = 'replay.py'; Section = 'every logged fight, replayed through the model'; Script = 'tools\combat\replay.py' }
+    [pscustomobject]@{ Kind = 'py'; Pool = 'big'; Name = 'estimate_check.py'; Section = 'the estimators'; Script = 'tools\combat\estimate_check.py' }
+    [pscustomobject]@{ Kind = 'py'; Pool = 'big'; Name = 'replay.py'; Section = 'every logged fight, replayed through the model'; Script = 'tools\combat\replay.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'creature_damage_check.py'; Section = 'creature blows on us, held out by creature'; Script = 'tools\combat\creature_damage_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'experiment_check.py'; Section = 'which fight would settle something'; Script = 'tools\combat\experiment_check.py' }
     [pscustomobject]@{ Kind = 'py'; Name = 'datapack_check.py'; Section = 'the wiki data pack'; Script = 'tools\combat\datapack_check.py' }
@@ -463,7 +525,24 @@ $specs = @(
     [pscustomobject]@{ Kind = 'ant'; Name = 'ant jar'; Section = 'the client still builds' }
 )
 
-$ctx = [pscustomobject]@{ Jdk = $jdk; Root = $root; Out = $out; Ant = $antBat }
+# The pool each python check may start while the checks run side by side - see -PyJobs. The
+# serial path (-Jobs 1) runs one check at a time and leaves COMBAT_JOBS alone.
+#
+# THE TWO LONG POLES GET HALF THE MACHINE EACH (2026-09-27, timed). estimate_check.py and replay.py
+# took 622 and 496 s at four workers apiece while every other check was done inside 200; the
+# checks phase ends when the slower of them does. The short ones get three.
+# (Named apart from the -PyJobs parameter on purpose: PowerShell variable names ignore case, and a
+# local $pyJobs silently overwrote it - the first run with this gave the long two three workers.)
+$smallPool = 0
+$bigPool = 0
+if ($PyJobs -gt 0) {
+    $smallPool = $PyJobs
+    $bigPool = $PyJobs
+} elseif ($Jobs -ne 1) {
+    $smallPool = 3
+    $bigPool = [Math]::Max(3, [Math]::Floor([Environment]::ProcessorCount / 2))
+}
+$ctx = [pscustomobject]@{ Jdk = $jdk; Root = $root; Out = $out; Ant = $antBat; PyJobs = $smallPool; PyJobsBig = $bigPool }
 
 # Default: one worker per check, capped at the processor count, so everything independent
 # starts at once. -Jobs 1 is the serial path and does not use Start-Job at all.
@@ -485,6 +564,15 @@ if ($jobs -le 1) {
     # Start checks until $jobs are running, then harvest whichever finishes next. A
     # completed result is filed under its spec index, not appended, so reporting order is
     # independent of completion order.
+    #
+    # THE THREAD POOL FIRST (2026-09-27). Windows PowerShell's job manager holds a .NET pool
+    # thread per running job, and the pool starts with one thread per core and adds more about
+    # twice a second - so past the first six or seven, a job neither started nor reported done
+    # until threads had been injected. Sixteen 5-second sleeps took 27.6 s; in the suite most
+    # python checks began 20 s after they were started, on an idle machine, and a Java check
+    # that finished in one second was collected fifteen later. With the floor raised they all
+    # begin inside 1.3 s and the sixteen sleeps take 6.3 s.
+    [void][System.Threading.ThreadPool]::SetMinThreads(64, 64)
     $running = @{}
     $next = 0
     while ($next -lt $checkCount -or $running.Count -gt 0) {
@@ -520,9 +608,14 @@ for ($i = 0; $i -lt $checkCount; $i++) {
         Write-Host "`n== $($specs[$i].Section)" -ForegroundColor Cyan
     }
     if (-not $Quiet) {
-        foreach ($l in @($r.Output)) { Write-Host "    $l" }
+        # One write per check, not per line: Write-Host to a redirected stream costs ~0.3 ms a
+        # call, and the checks print ~14,000 lines - 4.8 s of every run.
+        $outLines = @($r.Output)
+        if ($outLines.Count -gt 0) {
+            Write-Host ("    " + [string]::Join([Environment]::NewLine + "    ", [string[]]$outLines))
+        }
     }
-    $results += [pscustomobject]@{ Check = $r.Name; Passed = [bool]$r.Passed; Detail = $r.Detail }
+    $results += [pscustomobject]@{ Check = $r.Name; Passed = [bool]$r.Passed; Detail = $r.Detail; Seconds = $r.Seconds }
 }
 
 Remove-Item -Recurse -Force $out -ErrorAction SilentlyContinue
@@ -531,10 +624,12 @@ Write-Host "`n"
 $results | Format-Table -AutoSize @(
     @{ Label = 'check'; Expression = { $_.Check } },
     @{ Label = ' '; Expression = { if ($_.Passed) { 'ok' } else { 'FAILED' } } },
+    @{ Label = 'secs'; Expression = { $_.Seconds } },
     @{ Label = 'result'; Expression = { ($_.Detail -replace '\s+', ' ').Trim() } }
 )
 
 $failed = @($results | Where-Object { -not $_.Passed })
+Write-Host ("suite took {0:N0} s (python pools per check: {1}, the long two: {2})" -f $suiteClock.Elapsed.TotalSeconds, $(if ($smallPool -gt 0) { $smallPool } else { 'unset' }), $(if ($bigPool -gt 0) { $bigPool } else { 'unset' }))
 Pop-Location
 if ($failed.Count -gt 0) {
     Write-Host ("{0} of {1} checks FAILED" -f $failed.Count, $results.Count) -ForegroundColor Red

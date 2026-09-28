@@ -256,6 +256,28 @@ def separable(level, a, b, ips=range(0, 21), hyps=HYPOTHESES):
     return None
 
 
+def coverage_uses(paths):
+    """coverage()'s per-file half: (move resource, species bucket) for every card we threw, in
+    file order."""
+    out = []
+    for p in paths:
+        try:
+            log = fightlog.read(p, None)
+        except (OSError, ValueError):
+            continue
+        if not log.rows:
+            continue
+        for eng in log.engagements:
+            sp = estimate.bucket(eng)
+            for mv in eng.moves:
+                if mv.get("actor") == "foe":
+                    continue
+                nm = mv.get("move")
+                if nm:
+                    out.append((nm, sp))
+    return out
+
+
 def coverage(paths=None):
     """How often we have USED each card we own, and against how many species.
 
@@ -283,21 +305,12 @@ def coverage(paths=None):
     byres = dict((m["res"], nm) for nm, m in estimate.load_moves().items() if m.get("res"))
 
     used = defaultdict(lambda: defaultdict(int))
-    for p in sorted(paths):
-        try:
-            log = fightlog.read(p, None)
-        except (OSError, ValueError):
-            continue
-        if not log.rows:
-            continue
-        for eng in log.engagements:
-            sp = estimate.bucket(eng)
-            for mv in eng.moves:
-                if mv.get("actor") == "foe":
-                    continue
-                nm = mv.get("move")
-                if nm:
-                    used[byres.get(nm, nm)][sp] += 1
+    # On the pool, counted in file order (2026-09-27: a serial read of the corpus, ~50 s of
+    # experiment_check.py). Each chunk hands back its (card, species) uses in the order met.
+    import estimate_parallel
+    for part in estimate_parallel.map_chunks("coverage_uses", sorted(paths)):
+        for nm, sp in part:
+            used[byres.get(nm, nm)][sp] += 1
 
     # Everything the newest deck holds, so a card owned and never thrown still appears -
     # except a STANCE, which is not thrown at all. One sits on the bar at a time and is on
