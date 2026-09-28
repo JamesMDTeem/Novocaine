@@ -517,6 +517,14 @@ public class Fightview extends Widget {
 		     * Melee, and why players in this corpus measure from 3 to 393. */
 		    haven.automated.combat.CombatRecorder.sampleBuffs(
 			rel.gobid, "foe", rel.buffs.children(Buff.class));
+		    /* And a person's weapon, which decides what they can throw. */
+		    try {
+			Gob wg = ui.sess.glob.oc.getgob(rel.gobid);
+			if(wg != null)
+			    haven.automated.combat.CombatRecorder.sampleWeapon(rel.gobid, wg.currentWeapon);
+		    } catch(Exception e) {
+			/* a gob that has not arrived yet has no weapon to read */
+		    }
 		}
 		haven.automated.combat.CombatRecorder.sampleBuffs(-1, "me", buffs.children(Buff.class));
 		haven.automated.combat.CombatRecorder.sampleFoes(packed, gsts, dists, ips, oips);

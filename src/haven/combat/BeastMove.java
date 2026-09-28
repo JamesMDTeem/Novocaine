@@ -15,7 +15,8 @@ package haven.combat;
  *   restoration   aimed, not spread - Roar of the Wild takes back yellow and red and
  *                 leaves green and blue completely alone, Careful Approach the opposite
  *                 halves, and only Bristle is even across all four
- *   grievous      three cards leave a lasting wound and every other reads exactly zero
+ *   grievous      Shredding Paw takes 0.35 of the soft blow as hard, Chomp 0.2, Fell
+ *                 Scratch 0.1 - a share of the blow the game rounds, so small blows show none
  *   armour        most are soaked at 0.80 to 0.83 and Ant Spit alone at 0.50
  *
  * A creature-level average of any of those describes an animal that does not exist. The

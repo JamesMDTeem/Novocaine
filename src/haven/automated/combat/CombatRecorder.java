@@ -57,6 +57,9 @@ public final class CombatRecorder {
      * neither the gate nor the reader could see. Per combatant, it is one thing. */
     private static final java.util.Map<String, String> lastBuffs =
         new java.util.concurrent.ConcurrentHashMap<String, String>();
+    /* The weapon last written for each person we fight - see CombatEvent.foewpn. */
+    private static final java.util.Map<Long, String> lastFoeWeapon =
+        new java.util.concurrent.ConcurrentHashMap<Long, String>();
     /* A charged buff's meter as last written, per combatant and buff - see CombatEvent.charge. */
     private static final java.util.Map<String, Integer> lastCharge =
         new java.util.concurrent.ConcurrentHashMap<String, Integer>();
@@ -301,6 +304,8 @@ public final class CombatRecorder {
             lastFoesBeat = 0;
             lastBuffs.clear();
             lastCharge.clear();
+            lastFoeWeapon.clear();
+            lastPose.clear();
             named.clear();
             foeResById.clear();
             kinById.clear();
@@ -1562,6 +1567,11 @@ public final class CombatRecorder {
         /* Another PERSON's card, recorded or not - see alliesFighting. */
         if((gobRes != null) && (olRes != null) && gobRes.contains("borka") && olRes.startsWith("gfx/fx/fight/"))
             playerCard.put(gobId, System.currentTimeMillis());
+        /* A CREATURE'S NON-FIGHT OVERLAY, where it is one we are fighting. Gob passes the resource
+         * only for fight effects and for players, so anything else on a creature - a bear's rage
+         * glow, if it is an overlay - was thrown away at the door (2026-09-27). */
+        if((gobRes == null) && (olRes != null))
+            gobRes = foeResById.get(Long.valueOf(gobId));
         if(!active() || (gobRes == null) || (olRes == null))
             return;
         try {
@@ -1609,6 +1619,34 @@ public final class CombatRecorder {
      *
      * Value-gated per combatant, since buffs change rarely against a frame rate.
      */
+    /* The pose set last written for each opponent - see CombatEvent.pose. */
+    private static final java.util.Map<Long, String> lastPose =
+        new java.util.concurrent.ConcurrentHashMap<Long, String>();
+
+    /** A fight opponent's pose set, written when it changes - see CombatEvent.pose. */
+    public static void onGobPose(long gobId, java.util.Collection<String> poses) {
+        try {
+            if(!active() || (poses == null) || !foeResById.containsKey(Long.valueOf(gobId)))
+                return;
+            java.util.List<String> sorted = new java.util.ArrayList<String>(poses);
+            java.util.Collections.sort(sorted);
+            String key = sorted.toString();
+            String was = lastPose.put(Long.valueOf(gobId), key);
+            if(!key.equals(was))
+                log(CombatEvent.pose(now(), gobId, sorted));
+        } catch(Exception e) {
+            /* never propagate into the object-delta path */
+        }
+    }
+
+    public static void sampleWeapon(long gobId, String weapon) {
+        if(!active() || (weapon == null) || weapon.isEmpty())
+            return;
+        String was = lastFoeWeapon.put(Long.valueOf(gobId), weapon);
+        if(!weapon.equals(was))
+            log(CombatEvent.foewpn(now(), gobId, weapon));
+    }
+
     public static void sampleBuffs(long gobId, String who,
                                    java.util.Collection<haven.Buff> buffs) {
         if(!active() || (buffs == null))

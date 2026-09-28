@@ -116,6 +116,10 @@ public final class LiveAdvice {
         final double agiLo, agiHi;
         /* Seconds since it last acted, -1 when it has not yet - see Prediction.firstAct. */
         final double sinceAct;
+        /* For a person: the weapon in their hands and the buffs on them (their stance), or null. */
+        String weapon = null;
+        String[] buffs = null;
+        double charge = Double.NaN;
 
         Foe(long gob, String res, int[] open, int ip, int oip, int gst, double dist, double taken,
             double agiLo, double agiHi, double sinceAct) {
@@ -463,11 +467,30 @@ public final class LiveAdvice {
              * ending the fight, so it does not take the opponent out of the targets - see
              * AutoFighter.peaceIsTactic. */
             int gst = AutoFighter.peaceIsTactic(rel) ? (rel.gst & ~1) : rel.gst;
-            return(new Foe(rel.gobid, g.getres().name,
-                           new int[] {o.green, o.blue, o.yellow, o.red}, rel.ip, rel.oip,
-                           gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid),
-                           rel.minAgi, rel.maxAgi,
-                           (rel.lastact == null) ? -1 : Math.max(0, haven.Utils.rtime() - rel.lastuse)));
+            Foe f = new Foe(rel.gobid, g.getres().name,
+                            new int[] {o.green, o.blue, o.yellow, o.red}, rel.ip, rel.oip,
+                            gst, dist, haven.GobDamageInfo.shpTaken(rel.gobid),
+                            rel.minAgi, rel.maxAgi,
+                            (rel.lastact == null) ? -1 : Math.max(0, haven.Utils.rtime() - rel.lastuse));
+            /* A PERSON'S HANDS AND STANCE are on screen, and they decide what their finisher can
+             * be - a B12 is the Cleave deck (Prediction.plausible, pvp_meta.json). */
+            if(Prediction.isPlayerRes(f.res)) {
+                f.weapon = g.currentWeapon;
+                List<haven.Buff> bl = new ArrayList<haven.Buff>(rel.buffs.children(haven.Buff.class));
+                f.buffs = buffNames(bl);
+                for(haven.Buff b : bl) {
+                    try {
+                        if((b.res != null) && Prediction.BLOODLUST.equals(b.res.get().name)) {
+                            Double v = b.ameteri.get();
+                            if(v != null)
+                                f.charge = v.doubleValue();
+                        }
+                    } catch(Exception e) {
+                        /* an unread meter stays NaN */
+                    }
+                }
+            }
+            return(f);
         } catch(Exception e) {
             /* an opponent whose gob or resource has not arrived is left out of this plan */
             return(null);
@@ -548,7 +571,8 @@ public final class LiveAdvice {
             /* Bit 1 of the relation state is OUR olive branch: offered peace, so not a target. */
             seen.add(new Prediction.Seen(f.gob, f.res, f.open, f.ip, f.oip, f.dist, f.taken, deck,
                                          (f.gst & 1) == 0, f.agiLo, f.agiHi).acted(f.sinceAct)
-                         .aimed(job.onUs));
+                         .aimed(job.onUs).fled((f.gst & 2) != 0).wielding(f.weapon, f.buffs)
+                         .charged(f.charge));
         }
         return(seen);
     }

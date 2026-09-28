@@ -242,13 +242,24 @@ public final class Sim {
                  * band the skill ratio is pinned to 1, and a lumped call cannot express
                  * that. */
                 opened[c] = Formulas.openingGainEq(
-                    actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult,
+                    actor.skill(m.weight), m.weightMu * m.mu * actor.attackMult * lust(actor),
                     target.blockSkill, target.blockMult,
                     m.openings[c] * reach, target.opening(c));
                 target.open(c, opened[c]);
             }
         }
+        /* A blow charges the target's Bloodlust - see Combatant.charge. */
+        if(target.charges && m.isAttack())
+            target.charge = Math.min(1.0, target.charge + LUST_PER_BLOW);
         return(opened);
+    }
+
+    /** Bloodlust's meter: a blow received adds this; an attack keeps this share. Combatant.charge. */
+    public static final double LUST_PER_BLOW = 0.25, LUST_SPENT = 0.5;
+
+    /** The attack-weight factor Bloodlust's charge gives its holder: 1 + 4 x charge. */
+    static double lust(Combatant c) {
+        return(c.charges ? (1.0 + (4.0 * c.charge)) : 1.0);
     }
 
     /** What the target's own stance does to whoever just swung. See {@link #use}. */
@@ -326,7 +337,8 @@ public final class Sim {
         /* The deck weighting is the move's own, not the actor's: Take Aim's cooldown divides by
          * Take Aim's mu, which says nothing about how the rest of the deck is weighted. */
         long cd = Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale,
-                                         actor.ip, m.takesAgility(), actor.agi, target.agi);
+                                         actor.ip, m.takesAgility(), actor.agi, target.agi,
+                                         (m.damageShare > 0) ? actor.weaponCoolmod : 1.0);
         actor.readyAt = tick + cd;
 
         double[] hit = strike(actor, m, target, 1.0);
@@ -387,6 +399,10 @@ public final class Sim {
         }
 
         parried(actor, m, target);
+        /* And an attack spends half of the actor's own, once per swing - a splash target after
+         * this reads the spent meter, which errs small. */
+        if(actor.charges && m.isAttack())
+            actor.charge *= LUST_SPENT;
 
         /* The requirement was a precondition only - what leaves the pool is the COST, so a
          * "0+4" Think pays nothing while still needing four in hand to be begun. */

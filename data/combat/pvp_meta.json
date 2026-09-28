@@ -1,0 +1,27 @@
+{
+  "source": "DDDsDD999, 'Combat Guide (Overview, PVE, PVP)', Haven & Hearth forum viewtopic.php?t=72160, PVP > Combat Styles > Meta Decks; read 2026-09-27. The same guide is the project's source for equalization.",
+  "note": "What a PERSON'S deck plausibly holds, before we have seen their cards - haven.combat.PvpPrior. Each archetype is the guide's own list: the weapon it is built around (resource basenames, as Gob.currentWeapon reads another player's hands; empty is 'any, or none'), the maneuvers it picks from, and its attacks. The guide's own advice for every archetype is 'Sidestep, Quick Dodge, Zig-Zag, Artful Evasion - pick 3, make sure all colors are covered', and James: 'pretty much every human player will always have the option to drop every color in some way', so every person is assumed to hold the restorations below whatever their archetype. Dash is not in any of the guide's lists; James names it as the card to be wary of against a one-colour build, so it is assumed too. A card SEEN from a person always counts, archetype or not.",
+  "restorations_everyone": ["paginae/atk/qdodge", "paginae/atk/sidestep", "paginae/atk/zigzag",
+                            "paginae/atk/artevade", "paginae/atk/dash"],
+  "archetypes": [
+    {"name": "Red/Blue UA",
+     "weapon": ["b12axe"],
+     "stances": ["paginae/atk/bloodlust", "paginae/atk/combmed", "paginae/atk/oakstance"],
+     "attacks": ["paginae/atk/takeaim", "paginae/atk/oppknock", "paginae/atk/flex",
+                 "paginae/atk/knockteeth", "paginae/atk/cleave"],
+     "guide": "Common UA deck, used with a B12. Take Aim for IP, Flex for blue, KITO for red and chip, Cleave on high openings; Op Knocks to line up a strong Cleave."},
+    {"name": "Green/Yellow UA",
+     "weapon": [],
+     "stances": ["paginae/atk/bloodlust", "paginae/atk/combmed", "paginae/atk/oakstance"],
+     "attacks": ["paginae/atk/takeaim", "paginae/atk/oppknock", "paginae/atk/pow",
+                 "paginae/atk/uppercut", "paginae/atk/ravenbite"],
+     "guide": "Like Red/Blue but green and yellow; less IP-hungry, Raven's Bite hits for less than Cleave."},
+    {"name": "MC",
+     "weapon": ["hirdsword", "bronzesword", "fyrdsword", "cutblade", "boarspear"],
+     "stances": ["paginae/atk/parry", "paginae/atk/shield", "paginae/atk/toarms"],
+     "attacks": ["paginae/atk/takeaim", "paginae/atk/oppknock", "paginae/atk/barrage",
+                 "paginae/atk/fullcircle", "paginae/atk/sting", "paginae/atk/cleave",
+                 "paginae/atk/chop"],
+     "guide": "Quick Barrage into Full Circle into Sting, repeat. Parry with a two-handed sword, Shield Up with a one-handed one, To Arms with a spear; the blank slot is often Cleave for swords, or Cleave/Chop in place of Op Knocks."}
+  ]
+}

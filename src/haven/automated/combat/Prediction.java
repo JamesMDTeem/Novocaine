@@ -6,7 +6,9 @@ import haven.combat.FoeModel;
 import haven.combat.Formulas;
 import haven.combat.Move;
 import haven.combat.Optimizer;
+import haven.combat.PvpThreat;
 import haven.combat.Sim;
+import haven.combat.WearGuard;
 import haven.combat.data.Pack;
 
 import java.util.ArrayList;
@@ -141,6 +143,8 @@ public final class Prediction {
          * the table has no range column at all.
          */
         final double weaponRange;
+        /** The weapon's own cooldown modifier, on weapon cards - Combatant.weaponCoolmod. */
+        double weaponCoolmod = 1.0;
         final boolean armed;
         /* Card resource -> the level it sits at in the deck we are fighting with. */
         final Map<String, Integer> levels;
@@ -240,6 +244,7 @@ public final class Prediction {
             c.gloveQl = gloveQl;
             c.weaponRes = weaponRes;
             c.weaponClasses = weaponClasses;
+            c.weaponCoolmod = weaponCoolmod;
             return(c);
         }
     }
@@ -271,7 +276,7 @@ public final class Prediction {
             return(null);
         double str = num(attrs, "str"), agi = num(attrs, "agi");
         double ua = num(attrs, "unarmed"), mc = num(attrs, "melee");
-        double dmg = 0, pen = 0, weaponQl = 0, range = Double.NaN;
+        double dmg = 0, pen = 0, weaponQl = 0, range = Double.NaN, cool = 1.0;
         String wres = null;
         boolean armed = false;
         /* Both hands, and whichever one resolves to a weapon wins. A shield or a tool in
@@ -323,6 +328,10 @@ public final class Prediction {
             range = (lRange == null) ? Double.NaN : lRange.doubleValue();
             dmg = w[0];
             pen = p;
+            /* The item's cooldown modifier: its tooltip where it has loaded, else the pack's
+             * reading of it - see Formulas.cooldownTicks. */
+            Double lCool = (got == null) ? null : got.get("coolmod");
+            cool = (lCool != null) ? lCool.doubleValue() : ((w.length > 2) ? w[2] : 1.0);
             weaponQl = ((handQl != null) && (i < handQl.length)) ? handQl[i] : 0;
             wres = handRes[i];
             armed = true;
@@ -334,6 +343,7 @@ public final class Prediction {
                         dmg, weaponQl, pen, range, armed,
                         (levels == null) ? new LinkedHashMap<String, Integer>() : levels);
         out.weaponRes = wres;
+        out.weaponCoolmod = cool;
         if((wres != null) && (weaponClasses != null))
             out.weaponClasses = weaponClasses.get(Pack.key(wres.substring(wres.lastIndexOf('/') + 1)));
         return(out);
@@ -636,6 +646,7 @@ public final class Prediction {
         a.weaponQl = me.weaponQl;
         a.weaponPen = me.weaponPen;
         a.weaponRange = me.weaponRange;
+        a.weaponCoolmod = me.weaponCoolmod;
         a.gloveDamage = me.gloveDamage;
         a.gloveQl = me.gloveQl;
         a.hp = a.maxHp = 100;
@@ -720,6 +731,33 @@ public final class Prediction {
         /** The share of its attacks that have landed on us, or NaN for all of them - see
          * Combatant.onUs. Set by the caller that counted it. */
         public double onUs = Double.NaN;
+        /** Whether it has extended its olive branch - the relation state's second bit - and is
+         *  running. It has stopped attacking (Combatant.fled), and while anything else is still on
+         *  us it is not worth chasing. Set by the caller that read the relation. */
+        public boolean fleeing = false;
+        /** For a person: the weapon in their hands as the client reads it (Gob.currentWeapon, a
+         *  resource basename), and the buffs on them, which carry their stance. Null when unread. */
+        public String weapon = null;
+        public String[] buffs = null;
+        /** Their Bloodlust's meter as the client draws it, 0..1, or NaN - Combatant.charge. */
+        public double charge = Double.NaN;
+
+        /** What we can see a person holding and standing in - see {@link #weapon}. */
+        public Seen wielding(String weapon, String[] buffs) {
+            this.weapon = weapon;
+            this.buffs = buffs;
+            return(this);
+        }
+
+        public Seen charged(double meter) {
+            this.charge = meter;
+            return(this);
+        }
+
+        public Seen fled(boolean running) {
+            this.fleeing = running;
+            return(this);
+        }
 
         public Seen aimed(double share) {
             this.onUs = share;
@@ -1091,6 +1129,9 @@ public final class Prediction {
         final Seen s;
         final Combatant b;
         final FoeModel model, hard;
+        /** For a person: every card they plausibly hold (PvpThreat prices the worst of them); null
+         *  for a creature, whose worst blow comes from its measured repertoire. */
+        List<Move> theirs = null;
 
         Built(int at, Seen s, Combatant b, FoeModel model, FoeModel hard) {
             this.at = at;
@@ -1226,8 +1267,23 @@ public final class Prediction {
         Optimizer.Plan cur = null;
         int inc = incumbentAt(built, foes, incumbent);
         double here = standing(built, a);
+        /* A RUNNING OPPONENT IS NOT WORTH CHASING WHILE ANOTHER IS STILL SWINGING (James,
+         * 2026-09-27: "if an enemy is running away it no longer is attacking us, so we should
+         * probably switch to enemies that ARE still attacking us"). Its olive branch is on the
+         * relation, it has stopped attacking (Combatant.fled), and pressing an attack at it walks
+         * us after it while the rest of the room keeps hitting us. So while anything that is not
+         * running may be aimed at, the running ones are not tried as targets - the current one
+         * included, which also takes away the protection a current target has. Alone, it is
+         * still fought: there is nothing else to do. */
+        boolean attackerLeft = false;
+        for(int k = 0; k < built.size(); k++) {
+            Seen s = built.get(k).s;
+            attackerLeft |= ((k == 0) || s.targetable) && !s.fleeing;
+        }
         for(int k = 0; k < built.size(); k++) {
             if((k > 0) && !built.get(k).s.targetable)
+                continue;
+            if(attackerLeft && built.get(k).s.fleeing)
                 continue;
             /* EVERYONE SWINGS, A FEW ARE TRIED AS TARGETS. The whole crowd goes into every plan
              * as opponents acting on us, but only the first TARGETS - the current relation, ours,
@@ -1347,7 +1403,8 @@ public final class Prediction {
         if(kept && (move != null))
             why = why + " (held: " + pick.moves.get(0).name + " is not clearly better)";
         if(bestK != 0)
-            why = "switch to " + shortName(built.get(bestK).s.res) + ": " + why;
+            why = "switch to " + shortName(built.get(bestK).s.res)
+                + (built.get(0).s.fleeing ? " (" + shortName(t.res) + " is running)" : "") + ": " + why;
         if(proxied > 0)
             why = why + ", " + proxied + " unknown planned as " + standIn;
         /* SAID, NOT SILENT. With nothing resolved in hand every weapon card is out of the deck and
@@ -1355,6 +1412,37 @@ public final class Prediction {
          * look like the advice simply preferring a weak card. */
         if(!me.armed)
             why = why + " (planning unarmed)";
+
+        /* WEAR. Against creatures, a restoration first whenever walking the plan's own line with it
+         * thrown first saves at least twice the share of wear - hitpoints plus armour - that it adds
+         * in time (haven.combat.WearGuard). The plan alone never reaches for one against something
+         * weak: through armour a louse's blow is under a hitpoint, and every plan inside the budget
+         * is "fine" - while the armour soaking four fifths of it wears one point per point. Not
+         * gated on the hitpoint trade, which is exactly what cannot see it. */
+        if(!pvp && (move != null) && !reducesOurs(best.moves.get(0))) {
+            Combatant[] bb = new Combatant[built.size()];
+            FoeModel[] mm = new FoeModel[built.size()];
+            int[] ia = new int[built.size()];
+            bb[0] = built.get(bestK).b;
+            mm[0] = built.get(bestK).model;
+            ia[0] = built.get(bestK).s.myIp;
+            for(int j = 0, o = 1; j < built.size(); j++) {
+                if(j == bestK)
+                    continue;
+                bb[o] = built.get(j).b;
+                mm[o] = built.get(j).model;
+                ia[o++] = built.get(j).s.myIp;
+            }
+            Combatant us = a.copy();
+            us.ip = ia[0];
+            WearGuard.Call w = WearGuard.walk(us, bb, mm, deck, ia, best.moves, WearGuard.OPEN,
+                                              WearGuard.RATIO, horizon);
+            if(w.move != null) {
+                move = w.move.res;
+                why = w.move.name + " first: it saves " + Math.round(w.plan - w.with)
+                    + " of " + Math.round(w.plan) + " wear (hp + armour) for a little time";
+            }
+        }
 
         /* THE NEXT BLOW. Only with our hitpoints known - a cap is a share of them - and only
          * acted on where defending saves more than a negligible amount. */
@@ -1370,7 +1458,13 @@ public final class Prediction {
                     threat = built.get(i).at;
                 }
             }
-            if((danger > cap) && (trade > NEGLIGIBLE_HP)) {
+            /* AGAINST A PERSON THE TRADE IS NOT ASKED. The plan prices them as the average of the
+             * cards seen, which holds no finisher until one has landed, so its trade is small in
+             * exactly the fight a Cleave ends. And a blow of half what we have left is answered,
+             * whatever the cap says - that is the knockout. */
+            if(pvp && pvpPrior)
+                cap = Math.min(cap, 0.5 * shp);
+            if((danger > cap) && ((pvp && pvpPrior) || (trade > NEGLIGIBLE_HP))) {
                 Built tb = built.get(bestK);
                 Move fix = null;
                 double fixed = danger;
@@ -1383,7 +1477,7 @@ public final class Prediction {
                     Sim sim = new Sim(ac, tb.b.copy());
                     if(!sim.use(ac, m).ok)
                         continue;
-                    double d2 = max(worstHits(ac, built));
+                    double d2 = max(worstHits(ac, built, m.foeIpGain));
                     if(d2 < fixed) {
                         fixed = d2;
                         fix = m;
@@ -1515,6 +1609,19 @@ public final class Prediction {
                 model = hard = FoeModel.fromDeck(theirs.isEmpty() ? deck : theirs, b,
                                                  a.defenceWeight());
                 players++;
+                /* THEIR OWN WEAPON, where the client shows it: the damage of a finisher is the
+                 * weapon's, and a person swinging a B12 at a copy of us holding a sword was priced
+                 * at our sword (2026-09-27). Their strength and its quality stay ours - unseen. */
+                if(pvpPrior)
+                    theirStance(b, s.buffs, s.charge);
+                double[] wr = (!pvpPrior || (s.weapon == null) || s.weapon.isEmpty() || (weapons == null))
+                    ? null : weapons.get(Pack.key(s.weapon));
+                if(wr != null) {
+                    b.weaponDamage = wr[0];
+                    if(!Double.isNaN(wr[1]))
+                        b.weaponPen = wr[1];
+                    b.weaponCoolmod = (wr.length > 2) ? wr[2] : 1.0;
+                }
             } else {
                 Pack.Opponent o = known(s.res);
                 if(o == null) {
@@ -1537,6 +1644,7 @@ public final class Prediction {
                 b = creature(o, a.agi, s, me.tile, model != null && o == known(s.res), false);
             }
             b.distance = s.dist;
+            b.fled = s.fleeing;
             /* ITS INITIATIVE AGAINST US, as the relation shows it. Read and used only to pick the
              * harder damage model until 2026-09-23, while the plan started every creature at 0 - so a
              * cave angler sitting on 4 was planned as unable to Tail Splash, and every rule on its
@@ -1550,7 +1658,10 @@ public final class Prediction {
              * so whatever is left of it is still standing. */
             if((s.taken > 0) && (b.hp > 0))
                 b.hp = Math.max(1, b.hp - s.taken);
-            built.add(new Built(i, s, b, model, hard));
+            Built bu = new Built(i, s, b, model, hard);
+            if(isPlayerRes(s.res) && pvpPrior)
+                bu.theirs = plausible(s);
+            built.add(bu);
         }
         if(built.isEmpty() || (built.get(0).at != 0))
             return(Live.none("the target could not be planned"));
@@ -1712,11 +1823,25 @@ public final class Prediction {
      * measured damage when it holds initiative against us, and nothing from one out of reach.
      */
     private static double[] worstHits(Combatant us, List<Built> built) {
+        return(worstHits(us, built, 0));
+    }
+
+    /**
+     * @param gift initiative a card of ours has just handed every opponent (Zig-Zag Ruse's two):
+     *             a person's worst blow is priced at what they would then hold.
+     */
+    private static double[] worstHits(Combatant us, List<Built> built, int gift) {
         double[] out = new double[built.size()];
         for(int i = 0; i < out.length; i++) {
             Built x = built.get(i);
             if(!Double.isNaN(x.s.dist) && (x.s.dist > THREAT_RANGE))
                 continue;
+            if(x.theirs != null) {
+                Combatant them = x.b.copy();
+                them.ip += gift;
+                out[i] = PvpThreat.worst(them, us, x.theirs, PVP_LOOKAHEAD).dealt;
+                continue;
+            }
             FoeModel m = (x.s.foeIp > 0) ? x.hard : x.model;
             if(m == null)
                 continue;
@@ -1729,6 +1854,45 @@ public final class Prediction {
         double out = 0;
         for(double d : v)
             out = Math.max(out, d);
+        return(out);
+    }
+
+    /** Initiative a person may gain before our next card lands: a Quick Barrage into an open red,
+     *  or a Take Aim, is a point each, and the card we pick now lands at the END of our cooldown. */
+    static final int PVP_LOOKAHEAD = 2;
+
+    /**
+     * Whether a person is staged from what we can see of them - their weapon, their stance, and the
+     * cards their weapon's deck plausibly holds (2026-09-27) - and their worst blow answered whatever
+     * the plan's trade says. False is the control, the advice as it was: a copy of us holding the
+     * cards seen. -Dpvpprior=false in the tools.
+     */
+    public static volatile boolean pvpPrior = !"false".equals(System.getProperty("pvpprior"));
+
+    /**
+     * Every card a person plausibly holds, as moves: the cards seen, their weapon's archetype and
+     * stance (Pack.pvpPlausible, pvp_meta.json), and a restoration for every colour. Stances are
+     * held, not thrown, and are left out.
+     */
+    static List<Move> plausible(Seen s) {
+        String stance = null;
+        for(String b : (s.buffs == null) ? new String[0] : s.buffs) {
+            Move m = byRes.get(b);
+            if((m != null) && m.stance) {
+                stance = b;
+                break;
+            }
+            if((m != null) && (m.blockMult != 1.0) && (stance == null))
+                stance = b;
+        }
+        java.util.Set<String> res = Pack.pvpPlausible(s.weapon, stance,
+            (s.seen == null) ? java.util.Collections.<String>emptySet() : s.seen.keySet());
+        List<Move> out = new ArrayList<Move>();
+        for(String r : res) {
+            Move m = byRes.get(r);
+            if((m != null) && !m.stance)
+                out.add(m);
+        }
         return(out);
     }
 
@@ -1902,6 +2066,38 @@ public final class Prediction {
         a.attackMult = st.attackMult;
         for(int c = 0; c < 4; c++)
             a.whenAttacked[c] = st.whenAttackedOpens[c];
+        a.charges = BLOODLUST.equals(st.res);
+    }
+
+    /** The stance whose meter moves the holder's attack weight - Combatant.charge. */
+    static final String BLOODLUST = "paginae/atk/bloodlust";
+
+    /**
+     * A PERSON'S OWN STANCE, where their buffs show one, on the copy of us that stands in for them:
+     * the block weight our cards open them against, Parry's answer, and Bloodlust's meter at the
+     * charge the client draws ({@code charge}, NaN for unread). A person was staged holding OUR
+     * stance - Shield Up's 250% against Dunki's Bloodlust at 75%, a third less opening on him than
+     * the game gave (cbrt(2.5/0.75) = 1.49). A shield is assumed where the stance needs one: nobody
+     * holds Shield Up without.
+     */
+    static void theirStance(Combatant b, String[] buffs, double charge) {
+        if((buffs == null) || (byRes == null))
+            return;
+        for(String r : buffs) {
+            Move st = byRes.get(r);
+            if((st == null) || !st.stance)
+                continue;
+            b.blockMult = st.blockMult;
+            if(st.blockSkill != null)
+                b.blockSkill = b.skill(st.blockSkill);
+            b.attackMult = st.attackMult;
+            for(int c = 0; c < 4; c++)
+                b.whenAttacked[c] = st.whenAttackedOpens[c];
+            b.charges = BLOODLUST.equals(st.res);
+            if(b.charges && !Double.isNaN(charge))
+                b.charge = Math.max(0, Math.min(1, charge));
+            return;
+        }
     }
 
     /**

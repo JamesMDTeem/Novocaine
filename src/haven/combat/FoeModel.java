@@ -164,6 +164,42 @@ public final class FoeModel {
     public double pace = 1.0;
 
     /**
+     * The creature's own combat skill (the pack's skill value), and the reference that puts its
+     * measured pressure into the formula's terms - set from the pack, NaN where it does not know.
+     *
+     * WHAT PRESSURE IS. A creature's card raises our opening in a colour by
+     * cbrt(equalize(S_it, S_ours) * m_it / m_ours) * Ob * (1 - Oc) - the same opening formula as
+     * our own attacks, with S the skills (only they equalize) and m the multipliers riding
+     * outside: the card's and the creature's on its side, our STANCE's on ours (Shield Up 2.5 with
+     * a shield). A log cannot see Ob or m_it, so the corpus measures their product as it lands:
+     * gain / (1 - Oc) per action, which is the pressure. It carries our half of the formula with it,
+     * and so has to be quoted against it.
+     *
+     * It used to be quoted against our whole block weight (skill x stance) and rescaled by
+     * cbrt(reference / ours). That lets our block SKILL move a creature's openings, which the
+     * formula says it does not while the two skills sit inside a factor of two of each other.
+     * Scored on every creature gain on us, leaving each character out in turn: rms 2.37 by the block
+     * weight, 1.54 by the formula; median error 8.3% against 5.0% (2026-09-28). The pack's
+     * pressure_ref is sum(pressure) / sum(pressure / cbrt(equalize(S_it, S_ours) / m_ours)) over the
+     * observations it was measured on, so dividing the formula term by it recovers the measured
+     * figure exactly where the fight looks like the ones it was measured in.
+     */
+    public double attackSkill = Double.NaN;
+    public double pressureRef = Double.NaN;
+
+    /**
+     * The factor its measured openings take against us as we stand: the formula's term over the
+     * reference it was measured at, or - for a model without one - the old block weight ratio.
+     */
+    double scaleAgainst(Combatant me, double myBlockWeight) {
+        if((pressureRef > 0) && (attackSkill > 0) && (me != null)
+           && (me.blockSkill > 0) && (me.blockMult > 0))
+            return(Math.cbrt(Formulas.equalize(attackSkill, me.blockSkill) / me.blockMult) / pressureRef);
+        return(((pressureAgainst > 0) && (myBlockWeight > 0))
+               ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0);
+    }
+
+    /**
      * The creature as it was modelled before 2026-09-23 - card cooldowns blended over whoever fought
      * it, and no initiative bought or spent - for the checks and tools that measure what the change
      * did. Never set in the client.
@@ -272,6 +308,8 @@ public final class FoeModel {
 
     /** Whether this opponent has given up and is running, and so has stopped hitting us. */
     public boolean fleeing(Combatant foe) {
+        if(foe.fled)
+            return(true);
         return(!Double.isNaN(fleesBelow) && (foe.maxHp > 0)
                && ((foe.hp / foe.maxHp) < fleesBelow));
     }
@@ -460,8 +498,7 @@ public final class FoeModel {
      * so a card that hits several people restores its thrower once, not once per victim.
      */
     private double strike(BeastMove m, Combatant me, double myBlockWeight) {
-        double scale = ((pressureAgainst > 0) && (myBlockWeight > 0))
-            ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0;
+        double scale = scaleAgainst(me, myBlockWeight);
         for(int c = 0; c < 4; c++) {
             if(m.openings[c] > 0)
                 me.open(c, m.openings[c] * scale * (1.0 - me.opening(c)));
@@ -485,8 +522,24 @@ public final class FoeModel {
          * keeps the old reading of fully soaked rather than inventing a penetration. */
         double armpen = ((m.soaked > 0) && (m.soaked <= 1.0)) ? (1.0 - m.soaked) : 0.0;
         double dealt = Formulas.dealtDamage(raw, me.armHard, me.armSoft, armpen);
+        /* THE WOUND, as Sim.strike takes ours off them (2026-09-28). A creature's grievous is a
+         * share of the SOFT damage that got through - Shredding Paw 0.35, Chomp 0.21, Fell Scratch
+         * 0.12 (estimate.animal_move_grievous) - capped by what is left to take, and it comes off
+         * the hard hitpoints where those are known, which soft ones can never stand above. Carried
+         * by BeastMove since the pack first had it and read by nothing: creatures took 21% of their
+         * soft damage off us as hard in the logs, and the planner saw none of it. */
+        double wound = ((m.grievous > 0) && !Double.isNaN(m.grievous))
+            ? Math.min(dealt, Math.max(0, me.hp)) * m.grievous : 0.0;
         me.hp -= dealt;
         me.soaked += Math.max(0, raw - dealt);
+        if(wound > 0) {
+            me.wounded += wound;
+            if(!Double.isNaN(me.hhp)) {
+                me.hhp -= wound;
+                if(me.hp > me.hhp)
+                    me.hp = me.hhp;
+            }
+        }
         return(dealt);
     }
 
@@ -564,13 +617,66 @@ public final class FoeModel {
         return(act(me.copy(), myBlockWeight, pressureNow(me, self)));
     }
 
+    /**
+     * What this creature's next swing wears off us as we stand, BEFORE armour: for each card it may
+     * throw now, the hitpoints and the armour one throw would take, weighted by its share of the
+     * mix in force. Zero when it is running or its damage is unknown.
+     *
+     * WHY NOT {@link #worstHit}. That is soft hitpoints, what gets THROUGH, and armour takes 80% of a
+     * creature's blow on us - a cave louse at 40% open lands three or four points of wear and under
+     * one hitpoint, so a guard reading hitpoints never saw it. Armour wear is the whole swing.
+     *
+     * Also returns, through {@code rms} when given, how open we are to what it throws: the root of
+     * the mix-weighted mean of (combined opening in the card's attack colours)^2, weighted by each
+     * card's damage too, so 0.4 reads "as open as 40% in the colours that hurt". Read on copies;
+     * nothing passed in changes.
+     */
+    public double expectedSwing(Combatant me, double myBlockWeight, Combatant self, double[] rms) {
+        if((me == null) || ((self != null) && fleeing(self)) || !knowsDamage() && (cards == null))
+            return(0);
+        if((cards != null) && cards.usable()) {
+            double[] mix = cards.mixNow(me, self);
+            double tot = 0, swing = 0, num = 0, den = 0;
+            for(int i = 0; (i < cards.cards.length) && (i < mix.length); i++) {
+                if(!(mix[i] > 0))
+                    continue;
+                tot += mix[i];
+                BeastMove bm = cards.cards[i];
+                Combatant us = me.copy();
+                double hp0 = us.hp, soak0 = us.soaked;
+                play(bm, us, myBlockWeight, (self == null) ? null : self.copy());
+                swing += mix[i] * ((hp0 - us.hp) + (us.soaked - soak0));
+                if(bm.damageCoef > 0) {
+                    double[] o = new double[4];
+                    for(int c = 0; c < 4; c++)
+                        o[c] = ((bm.attackColours == null) || bm.attackColours[c]) ? me.opening(c) : 0;
+                    double k = Formulas.combined(o);
+                    num += mix[i] * bm.damageCoef * k * k;
+                    den += mix[i] * bm.damageCoef;
+                }
+            }
+            if((rms != null) && (rms.length > 0))
+                rms[0] = (den > 0) ? Math.sqrt(num / den) : 0;
+            return((tot > 0) ? (swing / tot) : 0);
+        }
+        Combatant us = me.copy();
+        double hp0 = us.hp, soak0 = us.soaked;
+        act(us, myBlockWeight, pressureNow(me, self));
+        if((rms != null) && (rms.length > 0)) {
+            double[] o = new double[4];
+            for(int c = 0; c < 4; c++)
+                o[c] = me.opening(c);
+            rms[0] = Formulas.combined(o);
+        }
+        return((hp0 - us.hp) + (us.soaked - soak0));
+    }
+
     public double act(Combatant me, double myBlockWeight) {
         return(act(me, myBlockWeight, pressure));
     }
 
     private double act(Combatant me, double myBlockWeight, double[] press) {
-        double scale = (pressureAgainst > 0 && myBlockWeight > 0)
-            ? Math.cbrt(pressureAgainst / myBlockWeight) : 1.0;
+        double scale = scaleAgainst(me, myBlockWeight);
         for(int c = 0; c < 4; c++) {
             if(press[c] > 0)
                 me.open(c, press[c] * scale * (1.0 - me.opening(c)));
@@ -644,7 +750,8 @@ public final class FoeModel {
                 continue;               /* held, not thrown - it is not in the rotation */
             acts++;
             cd += Formulas.cooldownTicks(m.cooldownBase, m.cooldownMu, m.mu, m.ipScale, 0,
-                                         m.takesAgility(), owner.agi, owner.agi);
+                                         m.takesAgility(), owner.agi, owner.agi,
+                                         (m.damageShare > 0) ? owner.weaponCoolmod : 1.0);
             for(int c = 0; c < 4; c++) {
                 if(m.openings[c] > 0) {
                     press[c] += Formulas.openingGainEq(

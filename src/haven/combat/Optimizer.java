@@ -79,6 +79,10 @@ public final class Optimizer {
          * rather than reaching {@link #hpLost}. See {@link Combatant#soaked}.
          */
         public final double soaked;
+
+        /** The hard hitpoints this plan costs US - the creatures' grievous shares. See
+         *  {@link Combatant#wounded}. */
+        public final double wounded;
         /* Fixed when the plan is made, at the weight it was searched under - see cost(). */
         private final double cost;
 
@@ -88,7 +92,13 @@ public final class Optimizer {
 
         Plan(List<Move> moves, long ticks, double hpLost, boolean killed, double foeHp,
              double wounds, double foeHhp, boolean lethal, double soaked) {
+            this(moves, ticks, hpLost, killed, foeHp, wounds, foeHhp, lethal, soaked, 0);
+        }
+
+        Plan(List<Move> moves, long ticks, double hpLost, boolean killed, double foeHp,
+             double wounds, double foeHhp, boolean lethal, double soaked, double wounded) {
             this.soaked = soaked;
+            this.wounded = wounded;
             this.cost = Optimizer.cost(hpLost, soaked);
             this.moves = Collections.unmodifiableList(new ArrayList<Move>(moves));
             this.ticks = ticks;
@@ -152,7 +162,9 @@ public final class Optimizer {
          * lost if the array is compacted underneath it.
          */
         final Combatant[] foes;
-        final List<Move> path;
+        /* The cards that reached this node, newest first; null for none. Shared with every node
+         * the line branches into - see Path. */
+        final Path path;
         final long tick;
         /** Each opponent's own next action, on its own clock. */
         final long[] foeNext;
@@ -199,8 +211,19 @@ public final class Optimizer {
         /** Hard hitpoints taken off the opponents along this line. See Plan.wounds. */
         final double wounds;
 
-        Node(Combatant me, Combatant[] foes, List<Move> path, long tick, long[] foeNext,
+        /**
+         * The tick up to which each opponent's opening decay has been applied. Decay is deferred
+         * (2026-09-27): it is linear with a floor at zero, so applying it in one lump when the
+         * opponent is next changed - own() - or read - open() - is the same as applying it at every
+         * gap, as long as nothing opened it in between, and anything that opens it goes through
+         * own() first. Every opponent with a standing opening used to be copied at every step to
+         * decay it: half of all the planner allocated. Root nodes start at tick 0.
+         */
+        long[] decayed;
+
+        Node(Combatant me, Combatant[] foes, Path path, long tick, long[] foeNext,
              double hpLost, int[] foeActs, int[][] foeThrown, int[] myIp, double wounds) {
+            this.decayed = new long[foes.length];
             this.me = me;
             this.myIp = myIp;
             this.wounds = wounds;
@@ -253,8 +276,8 @@ public final class Optimizer {
 
         Plan plan(boolean killed) {
             double h = foeHhp();
-            return(new Plan(path, tick, hpLost, killed, foeHp(), wounds, h,
-                            !Double.isNaN(h) && (h <= 0), me.soaked));
+            return(new Plan(Path.list(path), tick, hpLost, killed, foeHp(), wounds, h,
+                            !Double.isNaN(h) && (h <= 0), me.soaked, me.wounded));
         }
     }
 
@@ -382,7 +405,7 @@ public final class Optimizer {
         /* A plan's wear is what THAT plan takes, not whatever the caller's combatant carried in. */
         Combatant root = me.copy();
         root.soaked = 0;
-        live.add(new Node(root, f0, new ArrayList<Move>(), 0, next0, 0,
+        live.add(new Node(root, f0, null, 0, next0, 0,
                           new int[foes.length], thrown0, ip0, 0));
         List<Plan> done = new ArrayList<Plan>();
 
@@ -595,7 +618,7 @@ public final class Optimizer {
             ip0[i] = ((myIp0 != null) && (myIp0.length == foes.length)) ? myIp0[i] : me.ip;
         Combatant root = me.copy();
         root.soaked = 0;
-        Node n = new Node(root, f0, new ArrayList<Move>(), 0, next0, 0,
+        Node n = new Node(root, f0, null, 0, next0, 0,
                           new int[foes.length], thrown0, ip0, 0);
         for(int k = 0; k < line.size(); k++) {
             Move m = line.get(k);
@@ -613,6 +636,88 @@ public final class Optimizer {
                 return(n.plan(false));
         }
         return(n.plan(false));
+    }
+
+    /**
+     * Chooses our next card from the fight as it stands, for {@link #play}. The combatants are the
+     * live ones inside the walk: read them, do not change them. Null throws nothing and ends the
+     * walk; a card the model refuses is counted and the walk asks again a tick later.
+     */
+    public interface Policy {
+        Move choose(Combatant me, Combatant[] foes, int[] myIp, long tick);
+    }
+
+    /**
+     * A fight played ONE DECISION AT A TIME - the search's own step, driven by a policy that sees
+     * the state each card is thrown into rather than by a line fixed in advance.
+     *
+     * WHY (2026-09-27). {@link #follow} walks a line decided before the fight, so it cannot ask the
+     * question the live advice answers, "given how open I am NOW, restore or hit?". Against three
+     * cave lice a fixed "two Quick Barrages then Quick Dodge" line cut armour worn 600 -> 394 and
+     * tripled the fight; whether dodging only when the lice have actually opened us does better is
+     * a closed-loop question. And the live advice itself is a policy - re-plan, throw the first card
+     * - so this is also the only way to score one of its settings over a whole fight in the model.
+     */
+    public static Plan play(Combatant me, Combatant[] foes, FoeModel[] models, List<Move> deck,
+                            Policy policy, long maxTicks, int[] myIp0, int[] refused) {
+        double[] trigger = trigger(deck, me);
+        Combatant[] f0 = new Combatant[foes.length];
+        long[] next0 = new long[foes.length];
+        int[][] thrown0 = new int[foes.length][];
+        for(int i = 0; i < foes.length; i++) {
+            f0[i] = foes[i].copy();
+            next0[i] = firstAct(models[i], f0[i]);
+            thrown0[i] = new int[cardCount(models[i])];
+        }
+        int[] ip0 = new int[foes.length];
+        for(int i = 0; i < foes.length; i++)
+            ip0[i] = ((myIp0 != null) && (myIp0.length == foes.length)) ? myIp0[i] : me.ip;
+        Combatant root = me.copy();
+        root.soaked = 0;
+        Node n = new Node(root, f0, null, 0, next0, 0,
+                          new int[foes.length], thrown0, ip0, 0);
+        int misses = 0;
+        while(n.anyAlive() && n.me.alive() && (n.tick < maxTicks)) {
+            /* EACH OPPONENT'S OWN CLOCK, as the policy's view of it: ticks until it next acts, the
+             * way the live client reads it off the relation (Prediction.firstAct). Left as it was,
+             * a policy that re-plans handed every creature a fresh full period at every card - a
+             * plan that dawdles then looks cheaper than it is (2026-09-27, the least-damage aim
+             * read worse than the fastest kill until this was set). Nothing in step() reads it. */
+            /* The policy reads the opponents as they stand NOW - their deferred decay applied (see
+             * Node.decayed) - on copies of its own, so nothing another node shares is changed. */
+            Combatant[] view = new Combatant[n.foes.length];
+            for(int i = 0; i < view.length; i++) {
+                view[i] = n.foes[i].copy();
+                if(n.tick > n.decayed[i])
+                    view[i].decay(n.tick - n.decayed[i]);
+                if(n.foeNext[i] != Long.MAX_VALUE)
+                    view[i].firstAct = Math.max(0, n.foeNext[i] - n.tick);
+            }
+            n = new Node(n.me, view, n.path, n.tick, n.foeNext, n.hpLost, n.foeActs, n.foeThrown,
+                         n.myIp, n.wounds);
+            java.util.Arrays.fill(n.decayed, n.tick);
+            Move m = policy.choose(n.me, n.foes, n.myIp, n.tick);
+            if(m == null)
+                break;
+            Node s = step(n, m, models, maxTicks, trigger);
+            if(s == null) {
+                if(refused != null)
+                    refused[0]++;
+                /* A refused card spends nothing; give the clock a tick so a policy that keeps
+                 * asking for it cannot loop forever. */
+                if(++misses > 10000)
+                    break;
+                Combatant w = n.me.copy();
+                w.readyAt = Math.max(w.readyAt, n.tick) + 1;
+                long[] dec = n.decayed;
+                n = new Node(w, n.foes, n.path, n.tick, n.foeNext, n.hpLost, n.foeActs, n.foeThrown,
+                             n.myIp, n.wounds);
+                n.decayed = dec;
+                continue;
+            }
+            n = s;
+        }
+        return(n.plan(!n.anyAlive()));
     }
 
     /**
@@ -646,21 +751,30 @@ public final class Optimizer {
      * or it can only ever find the ends it carried.
      */
     private static List<Node> prune(List<Node> next, double foeHp0, int beam) {
-        List<Node> byRate = new ArrayList<Node>(next);
-        Collections.sort(byRate, (a, b) -> {
-            double ra = (foeHp0 - a.foeHp()) / Math.max(1, a.tick);
-            double rb = (foeHp0 - b.foeHp()) / Math.max(1, b.tick);
-            return(Double.compare(rb, ra));
+        /* EACH NODE'S KEYS ONCE (2026-09-27). The comparators summed every opponent's hitpoints
+         * and rebuilt the standing opening - an array each time - on every comparison, n log n
+         * of them per sort; that was a fifth of LiveAdviceCheck's samples. Precomputed, and
+         * sorted with the same comparisons by the same stable sort, so the order is the same. */
+        int n = next.size();
+        double[] hp = new double[n], rate = new double[n], cost = new double[n], opened = new double[n];
+        for(int i = 0; i < n; i++) {
+            Node x = next.get(i);
+            hp[i] = x.foeHp();
+            rate[i] = (foeHp0 - hp[i]) / Math.max(1, x.tick);
+            cost[i] = x.cost();
+            opened[i] = open(x);
+        }
+        Integer[] byRate = indices(n);
+        Arrays.sort(byRate, (a, b) -> Double.compare(rate[b], rate[a]));
+        Integer[] byHp = indices(n);
+        Arrays.sort(byHp, (a, b) -> {
+            int c = Double.compare(cost[a], cost[b]);
+            return((c != 0) ? c : Double.compare(hp[a], hp[b]));
         });
-        List<Node> byHp = new ArrayList<Node>(next);
-        Collections.sort(byHp, (a, b) -> {
-            int c = Double.compare(a.cost(), b.cost());
-            return((c != 0) ? c : Double.compare(a.foeHp(), b.foeHp()));
-        });
-        List<Node> bySetup = new ArrayList<Node>(next);
-        Collections.sort(bySetup, (a, b) -> {
-            int c = Double.compare(open(b), open(a));
-            return((c != 0) ? c : Double.compare(a.foeHp(), b.foeHp()));
+        Integer[] bySetup = indices(n);
+        Arrays.sort(bySetup, (a, b) -> {
+            int c = Double.compare(opened[b], opened[a]);
+            return((c != 0) ? c : Double.compare(hp[a], hp[b]));
         });
         /* ADDED TO THE OTHER TWO, NOT CARVED OUT OF THEM. Taking a third of the beam for
          * setup was the obvious way and it broke the check next door: the initiative curve
@@ -669,18 +783,23 @@ public final class Optimizer {
          * were already load-bearing. */
         int half = Math.max(1, beam / 2);
         List<Node> out = new ArrayList<Node>();
-        for(int i = 0; (i < half) && (i < byRate.size()); i++)
-            out.add(byRate.get(i));
-        for(int i = 0; (i < half) && (i < byHp.size()); i++) {
-            Node n = byHp.get(i);
-            if(!out.contains(n))
-                out.add(n);
+        boolean[] taken = new boolean[n];
+        for(Integer[] ends : new Integer[][] {byRate, byHp, bySetup}) {
+            for(int i = 0; (i < half) && (i < n); i++) {
+                int k = ends[i];
+                if(!taken[k]) {
+                    taken[k] = true;
+                    out.add(next.get(k));
+                }
+            }
         }
-        for(int i = 0; (i < half) && (i < bySetup.size()); i++) {
-            Node n = bySetup.get(i);
-            if(!out.contains(n))
-                out.add(n);
-        }
+        return(out);
+    }
+
+    private static Integer[] indices(int n) {
+        Integer[] out = new Integer[n];
+        for(int i = 0; i < n; i++)
+            out[i] = i;
         return(out);
     }
 
@@ -697,8 +816,11 @@ public final class Optimizer {
         if(i < 0)
             return(0);
         double[] all = new double[4];
+        Combatant f = n.foes[i];
+        double owed = (n.tick > n.decayed[i]) && (f.decayPerTick > 0)
+            ? (f.decayPerTick * (n.tick - n.decayed[i])) / 100.0 : 0.0;
         for(int c = 0; c < 4; c++)
-            all[c] = n.foes[i].opening(c);
+            all[c] = Math.max(0.0, f.opening(c) - owed);
         return(Formulas.combined(all));
     }
 
@@ -764,14 +886,21 @@ public final class Optimizer {
     private static Node step(Node n, Move m, FoeModel[] models, long maxTicks,
                              double[] trigger, int force) {
         Combatant me = n.me.copy();
-        Combatant[] foes = new Combatant[n.foes.length];
-        for(int i = 0; i < foes.length; i++)
-            foes[i] = n.foes[i].copy();
+        /* COPIED ON WRITE (2026-09-27). Every opponent was copied at every step of every line, and
+         * in a crowd most of them change nothing at a given step - no standing opening to decay,
+         * not acting, not hit: one live pass against eight bats allocated 1.8 GB. A node's opponents
+         * are never changed once the node exists, so the new one shares them and copies each only
+         * where this step changes it (own()): opening decay, its own action, Parry's answer, our
+         * swing and our sweep. Those are the only writes to an opponent in here. */
+        Combatant[] foes = n.foes.clone();
+        boolean[] mine = new boolean[foes.length];
+        long[] decayedTo = n.decayed.clone();
         long[] foeNext = n.foeNext.clone();
         int[] acts = n.foeActs.clone();
-        int[][] thrown = new int[n.foeThrown.length][];
-        for(int i = 0; i < thrown.length; i++)
-            thrown[i] = (n.foeThrown[i] == null) ? new int[0] : n.foeThrown[i].clone();
+        /* Each opponent's tally of cards thrown, shared with the parent and copied for the one that
+         * acts - the only writer (FoeModel.act through Repertoire). Every row was cloned at every step. */
+        int[][] thrown = n.foeThrown.clone();
+        boolean[] ownTally = new boolean[thrown.length];
         long tick = n.tick;
         double hpLost = n.hpLost;
         int[] myIp = n.myIp.clone();
@@ -816,12 +945,12 @@ public final class Optimizer {
              * that keeps defending simply arrives later for the same hitpoints, and is
              * dominated. */
             long[] gap = new long[1];
-            decay(me, foes, foeNext[who] - clock);
+            me.decay(foeNext[who] - clock);
             clock = Math.max(clock, foeNext[who]);
             /* The relation that is acting is the one whose initiative a rule on ours reads. */
             me.ip = myIp[who];
-            hpLost += models[who].act(me, me.defenceWeight(), foes[who], acts[who],
-                                      thrown[who], gap);
+            hpLost += models[who].act(me, me.defenceWeight(), own(foes, mine, decayedTo, who, clock), acts[who],
+                                      tally(thrown, ownTally, who), gap);
             Trace tr0 = trace;
             if(tr0 != null)
                 tr0.foeActed(who, clock);
@@ -833,7 +962,7 @@ public final class Optimizer {
              * steps where blue rose on any of several opponents at once, it rose on
              * exactly one in 753. A sword is required, which is why this reads armed. */
             if((trigger != null) && me.armed())
-                Sim.trigger(foes[who], trigger);
+                Sim.trigger(own(foes, mine, decayedTo, who, clock), trigger);
             /* PER-CARD COOLDOWNS WHERE THE CARD HAS ONE. The gap the model reports is the
              * thrown card's own measured cooldown, falling back to the creature's single
              * period when the card has none. Scheduling every action on the period collapsed
@@ -844,7 +973,7 @@ public final class Optimizer {
         tick = ready;
         if(tick > maxTicks)
             return(null);
-        decay(me, foes, ready - clock);
+        me.decay(ready - clock);
 
         /* WE DIED WAITING, AND THAT IS A RESULT RATHER THAN A DEAD END.
          *
@@ -858,8 +987,8 @@ public final class Optimizer {
          * So the node comes back with the path it arrived with - the move was never thrown
          * - and the caller records it as a plan that did not kill. */
         if(!me.alive())
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp,
-                            wounds));
+            return(decayedAt(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp,
+                                      wounds), decayedTo));
 
         int main = -1;
         if((force >= 0) && (force < foes.length) && foes[force].alive())
@@ -871,10 +1000,10 @@ public final class Optimizer {
             }
         }
         if(main < 0)
-            return(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp,
-                            wounds));
+            return(decayedAt(new Node(me, foes, n.path, tick, foeNext, hpLost, acts, thrown, myIp,
+                                      wounds), decayedTo));
 
-        Sim sim = new Sim(me, foes[main]);
+        Sim sim = new Sim(me, own(foes, mine, decayedTo, main, tick));
         sim.advanceTo(tick);
         /* Against THIS relation, with what we hold against it: legality, the initiative-
          * scaled cooldown and the cost all read and write the one we are swinging at. */
@@ -942,15 +1071,14 @@ public final class Optimizer {
                  * the model has nothing that distinguishes them. */
                 if(positions && !(foes[i].distance <= sweep))
                     continue;
-                Sim.Result sr = sim.splash(me, m, foes[i], idx, (idx <= whole) ? 1.0 : part);
+                Sim.Result sr = sim.splash(me, m, own(foes, mine, decayedTo, i, tick), idx, (idx <= whole) ? 1.0 : part);
                 if(sr.ok)
                     wounds += sr.grievous;
                 idx++;
             }
         }
-        List<Move> path = new ArrayList<Move>(n.path);
-        path.add(m);
-        return(new Node(me, foes, path, tick, foeNext, hpLost, acts, thrown, myIp, wounds));
+        return(decayedAt(new Node(me, foes, new Path(n.path, m), tick, foeNext, hpLost, acts, thrown, myIp, wounds),
+                         decayedTo));
     }
 
     /** Everyone's openings, faded across a gap of this many ticks. */
@@ -960,6 +1088,61 @@ public final class Optimizer {
         me.decay(ticks);
         for(Combatant f : foes)
             f.decay(ticks);
+    }
+
+    /**
+     * Opponent {@code i} of this step's own, copied from the parent's the first time it is changed,
+     * with the opening decay it is owed up to {@code now} applied - see Node.decayed.
+     */
+    private static Combatant own(Combatant[] foes, boolean[] mine, long[] decayed, int i, long now) {
+        if(!mine[i]) {
+            foes[i] = foes[i].copy();
+            mine[i] = true;
+        }
+        if(now > decayed[i]) {
+            foes[i].decay(now - decayed[i]);
+            decayed[i] = now;
+        }
+        return(foes[i]);
+    }
+
+    /** Opponent {@code i}'s tally of this step's own, copied from the parent's before it is written. */
+    private static int[] tally(int[][] thrown, boolean[] mine, int i) {
+        if(!mine[i]) {
+            thrown[i] = (thrown[i] == null) ? new int[0] : thrown[i].clone();
+            mine[i] = true;
+        }
+        return(thrown[i]);
+    }
+
+    /**
+     * A line of cards as a chain, newest first. Each step used to copy the whole line into a new
+     * list to add one card - a quarter of all the planner allocated (2026-09-27, JFR) - and nearly
+     * every line is pruned before it is ever read. The chain shares everything behind the newest
+     * card, and becomes a list only when a finished plan is built.
+     */
+    static final class Path {
+        final Path prev;
+        final Move move;
+        final int size;
+
+        Path(Path prev, Move move) {
+            this.prev = prev;
+            this.move = move;
+            this.size = (prev == null) ? 1 : (prev.size + 1);
+        }
+
+        static List<Move> list(Path p) {
+            Move[] out = new Move[(p == null) ? 0 : p.size];
+            for(int i = out.length - 1; p != null; p = p.prev, i--)
+                out[i] = p.move;
+            return(new ArrayList<Move>(java.util.Arrays.asList(out)));
+        }
+    }
+
+    private static Node decayedAt(Node x, long[] decayed) {
+        x.decayed = decayed;
+        return(x);
     }
 
     /**
@@ -1003,20 +1186,50 @@ public final class Optimizer {
         /* Nothing killed inside the horizon: report the closest tries rather than nothing,
          * because "it does not die" is itself the answer to the matchup question. */
         List<Plan> pool = kills.isEmpty() ? all : kills;
-        List<Plan> out = new ArrayList<Plan>();
-        for(Plan p : pool) {
-            boolean dominated = false;
-            for(Plan q : pool) {
-                if(q == p)
-                    continue;
-                if(dominates(q.ticks, q.cost(), q.wounds, q.soaked,
-                             p.ticks, p.cost(), p.wounds, p.soaked)) {
-                    dominated = true;
+        /* EVERY PLAN AGAINST EVERY PLAN, BUT THE LIKELY ANSWER FIRST (2026-09-27): this was a
+         * fifth of LiveAdviceCheck's samples, over the thousands of plans a search finishes.
+         * Whether a plan is dominated does not depend on the order it is tested in, so plans are
+         * visited fastest first and each is tested against the frontier found so far - which
+         * dominates nearly every plan that is dominated at all - and only then against the rest.
+         * Only a plan no slower can dominate (dominates() needs qTicks <= pTicks), so the rest
+         * stops at the first slower one. The frontier is the same set, in the same order. */
+        int n = pool.size();
+        long[] t = new long[n];
+        double[] c = new double[n], w = new double[n], s = new double[n];
+        for(int i = 0; i < n; i++) {
+            Plan p = pool.get(i);
+            t[i] = p.ticks;
+            c[i] = p.cost();
+            w[i] = p.wounds;
+            s[i] = p.soaked;
+        }
+        Integer[] byTicks = indices(n);
+        Arrays.sort(byTicks, (a, b) -> Long.compare(t[a], t[b]));
+        boolean[] dominated = new boolean[n];
+        List<Integer> front = new ArrayList<Integer>();
+        for(int pi : byTicks) {
+            boolean d = false;
+            for(int qi : front) {
+                if((qi != pi) && dominates(t[qi], c[qi], w[qi], s[qi], t[pi], c[pi], w[pi], s[pi])) {
+                    d = true;
                     break;
                 }
             }
-            if(!dominated)
-                out.add(p);
+            for(int k = 0; !d && (k < n); k++) {
+                int qi = byTicks[k];
+                if(t[qi] > t[pi])
+                    break;
+                if((qi != pi) && dominates(t[qi], c[qi], w[qi], s[qi], t[pi], c[pi], w[pi], s[pi]))
+                    d = true;
+            }
+            dominated[pi] = d;
+            if(!d)
+                front.add(pi);
+        }
+        List<Plan> out = new ArrayList<Plan>();
+        for(int i = 0; i < n; i++) {
+            if(!dominated[i])
+                out.add(pool.get(i));
         }
         Collections.sort(out, (a, b) -> Long.compare(a.ticks, b.ticks));
         /* Ties on both axes are the same plan by any measure that matters; keep one. */

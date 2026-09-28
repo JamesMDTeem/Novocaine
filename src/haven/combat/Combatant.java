@@ -71,6 +71,14 @@ public final class Combatant {
     public double soaked;
 
     /**
+     * Hard hitpoints this combatant has lost, summed over every blow - the lasting wound, which a
+     * creature's grievous share takes off us as surely as ours takes it off them (FoeModel.strike,
+     * 2026-09-28). Kept whether or not {@link #hhp} is known: a pool nobody logged still loses the
+     * wound, it just cannot cap the soft hitpoints.
+     */
+    public double wounded;
+
+    /**
      * For an OPPONENT: ticks from the start of the plan to its first action, or NaN for a full
      * period - the old reading, and the default.
      *
@@ -95,6 +103,33 @@ public final class Combatant {
      * blow on us (COMBAT.md §3.12).
      */
     public double onUs = 1.0;
+
+    /**
+     * For an OPPONENT: it has extended its olive branch and is running (the relation state's second
+     * bit), so it has stopped attacking whatever its hitpoints say. {@link FoeModel#fleeing} reads
+     * this before its hitpoint threshold, which is a species figure and cannot see the individual.
+     * Of 1,087 creatures that showed the bit in the pool (2026-09-27), 1,043 never acted again;
+     * the rest were turned round by a re-aggro.
+     */
+    public boolean fled = false;
+
+    /**
+     * BLOODLUST'S METER, for a combatant holding it ({@link #charges}). Measured on Dunki's own log
+     * of the 2026-09-26 spar, the meter the client draws (schema-23 charge rows): every blow he
+     * received added exactly 0.25, to a cap of 1; every attack he threw halved it (0.98 -> 0.49,
+     * 0.74 -> 0.37, 0.62 -> 0.31, 0.56 -> 0.28); maneuvers left it alone. The card: "your attack
+     * weight will be increased by four times the amount that Bloodlust is charged" - and the charge
+     * read is the one BEFORE the attack spends half: his Quick Barrage at 0.98 opened our red 12
+     * where one at 0.25 opened 9, and cbrt(4.92 / 2.00) = 1.35 against 1.33 seen. Between blows it
+     * bleeds away at about 0.025 a second, which is left out. What it means: every card we throw at
+     * a person in Bloodlust is a quarter of a charge for their next swing.
+     */
+    public double charge = 0;
+    public boolean charges = false;
+
+    /** The weapon in hand's own cooldown modifier (tooltip Coolmod), on WEAPON cards only - see
+     *  Formulas.cooldownTicks. 1 for a sword; Dunki's B12 is 1.25. */
+    public double weaponCoolmod = 1.0;
 
     /**
      * The combat skill this combatant BLOCKS with, and the multiplier its stance puts on it.
@@ -358,8 +393,13 @@ public final class Combatant {
         c.penetrable = penetrable;
         c.hp = hp; c.maxHp = maxHp; c.hhp = hhp;
         c.soaked = soaked;
+        c.wounded = wounded;
         c.firstAct = firstAct;
         c.onUs = onUs;
+        c.fled = fled;
+        c.charge = charge;
+        c.charges = charges;
+        c.weaponCoolmod = weaponCoolmod;
         c.blockSkill = blockSkill; c.blockMult = blockMult;
         c.attackMult = attackMult;
         c.ip = ip;

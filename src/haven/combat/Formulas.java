@@ -380,12 +380,30 @@ public final class Formulas {
     public static long cooldownTicks(double base, boolean muDivides, double mu,
                                      double ipScale, int ip, boolean isAttack,
                                      double agiMe, double agiFoe) {
+        return(cooldownTicks(base, muDivides, mu, ipScale, ip, isAttack, agiMe, agiFoe, 1.0));
+    }
+
+    /**
+     * The same, with the weapon's own cooldown modifier - the item tooltip's Coolmod - which the
+     * caller passes for a WEAPON card and leaves at 1 otherwise. It multiplies before the agility
+     * factor and the one rounding: Dunki's B12 (1.25) reported Quick Barrage 23 (20 x 1.25 x 0.906 =
+     * 22.65), Full Circle 45 and Cleave 91 against a slow bat, and over 510 weapon-card cooldowns
+     * with it in hand every ratio to the base sat at 1.25 x a factor in [0.9, 1.0], while the 115
+     * Knock Its Teeth Out and every maneuver thrown beside them read an ordinary factor
+     * (2026-09-27). That settles in-game question Q1: the reported cooldown carries it.
+     */
+    public static long cooldownTicks(double base, boolean muDivides, double mu,
+                                     double ipScale, int ip, boolean isAttack,
+                                     double agiMe, double agiFoe, double coolmod) {
         double cd = base;
         if(muDivides && (mu > 0))
             cd = Math.floor(cd / mu);
         cd = Math.floor(cd * (1.0 + (ipScale * ip)));
+        double cm = ((coolmod > 0) && !Double.isNaN(coolmod)) ? coolmod : 1.0;
         if(isAttack)
-            return(Math.round(cd * agilityCooldownFactor(agiMe, agiFoe)));
+            return(Math.round(cd * cm * agilityCooldownFactor(agiMe, agiFoe)));
+        if(cm != 1.0)
+            return(Math.round(cd * cm));
         return((long)cd);
     }
 

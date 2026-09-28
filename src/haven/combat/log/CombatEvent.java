@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 24;
+    public static final int SCHEMA = 26;
 
     /**
      * A buff's meter, when it is not one of the four openings (schema 23).
@@ -34,6 +34,37 @@ public final class CombatEvent {
                .put("who", who)
                .put("res", res)
                .put("v", v)
+               .end());
+    }
+
+    /**
+     * THE WEAPON IN A PERSON'S HANDS, as the client reads it off their model (Gob.currentWeapon, a
+     * resource basename) - schema 25, written when it changes. What a person CAN throw follows
+     * from it (a B12 is the Cleave deck; pvp_meta.json), and until now nothing recorded it, so the
+     * prior over a person's cards could only come from a forum guide and never from our fights.
+     */
+    public static String foewpn(long t, long gobId, String res) {
+        return(new JsonObj()
+               .put("ev", "foewpn")
+               .put("t", t)
+               .put("gob", gobId)
+               .put("res", res)
+               .end());
+    }
+
+    /**
+     * AN OPPONENT'S POSE SET, written when it changes - schema 26. James (2026-09-27): a bear
+     * enters "Bear Rage", a mode where its eyes glow orange-red, and no row the log carried could
+     * show it - no card, no buff, no overlay among fight effects. A mode shown on the model is a
+     * pose or an overlay; this records the poses (and the recorder now keeps a creature's
+     * non-fight overlays), so the first bear fight on this build says which it is and when.
+     */
+    public static String pose(long t, long gobId, java.util.Collection<String> poses) {
+        return(new JsonObj()
+               .put("ev", "pose")
+               .put("t", t)
+               .put("gob", gobId)
+               .raw("poses", list(poses))
                .end());
     }
 

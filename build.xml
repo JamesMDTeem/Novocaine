@@ -131,9 +131,12 @@ git-dirty-flag = ${git-dirty-flag}
            it Pack.opponentsFromJar cannot build a repertoire for any opponent and the live
            advisor declines every move. individuals.json is the per-creature rows the hardest
            reading sweeps instead of the pooled chimera. All three are read by Pack.slurp; a
-           build without them loses the in-fight advice and nothing else. -->
+           build without them loses the in-fight advice and nothing else. weapon_classes.json
+           was missing until 2026-09-27, so the live advice never withheld a card a weapon cannot
+           throw and never resolved a B12 by its resource name; pvp_meta.json is the prior over
+           what a person's deck holds (haven.combat.PvpPrior). -->
       <fileset dir="data/combat"
-               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,constants.json,animal_moves_measured.json,individuals.json,creature_sizes.json,player_lines.json" />
+               includes="moves_sheet.json,opponents.json,weapons.json,weapons_seen.json,weapon_classes.json,pvp_meta.json,constants.json,animal_moves_measured.json,individuals.json,creature_sizes.json,player_lines.json" />
     </copy>
     <copy file="local-boot.properties" tofile="build/classes/haven/boot-props" failonerror="false" quiet="true" />
   </target>

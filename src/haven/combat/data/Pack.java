@@ -275,10 +275,97 @@ public final class Pack {
             out.put(key(name), new double[] {
                 dmg.getDouble("value"),
                 ((pen == null) || pen.isNull("value")) ? Double.NaN
-                    : (pen.getDouble("value") / 100.0)});
+                    : (pen.getDouble("value") / 100.0),
+                1.0});
         }
+        aliasResources(out);
         overlaySeen(out);
         return(out);
+    }
+
+    /**
+     * The cards a PERSON plausibly holds, from what we can see of them - pvp_meta.json.
+     *
+     * Every card seen from them; every restoration, since everyone can drop every colour; and the
+     * attacks and maneuvers of each archetype their weapon fits. An archetype with no weapon listed
+     * fits anyone. A stance seen on them that belongs to an archetype narrows to archetypes holding
+     * it, when any does - a Bloodlust is an unarmed build whatever is in the hands. With the weapon
+     * unknown (null) every archetype fits, which is the cautious reading: a card is in the set
+     * because they COULD hold it, and the threat it prices is a worst case, not a forecast.
+     *
+     * @param weapon resource basename in their hands (Gob.currentWeapon), or null/empty
+     * @param stance the stance buff seen on them, or null
+     */
+    public static java.util.Set<String> pvpPlausible(String weapon, String stance,
+                                                     java.util.Collection<String> seen) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<String>();
+        if(seen != null)
+            out.addAll(seen);
+        String doc = slurp("pvp_meta.json");
+        if(doc == null)
+            return(out);
+        JSONObject root = new JSONObject(doc);
+        JSONArray every = root.optJSONArray("restorations_everyone");
+        for(int i = 0; (every != null) && (i < every.length()); i++)
+            out.add(every.getString(i));
+        JSONArray arr = root.optJSONArray("archetypes");
+        List<JSONObject> fit = new ArrayList<JSONObject>();
+        String w = ((weapon == null) || weapon.isEmpty()) ? null : key(weapon);
+        for(int i = 0; (arr != null) && (i < arr.length()); i++) {
+            JSONObject a = arr.getJSONObject(i);
+            JSONArray ws = a.optJSONArray("weapon");
+            boolean ok = (w == null) || (ws == null) || (ws.length() == 0);
+            for(int j = 0; !ok && (j < ws.length()); j++)
+                ok = key(ws.getString(j)).equals(w);
+            if(ok)
+                fit.add(a);
+        }
+        if(stance != null) {
+            List<JSONObject> held = new ArrayList<JSONObject>();
+            for(JSONObject a : fit) {
+                JSONArray st = a.optJSONArray("stances");
+                for(int j = 0; (st != null) && (j < st.length()); j++) {
+                    if(st.getString(j).equals(stance))
+                        held.add(a);
+                }
+            }
+            if(!held.isEmpty())
+                fit = held;
+        }
+        for(JSONObject a : fit) {
+            for(String f : new String[] {"attacks", "stances"}) {
+                JSONArray cs = a.optJSONArray(f);
+                for(int j = 0; (cs != null) && (j < cs.length()); j++)
+                    out.add(cs.getString(j));
+            }
+        }
+        return(out);
+    }
+
+    /**
+     * The wiki row under the item's RESOURCE name too, wherever weapon_classes.json links the two.
+     *
+     * The join above is on the title reduced to letters and digits, and a title that does not
+     * reduce to its resource is never found: "Battleaxe of the Twelfth Bay" is `b12axe`. Our own
+     * weapons were rescued by weapons_seen.json, which reads a weapon we have HELD - so an
+     * opponent's B12 resolved to nothing, and a person swinging one was planned with no Cleave at
+     * all (2026-09-27, the spars with Dunki). A resource the file does not link stays unfound,
+     * as before.
+     */
+    private static void aliasResources(Map<String, double[]> out) {
+        String doc = slurp("weapon_classes.json");
+        if(doc == null)
+            return;
+        JSONArray arr = new JSONObject(doc).optJSONArray("weapons");
+        for(int i = 0; (arr != null) && (i < arr.length()); i++) {
+            JSONObject w = arr.getJSONObject(i);
+            String res = w.optString("res", null), name = w.optString("name", null);
+            if((res == null) || (name == null))
+                continue;
+            double[] row = out.get(key(name));
+            if((row != null) && !out.containsKey(key(res)))
+                out.put(key(res), row);
+        }
     }
 
     /**
@@ -341,6 +428,18 @@ public final class Pack {
                 continue;
             JSONObject rb = e.optJSONObject("recovered_base");
             JSONArray pen = e.optJSONArray("armpen");
+            /* THE WEAPON'S OWN COOLDOWN MODIFIER, from its tooltip - the third figure. It
+             * multiplies the cooldown of a WEAPON card and nothing else (2026-09-27, Dunki's B12
+             * at 1.25: 510 Quick Barrage, Full Circle and Cleave cooldowns at 1.25 x an agility
+             * factor, the 115 Knock Its Teeth Out and every maneuver beside them untouched). */
+            JSONArray cm = e.optJSONArray("coolmod");
+            /* ONLY WHERE THE CORPUS SAYS IT IS IN THE NUMBER (estimate_parallel.weapons_seen_merge,
+             * `coolmod_applies`, from schema-13+ logs where the hands are known): the B12 510 to 0,
+             * the pickaxe 20 to 0. An older log's pickaxe that "could not carry it" had swapped to a
+             * sword without a gear row. A disputed or unmeasured weapon is left at 1. */
+            boolean applies = e.has("coolmod_applies") && !e.isNull("coolmod_applies")
+                && e.getBoolean("coolmod_applies");
+            double cool = (!applies || (cm == null) || (cm.length() == 0)) ? 1.0 : cm.getDouble(cm.length() - 1);
             double[] have = out.get(key(base));
             double dmg = (rb == null) ? Double.NaN : rb.optDouble("lo", Double.NaN);
             double p = ((pen == null) || (pen.length() == 0)) ? Double.NaN
@@ -358,11 +457,12 @@ public final class Pack {
             } else if((rb != null) && (Math.abs(rb.optDouble("hi", dmg) - dmg) > 0.5)) {
                 dmg = Double.NaN;
             }
-            if(Double.isNaN(dmg) && Double.isNaN(p))
+            if(Double.isNaN(dmg) && Double.isNaN(p) && (cool == 1.0))
                 continue;
             out.put(key(base), new double[] {
                 Double.isNaN(dmg) ? ((have == null) ? Double.NaN : have[0]) : dmg,
-                Double.isNaN(p) ? ((have == null) ? Double.NaN : have[1]) : p});
+                Double.isNaN(p) ? ((have == null) ? Double.NaN : have[1]) : p,
+                cool});
         }
     }
 
@@ -1072,6 +1172,11 @@ public final class Pack {
             /* How much of its measured clock it keeps up over a fight - FoeModel.pace. */
             double pace = per.optDouble("pace", 1.0);
             fm.pace = (pace > 0) ? Math.max(PACE_FLOOR, Math.min(1.0, pace)) : 1.0;
+            /* Its pressure in the opening formula's terms - see FoeModel.attackSkill. Both must be
+             * known, or the model keeps the block weight ratio it was built with. */
+            JSONObject sk = j.optJSONObject("skill");
+            fm.attackSkill = (sk == null) ? Double.NaN : sk.optDouble("value", Double.NaN);
+            fm.pressureRef = t.isNull("pressure_ref") ? Double.NaN : t.optDouble("pressure_ref", Double.NaN);
             return(fm);
         }
 

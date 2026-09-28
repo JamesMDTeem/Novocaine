@@ -1431,6 +1431,9 @@ public class Gob implements RenderTree.Node, Sprite.Owner, Skeleton.ModOwner, Eq
 
 	public void updPose(HashSet<String> poses) {
 		isComposite = true;
+		/* A creature we are fighting changing pose - Bear Rage is a mode a bear enters, and nothing
+		 * in the log could say when (2026-09-27). The recorder writes it only for fight gobs. */
+		haven.automated.combat.CombatRecorder.onGobPose(this.id, poses);
 		Iterator<String> iter = poses.iterator();
 		while (iter.hasNext()) { // ND: Some animals have stupid names for the knock or dead pose, like "chicken-knock". Doing it this way is easier than manually adding every single one.
 			String s = iter.next();

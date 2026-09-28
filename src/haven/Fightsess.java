@@ -317,6 +317,26 @@ public class Fightsess extends Widget {
 		g.aimage(unknownTextTex, position, 0, 0.5);
 	}
 
+	/* The basename of a cooldown-modifying weapon in either of our hand slots, from the equipment;
+	 * else what the character model shows. */
+	private String heldWeapon(String fallback) {
+		try {
+			Equipory eq = ui.gui.getequipory();
+			if (eq != null) {
+				for (int i = 6; (i <= 7) && (i < eq.slots.length); i++) {
+					WItem w = eq.slots[i];
+					if ((w == null) || (w.item.getres() == null))
+						continue;
+					String bn = w.item.getres().basename();
+					if (bn.equals("b12axe") || bn.equals("cutblade") || bn.equals("pickaxe"))
+						return (bn);
+				}
+			}
+		} catch (Exception ignored) {
+		}
+		return ((fallback == null) ? "" : fallback);
+	}
+
 	private void renderAgilityMin(GOut g, double minAgi, Coord position) {
 		String agiText = ">" + minAgi + "x";
 		Tex tex = agilityTexCache.computeIfAbsent(agiText, key -> Text.renderstroked(key, OptWnd.enemyIPCombatColorOptionWidget.currentColor, Color.BLACK).tex());
@@ -643,11 +663,17 @@ public class Fightsess extends Widget {
 				boolean cutbladeEquipped = false;
 				boolean pickaxeEquipped = false;
 				if (gob != null) {
-					if (gob.currentWeapon.equals("b12axe"))
+					/* OUR HANDS FROM THE EQUIPMENT, not from the model's attachments: with two
+					 * pickaxes held, gob.currentWeapon did not say pickaxe, and Quick Barrage's 21 -
+					 * 20 x the pickaxe's 1.15 x a slow deer's 0.906 - was read through the default
+					 * table as a deer 1.2-1.7 times our agility (Shade, 2026-09-27). The live
+					 * advice stages creatures from this bracket. */
+					String held = heldWeapon(gob.currentWeapon);
+					if (held.equals("b12axe"))
 						b12Equipped = true;
-					else if (gob.currentWeapon.equals("cutblade"))
+					else if (held.equals("cutblade"))
 						cutbladeEquipped = true;
-					else if (gob.currentWeapon.equals("pickaxe"))
+					else if (held.equals("pickaxe"))
 						pickaxeEquipped = true;
 					if (!b12Equipped && !cutbladeEquipped && !pickaxeEquipped) { // ND: Default cooldowns, weapon has 100% attack speed
 						if (Config.attackCooldownNumbers.keySet().stream().anyMatch(moveDefaultCooldown::equals)){
