@@ -1663,6 +1663,8 @@ public final class CombatRecorder {
             java.util.List<String> names = new java.util.ArrayList<String>();
             for(haven.Buff b : buffs) {
                 try {
+                    if(b.fading())   // removed, only still fading out - see readOpenings
+                        continue;
                     if((b.res != null) && (b.res.get() != null)) {
                         String nm = b.res.get().name;
                         names.add(nm);
@@ -1708,6 +1710,12 @@ public final class CombatRecorder {
         int g = 0, b = 0, y = 0, r = 0;
         for(haven.Buff buff : buffs) {
             try {
+                /* AN OPENING THE SERVER HAS REMOVED STAYS ON SCREEN FOR 0.35 s, fading, with its
+                 * last meter. Read as held, every removal landed 0.35 s late in the log and in the
+                 * plan: Dash's +2 IP to the opponent reads a median 12 ms after the card, the opening
+                 * it removes 366 ms after (1,031 Dashes, schemas up to 26). Schema 27 reads it gone. */
+                if(buff.fading())
+                    continue;
                 if((buff.res == null) || (buff.res.get() == null))
                     continue;
                 Double m = buff.ameteri.get();

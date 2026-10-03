@@ -165,6 +165,12 @@ public class Buff extends Widget implements ItemInfo.ResOwner, Bufflist.Managed 
 	}
     }
 
+    /* Removed by the server and fading out: still in its list and drawn for another 0.35 s
+     * with the last meter it had, then destroyed. Not something the character holds any more. */
+    public boolean fading() {
+	return(dest);
+    }
+
     public void reqdestroy() {
 	anims.clear();
 	final Coord o = this.c;

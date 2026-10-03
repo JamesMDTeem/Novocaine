@@ -367,6 +367,11 @@ SPEC = {
     "wear": 24,
     "foewpn": 25,    # the weapon in a person's hands
     "pose": 26,      # an opponent's pose set - Bear Rage is a mode
+    # Openings read gone when the server removes them. Below 27 a removed opening stayed at its
+    # last value for the 0.35 s the client draws it fading (Buff.fading): Dash's removal reads
+    # 355-380 ms after the card while its +2 IP to the opponent reads ~12 ms after. A drop to
+    # 0 in an older log happened up to 0.35 s before the row that shows it.
+    "removal_on_time": 27,
 }
 
 

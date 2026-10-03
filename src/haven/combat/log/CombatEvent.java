@@ -14,7 +14,7 @@ public final class CombatEvent {
     private CombatEvent() {}
 
     /** Bumped whenever a key is added, renamed or given a new meaning. Logs below 2 have no header. */
-    public static final int SCHEMA = 26;
+    public static final int SCHEMA = 27;
 
     /**
      * A buff's meter, when it is not one of the four openings (schema 23).

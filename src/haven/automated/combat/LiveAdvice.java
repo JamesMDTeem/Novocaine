@@ -413,6 +413,8 @@ public final class LiveAdvice {
         List<String> names = new ArrayList<String>();
         for(haven.Buff b : buffs) {
             try {
+                if(b.fading())   // removed, only still fading out - see CombatRecorder.readOpenings
+                    continue;
                 if((b.res != null) && (b.res.get() != null))
                     names.add(b.res.get().name);
             } catch(Exception e) {
@@ -480,7 +482,7 @@ public final class LiveAdvice {
                 f.buffs = buffNames(bl);
                 for(haven.Buff b : bl) {
                     try {
-                        if((b.res != null) && Prediction.BLOODLUST.equals(b.res.get().name)) {
+                        if(!b.fading() && (b.res != null) && Prediction.BLOODLUST.equals(b.res.get().name)) {
                             Double v = b.ameteri.get();
                             if(v != null)
                                 f.charge = v.doubleValue();

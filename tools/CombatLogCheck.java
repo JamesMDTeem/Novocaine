@@ -191,7 +191,10 @@ public class CombatLogCheck {
         /* 25 adds the foewpn row: the weapon in a person's hands, which decides what they can
          * throw (pvp_meta.json) and was never recorded. */
         /* 26 adds the pose row: an opponent's pose set when it changes (Bear Rage is a mode). */
-        check("schema constant", CombatEvent.SCHEMA, 26);
+        /* 27 adds no row and changes a meaning: openings leave the state, foes and foeact rows
+         * the moment the server removes them. Up to 26 a removed opening was read for the 0.35 s
+         * the client draws it fading out (Buff.fading), so every removal landed 0.35 s late. */
+        check("schema constant", CombatEvent.SCHEMA, 27);
         check("pose lists an opponent's poses",
               CombatEvent.pose(8L, 5L, java.util.Arrays.asList("idle", "rage")),
               "{\"ev\":\"pose\",\"t\":8,\"gob\":5,\"poses\":[\"idle\",\"rage\"]}");
