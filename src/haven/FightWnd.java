@@ -948,6 +948,9 @@ public class FightWnd extends Widget {
 	    MenuGrid.setCombatDeckNames(names);
 	} else if(nm == "use") {
 		int i = (int) args[0];
+		/* The loaded school. Vanilla writes it here; the dropdown that replaced the save list
+		 * dropped the line, so usesave read 0 forever and every deck dump said school 1. */
+		usesave = i;
 		if (i >= 0 && i < saves.length)
 			schoolsDropdown.change2(new Pair<>(saves[i], i));
 	} else if(nm == "max") {
