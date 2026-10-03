@@ -575,14 +575,22 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	    return(new DepPipe(parent.istate()).prep(cstate).prep(ostate).lock().intern());
 	}
 
-	private void remrdep(int stidx, TreeSlot rdep) {
+	/* rdeps is guarded by the slot's own monitor, not the tree lock:
+	 * the 2D pass computes a slot's first state without the tree lock,
+	 * registering it in an ancestor's rdeps while loaders do the same
+	 * under the lock, and the race lost an entry (NPE in addrdep).
+	 * Taking the tree lock there instead deadlocked against GLDrawList,
+	 * which calls state() inside its monitor while tree-lock holders
+	 * wait on that monitor to notify it. Nothing is called out to while
+	 * this monitor is held, so it cannot join a lock cycle. */
+	private synchronized void remrdep(int stidx, TreeSlot rdep) {
 	    if((rdeps == null) || (rdeps.length <= stidx) ||
 	       (rdeps[stidx] == null) || !rdeps[stidx].remove(rdep))
 		throw(new RuntimeException("Reverse dependency did strangely not exist"));
 	}
 
 	@SuppressWarnings("unchecked")
-	private void addrdep(int stidx, TreeSlot rdep) {
+	private synchronized void addrdep(int stidx, TreeSlot rdep) {
 	    if(rdeps == null)
 		rdeps = (Collection<TreeSlot>[])new Collection[stidx + 1];
 	    else if(rdeps.length <= stidx)
@@ -645,10 +653,12 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 		for(int i = 0; i < maxi; i++) {
 		    if(pst.def[i] && !eq(pst.states[i], nst.states[i])) {
 			ch[nch++] = i;
-			if((rdeps != null) && (rdeps.length > i) && (rdeps[i] != null)) {
-			    for(TreeSlot rdep : rdeps[i]) {
-				if(!cdeps.contains(rdep))
-				    cdeps.add(rdep);
+			synchronized(this) {
+			    if((rdeps != null) && (rdeps.length > i) && (rdeps[i] != null)) {
+				for(TreeSlot rdep : rdeps[i]) {
+				    if(!cdeps.contains(rdep))
+					cdeps.add(rdep);
+				}
 			    }
 			}
 		    }
@@ -750,13 +760,7 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	public class SlotPipe implements Pipe {
 	    @SuppressWarnings("unchecked")
 	    public <T extends State> T get(State.Slot<T> slot) {
-		DepInfo bk = TreeSlot.this.dstate;
-		if(bk == null) {
-		    /* Recomputing touches the parent's rdeps; see state(). */
-		    try(Locked lk = tree.lock()) {
-			bk = dstate();
-		    }
-		}
+		DepInfo bk = dstate();
 		/* Same removed-from-under-draw race as istate() below:
 		 * removech() nulls the dstate. */
 		if(bk == null)
@@ -850,18 +854,7 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	}
 
 	public GroupPipe state() {
-	    /* Computing the state for the first time registers this slot
-	     * in its ancestors' rdeps, so it must hold the tree lock: the
-	     * 2D pass calls this unlocked while loaders add slots under
-	     * the same ancestors, and the race lost an rdeps entry (NPE
-	     * in addrdep). Inheritance's fields are final, so a cached
-	     * one is safe to hand out without the lock. */
-	    Inheritance ret = istate;
-	    if(ret != null)
-		return(ret);
-	    try(Locked lk = tree.lock()) {
-		return(istate());
-	    }
+	    return(istate());
 	}
 
 	public String toString() {
