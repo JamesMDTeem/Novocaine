@@ -750,7 +750,13 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	public class SlotPipe implements Pipe {
 	    @SuppressWarnings("unchecked")
 	    public <T extends State> T get(State.Slot<T> slot) {
-		DepInfo bk = dstate();
+		DepInfo bk = TreeSlot.this.dstate;
+		if(bk == null) {
+		    /* Recomputing touches the parent's rdeps; see state(). */
+		    try(Locked lk = tree.lock()) {
+			bk = dstate();
+		    }
+		}
 		/* Same removed-from-under-draw race as istate() below:
 		 * removech() nulls the dstate. */
 		if(bk == null)
@@ -844,7 +850,18 @@ public class RenderTree implements RenderList.Adapter, Disposable {
 	}
 
 	public GroupPipe state() {
-	    return(istate());
+	    /* Computing the state for the first time registers this slot
+	     * in its ancestors' rdeps, so it must hold the tree lock: the
+	     * 2D pass calls this unlocked while loaders add slots under
+	     * the same ancestors, and the race lost an rdeps entry (NPE
+	     * in addrdep). Inheritance's fields are final, so a cached
+	     * one is safe to hand out without the lock. */
+	    Inheritance ret = istate;
+	    if(ret != null)
+		return(ret);
+	    try(Locked lk = tree.lock()) {
+		return(istate());
+	    }
 	}
 
 	public String toString() {
